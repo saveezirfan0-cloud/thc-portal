@@ -9,7 +9,8 @@ import { parseAutosendConfig } from './_lib/schedule';
 
 /**
  * POST /api/jobs/event-documents — the automatic Allocation Timesheet (D1)
- * and Completed Allocation Timesheet (D2), ADR-0074 (THC, 29.09.2026).
+ * and Completed Allocation Timesheet (D2), ADR-0074 (THC, 29.09.2026), and
+ * the re-send of a changed Allocation Timesheet (D1U), ADR-0084.
  *
  * A job, not a screen: pg_cron calls it every 15 minutes (job_schedules
  * `event-documents`, the vault's office_base_url + this path). It is a Node
@@ -23,7 +24,9 @@ import { parseAutosendConfig } from './_lib/schedule';
  * only). Every database call is the service role through functions only it
  * may call: event_documents_due, event_document_autosend_claim,
  * record_event_document_autosend, queue_event_document_autosend and
- * event_document_autosend_release; the PDF is drawn from
+ * event_document_autosend_release (and for an update
+ * event_document_update_claim, record_event_document_update,
+ * queue_event_document_update); the PDF is drawn from
  * event_document_data exactly as the manager's Send draws it.
  *
  * Every run is a job_runs row with its counts, like every other §7 job.
@@ -84,27 +87,38 @@ export async function POST(request: Request) {
       rows: (due.data ?? []) as DueRow[],
       deadline: started + BUDGET_MS,
       claim: async (eventId, kind) => {
-        const { data, error } = await db.rpc('event_document_autosend_claim', {
-          p_event: eventId,
-          p_kind: kind,
-          p_now: now.toISOString(),
-        });
-        if (error) throw new Error(`event_document_autosend_claim: ${error.message}`);
+        const { data, error } =
+          kind === 'allocation_update'
+            ? await db.rpc('event_document_update_claim', {
+                p_event: eventId,
+                p_now: now.toISOString(),
+              })
+            : await db.rpc('event_document_autosend_claim', {
+                p_event: eventId,
+                p_kind: kind,
+                p_now: now.toISOString(),
+              });
+        if (error) throw new Error(`claim ${kind}: ${error.message}`);
         return data === true;
       },
       generate: async (eventId, kind) => {
-        const result = await generateDocument(eventId, kind, 'required', {
+        const update = kind === 'allocation_update';
+        const result = await generateDocument(eventId, update ? 'allocation' : kind, 'required', {
           db: admin as unknown as DocumentRpc,
           automatic: true,
+          update,
         });
         return result.ok && result.documentId
           ? { ok: true, documentId: result.documentId }
           : { ok: false, message: result.ok ? 'not stored' : result.message };
       },
-      queue: async (documentId) => {
-        const { data, error } = await db.rpc('queue_event_document_autosend', {
-          p_document: documentId,
-        });
+      queue: async (documentId, kind) => {
+        const { data, error } = await db.rpc(
+          kind === 'allocation_update'
+            ? 'queue_event_document_update'
+            : 'queue_event_document_autosend',
+          { p_document: documentId },
+        );
         if (error) throw new Error(error.message);
         const answer = data as { queued?: boolean; skipped?: string | null } | null;
         return { queued: answer?.queued === true, skipped: answer?.skipped ?? null };

@@ -154,9 +154,10 @@ describe('§11.4 allocation sheet email', () => {
 });
 
 describe('the drain can tell the two registers apart', () => {
-  it('knows the three document emails and nothing from §8', () => {
-    expect(Object.keys(DOCUMENT_EMAILS).sort()).toEqual(['BG08', 'D1', 'D2']);
+  it('knows the four document emails and nothing from §8', () => {
+    expect(Object.keys(DOCUMENT_EMAILS).sort()).toEqual(['BG08', 'D1', 'D1U', 'D2']);
     expect(isDocumentEmail('D1')).toBe(true);
+    expect(isDocumentEmail('D1U')).toBe(true);
     expect(isDocumentEmail('E5')).toBe(false);
   });
 
@@ -234,5 +235,36 @@ describe('D1 with name badges (ADR-0081)', () => {
       expect(message.attachments).toHaveLength(1);
       expect(message.attachments[0]!.role).toBeUndefined();
     }
+  });
+});
+
+/** ADR-0084: the Updated Allocation Timesheet, as 772 pgTAP queues it. */
+describe('D1U · the Updated Allocation Timesheet', () => {
+  const d1u = (): OutboxRow => ({ ...d1(), key: 'D1U:update:abc', template: 'D1U' });
+
+  it('says it is an update, and that it replaces the earlier sheet', () => {
+    const m = documentMessageFor(d1u());
+    expect(m.subject).toBe(
+      'Updated Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+    );
+    expect(m.sender).toBe('timesheets');
+    expect(m.to).toHaveLength(3);
+    expect(m.body).toContain(
+      'The staffing for the Gala Dinner on Friday 19 September 2026 has changed since we last sent you the Allocation Timesheet, so please find the updated one attached.',
+    );
+    expect(m.body).toContain('It lists the 17 staff now booked to work');
+    expect(m.body).toContain('Please use it on the day instead of the earlier sheet.');
+    expect(m.attachments.map((a) => a.filename)).toEqual([
+      'Leonardo Hotel St Pauls – Gala Dinner.pdf',
+    ]);
+  });
+
+  it('keeps every sentence of its HTML copy in the text too, with D1’s steps', () => {
+    const m = documentMessageFor(d1u());
+    const copy = DOCUMENT_EMAILS.D1U.html;
+    for (const sentence of [copy.stepsLead, ...copy.steps, copy.closing]) {
+      expect(m.body).toContain(sentence);
+    }
+    expect(copy.steps).toEqual(DOCUMENT_EMAILS.D1.html.steps);
   });
 });

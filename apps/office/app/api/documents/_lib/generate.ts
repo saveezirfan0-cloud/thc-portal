@@ -79,7 +79,15 @@ export interface DocumentRpc {
     },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   rpc(
-    fn: 'record_event_document_autosend',
+    fn: 'event_document_content_signature',
+    args: { p_event: string },
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'set_event_document_signature',
+    args: { p_document: string; p_signature: string },
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'record_event_document_autosend' | 'record_event_document_update',
     args: {
       p_event: string;
       p_kind: SheetKind;
@@ -213,6 +221,11 @@ export interface GenerateOptions {
   db?: DocumentRpc;
   /** The event-documents job's copy (ADR-0074): recorded as automatic, generated_by null. */
   automatic?: boolean;
+  /**
+   * With `automatic`: the re-send of a changed Allocation Timesheet
+   * (ADR-0084), recorded through record_event_document_update.
+   */
+  update?: boolean;
 }
 
 export async function generateDocument(
@@ -228,6 +241,17 @@ export async function generateDocument(
   options: GenerateOptions = {},
 ): Promise<GenerateResult> {
   const db = options.db ?? (await documentsDb());
+  // ADR-0084: what an Allocation Timesheet prints, read BEFORE its rows, so
+  // a change made while the PDF is drawn is never stamped as sent. Best
+  // effort: without it the copy keeps the stamp its insert trigger gave it.
+  const signature =
+    kind === 'allocation'
+      ? await db
+          .rpc('event_document_content_signature', { p_event: eventId })
+          .then(({ data: sig, error: sigError }) =>
+            !sigError && typeof sig === 'string' ? sig : null,
+          )
+      : null;
   const { data, error } = await db.rpc('event_document_data', { p_event: eventId });
   if (error) return { ok: false, ...refusal(error.message) };
   const doc = data as DocumentData;
@@ -308,13 +332,23 @@ export async function generateDocument(
     p_pages: pages,
   };
   const recorded = options.automatic
-    ? await db.rpc('record_event_document_autosend', record)
+    ? await db.rpc(
+        options.update ? 'record_event_document_update' : 'record_event_document_autosend',
+        record,
+      )
     : await db.rpc('record_event_document', record);
   if (recorded.error) {
     const { status, message } = refusal(recorded.error.message);
     return fail(status, message);
   }
   const documentId = recorded.data as string;
+  if (signature) {
+    // Not fatal: the trigger's stamp stands if this does not land.
+    await db.rpc('set_event_document_signature', {
+      p_document: documentId,
+      p_signature: signature,
+    });
+  }
 
   // ADR-0081: the badges join the copy before anything queues its email. A
   // Send that cannot attach them stops here rather than email the sheet

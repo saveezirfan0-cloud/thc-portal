@@ -11,6 +11,11 @@
  *   D1    the Allocation Timesheet, "Send allocation sheet" from the event
  *         page (§11.4), sent BEFORE the event — so it never speaks of
  *         check-in, check-out or hours worked from them.
+ *   D1U   the Updated Allocation Timesheet (ADR-0084): the D1 sheet again,
+ *         sent by the event-documents job when what it prints (who, which
+ *         role, which times) has changed since the last copy went — at
+ *         most once an hour, never once the first shift has started. The
+ *         same steps and files as D1; the words say it replaces the last.
  *   D2    the Completed Allocation Timesheet, filled in from check-in and
  *         check-out. It goes with the invoice, from Reports › Financial
  *         (ADR-0083), not straight after the event.
@@ -120,6 +125,33 @@ export const DOCUMENT_EMAILS = {
     },
     trigger: '"Send allocation sheet" on the Back Office event page (§11.4)',
     timing: 'on the press — any time, including mid-event (§11.3)',
+  },
+  D1U: {
+    code: 'D1U',
+    channel: 'email',
+    sender: 'timesheets',
+    bucket: 'timesheets',
+    title: 'Updated Allocation Timesheet — {event}, {date}{poSuffix}',
+    body: "Hello,\n\nThe staffing for the {event} on {date} has changed since we last sent you the Allocation Timesheet, so please find the updated one attached. It lists the {staffCount} staff now booked to work, with each person's role and scheduled start and finish times. Please use it on the day instead of the earlier sheet.{poLine}{badgeLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    html: {
+      eyebrow: 'Updated Allocation Timesheet',
+      intro:
+        "The staffing for the {event} on {date} has changed since we last sent you the Allocation Timesheet, so please find the updated one attached. It lists the {staffCount} staff now booked to work, with each person's role and scheduled start and finish times. Please use it on the day instead of the earlier sheet.{poLine}{badgeLine}",
+      stepsLead: 'On the day, please ask your manager on site to:',
+      steps: [
+        "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
+        'print and sign their name at the bottom,',
+        'email the signed sheet back to us — just reply to this email.',
+      ],
+      closing: 'Any questions, you can reach us the same way.',
+      attachmentNote: 'Updated Allocation Timesheet · attached',
+      badgesNote: 'Name badges · {nameBadges} to print',
+      replyButton: 'Reply with the signed sheet',
+    },
+    trigger:
+      'The event-documents job, when the line-up or times on an Allocation Timesheet already sent have changed (ADR-0084)',
+    timing:
+      'at most once an hour after the last copy went (THC, 02.10.2026), until the first shift starts',
   },
   D2: {
     code: 'D2',
@@ -260,7 +292,7 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
     { label: 'Client', value: get('client') },
     { label: 'Date', value: get('date') },
   ];
-  if (code === 'D1') {
+  if (code === 'D1' || code === 'D1U') {
     return [
       ...common,
       { label: 'Staff booked', value: get('staffCount') },

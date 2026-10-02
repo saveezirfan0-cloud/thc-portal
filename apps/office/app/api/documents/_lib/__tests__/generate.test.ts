@@ -52,6 +52,8 @@ function person(id: string, first: string, last: string, removed = false) {
   };
 }
 
+const SIGNATURE = '0123456789abcdef0123456789abcdef';
+
 function fakeDb(nameBadges: boolean | undefined, attachError: string | null = null) {
   const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const db = {
@@ -78,8 +80,17 @@ function fakeDb(nameBadges: boolean | undefined, attachError: string | null = nu
           error: null,
         });
       }
-      if (fn === 'record_event_document' || fn === 'record_event_document_autosend')
+      if (
+        fn === 'record_event_document' ||
+        fn === 'record_event_document_autosend' ||
+        fn === 'record_event_document_update'
+      )
         return Promise.resolve({ data: 'doc-1', error: null });
+      // ADR-0084: the line-up's signature, read before the rows.
+      if (fn === 'event_document_content_signature')
+        return Promise.resolve({ data: SIGNATURE, error: null });
+      if (fn === 'set_event_document_signature')
+        return Promise.resolve({ data: null, error: null });
       if (fn === 'attach_event_document_badges')
         return Promise.resolve({
           data: null,
@@ -125,8 +136,10 @@ describe('generateDocument and name badges (ADR-0081)', () => {
     });
     // Recorded first, then attached: nothing has queued an email yet.
     expect(db.calls.map((c) => c.fn)).toEqual([
+      'event_document_content_signature',
       'event_document_data',
       'record_event_document',
+      'set_event_document_signature',
       'attach_event_document_badges',
     ]);
     expect(result.badges?.layout.count).toBe(2);
@@ -141,10 +154,38 @@ describe('generateDocument and name badges (ADR-0081)', () => {
     });
     expect(result.ok).toBe(true);
     expect(db.calls.map((c) => c.fn)).toEqual([
+      'event_document_content_signature',
       'event_document_data',
       'record_event_document_autosend',
+      'set_event_document_signature',
       'attach_event_document_badges',
     ]);
+  });
+
+  it('ADR-0084: an update is recorded through its own path, stamped with the line-up read first', async () => {
+    const db = fakeDb(false);
+    const result = await generateDocument(EVENT_ID, 'allocation', 'required', {
+      db: db as unknown as Db,
+      automatic: true,
+      update: true,
+    });
+    expect(result.ok).toBe(true);
+    expect(db.calls.map((c) => c.fn)).toEqual([
+      'event_document_content_signature',
+      'event_document_data',
+      'record_event_document_update',
+      'set_event_document_signature',
+    ]);
+    expect(db.calls.find((c) => c.fn === 'set_event_document_signature')?.args).toEqual({
+      p_document: 'doc-1',
+      p_signature: SIGNATURE,
+    });
+  });
+
+  it('ADR-0084: a Completed Timesheet carries no signature', async () => {
+    const db = fakeDb(false);
+    await generateDocument(EVENT_ID, 'signout', 'required', { db: db as unknown as Db });
+    expect(db.calls.map((c) => c.fn)).toEqual(['event_document_data', 'record_event_document']);
   });
 
   it('draws no badges for a client without them, or a database from before them', async () => {
@@ -189,7 +230,10 @@ describe('generateDocument and name badges (ADR-0081)', () => {
       db: db as unknown as Db,
     });
     expect(result.ok).toBe(false);
-    expect(db.calls.map((c) => c.fn)).toEqual(['event_document_data']);
+    expect(db.calls.map((c) => c.fn)).toEqual([
+      'event_document_content_signature',
+      'event_document_data',
+    ]);
   });
 
   it('a Download still hands over the sheet when the badges cannot be attached', async () => {
@@ -208,7 +252,12 @@ describe('generateDocument and name badges (ADR-0081)', () => {
       db: db as unknown as Db,
     });
     expect(result.ok && result.documentId).toBe('doc-1');
-    expect(db.calls.map((c) => c.fn)).toEqual(['event_document_data', 'record_event_document']);
+    expect(db.calls.map((c) => c.fn)).toEqual([
+      'event_document_content_signature',
+      'event_document_data',
+      'record_event_document',
+      'set_event_document_signature',
+    ]);
     if (result.ok) expect(result.badges?.storagePath).toBe(null);
   });
 

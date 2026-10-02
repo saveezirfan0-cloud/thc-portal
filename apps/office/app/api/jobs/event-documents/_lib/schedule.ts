@@ -29,9 +29,20 @@ import { ukInstant } from '@thc/domain';
  *        (when the feature was switched on).
  *   Both · not for a cancelled event (§3.3), one with nobody confirmed, or
  *        a client card with no contact emails; at most once per event.
+ *   Update (`allocation_update`, ADR-0084; SQL twin
+ *        `document_update_verdict()`, 20261002115000) · an Allocation
+ *        Timesheet re-sent when what it prints has changed since the last
+ *        copy anyone queued — not before an hour (`update.gap_minutes`)
+ *        after that copy, and never once the first shift has started. It
+ *        only ever follows a copy queued since 00:00 UK the day before, so
+ *        it never goes in the same run as D1. Not for nobody confirmed or
+ *        no contact emails; eight failed claims per change, then gave_up.
  */
 
 export type DocumentKind = 'allocation' | 'signout';
+
+/** What the job sends: the two documents, and the re-send of a changed D1. */
+export type JobKind = DocumentKind | 'allocation_update';
 
 export type AutosendVerdict =
   | 'due'
@@ -46,7 +57,12 @@ export type AutosendVerdict =
   | 'no_contact_emails'
   | 'manual_sent'
   | 'held_no_checkout'
-  | 'gave_up';
+  | 'gave_up'
+  // allocation_update only (ADR-0084):
+  | 'not_sent_yet'
+  | 'no_baseline'
+  | 'unchanged'
+  | 'too_soon';
 
 /**
  * Claims the job may spend on one event and kind (a claim = one attempt to
@@ -59,9 +75,16 @@ export const MAX_CLAIMS = 8;
 export interface AutosendConfig {
   allocation: { enabled: boolean; time: string };
   completed: { enabled: boolean; time: string; holdDays: number; notBefore: string | null };
+  /** ADR-0084: re-send a changed Allocation Timesheet, at most every `gapMinutes`. */
+  update: { enabled: boolean; gapMinutes: number };
 }
 
-export const DEFAULT_TIMES = { allocation: '16:00', completed: '10:00', holdDays: 14 } as const;
+export const DEFAULT_TIMES = {
+  allocation: '16:00',
+  completed: '10:00',
+  holdDays: 14,
+  updateGapMinutes: 60,
+} as const;
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -82,6 +105,9 @@ export function parseAutosendConfig(raw: unknown): AutosendConfig {
   const value = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const allocation = (value.allocation ?? {}) as Record<string, unknown>;
   const completed = (value.completed ?? {}) as Record<string, unknown>;
+  const update = (value.update ?? {}) as Record<string, unknown>;
+  // A JSON number, a whole one, 15–1440 (a quarter-hour to a day).
+  const gap = typeof update.gap_minutes === 'number' ? update.gap_minutes : NaN;
   // A JSON number, a whole one, 0–9999 — what the SQL twin accepts.
   const hold = typeof completed.hold_days === 'number' ? completed.hold_days : NaN;
   const notBefore =
@@ -99,12 +125,17 @@ export function parseAutosendConfig(raw: unknown): AutosendConfig {
       holdDays: Number.isInteger(hold) && hold >= 0 && hold <= 9999 ? hold : DEFAULT_TIMES.holdDays,
       notBefore,
     },
+    update: {
+      enabled: flag(update.enabled, true),
+      gapMinutes:
+        Number.isInteger(gap) && gap >= 15 && gap <= 1440 ? gap : DEFAULT_TIMES.updateGapMinutes,
+    },
   };
 }
 
 /** One candidate, as a row of `event_documents_due()`. */
 export interface AutosendFacts {
-  kind: DocumentKind;
+  kind: JobKind;
   /** The event's UK calendar date, "2026-09-19". */
   eventDate: string;
   /** Earliest role start / latest role end (RULE-18), or null: no sections. */
@@ -125,6 +156,10 @@ export interface AutosendFacts {
   autoQueuedAt: string | null;
   /** Claims already spent on it (a live one not counted). */
   attempts?: number;
+  /** allocation_update: the latest Allocation Timesheet anyone queued. */
+  allocationSentAt?: string | null;
+  /** allocation_update: does the sheet print differently now? null = no baseline. */
+  changed?: boolean | null;
 }
 
 /** "2026-09-19" ± days, as a calendar date (no zone involved). */
@@ -155,12 +190,32 @@ export function completedStopAt(eventDate: string, config: AutosendConfig): Date
 
 const at = (iso: string | null): number | null => (iso ? new Date(iso).getTime() : null);
 
+/** The re-send of a changed Allocation Timesheet (ADR-0084). */
+function updateVerdict(facts: AutosendFacts, t: number, config: AutosendConfig): AutosendVerdict {
+  const firstStart = at(facts.firstStart);
+  const sentAt = at(facts.allocationSentAt ?? null);
+  // 00:00 UK the day before: the same freshness line as manual_sent.
+  const fresh = ukInstant(addDays(facts.eventDate, -1), '00:00').getTime();
+  if (!config.update.enabled) return 'disabled';
+  if (facts.cancelled) return 'cancelled';
+  if (firstStart !== null && t >= firstStart) return 'too_late';
+  if (sentAt === null || sentAt < fresh) return 'not_sent_yet';
+  if (facts.changed === null || facts.changed === undefined) return 'no_baseline';
+  if (!facts.changed) return 'unchanged';
+  if (facts.confirmed === 0) return 'no_confirmed_staff';
+  if (facts.contacts === 0) return 'no_contact_emails';
+  if (t < sentAt + config.update.gapMinutes * 60_000) return 'too_soon';
+  if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
+  return 'due';
+}
+
 export function autosendVerdict(
   facts: AutosendFacts,
   now: Date,
   config: AutosendConfig,
 ): AutosendVerdict {
   const t = now.getTime();
+  if (facts.kind === 'allocation_update') return updateVerdict(facts, t, config);
   const dueAt = autosendDueAt(facts.kind, facts, config).getTime();
 
   if (facts.kind === 'allocation') {
@@ -243,13 +298,24 @@ export function autosendHint(
     ended: boolean;
     queuedAt?: string | null;
     deliveredAt?: string | null;
+    /** ADR-0084: the latest automatic update of the Allocation Timesheet. */
+    updatedAt?: string | null;
   },
 ): string | null {
   if (kind === 'allocation') {
-    if (state.sentAt)
-      return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
-    if (!config.allocation.enabled || state.started) return null;
-    return `Sent automatically the day before at ${config.allocation.time} (UK time)`;
+    const base = state.sentAt
+      ? `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`
+      : !config.allocation.enabled || state.started
+        ? null
+        : `Sent automatically the day before at ${config.allocation.time} (UK time)`;
+    const update = state.updatedAt
+      ? `updated automatically ${ukShortStamp(state.updatedAt)}`
+      : config.update.enabled && !state.started
+        ? 'and again if the line-up or times change (at most hourly)'
+        : null;
+    if (base && update) return `${base} · ${update}`;
+    if (state.updatedAt) return `Allocation Timesheet ${update}`;
+    return base;
   }
   if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
   if (state.deliveredAt)

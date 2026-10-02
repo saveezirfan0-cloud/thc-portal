@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runAutosend } from '../run';
 import type { AutosendDeps, DueRow } from '../run';
 import { parseAutosendConfig } from '../schedule';
-import type { DocumentKind } from '../schedule';
+import type { JobKind } from '../schedule';
 
 const CONFIG = parseAutosendConfig({});
 const NOW = new Date('2026-07-10T15:00:00Z'); // Fri 16:00 BST
@@ -33,19 +33,21 @@ function harness(rows: DueRow[], overrides: Partial<AutosendDeps> = {}) {
     now: NOW,
     config: CONFIG,
     rows,
-    claim: async (id: string, kind: DocumentKind) => {
+    claim: async (id: string, kind: JobKind) => {
       calls.push(`claim ${kind} ${id}`);
       return true;
     },
-    generate: async (id: string, kind: DocumentKind) => {
+    generate: async (id: string, kind: JobKind) => {
       calls.push(`generate ${kind} ${id}`);
       return { ok: true, documentId: `doc-${id}` };
     },
-    queue: async (documentId: string) => {
-      calls.push(`queue ${documentId}`);
+    queue: async (documentId: string, kind: JobKind) => {
+      calls.push(
+        kind === 'allocation_update' ? `queue update ${documentId}` : `queue ${documentId}`,
+      );
       return { queued: true };
     },
-    release: async (id: string, kind: DocumentKind, error: string) => {
+    release: async (id: string, kind: JobKind, error: string) => {
       calls.push(`release ${kind} ${id} ${error}`);
     },
     log: (line) => logs.push(line),
@@ -59,13 +61,13 @@ describe('one run of the event-documents job', () => {
     const { deps, calls } = harness([row()]);
     const counts = await runAutosend(deps);
     expect(calls).toEqual(['claim allocation ev-1', 'generate allocation ev-1', 'queue doc-ev-1']);
-    expect(counts.sent).toEqual({ allocation: 1, signout: 0 });
+    expect(counts.sent).toEqual({ allocation: 1, signout: 0, allocation_update: 0 });
     expect(counts.verdicts.allocation).toEqual({ due: 1 });
   });
 
   it('acts only when SQL and TypeScript agree — a disagreement is counted, not sent', async () => {
-    // TypeScript says not_yet at 13:59 UK; SQL (wrongly) says due.
-    const { deps, calls, logs } = harness([row()], { now: new Date('2026-07-10T12:59:00Z') });
+    // TypeScript says not_yet at 15:59 UK; SQL (wrongly) says due.
+    const { deps, calls, logs } = harness([row()], { now: new Date('2026-07-10T14:59:00Z') });
     const counts = await runAutosend(deps);
     expect(calls).toEqual([]);
     expect(counts.disagreements).toBe(1);
@@ -173,5 +175,37 @@ describe('one run of the event-documents job', () => {
     const counts = await runAutosend(deps);
     expect(calls).toEqual(['claim signout ev-2', 'generate signout ev-2', 'queue doc-ev-2']);
     expect(counts.sent.signout).toBe(1);
+  });
+});
+
+describe('the re-send of a changed Allocation Timesheet (ADR-0084)', () => {
+  it('claims, draws and queues an update through its own path', async () => {
+    const update = row({
+      kind: 'allocation_update',
+      allocation_sent_at: '2026-07-10T13:30:00Z',
+      changed: true,
+    });
+    const { deps, calls } = harness([update]);
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([
+      'claim allocation_update ev-1',
+      'generate allocation_update ev-1',
+      'queue update doc-ev-1',
+    ]);
+    expect(counts.sent).toEqual({ allocation: 0, signout: 0, allocation_update: 1 });
+    expect(counts.verdicts.allocation_update).toEqual({ due: 1 });
+  });
+
+  it('counts an unchanged sheet as a verdict and sends nothing', async () => {
+    const update = row({
+      kind: 'allocation_update',
+      verdict: 'unchanged',
+      allocation_sent_at: '2026-07-10T13:30:00Z',
+      changed: false,
+    });
+    const { deps, calls } = harness([update]);
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([]);
+    expect(counts.verdicts.allocation_update).toEqual({ unchanged: 1 });
   });
 });

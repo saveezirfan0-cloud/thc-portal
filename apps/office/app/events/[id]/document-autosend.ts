@@ -22,6 +22,7 @@ export interface AutosendHints {
 const OFF: AutosendConfig = parseAutosendConfig({
   allocation: { enabled: false },
   completed: { enabled: false },
+  update: { enabled: false },
 });
 
 export async function loadAutosendHints(
@@ -57,7 +58,11 @@ export async function loadAutosendHints(
       ((sends.data ?? []) as { kind: string; queued_at: string }[]).find((r) => r.kind === kind)
         ?.queued_at ?? null;
     return {
-      allocation: autosendHint('allocation', config, { ...state, sentAt: sentAt('allocation') }),
+      allocation: autosendHint('allocation', config, {
+        ...state,
+        sentAt: sentAt('allocation'),
+        updatedAt: sentAt('allocation_update'),
+      }),
       signout: state.started
         ? autosendHint('signout', config, {
             ...state,

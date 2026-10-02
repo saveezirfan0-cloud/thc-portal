@@ -234,7 +234,12 @@ describe('settings', () => {
     expect(parseAutosendConfig(null)).toEqual({
       allocation: { enabled: true, time: '16:00' },
       completed: { enabled: true, time: '10:00', holdDays: 14, notBefore: null },
+      update: { enabled: true, gapMinutes: 60 },
     });
+    expect(parseAutosendConfig({ update: { gap_minutes: 30 } }).update.gapMinutes).toBe(30);
+    // The SQL twin's range: a quarter-hour to a day, a JSON number.
+    expect(parseAutosendConfig({ update: { gap_minutes: 5 } }).update.gapMinutes).toBe(60);
+    expect(parseAutosendConfig({ update: { gap_minutes: '30' } }).update.gapMinutes).toBe(60);
     expect(parseAutosendConfig({ allocation: { time: '2pm' } }).allocation.time).toBe('16:00');
     expect(parseAutosendConfig({ completed: { hold_days: -3 } }).completed.holdDays).toBe(14);
     expect(parseAutosendConfig({ completed: { hold_days: 7 } }).completed.holdDays).toBe(7);
@@ -253,10 +258,27 @@ describe('the hint under the event page buttons', () => {
   it('says when the automatic send happens, and when it happened (UK)', () => {
     const idle = { sentAt: null, started: false, ended: false };
     expect(autosendHint('allocation', CONFIG, idle)).toBe(
-      'Sent automatically the day before at 16:00 (UK time)',
+      'Sent automatically the day before at 16:00 (UK time) · and again if the line-up or times change (at most hourly)',
     );
     expect(autosendHint('allocation', CONFIG, { ...idle, sentAt: '2026-09-28T15:00:04Z' })).toBe(
-      'Allocation Timesheet sent automatically 28/09 16:00',
+      'Allocation Timesheet sent automatically 28/09 16:00 · and again if the line-up or times change (at most hourly)',
+    );
+    // ADR-0084: and when it was last updated.
+    expect(
+      autosendHint('allocation', CONFIG, {
+        ...idle,
+        sentAt: '2026-09-28T15:00:04Z',
+        updatedAt: '2026-09-28T17:15:02Z',
+      }),
+    ).toBe(
+      'Allocation Timesheet sent automatically 28/09 16:00 · updated automatically 28/09 18:15',
+    );
+    expect(autosendHint('allocation', CONFIG, { ...idle, updatedAt: '2026-09-28T17:15:02Z' })).toBe(
+      'Sent automatically the day before at 16:00 (UK time) · updated automatically 28/09 18:15',
+    );
+    const noUpdates = parseAutosendConfig({ update: { enabled: false } });
+    expect(autosendHint('allocation', noUpdates, idle)).toBe(
+      'Sent automatically the day before at 16:00 (UK time)',
     );
     expect(
       autosendHint('signout', CONFIG, {
@@ -289,6 +311,67 @@ describe('the hint under the event page buttons', () => {
     // A copy the job sent before the switch went off still says so.
     expect(autosendHint('signout', off, { ...ended, sentAt: '2026-09-21T09:00:03Z' })).toBe(
       'Completed Timesheet sent automatically 21/09 10:00',
+    );
+  });
+});
+
+/**
+ * ADR-0084: the re-send of a changed Allocation Timesheet. The same cases
+ * as 772_allocation_timesheet_update.sql — keep the two lists in step.
+ * Sat 11 Jul 2026, first shift 07:00 BST; a copy queued Fri 16:00 BST.
+ */
+describe('Update · a changed Allocation Timesheet, at most once an hour', () => {
+  const u = (facts: Partial<AutosendFacts>, now: string, config = CONFIG) =>
+    autosendVerdict(
+      {
+        ...SUMMER,
+        confirmed: 3,
+        allocationSentAt: '2026-07-10T15:00:00Z',
+        changed: true,
+        ...facts,
+        kind: 'allocation_update',
+      },
+      new Date(now),
+      config,
+    );
+
+  it('waits an hour after the last copy, then goes', () => {
+    expect(u({}, '2026-07-10T15:59:00Z')).toBe('too_soon');
+    expect(u({}, '2026-07-10T16:00:00Z')).toBe('due');
+    expect(
+      u({}, '2026-07-10T15:30:00Z', parseAutosendConfig({ update: { gap_minutes: 30 } })),
+    ).toBe('due');
+    expect(u({}, '2026-07-10T15:30:00Z', parseAutosendConfig({ update: { gap_minutes: 5 } }))).toBe(
+      'too_soon',
+    );
+  });
+
+  it('sends nothing when the sheet would print the same, or there is nothing to compare', () => {
+    expect(u({ changed: false }, '2026-07-10T16:00:00Z')).toBe('unchanged');
+    expect(u({ changed: null }, '2026-07-10T16:00:00Z')).toBe('no_baseline');
+  });
+
+  it('only follows a copy queued since 00:00 UK the day before — never the 16:00 send itself', () => {
+    expect(u({ allocationSentAt: null }, '2026-07-10T16:00:00Z')).toBe('not_sent_yet');
+    expect(u({ allocationSentAt: '2026-07-09T22:59:00Z' }, '2026-07-10T16:00:00Z')).toBe(
+      'not_sent_yet',
+    );
+    expect(u({ allocationSentAt: '2026-07-09T23:00:00Z' }, '2026-07-10T16:00:00Z')).toBe('due');
+  });
+
+  it('stops once the first shift has started', () => {
+    expect(u({ allocationSentAt: '2026-07-11T04:00:00Z' }, '2026-07-11T06:00:00Z')).toBe(
+      'too_late',
+    );
+  });
+
+  it('skips a cancelled event, an empty line-up, no contacts, and gives up after eight claims', () => {
+    expect(u({ cancelled: true }, '2026-07-10T16:00:00Z')).toBe('cancelled');
+    expect(u({ confirmed: 0 }, '2026-07-10T16:00:00Z')).toBe('no_confirmed_staff');
+    expect(u({ contacts: 0 }, '2026-07-10T16:00:00Z')).toBe('no_contact_emails');
+    expect(u({ attempts: 8 }, '2026-07-10T16:00:00Z')).toBe('gave_up');
+    expect(u({}, '2026-07-10T16:00:00Z', parseAutosendConfig({ update: { enabled: false } }))).toBe(
+      'disabled',
     );
   });
 });

@@ -1,5 +1,5 @@
 import { NOTEWORTHY, autosendVerdict } from './schedule';
-import type { AutosendConfig, AutosendFacts, AutosendVerdict, DocumentKind } from './schedule';
+import type { AutosendConfig, AutosendFacts, AutosendVerdict, JobKind } from './schedule';
 
 /**
  * One run of the event-documents job (ADR-0074), with its I/O injected so
@@ -12,7 +12,8 @@ import type { AutosendConfig, AutosendFacts, AutosendVerdict, DocumentKind } fro
  *   2. claim(event, kind) — the SQL re-checks the verdict under a lock and
  *      takes a lease, so two overlapping runs cannot both draw it;
  *   3. generate — the PDF, stored, recorded as an automatic copy;
- *   4. queue — the D1/D2 email under the event's automatic key;
+ *   4. queue — the D1/D2 email under the event's automatic key, or for
+ *      an `allocation_update` (ADR-0084) the D1U email under its copy's key;
  *   5. on any failure, release(event, kind, reason) so the next run retries.
  *
  * Log lines carry event ids, kinds and reasons — never a name or an email.
@@ -20,7 +21,7 @@ import type { AutosendConfig, AutosendFacts, AutosendVerdict, DocumentKind } fro
 
 export interface DueRow {
   event_id: string;
-  kind: DocumentKind;
+  kind: JobKind;
   verdict: string;
   event_date: string;
   first_start: string | null;
@@ -33,6 +34,9 @@ export interface DueRow {
   signout_queued_at: string | null;
   auto_queued_at: string | null;
   attempts?: number | null;
+  /** ADR-0084, read by the allocation_update rows. */
+  allocation_sent_at?: string | null;
+  changed?: boolean | null;
 }
 
 export function factsOf(row: DueRow): AutosendFacts {
@@ -49,6 +53,8 @@ export function factsOf(row: DueRow): AutosendFacts {
     signoutQueuedAt: row.signout_queued_at,
     autoQueuedAt: row.auto_queued_at,
     attempts: Number(row.attempts) || 0,
+    allocationSentAt: row.allocation_sent_at ?? null,
+    changed: row.changed ?? null,
   };
 }
 
@@ -58,11 +64,11 @@ export interface AutosendDeps {
   now: Date;
   config: AutosendConfig;
   rows: readonly DueRow[];
-  claim(eventId: string, kind: DocumentKind): Promise<boolean>;
-  generate(eventId: string, kind: DocumentKind): Promise<GenerateOutcome>;
+  claim(eventId: string, kind: JobKind): Promise<boolean>;
+  generate(eventId: string, kind: JobKind): Promise<GenerateOutcome>;
   /** `skipped`: the SQL re-checked under its lock and stood down (e.g. manual_sent). */
-  queue(documentId: string): Promise<{ queued: boolean; skipped?: string | null }>;
-  release(eventId: string, kind: DocumentKind, error: string): Promise<void>;
+  queue(documentId: string, kind: JobKind): Promise<{ queued: boolean; skipped?: string | null }>;
+  release(eventId: string, kind: JobKind, error: string): Promise<void>;
   /** Stop drawing new PDFs after this; the rest wait for the next run. */
   deadline?: number;
   clock?: () => number;
@@ -72,9 +78,9 @@ export interface AutosendDeps {
 export interface AutosendCounts {
   candidates: number;
   due: number;
-  sent: { allocation: number; signout: number };
+  sent: Record<JobKind, number>;
   /** Every verdict, per kind: the job run's record of why nothing went. */
-  verdicts: { allocation: Record<string, number>; signout: Record<string, number> };
+  verdicts: Record<JobKind, Record<string, number>>;
   disagreements: number;
   notClaimed: number;
   duplicate: number;
@@ -93,8 +99,8 @@ export async function runAutosend(deps: AutosendDeps): Promise<AutosendCounts> {
   const counts: AutosendCounts = {
     candidates: deps.rows.length,
     due: 0,
-    sent: { allocation: 0, signout: 0 },
-    verdicts: { allocation: {}, signout: {} },
+    sent: { allocation: 0, signout: 0, allocation_update: 0 },
+    verdicts: { allocation: {}, signout: {}, allocation_update: {} },
     disagreements: 0,
     notClaimed: 0,
     duplicate: 0,
@@ -134,7 +140,7 @@ export async function runAutosend(deps: AutosendDeps): Promise<AutosendCounts> {
     try {
       const drawn = await deps.generate(row.event_id, row.kind);
       if (!drawn.ok) throw new Error(drawn.message);
-      const { queued, skipped } = await deps.queue(drawn.documentId);
+      const { queued, skipped } = await deps.queue(drawn.documentId, row.kind);
       if (queued) {
         counts.sent[row.kind] += 1;
         deps.log(`event-documents: ${row.kind} ${row.event_id} queued`);

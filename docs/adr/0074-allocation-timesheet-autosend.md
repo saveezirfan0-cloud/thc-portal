@@ -4,6 +4,8 @@
 
 > **Amended 02.10.2026 (THC): D1 goes at 16:00, not 14:00.** Migration `20261002114000` moves `settings.document_autosend.allocation.time` and the code's default to 16:00. The text below is updated to 16:00; nothing else about D1 changed. See "Answers to THC, 02.10.2026" at the end.
 >
+> **Extended by [ADR-0084](0084-allocation-timesheet-update.md) (02.10.2026):** a changed Allocation Timesheet is re-sent automatically as D1U, at most once an hour, until the first shift starts. The answer to THC's second question below ("is it re-sent automatically?") is therefore yes since ADR-0084.
+>
 > **Superseded in part by [ADR-0083](0083-completed-timesheet-with-invoicing.md) (02.10.2026).** The automatic D2 (Completed Allocation Timesheet) is switched off. The sheet goes to the client with the invoice, from Reports › Financial, and no longer from the event page. The Client Portal serves it only once it was sent. D1 is unchanged.
 
 ## Context
@@ -134,6 +136,6 @@ THC asked three things when moving D1 to 16:00.
 
 **"If the timesheet is missed because the event is not filled, when is it re-sent?"** The job runs every 15 minutes. At 16:00 the day before, an event with **nobody confirmed** is skipped for that run only (`no_confirmed_staff`); it is not marked done. Every later run checks it again, so the Allocation Timesheet goes on the first run (within 15 minutes) after someone is confirmed. That holds until the event's first shift starts; after that the automatic send stops (`too_late`) and only the manual Send works. An event that is **partly** filled at 16:00 is not "missed": it goes at 16:00 with whoever is confirmed then.
 
-**"If staffing changes (headcount / timings) after it was sent, is it re-sent automatically?"** No. Each event gets **at most one** automatic Allocation Timesheet (`already_sent`). A change to the line-up, headcount or times after it went does not send another.
+**"If staffing changes (headcount / timings) after it was sent, is it re-sent automatically?"** No — **superseded the same day by ADR-0084**, which re-sends it automatically, at most once an hour. Each event gets **at most one** automatic Allocation Timesheet (`already_sent`). A change to the line-up, headcount or times after it went does not send another.
 
 **"Can a manual one be re-sent?"** Yes. **Send Allocation Timesheet** on the event page works at any time, including mid-event (§11.3), as often as needed. Each press draws a fresh copy from the current line-up and role times, and emails it to every contact on the client card. A manual Send made after 00:00 UK the day before also stands in for the 16:00 automatic one, so the client does not receive two.

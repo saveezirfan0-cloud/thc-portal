@@ -74,7 +74,11 @@ select is_empty(
           'event_documents_due', 'event_document_autosend_claim',
           'record_event_document_autosend', 'queue_event_document_autosend',
           'event_document_autosend_release', 'document_autosend_config',
-          'event_document_data'
+          'event_document_data',
+          -- ADR-0084: the re-send of a changed Allocation Timesheet.
+          'event_document_update_claim', 'record_event_document_update',
+          'queue_event_document_update', 'document_update_verdict',
+          'event_document_signature'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -118,7 +122,10 @@ select is_empty(
           -- ADR-0074: the event-documents job's claim / record / queue.
           'event_documents_due', 'event_document_autosend_claim',
           'record_event_document_autosend', 'queue_event_document_autosend',
-          'event_document_autosend_release'
+          'event_document_autosend_release',
+          -- ADR-0084: and the re-send of a changed one.
+          'event_document_update_claim', 'record_event_document_update',
+          'queue_event_document_update', 'event_document_signature'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths, nor the auto-assign pool or its radius'
@@ -160,7 +167,12 @@ select is_empty(
           'event_documents_due', 'event_document_autosend_claim',
           'record_event_document_autosend', 'queue_event_document_autosend',
           'event_document_autosend_release', 'event_document_email_payload',
-          'event_document_tally'
+          'event_document_tally',
+          -- ADR-0084: the re-send's own path, and the raw signature (a
+          -- session reads it through event_document_content_signature,
+          -- which checks its caller).
+          'event_document_update_claim', 'record_event_document_update',
+          'queue_event_document_update', 'event_document_signature'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'

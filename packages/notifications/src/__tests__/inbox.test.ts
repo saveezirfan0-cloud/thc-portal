@@ -31,7 +31,7 @@ describe('office inbox (ADR-0058)', () => {
   });
 
   it('keeps the emails to a person out — above all the ones carrying a set-up link', () => {
-    for (const code of ['E1', 'E2', 'E2b', 'E3', 'E4', 'E11', 'D1', 'D2']) {
+    for (const code of ['E1', 'E2', 'E2b', 'E3', 'E4', 'E11', 'D1', 'D1U', 'D2']) {
       expect(isOfficeInboxCode(code), code).toBe(false);
     }
   });
