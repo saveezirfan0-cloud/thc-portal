@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261002109000 · Name badges with the Allocation Timesheet
+-- Migration 20261002112000 · Name badges with the Allocation Timesheet
 --                            (ADR-0081, THC 02.10.2026)
 --
 -- What changes

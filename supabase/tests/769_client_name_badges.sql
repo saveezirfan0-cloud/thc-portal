@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 769 · Name badges with the Allocation Timesheet (ADR-0081)
---       — 20261002109000_client_name_badges.sql
+--       — 20261002112000_client_name_badges.sql
 --
 -- The badge PDF is drawn in packages/pdf (Vitest: badges.test.ts). This
 -- file holds the database half: the client card's switch and who may turn
