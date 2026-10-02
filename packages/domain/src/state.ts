@@ -264,6 +264,8 @@ export const APPLICATION_ACCEPT_REFUSALS = [
   'male_only',
   'female_only',
   'gender_not_recorded',
+  'language_not_spoken',
+  'languages_not_recorded',
   'do_not_return',
   'blocked',
   'self_cancelled',

@@ -307,6 +307,13 @@ export interface ProfileData {
    */
   gender?: 'M' | 'F' | null;
   /**
+   * `staff.languages` — every language the worker speaks, English always in
+   * it, given on onboarding step 2. ADR-0080: an event that needs another
+   * language books only speakers of it. Null = never asked; undefined = not
+   * read.
+   */
+  languages?: string[] | null;
+  /**
    * The docs/19 additions (ADR-0043/0043/0044/0046). Each is read on its
    * own and fails on its own: `undefined` = not read, and the matching
    * `…Problem` says why a card or tab has nothing to show.

@@ -131,6 +131,9 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'staff.dob_claimed_with_share_code': 'Entered a different date of birth with a share code',
   // ADR-0079. The value itself is not logged.
   'staff.gender_set': 'Recorded gender',
+  // ADR-0080. The value itself is not logged.
+  'staff.languages_set': 'Recorded languages',
+  'staff.languages_saved': 'Gave their languages',
   'document.uploaded': 'Uploaded document',
   'wtr_optout.signed': 'Signed 48-hour opt-out',
   'wtr_optout.cancelled': 'Cancelled 48-hour opt-out',

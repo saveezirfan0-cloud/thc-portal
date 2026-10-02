@@ -107,7 +107,7 @@ const data = (over: Partial<CandidateData> = {}): CandidateData => ({
   roles: [],
   rtwChecks: [],
   rtwCheckEnabled: false,
-  facts: { niNumber: 'QQ123456C', belowDegreeLevel: false, visaHourLimit: null },
+  facts: { niNumber: 'QQ123456C', belowDegreeLevel: false, visaHourLimit: null, languages: null },
   problem: null,
   ...over,
 });
@@ -122,10 +122,28 @@ describe('the candidate profile, Documents phase', () => {
 
   it('D43: says when it is not entered yet, and that the document comes back', () => {
     const html = render(
-      data({ facts: { niNumber: null, belowDegreeLevel: false, visaHourLimit: null } }),
+      data({
+        facts: { niNumber: null, belowDegreeLevel: false, visaHourLimit: null, languages: null },
+      }),
     );
     expect(html).toContain('No NI number entered yet');
     expect(html).toContain('comes back to Needs review');
+  });
+
+  // ADR-0080: the languages from step 2, once given — and nothing before.
+  it('shows the languages they speak once step 2 is answered', () => {
+    const html = render(
+      data({
+        facts: {
+          niNumber: null,
+          belowDegreeLevel: false,
+          visaHourLimit: null,
+          languages: ['English', 'Spanish'],
+        },
+      }),
+    );
+    expect(html).toContain('Speaks <b>English &amp; Spanish</b>');
+    expect(render(data())).not.toContain('Speaks');
   });
 
   it('D32: offers the course level for a student', () => {

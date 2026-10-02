@@ -331,7 +331,13 @@ export type AcceptRefusal =
    */
   | 'male_only'
   | 'female_only'
-  | 'gender_not_recorded';
+  | 'gender_not_recorded'
+  /**
+   * ADR-0080: the event was set to need a language besides English after
+   * the invitation went out. Left live (never withdrawn); Accept refuses.
+   */
+  | 'language_not_spoken'
+  | 'languages_not_recorded';
 
 /**
  * RULE-03 (§3.4): "a popup appears in the app: 'Sorry, this shift has been
@@ -394,6 +400,14 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
     title: 'This shift isn’t available to you yet',
     body: 'The client has asked for staff of one gender on this role and we don’t have your gender on file. Please contact the office.',
   },
+  language_not_spoken: {
+    title: 'This shift isn’t available to you',
+    body: 'This event needs staff who speak a language you didn’t tell us you speak. If you do, please contact the office.',
+  },
+  languages_not_recorded: {
+    title: 'This shift isn’t available to you yet',
+    body: 'This event needs staff who speak a language besides English, and we don’t have your languages on file. Please contact the office.',
+  },
 };
 
 /** The refusals `apply_to_shift` can return (§10.4, Radar). */
@@ -411,7 +425,9 @@ export type ApplyRefusal =
   | 'wrong_role'
   | 'male_only'
   | 'female_only'
-  | 'gender_not_recorded';
+  | 'gender_not_recorded'
+  | 'language_not_spoken'
+  | 'languages_not_recorded';
 
 export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: string }> = {
   full: {
@@ -462,6 +478,9 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
   male_only: ACCEPT_REFUSAL_COPY.male_only,
   female_only: ACCEPT_REFUSAL_COPY.female_only,
   gender_not_recorded: ACCEPT_REFUSAL_COPY.gender_not_recorded,
+  // ADR-0080. Radar does not list the shift to them; this is the race.
+  language_not_spoken: ACCEPT_REFUSAL_COPY.language_not_spoken,
+  languages_not_recorded: ACCEPT_REFUSAL_COPY.languages_not_recorded,
 };
 
 /** One row of `staff_open_shifts()`, as Radar and Open shifts read it. */

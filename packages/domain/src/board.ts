@@ -156,6 +156,9 @@ export const ACCEPT_APPLICATION_REFUSAL_COPY: Readonly<Record<ApplicationAcceptR
   female_only: 'The client asked for female staff on this role.',
   gender_not_recorded:
     'The client asked for staff of one gender on this role, and this worker has no gender on file. Record it on their staff profile.',
+  language_not_spoken: 'This event needs staff who speak a language this worker does not speak.',
+  languages_not_recorded:
+    'This event needs staff who speak a language besides English, and this worker has no languages on file. Record them on their staff profile.',
   do_not_return: 'This worker is marked Do not return at this client.',
   blocked: 'This worker is blocked (compliance) and cannot be booked.',
   self_cancelled: 'This worker cancelled off this event and is excluded from it.',

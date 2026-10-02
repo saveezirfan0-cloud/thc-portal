@@ -5,7 +5,13 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { eventsDb, supabaseConfigured } from './db';
-import { ROLE_SECTION_MESSAGE, isEditLocked, ukRoleWindow, validateRoleSection } from '@thc/domain';
+import {
+  ROLE_SECTION_MESSAGE,
+  isEditLocked,
+  normaliseLanguages,
+  ukRoleWindow,
+  validateRoleSection,
+} from '@thc/domain';
 import { LIVE_BOOKING_STATUSES } from './data';
 import { planReconfirmations, reconfirmOutboxRows } from './reconfirm';
 
@@ -49,6 +55,8 @@ export interface EventInput {
   onsiteContact: string;
   notes: string;
   autoAssign: boolean;
+  /** ADR-0080: English plus any language the client asked for. */
+  requiredLanguages: string[];
   roles: RoleSectionInput[];
 }
 
@@ -131,6 +139,8 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
       pays_breaks: client.pays_breaks,
       pays_buffer: client.pays_buffer,
       auto_assign: input.autoAssign,
+      // English is always in it; the database's CHECK holds the same.
+      required_languages: normaliseLanguages(input.requiredLanguages),
     })
     .select('id')
     .single();
@@ -228,6 +238,8 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
       onsite_contact: input.onsiteContact.trim() || null,
       po_number: input.poNumber.trim() || null,
       auto_assign: input.autoAssign,
+      // ADR-0080: not under the §3.2 lock, and nobody booked is re-asked.
+      required_languages: normaliseLanguages(input.requiredLanguages),
     })
     .eq('id', input.id);
   if (error) return { error: error.message };

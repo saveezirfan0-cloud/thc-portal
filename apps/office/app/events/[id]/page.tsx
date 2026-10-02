@@ -11,6 +11,7 @@ import {
   isEditLocked,
   isNotifiedOnCancel,
   orderSections,
+  requiredLanguagesLabel,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { RecordHistory } from '../../_components/history/RecordHistory';
@@ -72,6 +73,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }));
   const window = derivedEventWindow(windows);
   const status = eventStatus(window, event.cancelledAt);
+  const languagesLabel = requiredLanguagesLabel(event.requiredLanguages);
   const fill = eventFill(
     event.sections.map((section) => ({
       headcount: section.headcount,
@@ -179,6 +181,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 <span className="v">{event.poNumber || '—'}</span>
               </span>
               <Pill tone={fill.open === 0 ? 'green' : 'amber'}>{formatEventFill(fill)}</Pill>
+              {/* ADR-0080: auto-assign, Radar and Accept book only staff who speak these. */}
+              {languagesLabel ? <Pill tone="cyan">{languagesLabel}</Pill> : null}
               {open ? <span className="muted sm">{open}</span> : null}
               {/* §3.4: purple, default ON; both switches must be on for a round. */}
               <AutoAssignSwitch

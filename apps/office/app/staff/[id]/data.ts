@@ -187,13 +187,18 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // activated is offered it. A failed read hides the button, nothing more.
     (supabase as unknown as ActivatedRpc).rpc('staff_account_activated', { p_staff: id }),
     // The address changed but the pin could not follow (20260926110000),
-    // and the gender a male- or female-only section reads (ADR-0079). Read
-    // off `staff` through admin_all; a failed read shows nothing.
+    // the gender a male- or female-only section reads (ADR-0079) and the
+    // languages an event can need (ADR-0080). Read off `staff` through
+    // admin_all; a failed read shows nothing.
     supabase
       .from('staff')
-      .select('home_location_stale, gender')
+      .select('home_location_stale, gender, languages')
       .eq('id', id)
-      .maybeSingle<{ home_location_stale: boolean; gender: 'M' | 'F' | null }>(),
+      .maybeSingle<{
+        home_location_stale: boolean;
+        gender: 'M' | 'F' | null;
+        languages: string[] | null;
+      }>(),
     // The Shifts tab opens the /checkin detail window and Resolve (§9.6),
     // so it reads the entries through the monitor's own query.
     loadStaffViolationLog(supabase, id),
@@ -261,7 +266,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     managerName: manager,
     activated: activated.error ? null : (activated.data ?? null),
     locationStale: location.error ? null : (location.data?.home_location_stale ?? null),
-    ...(location.error ? {} : { gender: location.data?.gender ?? null }),
+    ...(location.error
+      ? {}
+      : { gender: location.data?.gender ?? null, languages: location.data?.languages ?? null }),
     emergencyContact: emergency.error ? null : (emergency.data ?? null),
     emergencyContactProblem: emergency.error ? emergency.error.message : null,
     referrals: referrals.error ? null : (referrals.data ?? null),

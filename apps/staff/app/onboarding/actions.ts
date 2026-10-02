@@ -128,6 +128,15 @@ export async function saveAddress(input: {
 }
 
 /**
+ * Step 2 also asks which languages the worker speaks (ADR-0080):
+ * `staff_save_languages()` writes their own row, English always in it.
+ */
+export async function saveLanguages(languages: string[]): Promise<Result> {
+  // The address save that follows revalidates once for the step.
+  return call('staff_save_languages', { p_languages: languages }, { revalidate: false });
+}
+
+/**
  * Postcode → a point to centre the map on, from postcodes.io through the
  * Staff App's one geocoder (app/_lib/postcode.ts, shared with
  * /profile/details). A convenience for finding the street; the pin the

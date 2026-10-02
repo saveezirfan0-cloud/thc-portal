@@ -4,6 +4,7 @@ import {
   type CandidateRow,
   type HardGate,
   type ScoreWeights,
+  normaliseLanguages,
   parseWeights,
   showsUnderUnavailable,
 } from '@thc/domain';
@@ -127,6 +128,8 @@ export interface BoardEvent {
   notes: string;
   onsiteContact: string;
   autoAssign: boolean;
+  /** ADR-0080: English plus any language the client asked for. */
+  requiredLanguages: string[];
   paysBreaks: boolean;
   paysBuffer: boolean;
   cancelledAt: string | null;
@@ -214,7 +217,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
   const { data: eventRow, error: eventError } = await supabase
     .from('events')
     .select(
-      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at',
+      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at',
     )
     .eq('id', eventId)
     .maybeSingle();
@@ -291,14 +294,15 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       : Promise.resolve({ data: [], error: null }),
     // One row per worker in the directory comes back, most of them
     // wrong_role — which never produces a row on the board (§6), nor does
-    // the other gender on a gender-only section (ADR-0079). Filtered in the
+    // the other gender on a gender-only section (ADR-0079), nor a worker
+    // who does not speak a language the event needs (ADR-0080). Filtered in the
     // database, so the response stays far inside PostgREST's row cap and
     // only the workers the board can show cross the wire.
     Promise.all(
       sectionIds.map((id) =>
         supabase
           .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
-          .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only)'),
+          .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only,language_not_spoken)'),
       ),
     ),
     // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
@@ -571,6 +575,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       notes: (event['notes'] as string) ?? '',
       onsiteContact: (event['onsite_contact'] as string) ?? '',
       autoAssign: Boolean(event['auto_assign']),
+      requiredLanguages: normaliseLanguages(event['required_languages'] as string[] | null),
       paysBreaks: Boolean(event['pays_breaks']),
       paysBuffer: Boolean(event['pays_buffer']),
       cancelledAt: (event['cancelled_at'] as string) ?? null,

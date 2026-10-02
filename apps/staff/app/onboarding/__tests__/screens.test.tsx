@@ -176,6 +176,31 @@ describe('1/11 Right to work', () => {
 });
 
 describe('2/11 Home address', () => {
+  // ADR-0080: the languages question, English ticked and fixed.
+  it('asks which languages they speak, English already there', () => {
+    const html = renderToStaticMarkup(
+      <AddressStep
+        initial={{
+          flat: '',
+          house: '22',
+          street: 'Roman Road',
+          area: 'Bethnal Green',
+          town: 'London',
+          postcode: 'E2 0RY',
+          lat: 51.529,
+          lng: -0.045,
+        }}
+        languages={['English', 'Spanish']}
+      />,
+    );
+    expect(html).toContain('Which languages do you speak?');
+    expect(html).toContain('>English<');
+    expect(html).toContain('Spanish');
+    // English cannot be removed; Spanish can.
+    expect(html.match(/aria-label="Remove"/g)?.length).toBe(1);
+    expect(html).toContain('Add another language…');
+  });
+
   it('asks for the pin; Continue waits for it', () => {
     const html = renderToStaticMarkup(
       <AddressStep
@@ -189,6 +214,7 @@ describe('2/11 Home address', () => {
           lat: null,
           lng: null,
         }}
+        languages={['English']}
       />,
     );
     expect(html).toContain('Where do you live?');
@@ -208,6 +234,7 @@ describe('2/11 Home address', () => {
           lat: 51.529,
           lng: -0.045,
         }}
+        languages={['English']}
       />,
     );
     expect(footer(html).disabled).toBe(false);
@@ -231,6 +258,7 @@ describe('2/11 Home address', () => {
           lat: 51.529,
           lng: -0.045,
         }}
+        languages={['English']}
       />,
     );
     expect(footer(html).disabled).toBe(true);

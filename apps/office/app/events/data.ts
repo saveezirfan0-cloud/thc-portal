@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { UK_ZONE, formatTimeIn } from '@thc/domain';
+import { UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from './db';
 
 /**
@@ -219,6 +219,8 @@ export interface SavedEvent {
   onsiteContact: string;
   notes: string;
   autoAssign: boolean;
+  /** ADR-0080: English plus any language the client asked for. */
+  requiredLanguages: string[];
   cancelledAt: string | null;
   sections: SavedRoleSection[];
 }
@@ -233,6 +235,7 @@ interface EventRow {
   onsite_contact: string | null;
   notes: string | null;
   auto_assign: boolean;
+  required_languages: string[] | null;
   cancelled_at: string | null;
 }
 
@@ -276,7 +279,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, cancelled_at',
+      'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, required_languages, cancelled_at',
     )
     .eq('id', id)
     .maybeSingle();
@@ -328,6 +331,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
     onsiteContact: event.onsite_contact ?? '',
     notes: event.notes ?? '',
     autoAssign: event.auto_assign,
+    requiredLanguages: normaliseLanguages(event.required_languages),
     cancelledAt: event.cancelled_at,
     sections: sections.map((s) => ({
       id: s.id,
