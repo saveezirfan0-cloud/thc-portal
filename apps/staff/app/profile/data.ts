@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { payableMinutes } from '@thc/domain';
 import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
 import type { Found, Loaded } from '../data';
-import type { EarningsRow, EmergencyContact, StaffProfile } from './types';
+import type { EarningsRow, EmergencyContact, SignedContract, StaffProfile } from './types';
 import { basePenceFor } from './payments/earnings';
 import { toChangeRequest } from './change-requests';
 import type { ChangeRequest } from './change-requests';
@@ -183,6 +183,34 @@ export async function loadEmergencyContact(): Promise<Found<EmergencyContact>> {
       phone: (row['phone'] as string) ?? '',
     },
     problem: null,
+  };
+}
+
+/**
+ * The agreement the worker signed (ADR-0083) — `my_contract()`, the version
+ * they signed and not the current one. `row: null` is "not signed";
+ * `problem` is "could not read" (audit D18), and the screen never shows
+ * the first for the second.
+ */
+export async function loadMyContract(): Promise<Found<SignedContract>> {
+  if (!supabaseConfigured()) return { row: null, problem: null };
+  const { data, error } = await staffDb(await cookies()).rpc('my_contract', {});
+  if (error) return { row: null, problem: error.message || 'my_contract failed' };
+  return { row: toSignedContract(data), problem: null };
+}
+
+/** One `my_contract()` object in the screen's shape, or null. */
+export function toSignedContract(data: unknown): SignedContract | null {
+  if (!data || typeof data !== 'object') return null;
+  const row = data as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === 'string' ? v : '');
+  if (!text(row['version']) || !text(row['body'])) return null;
+  return {
+    version: text(row['version']),
+    title: text(row['title']),
+    body: text(row['body']),
+    isPlaceholder: row['isPlaceholder'] === true,
+    signedStamp: text(row['signedStamp']),
   };
 }
 

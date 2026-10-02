@@ -163,6 +163,16 @@ export function canReachPayments(lock: AppLock): boolean {
   return lock === 'none' || lock === 'documents' || lock === 'leaver';
 }
 
+/**
+ * The signed agreement (ADR-0083) — everyone who can reach Payment
+ * information, a leaver included: the contract they worked under does not
+ * stop existing when they leave, and it is what their final holiday pay is
+ * owed under.
+ */
+export function canReachAgreement(lock: AppLock): boolean {
+  return canReachPayments(lock);
+}
+
 /** The everyday profile screens. A leaver's details are frozen. */
 export function canReachProfileDetails(lock: AppLock): boolean {
   return lock === 'none' || lock === 'documents';

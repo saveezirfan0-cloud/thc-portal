@@ -740,6 +740,10 @@ describe('9/11 – 11/11', () => {
     expect(html).toContain(
       'Signed electronically · 18.09.2026 14:42 UK time — this timestamp is your signature',
     );
+    // ADR-0083: the copy it promises exists, and says where.
+    expect(html).toContain(
+      'A copy of the signed agreement is kept on your profile, under Signed agreement.',
+    );
     expect(footer(html).disabled).toBe(false);
   });
 

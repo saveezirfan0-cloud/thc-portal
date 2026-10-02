@@ -91,6 +91,20 @@ export interface EmergencyContact {
   phone: string;
 }
 
+/**
+ * The agreement the worker signed — `my_contract()` (ADR-0083). The version
+ * SIGNED, never the current one; the stamp comes formatted in UK time by
+ * the database and is shown as it comes (§1.8).
+ */
+export interface SignedContract {
+  version: string;
+  title: string;
+  body: string;
+  isPlaceholder: boolean;
+  /** "18.09.2026 14:42 UK time". */
+  signedStamp: string;
+}
+
 export type ActionResult = { ok: true; note?: string } | { ok: false; message: string };
 
 export const HELP_EMAIL = 'admin@thehospitalitycompany.co.uk';

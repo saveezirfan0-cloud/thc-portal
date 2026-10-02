@@ -3,9 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button } from '@thc/ui';
-import { contractClause28Pending } from '@thc/domain';
-import { contractParagraphs } from '../content/contract';
 import { signContract } from '../actions';
+import { ContractText, placeholderNote } from './ContractText';
 import { WizardFoot, WizardTop } from './Wizard';
 
 /**
@@ -58,22 +57,10 @@ export function ContractStep({
       />
       {isPlaceholder ? (
         <div className="note xs">
-          {contractClause28Pending(version)
-            ? 'Clause 28, the duty to disclose convictions, is awaiting THC’s approval.'
-            : 'Draft wording: THC’s own agreement replaces this text before go-live.'}{' '}
-          Each published version is kept exactly as signed.
+          {placeholderNote(version)} Each published version is kept exactly as signed.
         </div>
       ) : null}
-      <div className={`contract ${signed ? 'short' : ''}`} tabIndex={0} aria-label={title}>
-        <h4>{title}</h4>
-        {contractParagraphs(body).map((p, i) => (
-          <p key={i}>
-            {p.heading ? <b>{p.heading}</b> : null}
-            {p.heading && p.text ? ' ' : null}
-            {p.text}
-          </p>
-        ))}
-      </div>
+      <ContractText title={title} body={body} size={signed ? 'short' : 'scroll'} />
 
       <label className={`check boxed ${signed ? 'on' : ''}`}>
         <input
@@ -99,8 +86,8 @@ export function ContractStep({
             Signed electronically · {stamp} — this timestamp is your signature
           </div>
           <div className="xs muted">
-            A copy of the signed agreement is kept on your profile. The timestamp is always shown in
-            UK time, wherever you are.
+            A copy of the signed agreement is kept on your profile, under Signed agreement. The
+            timestamp is always shown in UK time, wherever you are.
           </div>
         </>
       ) : null}

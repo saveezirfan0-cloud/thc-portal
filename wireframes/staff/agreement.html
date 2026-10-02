@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Signed agreement — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.contract{border:1px solid var(--line);background:var(--panel-glass);padding:12px 14px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.contract h4{color:var(--text);font-size:12.5px;margin-top:4px}
+.contract p b{color:var(--text)}
+.sig{border:1px solid var(--green);background:var(--green-dim);padding:10px 12px;font-family:var(--font-mono);font-size:11px;color:var(--green);letter-spacing:.02em}
+.hubrow{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--line);background:var(--panel-glass)}
+.hubrow .t{font-weight:600}
+.hubrow .s{display:block;font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Signed agreement</span><span class="pill cyan">/profile/agreement</span><span class="pill">§2.11 · §1.8 · §9.8 · ADR-0083</span>
+  <span class="spacer"></span>
+  <a href="profile.html">Profile →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Signed agreement — the copy 10/11 promises, read-only<small>Built by <b>staff-pwa</b>: <code>apps/staff/app/profile/agreement/</code>, RPC <code>my_contract()</code> in 20261002113000. The version the worker <b>signed</b>, never the current one. The holiday terms are here, in the contract's own words (THC's clause 9); the rest of the app shows the base rate only (§9.8). Everyone who can reach Payment information, a leaver included.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Profile hub row ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile · <b>the row, after Payment information</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Profile</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:8px;padding-bottom:24px">
+          <div class="hubrow"><span><span class="t">Payment information</span><span class="s">Next pay Fri 9 Oct · £123.45</span></span><span>›</span></div>
+          <div class="hubrow"><span><span class="t">Signed agreement</span><span class="s">Your contract, including holiday pay</span></span><span>›</span></div>
+          <div class="hubrow"><span><span class="t">Security settings</span><span class="s">Password, signed-in devices</span></span><span>›</span></div>
+          <span class="annot">no rate or amount on the row — the contract says it in its own words (§9.8) · not shown to a candidate still in the wizard</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Signed agreement ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Signed agreement · <b>stamp, then the whole text</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Signed agreement</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="sig">Signed electronically · 18.09.2026 14:42 UK time — this timestamp is your signature</div>
+          <div class="xs muted">This is the exact text you agreed to. If we publish a new version, this copy does not change.</div>
+          <div class="contract">
+            <h4>Agency Worker Contract for Services — The Hospitality Company (London) Limited</h4>
+            <p>THIS AGREEMENT is dated this ______ day of ______ 2026.</p>
+            <p>…</p>
+            <p><b>9. HOLIDAYS.</b></p>
+            <p>9.1 The Temporary Worker is entitled to paid holiday which shall accrue at the rate of 12.07% of hours worked.</p>
+            <p>9.2 On completion of the Qualifying Period, the Temporary Worker may become entitled to annual leave in addition to the entitlement under this contract…</p>
+            <p>…</p>
+          </div>
+          <span class="annot">audit stamp: UK time, formatted by the database, never converted (§1.8) · the whole text in the page's own scroll, not a box · a placeholder version carries the same note as 10/11</span>
+        </div>
+        <nav class="bottom-nav">
+          <a href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites</a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+          <a class="active" href="profile.html"><span class="i"></span>Profile</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Could not load ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Signed agreement · <b>the read failed</b> (audit D18)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Signed agreement</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="alert coral"><b>We couldn’t load your agreement — pull to refresh or try again.</b><br><span class="xs">Check your connection. If it keeps happening, contact the office.</span></div>
+          <button class="btn outline block">Try again</button>
+          <span class="annot">never "No signed agreement" for a failed read · that empty state is only for a worker with nothing signed</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0083). 10/11 says "A copy of the signed agreement is kept on your profile"; this is that copy. <code>my_contract()</code> returns the version in <code>staff.contract_version</code> — the one signed — with its title and body exactly as published (versions are immutable, §2.11), and the signature stamp formatted in UK time (§1.8). Read-only. Reachable wherever Payment information is (<code>canReachAgreement()</code>): a working worker, a document-locked worker, and a leaver (§10.6 step 7). A candidate still in the wizard has no row. The screen shows the text and nothing else: it does not summarise the holiday clause, show a rate or calculate an accrual — the worker still sees the base rate only everywhere else (§9.8). A removed worker is refused (<code>account_closed</code>). The client sees nothing.</div>
+</body>
+</html>

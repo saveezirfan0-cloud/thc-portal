@@ -67,10 +67,27 @@ describe('the Profile tab (ADR-0042)', () => {
       '/profile/availability',
       '/profile/refer',
       '/profile/payments',
+      '/profile/agreement',
       '/profile/security',
       '/notifications',
     ]);
     expect(html).toContain('Edit profile');
+  });
+
+  it('keeps the signed agreement — and its holiday terms — a row away (ADR-0083)', () => {
+    const html = render(worker());
+    expect(html).toContain('Signed agreement');
+    expect(html).toContain('Your contract, including holiday pay');
+    // A rate is never put on the row: the contract states it in its own words (§9.8).
+    expect(html).not.toContain('12.07');
+    // A leaver keeps it, as they keep Payment information (§10.6 step 7).
+    const leaver = hrefs(render(worker({ status: 'inactive', leftAt: '2026-09-30' })));
+    expect(leaver).toContain('/profile/agreement');
+    expect(leaver).toContain('/profile/payments');
+    // A candidate has not signed one yet.
+    expect(hrefs(render(worker({ status: 'documents', employeeId: null })))).not.toContain(
+      '/profile/agreement',
+    );
   });
 
   it('keeps §10.1’s order below the list: sign-out, then the help line as text', () => {
@@ -129,6 +146,7 @@ describe('the Profile tab (ADR-0042)', () => {
     expect(links).not.toContain('/profile/details');
     expect(links).not.toContain('/profile/security');
     expect(links).not.toContain('/profile/payments');
+    expect(links).not.toContain('/profile/agreement');
     expect(links).toContain('/notifications');
     expect(hrefs(render(worker()))).not.toContain('/onboarding');
   });

@@ -8540,6 +8540,7 @@ export type Database = {
       looks_like_relative: { Args: { p: string }; Returns: boolean };
       mark_feedback_read: { Args: { p_id: string }; Returns: Json };
       mark_ready: { Args: { p_booking: string }; Returns: Json };
+      my_contract: { Args: never; Returns: Json };
       my_emergency_contact: { Args: never; Returns: Json };
       my_profile_change_requests: {
         Args: never;

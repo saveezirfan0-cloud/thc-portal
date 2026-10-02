@@ -4,7 +4,13 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Avatar, Pill, SignOut } from '@thc/ui';
 import type { Tone } from '@thc/ui';
-import { appLock, canReachPayments, canReachProfileDetails, p45Availability } from '../lock';
+import {
+  appLock,
+  canReachAgreement,
+  canReachPayments,
+  canReachProfileDetails,
+  p45Availability,
+} from '../lock';
 import { HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
 import { expiryLine } from '../document-expiry';
@@ -165,6 +171,15 @@ export function ProfileHub({
                 : (nextPayLine(nextPay) ?? 'Earnings history, bank details')
             }
             subTone={working && unread.nextPay ? 'coral' : null}
+          />
+        ) : null}
+        {/* ADR-0083: the copy 10/11 promises. Where the holiday terms are —
+            the rest of the app shows the base rate only (§9.8). */}
+        {canReachAgreement(lock) ? (
+          <HubRow
+            href="/profile/agreement"
+            title="Signed agreement"
+            sub="Your contract, including holiday pay"
           />
         ) : null}
         {working ? (
