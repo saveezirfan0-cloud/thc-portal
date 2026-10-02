@@ -982,7 +982,11 @@ export function roleBlockOpen(
 /** An open offer on a confirmed booking, as the board reads `shift_offers`. */
 export interface BoardOffer {
   offerId: string;
-  /** `pool` / `direct`: offered to workers. `office`: a cover request. */
+  /**
+   * `office`: a worker's cover request. `pool`: one the office opened to
+   * other workers — a worker cannot offer a shift themselves (THC,
+   * 02.10.2026). `direct` is never built.
+   */
   mode: 'pool' | 'office' | 'direct';
   expiresAt: string;
   note: string | null;
@@ -991,8 +995,9 @@ export interface BoardOffer {
 /**
  * The chip on a Confirmed row. The worker is still confirmed — fill, the
  * buffer and the client's line-up are unchanged — so it is a chip, never a
- * move to another list: "Offered up · until Sat 20 Sep, 16:00 UK", or
- * "Asked for cover: {note}".
+ * move to another list: "Asked for cover: {note}", then, once the
+ * office has opened it to the pool, "Open to pool · until Sat 20 Sep,
+ * 16:00 UK".
  */
 export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'amber' } {
   if (offer.mode === 'office') {
@@ -1001,7 +1006,7 @@ export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'a
   }
   const at = new Date(offer.expiresAt);
   const day = formatDateIn(at, UK_ZONE, { weekday: 'short' });
-  return { label: `Offered up · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
+  return { label: `Open to pool · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
 }
 
 /** A completed hand-over on one role section. */

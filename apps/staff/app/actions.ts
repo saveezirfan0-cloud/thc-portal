@@ -10,12 +10,7 @@ import {
   type ApplyRefusal,
 } from '@thc/domain';
 import { staffDb, supabaseConfigured } from './db';
-import {
-  COVER_REFUSAL_COPY,
-  OFFER_REFUSAL_COPY,
-  takeRefusalCopy,
-  withdrawOfferRefusalCopy,
-} from './shifts/offers';
+import { COVER_REFUSAL_COPY, takeRefusalCopy, withdrawOfferRefusalCopy } from './shifts/offers';
 
 /**
  * The five things a worker can press — Scope §10.4.
@@ -194,7 +189,7 @@ export async function withdrawApplication(bookingId: string): Promise<ActionResu
 }
 
 // ---------------------------------------------------------------------
-// Offer up a shift — ADR-0046, docs/19 §4
+// Cover requests and taking an office-opened shift — ADR-0046 (amended), docs/19 §4
 // ---------------------------------------------------------------------
 
 /**
@@ -203,7 +198,7 @@ export async function withdrawApplication(bookingId: string): Promise<ActionResu
  */
 interface OfferRpc {
   rpc(
-    fn: 'offer_shift' | 'withdraw_shift_offer' | 'request_cover' | 'take_offered_shift',
+    fn: 'withdraw_shift_offer' | 'request_cover' | 'take_offered_shift',
     args: Record<string, string | null>,
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
@@ -218,22 +213,11 @@ function refreshOffer(bookingId?: string) {
 }
 
 /**
- * Offer this shift (> 72 h out, auto-assign on). The worker stays booked
- * until somebody takes it; the dialog in front of the button says so, and
- * that taking it bars them from this event.
+ * Withdraw offer / withdraw a cover request — the shift stays the
+ * worker's, as it always was. A worker cannot offer a shift to other
+ * workers (THC, 02.10.2026; 20261002110000); the only offers a worker has
+ * are their own cover requests, including one the office opened to the pool.
  */
-export async function offerShift(bookingId: string): Promise<ActionResult> {
-  if (!supabaseConfigured()) return { refusal: NO_SUPABASE };
-  const supabase = await offerDb();
-  const { data, error } = await supabase.rpc('offer_shift', { p_booking: bookingId });
-  if (error) return { refusal: UNKNOWN };
-  refreshOffer(bookingId);
-  const result = data as Rpc;
-  if (result?.['ok'] === true) return { ok: true };
-  return { refusal: OFFER_REFUSAL_COPY[String(result?.['reason'] ?? '')] ?? UNKNOWN };
-}
-
-/** Withdraw offer — the shift stays the worker's, as it always was. */
 export async function withdrawShiftOffer(
   offerId: string,
   bookingId: string,

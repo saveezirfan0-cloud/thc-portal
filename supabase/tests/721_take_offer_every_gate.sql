@@ -1,6 +1,7 @@
 -- =====================================================================
 -- 721 · take_offered_shift() — every gate in one file (ADR-0046)
---   20260930201100_shift_offers.sql
+--   20260930201100_shift_offers.sql; since 20261002110000 the only pool
+--   offer is a cover request the office opened to the pool
 --
 -- The take is the one new way into `confirmed`, so every rule a booking
 -- has to pass is asserted here together (docs/10 §3b), in takeOffer()'s
@@ -178,13 +179,16 @@ update events set cancelled_at = now(), cancel_reason = 'fixture' where id = :'e
 insert into staff_unavailability (staff_id, period, all_day)
 values (:'t_ok', unavailability_range(:'w'::date + 3), true);
 
--- The offers. Ora's through the RPC; the edge cases written as the rows
--- they would be, because no RPC can make them.
-select set_config('request.jwt.claims', json_build_object('sub', '67130000-0000-4000-8000-000000000001', 'role', 'authenticated')::text, true);
-set local role authenticated;
-select offer_shift(:'b_off') ->> 'offerId' as offer \gset
-reset role;
-select set_config('request.jwt.claims', '', true);
+-- The offers. A worker cannot offer a shift to other workers (THC,
+-- 02.10.2026; 20261002110000), so every pool offer is a cover request the
+-- office opened to the pool: mode pool, decided_by the office, running to
+-- the section's start (office_open_offer_to_pool). Ora's is written as that
+-- row; the edge cases as the rows they would be, because no RPC can make them.
+insert into shift_offers (booking_id, mode, expires_at, decided_by)
+select b.id, 'pool', sr.starts_at, :'admin_uid'
+  from bookings b join shift_requirements sr on sr.id = b.shift_id
+ where b.id = :'b_off'
+returning id as offer \gset
 insert into shift_offers (id, booking_id, mode, expires_at) values
   (:'o_live', :'b_live', 'pool', now() + interval '2 hours'),          -- opened by the office, section started
   (:'o_x',    :'b_x',    'pool', now() + interval '3 days'),           -- on a cancelled event
@@ -302,11 +306,11 @@ select is(invite_worker(:'s_sib', :'off', 'manual') ->> 'reason', 'self_cancelle
 -- =====================================================================
 -- C · RULE-17 on a second offer: wave 2 once wave 1 is told
 -- =====================================================================
-select set_config('request.jwt.claims', json_build_object('sub', '67130000-0000-4000-8000-000000000002', 'role', 'authenticated')::text, true);
-set local role authenticated;
-select offer_shift(:'b_off2') ->> 'offerId' as offer2 \gset
-reset role;
-select set_config('request.jwt.claims', '', true);
+insert into shift_offers (booking_id, mode, expires_at, decided_by)
+select b.id, 'pool', sr.starts_at, :'admin_uid'
+  from bookings b join shift_requirements sr on sr.id = b.shift_id
+ where b.id = :'b_off2'
+returning id as offer2 \gset
 
 select is(pg_temp.take_as(4, :'offer2'), jsonb_build_object('ok', false, 'reason', 'not_yet'),
   'C: Uri still waits — Quin (wave 1) has not been told');

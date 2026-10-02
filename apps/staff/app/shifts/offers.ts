@@ -2,23 +2,26 @@ import {
   ACCEPT_REFUSAL_COPY,
   APPLY_REFUSAL_COPY,
   UK_ZONE,
-  canOfferShift,
+  canCancelShift,
   formatDateIn,
   formatTimeIn,
   needsDualZone,
-  offerExpiresAt,
 } from '@thc/domain';
 
 /**
- * Offer up a shift, as the worker sees it — ADR-0046, docs/19 §4,
- * `wireframes/staff/offer-shift.html`.
+ * Cover requests and office-opened offers, as the worker sees them —
+ * ADR-0046 (amended), docs/19 §4, `wireframes/staff/offer-shift.html`.
  *
- * Pure, so the screens' choices are unit-tested. The rule itself is
- * `canOfferShift()` (= `canCancelShift()`, RULE-04's 72 hours) and
- * `offerExpiresAt()` from `@thc/domain`; the database is what decides a
- * press (`offer_shift`, `request_cover`, `take_offered_shift`). What lives
- * here is which panel a confirmed shift shows and the words on it — the
- * sentences docs/19 §4 fixes are copied verbatim.
+ * A worker cannot offer their shift to other workers (THC, 02.10.2026;
+ * 20261002110000). More than 72 hours out with auto-assign on, Cancel shift
+ * is their tool (RULE-04, `canCancelShift()`); otherwise they can ask the
+ * office for cover, and only the office opens a shift to the pool.
+ *
+ * Pure, so the screens' choices are unit-tested; the database is what
+ * decides a press (`request_cover`, `withdraw_shift_offer`,
+ * `take_offered_shift`). What lives here is which panel a confirmed shift
+ * shows and the words on it — the sentences docs/19 §4 fixes are copied
+ * verbatim.
  */
 
 export interface Refusal {
@@ -29,10 +32,10 @@ export interface Refusal {
 /** The worker's open offer on one booking (`staff_booking_offers()`). */
 export interface BookingOffer {
   bookingId: string;
-  /** Auto-assign on for the event AND the role — Offer shows only then. */
+  /** Auto-assign on for the event AND the role — then, > 72 h out, Cancel shift is the tool. */
   autoAssign: boolean;
   offerId: string | null;
-  /** `pool` / `direct`: offered to workers. `office`: a cover request. */
+  /** `office`: a cover request. `pool`: one the office opened to other workers. */
   mode: 'pool' | 'office' | 'direct' | null;
   expiresAt: Date | null;
   note: string | null;
@@ -47,16 +50,6 @@ export function ukDateTime(at: Date): string {
 export function ukShortDateTime(at: Date): string {
   const [weekday = '', day = ''] = formatDateIn(at, UK_ZONE, { weekday: 'short' }).split(' ');
   return `${weekday} ${day}, ${formatTimeIn(at, UK_ZONE)}`;
-}
-
-export const OFFER_BUTTON = 'Offer this shift';
-export const OFFER_LEAD =
-  'Can’t make it? Offer it to other workers — you stay booked until someone takes it.';
-export const OFFER_DIALOG_TITLE = 'Offer this shift?';
-
-/** docs/19 §4, verbatim, with the UK close time filled in. */
-export function offerDialogBody(startsAt: Date): string {
-  return `We'll offer this shift to other workers. You stay booked until someone takes it — then it's theirs, and you can't be booked on this event again. Offers close ${ukDateTime(offerExpiresAt(startsAt))} (UK time), 72 hours before the start.`;
 }
 
 /**
@@ -107,15 +100,17 @@ export const COVER_REQUESTED =
 export const COVER_CHIP = 'Cover requested';
 
 export type OfferPanel =
-  /** > 72 h, auto-assign on, no open offer: Offer this shift. */
-  | 'offer'
-  /** An open offer to other workers: the chip and Withdraw offer. */
+  /** A cover request the office opened to other workers: the chip and Withdraw offer. */
   | 'offered'
   /** Inside 72 h, or auto-assign off: Ask the office for cover. */
   | 'cover'
   /** A cover request is open: "Cover requested". */
   | 'cover_requested'
-  /** Nothing to offer: not confirmed, or the section has started. */
+  /**
+   * Nothing here: not confirmed, the section has started, or more than
+   * 72 h out with auto-assign on — Cancel shift (RULE-04) is the tool, and
+   * a worker never offers a shift to other workers (THC, 02.10.2026).
+   */
   | 'none';
 
 /**
@@ -130,7 +125,7 @@ export function offerPanel(
   if (booking.status !== 'confirmed') return 'none';
   if (now.getTime() >= booking.startsAt.getTime()) return 'none';
   if (offer?.offerId) return offer.mode === 'office' ? 'cover_requested' : 'offered';
-  if (canOfferShift(booking.startsAt, now) && offer?.autoAssign) return 'offer';
+  if (canCancelShift(booking.startsAt, now) && offer?.autoAssign) return 'none';
   return 'cover';
 }
 
@@ -139,33 +134,15 @@ export function offerPanel(
 // ---------------------------------------------------------------------
 
 const NOT_YOURS: Refusal = {
-  title: 'This shift is no longer yours to offer',
+  title: 'This shift is no longer yours',
   body: 'It may have been withdrawn by the office or released. Check your notifications.',
-};
-
-/** What `offer_shift()` can refuse, in the worker's words. */
-export const OFFER_REFUSAL_COPY: Readonly<Record<string, Refusal>> = {
-  too_late: {
-    title: 'Too close to the shift to offer it',
-    body: 'Offering a shift to other workers closes 72 hours before the start. Ask the office for cover instead.',
-  },
-  auto_assign_off: {
-    title: 'This shift can’t be offered to other workers',
-    body: 'The office is arranging this one by hand. Ask the office for cover instead.',
-  },
-  already_offered: {
-    title: 'This shift is already offered',
-    body: 'It stays yours until someone takes it. You can withdraw the offer at any time.',
-  },
-  not_confirmed: NOT_YOURS,
-  event_cancelled: ACCEPT_REFUSAL_COPY.event_cancelled,
 };
 
 /** What `request_cover()` can refuse. */
 export const COVER_REFUSAL_COPY: Readonly<Record<string, Refusal>> = {
-  use_offer: {
-    title: 'You can offer this shift yourself',
-    body: 'More than 72 hours before the start, use “Offer this shift” — other workers can take it straight away.',
+  use_cancel: {
+    title: 'You can still cancel this shift',
+    body: 'More than 72 hours before the start, use “Cancel shift” and we’ll find someone else.',
   },
   note_too_long: {
     title: 'That note is too long',

@@ -122,6 +122,8 @@ None of these loosens an existing rule.
 
 ## 4 · Offer up a shift ("release to the pool")
 
+> **Amended 02.10.2026 (THC): a worker cannot offer their shift to other workers.** Model points 1 and 5 below are withdrawn. `offer_shift()` is dropped, and there is no Offer this shift and no peer-to-peer. More than 72 h out with auto-assign on, the worker uses Cancel shift (RULE-04). The office path (points 2–4 and 6: Ask the office for cover, Open to pool, Decline, the take, the lapse) stands. See ADR-0046, last amendment, and `20261002110000_no_worker_shift_offers.sql`.
+
 **Scope impact:** §3.6 (cause `handed_over`, source `offer`), RULE-04 §7 (a second worker-initiated exit from `confirmed` under the same 72 h boundary), §10.4, §3.3, §3.4 (offer rounds), §8 (OF1–OF6), §9.12.
 **ADR-0046 · Offer up a shift: the booking is released only when a confirmed replacement takes it.**
 
