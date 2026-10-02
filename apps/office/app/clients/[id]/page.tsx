@@ -21,7 +21,8 @@ export const metadata = { title: 'Client · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const ratesVisible = officeCan(await currentOfficeRole(), 'finance');
+  const role = await currentOfficeRole();
+  const ratesVisible = officeCan(role, 'finance');
   const data = await loadClientCard(id, { ratesVisible });
 
   if (data.problem) {
@@ -33,5 +34,5 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
   if (!data.client) notFound();
 
-  return <ClientCard data={data} ratesVisible={ratesVisible} />;
+  return <ClientCard data={data} ratesVisible={ratesVisible} canWrite={officeCan(role, 'write')} />;
 }

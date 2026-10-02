@@ -119,6 +119,8 @@ export interface BoardEvent {
   date: string;
   clientId: string;
   clientName: string;
+  /** The client card's Name badges switch (ADR-0081). */
+  nameBadges: boolean;
   venueName: string;
   venueAddress: string;
   poNumber: string;
@@ -231,7 +233,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       .order('starts_at'),
     supabase
       .from('clients')
-      .select('name')
+      .select('name, name_badges')
       .eq('id', event['client_id'] as string)
       .maybeSingle(),
     supabase.from('roles').select('id, name'),
@@ -562,6 +564,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       date: event['event_date'] as string,
       clientId: event['client_id'] as string,
       clientName: ((clientRes.data as { name?: string } | null)?.name ?? 'Client') as string,
+      nameBadges: (clientRes.data as { name_badges?: boolean } | null)?.name_badges === true,
       venueName: event['venue_name'] as string,
       venueAddress: event['venue_address'] as string,
       poNumber: (event['po_number'] as string) ?? '',

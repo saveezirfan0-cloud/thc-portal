@@ -1,8 +1,22 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
-import { countPdfPages, layoutSheet, photoFormat, renderSheetPdf } from '@thc/pdf';
-import type { SheetEvent, SheetKind, SheetLayout, SheetPerson, SheetPhoto } from '@thc/pdf';
+import {
+  countPdfPages,
+  layoutBadges,
+  layoutSheet,
+  photoFormat,
+  renderBadgesPdf,
+  renderSheetPdf,
+} from '@thc/pdf';
+import type {
+  BadgeLayout,
+  SheetEvent,
+  SheetKind,
+  SheetLayout,
+  SheetPerson,
+  SheetPhoto,
+} from '@thc/pdf';
 
 /**
  * Draw, and keep, one Allocation Timesheet or Completed Allocation Timesheet
@@ -25,6 +39,10 @@ import type { SheetEvent, SheetKind, SheetLayout, SheetPerson, SheetPhoto } from
  * 4. The PDF into the private `timesheets` bucket under a NEW path every
  *    time — a copy already issued is never overwritten (§1.7) — and a row
  *    in `event_documents` via `record_event_document()`.
+ * 5. ADR-0081: for an Allocation Timesheet whose client has name badges on
+ *    (`event.nameBadges`), the badges too — one per person on the sheet —
+ *    stored beside it and attached to the same copy through
+ *    `attach_event_document_badges()`, so the D1 email carries both.
  *
  * Step 4 needs SUPABASE_SERVICE_ROLE_KEY: the bucket is service-role only
  * (20260922183015). Without it a Download still works — the PDF comes back
@@ -39,6 +57,8 @@ export type GenerateResult =
       pages: number;
       documentId: string | null;
       storagePath: string | null;
+      /** ADR-0081: the name badges drawn with this copy, when the client has them. */
+      badges: { layout: BadgeLayout; pdf: Buffer; storagePath: string | null } | null;
     }
   | { ok: false; status: number; message: string };
 
@@ -68,6 +88,10 @@ export interface DocumentRpc {
       p_rows: number;
       p_pages: number;
     },
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'attach_event_document_badges',
+    args: { p_document: string; p_storage_path: string; p_file_name: string; p_count: number },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: 'queue_event_document_email',
@@ -113,12 +137,30 @@ export function refusal(message: string): { status: number; message: string } {
     return { status: 404, message: 'That event does not exist.' };
   if (message.includes('client_has_no_contact_email'))
     return { status: 409, message: 'The client card has no contact email to send to.' };
+  if (message.includes('client_has_no_name_badges'))
+    return { status: 409, message: 'Name badges are switched off on the client card.' };
   return { status: 500, message };
 }
 
-interface DocumentData {
-  event: SheetEvent & { contactEmails: string[] };
+export interface DocumentData {
+  /** `nameBadges` (ADR-0081) is absent on a database before 20261002109000. */
+  event: SheetEvent & { contactEmails: string[]; nameBadges?: boolean };
   rows: SheetPerson[];
+}
+
+/**
+ * ADR-0081: the name badges for an event, drawn from the same data as its
+ * sheet — or null when the client has none, the event is past its
+ * Allocation Timesheet, or nobody on the sheet can wear one.
+ */
+export async function drawBadges(
+  data: DocumentData,
+  kind: SheetKind,
+): Promise<{ layout: BadgeLayout; pdf: Buffer } | null> {
+  if (kind !== 'allocation' || data.event.nameBadges !== true) return null;
+  const layout = layoutBadges({ event: data.event, people: data.rows });
+  if (layout.count === 0) return null;
+  return { layout, pdf: await renderBadgesPdf(layout) };
 }
 
 /** Fetch photos a few at a time; any that fail simply leave the cell empty. */
@@ -182,8 +224,18 @@ export async function generateDocument(
   const photos = await loadPhotos(db, photoPaths);
   const pdf = await renderSheetPdf(layout, photos);
   const pages = countPdfPages(pdf);
+  const drawn = await drawBadges(doc, kind);
+  const unstoredBadges = drawn ? { ...drawn, storagePath: null } : null;
 
-  const unstored = { ok: true as const, pdf, layout, pages, documentId: null, storagePath: null };
+  const unstored = {
+    ok: true as const,
+    pdf,
+    layout,
+    pages,
+    documentId: null,
+    storagePath: null,
+    badges: unstoredBadges,
+  };
   const fail = (status: number, message: string): GenerateResult =>
     store === 'required' ? { ok: false, status, message } : unstored;
 
@@ -194,13 +246,23 @@ export async function generateDocument(
     );
   }
 
-  const storagePath = `${eventId}/${kind}/${stamp(new Date())}.pdf`;
+  const now = stamp(new Date());
+  const storagePath = `${eventId}/${kind}/${now}.pdf`;
+  // ADR-0081: beside the sheet, never over an earlier copy's badges.
+  const badgesPath = drawn ? `${eventId}/badges/${now}.pdf` : null;
   try {
     const admin = createAdminClient();
     const upload = await admin.storage
       .from('timesheets')
       .upload(storagePath, pdf, { contentType: 'application/pdf', upsert: false });
     if (upload.error) return fail(502, `Storage refused the PDF: ${upload.error.message}`);
+    if (drawn && badgesPath) {
+      const badges = await admin.storage
+        .from('timesheets')
+        .upload(badgesPath, drawn.pdf, { contentType: 'application/pdf', upsert: false });
+      if (badges.error)
+        return fail(502, `Storage refused the name badges PDF: ${badges.error.message}`);
+    }
   } catch (cause) {
     return fail(502, `Storage is unreachable: ${(cause as Error).message}`);
   }
@@ -220,8 +282,35 @@ export async function generateDocument(
     const { status, message } = refusal(recorded.error.message);
     return fail(status, message);
   }
+  const documentId = recorded.data as string;
 
-  return { ok: true, pdf, layout, pages, documentId: recorded.data as string, storagePath };
+  // ADR-0081: the badges join the copy before anything queues its email. A
+  // Send that cannot attach them stops here rather than email the sheet
+  // without the badges the client asked for; the job releases its claim
+  // and tries again on the next run.
+  if (drawn && badgesPath) {
+    const attached = await db.rpc('attach_event_document_badges', {
+      p_document: documentId,
+      p_storage_path: badgesPath,
+      p_file_name: drawn.layout.fileName,
+      p_count: drawn.layout.count,
+    });
+    if (attached.error) {
+      const { status, message } = refusal(attached.error.message);
+      if (store === 'required') return { ok: false, status, message };
+      return { ...unstored, documentId, storagePath };
+    }
+  }
+
+  return {
+    ok: true,
+    pdf,
+    layout,
+    pages,
+    documentId,
+    storagePath,
+    badges: drawn ? { ...drawn, storagePath: badgesPath } : null,
+  };
 }
 
 /**

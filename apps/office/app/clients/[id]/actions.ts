@@ -157,3 +157,11 @@ export async function setDoNotReturn(
     clientId,
   );
 }
+
+/**
+ * ADR-0081: the Name badges switch. The database refuses a viewer
+ * (ADR-0060) and writes the change to the client's History.
+ */
+export async function setNameBadges(clientId: string, on: boolean): Promise<ActionResult> {
+  return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
+}
