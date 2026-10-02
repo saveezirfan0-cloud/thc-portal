@@ -7,6 +7,8 @@ import { sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from './data';
 import { MAX_RECIPIENTS, messageSentSummary, staffMessageRefusal } from './message';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so nothing can be sent. See docs/04-setup-github-vercel-supabase.md.';
 
@@ -40,6 +42,10 @@ export async function messageStaff(
   if (ids.length === 0) return { ok: false, message: staffMessageRefusal('nobody_to_message') };
   if (ids.length > MAX_RECIPIENTS)
     return { ok: false, message: staffMessageRefusal('too_many_recipients') };
+  // A server action is a public endpoint: anything but ids is refused here,
+  // not passed on to come back as Postgres's uuid syntax error.
+  if (!ids.every((id) => UUID.test(id)))
+    return { ok: false, message: staffMessageRefusal('staff_not_found') };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies()) as unknown as RpcClient;

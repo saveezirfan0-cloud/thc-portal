@@ -35,6 +35,9 @@ vi.mock('../data', () => ({ supabaseConfigured: () => true }));
 
 const { messageStaff } = await import('../messageActions');
 
+const S1 = '00000000-0000-4000-8000-00000000000a';
+const S2 = '00000000-0000-4000-8000-00000000000b';
+
 beforeEach(() => {
   state.user = { id: 'u-admin' };
   state.role = 'admin';
@@ -48,16 +51,16 @@ describe('messageStaff', () => {
       data: { ok: true, sent: 1, withoutPush: [], messageId: 'm-1' },
       error: null,
     });
-    expect(await messageStaff(['s-1'], 'Your uniform is ready')).toEqual({
+    expect(await messageStaff([S1], 'Your uniform is ready')).toEqual({
       ok: true,
       summary: 'Sent to 1 person.',
       everyoneReached: true,
     });
     expect(state.rpc).toHaveBeenCalledWith('send_staff_message', {
-      p_staff: ['s-1'],
+      p_staff: [S1],
       p_message: 'Your uniform is ready',
     });
-    expect(state.revalidated).toEqual(['/staff/s-1']);
+    expect(state.revalidated).toEqual(['/staff/00000000-0000-4000-8000-00000000000a']);
   });
 
   it('sends several hand-picked workers once each', async () => {
@@ -65,16 +68,19 @@ describe('messageStaff', () => {
       data: { ok: true, sent: 2, withoutPush: [], messageId: 'm-1' },
       error: null,
     });
-    expect(await messageStaff(['s-1', 's-2', 's-1'], 'Uniforms')).toEqual({
+    expect(await messageStaff([S1, S2, S1], 'Uniforms')).toEqual({
       ok: true,
       summary: 'Sent to 2 people.',
       everyoneReached: true,
     });
     expect(state.rpc).toHaveBeenCalledWith('send_staff_message', {
-      p_staff: ['s-1', 's-2'],
+      p_staff: [S1, S2],
       p_message: 'Uniforms',
     });
-    expect(state.revalidated).toEqual(['/staff/s-1', '/staff/s-2']);
+    expect(state.revalidated).toEqual([
+      '/staff/00000000-0000-4000-8000-00000000000a',
+      '/staff/00000000-0000-4000-8000-00000000000b',
+    ]);
   });
 
   it('refuses nobody, or more than 200, before reaching the database', async () => {
@@ -82,7 +88,10 @@ describe('messageStaff', () => {
       ok: false,
       message: 'Pick at least one worker to message.',
     });
-    const many = Array.from({ length: 201 }, (_, i) => `s-${i}`);
+    const many = Array.from(
+      { length: 201 },
+      (_, i) => `${String(i).padStart(8, '0')}-0000-4000-8000-000000000000`,
+    );
     const result = await messageStaff(many, 'hi');
     expect(!result.ok && result.message).toMatch(/200 workers or fewer/);
     expect(state.rpc).not.toHaveBeenCalled();
@@ -93,7 +102,7 @@ describe('messageStaff', () => {
       data: { ok: true, sent: 1, withoutPush: ['Aisha Khan'], messageId: 'm-1' },
       error: null,
     });
-    expect(await messageStaff(['s-1'], 'Call the office')).toEqual({
+    expect(await messageStaff([S1], 'Call the office')).toEqual({
       ok: true,
       summary:
         'Sent to 1 person. This person has notifications off and will not get it — phone them: Aisha Khan.',
@@ -102,21 +111,29 @@ describe('messageStaff', () => {
   });
 
   it('refuses an empty message before reaching the database', async () => {
-    expect(await messageStaff(['s-1'], '   ')).toEqual({
+    expect(await messageStaff([S1], '   ')).toEqual({
       ok: false,
       message: 'Write the message first.',
     });
     expect(state.rpc).not.toHaveBeenCalled();
   });
 
+  it('refuses anything but worker ids before reaching the database', async () => {
+    expect(await messageStaff([S1, 'not-an-id'], 'hi')).toEqual({
+      ok: false,
+      message: 'Someone on the list no longer exists. Reload the page and pick again.',
+    });
+    expect(state.rpc).not.toHaveBeenCalled();
+  });
+
   it('refuses a caller who is not a signed-in admin before reaching the database', async () => {
     state.role = 'staff';
-    expect(await messageStaff(['s-1'], 'hi')).toEqual({
+    expect(await messageStaff([S1], 'hi')).toEqual({
       ok: false,
       message: 'Only the office can do this.',
     });
     state.user = null;
-    expect(await messageStaff(['s-1'], 'hi')).toEqual({
+    expect(await messageStaff([S1], 'hi')).toEqual({
       ok: false,
       message: 'Sign in to do this.',
     });
@@ -125,13 +142,13 @@ describe('messageStaff', () => {
 
   it('turns a refusal into words', async () => {
     state.rpc.mockResolvedValueOnce({ data: { ok: false, reason: 'staff_removed' }, error: null });
-    expect(await messageStaff(['s-1'], 'hi')).toEqual({
+    expect(await messageStaff([S1], 'hi')).toEqual({
       ok: false,
       message:
         'Someone on the list has been removed (GDPR) and cannot be messaged. Reload the page and pick again.',
     });
     state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'read_only' } });
-    expect(await messageStaff(['s-1'], 'hi')).toEqual({
+    expect(await messageStaff([S1], 'hi')).toEqual({
       ok: false,
       message: 'A view-only login cannot send messages.',
     });
@@ -143,7 +160,7 @@ describe('messageStaff', () => {
       data: null,
       error: { message: 'Could not find the function public.send_staff_message', code: 'PGRST202' },
     });
-    const result = await messageStaff(['s-1'], 'hi');
+    const result = await messageStaff([S1], 'hi');
     expect(result.ok).toBe(false);
     expect(!result.ok && result.message).toMatch(/not switched on yet/);
   });

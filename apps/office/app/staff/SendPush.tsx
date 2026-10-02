@@ -50,6 +50,9 @@ export function SendPush({
   const many = recipients.length > 1;
 
   function close() {
+    // Not while a send is in flight: its result would land on a closed
+    // dialog and come back as a stale "Done" on the next open.
+    if (pending) return;
     const wasSent = sent !== null;
     setOpen(false);
     setMessage('');
@@ -92,7 +95,9 @@ export function SendPush({
             </Button>
           ) : (
             <>
-              <Button onClick={close}>Cancel</Button>
+              <Button disabled={pending} onClick={close}>
+                Cancel
+              </Button>
               <Button tone="primary" disabled={pending || length === 0 || tooLong} onClick={submit}>
                 {pending ? 'Sending…' : 'Send push'}
               </Button>

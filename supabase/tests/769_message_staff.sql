@@ -13,20 +13,24 @@
 --      the text from the removed worker's row only.
 -- =====================================================================
 begin;
-select plan(22);
+select plan(26);
 \ir _shared/fixtures.psql
 
 \set w1     '76930000-0000-4000-8000-000000000001'
 \set w2     '76930000-0000-4000-8000-000000000002'
 \set w3     '76930000-0000-4000-8000-000000000003'
 \set w4     '76930000-0000-4000-8000-000000000004'
+\set w5     '76930000-0000-4000-8000-000000000005'
+\set w6     '76930000-0000-4000-8000-000000000006'
 \set viewer '76940000-0000-4000-8000-000000000001'
 
 insert into staff (id, first_name, last_name, email, phone, dob, status) values
   (:'w1', 'Push',  'On',    'w1@om769.test', '+447700969001', date '1995-01-01', 'compliant'),
   (:'w2', 'Push',  'Off',   'w2@om769.test', '+447700969002', date '1995-01-01', 'compliant'),
   (:'w3', 'Gone',  'Soon',  'w3@om769.test', '+447700969003', date '1995-01-01', 'compliant'),
-  (:'w4', 'Also',  'Off',   'w4@om769.test', '+447700969004', date '1995-01-01', 'inactive');
+  (:'w4', 'Also',  'Off',   'w4@om769.test', '+447700969004', date '1995-01-01', 'inactive'),
+  (:'w5', 'Is',    'Blocked', 'w5@om769.test', '+447700969005', date '1995-01-01', 'blocked'),
+  (:'w6', 'Still', 'Joining', 'w6@om769.test', '+447700969006', date '1995-01-01', 'documents');
 
 -- Only w1 has notifications on. Nobody here is booked on anything.
 insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
@@ -43,6 +47,14 @@ select ok(not has_function_privilege('anon', 'public.send_staff_message(uuid[], 
   'anon cannot execute send_staff_message');
 select ok(not has_function_privilege('authenticated', 'public.staff_removed_scrub_messages()', 'execute'),
   'the removal trigger function is not an RPC');
+select matches(
+  (select pg_get_triggerdef(t.oid) from pg_trigger t
+    where t.tgrelid = 'public.staff'::regclass and t.tgname = 'staff_removed_scrub_messages'),
+  'AFTER UPDATE OF removed_at ON public\.staff FOR EACH ROW WHEN \(\(\(old\.removed_at IS NULL\) AND \(new\.removed_at IS NOT NULL\)\)\)',
+  'the scrub fires after update of removed_at, once — when removed_at is first set');
+select ok(
+  (select p.prosecdef from pg_proc p where p.oid = 'public.staff_removed_scrub_messages()'::regprocedure),
+  'and runs as its owner, so a manager''s removal reaches audit_log');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -117,6 +129,13 @@ reset role;
 select is((select count(*)::int from notification_outbox where template = 'OM2'), 4,
   'and none of the refusals queued anything');
 
+-- A blocked worker and a candidate still in the wizard can be told things too.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((send_staff_message(array[:'w5', :'w6']::uuid[], 'Please call the office') ->> 'sent')::int, 2,
+  'a blocked worker and a candidate are messaged');
+reset role;
+
 -- ---------------------------------------------------------------------
 -- 4 · audit_log, and GDPR removal (§1.7)
 -- ---------------------------------------------------------------------
@@ -127,6 +146,9 @@ select is((send_staff_message(array[:'w3', :'w1']::uuid[], 'Your P45 is on its w
 reset role;
 
 select lives_ok(format($$ select remove_worker(%L) $$, :'w3'), 'the office removes w3 (§1.7)');
+select is_empty(format($$ select 1 from notification_outbox
+                           where recipient_staff_id = %L and payload ? 'message' $$, :'w3'),
+  'remove_worker() leaves none of w3''s OM2 rows carrying the words');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -137,6 +159,7 @@ reset role;
 select results_eq(
   $$ select entity_id::text, actor::text, data ? 'message', (data ->> 'recipients')::int
        from audit_log where action = 'staff.message_sent' and data ->> 'recipients' = '2'
+        and entity_id in ('76930000-0000-4000-8000-000000000001', '76930000-0000-4000-8000-000000000003')
       order by entity_id $$,
   $$ values ('76930000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', true, 2),
             ('76930000-0000-4000-8000-000000000003', '11111111-1111-1111-1111-111111111111', false, 2) $$,

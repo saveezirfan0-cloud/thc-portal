@@ -31,7 +31,7 @@
 -- audit_log: `staff.message_sent` on EACH worker, with the text and the
 -- message id (shared by everyone in one send), so it shows in each
 -- profile's History tab. GDPR removal already scrubs the worker's outbox
--- rows by recipient (20260930120100); the trigger below drops the typed
+-- rows by recipient (20260930120100, now 20261001205000); the trigger below drops the typed
 -- text from these audit rows too, because a message written to a handful
 -- of named people is about them in a way a line-up message is not.
 -- =====================================================================
@@ -152,7 +152,7 @@ create trigger staff_removed_scrub_messages
   execute function staff_removed_scrub_messages();
 
 comment on function public.staff_removed_scrub_messages() is
-  '§1.7 GDPR removal for ADR-0081: drops the office''s typed text from the worker''s staff.message_sent audit rows (the other recipients'' rows keep it), keeping that a message was sent and by whom. The OM2 outbox rows are scrubbed by remove_worker() (20260930120100) by recipient. Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for ADR-0081: drops the office''s typed text from the worker''s staff.message_sent audit rows (the other recipients'' rows keep it), keeping that a message was sent and by whom. The OM2 outbox rows are scrubbed by remove_worker() (20261001205000) by recipient. Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_scrub_messages() from public, anon, authenticated;

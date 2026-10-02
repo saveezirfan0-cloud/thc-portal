@@ -41,7 +41,7 @@ It goes through `notification_outbox` like every other send, one row per worker,
 
 **Record:** every send writes `staff.message_sent` to `audit_log` on **each** worker, with the text, the message id (shared by everyone in one send) and how many received it. It appears in each profile's History tab as "Sent a push to the worker".
 
-**GDPR removal (§1.7):** `remove_worker()` already scrubs the worker's outbox rows by recipient. A message written to a handful of named people is about them in a way a line-up message is not, so a new trigger, `staff_removed_scrub_messages`, drops the text from the removed worker's own `staff.message_sent` rows. The rows keep that a message was sent, and by whom. The other recipients' rows keep the text, as with ADR-0069, so managers should not name other workers in these messages.
+**GDPR removal (§1.7):** `remove_worker()` already scrubs the worker's outbox rows by recipient. A message written to a handful of named people is about them in a way a line-up message is not, so a new trigger, `staff_removed_scrub_messages`, drops the text from the removed worker's own `staff.message_sent` rows. The rows keep that a message was sent, and by whom. The text of a message sent to several people is shared data: the other recipients' audit rows and their own OM2 rows keep it under the same message id, as with ADR-0069's line-up messages. So the scrub fully retires the words only when the removed worker was the sole recipient. Managers should not name or describe a worker in a message that goes to others.
 
 Tests: pgTAP 769; `packages/notifications` (templates, outbox); `apps/office/app/staff/__tests__/sendPush.test.ts` (the action and its words) and `pickAndPush.test.tsx` (the directory's ticks).
 

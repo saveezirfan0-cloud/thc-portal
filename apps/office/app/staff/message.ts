@@ -43,7 +43,7 @@ export function canMessageWorker(status: string, canWrite: boolean): boolean {
   return canWrite && status !== 'removed';
 }
 
-/** Who the dialog says it is for: every name up to four, then "and N more". */
+/** Who the dialog says it is for: up to four names; past four, three and "and N more". */
 export function recipientLine(names: readonly string[]): string {
   if (names.length === 0) return 'Nobody';
   if (names.length === 1) return names[0]!;
