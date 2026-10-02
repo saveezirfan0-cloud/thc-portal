@@ -30,7 +30,7 @@ const GROUP_HEAD: Record<FinanceBy, string> = { day: 'Day', client: 'Client', ro
  * `finance_report()`'s.
  *
  * Under it, the Completed Timesheets that go to clients with the invoices
- * (ADR-0081).
+ * (ADR-0083).
  */
 export function FinancialTab({
   view,

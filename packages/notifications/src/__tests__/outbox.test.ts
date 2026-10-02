@@ -72,6 +72,25 @@ describe('push rows', () => {
     });
   });
 
+  it("sends OM2 to one worker with the manager's words untouched, opening the app (ADR-0082)", () => {
+    const message = 'Please call the office {x} — $& and $1';
+    const msg = messageFor(
+      push({
+        key: 'OM2:m-2',
+        template: 'OM2',
+        payload: { message, messageId: 'm-2' },
+      }),
+    );
+    expect(msg).toEqual({
+      kind: 'push',
+      staffId: 'staff-1',
+      title: 'Message from the office',
+      body: message,
+      url: '/',
+      tag: 'OM2:m-2',
+    });
+  });
+
   it('renders title, body and deep link from the register', () => {
     const msg = messageFor(push({ payload: { bookingId: 'b1' } }));
     expect(msg).toEqual({
@@ -374,7 +393,9 @@ describe('onboarding chasers (ADR-0071)', () => {
         payload: { name: 'Ivy', variant: 'repeat' },
       }),
     );
-    expect(msg.kind === 'email' && msg.subject).toBe('Reminder: your video interview is still waiting');
+    expect(msg.kind === 'email' && msg.subject).toBe(
+      'Reminder: your video interview is still waiting',
+    );
   });
 
   it('refuses a chaser email with no rung rather than guessing one', () => {

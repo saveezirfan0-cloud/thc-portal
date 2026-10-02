@@ -1,6 +1,6 @@
 -- =====================================================================
--- 769 · The Completed Allocation Timesheet goes with the invoice (ADR-0081)
---   20261002109000_completed_timesheet_with_invoicing.sql
+-- 771 · The Completed Allocation Timesheet goes with the invoice (ADR-0083)
+--   20261002113000_completed_timesheet_with_invoicing.sql
 --
 -- 1. The automatic D2 is switched off; D1 is not.
 -- 2. Only a finance login queues a Completed Timesheet, and not while a
@@ -38,9 +38,9 @@ select plan(26);
 \set b_5       '76940000-0000-4000-8000-000000000005'
 
 insert into auth.users (id, email) values
-  (:'manager',   'manager.769@rls.test'),
-  (:'scheduler', 'scheduler.769@rls.test'),
-  (:'viewer',    'viewer.769@rls.test');
+  (:'manager',   'manager.771@rls.test'),
+  (:'scheduler', 'scheduler.771@rls.test'),
+  (:'viewer',    'viewer.771@rls.test');
 insert into profiles (id, role, office_role, full_name) values
   (:'manager',   'admin', 'manager',   'Mona Manager'),
   (:'scheduler', 'admin', 'scheduler', 'Sam Scheduler'),
@@ -58,7 +58,7 @@ insert into events (id, client_id, venue_name, venue_address, venue_location, ge
                     title, event_date, pays_breaks, pays_buffer, po_number)
 select x.id::uuid, :'clienta'::uuid, 'Invoice Venue', '1 Invoice St',
        st_setsrid(st_makepoint(-0.1, 51.5), 4326)::geography, 150, x.title, x.day, true, true, x.po
-  from (values (:'ev_done',  'Finished Gala', current_date - 2, '769-A'),
+  from (values (:'ev_done',  'Finished Gala', current_date - 2, '771-A'),
                (:'ev_off',   'Called Off',    current_date - 2, null),
                (:'ev_empty', 'Nobody Came',   current_date - 2, null),
                (:'ev_open',  'Still Running', current_date,     null),
@@ -134,7 +134,7 @@ reset role;
 -- =====================================================================
 -- 3 · The client sees it once it was sent, not before
 -- =====================================================================
--- s_sign was drawn after ev_done ended: before ADR-0081 that alone put it
+-- s_sign was drawn after ev_done ended: before ADR-0083 that alone put it
 -- on the portal.
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -207,7 +207,7 @@ select is(
 select results_eq(
   format($$ select event_title, po_number, confirmed, undetermined, worked_min, contacts
              from invoicing_timesheets(current_date - 7, current_date) where event_id = %L $$, :'ev_done'),
-  $$ values ('Finished Gala'::text, '769-A'::text, 2, 0, 720, 1) $$,
+  $$ values ('Finished Gala'::text, '771-A'::text, 2, 0, 720, 1) $$,
   'the sheet''s own tally: two on it, none blank once the No check-out was resolved, 12h worked, one contact email');
 select ok(
   (select queued_at is not null and sent_at is not null and send_failed_at is null and not automatic

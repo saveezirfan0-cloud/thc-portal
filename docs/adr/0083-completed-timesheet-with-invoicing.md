@@ -1,4 +1,4 @@
-# ADR-0081 · The Completed Allocation Timesheet goes to the client with the invoice
+# ADR-0083 · The Completed Allocation Timesheet goes to the client with the invoice
 
 **Status:** Accepted (THC, 02.10.2026). Supersedes part of ADR-0074 §2: the automatic D2 is switched off. It also changes the Completed Timesheet's send on the event page (§11.4) and the Client Portal's copy (§11.2).
 
@@ -22,7 +22,7 @@ The Completed Allocation Timesheet goes to the client **with the invoice**, sent
 
 ### 1 · The automatic D2 is off
 
-Migration `20261002109000` sets `settings.document_autosend.completed.enabled = false`. The automatic Allocation Timesheet (D1, the day before at 14:00) is unchanged.
+Migration `20261002113000` sets `settings.document_autosend.completed.enabled = false`. The automatic Allocation Timesheet (D1, the day before at 16:00 since 20261002114000) is unchanged.
 
 The D2 machinery is kept: the verdict and its TypeScript twin, the claim, record, queue and release functions. pgTAP 760 still runs it end to end with the switch turned back on. If THC later wants the sheet sent on its own again (for example "the Wednesday after invoicing"), it is one settings edit plus a rule change, not a rebuild.
 
@@ -75,7 +75,7 @@ The send itself is the existing one: `POST /api/documents/:eventId/send { kind: 
 
 ## Consequences
 
-- **Database:** migration `20261002109000_completed_timesheet_with_invoicing.sql` and pgTAP `769` (26 assertions). pgTAP 760's settings assertion now expects D2 off, and its D2 section switches the setting back on first.
+- **Database:** migration `20261002113000_completed_timesheet_with_invoicing.sql` and pgTAP `771` (26 assertions). pgTAP 760's settings assertion now expects D2 off, and its D2 section switches the setting back on first.
 - **Screens:** the event page's document buttons and hint line (`DocumentActions`, `document-autosend.ts`, `autosendHint`) and the Financial tab (`InvoicingTimesheets`, `SendTimesheet`, `timesheetState` in `reports/view-model.ts`).
 - **Wireframe deviation:** `wireframes/backoffice/reports.html` has no invoicing list. The panel uses the same Panel and table (`.tbl`) as the breakdown above it.
 - **§8 / documents register:** D2's trigger and timing in `packages/notifications/src/documents.ts` now name Reports › Financial. The subject and body are unchanged.

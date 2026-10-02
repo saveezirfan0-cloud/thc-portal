@@ -6,16 +6,18 @@ import { ukInstant } from '@thc/domain';
  *
  * Pure: the facts come from `event_documents_due()` and the settings row
  * `document_autosend`; the answer is one verdict. The SQL twin is
- * `document_autosend_verdict()` (20261002100000), check for check and in the
+ * `document_autosend_verdict()` (20261002100000; its default time
+ * 16:00 since 20261002114000), check for check and in the
  * same order, and the route sends only where BOTH say `due`. Change one,
  * change the other: pgTAP 760 and schedule.test.ts hold the same cases.
  *
- *   D1 · the day before the event at `allocation.time` (14:00) UK — after
- *        the 12:00 "I'm ready" deadline and the 12:05 release — and any run
+ *   D1 · the day before the event at `allocation.time` (16:00 UK since
+ *        02.10.2026; it was 14:00) — after the 12:00 "I'm ready" deadline
+ *        and the 12:05 release — and any run
  *        after that until the first shift starts (an event created or
  *        filled late still gets one). Skipped if a manager queued a D1
  *        since 00:00 UK the day before.
- *   D2 · SWITCHED OFF since ADR-0081 (02.10.2026): the Completed Timesheet
+ *   D2 · SWITCHED OFF since ADR-0083 (02.10.2026): the Completed Timesheet
  *        goes with the invoice, from Reports › Financial. The rule stays,
  *        for the day THC turns it back on in `document_autosend`:
  *        the morning after at `completed.time` (10:00) UK, never before the
@@ -59,7 +61,7 @@ export interface AutosendConfig {
   completed: { enabled: boolean; time: string; holdDays: number; notBefore: string | null };
 }
 
-export const DEFAULT_TIMES = { allocation: '14:00', completed: '10:00', holdDays: 14 } as const;
+export const DEFAULT_TIMES = { allocation: '16:00', completed: '10:00', holdDays: 14 } as const;
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -218,7 +220,7 @@ export function ukShortStamp(iso: string): string {
   return UK_STAMP.format(new Date(iso)).replace(',', '');
 }
 
-/** ADR-0081: where the Completed Timesheet goes from while D2 is off. */
+/** ADR-0083: where the Completed Timesheet goes from while D2 is off. */
 export const COMPLETED_WITH_INVOICE =
   'Completed Timesheet goes to the client with the invoice (Reports › Financial)';
 
@@ -227,7 +229,7 @@ export const COMPLETED_WITH_INVOICE =
  * send happens, or when it happened. Null when there is nothing to say
  * (switched off, or the moment has passed without one).
  *
- * The Completed Timesheet (ADR-0081): `sentAt` is the automatic send;
+ * The Completed Timesheet (ADR-0083): `sentAt` is the automatic send;
  * `queuedAt` / `deliveredAt` the latest copy anyone queued, and when its
  * email went. While D2 is switched off it goes with the invoice, from
  * Reports › Financial, and the line says so.

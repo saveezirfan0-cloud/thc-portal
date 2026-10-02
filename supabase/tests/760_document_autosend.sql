@@ -39,31 +39,31 @@ $$;
 -- =====================================================================
 -- 1 · The rule — the same cases as schedule.test.ts
 -- =====================================================================
--- D1, the day before at 14:00 UK
-select is(pg_temp.d('allocation', '2026-07-10 12:59:59+00'), 'not_yet', 'D1: 13:59:59 UK the day before is not yet');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00'), 'due', 'D1: 14:00 BST (13:00Z) the day before is due');
-select is(pg_temp.d('allocation', '2026-12-04 13:59+00', '{"event_date":"2026-12-05","first_start":"2026-12-05T18:00Z","last_end":"2026-12-05T23:30Z"}'),
-  'not_yet', 'D1 in GMT: 13:59Z is not yet…');
-select is(pg_temp.d('allocation', '2026-12-04 14:00+00', '{"event_date":"2026-12-05","first_start":"2026-12-05T18:00Z","last_end":"2026-12-05T23:30Z"}'),
-  'due', '…14:00Z is 14:00 UK');
+-- D1, the day before at 16:00 UK
+select is(pg_temp.d('allocation', '2026-07-10 14:59:59+00'), 'not_yet', 'D1: 15:59:59 UK the day before is not yet');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00'), 'due', 'D1: 16:00 BST (15:00Z) the day before is due');
+select is(pg_temp.d('allocation', '2026-12-04 15:59+00', '{"event_date":"2026-12-05","first_start":"2026-12-05T18:00Z","last_end":"2026-12-05T23:30Z"}'),
+  'not_yet', 'D1 in GMT: 15:59Z is not yet…');
+select is(pg_temp.d('allocation', '2026-12-04 16:00+00', '{"event_date":"2026-12-05","first_start":"2026-12-05T18:00Z","last_end":"2026-12-05T23:30Z"}'),
+  'due', '…16:00Z is 16:00 UK');
 select is(pg_temp.d('allocation', '2026-07-10 22:45+00'), 'due', 'D1 catch-up: an event filled late still gets one');
 select is(pg_temp.d('allocation', '2026-07-11 05:59+00'), 'due', 'D1 catch-up: up to the first shift start');
 select is(pg_temp.d('allocation', '2026-07-11 06:00+00'), 'too_late', 'D1: never once the first shift has started');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"manual_at":"2026-07-09T23:00Z"}'), 'manual_sent',
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"manual_at":"2026-07-09T23:00Z"}'), 'manual_sent',
   'D1: a manager queued one at 00:00 UK the day before — skipped');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"manual_at":"2026-07-09T22:59Z"}'), 'due',
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"manual_at":"2026-07-09T22:59Z"}'), 'due',
   'D1: one queued before 00:00 UK the day before is not fresh — the automatic one goes');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"cancelled":true}'), 'cancelled', 'D1: cancelled event');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"contacts":0}'), 'no_contact_emails', 'D1: no contact emails');
-select is(pg_temp.d('allocation', '2026-07-10 13:15+00', '{"auto_at":"2026-07-10T13:00:05Z"}'), 'already_sent', 'D1: at most once');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{}', '{"allocation":{"enabled":false}}'), 'disabled', 'D1: switched off in settings');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":7}'), 'due', 'D1: seven spent claims, still due');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":8}'), 'gave_up', 'D1: eight spent claims — gave_up');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"cancelled":true}'), 'cancelled', 'D1: cancelled event');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"contacts":0}'), 'no_contact_emails', 'D1: no contact emails');
+select is(pg_temp.d('allocation', '2026-07-10 15:15+00', '{"auto_at":"2026-07-10T15:00:05Z"}'), 'already_sent', 'D1: at most once');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{}', '{"allocation":{"enabled":false}}'), 'disabled', 'D1: switched off in settings');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"attempts":7}'), 'due', 'D1: seven spent claims, still due');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"attempts":8}'), 'gave_up', 'D1: eight spent claims — gave_up');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"attempts":8}'), 'gave_up', 'D2: eight spent claims — gave_up');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"attempts":8,"undetermined":1}'), 'held_no_checkout', 'D2: a hold is reported before gave_up');
 select is(pg_temp.d('allocation', '2026-07-10 15:30+00', '{}', '{"allocation":{"time":"16:30"}}'), 'due', 'D1: the time comes from settings');
-select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{}', '{"allocation":{"time":"2pm","enabled":"false"}}'), 'due',
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{}', '{"allocation":{"time":"2pm","enabled":"false"}}'), 'due',
   'D1: a malformed time or a non-boolean switch takes the default, as parseAutosendConfig() does — never an error');
 select is(pg_temp.d('signout', '2026-07-26 09:00+00', '{}', '{"completed":{"hold_days":"7","not_before":"garbage"}}'), 'hold_expired',
   'D2: a hold_days that is not a JSON number is 14, and an unreadable not_before is ignored');
@@ -90,19 +90,19 @@ select is(pg_temp.d('signout', '2026-07-12 12:15+00', '{}', '{"completed":{"not_
 select is(pg_temp.d('signout', '2026-12-06 10:00+00', '{"event_date":"2026-12-05","first_start":"2026-12-05T18:00Z","last_end":"2026-12-05T23:30Z"}'),
   'due', 'D2 in GMT: 10:00Z is 10:00 UK');
 -- The clock-change weekends
-select is(pg_temp.d('allocation', '2026-10-24 12:59+00', '{"event_date":"2026-10-25","first_start":"2026-10-25T17:00Z","last_end":"2026-10-25T20:00Z"}'),
-  'not_yet', 'October: Sunday event, D1 Sat 24 Oct 14:00 BST…');
-select is(pg_temp.d('allocation', '2026-10-24 13:00+00', '{"event_date":"2026-10-25","first_start":"2026-10-25T17:00Z","last_end":"2026-10-25T20:00Z"}'),
-  'due', '…is 13:00Z');
+select is(pg_temp.d('allocation', '2026-10-24 14:59+00', '{"event_date":"2026-10-25","first_start":"2026-10-25T17:00Z","last_end":"2026-10-25T20:00Z"}'),
+  'not_yet', 'October: Sunday event, D1 Sat 24 Oct 16:00 BST…');
+select is(pg_temp.d('allocation', '2026-10-24 15:00+00', '{"event_date":"2026-10-25","first_start":"2026-10-25T17:00Z","last_end":"2026-10-25T20:00Z"}'),
+  'due', '…is 15:00Z');
 select is(pg_temp.d('signout', '2026-10-26 10:00+00', '{"event_date":"2026-10-25","first_start":"2026-10-25T17:00Z","last_end":"2026-10-25T20:00Z"}'),
   'due', 'October: D2 Mon 26 Oct 10:00 GMT is 10:00Z');
 select is(pg_temp.d('signout', '2026-10-26 09:59+00', '{"event_date":"2026-10-25","first_start":"2026-10-25T17:00Z","last_end":"2026-10-25T20:00Z"}'),
   'not_yet', '…not 09:00Z');
-select is(pg_temp.d('allocation', '2026-03-28 14:00+00', '{"event_date":"2026-03-29","first_start":"2026-03-29T17:00Z","last_end":"2026-03-29T20:00Z"}'),
-  'due', 'March: Sunday event, D1 Sat 28 Mar 14:00 GMT is 14:00Z');
+select is(pg_temp.d('allocation', '2026-03-28 16:00+00', '{"event_date":"2026-03-29","first_start":"2026-03-29T17:00Z","last_end":"2026-03-29T20:00Z"}'),
+  'due', 'March: Sunday event, D1 Sat 28 Mar 16:00 GMT is 16:00Z');
 select is(pg_temp.d('signout', '2026-03-30 09:00+00', '{"event_date":"2026-03-29","first_start":"2026-03-29T17:00Z","last_end":"2026-03-29T20:00Z"}'),
   'due', 'March: D2 Mon 30 Mar 10:00 BST is 09:00Z');
-select is(pg_temp.d('allocation', '2026-10-25 14:00+00',
+select is(pg_temp.d('allocation', '2026-10-25 16:00+00',
   '{"event_date":"2026-10-26","first_start":"2026-10-26T18:00Z","last_end":"2026-10-26T23:00Z","manual_at":"2026-10-24T23:00Z"}'),
   'manual_sent', 'the manual cut-off is 00:00 UK on the day before, which on 25 Oct is still BST (24 Oct 23:00Z)');
 
@@ -110,14 +110,14 @@ select is(pg_temp.d('allocation', '2026-10-25 14:00+00',
 -- 2 · The settings row
 -- =====================================================================
 select is((select value->'allocation' from settings where key = 'document_autosend'),
-  '{"enabled": true, "time": "14:00"}'::jsonb, 'D1 on, at 14:00');
--- ADR-0081 (20261002109000) switched D2 off: the Completed Timesheet goes
+  '{"enabled": true, "time": "16:00"}'::jsonb, 'D1 on, at 16:00 (20261002114000; it was 14:00)');
+-- ADR-0083 (20261002113000) switched D2 off: the Completed Timesheet goes
 -- with the invoice. The rest of the row is as 20261002100000 seeded it, so
 -- switching it back on is one edit; section 7 below does exactly that.
 select ok((select value->'completed' @> '{"enabled": false, "time": "10:00", "hold_days": 14}'
              and (value->'completed'->>'not_before')::timestamptz <= now()
              from settings where key = 'document_autosend'),
-  'D2 off since ADR-0081, still at 10:00, held up to 14 days, and not reaching back before the migration ran');
+  'D2 off since ADR-0083, still at 10:00, held up to 14 days, and not reaching back before the migration ran');
 
 -- =====================================================================
 -- 3 · Who can call the job's functions: the service role, and nobody else
@@ -251,7 +251,7 @@ insert into violations (staff_id, booking_id, type) values (:'p_6', :'b_6', 'no_
 
 -- D1 at 00:00 (see above); D2 at its default 10:00 — yesterday morning for
 -- ev_past; and this file may reach back before the migration ran. D2 is
--- switched back on here (ADR-0081 turned it off) so the machinery stays
+-- switched back on here (ADR-0083 turned it off) so the machinery stays
 -- proven for the day THC turns it on again.
 update settings
    set value = jsonb_set(jsonb_set(jsonb_set(value, '{allocation,time}', '"00:00"'),

@@ -5,7 +5,7 @@ import type { InvoicingTimesheet, ReportView } from '../view-model';
 import { SendTimesheet } from './SendTimesheet';
 
 /**
- * Completed Timesheets · for invoicing (ADR-0081), under the Financial
+ * Completed Timesheets · for invoicing (ADR-0083), under the Financial
  * report's breakdown.
  *
  * THC, 02.10.2026: the filled-in sheet "should not be emailed out to the

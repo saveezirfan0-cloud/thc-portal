@@ -4,6 +4,7 @@ import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
 import { loadProfile } from './data';
+import { canMessageWorker } from '../message';
 import { ProfileScreen } from './ProfileScreen';
 
 export const metadata = { title: 'Staff profile · THC Back Office' };
@@ -38,14 +39,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   // ADR-0072: the Pay rate card is money — finance roles only (a scheduler
   // reads no staff_pay_rates row anyway); a viewer reads it, and only a
   // role that may also write gets Set / Edit / Clear.
+  // ADR-0082: Send push for any login that may write, never on a removed
+  // profile; send_staff_message() refuses a viewer whatever this says.
   const finance = officeCan(role, 'finance');
   return (
     <ProfileScreen
       data={data}
       canCorrectDob={officeCan(role, 'identity')}
       canEditGender={officeCan(role, 'write')}
+      canEditLanguages={officeCan(role, 'write')}
       showPayRate={finance}
       canEditPayRate={finance && officeCan(role, 'write')}
+      canMessage={canMessageWorker(data.profile.status, officeCan(role, 'write'))}
     />
   );
 }

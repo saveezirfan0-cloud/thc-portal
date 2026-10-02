@@ -80,19 +80,16 @@ describe('iPhone in a Safari tab (the reported bug)', () => {
     const banner = pushBanner(input({ state: 'needs-install', browser: 'ios-safari' }));
     expect(banner).toMatchObject({
       tone: 'cyan',
-      headline: 'Add THC to your Home Screen to get shift alerts:',
-      detail: 'tap Share, then Add to Home Screen.',
+      text: 'Add THC to your Home Screen to get shift alerts.',
       link: { href: '/install' },
       dismissible: true,
     });
-    expect(`${banner?.headline} ${banner?.detail}`).not.toMatch(
-      /cannot show|Open the app in Safari/,
-    );
+    expect(banner?.text).not.toMatch(/cannot show|Open the app in Safari/);
   });
 
   it('sends Chrome and in-app browsers on iPhone to Safari first', () => {
     const banner = pushBanner(input({ state: 'needs-install', browser: 'ios-other' }));
-    expect(banner?.detail).toMatch(/open this page in Safari/);
+    expect(banner?.text).toMatch(/Open in Safari/);
     expect(banner?.link?.href).toBe('/install');
   });
 });
@@ -100,20 +97,20 @@ describe('iPhone in a Safari tab (the reported bug)', () => {
 describe('other browsers get copy that is true for them', () => {
   it('Android without push: open in Chrome', () => {
     const banner = pushBanner(input({ state: 'unsupported', browser: 'android' }));
-    expect(banner?.detail).toMatch(/Chrome/);
-    expect(banner?.detail).not.toMatch(/Safari/);
+    expect(banner?.text).toMatch(/Chrome/);
+    expect(banner?.text).not.toMatch(/Safari/);
   });
 
   it('an installed iPhone with no Push API: update iOS', () => {
     const banner = pushBanner(
       input({ state: 'unsupported', browser: 'ios-other', standalone: true }),
     );
-    expect(banner?.headline).toMatch(/iOS 16\.4/);
+    expect(banner?.text).toMatch(/iOS 16\.4/);
   });
 
   it('a desktop browser: alerts work on the phone', () => {
     const banner = pushBanner(input({ state: 'unsupported', browser: 'other' }));
-    expect(banner?.detail).toMatch(/Safari on iPhone or Chrome on Android/);
+    expect(banner?.text).toMatch(/on your phone/);
   });
 
   it('says nothing when notifications work', () => {
@@ -134,21 +131,29 @@ describe('advice can be put away; a fault cannot', () => {
     }
   });
 
-  it('a subscription iOS revoked (granted, none behind it) keeps the old banner, undismissible', () => {
+  it('a subscription iOS revoked (granted, none behind it) says it stopped, undismissible', () => {
     const banner = pushBanner(input({ state: 'granted', lapsed: true }));
     expect(banner).toMatchObject({
-      variant: 'fault:default',
+      variant: 'fault:stopped',
       tone: 'cyan',
-      headline: 'Turn on notifications.',
-      link: { href: '/notifications', label: 'Show me how' },
+      text: 'Notifications have stopped.',
+      link: { href: '/notifications', label: 'Turn on' },
       dismissible: false,
     });
   });
 
-  it('notifications switched off after being on here: the old coral banner, undismissible', () => {
+  it('permission reset to "ask" after being on here reads the same', () => {
+    expect(pushBanner(input({ state: 'default', wasOn: true }))?.variant).toBe('fault:stopped');
+  });
+
+  it('notifications switched off after being on here: coral, undismissible, links to the fix', () => {
     const banner = pushBanner(input({ state: 'denied', wasOn: true }));
-    expect(banner).toMatchObject({ tone: 'coral', dismissible: false });
-    expect(banner?.detail).toContain('Settings → Notifications → The Hospitality Company → Allow.');
+    expect(banner).toMatchObject({
+      variant: 'fault:denied',
+      tone: 'coral',
+      link: { href: '/notifications', label: 'Fix' },
+      dismissible: false,
+    });
   });
 
   it('a stored dismissal never hides a fault', () => {
@@ -203,12 +208,32 @@ describe('storage that throws', () => {
   });
 });
 
+describe('the banner', () => {
+  const states = ['needs-install', 'unsupported', 'unconfigured', 'denied', 'default'] as const;
+  const browsers = ['ios-safari', 'ios-other', 'android', 'other'] as const;
+
+  it('is one short sentence with at most one action, for every state and browser', () => {
+    for (const state of states) {
+      for (const browser of browsers) {
+        for (const standalone of [false, true]) {
+          const banner = pushBanner(input({ state, browser, standalone }));
+          expect(banner?.text.length).toBeLessThanOrEqual(80);
+          expect(banner?.text).not.toMatch(/\.\s+\S/);
+          if (banner?.link) expect(banner.link.label.length).toBeLessThanOrEqual(8);
+        }
+      }
+    }
+  });
+});
+
 describe('the banner markup', () => {
-  it('is one compact line with a labelled 44px dismiss button for advice', () => {
+  it('is one line, an action pill and a labelled dismiss button for advice', () => {
     const banner = pushBanner(input({ state: 'needs-install', browser: 'ios-safari' }));
     const html = renderToStaticMarkup(<PushBannerView banner={banner!} onDismiss={() => {}} />);
     expect(html).toContain('class="alert cyan push-banner"');
+    expect(html).toContain('<p class="push-banner-text">Add THC to your Home Screen');
     expect(html).toContain('href="/install"');
+    expect(html).toContain('>Show me</a>');
     expect(html).toContain('aria-label="Hide this for 7 days"');
   });
 

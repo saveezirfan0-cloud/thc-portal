@@ -318,8 +318,8 @@ first), or `skipped: not_configured`. One check's story is on `rtw_checks`.
 ### The automatic Allocation Timesheet and Completed Allocation Timesheet (ADR-0074)
 
 `POST /api/jobs/event-documents` on the Back Office draws and emails the two §11.3
-documents on its own: D1 the day before the event at 14:00 UK, D2 the morning after at
-10:00 UK (held while a No check-out is unresolved, up to 14 days). Since ADR-0081 D2 is
+documents on its own: D1 the day before the event at 16:00 UK (14:00 until 02.10.2026), D2 the morning after at
+10:00 UK (held while a No check-out is unresolved, up to 14 days). Since ADR-0083 D2 is
 switched off in `settings.document_autosend`: the Completed Timesheet goes to the client
 with the invoice, from Reports › Financial. It needs **nothing
 new**: the same `RTW_JOB_SECRET` / vault `rtw_job_secret` and vault `office_base_url` as

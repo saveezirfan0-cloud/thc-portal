@@ -62,6 +62,9 @@ export const TAKE_OFFER_REFUSALS = [
   'male_only',
   'female_only',
   'gender_not_recorded',
+  // ADR-0080: an event that needs another language, by name.
+  'language_not_spoken',
+  'languages_not_recorded',
   'do_not_return',
   'blocked',
   'self_cancelled',
@@ -84,6 +87,8 @@ const GATE_REFUSAL: Readonly<Record<string, TakeOfferRefusal>> = {
   male_only: 'male_only',
   female_only: 'female_only',
   gender_not_recorded: 'gender_not_recorded',
+  language_not_spoken: 'language_not_spoken',
+  languages_not_recorded: 'languages_not_recorded',
   do_not_return: 'do_not_return',
   blocked: 'blocked',
   self_cancelled: 'self_cancelled',

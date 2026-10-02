@@ -20,6 +20,8 @@ const REASONS: Record<string, string> = {
   address_required: 'Enter the first line of your address and your town.',
   bad_postcode: 'Enter a UK postcode, e.g. E2 0RY.',
   pin_outside_uk: 'Drop the pin on your home in the UK.',
+  // ADR-0080, step 2's languages.
+  unknown_language: 'Choose your languages from the list.',
   photo_required: 'Take a photo to continue.',
   photo_locked: 'Your photo is already set. To change it, contact the office.',
   wrong_path: 'That upload didn’t go through. Please try again.',

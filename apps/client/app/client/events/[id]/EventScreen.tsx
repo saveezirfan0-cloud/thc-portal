@@ -166,7 +166,7 @@ export function EventScreen({
               <div className="v">
                 {/* An audit stamp: UK-only, never dual (§1.8). The sent copy
                     went to the contact emails on the client card (§11.4,
-                    with the invoice — ADR-0081);
+                    with the invoice — ADR-0083);
                     the view carries no recipient count, so none is claimed. */}
                 Completed Allocation Timesheet generated{' '}
                 {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}

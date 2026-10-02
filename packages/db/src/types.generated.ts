@@ -1112,6 +1112,7 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          name_badges: boolean;
           pays_breaks: boolean;
           pays_buffer: boolean;
           phone: string;
@@ -1123,6 +1124,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           name: string;
+          name_badges?: boolean;
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           phone: string;
@@ -1134,6 +1136,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           name?: string;
+          name_badges?: boolean;
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           phone?: string;
@@ -1483,6 +1486,9 @@ export type Database = {
       };
       event_documents: {
         Row: {
+          badges_count: number | null;
+          badges_file_name: string | null;
+          badges_storage_path: string | null;
           event_id: string;
           file_name: string;
           generated_at: string;
@@ -1500,6 +1506,9 @@ export type Database = {
           storage_path: string;
         };
         Insert: {
+          badges_count?: number | null;
+          badges_file_name?: string | null;
+          badges_storage_path?: string | null;
           event_id: string;
           file_name: string;
           generated_at?: string;
@@ -1517,6 +1526,9 @@ export type Database = {
           storage_path: string;
         };
         Update: {
+          badges_count?: number | null;
+          badges_file_name?: string | null;
+          badges_storage_path?: string | null;
           event_id?: string;
           file_name?: string;
           generated_at?: string;
@@ -1610,6 +1622,7 @@ export type Database = {
           pays_breaks: boolean;
           pays_buffer: boolean;
           po_number: string | null;
+          required_languages: string[];
           title: string;
           venue_address: string;
           venue_id: string | null;
@@ -1633,6 +1646,7 @@ export type Database = {
           pays_breaks: boolean;
           pays_buffer: boolean;
           po_number?: string | null;
+          required_languages?: string[];
           title: string;
           venue_address: string;
           venue_id?: string | null;
@@ -1656,6 +1670,7 @@ export type Database = {
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           po_number?: string | null;
+          required_languages?: string[];
           title?: string;
           venue_address?: string;
           venue_id?: string | null;
@@ -3957,6 +3972,7 @@ export type Database = {
           home_location_stale: boolean;
           home_postcode: string | null;
           id: string;
+          languages: string[] | null;
           last_name: string;
           leave_reason: string | null;
           left_at: string | null;
@@ -4017,6 +4033,7 @@ export type Database = {
           home_location_stale?: boolean;
           home_postcode?: string | null;
           id?: string;
+          languages?: string[] | null;
           last_name: string;
           leave_reason?: string | null;
           left_at?: string | null;
@@ -4077,6 +4094,7 @@ export type Database = {
           home_location_stale?: boolean;
           home_postcode?: string | null;
           id?: string;
+          languages?: string[] | null;
           last_name?: string;
           leave_reason?: string | null;
           left_at?: string | null;
@@ -7862,6 +7880,15 @@ export type Database = {
         };
         Returns: undefined;
       };
+      attach_event_document_badges: {
+        Args: {
+          p_count: number;
+          p_document: string;
+          p_file_name: string;
+          p_storage_path: string;
+        };
+        Returns: undefined;
+      };
       attempt_check_in: {
         Args: { p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
@@ -8503,6 +8530,7 @@ export type Database = {
         Returns: undefined;
       };
       job_run_start: { Args: { p_job: string }; Returns: number };
+      known_languages: { Args: never; Returns: string[] };
       lapse_shift_offers: { Args: { p_now?: string }; Returns: number };
       link_staff_account: {
         Args: { p_staff: string; p_user: string };
@@ -8620,6 +8648,7 @@ export type Database = {
           student_loan: string;
         }[];
       };
+      normalise_languages: { Args: { p_languages: string[] }; Returns: string[] };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
       notify_offer_candidates: {
@@ -8650,7 +8679,6 @@ export type Database = {
           shift_id: string;
         }[];
       };
-      offer_shift: { Args: { p_booking: string }; Returns: Json };
       offer_wave1_exhausted: { Args: { p_offer: string }; Returns: boolean };
       office_base_url: { Args: never; Returns: string };
       office_clear_emergency_contact: {
@@ -9391,12 +9419,20 @@ export type Database = {
         Returns: undefined;
       };
       self_cancel_booking: { Args: { p_booking: string }; Returns: Json };
+      set_client_name_badges: {
+        Args: { p_client: string; p_on: boolean };
+        Returns: undefined;
+      };
       set_do_not_return: {
         Args: { p_id: string; p_on: boolean; p_reason?: string };
         Returns: Json;
       };
       set_staff_gender: {
         Args: { p_gender: string | null; p_staff: string };
+        Returns: Json;
+      };
+      set_staff_languages: {
+        Args: { p_languages: string[] | null; p_staff: string };
         Returns: Json;
       };
       set_staff_pay_rate: {
@@ -10166,6 +10202,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      staff_save_languages: { Args: { p_languages: string[] }; Returns: Json };
       staff_set_ni_number: { Args: { p_ni: string }; Returns: Json };
       staff_set_photo: { Args: { p_path: string }; Returns: Json };
       staff_shift_detail: {

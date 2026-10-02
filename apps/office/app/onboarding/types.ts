@@ -233,6 +233,8 @@ export interface CandidateFacts {
   niNumber: string | null;
   belowDegreeLevel: boolean;
   visaHourLimit: number | null;
+  /** ADR-0080: the languages they said on onboarding step 2; null = not yet. */
+  languages: string[] | null;
 }
 
 export interface Declaration {

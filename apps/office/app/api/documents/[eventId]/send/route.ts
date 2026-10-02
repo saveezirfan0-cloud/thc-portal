@@ -13,7 +13,7 @@ import {
  * POST /api/documents/:eventId/send { kind } — "Send Allocation Timesheet"
  * from the event page (§11.4; names per ADR-0074), and "Send to client" for
  * the Completed Timesheet from Reports › Financial, where it goes with the
- * invoice (ADR-0081: `queue_event_document_email()` refuses a Completed
+ * invoice (ADR-0083: `queue_event_document_email()` refuses a Completed
  * Timesheet from a login without finance). The Allocation Timesheet also
  * goes automatically — /api/jobs/event-documents.
  *
@@ -22,6 +22,8 @@ import {
  * contact email on the client card (§9.7, §9.12) through
  * `queue_event_document_email()`. The email itself goes when the outbox
  * drain (P2) is live; until then it is queued, and the response says so.
+ * For a client with name badges on, the Allocation Timesheet email carries
+ * the badges too (ADR-0081); `badges` is how many.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     return Response.json({ error: 'Unknown event or document kind.' }, { status: 400 });
   if (!supabaseConfigured())
     return Response.json({ error: 'This environment has no Supabase project.' }, { status: 503 });
-  // ADR-0081: asked before a PDF is drawn and stored for a send the
+  // ADR-0083: asked before a PDF is drawn and stored for a send the
   // database would refuse. An unknown role goes on; the database decides.
   if (kind === 'signout') {
     const role = await currentOfficeRole();
@@ -66,6 +68,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     fileName: result.layout.fileName,
     pages: result.pages,
     rows: result.layout.rowCount,
+    badges: result.badges?.layout.count ?? 0,
     recipients,
   });
 }

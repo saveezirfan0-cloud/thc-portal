@@ -84,9 +84,9 @@ last, below a divider. The Staff App's Documents tab is live.
   (THC, 29.09.2026) they are the **Allocation Timesheet** and the **Completed
   Allocation Timesheet**, and they also go **automatically**: the
   `event-documents` job (a Back Office route, every 15 min, rtw-check's
-  bearer secret) sends D1 the day before at 14:00 UK and D2 the morning after
+  bearer secret) sends D1 the day before at 16:00 UK (14:00 until 02.10.2026) and D2 the morning after
   at 10:00 UK, holding D2 while a No check-out is unresolved. **D2 is switched
-  off since ADR-0081**: the Completed Timesheet goes to the client with the
+  off since ADR-0083**: the Completed Timesheet goes to the client with the
   invoice, from Reports › Financial.
 - **B13 Feedback** — Client and Office tabs; the worker's rating is now derived
   from feedback (it was never computed before) and Mark as read moves it
@@ -354,6 +354,15 @@ real environment to prove it in.
   the next merge to `main` deploys all fifteen in order with no flag. Types
   (`packages/db/src/types.generated.ts`) are regenerated from the live project
   once they are applied — they do not yet know this round's RPCs.
+- **02.10: #130 merged below the live high-water mark.** #127's
+  `20261002110000` was already live when #130 merged `20261002109000`
+  (name badges), so `deploy-database` on `e85e044` stopped at the dry run
+  with the same refusal and applied nothing, #129's `20261002111000`
+  included. #130's migration is renumbered `20261002112000` (same content;
+  it shares no function, table or trigger with `110000` or `111000`, so the
+  new order changes nothing), and the next merge to `main` deploys both with
+  no flag. A PR whose migration sorts below one merged after it was opened
+  must be renumbered before it merges, not after.
 - **ESLint runs `react-hooks/rules-of-hooks`** (error) and `exhaustive-deps`
   (warning) on every TSX file since 27.09; the tree was clean under both the
   day the rule landed. Step 1's `useId()` after an early return was the case

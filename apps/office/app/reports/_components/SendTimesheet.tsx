@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal } from '@thc/ui';
 
 /**
- * "Send to client" on one row of the invoicing list (ADR-0081): the
+ * "Send to client" on one row of the invoicing list (ADR-0083): the
  * Completed Allocation Timesheet goes to the client with the invoice, from
  * here and nowhere else. The same send as §11.4's — a fresh copy drawn,
  * stored and queued from timesheets@ to every contact email on the client

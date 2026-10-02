@@ -249,6 +249,7 @@ interface FactsRead {
             ni_number: string | null;
             below_degree_level: boolean | null;
             visa_weekly_hour_limit: number | null;
+            languages: string[] | null;
           } | null;
           error: { message: string } | null;
         }>;
@@ -365,7 +366,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     // D43: the full NI number beside the NI evidence; D32/D36: the conditions.
     (supabase as unknown as FactsRead)
       .from('staff')
-      .select('ni_number, below_degree_level, visa_weekly_hour_limit')
+      .select('ni_number, below_degree_level, visa_weekly_hour_limit, languages')
       .eq('id', id)
       .maybeSingle(),
     // ADR-0077: who marked the interview complete without Willo, and why.
@@ -452,11 +453,13 @@ function toFacts(row: {
   ni_number: string | null;
   below_degree_level: boolean | null;
   visa_weekly_hour_limit: number | null;
+  languages: string[] | null;
 }): CandidateFacts {
   return {
     niNumber: row.ni_number,
     belowDegreeLevel: row.below_degree_level === true,
     visaHourLimit: row.visa_weekly_hour_limit,
+    languages: row.languages ?? null,
   };
 }
 

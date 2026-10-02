@@ -2,7 +2,9 @@
 
 **Status:** Accepted (THC, 29.09.2026). Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
 
-> **Superseded in part by [ADR-0081](0081-completed-timesheet-with-invoicing.md) (02.10.2026).** The automatic D2 (Completed Allocation Timesheet) is switched off. The sheet goes to the client with the invoice, from Reports › Financial, and no longer from the event page. The Client Portal serves it only once it was sent. D1 is unchanged.
+> **Amended 02.10.2026 (THC): D1 goes at 16:00, not 14:00.** Migration `20261002114000` moves `settings.document_autosend.allocation.time` and the code's default to 16:00. The text below is updated to 16:00; nothing else about D1 changed. See "Answers to THC, 02.10.2026" at the end.
+>
+> **Superseded in part by [ADR-0083](0083-completed-timesheet-with-invoicing.md) (02.10.2026).** The automatic D2 (Completed Allocation Timesheet) is switched off. The sheet goes to the client with the invoice, from Reports › Financial, and no longer from the event page. The Client Portal serves it only once it was sent. D1 is unchanged.
 
 ## Context
 
@@ -32,9 +34,9 @@ The words "sign-out timesheet" no longer appear anywhere a client can see them. 
 
 A Back Office job, `POST /api/jobs/event-documents`, runs every 15 minutes (`job_schedules` row `event-documents`). The times are UK wall-clock times, so the rules are written in Europe/London time and hold through the clock changes.
 
-**D1 · Allocation Timesheet.** It goes **the day before the event at 14:00**. That is after the 12:00 "I'm ready" deadline and the 12:05 release, so the line-up is firm.
+**D1 · Allocation Timesheet.** It goes **the day before the event at 16:00** (14:00 until 02.10.2026). That is after the 12:00 "I'm ready" deadline and the 12:05 release, so the line-up is firm.
 
-- **Late events:** an event created or filled after 14:00 still gets it on the next run, as long as its first shift has not started.
+- **Late events:** an event created or filled after 16:00 still gets it on the next run, as long as its first shift has not started.
 - **Skip:** if a manager queued a D1 for the event at or after 00:00 UK on the day before, the job does not send one. The client already has a fresh copy.
 
 **D2 · Completed Allocation Timesheet.** It goes **the morning after the event day at 10:00**. It never goes before the last shift's end + 4 hours, when the last check-out window closes.
@@ -67,13 +69,13 @@ A skip is recorded as a reason in the run's counts (`job_runs.counts.verdicts`) 
 **Settings:** `settings.document_autosend` (seeded by `20261002100000`, read on every run):
 
 ```json
-{"allocation":{"enabled":true,"time":"14:00"},
+{"allocation":{"enabled":true,"time":"16:00"},
  "completed":{"enabled":true,"time":"10:00","hold_days":14,"not_before":"<when the migration ran>"}}
 ```
 
 There is no /settings control for it yet. It can be changed with an `update settings …` in the SQL editor.
 
-**One rule, two implementations.** The rule is pure TypeScript, `autosendVerdict()` in `apps/office/app/api/jobs/event-documents/_lib/schedule.ts`. Its SQL twin is `document_autosend_verdict()`, which checks the same things in the same order. `event_documents_due()` returns every candidate with its facts and the SQL verdict. The route runs the TypeScript verdict over the same facts and sends only where **both** say `due`. A disagreement is counted and logged, and nothing is sent. `schedule.test.ts` and pgTAP 760 hold the same cases, including 13:59 and 14:00, BST and GMT, and both 2026 clock-change weekends.
+**One rule, two implementations.** The rule is pure TypeScript, `autosendVerdict()` in `apps/office/app/api/jobs/event-documents/_lib/schedule.ts`. Its SQL twin is `document_autosend_verdict()`, which checks the same things in the same order. `event_documents_due()` returns every candidate with its facts and the SQL verdict. The route runs the TypeScript verdict over the same facts and sends only where **both** say `due`. A disagreement is counted and logged, and nothing is sent. `schedule.test.ts` and pgTAP 760 hold the same cases, including 15:59 and 16:00, BST and GMT, and both 2026 clock-change weekends.
 
 **Mechanism.** The PDF is drawn by `@react-pdf/renderer`, which the Deno Edge Functions cannot run. So this is a Node route in the Back Office, the same pattern as rtw-check (ADR-0025). Each run:
 
@@ -90,7 +92,7 @@ All of these functions are callable by the **service role only**. They are revok
 - `totalHours` (D2 only): formatted like the PDF's Total Hours. It is empty while any row is still undetermined.
 - `documentName`.
 
-**New table.** `event_document_autosends` has admin read only and no client or staff policy (ADR-0026). It carries the office_read_only guard (ADR-0060), and only the functions above write to it. The event page reads it to show "Allocation Timesheet sent automatically 28/09 14:00", or when the automatic send will happen.
+**New table.** `event_document_autosends` has admin read only and no client or staff policy (ADR-0026). It carries the office_read_only guard (ADR-0060), and only the functions above write to it. The event page reads it to show "Allocation Timesheet sent automatically 28/09 16:00", or when the automatic send will happen.
 
 ### Shared job secret
 
@@ -125,3 +127,13 @@ The rendered pages were not A4. `<Page wrap={false}>` makes react-pdf size the p
 - **No /settings control** for `document_autosend`. It is a SQL edit for now.
 - **The email copy for D1/D2** (subject, body, and use of `schedule` / `totalHours`) lives in `packages/notifications` and is a separate change.
 - **No per-client opt-out.** Switching the automatic sends off is global: `enabled: false` for each kind.
+
+## Answers to THC, 02.10.2026
+
+THC asked three things when moving D1 to 16:00.
+
+**"If the timesheet is missed because the event is not filled, when is it re-sent?"** The job runs every 15 minutes. At 16:00 the day before, an event with **nobody confirmed** is skipped for that run only (`no_confirmed_staff`); it is not marked done. Every later run checks it again, so the Allocation Timesheet goes on the first run (within 15 minutes) after someone is confirmed. That holds until the event's first shift starts; after that the automatic send stops (`too_late`) and only the manual Send works. An event that is **partly** filled at 16:00 is not "missed": it goes at 16:00 with whoever is confirmed then.
+
+**"If staffing changes (headcount / timings) after it was sent, is it re-sent automatically?"** No. Each event gets **at most one** automatic Allocation Timesheet (`already_sent`). A change to the line-up, headcount or times after it went does not send another.
+
+**"Can a manual one be re-sent?"** Yes. **Send Allocation Timesheet** on the event page works at any time, including mid-event (§11.3), as often as needed. Each press draws a fresh copy from the current line-up and role times, and emails it to every contact on the client card. A manual Send made after 00:00 UK the day before also stands in for the 16:00 automatic one, so the client does not receive two.

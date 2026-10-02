@@ -416,6 +416,9 @@ decline it, or cover it by hand.
 > **Ask:** is 72 hours the right cut-off for offering a shift to other workers, or should
 > it be closer, e.g. 24 hours?
 
+
+> **Answered (THC, 02.10.2026):** moot. A worker cannot offer their shift to other workers, so there is no pool-offer window. More than 72 h out the worker uses Cancel shift (RULE-04). Inside 72 h, or with auto-assign off, they ask the office for cover (ADR-0046, last amendment).
+
 ---
 
 ## Q17 · Peer-to-peer swaps
@@ -429,6 +432,9 @@ the shift being given away.
 
 > **Ask:** do you want workers to be able to hand a shift to a named colleague, or swap
 > shifts with one?
+
+
+> **Answered (THC, 02.10.2026):** no. A worker cannot offer or hand a shift to another worker. Peer-to-peer and swaps stay unbuilt (ADR-0046, last amendment).
 
 ---
 

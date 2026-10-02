@@ -8,7 +8,7 @@ import { eventsDb, supabaseConfigured } from '../db';
  * Allocation Timesheet and the Completed Allocation Timesheet go out on
  * their own, or when they went. Read from `event_document_autosends`
  * (admin read) and the `document_autosend` settings row. The Completed
- * Timesheet goes with the invoice since ADR-0081, so its line also reads
+ * Timesheet goes with the invoice since ADR-0083, so its line also reads
  * the latest one queued from `event_documents` (admin read).
  *
  * A hint, not a record: any read that fails leaves it out rather than

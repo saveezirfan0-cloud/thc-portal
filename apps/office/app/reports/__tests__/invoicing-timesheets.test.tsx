@@ -7,7 +7,7 @@ import type { InvoicingTimesheet } from '../view-model';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 /**
- * ADR-0081 (THC, 02.10.2026): the Completed Allocation Timesheet goes to the
+ * ADR-0083 (THC, 02.10.2026): the Completed Allocation Timesheet goes to the
  * client with the invoice, from Reports › Financial — not the morning after
  * the event, and not from the event page.
  */
@@ -28,7 +28,7 @@ const ROW: InvoicingTimesheet = {
   automatic: false,
 };
 
-describe('where a Completed Timesheet stands (ADR-0081)', () => {
+describe('where a Completed Timesheet stands (ADR-0083)', () => {
   it('not sent yet: ready to go with the invoice', () => {
     expect(timesheetState(ROW)).toEqual({
       tone: 'neutral',

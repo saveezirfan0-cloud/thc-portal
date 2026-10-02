@@ -299,7 +299,7 @@ export function employeeId(id: number | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// Completed Timesheets for invoicing (ADR-0081)
+// Completed Timesheets for invoicing (ADR-0083)
 // ---------------------------------------------------------------------------
 
 /** One row of `invoicing_timesheets()`. */

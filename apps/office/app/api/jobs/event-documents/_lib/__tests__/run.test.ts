@@ -5,7 +5,7 @@ import { parseAutosendConfig } from '../schedule';
 import type { DocumentKind } from '../schedule';
 
 const CONFIG = parseAutosendConfig({});
-const NOW = new Date('2026-07-10T13:00:00Z'); // Fri 14:00 BST
+const NOW = new Date('2026-07-10T15:00:00Z'); // Fri 16:00 BST
 
 function row(overrides: Partial<DueRow> = {}): DueRow {
   return {

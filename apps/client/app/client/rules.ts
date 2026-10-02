@@ -110,7 +110,7 @@ export interface DocumentOffer {
  *
  * `issued` is what the view returned for this event — for the sign-out
  * timesheet that is a copy THC has SENT, which happens with the invoice
- * (ADR-0081), so a completed event shows the button disabled until then
+ * (ADR-0083), so a completed event shows the button disabled until then
  * rather than a link to a sheet the client has not been sent.
  */
 export function documentOffer(
@@ -126,7 +126,7 @@ export function documentOffer(
  *
  * Before and during the event: "↓ Download Allocation Timesheet", live or
  * disabled. Completed: "↓ Download Completed Timesheet" takes the primary slot
- * (live once THC has sent a copy — with the invoice, ADR-0081 — disabled
+ * (live once THC has sent a copy — with the invoice, ADR-0083 — disabled
  * until then) and the allocation
  * sheet stays beside it as history — but only when one was issued; there
  * is no sense in a disabled button for a document that will never come.

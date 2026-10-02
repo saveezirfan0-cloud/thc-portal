@@ -1,5 +1,5 @@
 -- =====================================================================
--- ADR-0081 · The Completed Allocation Timesheet goes to the client with
+-- ADR-0083 · The Completed Allocation Timesheet goes to the client with
 -- the invoice, not straight after the event
 --
 -- THC, 02.10.2026: "Signed timesheets after the event with completed
@@ -49,7 +49,7 @@ update settings
 -- ---------------------------------------------------------------------
 -- 2 · Only invoicing sends the Completed Timesheet
 --
--- 20261002100000's body with two additions, marked ADR-0081. Caller check,
+-- 20261002100000's body with two additions, marked ADR-0083. Caller check,
 -- lock, key, recipients, payload and the document-row update unchanged.
 -- ---------------------------------------------------------------------
 create or replace function public.queue_event_document_email(p_document uuid)
@@ -64,7 +64,7 @@ begin
   perform assert_reports_caller();
   select * into d from event_documents where id = p_document;
   if d.id is null then raise exception 'document_not_found' using errcode = 'P0002'; end if;
-  -- ADR-0081: the Completed Allocation Timesheet goes to the client with
+  -- ADR-0083: the Completed Allocation Timesheet goes to the client with
   -- the invoice, from Reports › Financial — a finance login's job.
   if d.kind = 'signout' then perform assert_finance_caller(); end if;
   -- The job's lock for this event and kind (ADR-0074): a manual Send and
@@ -77,7 +77,7 @@ begin
   if coalesce(array_length(v_client.contact_emails, 1), 0) = 0 then
     raise exception 'client_has_no_contact_email' using errcode = 'P0001';
   end if;
-  -- ADR-0081: not with a blank Finish Time and Hours Worked on it — the
+  -- ADR-0083: not with a blank Finish Time and Hours Worked on it — the
   -- manager resolves the No check-out first (RULE-02, §11.3).
   if d.kind = 'signout'
      and (select t.undetermined from event_document_tally(d.event_id) t) > 0 then
@@ -99,7 +99,7 @@ begin
 end $$;
 
 comment on function public.queue_event_document_email(uuid) is
-  '§11.4: queues one generated Allocation Timesheet (D1) or Completed Allocation Timesheet (D2) for email from timesheets@ to every contact email on the client card, with the PDF as a storage-path attachment. Keyed on the document, so it is idempotent per copy. Payload: event_document_email_payload() (ADR-0074 adds schedule, totalHours, documentName). ADR-0081: a D2 goes with the invoice, so only a finance login (assert_finance_caller) queues one, and never while a row prints blank Finish and Hours (timesheet_has_blank_hours).';
+  '§11.4: queues one generated Allocation Timesheet (D1) or Completed Allocation Timesheet (D2) for email from timesheets@ to every contact email on the client card, with the PDF as a storage-path attachment. Keyed on the document, so it is idempotent per copy. Payload: event_document_email_payload() (ADR-0074 adds schedule, totalHours, documentName). ADR-0083: a D2 goes with the invoice, so only a finance login (assert_finance_caller) queues one, and never while a row prints blank Finish and Hours (timesheet_has_blank_hours).';
 
 -- ---------------------------------------------------------------------
 -- 3 · The client sees a Completed Timesheet once it was sent, not before
@@ -123,7 +123,7 @@ select distinct on (d.event_id, d.kind)
  order by d.event_id, d.kind, d.generated_at desc;
 
 comment on view client_event_documents_v is
-  '§11.1/§11.2 downloads for the client whose event it is (client_portal_visible, ADR-0004): the latest Allocation Timesheet, and the latest Completed Allocation Timesheet THC has SENT — it goes with the invoice (ADR-0081), so an office Download never publishes one. No money column. Signed URLs are made server-side from storage_path.';
+  '§11.1/§11.2 downloads for the client whose event it is (client_portal_visible, ADR-0004): the latest Allocation Timesheet, and the latest Completed Allocation Timesheet THC has SENT — it goes with the invoice (ADR-0083), so an office Download never publishes one. No money column. Signed URLs are made server-side from storage_path.';
 
 -- ADR-0004 rule (d): SELECT to authenticated and nothing else, to anybody.
 revoke all on client_event_documents_v from public, anon, authenticated;
@@ -194,7 +194,7 @@ begin
 end $$;
 
 comment on function public.invoicing_timesheets(date, date) is
-  'ADR-0081: the Completed Allocation Timesheets that go to clients with the invoices — every finished, uncancelled event in the period with confirmed staff, its sheet tally (confirmed, undetermined = blank Finish/Hours from an unresolved No check-out, worked_min = Total Hours), the client''s contact-email count, and the latest queued Completed Timesheet (queued_at, sent_at, send_failed_at, automatic). Finance only (assert_finance_caller).';
+  'ADR-0083: the Completed Allocation Timesheets that go to clients with the invoices — every finished, uncancelled event in the period with confirmed staff, its sheet tally (confirmed, undetermined = blank Finish/Hours from an unresolved No check-out, worked_min = Total Hours), the client''s contact-email count, and the latest queued Completed Timesheet (queued_at, sent_at, send_failed_at, automatic). Finance only (assert_finance_caller).';
 
 revoke all on function public.invoicing_timesheets(date, date) from public, anon;
 grant execute on function public.invoicing_timesheets(date, date) to authenticated, service_role;

@@ -333,9 +333,9 @@ interface ReasonCopy {
 }
 
 /**
- * The live hard gates, as §3.3 names them. `wrong_role`, `male_only` and
- * `female_only` are absent on purpose: they never produce a row on the
- * board (§6, ADR-0079).
+ * The live hard gates, as §3.3 names them. `wrong_role`, `male_only`,
+ * `female_only` and `language_not_spoken` are absent on purpose: they never
+ * produce a row on the board (§6, ADR-0079, ADR-0080).
  */
 export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
   // ADR-0079: a gender-only role section and a worker with no gender on file.
@@ -343,6 +343,14 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
     label: 'Gender not recorded',
     detail:
       'the client asked for staff of one gender on this role and theirs is not on file — record it on their staff profile',
+    tone: 'amber',
+  },
+  // ADR-0080: an event that needs a language besides English, and a worker
+  // who was never asked which languages they speak.
+  languages_not_recorded: {
+    label: 'Languages not recorded',
+    detail:
+      'this event needs a language besides English and theirs are not on file — record them on their staff profile',
     tone: 'amber',
   },
   blocked: {
@@ -475,6 +483,7 @@ const UNKNOWN_CAUSE: ReasonCopy = {
 /** Structural reasons first, the way §3.3 lists them; then the booking causes. */
 const REASON_ORDER = [
   'gender_not_recorded',
+  'languages_not_recorded',
   'blocked',
   'booked_elsewhere',
   'hours_limit',
@@ -689,6 +698,8 @@ const INVITE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   male_only: ACCEPT_APPLICATION_REFUSAL_COPY.male_only,
   female_only: ACCEPT_APPLICATION_REFUSAL_COPY.female_only,
   gender_not_recorded: ACCEPT_APPLICATION_REFUSAL_COPY.gender_not_recorded,
+  language_not_spoken: ACCEPT_APPLICATION_REFUSAL_COPY.language_not_spoken,
+  languages_not_recorded: ACCEPT_APPLICATION_REFUSAL_COPY.languages_not_recorded,
   do_not_return: ACCEPT_APPLICATION_REFUSAL_COPY.do_not_return,
   blocked: ACCEPT_APPLICATION_REFUSAL_COPY.blocked,
   self_cancelled: ACCEPT_APPLICATION_REFUSAL_COPY.self_cancelled,
@@ -982,7 +993,11 @@ export function roleBlockOpen(
 /** An open offer on a confirmed booking, as the board reads `shift_offers`. */
 export interface BoardOffer {
   offerId: string;
-  /** `pool` / `direct`: offered to workers. `office`: a cover request. */
+  /**
+   * `office`: a worker's cover request. `pool`: one the office opened to
+   * other workers — a worker cannot offer a shift themselves (THC,
+   * 02.10.2026). `direct` is never built.
+   */
   mode: 'pool' | 'office' | 'direct';
   expiresAt: string;
   note: string | null;
@@ -991,8 +1006,9 @@ export interface BoardOffer {
 /**
  * The chip on a Confirmed row. The worker is still confirmed — fill, the
  * buffer and the client's line-up are unchanged — so it is a chip, never a
- * move to another list: "Offered up · until Sat 20 Sep, 16:00 UK", or
- * "Asked for cover: {note}".
+ * move to another list: "Asked for cover: {note}", then, once the
+ * office has opened it to the pool, "Open to pool · until Sat 20 Sep,
+ * 16:00 UK".
  */
 export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'amber' } {
   if (offer.mode === 'office') {
@@ -1001,7 +1017,7 @@ export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'a
   }
   const at = new Date(offer.expiresAt);
   const day = formatDateIn(at, UK_ZONE, { weekday: 'short' });
-  return { label: `Offered up · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
+  return { label: `Open to pool · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
 }
 
 /** A completed hand-over on one role section. */

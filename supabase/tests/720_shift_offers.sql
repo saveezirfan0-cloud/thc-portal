@@ -1,21 +1,21 @@
 -- =====================================================================
 -- 720 · Offer up a shift — offer, withdraw, lapse (ADR-0046, docs/19 §4)
---   20260930201100_shift_offers.sql
+--   20260930201100_shift_offers.sql, 20261002110000_no_worker_shift_offers.sql
 --
 --   A · who may call the worker RPCs: a worker, never the office, and
 --       never a leaver, a rejected candidate or a removed account
 --       (20260930205000: staff_caller(), 20260930202000's error shape)
---   B · offer_shift(): the worker stays confirmed; the refusals too_late
---       (at exactly 72 h — RULE-04's boundary), auto_assign_off (role or
---       event switch), already_offered, not_confirmed, event_cancelled
---   C · withdraw_shift_offer(): own offer only, once
+--   B · a worker cannot offer a shift to other workers (THC, 02.10.2026;
+--       20261002110000): offer_shift() is gone, and more than 72 h out
+--       with auto-assign on request_cover() says use_cancel (RULE-04)
+--   C · withdraw_shift_offer(): own request only, once
 --   D · bookings_offer_lapse: every other exit from confirmed lapses the
 --       open offer, silently, with the cause as closed_reason
 --
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(43);
+select plan(38);
 \ir _shared/fixtures.psql
 
 \set ev      '67000000-0000-4000-8000-000000000001'
@@ -144,14 +144,15 @@ update events set cancelled_at = now(), cancel_reason = 'fixture' where id = :'e
 -- =====================================================================
 -- A · who may call it
 -- =====================================================================
-select ok(not has_function_privilege('anon', 'public.offer_shift(uuid)', 'execute')
-          and not has_function_privilege('anon', 'public.withdraw_shift_offer(uuid)', 'execute')
+select hasnt_function('public', 'offer_shift', array['uuid'],
+  'A: there is no offer_shift() — a worker cannot offer a shift to other workers (THC, 02.10.2026)');
+select ok(not has_function_privilege('anon', 'public.withdraw_shift_offer(uuid)', 'execute')
           and not has_function_privilege('anon', 'public.request_cover(uuid, text)', 'execute')
           and not has_function_privilege('anon', 'public.take_offered_shift(uuid)', 'execute')
           and not has_function_privilege('anon', 'public.staff_open_offers(uuid)', 'execute')
           and not has_function_privilege('anon', 'public.staff_booking_offers()', 'execute'),
   'A: anon can call none of the worker offer RPCs');
-select ok(has_function_privilege('authenticated', 'public.offer_shift(uuid)', 'execute')
+select ok(has_function_privilege('authenticated', 'public.request_cover(uuid, text)', 'execute')
           and has_function_privilege('authenticated', 'public.take_offered_shift(uuid)', 'execute'),
   'A: a signed-in worker can; the checks inside are the gate');
 select ok(not has_function_privilege('authenticated', 'public.bookings_offer_lapse()', 'execute')
@@ -160,119 +161,108 @@ select ok(not has_function_privilege('authenticated', 'public.bookings_offer_lap
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'unknown_staff',
-  'A: the office cannot offer a worker''s shift for them (Invariant 4)');
+select throws_ok(format($$ select request_cover(%L) $$, :'b_edge'), 'P0001', 'unknown_staff',
+  'A: the office cannot ask for cover on a worker''s behalf (Invariant 4)');
 reset role;
 
 -- The caller is refused by who they are before anything is looked up, in
 -- 20260930202000's shape.
 select set_config('request.jwt.claims', json_build_object('sub', :'ulv', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'not_editable',
-  'A: a leaver cannot offer a shift');
+select throws_ok(format($$ select request_cover(%L) $$, :'b_edge'), 'P0001', 'not_editable',
+  'A: a leaver cannot ask for cover');
 select throws_ok(format($$ select withdraw_shift_offer(%L) $$, gen_random_uuid()), 'P0001', 'not_editable',
   'A: nor withdraw an offer');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'urj', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'not_editable',
-  'A: a rejected candidate cannot offer a shift');
+select throws_ok(format($$ select request_cover(%L) $$, :'b_edge'), 'P0001', 'not_editable',
+  'A: a rejected candidate cannot ask for cover');
 select throws_ok(format($$ select take_offered_shift(%L) $$, gen_random_uuid()), 'P0001', 'not_editable',
-  'A: nor take one');
+  'A: nor take a shift');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'urm', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'account_closed',
-  'A: a removed account cannot offer a shift');
+select throws_ok(format($$ select request_cover(%L) $$, :'b_edge'), 'P0001', 'account_closed',
+  'A: a removed account cannot ask for cover');
 select throws_ok(format($$ select withdraw_shift_offer(%L) $$, gen_random_uuid()), 'P0001', 'account_closed',
   'A: nor withdraw an offer');
 select throws_ok(format($$ select take_offered_shift(%L) $$, gen_random_uuid()), 'P0001', 'account_closed',
-  'A: nor take one');
+  'A: nor take a shift');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'u2', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), '42501', 'not_your_booking',
+select throws_ok(format($$ select request_cover(%L) $$, :'b_edge'), '42501', 'not_your_booking',
   'A: nor can another worker');
 reset role;
 
 -- =====================================================================
--- B · offer_shift()
+-- B · no worker offer to other workers (THC, 02.10.2026)
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'u1', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is(offer_shift(:'b_far') ->> 'ok', 'true', 'B: Olly offers his confirmed shift twelve days out');
-select is(offer_shift(:'b_far'), jsonb_build_object('ok', false, 'reason', 'already_offered'),
-  'B: one open offer per booking');
-select is(offer_shift(:'b_edge'), jsonb_build_object('ok', false, 'reason', 'too_late'),
-  'B: at exactly 72 hours it is gone — the Cancel shift boundary (RULE-04)');
-select is(offer_shift(:'b_roff'), jsonb_build_object('ok', false, 'reason', 'auto_assign_off'),
-  'B: the role''s auto-assign is off: ask the office instead');
-select is(offer_shift(:'b_eoff'), jsonb_build_object('ok', false, 'reason', 'auto_assign_off'),
-  'B: the event''s auto-assign is off: the same');
-select is(offer_shift(:'b_inv'), jsonb_build_object('ok', false, 'reason', 'not_confirmed'),
-  'B: an invitation is not a shift to offer');
-select is(offer_shift(:'b_x'), jsonb_build_object('ok', false, 'reason', 'event_cancelled'),
-  'B: nor a shift on a cancelled event');
+select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), '42883', null,
+  'B: Olly cannot offer his shift twelve days out — the RPC is gone');
+select is(request_cover(:'b_far'), jsonb_build_object('ok', false, 'reason', 'use_cancel'),
+  'B: nor route it through the office: more than 72 h out with auto-assign on, Cancel shift is the tool (RULE-04)');
 reset role;
-
 select set_config('request.jwt.claims', json_build_object('sub', :'u2', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is(offer_shift(:'b_plus') ->> 'ok', 'true',
-  'B: 72 hours and one second out, Olga can still offer hers');
+select is(request_cover(:'b_plus'), jsonb_build_object('ok', false, 'reason', 'use_cancel'),
+  'B: 72 hours and one second out is still Cancel shift''s side of the boundary');
+reset role;
+select set_config('request.jwt.claims', '', true);
+
+select is((select count(*)::int from shift_offers where booking_id in (:'b_far', :'b_plus')), 0,
+  'B: nothing was written');
+select is((select status::text from bookings where id = :'b_far'), 'confirmed',
+  'B: and Olly is still confirmed');
+
+-- =====================================================================
+-- C · withdraw_shift_offer() on a cover request
+-- =====================================================================
+select set_config('request.jwt.claims', json_build_object('sub', :'u1', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(request_cover(:'b_edge') ->> 'ok', 'true',
+  'C: at exactly 72 hours Olly asks the office for cover instead');
+select is(request_cover(:'b_roff') ->> 'ok', 'true',
+  'C: and on a hand-picked role at any distance');
+select is(request_cover(:'b_inv'), jsonb_build_object('ok', false, 'reason', 'not_confirmed'),
+  'C: an invitation is not a shift to ask cover for');
+select is(request_cover(:'b_x'), jsonb_build_object('ok', false, 'reason', 'event_cancelled'),
+  'C: nor a shift on a cancelled event');
 reset role;
 select set_config('request.jwt.claims', '', true);
 
 select is(
   (select array[mode, status, shift_id::text, offered_by_staff_id::text]
-     from shift_offers where booking_id = :'b_far'),
-  array['pool', 'open', :'s_far', :'o1'],
-  'B: an open pool offer on the booking''s own section, by its own worker');
-select is((select expires_at from shift_offers where booking_id = :'b_far'),
-  (select starts_at - interval '72 hours' from shift_requirements where id = :'s_far'),
-  'B: it closes at the section start − 72 h (offerExpiresAt)');
-select is((select status::text from bookings where id = :'b_far'), 'confirmed',
-  'B: Olly stays confirmed until somebody takes it');
-select is((select confirmed from shift_fill(:'s_far')), 1,
-  'B: and the fill is unchanged — 1 of 2 (+1), counting only confirmed');
-select is((select count(*)::int from audit_log
-            where action = 'shift_offer.offered'
-              and entity_id = (select id from shift_offers where booking_id = :'b_far')
-              and actor = :'u1'::uuid), 1,
-  'B: the offer is audited against the worker who made it');
-select is((select count(*)::int from notification_outbox
-            where template like 'OF%' and payload ->> 'offerId' =
-                  (select id::text from shift_offers where booking_id = :'b_far')), 0,
-  'B: nothing is pushed at once — OF1 goes out in the hourly rounds');
-select is((select count(*)::int from shift_offers where booking_id in (:'b_edge', :'b_roff', :'b_eoff', :'b_inv', :'b_x')), 0,
-  'B: no refusal wrote an offer');
+     from shift_offers where booking_id = :'b_edge'),
+  array['office', 'open', :'s_edge', :'o1'],
+  'C: a cover request is an office offer on the booking''s own section — never a pool offer');
 
--- =====================================================================
--- C · withdraw_shift_offer()
--- =====================================================================
-select id as offer_far from shift_offers where booking_id = :'b_far' \gset
+select id as offer_edge from shift_offers where booking_id = :'b_edge' \gset
 
 select set_config('request.jwt.claims', json_build_object('sub', :'u2', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select withdraw_shift_offer(%L) $$, :'offer_far'), '42501', 'not_your_offer',
-  'C: only the worker who offered it can withdraw it');
+select throws_ok(format($$ select withdraw_shift_offer(%L) $$, :'offer_edge'), '42501', 'not_your_offer',
+  'C: only the worker who asked can withdraw it');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'u1', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is(withdraw_shift_offer(:'offer_far'), jsonb_build_object('ok', true), 'C: Olly withdraws his offer');
-select is(withdraw_shift_offer(:'offer_far') ->> 'reason', 'offer_not_open', 'C: once');
-select is(offer_shift(:'b_far') ->> 'ok', 'true', 'C: and may offer it again — a new offer');
+select is(withdraw_shift_offer(:'offer_edge'), jsonb_build_object('ok', true), 'C: Olly withdraws his request');
+select is(withdraw_shift_offer(:'offer_edge') ->> 'reason', 'offer_not_open', 'C: once');
 reset role;
 select set_config('request.jwt.claims', '', true);
 
 select is(
-  (select array[status, closed_reason] from shift_offers where id = :'offer_far'),
-  array['withdrawn', 'withdrawn_by_worker'], 'C: the first is withdrawn');
-select ok((select closed_at is not null from shift_offers where id = :'offer_far'),
+  (select array[status, closed_reason] from shift_offers where id = :'offer_edge'),
+  array['withdrawn', 'withdrawn_by_worker'], 'C: it is withdrawn');
+select ok((select closed_at is not null from shift_offers where id = :'offer_edge'),
   'C: and stamped closed by the state guard');
-select is((select count(*)::int from shift_offers where booking_id = :'b_far' and status = 'open'), 1,
-  'C: the second is the one open offer');
+select is((select status::text from bookings where id = :'b_edge'), 'confirmed',
+  'C: Olly stayed confirmed throughout');
 
 -- =====================================================================
 -- D · bookings_offer_lapse: any other exit from confirmed
@@ -333,6 +323,8 @@ select is((select count(*)::int from notification_outbox where key = 'E10:bookin
   'D: the self-cancel still sent the office its E10');
 
 -- A booking that stays confirmed keeps its offer.
+insert into shift_offers (booking_id, mode, expires_at)
+select :'b_far', 'office', starts_at from shift_requirements where id = :'s_far';
 update bookings set day_before_confirmed_at = now() where id = :'b_far';
 select is((select count(*)::int from shift_offers where booking_id = :'b_far' and status = 'open'), 1,
   'D: an update that leaves the booking confirmed does not touch its offer');

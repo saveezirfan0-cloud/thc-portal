@@ -35,6 +35,21 @@ export async function loadHmrcGender(staffId: string): Promise<HmrcGender | null
   return gender === 'M' || gender === 'F' ? gender : null;
 }
 
+/**
+ * The languages already on the caller's row (step 2 re-opened, ADR-0080),
+ * through the worker's own-row read. Null when never answered or
+ * unreadable — the step then starts from English alone.
+ */
+export async function loadLanguages(staffId: string): Promise<string[] | null> {
+  if (!supabaseConfigured() || !staffId) return null;
+  const supabase = staffDb(await cookies());
+  const { data } = await supabase.from('staff').select('languages').eq('id', staffId).maybeSingle();
+  const languages = (data as { languages?: unknown } | null)?.languages;
+  return Array.isArray(languages)
+    ? languages.filter((l): l is string => typeof l === 'string')
+    : null;
+}
+
 export interface QuizQuestion {
   id: string;
   n: number;

@@ -131,6 +131,9 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'staff.dob_claimed_with_share_code': 'Entered a different date of birth with a share code',
   // ADR-0079. The value itself is not logged.
   'staff.gender_set': 'Recorded gender',
+  // ADR-0080. The value itself is not logged.
+  'staff.languages_set': 'Recorded languages',
+  'staff.languages_saved': 'Gave their languages',
   'document.uploaded': 'Uploaded document',
   'wtr_optout.signed': 'Signed 48-hour opt-out',
   'wtr_optout.cancelled': 'Cancelled 48-hour opt-out',
@@ -139,6 +142,8 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'booking.application_accepted': 'Accepted shift application',
   'event.cancelled': 'Cancelled event',
   'event.message_sent': 'Messaged the line-up',
+  // ADR-0082: Send push from a worker's profile.
+  'staff.message_sent': 'Sent a push to the worker',
   do_not_return_on: 'Marked do not return',
   do_not_return_off: 'Cleared do not return',
   'profile.updated': 'Updated own profile',

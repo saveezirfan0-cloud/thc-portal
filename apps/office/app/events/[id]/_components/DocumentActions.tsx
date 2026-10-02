@@ -8,7 +8,7 @@ type Kind = 'allocation' | 'signout';
 /**
  * ADR-0074 (THC, 29.09.2026): the product's names for the two states. No
  * `send` = not sent from here: the Completed Timesheet goes with the
- * invoice, from Reports › Financial (ADR-0081).
+ * invoice, from Reports › Financial (ADR-0083).
  */
 const LABEL: Record<Kind, { send?: string; download: string; noun: string }> = {
   allocation: {
@@ -30,15 +30,28 @@ const LABEL: Record<Kind, { send?: string; download: string; noun: string }> = {
  * The Allocation Timesheet also goes automatically (ADR-0074); the page
  * says when, under these.
  *
- * The Completed Timesheet has no Send here (ADR-0081): it goes to the
+ * The Completed Timesheet has no Send here (ADR-0083): it goes to the
  * client with the invoice, from Reports › Financial, and the line under
  * the buttons says so. Downloading it publishes nothing.
  *
  * The document is drawn by /api/documents (packages/pdf), sent from
  * timesheets@ to the contact emails on the client card. No time restriction
  * (§11.3). Not rendered for a cancelled event — there is no document (§3.3).
+ *
+ * ADR-0081: for a client with name badges on, the Allocation Timesheet
+ * email carries the badges too, the confirmation says so, and "Download
+ * Name Badges" gives the office the same PDF.
  */
-export function DocumentActions({ eventId, started }: { eventId: string; started: boolean }) {
+export function DocumentActions({
+  eventId,
+  started,
+  nameBadges = false,
+}: {
+  eventId: string;
+  started: boolean;
+  /** The client card's Name badges switch (ADR-0081). */
+  nameBadges?: boolean;
+}) {
   const kinds: Kind[] = started ? ['allocation', 'signout'] : ['allocation'];
   const [confirming, setConfirming] = useState<Kind | null>(null);
   const [result, setResult] = useState<{ tone: 'green' | 'coral'; text: string } | null>(null);
@@ -56,6 +69,7 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
         error?: string;
         recipients?: string[];
         pages?: number;
+        badges?: number;
       };
       if (!response.ok || body.error) {
         setResult({
@@ -65,9 +79,12 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
         return;
       }
       setConfirming(null);
+      const badges = body.badges ?? 0;
+      const withBadges =
+        badges > 0 ? `, with ${badges} name ${badges === 1 ? 'badge' : 'badges'},` : '';
       setResult({
         tone: 'green',
-        text: `The ${LABEL[kind].noun} (${body.pages ?? 1} ${body.pages === 1 ? 'page' : 'pages'}) is queued from timesheets@ to ${(body.recipients ?? []).join(', ')}.`,
+        text: `The ${LABEL[kind].noun} (${body.pages ?? 1} ${body.pages === 1 ? 'page' : 'pages'})${withBadges} is queued from timesheets@ to ${(body.recipients ?? []).join(', ')}.`,
       });
     });
   }
@@ -84,6 +101,11 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
           <a className="btn sm" href={`/api/documents/${eventId}?kind=${kind}`}>
             {LABEL[kind].download}
           </a>
+          {kind === 'allocation' && nameBadges ? (
+            <a className="btn sm" href={`/api/documents/${eventId}/badges`}>
+              Download Name Badges
+            </a>
+          ) : null}
         </span>
       ))}
 
@@ -114,6 +136,9 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
               A fresh {LABEL[confirming].noun} goes, as one PDF for the whole event with the PO
               number on it, from <b>timesheets@thehospitalitycompany.co.uk</b> to every contact
               email on the client card.
+              {confirming === 'allocation' && nameBadges
+                ? ' The name badges for everyone on it go in the same email, as a second PDF to print and cut out.'
+                : ''}
             </p>
           ) : null}
         </div>

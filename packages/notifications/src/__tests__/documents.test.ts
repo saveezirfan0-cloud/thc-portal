@@ -170,3 +170,69 @@ describe('the drain can tell the two registers apart', () => {
     }
   });
 });
+
+/** ADR-0081: the D1 row for a client with name badges on, as 769 pgTAP writes it. */
+describe('D1 with name badges (ADR-0081)', () => {
+  const withBadges = (count: number) =>
+    d1({
+      payload: {
+        ...(d1().payload as Record<string, unknown>),
+        nameBadges: String(count),
+        attachments: JSON.stringify([
+          {
+            bucket: 'timesheets',
+            path: 'ev-1/allocation/x.pdf',
+            filename: "Leonardo Hotel St Paul's M and E – Gala Dinner.pdf",
+          },
+          {
+            bucket: 'timesheets',
+            path: 'ev-1/badges/x.pdf',
+            filename: "Leonardo Hotel St Paul's M and E – Gala Dinner – Name Badges.pdf",
+            role: 'badges',
+          },
+        ]),
+      },
+    });
+
+  it('attaches the Allocation Timesheet and the badges, in that order', () => {
+    const message = documentMessageFor(withBadges(17));
+    expect(message.attachments.map((a) => a.path)).toEqual([
+      'ev-1/allocation/x.pdf',
+      'ev-1/badges/x.pdf',
+    ]);
+    expect(message.attachments[1]!.role).toBe('badges');
+    expect(message.attachments[0]!.role).toBeUndefined();
+  });
+
+  it('says so in the text and the HTML, with the count', () => {
+    const message = documentMessageFor(withBadges(17));
+    const line =
+      'Their THC name badges are attached too, as a second PDF: print them, cut along the dashed lines and slide each one into a badge holder.';
+    expect(message.body).toContain(line);
+    expect(message.html).toContain(line);
+    expect(message.html).toContain('Name badges · 17 to print');
+    // The count is in the facts box.
+    expect(message.html).toMatch(/Name badges<\/td>[\s\S]*?>17</);
+    // The sheet's own card keeps the template's note.
+    expect(message.html).toContain('Allocation Timesheet · attached');
+    expect(message.subject).toBe(
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+    );
+  });
+
+  it('says it in the singular for one badge', () => {
+    expect(documentMessageFor(withBadges(1)).body).toContain(
+      'Their THC name badge is attached too, as a second PDF: print it, cut along the dashed lines and slide it into a badge holder.',
+    );
+  });
+
+  it('says nothing about badges for a client without them, or a row from before them', () => {
+    for (const row of [d1(), d1({ payload: { ...(d1().payload as object), nameBadges: '' } })]) {
+      const message = documentMessageFor(row);
+      expect(message.body).not.toContain('badge');
+      expect(message.html).not.toContain('badge');
+      expect(message.attachments).toHaveLength(1);
+      expect(message.attachments[0]!.role).toBeUndefined();
+    }
+  });
+});
