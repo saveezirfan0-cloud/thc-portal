@@ -3,13 +3,12 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const refresh = vi.hoisted(() => vi.fn());
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
+import { useVisibleInterval } from '../components/AutoRefresh';
 
-import { useAutoRefresh } from '../useAutoRefresh';
+const refresh = vi.fn();
 
 function Probe() {
-  useAutoRefresh(30_000);
+  useVisibleInterval(refresh, 30_000);
   return null;
 }
 
@@ -34,7 +33,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('useAutoRefresh', () => {
+describe('useVisibleInterval', () => {
   it('re-reads the page every interval while the tab is visible', () => {
     vi.advanceTimersByTime(29_000);
     expect(refresh).not.toHaveBeenCalled();

@@ -117,3 +117,5 @@ export {
   useAppearance,
 } from './components/Appearance';
 export type { Mode } from './components/Appearance';
+
+export { useVisibleInterval } from './components/AutoRefresh';
