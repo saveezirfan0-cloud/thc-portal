@@ -11,7 +11,7 @@
 -- and the job_schedules row.
 -- =====================================================================
 begin;
-select plan(101);
+select plan(112);
 \ir _shared/fixtures.psql
 
 -- Sat 11 Jul 2026 (BST): 07:00 → 22:30 UK, six confirmed, two contacts,
@@ -33,7 +33,8 @@ returns text language sql as $$
     (p_changes->>'manual_at')::timestamptz,
     (p_changes->>'signout_at')::timestamptz,
     (p_changes->>'auto_at')::timestamptz,
-    coalesce((p_changes->>'attempts')::int, 0))
+    coalesce((p_changes->>'attempts')::int, 0),
+    coalesce((p_changes->>'unfilled')::int, 0))
 $$;
 
 -- =====================================================================
@@ -58,6 +59,16 @@ select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"confirmed":0}'), 'no
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"contacts":0}'), 'no_contact_emails', 'D1: no contact emails');
 select is(pg_temp.d('allocation', '2026-07-10 13:15+00', '{"auto_at":"2026-07-10T13:00:05Z"}'), 'already_sent', 'D1: at most once');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{}', '{"allocation":{"enabled":false}}'), 'disabled', 'D1: switched off in settings');
+-- ADR-0084: D1 waits for a full line-up
+select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"unfilled":1}'), 'not_filled', 'D1: one slot still empty — held');
+select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"unfilled":3}'), 'not_filled', 'D1: three slots still empty — held');
+select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"unfilled":0}'), 'due', 'D1: every section at its headcount — due');
+select is(pg_temp.d('allocation', '2026-07-10 22:45+00', '{"unfilled":1}'), 'not_filled', 'D1 catch-up: still held while a gap is open…');
+select is(pg_temp.d('allocation', '2026-07-10 22:45+00', '{"unfilled":0}'), 'due', '…and goes on the first run after it fills');
+select is(pg_temp.d('allocation', '2026-07-11 06:00+00', '{"unfilled":1}'), 'too_late', 'D1: a gap does not outlive the first shift start');
+select is(pg_temp.d('allocation', '2026-07-10 12:59:59+00', '{"unfilled":2}'), 'not_yet', 'D1: not_yet wins over a gap');
+select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"unfilled":2,"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed wins over a gap');
+select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"unfilled":2}'), 'due', 'D2: a gap never holds the Completed Allocation Timesheet');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":7}'), 'due', 'D1: seven spent claims, still due');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":8}'), 'gave_up', 'D1: eight spent claims — gave_up');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"attempts":8}'), 'gave_up', 'D2: eight spent claims — gave_up');
@@ -164,6 +175,7 @@ language sql immutable as $$ select (p_day + p_time::time) at time zone 'Europe/
 \set ev_race '75900000-0000-4000-8000-000000000003'
 \set ev_past '75900000-0000-4000-8000-000000000004'
 \set ev_gu   '75900000-0000-4000-8000-000000000005'
+\set ev_gap  '75900000-0000-4000-8000-000000000006'
 \set sec_c   '75910000-0000-4000-8000-000000000001'
 \set sec_w   '75910000-0000-4000-8000-000000000002'
 \set sec_off '75910000-0000-4000-8000-000000000003'
@@ -171,6 +183,7 @@ language sql immutable as $$ select (p_day + p_time::time) at time zone 'Europe/
 \set sec_pc  '75910000-0000-4000-8000-000000000005'
 \set sec_pw  '75910000-0000-4000-8000-000000000006'
 \set sec_gu  '75910000-0000-4000-8000-000000000007'
+\set sec_gap '75910000-0000-4000-8000-000000000008'
 \set r_c     '75920000-0000-4000-8000-000000000001'
 \set r_w     '75920000-0000-4000-8000-000000000002'
 \set p_1     '75930000-0000-4000-8000-000000000001'
@@ -190,6 +203,7 @@ language sql immutable as $$ select (p_day + p_time::time) at time zone 'Europe/
 \set b_5     '75940000-0000-4000-8000-000000000007'
 \set b_6     '75940000-0000-4000-8000-000000000008'
 \set b_gu    '75940000-0000-4000-8000-000000000009'
+\set b_gap   '75940000-0000-4000-8000-00000000000a'
 
 insert into roles (id, name, description, pay_rate) values
   (:'r_c', 'Auto Chef', 'fixture', 19.00),
@@ -212,7 +226,8 @@ select x.id::uuid, :'clienta'::uuid, 'Auto Venue', '1 Auto St',
                (:'ev_off',  'Called Off',   :'today'::date + 1, null),
                (:'ev_race', 'Race Lunch',   :'today'::date + 1, null),
                (:'ev_past', 'Past Gala',    :'today'::date - 2, '4471-B'),
-               (:'ev_gu',   'Given Up',     :'today'::date - 2, null)) as x(id, title, day, po);
+               (:'ev_gu',   'Given Up',     :'today'::date - 2, null),
+               (:'ev_gap',  'Half Staffed', :'today'::date + 1, null)) as x(id, title, day, po);
 
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour)
@@ -223,7 +238,9 @@ select x.id::uuid, x.ev::uuid, x.role::uuid, pg_temp.uk(x.day, x.s), pg_temp.uk(
                (:'sec_r',   :'ev_race', :'r_w', :'today'::date + 1, '08:00', '12:00', 1),
                (:'sec_pw',  :'ev_past', :'r_w', :'today'::date - 2, '17:00', '23:30', 2),
                (:'sec_pc',  :'ev_past', :'r_c', :'today'::date - 2, '07:00', '15:00', 1),
-               (:'sec_gu',  :'ev_gu',   :'r_w', :'today'::date - 2, '09:00', '13:00', 1))
+               (:'sec_gu',  :'ev_gu',   :'r_w', :'today'::date - 2, '09:00', '13:00', 1),
+               -- ADR-0084: two slots, one confirmed — the line-up has a gap.
+               (:'sec_gap', :'ev_gap',  :'r_w', :'today'::date + 1, '18:00', '23:30', 2))
        as x(id, ev, role, day, s, e, n);
 
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
@@ -236,7 +253,8 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) valu
   (:'b_4',   :'sec_pc',  :'p_4', 'worked',    'manual', now() - interval '9 days'),
   (:'b_5',   :'sec_pw',  :'p_5', 'worked',    'manual', now() - interval '9 days'),
   (:'b_6',   :'sec_pw',  :'p_6', 'worked',    'manual', now() - interval '9 days'),
-  (:'b_gu',  :'sec_gu',  :'p_7', 'worked',    'manual', now() - interval '9 days');
+  (:'b_gu',  :'sec_gu',  :'p_7', 'worked',    'manual', now() - interval '9 days'),
+  (:'b_gap', :'sec_gap', :'p_7', 'confirmed', 'manual', now() - interval '7 days');
 update events set cancelled_at = now() - interval '1 day', cancel_reason = 'client cancelled' where id = :'ev_off';
 
 insert into check_logs (booking_id, attempted_at, outcome, check_in_at, check_out_at) values
@@ -262,9 +280,14 @@ select is((select verdict from event_documents_due(pg_temp.uk(:'today'::date, '0
             where kind = 'allocation'), 'not_yet',
   'a second before the day before begins: not yet');
 select results_eq(
-  format($$ select verdict, confirmed, contacts from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev'),
-  $$ values ('due'::text, 3, 1) $$,
-  'on the day before: due — three confirmed, one contact email');
+  format($$ select verdict, confirmed, contacts, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev'),
+  $$ values ('due'::text, 3, 1, 0) $$,
+  'on the day before: due — three confirmed, one contact email, every section at its headcount');
+select results_eq(
+  format($$ select verdict, confirmed, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev_gap'),
+  $$ values ('not_filled'::text, 1, 1) $$,
+  'one of two slots confirmed: held as not_filled, one slot unfilled (ADR-0084)');
+select ok(not event_document_autosend_claim(:'ev_gap', 'allocation'), 'and a half-staffed event cannot be claimed');
 select ok(exists (select 1 from event_documents_due(now()) where event_id = :'ev' and kind = 'allocation'),
   'without an event id, tomorrow''s event is among the candidates');
 select is((select verdict from event_documents_due(now(), :'ev_off') where kind = 'allocation'), 'cancelled',

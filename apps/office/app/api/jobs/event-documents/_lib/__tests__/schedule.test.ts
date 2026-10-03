@@ -100,6 +100,31 @@ describe('D1 · Allocation Timesheet, the day before at 14:00 UK', () => {
     );
   });
 
+  it('waits for a full line-up: any role section short of its headcount holds it (ADR-0084)', () => {
+    expect(d1({ unfilled: 1 }, '2026-07-10T13:00:00Z')).toBe('not_filled');
+    expect(d1({ unfilled: 3 }, '2026-07-10T13:00:00Z')).toBe('not_filled');
+    expect(d1({ unfilled: 0 }, '2026-07-10T13:00:00Z')).toBe('due');
+    // Facts from before the column existed read as full, not as held.
+    expect(d1({ unfilled: undefined }, '2026-07-10T13:00:00Z')).toBe('due');
+  });
+
+  it('…and goes on the first run after the last gap fills, until the first shift starts', () => {
+    expect(d1({ unfilled: 1 }, '2026-07-10T22:45:00Z')).toBe('not_filled');
+    expect(d1({ unfilled: 0 }, '2026-07-10T22:45:00Z')).toBe('due');
+    expect(d1({ unfilled: 0 }, '2026-07-11T05:59:00Z')).toBe('due');
+    expect(d1({ unfilled: 1 }, '2026-07-11T06:00:00Z')).toBe('too_late');
+  });
+
+  it('not-yet and the earlier skips still win over a gap', () => {
+    expect(d1({ unfilled: 2 }, '2026-07-10T12:59:59Z')).toBe('not_yet');
+    expect(d1({ unfilled: 2, confirmed: 0 }, '2026-07-10T13:00:00Z')).toBe('no_confirmed_staff');
+    expect(d1({ unfilled: 2, cancelled: true }, '2026-07-10T13:00:00Z')).toBe('cancelled');
+  });
+
+  it('never holds the Completed Allocation Timesheet (the work is done)', () => {
+    expect(d2({ unfilled: 2 }, '2026-07-12T09:00:00Z')).toBe('due');
+  });
+
   it('gives up after eight spent claims — a fault never retries for ever', () => {
     expect(d1({ attempts: 7 }, '2026-07-10T13:00:00Z')).toBe('due');
     expect(d1({ attempts: 8 }, '2026-07-10T13:00:00Z')).toBe('gave_up');
@@ -253,7 +278,7 @@ describe('the hint under the event page buttons', () => {
   it('says when the automatic send happens, and when it happened (UK)', () => {
     const idle = { sentAt: null, started: false, ended: false };
     expect(autosendHint('allocation', CONFIG, idle)).toBe(
-      'Sent automatically the day before at 14:00 (UK time)',
+      'Sent automatically the day before at 14:00 (UK time), once every role is fully confirmed',
     );
     expect(autosendHint('allocation', CONFIG, { ...idle, sentAt: '2026-09-28T13:00:04Z' })).toBe(
       'Allocation Timesheet sent automatically 28/09 14:00',

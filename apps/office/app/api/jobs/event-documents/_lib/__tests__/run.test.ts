@@ -72,6 +72,19 @@ describe('one run of the event-documents job', () => {
     expect(logs[0]).toContain('SQL says due, TypeScript not_yet');
   });
 
+  it('does not draw or claim an Allocation Timesheet for a half-staffed event (ADR-0084)', async () => {
+    const { deps, calls } = harness([row({ unfilled: 2, verdict: 'not_filled' })]);
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([]);
+    expect(counts.due).toBe(0);
+    expect(counts.verdicts.allocation).toEqual({ not_filled: 1 });
+    expect(counts.disagreements).toBe(0);
+    // Once the last slot is confirmed the same row goes out.
+    const full = harness([row({ unfilled: 0 })]);
+    await runAutosend(full.deps);
+    expect(full.calls[0]).toBe('claim allocation ev-1');
+  });
+
   it('records the reason for a skip in the counts and the log, without failing the run', async () => {
     const { deps, calls, logs } = harness([
       row({ event_id: 'ev-c', verdict: 'cancelled', cancelled: true }),

@@ -13,8 +13,10 @@ import { ukInstant } from '@thc/domain';
  *   D1 · the day before the event at `allocation.time` (14:00) UK — after
  *        the 12:00 "I'm ready" deadline and the 12:05 release — and any run
  *        after that until the first shift starts (an event created or
- *        filled late still gets one). Skipped if a manager queued a D1
- *        since 00:00 UK the day before.
+ *        filled late still gets one). Held while ANY role section is short
+ *        of its headcount (ADR-0084): the client is never sent a line-up
+ *        with gaps in it. Skipped if a manager queued a D1 since 00:00 UK
+ *        the day before.
  *   D2 · the morning after at `completed.time` (10:00) UK, never before the
  *        last shift's end + 4 h (every check-out window closed). Held while
  *        any row is still undetermined — an unresolved No check-out prints
@@ -40,6 +42,7 @@ export type AutosendVerdict =
   | 'no_confirmed_staff'
   | 'no_contact_emails'
   | 'manual_sent'
+  | 'not_filled'
   | 'held_no_checkout'
   | 'gave_up';
 
@@ -112,6 +115,13 @@ export interface AutosendFacts {
   contacts: number;
   /** Rows whose Finish/Hours would print blank (unresolved No check-out). */
   undetermined: number;
+  /**
+   * Headcount slots still empty, summed over the role sections: per
+   * section max(0, headcount − confirmed-or-worked). Buffer is not part of
+   * it (§3.2: the buffer is not the working headcount), and a section over
+   * its headcount cannot cover for one under it. 0 = the line-up is full.
+   */
+  unfilled?: number;
   /** Latest D1 a MANAGER queued (automatic copies excluded). */
   manualAllocationAt: string | null;
   /** Latest D2 queued by anyone. */
@@ -170,6 +180,7 @@ export function autosendVerdict(
     if (facts.confirmed === 0) return 'no_confirmed_staff';
     if (facts.contacts === 0) return 'no_contact_emails';
     if (manual !== null && manual >= dayBefore) return 'manual_sent';
+    if ((facts.unfilled ?? 0) > 0) return 'not_filled';
     if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
     return 'due';
   }
@@ -229,7 +240,7 @@ export function autosendHint(
     if (state.sentAt)
       return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
     if (!config.allocation.enabled || state.started) return null;
-    return `Sent automatically the day before at ${config.allocation.time} (UK time)`;
+    return `Sent automatically the day before at ${config.allocation.time} (UK time), once every role is fully confirmed`;
   }
   if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
   if (!config.completed.enabled) return null;

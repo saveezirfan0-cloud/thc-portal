@@ -29,6 +29,7 @@ export interface DueRow {
   confirmed: number;
   contacts: number;
   undetermined: number;
+  unfilled?: number | null;
   manual_allocation_at: string | null;
   signout_queued_at: string | null;
   auto_queued_at: string | null;
@@ -45,6 +46,7 @@ export function factsOf(row: DueRow): AutosendFacts {
     confirmed: Number(row.confirmed) || 0,
     contacts: Number(row.contacts) || 0,
     undetermined: Number(row.undetermined) || 0,
+    unfilled: Number(row.unfilled) || 0,
     manualAllocationAt: row.manual_allocation_at,
     signoutQueuedAt: row.signout_queued_at,
     autoQueuedAt: row.auto_queued_at,
