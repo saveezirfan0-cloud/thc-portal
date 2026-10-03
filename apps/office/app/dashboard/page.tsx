@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { ShortStaffedPanel } from './_components/ShortStaffedPanel';
 import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
@@ -74,6 +75,8 @@ export default async function Page() {
       }
     >
       <div className="stack">
+        {/* "As of this minute": the figures move on their own (§9.1). */}
+        <AutoRefresh />
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
         {/* ---- the four operational KPIs, on one row (§9.1) ---------- */}

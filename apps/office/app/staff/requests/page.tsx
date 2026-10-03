@@ -1,3 +1,4 @@
+import { AutoRefresh } from '../../_components/AutoRefresh';
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
 import { loadRequestsPage } from './data';
@@ -19,11 +20,14 @@ export const dynamic = 'force-dynamic';
 export default async function Page() {
   const [data, role] = await Promise.all([loadRequestsPage(), currentOfficeRole()]);
   return (
-    <RequestsScreen
-      pending={data.pending}
-      decided={data.decided}
-      problem={data.problem}
-      canDecideDob={officeCan(role, 'identity')}
-    />
+    <>
+      <AutoRefresh />
+      <RequestsScreen
+        pending={data.pending}
+        decided={data.decided}
+        problem={data.problem}
+        canDecideDob={officeCan(role, 'identity')}
+      />
+    </>
   );
 }

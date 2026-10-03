@@ -10,6 +10,7 @@ import {
   radarGroups,
   sectionHours,
 } from '@thc/domain';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
@@ -83,6 +84,7 @@ export default async function Page() {
         ? {}
         : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
+      <AutoRefresh />
       {problem ? (
         // Audit D18: a failed read is not "Nothing open nearby".
         <LoadProblem what="open shifts" />

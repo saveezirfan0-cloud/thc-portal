@@ -4,6 +4,7 @@ import { loadEvent } from '../../data';
 import { loadArrivals } from '../../arrivals';
 import { loadDocuments } from '../../documents';
 import { signLineupPhotos } from '../../photos';
+import { AutoRefresh } from '../../../_components/AutoRefresh';
 import { EventScreen } from './EventScreen';
 
 /**
@@ -30,14 +31,17 @@ export default async function ClientEventPage({ params }: { params: Promise<{ id
   ]);
 
   return (
-    <EventScreen
-      event={event}
-      sections={sections}
-      lineup={lineup}
-      photos={Object.fromEntries(signed)}
-      documents={documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
-      arrivals={arrivals[event.id]}
-      now={new Date().toISOString()}
-    />
+    <>
+      <AutoRefresh />
+      <EventScreen
+        event={event}
+        sections={sections}
+        lineup={lineup}
+        photos={Object.fromEntries(signed)}
+        documents={documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
+        arrivals={arrivals[event.id]}
+        now={new Date().toISOString()}
+      />
+    </>
   );
 }

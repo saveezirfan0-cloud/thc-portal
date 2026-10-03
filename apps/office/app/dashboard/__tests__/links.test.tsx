@@ -28,6 +28,7 @@ vi.mock('../../_components/OfficeShell', () => ({
   ),
 }));
 vi.mock('../_components/ViewerZone', () => ({ ViewerZone: () => null }));
+vi.mock('../../_components/AutoRefresh', () => ({ AutoRefresh: () => null }));
 vi.mock('../_components/UpcomingTable', () => ({ UpcomingTable: () => null }));
 vi.mock('../data', () => ({
   loadDashboard: async () => ({ kpis: null, finance: null, upcoming: [], problem: null }),

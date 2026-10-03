@@ -3,6 +3,7 @@ import { Alert, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { EventToolbar, hrefFor } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
 import { parseEventQuery } from './_lib/filters';
@@ -70,6 +71,8 @@ export default async function Page({
       }
     >
       <div className="stack">
+        {/* Fill moves as staff accept and the office books. */}
+        <AutoRefresh />
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}

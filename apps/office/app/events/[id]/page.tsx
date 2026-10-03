@@ -14,6 +14,7 @@ import {
   requiredLanguagesLabel,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { AutoRefresh } from '../../_components/AutoRefresh';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
@@ -152,6 +153,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
     >
       <div className="stack">
+        {/* Accepts, ready confirmations and check-ins arrive while the manager watches. */}
+        <AutoRefresh />
         {autosendLine ? (
           <div className="row">
             <span className="ml-auto xs muted">{autosendLine}</span>
