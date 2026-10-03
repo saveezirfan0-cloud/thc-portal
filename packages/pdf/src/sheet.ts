@@ -15,9 +15,8 @@
  *   · Header: logo + name · STAFF ALLOCATION · Date DD/MM/YYYY; PO Number.
  *   · Columns: Photo · Staff Name ("Name (Employee ID)" + "(Role)") ·
  *     Start Time (scheduled start + forecast finish in brackets) · Finish
- *     Time · Signature · Comments · Hours Worked · Alcohol Policy
- *     Understood and Agreed (ADR-0074: THC's paper form has it; always
- *     blank — the worker initials it by hand on site).
+ *     Time · Signature · Comments · Hours Worked. (An Alcohol Policy column
+ *     was added by ADR-0074 and removed again at THC's request, ADR-0084.)
  *   · At most 12 staff rows a page (`paginate`, `ROWS_PER_PAGE`); a row is
  *     never split; header and column headings repeat; "Page X of Y" on every
  *     page; every page after the first repeats the event name and date with
@@ -28,8 +27,7 @@
  *   · Allocation: Finish · Signature · Comments · Hours blank, for the client
  *     to fill in by hand. Sign-out: filled from check-in/out and the break
  *     log; a worker with an unresolved No check-out gets blank Finish and
- *     Hours rather than a guess (RULE-02). Signature and Alcohol Policy are
- *     blank in both.
+ *     Hours rather than a guess (RULE-02). Signature is blank in both.
  *   · Names (ADR-0074, THC 29.09.2026): in the product the allocation state
  *     is the "Allocation Timesheet" and the sign-out state the "Completed
  *     Allocation Timesheet" (`DOCUMENT_NAME`). The printed header stays
@@ -68,7 +66,6 @@ export const SHEET_COLUMNS = [
   'Signature',
   'Comments',
   'Hours Worked',
-  'Alcohol Policy Understood and Agreed',
 ] as const;
 
 /**
@@ -131,8 +128,6 @@ export interface SheetRow {
   signature: string;
   comments: string;
   hoursWorked: string;
-  /** Always blank: initialled by hand on site (ADR-0074). */
-  alcoholPolicy: string;
 }
 
 export type SheetLine = { type: 'section'; label: string } | { type: 'row'; row: SheetRow };
@@ -239,7 +234,6 @@ function toRow(kind: SheetKind, person: SheetPerson): SheetRow {
     signature: '',
     comments: comments(kind, person),
     hoursWorked: settled ? hoursMinutes(person.workedMin) : '',
-    alcoholPolicy: '',
   };
 }
 
@@ -346,7 +340,6 @@ export function sheetText(layout: SheetLayout): string {
             r.signature,
             r.comments,
             r.hoursWorked,
-            r.alcoholPolicy,
           ].join(' | '),
         );
       }
