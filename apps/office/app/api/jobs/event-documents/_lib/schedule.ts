@@ -116,8 +116,9 @@ export interface AutosendFacts {
   /** Rows whose Finish/Hours would print blank (unresolved No check-out). */
   undetermined: number;
   /**
-   * Headcount slots still empty, summed over the role sections: per
-   * section max(0, headcount − confirmed-or-worked). Buffer is not part of
+   * Headcount slots not firmly confirmed, summed over the role sections:
+   * per section max(0, headcount − confirmed-or-worked bookings that are not
+   * Awaiting a re-confirmation of an office change, §3.5). Buffer is not part of
    * it (§3.2: the buffer is not the working headcount), and a section over
    * its headcount cannot cover for one under it. 0 = the line-up is full.
    */

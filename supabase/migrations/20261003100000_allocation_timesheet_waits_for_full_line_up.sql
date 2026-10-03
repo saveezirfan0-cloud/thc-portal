@@ -12,9 +12,12 @@
 --   unfilled = sum over the event's role sections of
 --              max(0, headcount − confirmed-or-worked bookings)
 --
--- The same count as shift_fill(): confirmed counts ONLY confirmed (and the
--- worked booking that still holds its slot, ADR-0037); invitations never
--- fill. The buffer is not part of it — it is a confirmation target, not
+-- The same count as shift_fill() (confirmed counts ONLY confirmed, and the
+-- worked booking that still holds its slot, ADR-0037; invitations never
+-- fill) with one more rule: a booking the office has changed under the
+-- worker — time, venue, dress code or role, §3.5 — stays `confirmed` but
+-- carries reconfirm_required ("Awaiting") until the worker confirms the new
+-- shift (reconfirm_booking), and an Awaiting booking does not fill its slot. The buffer is not part of it — it is a confirmation target, not
 -- the working headcount (§3.2, RULE-15) — and a section over its headcount
 -- cannot cover for one under it, so the sum is taken per section.
 --
@@ -196,14 +199,16 @@ begin
       from ev
       cross join (values ('allocation'::text), ('signout')) as k(kind)
       cross join lateral event_document_tally(ev.id) t
-      -- ADR-0084: headcount slots still empty, per role section — the
-      -- fill shift_fill() counts (confirmed or worked), buffer excluded.
+      -- ADR-0084: headcount slots not firmly confirmed, per role section —
+      -- empty, or held by a worker still Awaiting a change (reconfirm_required);
+      -- confirmed or worked, buffer excluded.
       cross join lateral (
         select coalesce(sum(greatest(0, sr.headcount - f.n)), 0)::int as unfilled
           from shift_requirements sr
           cross join lateral (
             select count(*)::int as n from bookings b
-             where b.shift_id = sr.id and b.status in ('confirmed', 'worked')) f
+             where b.shift_id = sr.id and b.status in ('confirmed', 'worked')
+               and not b.reconfirm_required) f
          where sr.event_id = ev.id) u
   )
   select f.id, f.kind,

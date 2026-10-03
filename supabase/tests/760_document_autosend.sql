@@ -11,7 +11,7 @@
 -- and the job_schedules row.
 -- =====================================================================
 begin;
-select plan(112);
+select plan(114);
 \ir _shared/fixtures.psql
 
 -- Sat 11 Jul 2026 (BST): 07:00 → 22:30 UK, six confirmed, two contacts,
@@ -204,6 +204,7 @@ language sql immutable as $$ select (p_day + p_time::time) at time zone 'Europe/
 \set b_6     '75940000-0000-4000-8000-000000000008'
 \set b_gu    '75940000-0000-4000-8000-000000000009'
 \set b_gap   '75940000-0000-4000-8000-00000000000a'
+\set b_gap2  '75940000-0000-4000-8000-00000000000b'
 
 insert into roles (id, name, description, pay_rate) values
   (:'r_c', 'Auto Chef', 'fixture', 19.00),
@@ -288,6 +289,19 @@ select results_eq(
   $$ values ('not_filled'::text, 1, 1) $$,
   'one of two slots confirmed: held as not_filled, one slot unfilled (ADR-0084)');
 select ok(not event_document_autosend_claim(:'ev_gap', 'allocation'), 'and a half-staffed event cannot be claimed');
+-- The second slot is taken, but the office has since changed the shift under
+-- that worker (§3.5): confirmed, Awaiting — not yet a firm slot.
+insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, reconfirm_required, reconfirm_reason)
+values (:'b_gap2', :'sec_gap', :'p_1', 'confirmed', 'manual', now() - interval '7 days', true, 'Start time moved by the office');
+select results_eq(
+  format($$ select verdict, confirmed, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev_gap'),
+  $$ values ('not_filled'::text, 2, 1) $$,
+  'two confirmed, one of them Awaiting a changed time: still held, the Awaiting slot is not firm (ADR-0084)');
+update bookings set reconfirm_required = false, reconfirm_reason = null where id = :'b_gap2';
+select results_eq(
+  format($$ select verdict, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev_gap'),
+  $$ values ('due'::text, 0) $$,
+  'the worker confirms the new time (reconfirm_booking clears the flag): the line-up is firm, due');
 select ok(exists (select 1 from event_documents_due(now()) where event_id = :'ev' and kind = 'allocation'),
   'without an event id, tomorrow''s event is among the candidates');
 select is((select verdict from event_documents_due(now(), :'ev_off') where kind = 'allocation'), 'cancelled',
