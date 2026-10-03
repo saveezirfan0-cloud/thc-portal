@@ -102,6 +102,8 @@ The job is registered **enabled**. As with every schedule, it reaches pg_cron th
 
 ### 3 · Alcohol Policy Understood and Agreed
 
+> **Superseded by ADR-0084 (03.10.2026): the column was removed at THC's request.** What follows is the record of the original decision.
+
 THC's paper form has a last column headed **Alcohol Policy Understood and Agreed**. The PDF now has it too, after Hours Worked. It is blank in both states, because the worker initials it by hand on site.
 
 The Photo column stays, because §11.3 requires it. To fit eight columns on A4 portrait inside the same margins:

@@ -207,18 +207,11 @@ describe('ordering and naming', () => {
   });
 });
 
-describe('THC form changes of 29.09.2026 (ADR-0074)', () => {
-  it('ends with the Alcohol Policy Understood and Agreed column, after Hours Worked', () => {
-    expect(SHEET_COLUMNS.at(-1)).toBe('Alcohol Policy Understood and Agreed');
-    expect(SHEET_COLUMNS.at(-2)).toBe('Hours Worked');
+describe('THC form changes of 29.09.2026 (ADR-0074, ADR-0084)', () => {
+  it('ends with Hours Worked — no Alcohol Policy column (ADR-0084)', () => {
+    expect(SHEET_COLUMNS).toHaveLength(7);
+    expect(SHEET_COLUMNS.at(-1)).toBe('Hours Worked');
     expect(SHEET_COLUMNS[0]).toBe('Photo');
-  });
-
-  it('leaves the Alcohol Policy cell blank in both states — it is initialled by hand', () => {
-    for (const kind of ['allocation', 'signout'] as const) {
-      const layout = layoutSheet({ kind, event: GALA, people: signOutPeople() });
-      expect(rows(layout).every((r) => r.alcoholPolicy === '')).toBe(true);
-    }
   });
 
   it('keeps STAFF ALLOCATION as the printed header, while the product names the two states', () => {
