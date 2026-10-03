@@ -11,7 +11,7 @@ import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
 import type { AcceptRpc, AdminAuth, ResendRpc } from './activation';
 import type { Period } from './view-model';
-import type { ActionResult } from './types';
+import type { ActionResult, ClientQualificationPick } from './types';
 
 /**
  * Writes for /onboarding and /onboarding/:id (§2.2, §2.3, §2.4, §2.12).
@@ -141,10 +141,17 @@ function staffOrigin(): string | null {
  * manager is checked here FIRST, and the database checks again inside
  * `onboarding_accept_with_account` — which also links `staff.user_id` in
  * the same transaction as E3, so neither exists without the other.
+ *
+ * Client qualification (§9.6, ADR-0085) is chosen on the same panel and
+ * written right after, through the same `grant_client_qualification` the
+ * profile's "+ Add client" uses. It needs the roles to exist first, so it
+ * cannot be inside the accept; if one grant fails the candidate is still
+ * accepted and the message names what to add on the profile.
  */
 export async function acceptCandidate(
   staffId: string,
   roleIds: string[],
+  clientQuals: ClientQualificationPick[],
   note: string,
 ): Promise<ActionResult> {
   if (roleIds.length === 0) return { ok: false, message: MESSAGES.roles_required! };
@@ -187,7 +194,26 @@ export async function acceptCandidate(
     },
   );
   if (!outcome.ok) return { ok: false, message: explain(outcome.error) };
-  for (const path of paths(staffId)) revalidatePath(path);
+
+  const rpc = supabase as unknown as RpcClient;
+  const failed: string[] = [];
+  for (const pick of clientQuals) {
+    if (!roleIds.includes(pick.roleId)) continue; // a client can only name a role being granted
+    const { error } = await rpc.rpc('grant_client_qualification', {
+      p_staff: staffId,
+      p_client: pick.clientId,
+      p_role: pick.roleId,
+      p_note: null,
+    });
+    if (error) failed.push(error.message);
+  }
+  for (const path of [...paths(staffId), `/staff/${staffId}`]) revalidatePath(path);
+  if (failed.length > 0) {
+    return {
+      ok: true,
+      message: `Accepted, but ${failed.length} client qualification(s) were not saved (${failed[0]}). Add them on the staff profile.`,
+    };
+  }
   return { ok: true };
 }
 

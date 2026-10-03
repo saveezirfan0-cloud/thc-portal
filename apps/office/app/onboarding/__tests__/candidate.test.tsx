@@ -288,6 +288,37 @@ describe('the candidate profile · mark interview complete (ADR-0077)', () => {
   });
 });
 
+describe('the candidate profile · Accept offers client qualification (ADR-0085, §9.6)', () => {
+  const accepting = (over: Partial<CandidateData> = {}) =>
+    render(
+      data({
+        candidate: { ...ROW, status: 'interview_completed', role_ids: ['r1'] },
+        roles: [{ id: 'r1', name: 'Waiting Staff' }],
+        clients: [
+          { id: 'c1', name: 'Hawksmoor' },
+          { id: 'c2', name: 'The Ivy' },
+        ],
+        ...over,
+      }),
+    );
+
+  it('lists the clients beside the roles, optional', () => {
+    const html = accepting();
+    expect(html).toContain('Qualified at client(s) — optional');
+    expect(html).toContain('Hawksmoor');
+    expect(html).toContain('The Ivy');
+  });
+
+  it('asks for a role first when none is picked', () => {
+    const html = accepting({ candidate: { ...ROW, status: 'interview_completed', role_ids: [] } });
+    expect(html).toContain('Pick a role first');
+  });
+
+  it('draws nothing when the directory is empty', () => {
+    expect(accepting({ clients: [] })).not.toContain('Qualified at client(s)');
+  });
+});
+
 describe('the candidate profile, Contract phase (§2.11)', () => {
   const signed = (version: string) =>
     render(

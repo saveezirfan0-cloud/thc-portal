@@ -94,6 +94,8 @@ import type {
   CandidateData,
   CandidateDocument,
   CandidateRow,
+  ClientOption,
+  ClientQualificationPick,
   ContractVersion,
   Declaration,
 } from './types';
@@ -184,6 +186,9 @@ export function CandidateScreen({
       }
       if (result.ok) {
         after?.();
+        // A done-with-a-caveat result (Accept saved, a client entry did not)
+        // must not vanish with the refresh.
+        if (result.message) setProblem(result.message);
         router.refresh();
       } else {
         setProblem(result.message);
@@ -354,7 +359,9 @@ export function CandidateScreen({
             canAccept={actions.includes('accept') && !past}
             busy={busy}
             problem={problem}
-            onAccept={(roles, note) => run(() => acceptCandidate(row.id, roles, note))}
+            onAccept={(roles, quals, note) =>
+              run(() => acceptCandidate(row.id, roles, quals, note))
+            }
             onReject={() => setReject({ kind: 'candidate' })}
           />
         ) : null}
@@ -848,13 +855,31 @@ function InterviewCompleted({
   busy: boolean;
   /** The last refusal — shown here as well as at the top, which is off-screen once scrolled to Accept. */
   problem: string | null;
-  onAccept: (roles: string[], note: string) => void;
+  onAccept: (roles: string[], quals: ClientQualificationPick[], note: string) => void;
   onReject: () => void;
 }) {
   const [picked, setPicked] = useState<string[]>(row.role_ids);
   const [note, setNote] = useState('');
+  // ADR-0085: clients ticked, and the client:role pairs the manager has
+  // switched off. Every ticked client takes every picked role unless a pair
+  // is off, so picking another role later does not leave a client behind.
+  const [clientIds, setClientIds] = useState<string[]>([]);
+  const [off, setOff] = useState<string[]>([]);
   const toggle = (id: string) =>
     setPicked((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const toggleClient = (id: string) =>
+    setClientIds((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const togglePair = (clientId: string, roleId: string) =>
+    setOff((now) =>
+      now.includes(`${clientId}:${roleId}`)
+        ? now.filter((x) => x !== `${clientId}:${roleId}`)
+        : [...now, `${clientId}:${roleId}`],
+    );
+  const quals: ClientQualificationPick[] = clientIds.flatMap((clientId) =>
+    picked
+      .filter((roleId) => !off.includes(`${clientId}:${roleId}`))
+      .map((roleId) => ({ clientId, roleId })),
+  );
 
   return (
     <div className="grid c2">
@@ -936,14 +961,23 @@ function InterviewCompleted({
             <p className="sm muted">
               On acceptance the manager selects the role(s) the candidate is qualified for — this is
               what makes them eligible for shifts of that role later. Multi-select; editable later
-              on the staff profile.
+              on the staff profile. Optionally also pick the client(s) they are already cleared at —
+              those clients&apos; shifts are offered to them first (§9.6).
             </p>
             <RolePick roles={data.roles} picked={picked} onToggle={toggle} />
+            <ClientPick
+              clients={data.clients ?? []}
+              roles={data.roles.filter((role) => picked.includes(role.id))}
+              clientIds={clientIds}
+              off={off}
+              onToggleClient={toggleClient}
+              onTogglePair={togglePair}
+            />
             <div className="row wrap">
               <Button
                 tone="primary"
                 disabled={!canAccept || busy || picked.length === 0}
-                onClick={() => onAccept(picked, note)}
+                onClick={() => onAccept(picked, quals, note)}
               >
                 {busy ? 'Accepting…' : 'Accept — move to Documents'}
               </Button>
@@ -993,6 +1027,84 @@ function RolePick({
           </label>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Client qualification beside role qualification (ADR-0085, §9.6). Optional:
+ * the list builds itself after clean shifts, so most candidates are accepted
+ * with none. A ticked client takes every role picked above; each pair can be
+ * switched off, because "Waiting Staff at A" and "Bar Staff at A" are two
+ * separate entries.
+ */
+function ClientPick({
+  clients,
+  roles,
+  clientIds,
+  off,
+  onToggleClient,
+  onTogglePair,
+}: {
+  clients: ClientOption[];
+  roles: CandidateData['roles'];
+  clientIds: string[];
+  off: string[];
+  onToggleClient: (id: string) => void;
+  onTogglePair: (clientId: string, roleId: string) => void;
+}) {
+  if (clients.length === 0) return null;
+  const disabled = roles.length === 0;
+  return (
+    <div className="stack">
+      <h4>Qualified at client(s) — optional</h4>
+      {disabled ? (
+        <span className="muted sm">
+          Pick a role first — a client entry names one of their roles.
+        </span>
+      ) : null}
+      <div className="rolepick">
+        {clients.map((client) => {
+          const on = !disabled && clientIds.includes(client.id);
+          return (
+            <label key={client.id} className={on ? 'check sel' : 'check'}>
+              <input
+                type="checkbox"
+                className="check-input"
+                checked={on}
+                disabled={disabled}
+                onChange={() => onToggleClient(client.id)}
+              />
+              <span className={on ? 'box on' : 'box'} />
+              {client.name}
+            </label>
+          );
+        })}
+      </div>
+      {disabled
+        ? null
+        : clients
+            .filter((client) => clientIds.includes(client.id))
+            .map((client) => (
+              <div key={client.id} className="row wrap">
+                <span className="sm muted">{client.name} as</span>
+                {roles.map((role) => {
+                  const on = !off.includes(`${client.id}:${role.id}`);
+                  return (
+                    <label key={role.id} className={on ? 'check sel' : 'check'}>
+                      <input
+                        type="checkbox"
+                        className="check-input"
+                        checked={on}
+                        onChange={() => onTogglePair(client.id, role.id)}
+                      />
+                      <span className={on ? 'box on' : 'box'} />
+                      {role.name}
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
     </div>
   );
 }

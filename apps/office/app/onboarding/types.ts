@@ -107,6 +107,18 @@ export interface RoleOption {
   name: string;
 }
 
+/** A client from the directory, offered on Accept for client qualification (§9.6). */
+export interface ClientOption {
+  id: string;
+  name: string;
+}
+
+/** One client + role the candidate is cleared for, chosen on Accept (§9.6). */
+export interface ClientQualificationPick {
+  clientId: string;
+  roleId: string;
+}
+
 export interface BoardData {
   candidates: CandidateRow[];
   returning: ReturningRow[];
@@ -325,6 +337,8 @@ export interface CandidateData {
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
   contract: ContractVersion | null;
   roles: RoleOption[];
+  /** The client directory, for the Accept panel's client qualification (ADR-0085). */
+  clients?: ClientOption[];
   /** The latest automated gov.uk check per share-code document (ADR-0025). */
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
