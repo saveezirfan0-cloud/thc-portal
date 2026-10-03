@@ -160,7 +160,7 @@ select is_empty(
           'event_documents_due', 'event_document_autosend_claim',
           'record_event_document_autosend', 'queue_event_document_autosend',
           'event_document_autosend_release', 'event_document_email_payload',
-          'event_document_tally'
+          'event_document_tally', 'event_allocation_fingerprint'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'

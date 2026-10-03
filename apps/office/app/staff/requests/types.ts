@@ -57,5 +57,4 @@ export interface ChangeRequestView extends ChangeRequestRow {
  * opt-out warning — the office correction's own words (`dobCorrectionOutcome`).
  */
 export type DecisionResult =
-  | { ok: true; note?: string; warning?: string | null }
-  | { ok: false; message: string };
+  { ok: true; note?: string; warning?: string | null } | { ok: false; message: string };

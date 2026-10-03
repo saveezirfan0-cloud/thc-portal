@@ -171,6 +171,47 @@ describe('the drain can tell the two registers apart', () => {
   });
 });
 
+/** ADR-0084: the updated copy the event-documents job sends after a confirmed change. */
+describe('D1 updated copy (ADR-0084)', () => {
+  const updated = () =>
+    d1({ payload: { ...(d1().payload as Record<string, unknown>), updated: 'true' } });
+  const line =
+    'This replaces the Allocation Timesheet we sent earlier: the line-up has changed, and everyone affected has confirmed. Please use this one and discard the earlier sheet.';
+
+  it('puts Updated first in the subject and the replacement line first in the text and the HTML', () => {
+    const message = documentMessageFor(updated());
+    expect(message.subject).toBe(
+      'Updated Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+    );
+    expect(message.body).toContain(
+      `Hello,\n\n${line} Please find attached the Allocation Timesheet`,
+    );
+    expect(message.html).toContain(line);
+  });
+
+  it('leaves the first copy, and every row from before this, exactly as it was', () => {
+    const message = documentMessageFor(d1());
+    expect(message.subject).toBe(
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+    );
+    expect(message.body).not.toContain('replaces');
+    expect(message.html).not.toContain('replaces');
+    expect(message.body).not.toMatch(/\{\w+\}/);
+  });
+
+  it('is only for D1: a D2 row carrying updated stays a plain Completed Allocation Timesheet', () => {
+    const base = d1();
+    const d2 = {
+      ...base,
+      template: 'D2',
+      payload: { ...(base.payload as Record<string, unknown>), updated: 'true' },
+    } as OutboxRow;
+    const message = documentMessageFor(d2);
+    expect(message.subject).toMatch(/^Completed Allocation Timesheet/);
+    expect(message.body).not.toContain('replaces');
+  });
+});
+
 /** ADR-0081: the D1 row for a client with name badges on, as 769 pgTAP writes it. */
 describe('D1 with name badges (ADR-0081)', () => {
   const withBadges = (count: number) =>

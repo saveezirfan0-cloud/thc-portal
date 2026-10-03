@@ -6,6 +6,7 @@ import {
   autosendVerdict,
   completedStopAt,
   parseAutosendConfig,
+  sheetChanged,
 } from '../schedule';
 import type { AutosendFacts } from '../schedule';
 
@@ -123,6 +124,77 @@ describe('D1 · Allocation Timesheet, the day before at 14:00 UK', () => {
 
   it('never holds the Completed Allocation Timesheet (the work is done)', () => {
     expect(d2({ unfilled: 2 }, '2026-07-12T09:00:00Z')).toBe('due');
+  });
+
+  describe('the updated copy after a change (ADR-0084)', () => {
+    const SENT = {
+      autoQueuedAt: '2026-07-10T13:00:05Z',
+      sentFingerprint: 'a',
+      currentFingerprint: 'b',
+    };
+    const now = '2026-07-10T15:00:00Z';
+
+    it('goes when a copy has gone, the sheet prints something else and the line-up is firm', () => {
+      expect(d1(SENT, now)).toBe('due');
+      expect(sheetChanged({ ...SUMMER, ...SENT })).toBe(true);
+    });
+
+    it('sends nothing while the sheet is as sent', () => {
+      expect(d1({ ...SENT, currentFingerprint: 'a' }, now)).toBe('already_sent');
+      expect(sheetChanged({ ...SUMMER, ...SENT, currentFingerprint: 'a' })).toBe(false);
+    });
+
+    it('reads a copy from before fingerprints as unchanged — switching on never mails every client', () => {
+      expect(d1({ ...SENT, sentFingerprint: null }, now)).toBe('already_sent');
+      expect(d1({ ...SENT, currentFingerprint: null }, now)).toBe('already_sent');
+    });
+
+    it('is held while a slot is empty or a worker is still Awaiting the change, then goes', () => {
+      expect(d1({ ...SENT, unfilled: 1 }, now)).toBe('not_filled');
+      expect(d1({ ...SENT, unfilled: 0 }, now)).toBe('due');
+    });
+
+    it('needs no send time: a change before 14:00 goes at once, the client already has a sheet', () => {
+      expect(d1({ ...SENT }, '2026-07-10T09:00:00Z')).toBe('due');
+      // …whereas the FIRST copy still waits for 14:00.
+      expect(d1({ autoQueuedAt: null }, '2026-07-10T09:00:00Z')).toBe('not_yet');
+    });
+
+    it('counts a manager’s copy since 00:00 UK the day before as the one that went', () => {
+      const manual = {
+        manualAllocationAt: '2026-07-10T07:00:00Z',
+        sentFingerprint: 'a',
+        currentFingerprint: 'b',
+      };
+      expect(d1(manual, '2026-07-10T08:00:00Z')).toBe('due');
+      expect(d1({ ...manual, currentFingerprint: 'a' }, '2026-07-10T13:00:00Z')).toBe(
+        'manual_sent',
+      );
+      // A manual copy from before that is not a baseline: the first send is still ours.
+      expect(
+        sheetChanged({
+          ...SUMMER,
+          manualAllocationAt: '2026-07-09T22:59:00Z',
+          sentFingerprint: 'a',
+          currentFingerprint: 'b',
+        }),
+      ).toBe(false);
+    });
+
+    it('keeps every other gate: cancelled, nobody confirmed, no contact, first shift started, eight claims', () => {
+      expect(d1({ ...SENT, cancelled: true }, now)).toBe('cancelled');
+      expect(d1({ ...SENT, confirmed: 0 }, now)).toBe('no_confirmed_staff');
+      expect(d1({ ...SENT, contacts: 0 }, now)).toBe('no_contact_emails');
+      expect(d1(SENT, '2026-07-11T06:00:00Z')).toBe('too_late');
+      expect(d1({ ...SENT, attempts: 8 }, now)).toBe('gave_up');
+    });
+
+    it('never touches the Completed Allocation Timesheet', () => {
+      expect(d2({ sentFingerprint: 'a', currentFingerprint: 'b' }, '2026-07-12T09:00:00Z')).toBe(
+        'due',
+      );
+      expect(sheetChanged({ ...SUMMER, kind: 'signout', ...SENT })).toBe(false);
+    });
   });
 
   it('gives up after eight spent claims — a fault never retries for ever', () => {
@@ -283,6 +355,13 @@ describe('the hint under the event page buttons', () => {
     expect(autosendHint('allocation', CONFIG, { ...idle, sentAt: '2026-09-28T13:00:04Z' })).toBe(
       'Allocation Timesheet sent automatically 28/09 14:00',
     );
+    expect(
+      autosendHint('allocation', CONFIG, {
+        ...idle,
+        sentAt: '2026-09-28T13:00:04Z',
+        updatedAt: '2026-09-29T08:15:00Z',
+      }),
+    ).toBe('Allocation Timesheet sent automatically 28/09 14:00 · updated copy sent 29/09 09:15');
     expect(
       autosendHint('signout', CONFIG, {
         sentAt: '2026-09-21T09:00:03Z',

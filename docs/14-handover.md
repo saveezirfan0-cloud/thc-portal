@@ -86,7 +86,8 @@ last, below a divider. The Staff App's Documents tab is live.
   `event-documents` job (a Back Office route, every 15 min, rtw-check's
   bearer secret) sends D1 the day before at 14:00 UK and D2 the morning after
   at 10:00 UK, holding D2 while a No check-out is unresolved and D1 while any
-  role section is short of its headcount (ADR-0084).
+  role section is short of its headcount; an updated D1 follows a change to the
+  sheet once everyone affected has confirmed it (ADR-0084).
 - **B13 Feedback** — Client and Office tabs; the worker's rating is now derived
   from feedback (it was never computed before) and Mark as read moves it
   (ADR-0016).

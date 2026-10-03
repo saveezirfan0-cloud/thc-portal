@@ -30,24 +30,35 @@ export async function loadAutosendHints(
   if (!supabaseConfigured()) return none;
   try {
     const db = eventsDb(await cookies());
-    const [sends, settings] = await Promise.all([
+    const [sentRows, settings] = await Promise.all([
       db
         .from('event_document_autosends')
-        .select('kind, queued_at')
+        .select('kind, queued_at, revision')
         .eq('event_id', eventId)
         .not('queued_at', 'is', null),
       db.from('settings').select('value').eq('key', 'document_autosend').maybeSingle(),
     ]);
-    if (sends.error || settings.error) return none;
+    if (sentRows.error || settings.error) return none;
     // No settings row = switched off (document_autosend_config()).
     const config = settings.data ? parseAutosendConfig(settings.data.value) : OFF;
-    const sentAt = (kind: string) =>
-      ((sends.data ?? []) as { kind: string; queued_at: string }[]).find((r) => r.kind === kind)
-        ?.queued_at ?? null;
+    const sends = (sentRows.data ?? []) as { kind: string; queued_at: string; revision: number }[];
+    // The first automatic send, and (ADR-0084) the latest updated copy after it.
+    const first = (kind: string) =>
+      sends.find((r) => r.kind === kind && r.revision === 0)?.queued_at ?? null;
+    const updated = (kind: string) =>
+      sends
+        .filter((r) => r.kind === kind && r.revision > 0)
+        .map((r) => r.queued_at)
+        .sort()
+        .pop() ?? null;
     return {
-      allocation: autosendHint('allocation', config, { ...state, sentAt: sentAt('allocation') }),
+      allocation: autosendHint('allocation', config, {
+        ...state,
+        sentAt: first('allocation'),
+        updatedAt: updated('allocation'),
+      }),
       signout: state.started
-        ? autosendHint('signout', config, { ...state, sentAt: sentAt('signout') })
+        ? autosendHint('signout', config, { ...state, sentAt: first('signout') })
         : null,
     };
   } catch {

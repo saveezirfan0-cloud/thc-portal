@@ -95,12 +95,15 @@ export async function decideChangeRequest(
     return { ok: false, message: decisionMessage('evidence_unchecked_dob') };
   }
 
-  const { data, error } = await (supabase as unknown as DecideRpc).rpc('office_decide_profile_change', {
-    p_id: id,
-    p_approve: approve,
-    // An approval stores no reason; a rejection's is shown to the worker.
-    p_reason: approve ? null : reason.trim(),
-  });
+  const { data, error } = await (supabase as unknown as DecideRpc).rpc(
+    'office_decide_profile_change',
+    {
+      p_id: id,
+      p_approve: approve,
+      // An approval stores no reason; a rejection's is shown to the worker.
+      p_reason: approve ? null : reason.trim(),
+    },
+  );
   if (error) return { ok: false, message: decisionMessage(error.message) };
 
   revalidatePath('/staff/requests');

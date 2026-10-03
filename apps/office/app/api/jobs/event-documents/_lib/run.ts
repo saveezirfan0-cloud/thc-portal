@@ -1,4 +1,4 @@
-import { NOTEWORTHY, autosendVerdict } from './schedule';
+import { NOTEWORTHY, autosendVerdict, sheetChanged } from './schedule';
 import type { AutosendConfig, AutosendFacts, AutosendVerdict, DocumentKind } from './schedule';
 
 /**
@@ -34,6 +34,8 @@ export interface DueRow {
   signout_queued_at: string | null;
   auto_queued_at: string | null;
   attempts?: number | null;
+  sent_fingerprint?: string | null;
+  current_fingerprint?: string | null;
 }
 
 export function factsOf(row: DueRow): AutosendFacts {
@@ -51,6 +53,8 @@ export function factsOf(row: DueRow): AutosendFacts {
     signoutQueuedAt: row.signout_queued_at,
     autoQueuedAt: row.auto_queued_at,
     attempts: Number(row.attempts) || 0,
+    sentFingerprint: row.sent_fingerprint ?? null,
+    currentFingerprint: row.current_fingerprint ?? null,
   };
 }
 
@@ -75,6 +79,8 @@ export interface AutosendCounts {
   candidates: number;
   due: number;
   sent: { allocation: number; signout: number };
+  /** Of `sent.allocation`, the updated copies (ADR-0084). */
+  updated: number;
   /** Every verdict, per kind: the job run's record of why nothing went. */
   verdicts: { allocation: Record<string, number>; signout: Record<string, number> };
   disagreements: number;
@@ -96,6 +102,7 @@ export async function runAutosend(deps: AutosendDeps): Promise<AutosendCounts> {
     candidates: deps.rows.length,
     due: 0,
     sent: { allocation: 0, signout: 0 },
+    updated: 0,
     verdicts: { allocation: {}, signout: {} },
     disagreements: 0,
     notClaimed: 0,
@@ -139,7 +146,11 @@ export async function runAutosend(deps: AutosendDeps): Promise<AutosendCounts> {
       const { queued, skipped } = await deps.queue(drawn.documentId);
       if (queued) {
         counts.sent[row.kind] += 1;
-        deps.log(`event-documents: ${row.kind} ${row.event_id} queued`);
+        const updated = sheetChanged(factsOf(row));
+        if (updated) counts.updated += 1;
+        deps.log(
+          `event-documents: ${row.kind} ${row.event_id} queued${updated ? ' (updated copy)' : ''}`,
+        );
       } else if (skipped) {
         counts.stoodDown += 1;
         deps.log(`event-documents: ${row.kind} ${row.event_id} stood down at queue: ${skipped}`);

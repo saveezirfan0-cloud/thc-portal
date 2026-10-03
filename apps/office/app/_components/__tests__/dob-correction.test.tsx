@@ -26,9 +26,8 @@ vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 vi.mock('@thc/db/admin', () => ({ createAdminClient }));
 
 const { correctDob } = await import('../../_lib/dobCorrectionActions');
-const { dobClaimLine, dobCorrectionMessage, dobCorrectionOutcome, parseDobClaim } = await import(
-  '../../_lib/dobCorrection'
-);
+const { dobClaimLine, dobCorrectionMessage, dobCorrectionOutcome, parseDobClaim } =
+  await import('../../_lib/dobCorrection');
 const { DobClaimNote } = await import('../DobClaimNote');
 const { DobCorrection } = await import('../DobCorrection');
 
@@ -217,7 +216,9 @@ describe('a date entered with a share code (ADR-0070, route 2)', () => {
     expect(line?.detail).toMatch(/Verify also changes the profile/);
     expect(line?.warning).toBeNull();
     const html = renderToStaticMarkup(<DobClaimNote claim={claim} />);
-    expect(html).toContain('Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)');
+    expect(html).toContain(
+      'Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)',
+    );
   });
 
   it('warns when verifying would put a signed opt-out before the eighteenth birthday', () => {

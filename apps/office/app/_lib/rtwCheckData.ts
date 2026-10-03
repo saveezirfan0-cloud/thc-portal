@@ -31,7 +31,8 @@ export interface RtwChecksRead {
   dobClaims: DobClaim[];
 }
 
-const DOB_CLAIM_COLUMNS = 'document_id, staff_id, claimed_dob, profile_dob, opt_out_signed_under_18';
+const DOB_CLAIM_COLUMNS =
+  'document_id, staff_id, claimed_dob, profile_dob, opt_out_signed_under_18';
 
 function claimsFrom(result: { data: unknown; error: unknown }): DobClaim[] {
   if (result.error) return [];
@@ -53,7 +54,11 @@ export async function loadRtwChecks(client: unknown, staffId: string): Promise<R
       : ((rows.data as Record<string, unknown>[] | null) ?? [])
           .map(parseRtwCheckRow)
           .filter((r): r is RtwCheckRow => r !== null);
-    return { checks, enabled: !enabled.error && enabled.data === true, dobClaims: claimsFrom(claims) };
+    return {
+      checks,
+      enabled: !enabled.error && enabled.data === true,
+      dobClaims: claimsFrom(claims),
+    };
   } catch {
     return { checks: [], enabled: false, dobClaims: [] };
   }

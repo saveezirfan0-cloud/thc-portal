@@ -85,6 +85,38 @@ describe('one run of the event-documents job', () => {
     expect(full.calls[0]).toBe('claim allocation ev-1');
   });
 
+  it('sends an updated copy after a change, and counts it apart (ADR-0084)', async () => {
+    const changed = row({
+      auto_queued_at: '2026-07-10T13:00:05+00:00',
+      sent_fingerprint: 'a',
+      current_fingerprint: 'b',
+      unfilled: 0,
+    });
+    const { deps, calls, logs } = harness([changed]);
+    const counts = await runAutosend(deps);
+    expect(calls[0]).toBe('claim allocation ev-1');
+    expect(counts.sent.allocation).toBe(1);
+    expect(counts.updated).toBe(1);
+    expect(logs.some((l) => l.includes('(updated copy)'))).toBe(true);
+    // The first copy is not an update.
+    const first = harness([row()]);
+    expect((await runAutosend(first.deps)).updated).toBe(0);
+  });
+
+  it('holds an updated copy while a worker still has to confirm the change', async () => {
+    const awaiting = row({
+      auto_queued_at: '2026-07-10T13:00:05+00:00',
+      sent_fingerprint: 'a',
+      current_fingerprint: 'b',
+      unfilled: 1,
+      verdict: 'not_filled',
+    });
+    const { deps, calls } = harness([awaiting]);
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([]);
+    expect(counts.verdicts.allocation).toEqual({ not_filled: 1 });
+  });
+
   it('records the reason for a skip in the counts and the log, without failing the run', async () => {
     const { deps, calls, logs } = harness([
       row({ event_id: 'ev-c', verdict: 'cancelled', cancelled: true }),

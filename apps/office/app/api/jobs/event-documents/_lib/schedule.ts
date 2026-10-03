@@ -17,6 +17,10 @@ import { ukInstant } from '@thc/domain';
  *        of its headcount (ADR-0084): the client is never sent a line-up
  *        with gaps in it. Skipped if a manager queued a D1 since 00:00 UK
  *        the day before.
+ *        AFTER a copy has gone (ours, or that manager's): a change to what
+ *        the sheet prints sends an UPDATED copy, once the line-up is firm
+ *        again — every slot at its headcount and nobody Awaiting a change
+ *        (ADR-0084). No send time to wait for; one per fingerprint.
  *   D2 · the morning after at `completed.time` (10:00) UK, never before the
  *        last shift's end + 4 h (every check-out window closed). Held while
  *        any row is still undetermined — an unresolved No check-out prints
@@ -131,6 +135,13 @@ export interface AutosendFacts {
   autoQueuedAt: string | null;
   /** Claims already spent on it (a live one not counted). */
   attempts?: number;
+  /**
+   * ADR-0084: the fingerprint of the latest Allocation Timesheet copy that
+   * was emailed (null: none, or one from before fingerprints), and of the
+   * sheet as it would print now. Either null = unknown, read as unchanged.
+   */
+  sentFingerprint?: string | null;
+  currentFingerprint?: string | null;
 }
 
 /** "2026-09-19" ± days, as a calendar date (no zone involved). */
@@ -161,6 +172,24 @@ export function completedStopAt(eventDate: string, config: AutosendConfig): Date
 
 const at = (iso: string | null): number | null => (iso ? new Date(iso).getTime() : null);
 
+/**
+ * A D1 has gone (ours, or a manager's since 00:00 UK the day before) and the
+ * sheet now prints something else. When the verdict is also `due`, what goes
+ * is the updated copy.
+ */
+export function sheetChanged(facts: AutosendFacts): boolean {
+  if (facts.kind !== 'allocation') return false;
+  const manual = at(facts.manualAllocationAt);
+  const dayBefore = ukInstant(addDays(facts.eventDate, -1), '00:00').getTime();
+  const gone = facts.autoQueuedAt !== null || (manual !== null && manual >= dayBefore);
+  return (
+    gone &&
+    !!facts.sentFingerprint &&
+    !!facts.currentFingerprint &&
+    facts.sentFingerprint !== facts.currentFingerprint
+  );
+}
+
 export function autosendVerdict(
   facts: AutosendFacts,
   now: Date,
@@ -173,14 +202,16 @@ export function autosendVerdict(
     const firstStart = at(facts.firstStart);
     const manual = at(facts.manualAllocationAt);
     const dayBefore = ukInstant(addDays(facts.eventDate, -1), '00:00').getTime();
+    const changed = sheetChanged(facts);
     if (!config.allocation.enabled) return 'disabled';
-    if (facts.autoQueuedAt) return 'already_sent';
+    if (facts.autoQueuedAt && !changed) return 'already_sent';
     if (facts.cancelled) return 'cancelled';
-    if (t < dueAt) return 'not_yet';
+    // The send time gates only the FIRST copy; the client already has one.
+    if (!changed && t < dueAt) return 'not_yet';
     if (firstStart !== null && t >= firstStart) return 'too_late';
     if (facts.confirmed === 0) return 'no_confirmed_staff';
     if (facts.contacts === 0) return 'no_contact_emails';
-    if (manual !== null && manual >= dayBefore) return 'manual_sent';
+    if (!changed && manual !== null && manual >= dayBefore) return 'manual_sent';
     if ((facts.unfilled ?? 0) > 0) return 'not_filled';
     if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
     return 'due';
@@ -235,11 +266,20 @@ export function ukShortStamp(iso: string): string {
 export function autosendHint(
   kind: DocumentKind,
   config: AutosendConfig,
-  state: { sentAt: string | null; started: boolean; ended: boolean },
+  state: {
+    sentAt: string | null;
+    /** ADR-0084: when the latest updated copy went, if one has. */
+    updatedAt?: string | null;
+    started: boolean;
+    ended: boolean;
+  },
 ): string | null {
   if (kind === 'allocation') {
     if (state.sentAt)
-      return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
+      return (
+        `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}` +
+        (state.updatedAt ? ` · updated copy sent ${ukShortStamp(state.updatedAt)}` : '')
+      );
     if (!config.allocation.enabled || state.started) return null;
     return `Sent automatically the day before at ${config.allocation.time} (UK time), once every role is fully confirmed`;
   }

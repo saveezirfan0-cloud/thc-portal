@@ -101,11 +101,11 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\n{updatedLine}Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
-        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}",
+        "{updatedLine}Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}",
       stepsLead: 'On the day, please ask your manager on site to:',
       steps: [
         "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
@@ -201,6 +201,13 @@ function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
   });
 }
 
+/** The sentence an updated Allocation Timesheet opens with (ADR-0084). */
+export const UPDATED_LINE =
+  'This replaces the Allocation Timesheet we sent earlier: the line-up has changed, and everyone affected has confirmed. Please use this one and discard the earlier sheet. ';
+
+/** "Updated " is the subject's first word on an updated copy (ADR-0084). */
+export const UPDATED_SUBJECT_PREFIX = 'Updated ';
+
 /** The copy values the rows do not carry themselves, derived once, here. */
 function derivedValues(
   code: DocumentEmailCode,
@@ -222,11 +229,15 @@ function derivedValues(
     };
   }
   const po = (values.poNumber ?? '').trim();
+  // ADR-0084: the updated copy the event-documents job sends after the
+  // line-up changed and was confirmed again says so, and the sheet it replaces.
+  const updated = code === 'D1' && (values.updated ?? '').trim() === 'true';
   // ADR-0081: a client with name badges on gets them with the D1 sheet. The
   // count is in the facts box ("Name badges"), so the sentence needs none.
   const badges = Number((values.nameBadges ?? '').trim()) || 0;
   return {
     ...values,
+    updatedLine: updated ? UPDATED_LINE : '',
     poLine: po ? ` Your PO number ${po} is on the sheet.` : '',
     badgeLine:
       badges > 0
@@ -373,7 +384,7 @@ export function documentMessageFor(
     ),
   );
   const replyTo = options.replyTo ?? DEFAULT_SENDER_ADDRESSES[entry.sender];
-  const subject = render(entry.title, values);
+  const subject = (values.updatedLine ? UPDATED_SUBJECT_PREFIX : '') + render(entry.title, values);
   // The signature names the sender's monitored address as /settings has it.
   const text = signedBy(render(entry.body, values), entry.sender, replyTo);
   return {

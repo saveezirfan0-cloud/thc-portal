@@ -11,7 +11,7 @@
 -- and the job_schedules row.
 -- =====================================================================
 begin;
-select plan(114);
+select plan(133);
 \ir _shared/fixtures.psql
 
 -- Sat 11 Jul 2026 (BST): 07:00 → 22:30 UK, six confirmed, two contacts,
@@ -34,7 +34,9 @@ returns text language sql as $$
     (p_changes->>'signout_at')::timestamptz,
     (p_changes->>'auto_at')::timestamptz,
     coalesce((p_changes->>'attempts')::int, 0),
-    coalesce((p_changes->>'unfilled')::int, 0))
+    coalesce((p_changes->>'unfilled')::int, 0),
+    p_changes->>'sent_fp',
+    p_changes->>'cur_fp')
 $$;
 
 -- =====================================================================
@@ -69,6 +71,25 @@ select is(pg_temp.d('allocation', '2026-07-11 06:00+00', '{"unfilled":1}'), 'too
 select is(pg_temp.d('allocation', '2026-07-10 12:59:59+00', '{"unfilled":2}'), 'not_yet', 'D1: not_yet wins over a gap');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"unfilled":2,"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed wins over a gap');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"unfilled":2}'), 'due', 'D2: a gap never holds the Completed Allocation Timesheet');
+-- ADR-0084: an updated copy after a change, once the line-up is firm
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"auto_at":"2026-07-10T13:00:05Z","sent_fp":"a","cur_fp":"b"}'), 'due',
+  'D1 updated: a copy went, the sheet now prints something else, the line-up is firm — due');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"auto_at":"2026-07-10T13:00:05Z","sent_fp":"a","cur_fp":"a"}'), 'already_sent',
+  'D1 updated: the sheet is as sent — nothing to send');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"auto_at":"2026-07-10T13:00:05Z","cur_fp":"b"}'), 'already_sent',
+  'D1 updated: a copy from before fingerprints is read as unchanged — switching on never mails every client');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"auto_at":"2026-07-10T13:00:05Z","sent_fp":"a","cur_fp":"b","unfilled":1}'), 'not_filled',
+  'D1 updated: held while a slot is empty or a worker is still Awaiting the change');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"auto_at":"2026-07-10T13:00:05Z","sent_fp":"a","cur_fp":"b","cancelled":true}'), 'cancelled',
+  'D1 updated: never for a cancelled event');
+select is(pg_temp.d('allocation', '2026-07-11 06:00+00', '{"auto_at":"2026-07-10T13:00:05Z","sent_fp":"a","cur_fp":"b"}'), 'too_late',
+  'D1 updated: not once the first shift has started');
+select is(pg_temp.d('allocation', '2026-07-10 08:00+00', '{"manual_at":"2026-07-10T07:00:00Z","sent_fp":"a","cur_fp":"b"}'), 'due',
+  'D1 updated: a manager''s fresh copy counts as sent, and no 14:00 to wait for');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"auto_at":"2026-07-10T13:00:05Z","sent_fp":"a","cur_fp":"b","attempts":8}'), 'gave_up',
+  'D1 updated: eight spent claims on this revision — gave_up');
+select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"sent_fp":"a","cur_fp":"b"}'), 'due',
+  'D2 does not look at the Allocation Timesheet''s fingerprint');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":7}'), 'due', 'D1: seven spent claims, still due');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":8}'), 'gave_up', 'D1: eight spent claims — gave_up');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"attempts":8}'), 'gave_up', 'D2: eight spent claims — gave_up');
@@ -137,7 +158,7 @@ select is_empty(
                           'record_event_document_autosend', 'queue_event_document_autosend',
                           'event_document_autosend_release', 'event_document_email_payload',
                           'event_document_tally', 'document_autosend_verdict', 'document_autosend_config',
-                          'document_hours_label', 'event_document_schedule')
+                          'document_hours_label', 'event_document_schedule', 'event_allocation_fingerprint')
         and (has_function_privilege('anon', p.oid, 'execute')
           or has_function_privilege('authenticated', p.oid, 'execute')
           or not has_function_privilege('service_role', p.oid, 'execute')) $$,
@@ -302,6 +323,39 @@ select results_eq(
   format($$ select verdict, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev_gap'),
   $$ values ('due'::text, 0) $$,
   'the worker confirms the new time (reconfirm_booking clears the flag): the line-up is firm, due');
+-- ADR-0084 end to end on ev_gap: first copy, a change, the updated copy.
+select ok(event_document_autosend_claim(:'ev_gap', 'allocation'), 'ev_gap: the first copy is claimed…');
+create temp table gap0 as
+  select record_event_document_autosend(:'ev_gap', 'allocation', :'ev_gap' || '/allocation/auto0.pdf',
+                                        'Half Staffed.pdf', 2, 1) as id;
+create temp table gq0 as select queue_event_document_autosend((select id from gap0)) as q;
+select results_eq($$ select q->>'key', q->>'queued' from gq0 $$,
+  format($$ values ('D1:auto:%s'::text, 'true'::text) $$, :'ev_gap'),
+  '…and queued under the revision-0 key');
+select is((select verdict from event_documents_due(now(), :'ev_gap') where kind = 'allocation'), 'already_sent',
+  'the sheet is as sent: already_sent');
+update events set po_number = '4471-G2' where id = :'ev_gap';
+select is((select verdict from event_documents_due(now(), :'ev_gap') where kind = 'allocation'), 'due',
+  'the PO number on the sheet changed and the line-up is firm: the updated copy is due');
+select ok(event_document_autosend_claim(:'ev_gap', 'allocation'), 'it is claimed as the next revision…');
+create temp table gap1 as
+  select record_event_document_autosend(:'ev_gap', 'allocation', :'ev_gap' || '/allocation/auto1.pdf',
+                                        'Half Staffed (2).pdf', 2, 1) as id;
+create temp table gq1 as select queue_event_document_autosend((select id from gap1)) as q;
+select results_eq($$ select q->>'key', q->>'queued', q->>'revision' from gq1 $$,
+  format($$ values ('D1:auto:%s:1'::text, 'true'::text, '1'::text) $$, :'ev_gap'),
+  '…and queued under its own key, revision 1');
+select ok((select payload->>'updated' = 'true' from notification_outbox where key = 'D1:auto:' || :'ev_gap' || ':1')
+          and not (select payload ? 'updated' from notification_outbox where key = 'D1:auto:' || :'ev_gap'),
+  'only the updated copy''s payload says updated');
+select is((select verdict from event_documents_due(now(), :'ev_gap') where kind = 'allocation'), 'already_sent',
+  'the updated copy is the new baseline: nothing more to send until the sheet changes again');
+select is((select array_agg(revision order by revision) from event_document_autosends
+            where event_id = :'ev_gap' and kind = 'allocation' and queued_at is not null), array[0, 1],
+  'two automatic sends on record, one per revision');
+select ok((select d.fingerprint = event_allocation_fingerprint(:'ev_gap') from event_documents d where d.id = (select id from gap1))
+          and (select d.fingerprint <> event_allocation_fingerprint(:'ev_gap') from event_documents d where d.id = (select id from gap0)),
+  'each copy stored the fingerprint it was drawn at: the first is now out of date, the second is current');
 select ok(exists (select 1 from event_documents_due(now()) where event_id = :'ev' and kind = 'allocation'),
   'without an event id, tomorrow''s event is among the candidates');
 select is((select verdict from event_documents_due(now(), :'ev_off') where kind = 'allocation'), 'cancelled',

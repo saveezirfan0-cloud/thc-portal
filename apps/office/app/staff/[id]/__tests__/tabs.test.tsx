@@ -103,7 +103,9 @@ describe('Documents tab (§9.6)', () => {
         ]}
       />,
     );
-    expect(html).toContain('Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)');
+    expect(html).toContain(
+      'Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)',
+    );
   });
 
   it('offers the gov.uk report where one is stored', () => {
