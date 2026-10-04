@@ -23,6 +23,7 @@ import type {
   ReferralRow,
   ReferredOnBoard,
   ReturningRow,
+  ClientOption,
   RoleOption,
 } from './types';
 import { candidateReferral, referredOnBoard } from './view-model';
@@ -306,6 +307,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc,
     application,
     roles,
+    clients,
     rtw,
     referral,
     facts,
@@ -359,6 +361,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .limit(1)
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
+    supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
     // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
     loadRtwChecks(supabase, id),
     // Who referred them (ADR-0047); best-effort, never an error panel.
@@ -390,7 +393,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     attempts.error ??
     hmrc.error ??
     application.error ??
-    roles.error;
+    roles.error ??
+    clients.error;
   if (error) return { ...EMPTY, problem: error.message };
 
   const raw = candidate.data ?? null;
@@ -438,6 +442,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     application: application.data ?? null,
     contract,
     roles: roles.data ?? [],
+    clients: clients.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
     dobClaims: rtw.dobClaims,

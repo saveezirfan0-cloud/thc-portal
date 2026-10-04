@@ -354,7 +354,9 @@ export function CandidateScreen({
             canAccept={actions.includes('accept') && !past}
             busy={busy}
             problem={problem}
-            onAccept={(roles, note) => run(() => acceptCandidate(row.id, roles, note))}
+            onAccept={(roles, note, clients) =>
+              run(() => acceptCandidate(row.id, roles, note, clients))
+            }
             onReject={() => setReject({ kind: 'candidate' })}
           />
         ) : null}
@@ -848,13 +850,16 @@ function InterviewCompleted({
   busy: boolean;
   /** The last refusal — shown here as well as at the top, which is off-screen once scrolled to Accept. */
   problem: string | null;
-  onAccept: (roles: string[], note: string) => void;
+  onAccept: (roles: string[], note: string, clients: string[]) => void;
   onReject: () => void;
 }) {
   const [picked, setPicked] = useState<string[]>(row.role_ids);
+  const [pickedClients, setPickedClients] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const toggle = (id: string) =>
     setPicked((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const toggleClient = (id: string) =>
+    setPickedClients((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
 
   return (
     <div className="grid c2">
@@ -931,7 +936,7 @@ function InterviewCompleted({
           )}
         </Panel>
       ) : (
-        <Panel title="Accept → qualified role type(s)">
+        <Panel title="Accept → qualified role type(s) and client(s)">
           <div className="stack">
             <p className="sm muted">
               On acceptance the manager selects the role(s) the candidate is qualified for — this is
@@ -939,11 +944,24 @@ function InterviewCompleted({
               on the staff profile.
             </p>
             <RolePick roles={data.roles} picked={picked} onToggle={toggle} />
+            <div className="field">
+              <span className="label">Qualified at client(s) — optional</span>
+              <ClientPick
+                clients={data.clients ?? []}
+                picked={pickedClients}
+                onToggle={toggleClient}
+              />
+              <span className="hint">
+                Each client picked is paired with every role above, so auto-assign offers them that
+                client&rsquo;s shifts in its first wave (§9.6). Leave empty to add clients later
+                from the staff profile.
+              </span>
+            </div>
             <div className="row wrap">
               <Button
                 tone="primary"
                 disabled={!canAccept || busy || picked.length === 0}
-                onClick={() => onAccept(picked, note)}
+                onClick={() => onAccept(picked, note, pickedClients)}
               >
                 {busy ? 'Accepting…' : 'Accept — move to Documents'}
               </Button>
@@ -961,6 +979,38 @@ function InterviewCompleted({
           </div>
         </Panel>
       )}
+    </div>
+  );
+}
+
+function ClientPick({
+  clients,
+  picked,
+  onToggle,
+}: {
+  clients: NonNullable<CandidateData['clients']>;
+  picked: string[];
+  onToggle: (id: string) => void;
+}) {
+  if (clients.length === 0)
+    return <span className="muted sm">No clients exist yet — add them under Clients.</span>;
+  return (
+    <div className="rolepick">
+      {clients.map((client) => {
+        const on = picked.includes(client.id);
+        return (
+          <label key={client.id} className={on ? 'check sel' : 'check'}>
+            <input
+              type="checkbox"
+              className="check-input"
+              checked={on}
+              onChange={() => onToggle(client.id)}
+            />
+            <span className={on ? 'box on' : 'box'} />
+            {client.name}
+          </label>
+        );
+      })}
     </div>
   );
 }

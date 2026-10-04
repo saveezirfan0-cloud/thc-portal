@@ -146,6 +146,7 @@ export async function acceptCandidate(
   staffId: string,
   roleIds: string[],
   note: string,
+  clientIds: string[] = [],
 ): Promise<ActionResult> {
   if (roleIds.length === 0) return { ok: false, message: MESSAGES.roles_required! };
   const origin = staffOrigin();
@@ -187,6 +188,29 @@ export async function acceptCandidate(
     },
   );
   if (!outcome.ok) return { ok: false, message: explain(outcome.error) };
+
+  // §9.6: the clients the manager picked beside the roles. One entry per
+  // client × role, as the table holds them (RULE-17), and only now — the
+  // grant refuses a role the worker does not hold yet, and Accept is what
+  // gives them the roles. Accept has already happened and cannot be undone
+  // from here, so a refusal says so rather than implying nothing was saved.
+  for (const clientId of clientIds) {
+    for (const roleId of roleIds) {
+      const granted = await call(
+        'grant_client_qualification',
+        { p_staff: staffId, p_client: clientId, p_role: roleId, p_note: null },
+        [],
+      );
+      if (!granted.ok) {
+        for (const path of paths(staffId)) revalidatePath(path);
+        return {
+          ok: false,
+          message: `Accepted — E3 has gone out — but a client could not be added (${granted.message}). Add it from the staff profile → Client qualification.`,
+        };
+      }
+    }
+  }
+
   for (const path of paths(staffId)) revalidatePath(path);
   return { ok: true };
 }

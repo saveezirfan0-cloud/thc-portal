@@ -107,6 +107,11 @@ export interface RoleOption {
   name: string;
 }
 
+export interface ClientOption {
+  id: string;
+  name: string;
+}
+
 export interface BoardData {
   candidates: CandidateRow[];
   returning: ReturningRow[];
@@ -325,6 +330,8 @@ export interface CandidateData {
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
   contract: ContractVersion | null;
   roles: RoleOption[];
+  /** Every client, for the Accept panel's "qualified at client(s)" pick (§9.6). */
+  clients?: ClientOption[];
   /** The latest automated gov.uk check per share-code document (ADR-0025). */
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */

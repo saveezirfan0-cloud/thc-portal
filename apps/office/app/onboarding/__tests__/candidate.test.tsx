@@ -235,6 +235,28 @@ describe('the candidate profile, Documents phase', () => {
     );
   });
 
+  it('§9.6: picks the clients beside the roles on the Accept panel', () => {
+    const html = render(
+      data({
+        candidate: { ...ROW, status: 'interview_completed' },
+        roles: [{ id: 'r1', name: 'Host' }],
+        clients: [
+          { id: 'c1', name: 'Aurora Events' },
+          { id: 'c2', name: 'Meridian Hotels' },
+        ],
+      }),
+    );
+    expect(html).toContain('Accept → qualified role type(s) and client(s)');
+    const roles = html.indexOf('Host');
+    const clients = html.indexOf('Qualified at client(s)');
+    const accept = html.indexOf('Accept — move to Documents');
+    expect(roles).toBeGreaterThan(-1);
+    expect(clients).toBeGreaterThan(roles);
+    expect(accept).toBeGreaterThan(clients);
+    expect(html).toContain('Aurora Events');
+    expect(html).toContain('Meridian Hotels');
+  });
+
   it('renders no builder annotations', () => {
     const html = render(data());
     expect(html).not.toContain('class="annot');
