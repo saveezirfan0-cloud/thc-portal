@@ -564,11 +564,41 @@ export function rejectedLines(row: CandidateRow): Line[] {
 export type BoardFilter = 'active' | 'rejected';
 export type ReasonFilter = 'any' | RejectionCause;
 
+/** Which column a card sits in, or every column. */
+export type StageFilter = 'any' | ColumnKey;
+
+/** "Needs attention" is what the card already colours amber or coral. */
+export type AttentionFilter = 'any' | 'attention' | 'stalled' | 'referred' | 'not_activated';
+
+/** How long ago they applied, in UK calendar days. */
+export type AppliedFilter = 'any' | 'today' | '7d' | '30d';
+
+export const APPLIED_DAYS: Record<Exclude<AppliedFilter, 'any'>, number> = {
+  today: 0,
+  '7d': 7,
+  '30d': 30,
+};
+
 export interface BoardQuery {
   filter: BoardFilter;
   query: string;
   roleName: string;
   reason: ReasonFilter;
+  /** Optional so a caller that only searches need not name them; absent means "any". */
+  stage?: StageFilter;
+  attention?: AttentionFilter;
+  applied?: AppliedFilter;
+}
+
+/** What the filters need that is not on the candidate row. */
+export interface BoardContext {
+  now: Date;
+  /** Candidate staff ids that arrived through a referral link (ADR-0047). */
+  referredCandidates?: ReadonlySet<string>;
+  /** Returning-applicant application ids that did. */
+  referredApplications?: ReadonlySet<string>;
+  /** The onboarding chasers' state by staff id (ADR-0071). */
+  chasers?: Readonly<Record<string, ChaserState>>;
 }
 
 export interface BoardColumn {
@@ -587,6 +617,29 @@ function matchesQuery(name: string, extra: readonly string[], query: string): bo
 }
 
 /**
+ * Does this card carry a line the office should act on? The same signals the
+ * card colours: a stage age of four days or more, a reminder that stalled or
+ * could not be delivered, a rejected document, a Criminal Record "Yes" waiting
+ * for a manual Verify.
+ */
+export function needsAttention(
+  row: CandidateRow,
+  column: ColumnKey,
+  now: Date,
+  chaser?: ChaserState,
+): boolean {
+  if (stageAge(stageEnteredAt(row, column), now).tone !== 'ok') return true;
+  if (chaser && (chaser.stalled || chaser.last_failed)) return true;
+  if (row.docs_rejected > 0) return true;
+  return row.declaration_answer === true && row.declaration_status === 'pending';
+}
+
+function appliedWithin(appliedAt: string, applied: AppliedFilter, now: Date): boolean {
+  if (applied === 'any') return true;
+  return ukDaysBetween(appliedAt, now) <= APPLIED_DAYS[applied];
+}
+
+/**
  * The six columns for one toggle position. Rejected cards are hidden by
  * default and reachable through the toggle (§2.2); returning-applicant
  * cards belong to Interview requested and to the Active view only (§2.12).
@@ -597,18 +650,58 @@ export function boardColumns(
   candidates: readonly CandidateRow[],
   returning: readonly ReturningRow[],
   q: BoardQuery,
+  ctx: BoardContext = { now: new Date() },
 ): BoardColumn[] {
+  const stage = q.stage ?? 'any';
+  const attention = q.attention ?? 'any';
+  const applied = q.applied ?? 'any';
+  const active = q.filter === 'active';
+
   const wanted = candidates.filter((row) => {
-    if (q.filter === 'active' ? !ON_BOARD.has(row.status) : row.status !== 'rejected') return false;
+    if (active ? !ON_BOARD.has(row.status) : row.status !== 'rejected') return false;
     if (!matchesQuery(row.display_name, [row.email, row.phone], q.query)) return false;
     if (q.roleName && !row.role_names.includes(q.roleName)) return false;
-    if (q.filter === 'rejected' && q.reason !== 'any' && row.rejection_cause !== q.reason)
-      return false;
+    if (!active && q.reason !== 'any' && row.rejection_cause !== q.reason) return false;
+    const column = columnFor(row);
+    if (stage !== 'any' && column !== stage) return false;
+    if (!appliedWithin(row.applied_at, applied, ctx.now)) return false;
+    // The attention filters read the live board; a rejected card has none of
+    // those lines, so the toolbar only offers them on Active.
+    if (active && column) {
+      const chaser = ctx.chasers?.[row.id];
+      switch (attention) {
+        case 'attention':
+          if (!needsAttention(row, column, ctx.now, chaser)) return false;
+          break;
+        case 'stalled':
+          if (!chaser || !(chaser.stalled || chaser.last_failed)) return false;
+          break;
+        case 'referred':
+          if (!ctx.referredCandidates?.has(row.id)) return false;
+          break;
+        case 'not_activated':
+          if (row.activated) return false;
+          break;
+      }
+    }
     return true;
   });
+
+  // A returning-applicant card is not a candidate: it has no role, stage of
+  // its own beyond Interview requested, reminders or activation. It stays for
+  // the filters that can describe it and drops out of the ones that cannot.
   const cards =
-    q.filter === 'active' && !q.roleName
-      ? returning.filter((r) => matchesQuery(r.applicant_name, [r.existing_name], q.query))
+    active &&
+    !q.roleName &&
+    (stage === 'any' || stage === 'interview_requested') &&
+    attention !== 'stalled' &&
+    attention !== 'not_activated'
+      ? returning.filter(
+          (r) =>
+            matchesQuery(r.applicant_name, [r.existing_name], q.query) &&
+            appliedWithin(r.applied_at, applied, ctx.now) &&
+            (attention !== 'referred' || ctx.referredApplications?.has(r.application_id) === true),
+        )
       : [];
 
   return COLUMNS.map((column) => {

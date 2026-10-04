@@ -74,6 +74,11 @@
   padding: 24px var(--sp-10);
   font-size: var(--fs-12);
 }
+.toolbar .right {
+  /* Search + five selects do not fit one line below ~1500px. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .toolbar .annot,
 .annot {
   font-size: 11.5px;
