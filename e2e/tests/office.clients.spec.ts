@@ -52,6 +52,8 @@ test('the directory lists the seeded clients with contact, rate-card roles and p
     'Policies',
     'Events',
     'Avg margin',
+    'Date added',
+    'Added by',
   ]);
 
   // Search narrows the directory to one row, whatever else earlier runs

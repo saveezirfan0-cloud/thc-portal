@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Tabs } from '@thc/ui';
+import { Button, EmptyState, Note, Panel, Select, Tabs } from '@thc/ui';
+import { AddedFilters } from '../_components/AddedFilters';
+import {
+  NO_ADDED_FILTER,
+  addedFilterActive,
+  formatDateAdded,
+  matchesAdded,
+  type AddedFilter,
+} from '../_lib/addedBy';
 import { VenueMap, markerLabel } from './VenueMap';
 import { VenueModal } from './VenueModal';
 import { DeleteVenueModal } from './DeleteVenueModal';
@@ -11,6 +19,9 @@ import type { Venue, VenueType } from './types';
 import './venues.css';
 
 type Tab = 'list' | 'map';
+type RadiusFilter = 'all' | 'standard' | 'custom';
+type EventsFilter = 'all' | 'with' | 'none';
+type Sort = 'name' | 'newest' | 'oldest' | 'events';
 
 export interface VenuesScreenProps {
   venues: Venue[];
@@ -30,18 +41,57 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('list');
   const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [radiusFilter, setRadiusFilter] = useState<RadiusFilter>('all');
+  const [eventsFilter, setEventsFilter] = useState<EventsFilter>('all');
+  const [added, setAdded] = useState<AddedFilter>(NO_ADDED_FILTER);
+  const [sort, setSort] = useState<Sort>('name');
   /** `null` = closed, `'new'` = create, a venue = edit it. */
   const [editing, setEditing] = useState<Venue | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Venue | null>(null);
 
+  const filtersActive =
+    typeFilter !== '' ||
+    radiusFilter !== 'all' ||
+    eventsFilter !== 'all' ||
+    addedFilterActive(added);
+  const narrowed = query.trim() !== '' || filtersActive;
+
+  const clearFilters = () => {
+    setTypeFilter('');
+    setRadiusFilter('all');
+    setEventsFilter('all');
+    setAdded(NO_ADDED_FILTER);
+  };
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return venues;
-    return venues.filter(
-      (venue) =>
-        venue.name.toLowerCase().includes(needle) || venue.address.toLowerCase().includes(needle),
-    );
-  }, [venues, query]);
+    const matched = venues.filter((venue) => {
+      if (
+        needle &&
+        !venue.name.toLowerCase().includes(needle) &&
+        !venue.address.toLowerCase().includes(needle)
+      ) {
+        return false;
+      }
+      if (typeFilter && venue.venue_type !== typeFilter) return false;
+      // "Custom" is the radius the list already flags with "default 150":
+      // a venue whose geofence differs from its type's standard.
+      const isStandard = venue.geofence_radius_m === venue.default_radius_m;
+      if (radiusFilter === 'standard' && !isStandard) return false;
+      if (radiusFilter === 'custom' && isStandard) return false;
+      if (eventsFilter === 'with' && venue.events_past === 0) return false;
+      if (eventsFilter === 'none' && venue.events_past > 0) return false;
+      return matchesAdded(venue, added);
+    });
+
+    const sorted = [...matched];
+    if (sort === 'newest') sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    else if (sort === 'oldest') sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    else if (sort === 'events') sorted.sort((a, b) => b.events_past - a.events_past);
+    else sorted.sort((a, b) => a.name.localeCompare(b.name));
+    return sorted;
+  }, [venues, query, typeFilter, radiusFilter, eventsFilter, added, sort]);
 
   // The map draws `filtered`, not `venues`. §9.11's "every venue at once"
   // is what an untouched screen shows, because the search starts empty; the
@@ -108,17 +158,81 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
         </div>
       </div>
 
+      {/* Filters apply to both tabs: the map draws exactly what the list shows. */}
+      <div className="toolbar" role="group" aria-label="Venue filters">
+        <Select
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+          aria-label="Filter by venue type"
+          style={{ height: 32, width: 190 }}
+        >
+          <option value="">Type: all</option>
+          {venueTypes.map((type) => (
+            <option key={type.key} value={type.key}>
+              {type.label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={radiusFilter}
+          onChange={(event) => setRadiusFilter(event.target.value as RadiusFilter)}
+          aria-label="Filter by geofence"
+          style={{ height: 32, width: 170 }}
+        >
+          <option value="all">Geofence: all</option>
+          <option value="standard">Standard radius</option>
+          <option value="custom">Custom radius</option>
+        </Select>
+        <Select
+          value={eventsFilter}
+          onChange={(event) => setEventsFilter(event.target.value as EventsFilter)}
+          aria-label="Filter by events held"
+          style={{ height: 32, width: 170 }}
+        >
+          <option value="all">Events: any</option>
+          <option value="with">Has held events</option>
+          <option value="none">No events yet</option>
+        </Select>
+        <AddedFilters rows={venues} value={added} onChange={setAdded} />
+        <div className="right">
+          <Select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as Sort)}
+            aria-label="Sort venues"
+            style={{ height: 32, width: 190 }}
+          >
+            <option value="name">Sort: name A–Z</option>
+            <option value="newest">Sort: newest added</option>
+            <option value="oldest">Sort: oldest added</option>
+            <option value="events">Sort: most events</option>
+          </Select>
+          {filtersActive ? (
+            <Button size="sm" tone="ghost" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
       {tab === 'list' ? (
         <>
           <Panel flush>
             <div className="panel-b tight">
               {filtered.length === 0 ? (
                 <EmptyState>
-                  <h3>{venues.length === 0 ? 'No venues yet' : 'No venue matches that search'}</h3>
+                  <h3>
+                    {venues.length === 0
+                      ? 'No venues yet'
+                      : filtersActive
+                        ? 'No venue matches those filters'
+                        : 'No venue matches that search'}
+                  </h3>
                   <p>
                     {venues.length === 0
                       ? 'Add the first venue — its geofence radius is what decides whether a worker can check in at all.'
-                      : 'Search runs over the venue name and its address.'}
+                      : filtersActive
+                        ? 'Loosen a filter, or clear them to see every venue.'
+                        : 'Search runs over the venue name and its address.'}
                   </p>
                 </EmptyState>
               ) : (
@@ -130,6 +244,8 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                       <th>Type</th>
                       <th className="num">Geofence (m)</th>
                       <th className="num">Events</th>
+                      <th>Date added</th>
+                      <th>Added by</th>
                       <th className="actions">Actions</th>
                     </tr>
                   </thead>
@@ -159,6 +275,15 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                         <td data-label="Events" className="num">
                           {venue.events_past}
                         </td>
+                        <td data-label="Date added" className="sm">
+                          {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                          <time dateTime={venue.created_at}>
+                            {formatDateAdded(venue.created_at)}
+                          </time>
+                        </td>
+                        <td data-label="Added by" className="sm">
+                          {venue.created_by_name ?? <span className="muted">—</span>}
+                        </td>
                         <td className="actions cell-actions">
                           <Button size="sm" onClick={() => setEditing(venue)}>
                             Edit
@@ -174,11 +299,18 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
               )}
             </div>
           </Panel>
+          {narrowed && venues.length > 0 ? (
+            <p className="muted sm" role="status">
+              Showing {filtered.length} of {venues.length}{' '}
+              {venues.length === 1 ? 'venue' : 'venues'}
+            </p>
+          ) : null}
           <Note>
             <b>Events</b> is how many events have taken place at this venue. The geofence radius
             (100–3000 m) is what the check-in button checks against and what background tracking
-            watches for exits. Editing opens the same modal titled with the venue&rsquo;s name,
-            pre-filled with its pin, address and radius.
+            watches for exits. <b>Date added</b> is a UK date; <b>Added by</b> reads &ldquo;—&rdquo;
+            for venues that were there before it was recorded. Editing opens the same modal titled
+            with the venue&rsquo;s name, pre-filled with its pin, address and radius.
           </Note>
         </>
       ) : (

@@ -11,7 +11,7 @@
 -- itself, which is nothing.
 -- =====================================================================
 begin;
-select plan(40);
+select plan(45);
 \ir _shared/fixtures.psql
 
 -- The fixtures give the venue two events, both in the future (current_date
@@ -83,6 +83,16 @@ select is((select address from venues where name = 'Fixture Created'), '9 New St
   'create_venue trims the reverse-geocoded address');
 select is((select round(st_y(location::geometry)::numeric, 4) from venues where name = 'Fixture Created'), 51.5200,
   'create_venue puts latitude on the Y axis — st_makepoint takes longitude first');
+
+-- Who added it: the column default stamps the caller, and the directory
+-- names them (20261004100000). The fixture venue was written without a
+-- session, so it has nobody to name.
+select is((select created_by from venues where name = 'Fixture Created'), :'admin_uid'::uuid,
+  'create_venue records the manager who added the venue');
+select is((select created_by_name from venue_directory_v where name = 'Fixture Created'), 'Gisela M.',
+  'the directory names that manager, though profiles only lets her read her own row');
+select is((select created_by_name from venue_directory_v where id = :'venue_id'), null,
+  'a venue written without a session has no author to print — NULL, not a guess');
 
 select throws_ok(
   $$ select create_venue('No address', '   ', 51.52, -0.11, 'hotel', 150) $$,
@@ -162,6 +172,8 @@ select is((select count(*)::int from venue_directory_v), 0,
   'a worker reads no venue through venue_directory_v');
 select is((select count(*)::int from venue_upcoming_events_v), 0,
   'a worker reads no event through venue_upcoming_events_v');
+select is(office_user_name(:'admin_uid'::uuid), null,
+  'office_user_name tells a worker nothing about the office');
 select throws_ok(
   $$ select create_venue('Forged', '1 Forged Street', 51.5, -0.1, 'hotel', 150) $$,
   '42501', null, 'a worker cannot create a venue: create_venue is security invoker, so RLS refuses');
@@ -174,6 +186,9 @@ select throws_ok(
   'P0002', null, 'a worker cannot delete a venue');
 
 reset role;
+
+select ok(not has_function_privilege('anon', 'public.office_user_name(uuid)', 'execute'),
+  'the name lookup is not reachable by anon');
 
 -- Back on the migration role: every refused write above really did leave
 -- the geofence alone. A write that is refused and a write that silently

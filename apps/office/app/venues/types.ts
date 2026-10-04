@@ -32,6 +32,11 @@ export interface Venue {
   events_past: number;
   /** Events still to come — the delete confirmation's count (§9.11). */
   events_upcoming: number;
+  /** When the venue was added (an instant; shown as a UK date). */
+  created_at: string;
+  /** The manager who added it; NULL for venues that pre-date the column. */
+  created_by: string | null;
+  created_by_name: string | null;
 }
 
 /** Named in the delete confirmation: "Gala Dinner (Fri 19 Sep)". */
