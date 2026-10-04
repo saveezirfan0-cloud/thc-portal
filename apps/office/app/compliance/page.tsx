@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { OfficeShell } from '../_components/OfficeShell';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { ViewerZone } from '../checkin/ViewerZone';
 import { ComplianceScreen } from './ComplianceScreen';
 import { loadCompliance } from './data';
@@ -48,6 +49,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         </>
       }
     >
+      {/* New uploads and the gov.uk checks land in the queue on their own. */}
+      <AutoRefresh />
       <ComplianceScreen
         data={data}
         initialTab={tab === 'radar' || tab === 'checks' ? tab : 'review'}

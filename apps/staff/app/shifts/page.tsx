@@ -13,6 +13,7 @@ import {
   readyDeadlinePassed,
   sectionHours,
 } from '@thc/domain';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
@@ -108,6 +109,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         </div>
       }
     >
+      {/* An invite, an offered shift or a release arrives while the worker has the app open. */}
+      <AutoRefresh />
       {open ? (
         <>
           <p className="xs muted">

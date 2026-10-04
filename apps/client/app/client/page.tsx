@@ -1,5 +1,6 @@
 import { Alert } from '@thc/ui';
 import { loadArrivals } from './arrivals';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { EventsScreen } from './EventsScreen';
 import { loadEventList } from './data';
 import { kindsByEvent, loadAllDocuments } from './documents';
@@ -30,6 +31,8 @@ export default async function ClientEventsPage() {
 
   return (
     <>
+      {/* "N of M arrived" and the line-up move while an event is on. */}
+      <AutoRefresh />
       {problem ? <Alert tone="amber">{problem}</Alert> : null}
       <EventsScreen
         events={events}

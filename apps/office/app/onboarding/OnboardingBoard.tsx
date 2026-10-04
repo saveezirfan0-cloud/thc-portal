@@ -20,6 +20,7 @@ import {
   Textarea,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { useAutoRefresh } from '../_components/useAutoRefresh';
 import { employeeId, formatRating, formatShowRate } from '../staff/staff';
 import { resolveReturning } from './actions';
 import {
@@ -121,6 +122,9 @@ export function OnboardingBoard({
   applyUrl: string | null;
 }) {
   const router = useRouter();
+  // Cards move on their own (Willo webhook, documents verified, quiz passed),
+  // so the board re-reads every 30 s and when the tab regains focus.
+  useAutoRefresh();
   const at = useMemo(() => new Date(now), [now]);
   const [filter, setFilter] = useState<BoardFilter>('active');
   const [query, setQuery] = useState('');

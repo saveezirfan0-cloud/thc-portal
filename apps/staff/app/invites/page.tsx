@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { EmptyState, Pill } from '@thc/ui';
 import { explainLimit, formatDistance, sectionHours } from '@thc/domain';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
@@ -47,6 +48,7 @@ export default async function Page() {
       active="/invites"
       {...(problem ? {} : { shifts: shiftsBadge(bookings), invites: invites.length })}
     >
+      <AutoRefresh />
       {problem ? (
         // Audit D18: a failed read is not "No open invitations".
         <LoadProblem what="your invitations" />
