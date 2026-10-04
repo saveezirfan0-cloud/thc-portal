@@ -4,7 +4,15 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Chip, EmptyState, Note, Panel, Select } from '@thc/ui';
+import { AddedFilters } from '../_components/AddedFilters';
 import { OfficeShell } from '../_components/OfficeShell';
+import {
+  NO_ADDED_FILTER,
+  addedFilterActive,
+  formatDateAdded,
+  matchesAdded,
+  type AddedFilter,
+} from '../_lib/addedBy';
 import { ClientModal } from './ClientModal';
 import type { Client } from './types';
 import './clients.css';
@@ -16,7 +24,12 @@ export interface ClientsScreenProps {
   ratesVisible?: boolean;
 }
 
-type Sort = 'name' | 'events' | 'margin';
+type Sort = 'name' | 'events' | 'margin' | 'newest' | 'oldest';
+type PolicyFilter = 'all' | 'paid' | 'unpaid';
+type BufferFilter = 'all' | 'paid' | 'strict';
+
+/** The Rate-card-role filter's value for clients with an empty rate card. */
+const NO_RATE_CARD = '\u0000none';
 
 const PAGE_SIZE = 8;
 
@@ -37,29 +50,65 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('name');
   const [page, setPage] = useState(0);
+  const [breaks, setBreaks] = useState<PolicyFilter>('all');
+  const [buffer, setBuffer] = useState<BufferFilter>('all');
+  const [role, setRole] = useState('');
+  const [added, setAdded] = useState<AddedFilter>(NO_ADDED_FILTER);
   /** `null` = closed, `'new'` = create, a client = edit it. */
   const [editing, setEditing] = useState<Client | 'new' | null>(null);
 
+  const roles = useMemo(
+    () => [...new Set(clients.flatMap((client) => client.rate_card_roles))].sort(),
+    [clients],
+  );
+  const hasEmptyRateCard = clients.some((client) => client.rate_card_roles.length === 0);
+
+  const filtersActive =
+    breaks !== 'all' || buffer !== 'all' || role !== '' || addedFilterActive(added);
+
+  // Every filter change goes back to the first page: the pager would
+  // otherwise be left past the end of a shorter list.
+  const clearFilters = () => {
+    setBreaks('all');
+    setBuffer('all');
+    setRole('');
+    setAdded(NO_ADDED_FILTER);
+    setPage(0);
+  };
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matched = needle
-      ? clients.filter(
-          (client) =>
-            client.name.toLowerCase().includes(needle) ||
-            client.contact_name.toLowerCase().includes(needle) ||
-            client.contact_emails.some((email) => email.toLowerCase().includes(needle)),
-        )
-      : clients;
+    const matched = clients.filter((client) => {
+      if (
+        needle &&
+        !client.name.toLowerCase().includes(needle) &&
+        !client.contact_name.toLowerCase().includes(needle) &&
+        !client.contact_emails.some((email) => email.toLowerCase().includes(needle))
+      ) {
+        return false;
+      }
+      if (breaks !== 'all' && client.pays_breaks !== (breaks === 'paid')) return false;
+      // The buffer policy's two words are "paid" and "strict" (§3.2, RULE-15).
+      if (buffer !== 'all' && client.pays_buffer !== (buffer === 'paid')) return false;
+      if (role === NO_RATE_CARD) {
+        if (client.rate_card_roles.length > 0) return false;
+      } else if (role && !client.rate_card_roles.includes(role)) {
+        return false;
+      }
+      return matchesAdded(client, added);
+    });
 
     const sorted = [...matched];
     if (sort === 'events') sorted.sort((a, b) => b.event_count - a.event_count);
+    else if (sort === 'newest') sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    else if (sort === 'oldest') sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
     // Clients with nothing delivered have no margin; they sort last rather
     // than reading as 0% (§9.7).
     else if (sort === 'margin') {
       sorted.sort((a, b) => (b.avg_margin_pct ?? -1) - (a.avg_margin_pct ?? -1));
     } else sorted.sort((a, b) => a.name.localeCompare(b.name));
     return sorted;
-  }, [clients, query, sort]);
+  }, [clients, query, breaks, buffer, role, added, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pages - 1);
@@ -114,6 +163,8 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         >
           <option value="name">Sort: name A–Z</option>
           <option value="events">Sort: most events</option>
+          <option value="newest">Sort: newest added</option>
+          <option value="oldest">Sort: oldest added</option>
           {ratesVisible ? <option value="margin">Sort: margin</option> : null}
         </Select>
         {ratesVisible ? (
@@ -126,15 +177,84 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         ) : null}
       </div>
 
+      <div className="toolbar" role="group" aria-label="Client filters">
+        <Select
+          value={breaks}
+          onChange={(event) => {
+            setBreaks(event.target.value as PolicyFilter);
+            setPage(0);
+          }}
+          aria-label="Filter by break policy"
+          style={{ height: 32, width: 160 }}
+        >
+          <option value="all">Breaks: all</option>
+          <option value="paid">Breaks: paid</option>
+          <option value="unpaid">Breaks: unpaid</option>
+        </Select>
+        <Select
+          value={buffer}
+          onChange={(event) => {
+            setBuffer(event.target.value as BufferFilter);
+            setPage(0);
+          }}
+          aria-label="Filter by buffer policy"
+          style={{ height: 32, width: 160 }}
+        >
+          <option value="all">Buffer: all</option>
+          <option value="paid">Buffer: paid</option>
+          <option value="strict">Buffer: strict</option>
+        </Select>
+        <Select
+          value={role}
+          onChange={(event) => {
+            setRole(event.target.value);
+            setPage(0);
+          }}
+          aria-label="Filter by rate card role"
+          style={{ height: 32, width: 190 }}
+        >
+          <option value="">Rate card role: any</option>
+          {roles.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+          {hasEmptyRateCard ? <option value={NO_RATE_CARD}>No rate card yet</option> : null}
+        </Select>
+        <AddedFilters
+          rows={clients}
+          value={added}
+          onChange={(next) => {
+            setAdded(next);
+            setPage(0);
+          }}
+        />
+        {filtersActive ? (
+          <div className="right">
+            <Button size="sm" tone="ghost" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
       <Panel flush>
         <div className="panel-b tight">
           {shown.length === 0 ? (
             <EmptyState>
-              <h3>{clients.length === 0 ? 'No clients yet' : 'No client matches that search'}</h3>
+              <h3>
+                {clients.length === 0
+                  ? 'No clients yet'
+                  : filtersActive
+                    ? 'No client matches those filters'
+                    : 'No client matches that search'}
+              </h3>
               <p>
                 {clients.length === 0
                   ? 'A client has to exist before an event can be built for it.'
-                  : 'Search runs over the client name, the contact and the contact emails.'}
+                  : filtersActive
+                    ? 'Loosen a filter, or clear them to see every client.'
+                    : 'Search runs over the client name, the contact and the contact emails.'}
               </p>
             </EmptyState>
           ) : (
@@ -148,6 +268,8 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                   <th>Policies</th>
                   <th className="num">Events</th>
                   {ratesVisible ? <th className="num">Avg margin</th> : null}
+                  <th>Date added</th>
+                  <th>Added by</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,6 +323,13 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                         )}
                       </td>
                     ) : null}
+                    <td data-label="Date added" className="sm">
+                      {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                      <time dateTime={client.created_at}>{formatDateAdded(client.created_at)}</time>
+                    </td>
+                    <td data-label="Added by" className="sm">
+                      {client.created_by_name ?? <span className="muted">—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -38,7 +38,7 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
     supabase
       .from('venue_directory_v')
       .select(
-        'id, name, address, venue_type, venue_type_label, default_radius_m, geofence_radius_m, lat, lng, events_past, events_upcoming',
+        'id, name, address, venue_type, venue_type_label, default_radius_m, geofence_radius_m, lat, lng, events_past, events_upcoming, created_at, created_by, created_by_name',
       )
       // No deleted-venue filter here: venue_directory_v is the live
       // directory (0007_venues_directory.sql), so soft delete is one rule

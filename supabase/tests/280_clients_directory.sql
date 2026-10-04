@@ -12,7 +12,7 @@
 -- delete function anywhere.
 -- =====================================================================
 begin;
-select plan(28);
+select plan(31);
 \ir _shared/fixtures.psql
 
 \set past_event '9c9c9c9c-0000-4000-8000-000000000001'
@@ -113,6 +113,14 @@ select is((select contact_emails[1] from clients where contact_name = 'Helena As
   'h.ashworth@claridges.example',
   'and every address, so the allocation sheet does not bounce on a stray space (§11.4)');
 
+-- Who added it (20261004100000): stamped from the session by the column
+-- default and named through office_user_name, since profiles only lets
+-- the signed-in manager read her own row.
+select is((select created_by from clients where contact_name = 'Helena Ashworth'), :'admin_uid'::uuid,
+  'create_client records the manager who added the client');
+select is((select created_by_name from clients_directory_v where contact_name = 'Helena Ashworth'),
+  'Gisela M.', 'the directory names that manager');
+
 -- Every field on the form is mandatory (§9.7).
 select throws_ok(
   $$ select create_client('  ', 'A', '1', 'P', array['a@b.co'], true, true) $$,
@@ -150,6 +158,8 @@ select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 
 set local role authenticated;
 select is((select count(*)::int from clients_directory_v), 0,
   'a worker reads nothing through it either');
+select is(office_user_name(:'admin_uid'::uuid), null,
+  'office_user_name tells a worker nothing about the office');
 
 reset role;
 select * from finish();
