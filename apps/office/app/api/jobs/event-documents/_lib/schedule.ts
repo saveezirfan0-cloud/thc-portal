@@ -19,7 +19,11 @@ import { ukInstant } from '@thc/domain';
  *        awaiting re-confirmation (`unfilled` = 0, ADR-0085). A headcount,
  *        role or time change after the cut-off holds the sheet until the
  *        line-up is whole again. Skipped if a manager queued a D1 since
- *        00:00 UK the day before.
+ *        00:00 UK the day before and it still matches the line-up.
+ *        Once a D1 has gone, a CHANGE to the line-up (`changed`: its
+ *        fingerprint differs from the latest D1 sent) reopens it: an
+ *        updated sheet goes on the first run where the event is whole
+ *        again, up to the first shift. D2 goes once.
  *   D2 · the morning after at `completed.time` (10:00) UK, never before the
  *        last shift's end + 4 h (every check-out window closed). Held while
  *        any row is still undetermined — an unresolved No check-out prints
@@ -132,6 +136,13 @@ export interface AutosendFacts {
    * re-confirmation) — 0 = the event is 100% confirmed. D1 only.
    */
   unfilled?: number;
+  /**
+   * D1 only: the line-up differs from the latest D1 that was actually sent
+   * (a manager's or the job's), by its fingerprint. A copy older than the
+   * fingerprint is never "changed". A change reopens a sent sheet
+   * (ADR-0085).
+   */
+  changed?: boolean;
 }
 
 /** "2026-09-19" ± days, as a calendar date (no zone involved). */
@@ -175,13 +186,18 @@ export function autosendVerdict(
     const manual = at(facts.manualAllocationAt);
     const dayBefore = ukInstant(addDays(facts.eventDate, -1), '00:00').getTime();
     if (!config.allocation.enabled) return 'disabled';
-    if (facts.autoQueuedAt) return 'already_sent';
+    const changed = facts.changed ?? false;
+    // Sent, and nothing has changed since. A change reopens it (ADR-0085).
+    if (facts.autoQueuedAt && !changed) return 'already_sent';
     if (facts.cancelled) return 'cancelled';
     if (t < dueAt) return 'not_yet';
     if (firstStart !== null && t >= firstStart) return 'too_late';
     if (facts.confirmed === 0) return 'no_confirmed_staff';
     if (facts.contacts === 0) return 'no_contact_emails';
-    if (manual !== null && manual >= dayBefore) return 'manual_sent';
+    // A manager's fresh copy suppresses the FIRST automatic one, and only
+    // while it still matches the line-up.
+    if (!facts.autoQueuedAt && !changed && manual !== null && manual >= dayBefore)
+      return 'manual_sent';
     if ((facts.unfilled ?? 0) > 0) return 'not_fully_confirmed';
     if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
     return 'due';

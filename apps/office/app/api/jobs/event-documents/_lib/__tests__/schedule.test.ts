@@ -127,6 +127,59 @@ describe('D1 · Allocation Timesheet, the day before at 16:00 UK', () => {
     );
   });
 
+  describe('a change after the sheet went out (ADR-0085)', () => {
+    const SENT = { autoQueuedAt: '2026-07-10T15:00:05Z' };
+
+    it('stays sent while nothing has changed', () => {
+      expect(d1({ ...SENT, changed: false }, '2026-07-10T22:45:00Z')).toBe('already_sent');
+      // A copy with no fingerprint (older) is never "changed": the fact is false.
+      expect(d1({ ...SENT }, '2026-07-10T22:45:00Z')).toBe('already_sent');
+    });
+
+    it('a changed line-up reopens it, but waits until everyone has confirmed the change', () => {
+      expect(d1({ ...SENT, changed: true, unfilled: 2 }, '2026-07-10T22:45:00Z')).toBe(
+        'not_fully_confirmed',
+      );
+      // The next 15-minute run after the last re-confirmation sends the updated sheet.
+      expect(d1({ ...SENT, changed: true, unfilled: 0 }, '2026-07-10T23:00:00Z')).toBe('due');
+    });
+
+    it('goes up to the first shift and no further — the office sends by hand after that', () => {
+      expect(d1({ ...SENT, changed: true, unfilled: 0 }, '2026-07-11T05:59:00Z')).toBe('due');
+      expect(d1({ ...SENT, changed: true, unfilled: 0 }, '2026-07-11T06:00:00Z')).toBe('too_late');
+    });
+
+    it('still needs a confirmed worker, a contact email and a live event', () => {
+      expect(d1({ ...SENT, changed: true, confirmed: 0 }, '2026-07-10T23:00:00Z')).toBe(
+        'no_confirmed_staff',
+      );
+      expect(d1({ ...SENT, changed: true, contacts: 0 }, '2026-07-10T23:00:00Z')).toBe(
+        'no_contact_emails',
+      );
+      expect(d1({ ...SENT, changed: true, cancelled: true }, '2026-07-10T23:00:00Z')).toBe(
+        'cancelled',
+      );
+    });
+
+    it('is not suppressed by the first-send manual rule, and has its own retry ceiling', () => {
+      const manual = { manualAllocationAt: '2026-07-10T09:12:00Z' };
+      expect(d1({ ...SENT, ...manual, changed: true }, '2026-07-10T23:00:00Z')).toBe('due');
+      expect(d1({ ...SENT, changed: true, attempts: 8 }, '2026-07-10T23:00:00Z')).toBe('gave_up');
+    });
+
+    it('a manager copy that a later change has outdated no longer suppresses the automatic one', () => {
+      const manual = { manualAllocationAt: '2026-07-10T09:12:00Z' };
+      expect(d1({ ...manual, changed: false }, '2026-07-10T15:00:00Z')).toBe('manual_sent');
+      expect(d1({ ...manual, changed: true }, '2026-07-10T15:00:00Z')).toBe('due');
+    });
+
+    it('does not touch the Completed Timesheet, which still goes once', () => {
+      expect(
+        d2({ changed: true, autoQueuedAt: '2026-07-12T09:00:04Z' }, '2026-07-12T09:15:00Z'),
+      ).toBe('already_sent');
+    });
+  });
+
   it('gives up after eight spent claims — a fault never retries for ever', () => {
     expect(d1({ attempts: 7 }, '2026-07-10T15:00:00Z')).toBe('due');
     expect(d1({ attempts: 8 }, '2026-07-10T15:00:00Z')).toBe('gave_up');

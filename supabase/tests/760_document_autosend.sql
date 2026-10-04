@@ -12,7 +12,7 @@
 -- and the job_schedules row.
 -- =====================================================================
 begin;
-select plan(114);
+select plan(130);
 \ir _shared/fixtures.psql
 
 -- Sat 11 Jul 2026 (BST): 07:00 → 22:30 UK, six confirmed, two contacts,
@@ -35,7 +35,8 @@ returns text language sql as $$
     (p_changes->>'signout_at')::timestamptz,
     (p_changes->>'auto_at')::timestamptz,
     coalesce((p_changes->>'attempts')::int, 0),
-    coalesce((p_changes->>'unfilled')::int, 0))
+    coalesce((p_changes->>'unfilled')::int, 0),
+    coalesce((p_changes->>'changed')::boolean, false))
 $$;
 
 -- =====================================================================
@@ -67,6 +68,19 @@ select is(pg_temp.d('allocation', '2026-07-11 06:00+00', '{"unfilled":1}'), 'too
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"unfilled":1,"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed is reported first');
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"unfilled":1,"attempts":8}'), 'not_fully_confirmed', 'D1: a hold is reported before gave_up');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"unfilled":2}'), 'due', 'D2: the headcount never holds the Completed Timesheet');
+-- ADR-0085: a change after the sheet went out gets an updated one, once whole
+select is(pg_temp.d('allocation', '2026-07-10 22:45+00', '{"auto_at":"2026-07-10T15:00:05Z","changed":true,"unfilled":2}'), 'not_fully_confirmed',
+  'D1 resend: the event changed after the send, and the change is not yet confirmed — held');
+select is(pg_temp.d('allocation', '2026-07-10 23:00+00', '{"auto_at":"2026-07-10T15:00:05Z","changed":true,"unfilled":0}'), 'due',
+  'D1 resend: everyone has confirmed the change — due on the next run');
+select is(pg_temp.d('allocation', '2026-07-11 06:00+00', '{"auto_at":"2026-07-10T15:00:05Z","changed":true,"unfilled":0}'), 'too_late',
+  'D1 resend: not once the first shift has started');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"manual_at":"2026-07-10T09:12Z","changed":false}'), 'manual_sent',
+  'D1: a manager''s copy that still matches the line-up suppresses the first automatic one…');
+select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"manual_at":"2026-07-10T09:12Z","changed":true}'), 'due',
+  '…an outdated one does not');
+select is(pg_temp.d('signout', '2026-07-12 09:15+00', '{"auto_at":"2026-07-12T09:00:04Z","changed":true}'), 'already_sent',
+  'D2: a change never reopens the Completed Timesheet');
 select is(pg_temp.d('allocation', '2026-07-10 15:15+00', '{"auto_at":"2026-07-10T15:00:05Z"}'), 'already_sent', 'D1: at most once');
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{}', '{"allocation":{"enabled":false}}'), 'disabled', 'D1: switched off in settings');
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"attempts":7}'), 'due', 'D1: seven spent claims, still due');
@@ -368,6 +382,54 @@ select results_eq(
   format($$ select verdict, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev_short'),
   $$ values ('due'::text, 0) $$,
   'lowered again: confirmed above the headcount is still a whole line-up (the buffer is not needed)');
+
+-- =====================================================================
+-- 5c · ADR-0085: the event changes after the sheet went out
+--
+-- ev was sent in section 5. The Chef section moves later and its worker
+-- must re-confirm (§3.5 Awaiting): the fingerprint changes, the line-up
+-- is not whole, so nothing goes. When they re-confirm, the next 15-minute
+-- run sends an UPDATED sheet under its own key.
+-- =====================================================================
+reset role;
+update shift_requirements set ends_at = pg_temp.uk(:'today'::date + 1, '16:00') where id = :'sec_c';
+update bookings set reconfirm_required = true, reconfirm_reason = 'time' where id = :'b_1';
+set local role service_role;
+select results_eq(
+  format($$ select verdict, changed, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev'),
+  $$ values ('not_fully_confirmed'::text, true, 1) $$,
+  'changed after the send, and a worker has not re-confirmed: held, not resent');
+reset role;
+update bookings set reconfirm_required = false, reconfirm_reason = null where id = :'b_1';
+set local role service_role;
+select results_eq(
+  format($$ select verdict, changed, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev'),
+  $$ values ('due'::text, true, 0) $$,
+  'they re-confirm the change: the updated sheet is due on the next run');
+select ok(event_document_autosend_claim(:'ev', 'allocation'), 'the run claims the resend (a sent row can be claimed again)…');
+create temp table auto1b as
+  select record_event_document_autosend(:'ev', 'allocation', :'ev' || '/allocation/auto2.pdf',
+                                        'RLS Fixture Client A – Gala Dinner (2).pdf', 3, 1) as id;
+create temp table q1b as select queue_event_document_autosend((select id from auto1b)) as q;
+select results_eq($$ select q->>'key', q->>'queued' from q1b $$,
+  format($$ values ('D1:auto:%s:2'::text, 'true'::text) $$, :'ev'),
+  '…and queues it under its own key, D1:auto:<event>:2');
+select ok((select payload->>'updateTag' = ' (updated)' and payload->>'documentName' = 'Allocation Timesheet'
+             and payload->>'schedule' = 'Auto Chef 07:00 – 16:00 · Auto Waiting Staff 17:00 – 23:30'
+             from notification_outbox where key = 'D1:auto:' || :'ev' || ':2'),
+  'the email says it is updated, and carries the new Chef window (RULE-18)');
+select ok((select payload->>'updateTag' = '' from notification_outbox where key = 'D1:auto:' || :'ev'),
+  'the first email is untouched');
+select results_eq(
+  format($$ select sends, queued_at is not null, lease_until is null, attempts from event_document_autosends
+             where event_id = %L and kind = 'allocation' $$, :'ev'),
+  $$ values (2, true, true, 0) $$,
+  'two automatic sends counted, the lease released, a fresh eight tries for the next');
+select is((select verdict from event_documents_due(now(), :'ev') where kind = 'allocation'), 'already_sent',
+  'and with nothing changed since, it is final again');
+select is((select count(*)::int from notification_outbox where key like 'D1:auto:' || :'ev' || '%'), 2,
+  'two D1 emails for the event, the second marked updated');
+select ok(not event_document_autosend_claim(:'ev', 'allocation'), 'a further run finds nothing to send');
 
 -- =====================================================================
 -- 6 · The race: a manager presses Send while the job holds the claim

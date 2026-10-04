@@ -34,6 +34,7 @@ export interface DueRow {
   auto_queued_at: string | null;
   attempts?: number | null;
   unfilled?: number | null;
+  changed?: boolean | null;
 }
 
 export function factsOf(row: DueRow): AutosendFacts {
@@ -51,6 +52,7 @@ export function factsOf(row: DueRow): AutosendFacts {
     autoQueuedAt: row.auto_queued_at,
     attempts: Number(row.attempts) || 0,
     unfilled: Number(row.unfilled) || 0,
+    changed: row.changed === true,
   };
 }
 

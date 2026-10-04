@@ -100,12 +100,12 @@ export const DOCUMENT_EMAILS = {
     channel: 'email',
     sender: 'timesheets',
     bucket: 'timesheets',
-    title: 'Allocation Timesheet — {event}, {date}{poSuffix}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    title: 'Allocation Timesheet — {event}, {date}{poSuffix}{updateTag}',
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}{updateLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
-        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}",
+        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}{updateLine}",
       stepsLead: 'On the day, please ask your manager on site to:',
       steps: [
         "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
@@ -222,11 +222,18 @@ function derivedValues(
     };
   }
   const po = (values.poNumber ?? '').trim();
+  // ADR-0085: an automatic D1 that follows one already sent says so. A row
+  // without the key (older) is a first sheet.
+  const updated = (values.updateTag ?? '').trim() !== '';
   // ADR-0081: a client with name badges on gets them with the D1 sheet. The
   // count is in the facts box ("Name badges"), so the sentence needs none.
   const badges = Number((values.nameBadges ?? '').trim()) || 0;
   return {
     ...values,
+    updateTag: values.updateTag ?? '',
+    updateLine: updated
+      ? ' This replaces the Allocation Timesheet we sent earlier: the line-up has changed since, so please use this one.'
+      : '',
     poLine: po ? ` Your PO number ${po} is on the sheet.` : '',
     badgeLine:
       badges > 0

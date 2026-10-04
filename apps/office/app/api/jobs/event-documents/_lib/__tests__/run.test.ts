@@ -80,6 +80,27 @@ describe('one run of the event-documents job', () => {
     expect(logs[0]).toContain('SQL says due, TypeScript not_fully_confirmed');
   });
 
+  it('sends an updated sheet when SQL and TypeScript both say the changed line-up is whole', async () => {
+    const sent = '2026-07-10T15:00:05+00:00';
+    const { deps, calls } = harness([row({ auto_queued_at: sent, changed: true, unfilled: 0 })], {
+      now: new Date('2026-07-10T22:00:00Z'),
+    });
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual(['claim allocation ev-1', 'generate allocation ev-1', 'queue doc-ev-1']);
+    expect(counts.sent.allocation).toBe(1);
+  });
+
+  it('holds an updated sheet while the change is unconfirmed, even if SQL says due', async () => {
+    const { deps, calls, logs } = harness(
+      [row({ auto_queued_at: '2026-07-10T15:00:05+00:00', changed: true, unfilled: 1 })],
+      { now: new Date('2026-07-10T22:00:00Z') },
+    );
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([]);
+    expect(counts.disagreements).toBe(1);
+    expect(logs[0]).toContain('SQL says due, TypeScript not_fully_confirmed');
+  });
+
   it('records the reason for a skip in the counts and the log, without failing the run', async () => {
     const { deps, calls, logs } = harness([
       row({ event_id: 'ev-c', verdict: 'cancelled', cancelled: true }),

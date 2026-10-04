@@ -129,6 +129,21 @@ describe('§11.4 allocation sheet email', () => {
     expect(message.body).not.toContain('PO number');
   });
 
+  it('says an automatic resend replaces the earlier sheet (ADR-0085), in subject, text and HTML', () => {
+    const payload = { ...d1().payload, updateTag: ' (updated)' };
+    const message = documentMessageFor(d1({ payload }));
+    expect(message.subject).toBe(
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A) (updated)',
+    );
+    expect(message.body).toContain('This replaces the Allocation Timesheet we sent earlier');
+    expect(message.html).toContain('This replaces the Allocation Timesheet we sent earlier');
+    // A first sheet, and a row older than the key, say nothing of the kind.
+    expect(documentMessageFor(d1()).body).not.toContain('replaces');
+    expect(documentMessageFor(d1({ payload: { ...d1().payload, updateTag: '' } })).subject).toBe(
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+    );
+  });
+
   it('attaches the stored PDF by reference', () => {
     expect(documentMessageFor(d1()).attachments).toEqual([
       {
