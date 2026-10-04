@@ -2,7 +2,8 @@ import { ukInstant } from '@thc/domain';
 
 /**
  * When the Allocation Timesheet (D1) and the Completed Allocation Timesheet
- * (D2) go out on their own — ADR-0074, agreed with THC on 29.09.2026.
+ * (D2) go out on their own — ADR-0074, agreed with THC on 29.09.2026; D1 amended
+ * by ADR-0085 (16:00, and only once fully confirmed), 04.10.2026.
  *
  * Pure: the facts come from `event_documents_due()` and the settings row
  * `document_autosend`; the answer is one verdict. The SQL twin is
@@ -10,11 +11,15 @@ import { ukInstant } from '@thc/domain';
  * same order, and the route sends only where BOTH say `due`. Change one,
  * change the other: pgTAP 760 and schedule.test.ts hold the same cases.
  *
- *   D1 · the day before the event at `allocation.time` (14:00) UK — after
+ *   D1 · the day before the event at `allocation.time` (16:00) UK — after
  *        the 12:00 "I'm ready" deadline and the 12:05 release — and any run
  *        after that until the first shift starts (an event created or
- *        filled late still gets one). Skipped if a manager queued a D1
- *        since 00:00 UK the day before.
+ *        filled late still gets one), but only while the event is 100%
+ *        confirmed: every role section at its headcount and nobody
+ *        awaiting re-confirmation (`unfilled` = 0, ADR-0085). A headcount,
+ *        role or time change after the cut-off holds the sheet until the
+ *        line-up is whole again. Skipped if a manager queued a D1 since
+ *        00:00 UK the day before.
  *   D2 · the morning after at `completed.time` (10:00) UK, never before the
  *        last shift's end + 4 h (every check-out window closed). Held while
  *        any row is still undetermined — an unresolved No check-out prints
@@ -40,6 +45,7 @@ export type AutosendVerdict =
   | 'no_confirmed_staff'
   | 'no_contact_emails'
   | 'manual_sent'
+  | 'not_fully_confirmed'
   | 'held_no_checkout'
   | 'gave_up';
 
@@ -56,7 +62,7 @@ export interface AutosendConfig {
   completed: { enabled: boolean; time: string; holdDays: number; notBefore: string | null };
 }
 
-export const DEFAULT_TIMES = { allocation: '14:00', completed: '10:00', holdDays: 14 } as const;
+export const DEFAULT_TIMES = { allocation: '16:00', completed: '10:00', holdDays: 14 } as const;
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -120,6 +126,12 @@ export interface AutosendFacts {
   autoQueuedAt: string | null;
   /** Claims already spent on it (a live one not counted). */
   attempts?: number;
+  /**
+   * Places short of the headcount across the role sections, counting only
+   * firmly confirmed workers (confirmed or worked, not awaiting
+   * re-confirmation) — 0 = the event is 100% confirmed. D1 only.
+   */
+  unfilled?: number;
 }
 
 /** "2026-09-19" ± days, as a calendar date (no zone involved). */
@@ -170,6 +182,7 @@ export function autosendVerdict(
     if (facts.confirmed === 0) return 'no_confirmed_staff';
     if (facts.contacts === 0) return 'no_contact_emails';
     if (manual !== null && manual >= dayBefore) return 'manual_sent';
+    if ((facts.unfilled ?? 0) > 0) return 'not_fully_confirmed';
     if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
     return 'due';
   }
@@ -197,6 +210,7 @@ export const NOTEWORTHY: ReadonlySet<AutosendVerdict> = new Set([
   'no_confirmed_staff',
   'no_contact_emails',
   'manual_sent',
+  'not_fully_confirmed',
   'held_no_checkout',
   'gave_up',
 ]);
@@ -229,7 +243,7 @@ export function autosendHint(
     if (state.sentAt)
       return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
     if (!config.allocation.enabled || state.started) return null;
-    return `Sent automatically the day before at ${config.allocation.time} (UK time)`;
+    return `Sent automatically the day before at ${config.allocation.time} (UK time), once every role is fully confirmed`;
   }
   if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
   if (!config.completed.enabled) return null;

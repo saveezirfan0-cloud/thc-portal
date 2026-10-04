@@ -5,7 +5,7 @@ import { parseAutosendConfig } from '../schedule';
 import type { DocumentKind } from '../schedule';
 
 const CONFIG = parseAutosendConfig({});
-const NOW = new Date('2026-07-10T13:00:00Z'); // Fri 14:00 BST
+const NOW = new Date('2026-07-10T15:00:00Z'); // Fri 16:00 BST
 
 function row(overrides: Partial<DueRow> = {}): DueRow {
   return {
@@ -64,12 +64,20 @@ describe('one run of the event-documents job', () => {
   });
 
   it('acts only when SQL and TypeScript agree — a disagreement is counted, not sent', async () => {
-    // TypeScript says not_yet at 13:59 UK; SQL (wrongly) says due.
-    const { deps, calls, logs } = harness([row()], { now: new Date('2026-07-10T12:59:00Z') });
+    // TypeScript says not_yet at 15:59 UK; SQL (wrongly) says due.
+    const { deps, calls, logs } = harness([row()], { now: new Date('2026-07-10T14:59:00Z') });
     const counts = await runAutosend(deps);
     expect(calls).toEqual([]);
     expect(counts.disagreements).toBe(1);
     expect(logs[0]).toContain('SQL says due, TypeScript not_yet');
+  });
+
+  it('holds the sheet while a role is short of its headcount, even if SQL says due', async () => {
+    const { deps, calls, logs } = harness([row({ unfilled: 1 })]);
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([]);
+    expect(counts.disagreements).toBe(1);
+    expect(logs[0]).toContain('SQL says due, TypeScript not_fully_confirmed');
   });
 
   it('records the reason for a skip in the counts and the log, without failing the run', async () => {
