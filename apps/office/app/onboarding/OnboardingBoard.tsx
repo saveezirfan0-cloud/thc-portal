@@ -24,6 +24,7 @@ import { useAutoRefresh } from '../_components/useAutoRefresh';
 import { employeeId, formatRating, formatShowRate } from '../staff/staff';
 import { resolveReturning } from './actions';
 import {
+  COLUMNS,
   boardColumns,
   boardCounts,
   cardLines,
@@ -35,7 +36,15 @@ import {
   stageAge,
   stageEnteredAt,
 } from './view-model';
-import type { BoardColumn, BoardFilter, Line, ReasonFilter } from './view-model';
+import type {
+  AppliedFilter,
+  AttentionFilter,
+  BoardColumn,
+  BoardFilter,
+  Line,
+  ReasonFilter,
+  StageFilter,
+} from './view-model';
 import type { BoardData, CandidateRow, ChaserState, ReturningRow } from './types';
 import './onboarding.css';
 
@@ -130,6 +139,9 @@ export function OnboardingBoard({
   const [query, setQuery] = useState('');
   const [roleName, setRoleName] = useState('');
   const [reason, setReason] = useState<ReasonFilter>('any');
+  const [stage, setStage] = useState<StageFilter>('any');
+  const [attention, setAttention] = useState<AttentionFilter>('any');
+  const [applied, setApplied] = useState<AppliedFilter>('any');
   const [pending, setPending] = useState<Pending>(null);
   const [note, setNote] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -146,12 +158,32 @@ export function OnboardingBoard({
   );
 
   const counts = boardCounts(data.candidates, data.returning);
-  const columns = boardColumns(data.candidates, data.returning, {
-    filter,
-    query,
-    roleName,
-    reason,
-  });
+  const columns = boardColumns(
+    data.candidates,
+    data.returning,
+    { filter, query, roleName, reason, stage, attention, applied },
+    {
+      now: at,
+      referredCandidates: referred.candidates,
+      referredApplications: referred.applications,
+      chasers: data.chasers,
+    },
+  );
+
+  // The toggle keeps each view's own filters, so "any" is judged per view.
+  const filtering =
+    query.trim() !== '' ||
+    stage !== 'any' ||
+    applied !== 'any' ||
+    (filter === 'active' ? roleName !== '' || attention !== 'any' : reason !== 'any');
+  const clearFilters = () => {
+    setQuery('');
+    setRoleName('');
+    setReason('any');
+    setStage('any');
+    setAttention('any');
+    setApplied('any');
+  };
 
   const open = (row: CandidateRow) => router.push(`/onboarding/${row.id}`);
 
@@ -226,19 +258,46 @@ export function OnboardingBoard({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
+            <Select
+              aria-label="Stage"
+              value={stage}
+              onChange={(event) => setStage(event.target.value as StageFilter)}
+            >
+              <option value="any">
+                {filter === 'active' ? 'Any stage' : 'Rejected from any stage'}
+              </option>
+              {COLUMNS.map((column) => (
+                <option key={column.key} value={column.key}>
+                  {column.label}
+                </option>
+              ))}
+            </Select>
             {filter === 'active' ? (
-              <Select
-                aria-label="Role"
-                value={roleName}
-                onChange={(event) => setRoleName(event.target.value)}
-              >
-                <option value="">Any role</option>
-                {data.roles.map((role) => (
-                  <option key={role.id} value={role.name}>
-                    {role.name}
-                  </option>
-                ))}
-              </Select>
+              <>
+                <Select
+                  aria-label="Role"
+                  value={roleName}
+                  onChange={(event) => setRoleName(event.target.value)}
+                >
+                  <option value="">Any role</option>
+                  {data.roles.map((role) => (
+                    <option key={role.id} value={role.name}>
+                      {role.name}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  aria-label="Attention"
+                  value={attention}
+                  onChange={(event) => setAttention(event.target.value as AttentionFilter)}
+                >
+                  <option value="any">Everyone</option>
+                  <option value="attention">Needs attention</option>
+                  <option value="stalled">Reminders stalled or undelivered</option>
+                  <option value="referred">From a referral link</option>
+                  <option value="not_activated">Not activated</option>
+                </Select>
+              </>
             ) : (
               <Select
                 aria-label="Reason"
@@ -251,6 +310,21 @@ export function OnboardingBoard({
                 <option value="manager">Rejected by manager</option>
               </Select>
             )}
+            <Select
+              aria-label="Applied"
+              value={applied}
+              onChange={(event) => setApplied(event.target.value as AppliedFilter)}
+            >
+              <option value="any">Applied any time</option>
+              <option value="today">Applied today</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+            </Select>
+            {filtering ? (
+              <Button size="sm" tone="ghost" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
           </div>
         </div>
 
