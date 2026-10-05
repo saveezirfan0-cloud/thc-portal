@@ -15,7 +15,8 @@ The gap was every other way a `bank_details` row can change. An office login hol
 1. **A trigger on `bank_details` closes it.** `bank_details_notify_change()`, after insert or update, queues **E5b** ("Bank & payroll details changed") for any insert, or any change to the account holder, sort code or account number, that did not come through `staff_save_bank()`. A write that changes nothing sends nothing. A delete (the GDPR removal) is not a change and sends nothing. The trigger is `security definer` and executable by nobody.
 2. **One change, one email.** `staff_save_bank()` sets a transaction-local flag around its own write, and the trigger stands down for it, so a worker's save is E5 only. The flag is cleared again straight after that statement, so a later direct write in the same transaction is still emailed.
 3. **E5b goes to the same two addresses as E5**, from `admin@`. It names the worker, their Employee ID, when (UK time), and **who** changed it: the office login's name, or "the system" for the service role. It says "if you were not expecting this change, check it with the office before the next payroll run". **It never carries a sort code or an account number**, so the details stay in the platform and not in an inbox. A test holds the template and the payload to that.
-4. **E5b is an extension code** (`EXTENSION_CODES`, like E2b and E10), not a §8 code. It has its own switch in /settings → Notifications (ADR-0083), on by default.
+4. **Cosmetic:** `changedBy` reads "the system" whenever the writer has no Back Office profile (the service role, a script, a database administrator), not only for the service role.
+5. **E5b is an extension code** (`EXTENSION_CODES`, like E2b and E10), not a §8 code. It has its own switch in /settings → Notifications (ADR-0083), on by default.
 
 ## Consequences
 

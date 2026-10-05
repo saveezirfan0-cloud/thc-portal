@@ -77,11 +77,25 @@ select distinct on (f.staff_id) f.staff_id, ns.id
 on conflict do nothing;
 
 -- Nobody whose first shift is before last week's Monday is ever reported by
--- this job: those workers were onboarded before it existed.
-insert into settings (key, value) values
-  ('new_starter_report',
-   jsonb_build_object('not_before', to_char(date_trunc('week', uk_local(now()))::date - 7, 'YYYY-MM-DD')))
-on conflict (key) do nothing;
+-- this job: those workers were onboarded before it existed. EXCEPT the workers
+-- of an old BG08 run whose New Starter attachment never went (stamped but never
+-- queued, or queued and failed): they were never sent, so the cut-in date reaches
+-- back to the earliest such week and the first run reports them. A stamped-but-
+-- never-queued row is removed so it is not mistaken for a prepared week.
+do $$
+declare
+  v_default date := date_trunc('week', uk_local(now()))::date - 7;
+  v_unsent  date;
+begin
+  select min(period_start) into v_unsent from report_sends
+   where kind = 'new_starter' and status in ('preparing', 'failed');
+  delete from report_sends
+   where kind = 'new_starter' and status = 'preparing' and outbox_key is null;
+  insert into settings (key, value) values
+    ('new_starter_report',
+     jsonb_build_object('not_before', to_char(least(v_default, coalesce(v_unsent, v_default)), 'YYYY-MM-DD')))
+  on conflict (key) do nothing;
+end $$;
 
 -- ---------------------------------------------------------------------
 -- 2 · The four steps
@@ -114,6 +128,13 @@ begin
   perform pg_advisory_xact_lock(hashtext('ns1:' || v_start::text));
 
   select * into v_send from report_sends where kind = 'new_starter' and period_start = v_start;
+  -- A 'preparing' send with nobody recorded against it is a stale row (an older
+  -- run stamped it and never queued it), not a prepared week: start it again.
+  if v_send.id is not null and v_send.status = 'preparing' and v_send.outbox_key is null
+     and not exists (select 1 from new_starter_reported r where r.report_send_id = v_send.id) then
+    delete from report_sends where id = v_send.id;
+    v_send := null;
+  end if;
   if v_send.id is not null then
     return jsonb_build_object('alreadyPrepared', true, 'periodStart', v_start, 'periodEnd', v_end,
                               'sendId', v_send.id, 'status', v_send.status,
@@ -328,6 +349,51 @@ comment on function public.prepare_finance_reports(timestamptz) is
 
 comment on function public.queue_finance_report_email(bigint, text) is
   'BG-08 step 3: one email to finance with the payroll CSV, queued in notification_outbox under BG08:<week>. The drain sends it from admin@. The New Starter (HMRC) report goes separately (NS1, ADR-0090).';
+
+-- ---------------------------------------------------------------------
+-- 3b · "Retry send" for a failed run, for BOTH reports
+--
+-- 20261001200100's body hard-coded template BG08 and the BG08 key, so a
+-- failed New Starter send (a switch turned off after queueing settles the
+-- row as failed, ADR-0083) was re-queued as the PAYROLL email: the New
+-- Starter CSV under the wrong subject and text. It now takes the template and
+-- key prefix from the send's own kind: NS1 for new_starter, BG08 for payroll.
+-- ---------------------------------------------------------------------
+create or replace function public.retry_finance_report(p_send bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'extensions'
+as $function$
+declare
+  v      report_sends;
+  v_old  notification_outbox;
+  v_code text;
+  v_key  text;
+  v_n    int;
+begin
+  perform assert_finance_caller();
+  select * into v from report_sends where id = p_send;
+  if v.id is null or v.outbox_key is null then
+    raise exception 'unknown_report_send' using errcode = 'P0002';
+  end if;
+  if v.status <> 'failed' then
+    raise exception 'not_failed' using errcode = 'P0001';
+  end if;
+  v_code := case v.kind when 'new_starter' then 'NS1' else 'BG08' end;
+  select * into v_old from notification_outbox where key = v.outbox_key;
+  select count(*) into v_n from notification_outbox where key like v_code || ':' || v.period_start::text || '%';
+  v_key := v_code || ':' || v.period_start::text || ':retry:' || v_n;
+
+  insert into notification_outbox (key, channel, template, payload)
+  values (v_key, 'email', v_code, v_old.payload);
+
+  update report_sends
+     set status = 'queued', outbox_key = v_key, error = null
+   where outbox_key = v.outbox_key and status = 'failed';
+
+  return jsonb_build_object('key', v_key);
+end $function$;
 
 -- ---------------------------------------------------------------------
 -- 4 · The job, and who may call what

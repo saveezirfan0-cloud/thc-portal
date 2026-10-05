@@ -22,7 +22,7 @@
 -- dashboard.
 -- =====================================================================
 begin;
-select plan(94);
+select plan(101);
 \ir _shared/fixtures.psql
 
 \set r_wait '41000000-0000-4000-8000-000000000001'
@@ -501,11 +501,42 @@ select is((select (r->>'newStarters')::int from ns2), 1, 'NS1 week 2: W4 only �
 select is((select count(*)::int from new_starter_reported r where r.report_send_id = (select (r->>'sendId')::bigint from ns2)
               and r.staff_id = (select bk.staff_id from bookings bk where bk.id = (select id from b where name = 'w4s1'))), 1,
   'and they are the one recorded');
+-- "Retry send" on a failed New Starter send re-queues the NEW STARTER email
+-- (NS1), with its own attachment, never the payroll one (BG08).
+set local role service_role;
+select lives_ok(format($$ select queue_new_starter_report_email(%s, 'new-starter/2025-03-10.csv') $$, (select r->>'sendId' from ns2)),
+  'week 2''s New Starter email is queued');
+reset role;
+select fail_outbox_send((select id from notification_outbox where key = 'NS1:2025-03-10'), 'Not sent: switched off in Settings');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'failed',
+  'and it fails (a switch turned off after queueing, ADR-0083)');
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(format($$ select retry_finance_report(%s) $$,
+                       (select id from report_sends where kind = 'new_starter' and period_start = '2025-03-10')),
+  'the office presses Retry send');
+reset role;
+select results_eq(
+  $$ select template, key, payload->>'attachments' = (select payload->>'attachments' from notification_outbox where key = 'NS1:2025-03-10')
+       from notification_outbox where key like 'NS1:2025-03-10:retry:%' $$,
+  $$ values ('NS1'::text, 'NS1:2025-03-10:retry:1'::text, true) $$,
+  'the retry is an NS1 email with the same attachment — not the payroll email');
+select is((select count(*)::int from notification_outbox where key like 'BG08:2025-03-10%'), 0, 'and no BG08 row was made for it');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'queued',
+  'the send reads queued again');
+
+-- An old BG08 run left a stamped-but-never-queued New Starter row for week 3:
+-- it is not a prepared week, so NS1 starts it again instead of mailing an empty CSV.
+insert into report_sends (kind, period_start, period_end, status, row_count)
+values ('new_starter', '2025-03-17', '2025-03-23', 'preparing', 4);
+select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
 set local role service_role;
 create temp table ns3 as select prepare_new_starter_report('2025-03-24 09:05+00') as r;
 reset role;
-select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'preparing',
-  'week 2 (Mon 10 – Sun 16 Mar) has its send prepared');
+select is((select (r->>'alreadyPrepared')::boolean from ns3), false,
+  'a stale "preparing" row with nobody recorded is replaced, not resumed');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'queued',
+  'week 2 (Mon 10 – Sun 16 Mar) had its send prepared, and is queued again after the retry');
 select is((select row(r->>'status', r->>'newStarters')::text from ns3), row('no_new', '0')::text,
   'NS1 week 3, nobody new: "no_new", not a failure');
 select ok((select sent_at is not null from report_sends where kind = 'new_starter' and period_start = '2025-03-17'),

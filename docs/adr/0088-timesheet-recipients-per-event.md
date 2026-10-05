@@ -25,6 +25,10 @@
    Everyone ticked with nothing added is saved as null, so a contact added to the client card later still reaches that event. The Send confirmation names the recipients it will use, and a line under the buttons reads "Timesheets go to … (set for this event / the client card)".
 5. **Saving does not send anything.** The next send, automatic or the manager's Send button, uses the new list. In particular, changing the recipients **after** the automatic Allocation Timesheet has gone does not resend it, and the recipients are not part of the line-up fingerprint (ADR-0087). A new person who needs the sheet now gets it from Send Allocation Timesheet.
 
+## Known limit
+
+An event's own list is a snapshot of addresses, not a pointer to the client card. A contact **removed from the client card afterwards still receives the timesheets of events that already hold an explicit list** that includes them, until the office edits that event's recipients. Events left on the client card (null) always follow it. The line under the buttons and the Send confirmation name the exact addresses, so the office can see this. Pruning an event's list when the card changes is a possible follow-up.
+
 ## Not done
 
 - **No choice on the new-event or edit-event forms.** It is set on the event page, which works before and after the event. Adding the same picker to the builder is a small follow-up.
