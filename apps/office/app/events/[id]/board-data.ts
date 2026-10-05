@@ -122,6 +122,10 @@ export interface BoardEvent {
   clientName: string;
   /** The client card's Name badges switch (ADR-0081). */
   nameBadges: boolean;
+  /** The contact emails on the client card (§9.7): who a timesheet goes to by default. */
+  clientContactEmails: string[];
+  /** ADR-0086: this event's own recipients, or null = every contact email on the client card. */
+  documentRecipients: string[] | null;
   venueName: string;
   venueAddress: string;
   poNumber: string;
@@ -217,7 +221,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
   const { data: eventRow, error: eventError } = await supabase
     .from('events')
     .select(
-      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at',
+      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
     )
     .eq('id', eventId)
     .maybeSingle();
@@ -236,7 +240,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       .order('starts_at'),
     supabase
       .from('clients')
-      .select('name, name_badges')
+      .select('name, name_badges, contact_emails')
       .eq('id', event['client_id'] as string)
       .maybeSingle(),
     supabase.from('roles').select('id, name'),
@@ -569,6 +573,10 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       clientId: event['client_id'] as string,
       clientName: ((clientRes.data as { name?: string } | null)?.name ?? 'Client') as string,
       nameBadges: (clientRes.data as { name_badges?: boolean } | null)?.name_badges === true,
+      clientContactEmails:
+        (clientRes.data as { contact_emails?: string[] | null } | null)?.contact_emails ?? [],
+      documentRecipients:
+        (eventRow as { document_recipients?: string[] | null }).document_recipients ?? null,
       venueName: event['venue_name'] as string,
       venueAddress: event['venue_address'] as string,
       poNumber: (event['po_number'] as string) ?? '',

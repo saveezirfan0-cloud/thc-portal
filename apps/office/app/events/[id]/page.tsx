@@ -24,6 +24,7 @@ import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
 import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
 import { DocumentActions } from './_components/DocumentActions';
+import { DocumentRecipients } from './_components/DocumentRecipients';
 import { MessageStaff } from './_components/MessageStaff';
 import { loadAutosendHints } from './document-autosend';
 import '../shift-builder.css';
@@ -91,6 +92,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           ended: status === 'completed',
         });
   const autosendLine = [autosend.allocation, autosend.signout].filter(Boolean).join(' · ');
+  // ADR-0086: the people the timesheets go to — this event's own list, else the client card.
+  const documentRecipients = event.documentRecipients ?? event.clientContactEmails;
+  const recipientsLine =
+    status === 'cancelled' || documentRecipients.length === 0
+      ? null
+      : `Timesheets go to ${documentRecipients.join(', ')}${event.documentRecipients ? ' (set for this event)' : ' (the client card)'}`;
   const locked = isEditLocked(windows);
   // Everyone Cancel event reaches (CANCEL_NOTIFIES): confirmed, invited and
   // pending Radar applicants. A checked-in (`worked`) booking is not
@@ -128,11 +135,21 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           </Link>
           {/* §11.4. No document at all for a cancelled event (§3.3). */}
           {status === 'cancelled' ? null : (
-            <DocumentActions
-              eventId={event.id}
-              started={status === 'ongoing' || status === 'completed'}
-              nameBadges={event.nameBadges}
-            />
+            <>
+              {/* ADR-0086: who the timesheets go to, for this event. */}
+              <DocumentRecipients
+                eventId={event.id}
+                clientContacts={event.clientContactEmails}
+                recipients={event.documentRecipients}
+              />
+              <DocumentActions
+                eventId={event.id}
+                started={status === 'ongoing' || status === 'completed'}
+                nameBadges={event.nameBadges}
+                recipients={documentRecipients}
+                customRecipients={event.documentRecipients !== null}
+              />
+            </>
           )}
           {/* ADR-0069: last-minute information to the line-up, by push. */}
           {canMessageLineUp(status) ? (
@@ -152,9 +169,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
     >
       <div className="stack">
-        {autosendLine ? (
-          <div className="row">
-            <span className="ml-auto xs muted">{autosendLine}</span>
+        {autosendLine || recipientsLine ? (
+          <div className="stack" style={{ gap: 2, textAlign: 'right' }}>
+            {autosendLine ? <span className="xs muted">{autosendLine}</span> : null}
+            {recipientsLine ? <span className="xs muted">{recipientsLine}</span> : null}
           </div>
         ) : null}
         {status === 'cancelled' ? (

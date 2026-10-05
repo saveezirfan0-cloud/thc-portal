@@ -1613,6 +1613,7 @@ export type Database = {
           client_id: string;
           created_at: string;
           created_by: string | null;
+          document_recipients: string[] | null;
           event_date: string;
           geofence_radius_m: number;
           id: string;
@@ -1637,6 +1638,7 @@ export type Database = {
           client_id: string;
           created_at?: string;
           created_by?: string | null;
+          document_recipients?: string[] | null;
           event_date: string;
           geofence_radius_m: number;
           id?: string;
@@ -1661,6 +1663,7 @@ export type Database = {
           client_id?: string;
           created_at?: string;
           created_by?: string | null;
+          document_recipients?: string[] | null;
           event_date?: string;
           geofence_radius_m?: number;
           id?: string;
@@ -8314,6 +8317,10 @@ export type Database = {
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean };
       escalation_radius_miles: { Args: never; Returns: number };
       event_document_data: { Args: { p_event: string }; Returns: Json };
+      event_document_recipients: {
+        Args: { p_event: string };
+        Returns: string[];
+      };
       event_status: {
         Args: {
           e: Database['public']['Tables']['events']['Row'];
@@ -9425,6 +9432,10 @@ export type Database = {
       };
       set_do_not_return: {
         Args: { p_id: string; p_on: boolean; p_reason?: string };
+        Returns: Json;
+      };
+      set_event_document_recipients: {
+        Args: { p_event: string; p_recipients: string[] };
         Returns: Json;
       };
       set_staff_gender: {
