@@ -291,7 +291,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                       {client.contact_name}
                       <span className="sub">{describeEmails(client.contact_emails)}</span>
                     </td>
-                    <td data-label="Phone" className="mono sm">
+                    <td data-label="Phone" className="mono sm phone">
                       {client.phone}
                     </td>
                     <td data-label="Rate card roles">
