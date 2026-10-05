@@ -14,7 +14,7 @@ Status: accepted · 05.10.2026 · changes RULE-01 / §5.1 / §5.2 (scope wins el
 
 - The paid clock starts at the **later** of the scheduled start and the actual check-in:
   `effectiveStart()` in `packages/domain/pay.ts` and `payable_minutes()` (migration
-  `20261005120000`). Early arrival is still not paid.
+  `20261005130000`). Early arrival is still not paid.
 - The 30-minute grace is unchanged for **status**: a press inside it is Late, at start+30
   with no check-in the worker is an automatic No-show and the button locks (§5.1, RULE-15's
   turn-away window).
