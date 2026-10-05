@@ -141,6 +141,57 @@ describe('TimeField', () => {
   });
 });
 
+describe('TimeField when the form changes the value from outside', () => {
+  function Resettable() {
+    const [value, setValue] = useState('');
+    return (
+      <>
+        <TimeField label="Start" value={value} onChange={setValue} format="24h" />
+        <button type="button" data-set="0900" onClick={() => setValue('09:00')} />
+        <button type="button" data-set="" onClick={() => setValue('')} />
+      </>
+    );
+  }
+  const press = (h: HTMLElement, set: string) =>
+    act(() => h.querySelector<HTMLButtonElement>(`button[data-set="${set}"]`)!.click());
+
+  it('forgets a flagged typo and its stale text', () => {
+    const h = mount(<Resettable />);
+    type(input(h), 'abc');
+    blur(input(h));
+    expect(h.querySelector('.error')).not.toBeNull();
+    press(h, '0900');
+    expect(input(h).value).toBe('09:00');
+    expect(h.querySelector('.error')).toBeNull();
+    press(h, '');
+    expect(input(h).value).toBe(''); // not the old "abc"
+  });
+
+  it('tells the form when what is typed is not a time, and when it stops being so', () => {
+    const seen: boolean[] = [];
+    function Watching() {
+      const [value, setValue] = useState('');
+      return (
+        <TimeField
+          label="Start"
+          value={value}
+          onChange={setValue}
+          format="24h"
+          onInvalidChange={(bad) => seen.push(bad)}
+        />
+      );
+    }
+    const h = mount(<Watching />);
+    expect(seen.at(-1)).toBe(false);
+    type(input(h), 'zz');
+    expect(seen.at(-1)).toBe(true);
+    type(input(h), '');
+    expect(seen.at(-1)).toBe(false);
+    type(input(h), '18:00');
+    expect(seen.at(-1)).toBe(false);
+  });
+});
+
 describe('TimeFormatProvider', () => {
   function Probe() {
     return <span>{useTimeFormat()}</span>;

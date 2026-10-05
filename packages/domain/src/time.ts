@@ -40,8 +40,12 @@ export const DEFAULT_TIME_FORMAT: TimeFormat = '24h';
 /** The cookie that carries the choice to server-rendered pages (ADR-0085). */
 export const TIME_FORMAT_COOKIE = 'thc-time-format';
 
-/** A year, in seconds. The profile is the record; the cookie is only a cache of it. */
-export const TIME_FORMAT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+/**
+ * A day, in seconds. The profile is the record; the cookie is only a cache of
+ * it, so a change made on another device reaches this one within a day, and a
+ * lapsed one costs a single profile read.
+ */
+export const TIME_FORMAT_COOKIE_MAX_AGE = 60 * 60 * 24;
 
 export function isTimeFormat(value: unknown): value is TimeFormat {
   return value === '24h' || value === '12h';

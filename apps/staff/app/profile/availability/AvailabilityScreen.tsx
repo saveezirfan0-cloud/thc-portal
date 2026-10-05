@@ -305,7 +305,7 @@ function AddSheet({
         max={MAX_REPEAT_WEEKS}
         value={String(form.repeatWeeks)}
         onChange={(event) => set('repeatWeeks', Number(event.target.value || 0))}
-        hint={repeatHint(form)}
+        hint={repeatHint(form, format)}
       />
       {error ? <Alert tone="coral">{error}</Alert> : null}
       <Button tone="primary" size="lg" block disabled={pending} onClick={save}>

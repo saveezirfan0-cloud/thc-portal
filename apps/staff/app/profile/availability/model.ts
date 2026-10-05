@@ -1,6 +1,7 @@
 import {
   DEFAULT_TIME_FORMAT,
   UK_ZONE,
+  clockLabel,
   formatDateIn,
   formatTimeIn,
   needsDualZone,
@@ -215,7 +216,7 @@ export function saveLabel(form: Pick<AddForm, 'repeatWeeks'>): string {
  * weekday and the last date — "Every Wednesday to Wed 5 Nov." — and, for a
  * time window, that the UK time holds across a clock change (ADR-0043 §3).
  */
-export function repeatHint(form: AddForm): string {
+export function repeatHint(form: AddForm, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
   const weeks = Math.floor(form.repeatWeeks);
   if (!(weeks > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(form.fromDate)) {
     return `Up to ${MAX_REPEAT_WEEKS} weeks. Leave at 0 for just this day.`;
@@ -224,7 +225,12 @@ export function repeatHint(form: AddForm): string {
     weekday: 'long',
   }).split(' ')[0];
   const last = ukDayLabel(addDays(form.fromDate, 7 * weeks));
-  const keeps = form.allDay ? '' : ` Keeps ${form.fromTime} UK across the clock change.`;
+  // No time yet (or one still being typed) leaves the clause out rather than
+  // saying "Keeps  UK".
+  const keeps =
+    form.allDay || !/^\d{2}:\d{2}$/.test(form.fromTime)
+      ? ''
+      : ` Keeps ${clockLabel(form.fromTime, format)} UK across the clock change.`;
   return `Every ${weekday} to ${last}.${keeps}`;
 }
 

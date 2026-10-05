@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { isActivationToken, parseActivationType } from '@thc/db/activation';
 import { createClient } from '@thc/db/server';
+import { clearTimeFormatCookie } from '@thc/db/time-format';
 
 /**
  * Accept a Back Office invitation (/users, ADR-0055): choose a password.
@@ -33,7 +34,13 @@ export async function acceptInvite(
     return 'Setting a password is not available yet — this environment has no Supabase project.';
   }
 
-  const supabase = createClient(await cookies());
+  const jar = await cookies();
+
+  // A new session: the clock is read from THIS login's profile, not the last one's (ADR-0085).
+
+  clearTimeFormatCookie(jar);
+
+  const supabase = createClient(jar);
   const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: token });
   if (error || !data.user) {
     return 'This invitation has expired or has already been used. Ask the THC office for a new link.';

@@ -67,6 +67,13 @@ export interface TimeFieldProps extends Omit<
   onChange: (value: string) => void;
   /** Override the viewer's clock, for previews and tests. */
   format?: TimeFormat;
+  /**
+   * True while what is typed is text that is not a time. `onChange` reports
+   * that as "" too, the same as an empty field, so a form that treats an
+   * empty time as "not given" (or "now") must also ask this, or a typo
+   * silently becomes "not given".
+   */
+  onInvalidChange?: (invalid: boolean) => void;
 }
 
 /**
@@ -93,6 +100,7 @@ export function TimeField({
   error,
   placeholder,
   onBlur,
+  onInvalidChange,
   ...rest
 }: TimeFieldProps) {
   const viewer = useTimeFormat();
@@ -102,9 +110,20 @@ export function TimeField({
   const [flagged, setFlagged] = useState(false);
 
   // A draft only stands while it still means `value`: if the form resets the
-  // value from outside, the field shows the new value, not the stale text.
+  // value from outside, the field shows the new value and forgets the stale
+  // text and its error (adjusting state while rendering, React's own pattern
+  // for state derived from a prop).
   const typing = draft !== null && (parseClock(draft) ?? '') === value;
+  if (draft !== null && !typing) {
+    setDraft(null);
+    setFlagged(false);
+  }
   const shown = typing ? draft : clockLabel(value, format);
+  const invalid = typing && draft.trim() !== '' && parseClock(draft) === null;
+
+  useEffect(() => {
+    onInvalidChange?.(invalid);
+  }, [invalid, onInvalidChange]);
 
   return (
     <Input

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Alert, Button, Input, Modal, Note, Textarea, TimeField, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, ukInputLabel, viewerZone } from '@thc/domain';
@@ -45,6 +45,12 @@ export function ResolveModal({
   const [note, setNote] = useState('');
   const [finish, setFinish] = useState('');
   const [arrived, setArrived] = useState('');
+  // A date or time half-typed, or text that is not a time. The fields say ""
+  // for that, the same as "left empty", and an empty arrival means "now" and
+  // an empty finish means "raise a No check-out" — so a typo must stop Resolve,
+  // not quietly take the empty meaning.
+  const [finishPartial, setFinishPartial] = useState(false);
+  const [arrivedPartial, setArrivedPartial] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,6 +65,8 @@ export function ResolveModal({
     note.trim().length > 0 &&
     (!wantsFinish || finish.length > 0) &&
     (!needsArrival || arrived.length > 0) &&
+    !(isNoShow && arrivedPartial) &&
+    !((wantsFinish || needsArrival) && finishPartial) &&
     !busy;
   // Mounted on a click, so the reader's zone is already the browser's.
   const zone = viewerZone();
@@ -164,6 +172,7 @@ export function ResolveModal({
                 }
                 value={arrived}
                 onChange={setArrived}
+                onPartialChange={setArrivedPartial}
                 hint={
                   needsArrival
                     ? 'The shift has ended, so enter when the worker actually arrived. Not before check-in opened (start − 30 min), not in the future.'
@@ -182,6 +191,7 @@ export function ResolveModal({
                 }
                 value={finish}
                 onChange={setFinish}
+                onPartialChange={setFinishPartial}
                 hint={
                   wantsFinish
                     ? 'Becomes the shift’s check-out, and pay is worked out from it. The four-hour floor applies again once this is resolved.'
@@ -237,15 +247,23 @@ function UkDateTimeField({
   hint,
   value,
   onChange,
+  onPartialChange,
 }: {
   label: ReactNode;
   hint: ReactNode;
   value: string;
   onChange: (value: string) => void;
+  /** True while only one of the two is given, or the time is not a time. */
+  onPartialChange: (partial: boolean) => void;
 }) {
   const [date, setDate] = useState(value.split('T')[0] ?? '');
   const [time, setTime] = useState(value.split('T')[1] ?? '');
+  const [timeInvalid, setTimeInvalid] = useState(false);
   const labelId = useId();
+  const partial = timeInvalid || (date !== '') !== (time !== '');
+  useEffect(() => {
+    onPartialChange(partial);
+  }, [partial, onPartialChange]);
   const set = (nextDate: string, nextTime: string) => {
     setDate(nextDate);
     setTime(nextTime);
@@ -264,7 +282,12 @@ function UkDateTimeField({
           value={date}
           onChange={(e) => set(e.target.value, time)}
         />
-        <TimeField aria-label="Time" value={time} onChange={(next) => set(date, next)} />
+        <TimeField
+          aria-label="Time"
+          value={time}
+          onChange={(next) => set(date, next)}
+          onInvalidChange={setTimeInvalid}
+        />
       </div>
       <span className="hint">{hint}</span>
     </div>
