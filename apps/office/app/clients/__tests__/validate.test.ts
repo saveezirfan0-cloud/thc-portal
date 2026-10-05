@@ -44,7 +44,7 @@ describe('validateClient', () => {
     expect(validateClient(draft({ contact_emails: ['a@b.co', 'broken@'] }))).toMatch(/broken@/);
   });
 
-  it('holds the column’s ceiling of five addresses', () => {
+  it('holds the column’s ceiling of ten addresses', () => {
     const many = Array.from({ length: MAX_CONTACT_EMAILS + 1 }, (_, i) => `a${i}@b.co`);
     expect(validateClient(draft({ contact_emails: many }))).toMatch(
       new RegExp(`Up to ${MAX_CONTACT_EMAILS}`),
