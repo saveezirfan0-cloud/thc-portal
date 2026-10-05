@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultDressCodes,
   dressCodeLibrary,
   dressCodeSuggestions,
   gbp,
@@ -162,5 +163,30 @@ describe('dress-code suggestions on the rate card', () => {
     ]);
     expect(dressCodeSuggestions(library, [], 'BLACK')).toEqual(['Black tie', 'Black & whites']);
     expect(dressCodeSuggestions(library, [], '', 1)).toEqual(['Black tie']);
+  });
+});
+
+describe('defaultDressCodes (what a newly added role starts with)', () => {
+  const row = (...codes: string[]) => ({ dress_codes: codes });
+
+  it('starts empty for a client with no roles yet', () => {
+    expect(defaultDressCodes([])).toEqual([]);
+  });
+
+  it("takes a lone role's codes, so the first role teaches the second", () => {
+    expect(defaultDressCodes([row('Black tie', 'Black shoes')])).toEqual([
+      'Black tie',
+      'Black shoes',
+    ]);
+  });
+
+  it('keeps only the codes most roles share, ignoring case', () => {
+    expect(
+      defaultDressCodes([row('Black tie', 'Apron'), row('black tie'), row('Black tie', 'Bow tie')]),
+    ).toEqual(['Black tie']);
+  });
+
+  it('does not guess when the roles disagree', () => {
+    expect(defaultDressCodes([row('Black tie'), row('Smart casual')])).toEqual([]);
   });
 });
