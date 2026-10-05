@@ -495,7 +495,7 @@
         }
       },
       {
-        "name": "inside the 30-minute grace is Late and paid from the actual arrival (ADR-0087)",
+        "name": "inside the 30-minute grace is Late and paid from the actual arrival (ADR-0088)",
         "input": { "checkInMinFromStart": 20, "checkOutMinFromStart": 480 },
         "expect": {
           "status": "settled",

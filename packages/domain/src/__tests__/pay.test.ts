@@ -163,7 +163,7 @@ describe('the pay window itself (RULE-01)', () => {
     expect(effectiveStart(shift, at(0))).toEqual(BASE);
   });
 
-  it('starts it at the actual arrival for any late arrival, in the grace or past it (ADR-0087)', () => {
+  it('starts it at the actual arrival for any late arrival, in the grace or past it (ADR-0088)', () => {
     expect(effectiveStart(shift, at(1))).toEqual(at(1));
     expect(effectiveStart(shift, at(29))).toEqual(at(29));
     expect(effectiveStart(shift, at(30))).toEqual(at(30));
