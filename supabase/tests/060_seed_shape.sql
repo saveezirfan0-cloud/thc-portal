@@ -11,15 +11,18 @@ select plan(13);
 
 select is((select count(*)::int from clients), 5,  'Phase 0 seeds exactly 5 clients');
 select is((select count(*)::int from venues),  8,  'Phase 0 seeds exactly 8 venues');
--- Six roles come from the seed; the other ten are the 2026–2027 rate card's,
--- added by migration 20261001213000. Named, so a stray row fails either way.
+-- Six roles come from the seed; ten are the 2026–2027 rate card's (migration
+-- 20261001213000) and six the agency's "Roles and Description" sheet
+-- (20261005120000). Named, so a stray row fails either way.
 select bag_eq(
   $$ select name::text from roles $$,
   $$ values ('Waiting Staff'::text),('Bar Staff'),('Chef'),('Kitchen Porter'),('Host'),('Barista'),
             ('Cloakroom Staff'),('Team Leader'),('Delegate Registration Assistant'),('Runner'),
             ('On-site Delivery Support'),('Receptionist'),('Kitchen Assistant'),
-            ('Lifting and Shifting'),('Housekeeping Staff'),('Cleaning Staff') $$,
-  'Phase 0 seeds 6 roles; the 2026–2027 rate card adds 10'
+            ('Lifting and Shifting'),('Housekeeping Staff'),('Cleaning Staff'),
+            ('Day Waiting Staff M&E'),('Evening Waiting Staff'),('Breakdown/Set Up Staff'),
+            ('Wine Waiting Service'),('Mid Morning Waiting'),('Evening Waiting Staff Leo''s Bar') $$,
+  'Phase 0 seeds 6 roles; the 2026–2027 rate card adds 10 and the roles sheet adds 6'
 );
 select is((select pay_rate from roles where name = 'Runner'), 12.71::numeric,
   'Runner base pay is £12.71, the 2026 National Living Wage (2026–2027 rate card migration)');
