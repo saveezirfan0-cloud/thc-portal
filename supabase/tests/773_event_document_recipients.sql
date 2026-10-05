@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 773 · Who receives the timesheet is chosen per event
---       20261005140200 · ADR-0088 (THC 05.10.2026)
+--       20261005140200 · ADR-0089 (THC 05.10.2026)
 --
 -- events.document_recipients (null = every contact email on the client
 -- card), event_document_recipients(), the admin-only
@@ -72,8 +72,8 @@ select throws_ok(format($$ select set_event_document_recipients(%L, array['not-a
   'an address that is not an email is refused');
 select throws_ok(format($$ select set_event_document_recipients(%L, array['a b@x.co']) $$, :'ev'), '22023', 'invalid_recipient_email',
   'so is one with a space');
-select throws_ok(format($$ select set_event_document_recipients(%L, array['a@x.co','b@x.co','c@x.co','d@x.co','e@x.co','f@x.co']) $$, :'ev'),
-  '22023', 'too_many_recipients', 'more than five is refused');
+select throws_ok(format($$ select set_event_document_recipients(%L, array['a@x.co','b@x.co','c@x.co','d@x.co','e@x.co','f@x.co','g@x.co','h@x.co','i@x.co','j@x.co','k@x.co']) $$, :'ev'),
+  '22023', 'too_many_recipients', 'more than ten is refused');
 select throws_ok(format($$ select set_event_document_recipients(%L, array['a@x.co']) $$, :'ev_off'), 'P0001', 'event_cancelled',
   'a cancelled event has no document, so no recipients to choose');
 select throws_ok(format($$ select set_event_document_recipients(%L, array['a@x.co']) $$, '77200000-0000-4000-8000-0000000000ff'), 'P0002', 'event_not_found',
@@ -150,8 +150,8 @@ select is((select document_recipients from events where id = :'ev'), null::text[
 select is(event_document_recipients(:'ev'), array['clienta@rls.test'], 'and the client card is who gets it');
 select throws_ok(format($$ update events set document_recipients = array[]::text[] where id = %L $$, :'ev'), '23514', null,
   'the column itself refuses an empty list (check constraint)');
-select throws_ok(format($$ update events set document_recipients = array['1@x.co','2@x.co','3@x.co','4@x.co','5@x.co','6@x.co'] where id = %L $$, :'ev'),
-  '23514', null, 'and more than five');
+select throws_ok(format($$ update events set document_recipients = array['1@x.co','2@x.co','3@x.co','4@x.co','5@x.co','6@x.co','7@x.co','8@x.co','9@x.co','10@x.co','11@x.co'] where id = %L $$, :'ev'),
+  '23514', null, 'and more than ten');
 
 select * from finish();
 rollback;

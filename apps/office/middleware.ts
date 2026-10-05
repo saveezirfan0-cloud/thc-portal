@@ -49,7 +49,7 @@ function isPublic(pathname: string): boolean {
 const SIGN_OUT_PATH = '/auth/signout';
 
 /**
- * The job routes pg_cron calls (ADR-0025, ADR-0074, ADR-0090). They carry no Supabase
+ * The job routes pg_cron calls (ADR-0025, ADR-0074, ADR-0091). They carry no Supabase
  * session — they are machine-to-machine — and gate themselves on a bearer
  * secret in constant time (RTW_JOB_SECRET, app/api/jobs/_lib/auth.ts),
  * refusing everything when it is unset. So the session gate steps aside for

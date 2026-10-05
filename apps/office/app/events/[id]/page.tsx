@@ -102,7 +102,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           format,
         );
   const autosendLine = [autosend.allocation, autosend.signout].filter(Boolean).join(' · ');
-  // ADR-0088: the people the timesheets go to — this event's own list, else the client card.
+  // ADR-0089: the people the timesheets go to — this event's own list, else the client card.
   const documentRecipients = event.documentRecipients ?? event.clientContactEmails;
   const recipientsLine =
     status === 'cancelled' || documentRecipients.length === 0
@@ -146,7 +146,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           {/* §11.4. No document at all for a cancelled event (§3.3). */}
           {status === 'cancelled' ? null : (
             <>
-              {/* ADR-0088: who the timesheets go to, for this event. */}
+              {/* ADR-0089: who the timesheets go to, for this event. */}
               <DocumentRecipients
                 eventId={event.id}
                 clientContacts={event.clientContactEmails}

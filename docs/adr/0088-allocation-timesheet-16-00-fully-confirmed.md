@@ -1,4 +1,4 @@
-# ADR-0087 · The Allocation Timesheet goes at 16:00, only once the event is fully confirmed, and again when it changes
+# ADR-0088 · The Allocation Timesheet goes at 16:00, only once the event is fully confirmed, and again when it changes
 
 **Status:** Accepted (THC, 04.10.2026). Amends ADR-0074 §2 (D1 only). The manual Send and Download buttons are unchanged. **§11.3, §11.4**
 

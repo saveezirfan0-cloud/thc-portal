@@ -367,11 +367,11 @@ export async function setEventAutoAssign(eventId: string, on: boolean): Promise<
 }
 
 /**
- * ADR-0088: who the Allocation Timesheet and the Completed Allocation
+ * ADR-0089: who the Allocation Timesheet and the Completed Allocation
  * Timesheet go to for this event. `null` (or nothing) puts the event back on
  * every contact email on the client card. One RPC,
  * `set_event_document_recipients()`: admin only, trims, lower-cases and
- * de-duplicates, refuses an invalid address, more than five, or a cancelled
+ * de-duplicates, refuses an invalid address, more than ten, or a cancelled
  * event, and audits the change with the previous list.
  *
  * Saving does not resend anything: the next send, automatic or the Send

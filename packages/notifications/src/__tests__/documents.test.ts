@@ -65,7 +65,7 @@ const d1 = (over: Partial<OutboxRow> = {}): OutboxRow => ({
   ...over,
 });
 
-/** ADR-0090: the payload exactly as queue_new_starter_report_email() writes it (410 pgTAP). */
+/** ADR-0091: the payload exactly as queue_new_starter_report_email() writes it (410 pgTAP). */
 const ns1 = (over: Partial<OutboxRow> = {}): OutboxRow => ({
   id: 9,
   key: 'NS1:2026-09-08',
@@ -89,7 +89,7 @@ const ns1 = (over: Partial<OutboxRow> = {}): OutboxRow => ({
   ...over,
 });
 
-describe('New Starter (HMRC) report email (§9.9, ADR-0090)', () => {
+describe('New Starter (HMRC) report email (§9.9, ADR-0091)', () => {
   it('goes from admin@ to Payroll and Gisela, the same two addresses as the payroll email', () => {
     const message = documentMessageFor(ns1());
     expect(message.sender).toBe('admin');
@@ -150,7 +150,7 @@ describe('BG-08 finance email (§9.9)', () => {
     expect(message.body).toContain('1 shift is held out of this file');
   });
 
-  it('a payroll email queued after ADR-0090 points to the New Starter email instead', () => {
+  it('a payroll email queued after ADR-0091 points to the New Starter email instead', () => {
     const row = bg08();
     const { newStarters: _unused, ...rest } = row.payload;
     const payload = {
@@ -207,7 +207,7 @@ describe('§11.4 allocation sheet email', () => {
     expect(message.body).not.toContain('PO number');
   });
 
-  it('says an automatic resend replaces the earlier sheet (ADR-0087), in subject, text and HTML', () => {
+  it('says an automatic resend replaces the earlier sheet (ADR-0088), in subject, text and HTML', () => {
     const payload = { ...d1().payload, updateTag: ' (updated)' };
     const message = documentMessageFor(d1({ payload }));
     expect(message.subject).toBe(
@@ -222,7 +222,7 @@ describe('§11.4 allocation sheet email', () => {
     );
   });
 
-  it('says when buffer staff are on the sheet, in the sentence and beside the count (ADR-0089)', () => {
+  it('says when buffer staff are on the sheet, in the sentence and beside the count (ADR-0090)', () => {
     const payload = { ...d1().payload, staffCount: '19', bufferStaff: '2' };
     const message = documentMessageFor(d1({ payload }));
     const sentence =

@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20261005140000 · The Allocation Timesheet goes at 16:00, and
 --                            only once the event is fully confirmed
---                            (§11.3, §11.4; ADR-0074 amended by ADR-0087,
+--                            (§11.3, §11.4; ADR-0074 amended by ADR-0088,
 --                            THC 04.10.2026)
 --
 -- Two changes to the automatic D1 (20261002100000), nothing to D2:
@@ -77,7 +77,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.event_document_unfilled(uuid) is
-  'ADR-0087: places short of the headcount across the event''s role sections, counting only firmly confirmed workers (confirmed or worked, not awaiting re-confirmation). 0 = the event is 100% confirmed. Service role only.';
+  'ADR-0088: places short of the headcount across the event''s role sections, counting only firmly confirmed workers (confirmed or worked, not awaiting re-confirmation). 0 = the event is 100% confirmed. Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The rule, with the new verdict (mirrors schedule.ts)
@@ -172,7 +172,7 @@ begin
 end $$;
 
 comment on function public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz, int, int) is
-  'ADR-0074/0087: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | not_fully_confirmed (D1 only: a role section is short of its headcount, or someone is awaiting re-confirmation) | held_no_checkout | gave_up (eight claims spent) for one automatic D1/D2. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
+  'ADR-0074/0088: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | not_fully_confirmed (D1 only: a role section is short of its headcount, or someone is awaiting re-confirmation) | held_no_checkout | gave_up (eight claims spent) for one automatic D1/D2. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
 
 create or replace function public.document_autosend_config()
 returns jsonb
@@ -258,7 +258,7 @@ begin
 end $$;
 
 comment on function public.event_documents_due(timestamptz, uuid) is
-  'ADR-0074/0087: the event-documents job''s candidates — events dated hold_days + 2 days ago to tomorrow (UK), or one event — with the facts document_autosend_verdict() reads (unfilled: places short of the headcount) and its verdict per kind. Service role only.';
+  'ADR-0074/0088: the event-documents job''s candidates — events dated hold_days + 2 days ago to tomorrow (UK), or one event — with the facts document_autosend_verdict() reads (unfilled: places short of the headcount) and its verdict per kind. Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 5 · Grants — still the service role's alone

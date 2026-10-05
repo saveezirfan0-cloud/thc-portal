@@ -127,7 +127,7 @@ describe('D1 · Allocation Timesheet, the day before at 16:00 UK', () => {
     );
   });
 
-  describe('a change after the sheet went out (ADR-0087)', () => {
+  describe('a change after the sheet went out (ADR-0088)', () => {
     const SENT = { autoQueuedAt: '2026-07-10T15:00:05Z' };
 
     it('stays sent while nothing has changed', () => {

@@ -43,7 +43,7 @@ function harness(over: Partial<NewStarterDeps> = {}, prepared: Partial<Prepared>
   return { deps, calls, logs };
 }
 
-describe('the New Starter (HMRC) report job (ADR-0090)', () => {
+describe('the New Starter (HMRC) report job (ADR-0091)', () => {
   it('does nothing before Monday 09:00 UK, while switched off, or once the week is done', async () => {
     const { deps, calls } = harness({ due: async () => false });
     const counts = await runNewStarterReport(deps);

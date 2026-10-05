@@ -9,7 +9,7 @@ import {
 
 const CLIENT = ['Hannah.Brooks@leonardo.co.uk', 'marco@leonardo.co.uk', 'events@leonardo.co.uk'];
 
-describe('ADR-0088 · who receives the timesheet for one event', () => {
+describe('ADR-0089 · who receives the timesheet for one event', () => {
   it('reads commas, semicolons, spaces and new lines; lower-cases and drops repeats', () => {
     expect(parseAddresses('A@x.co, b@x.co;\n C@x.co  a@X.co')).toEqual([
       'a@x.co',
@@ -19,12 +19,12 @@ describe('ADR-0088 · who receives the timesheet for one event', () => {
     expect(parseAddresses('  ')).toEqual([]);
   });
 
-  it('refuses a bad address and more than five, but allows none (the client card)', () => {
+  it('refuses a bad address and more than ten, but allows none (the client card)', () => {
     expect(recipientsRefusal([])).toBeNull();
     expect(recipientsRefusal(['a@x.co', 'b@x.co'])).toBeNull();
     expect(recipientsRefusal(['a@x.co', 'nope'])).toBe('“nope” is not an email address.');
-    expect(recipientsRefusal(['1@x.co', '2@x.co', '3@x.co', '4@x.co', '5@x.co', '6@x.co'])).toBe(
-      'Up to 5 recipients per event.',
+    expect(recipientsRefusal(Array.from({ length: 11 }, (_, i) => `${i}@x.co`))).toBe(
+      'Up to 10 recipients per event.',
     );
   });
 
@@ -57,7 +57,7 @@ describe('ADR-0088 · who receives the timesheet for one event', () => {
 
   it('turns the server refusals into sentences', () => {
     expect(recipientsRpcRefusal('invalid_recipient_email')).toMatch(/not an email/);
-    expect(recipientsRpcRefusal('too_many_recipients')).toMatch(/Up to 5/);
+    expect(recipientsRpcRefusal('too_many_recipients')).toMatch(/Up to 10/);
     expect(recipientsRpcRefusal('event_cancelled')).toMatch(/cancelled/);
     expect(recipientsRpcRefusal('admins_only')).toMatch(/admin/);
   });

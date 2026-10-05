@@ -1,4 +1,4 @@
-# ADR-0089 · The timesheet says when buffer staff are on it
+# ADR-0090 · The timesheet says when buffer staff are on it
 
 **Status:** Accepted (THC, 05.10.2026). Agreed addition to scope v1.6 §11.3. The columns, the pagination and the order of the sheet are unchanged. **§3.2, §11.3**
 

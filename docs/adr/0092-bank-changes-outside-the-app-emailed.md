@@ -1,4 +1,4 @@
-# ADR-0091 · Every change to bank details is emailed to Gisela and Payroll
+# ADR-0092 · Every change to bank details is emailed to Gisela and Payroll
 
 **Status:** Accepted (THC, 05.10.2026). Adds E5b to the register, beside §8's E5. **§2.10, §8 (E5), §10.1**
 

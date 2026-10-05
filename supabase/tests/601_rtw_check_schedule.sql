@@ -23,7 +23,7 @@ select results_eq(
 
 -- event-documents (20261002100000, ADR-0074) is the other Back Office
 -- route, sharing this secret on purpose; 760 holds its row. new-starter-report
--- (20261005140400, ADR-0090) is the third; 410 holds what it does.
+-- (20261005140400, ADR-0091) is the third; 410 holds what it does.
 select is_empty(
   $$ select job from job_schedules
       where job not in ('rtw-check', 'event-documents', 'new-starter-report')

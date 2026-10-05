@@ -68,7 +68,7 @@ describe('rendered PDF (§11.3)', () => {
   });
 
   it('fits the worst case with the buffer note: twelve one-person sections, each with buffer, plus footer', async () => {
-    // ADR-0089: every section lists one more than was asked for, so every
+    // ADR-0090: every section lists one more than was asked for, so every
     // heading carries "(0 required + 1 buffer)"-style text and the last page
     // carries the buffer note above the company line.
     const people = galaPeople(12).map((p, i) => ({

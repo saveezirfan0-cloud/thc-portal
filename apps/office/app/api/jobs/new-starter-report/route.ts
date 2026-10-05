@@ -8,7 +8,7 @@ import type { Prepared } from './_lib/run';
 
 /**
  * POST /api/jobs/new-starter-report — the New Starter (HMRC) report, emailed
- * to Payroll and Gisela every Monday (ADR-0090, THC 05.10.2026).
+ * to Payroll and Gisela every Monday (ADR-0091, THC 05.10.2026).
  *
  * A job, not a screen: pg_cron calls it every 15 minutes (job_schedules
  * `new-starter-report`, the vault's office_base_url + this path) and

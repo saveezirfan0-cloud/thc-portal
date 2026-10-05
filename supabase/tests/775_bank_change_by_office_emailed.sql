@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 775 · Any change to bank details reaches Gisela and Payroll
---       20261005140500 · ADR-0091 (THC 05.10.2026)
+--       20261005140500 · ADR-0092 (THC 05.10.2026)
 --
 -- The worker's own save already queues E5 (571, 330). Every OTHER write to
 -- bank_details — an office login with the finance permission, the service

@@ -223,7 +223,7 @@ describe('THC form changes of 29.09.2026 (ADR-0074, ADR-0084)', () => {
   });
 });
 
-describe('buffer staff on the sheet (ADR-0089)', () => {
+describe('buffer staff on the sheet (ADR-0090)', () => {
   const person = (n: number, over: Partial<SheetPerson> = {}): SheetPerson => ({
     bookingId: `b-${n}`,
     employeeId: 100 + n,

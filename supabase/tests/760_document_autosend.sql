@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 760 · The Allocation Timesheet and the Completed Allocation Timesheet
 --       go out on their own — 20261002100000 · ADR-0074 (THC 29.09.2026);
---       D1 at 16:00 and only once fully confirmed — 20261005140000 · ADR-0087
+--       D1 at 16:00 and only once fully confirmed — 20261005140000 · ADR-0088
 --
 -- The rule is document_autosend_verdict(), mirrored check for check by
 -- autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/
@@ -59,7 +59,7 @@ select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"manual_at":"2026-07-
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"cancelled":true}'), 'cancelled', 'D1: cancelled event');
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed');
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"contacts":0}'), 'no_contact_emails', 'D1: no contact emails');
--- ADR-0087: after the cut-off, only a 100% confirmed event goes
+-- ADR-0088: after the cut-off, only a 100% confirmed event goes
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"unfilled":1}'), 'not_fully_confirmed',
   'D1: a role section short of its headcount (or someone awaiting re-confirmation) holds the sheet');
 select is(pg_temp.d('allocation', '2026-07-10 22:45+00', '{"unfilled":0}'), 'due', 'D1: a whole line-up goes on the next run');
@@ -68,7 +68,7 @@ select is(pg_temp.d('allocation', '2026-07-11 06:00+00', '{"unfilled":1}'), 'too
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"unfilled":1,"confirmed":0}'), 'no_confirmed_staff', 'D1: nobody confirmed is reported first');
 select is(pg_temp.d('allocation', '2026-07-10 15:00+00', '{"unfilled":1,"attempts":8}'), 'not_fully_confirmed', 'D1: a hold is reported before gave_up');
 select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"unfilled":2}'), 'due', 'D2: the headcount never holds the Completed Timesheet');
--- ADR-0087: a change after the sheet went out gets an updated one, once whole
+-- ADR-0088: a change after the sheet went out gets an updated one, once whole
 select is(pg_temp.d('allocation', '2026-07-10 22:45+00', '{"auto_at":"2026-07-10T15:00:05Z","changed":true,"unfilled":2}'), 'not_fully_confirmed',
   'D1 resend: the event changed after the send, and the change is not yet confirmed — held');
 select is(pg_temp.d('allocation', '2026-07-10 23:00+00', '{"auto_at":"2026-07-10T15:00:05Z","changed":true,"unfilled":0}'), 'due',
@@ -354,7 +354,7 @@ select is((queue_event_document_autosend((select id from auto1)))->>'queued', 'f
   'queuing the same automatic copy again sends nothing');
 
 -- =====================================================================
--- 5b · ADR-0087: after the cut-off, only a 100% confirmed event goes
+-- 5b · ADR-0088: after the cut-off, only a 100% confirmed event goes
 -- =====================================================================
 select results_eq(
   format($$ select verdict, unfilled from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev_short'),
@@ -384,7 +384,7 @@ select results_eq(
   'lowered again: confirmed above the headcount is still a whole line-up (the buffer is not needed)');
 
 -- =====================================================================
--- 5c · ADR-0087: the event changes after the sheet went out
+-- 5c · ADR-0088: the event changes after the sheet went out
 --
 -- ev was sent in section 5. The Chef section moves later and its worker
 -- must re-confirm (§3.5 Awaiting): the fingerprint changes, the line-up

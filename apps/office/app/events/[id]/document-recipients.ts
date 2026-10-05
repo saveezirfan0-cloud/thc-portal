@@ -1,14 +1,14 @@
 import { isEmail } from '../../clients/validate';
 
 /**
- * Who the timesheets for ONE event go to (ADR-0088). Null/empty is "every
- * contact email on the client card"; otherwise 1–5 addresses for this event
+ * Who the timesheets for ONE event go to (ADR-0089). Null/empty is "every
+ * contact email on the client card"; otherwise 1–10 addresses for this event
  * only, picked from the client's contacts and/or typed in. The database
  * (`set_event_document_recipients`) checks the same things and is the one
  * that decides; these are the form's half, so a mistake reads as a sentence
  * before the round trip.
  */
-export const MAX_DOCUMENT_RECIPIENTS = 5;
+export const MAX_DOCUMENT_RECIPIENTS = 10;
 
 /** "a@x.co, B@x.co; c@x.co" → ["a@x.co", "b@x.co", "c@x.co"]: lower-cased, no repeats, in order. */
 export function parseAddresses(text: string): string[] {

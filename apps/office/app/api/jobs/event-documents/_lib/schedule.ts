@@ -3,7 +3,7 @@ import { type TimeFormat, clockLabel, ukInstant } from '@thc/domain';
 /**
  * When the Allocation Timesheet (D1) and the Completed Allocation Timesheet
  * (D2) go out on their own — ADR-0074, agreed with THC on 29.09.2026; D1 amended
- * by ADR-0087 (16:00, and only once fully confirmed), 04.10.2026.
+ * by ADR-0088 (16:00, and only once fully confirmed), 04.10.2026.
  *
  * Pure: the facts come from `event_documents_due()` and the settings row
  * `document_autosend`; the answer is one verdict. The SQL twin is
@@ -16,7 +16,7 @@ import { type TimeFormat, clockLabel, ukInstant } from '@thc/domain';
  *        after that until the first shift starts (an event created or
  *        filled late still gets one), but only while the event is 100%
  *        confirmed: every role section at its headcount and nobody
- *        awaiting re-confirmation (`unfilled` = 0, ADR-0087). A headcount,
+ *        awaiting re-confirmation (`unfilled` = 0, ADR-0088). A headcount,
  *        role or time change after the cut-off holds the sheet until the
  *        line-up is whole again. Skipped if a manager queued a D1 since
  *        00:00 UK the day before and it still matches the line-up.
@@ -140,7 +140,7 @@ export interface AutosendFacts {
    * D1 only: the line-up differs from the latest D1 that was actually sent
    * (a manager's or the job's), by its fingerprint. A copy older than the
    * fingerprint is never "changed". A change reopens a sent sheet
-   * (ADR-0087).
+   * (ADR-0088).
    */
   changed?: boolean;
 }
@@ -187,7 +187,7 @@ export function autosendVerdict(
     const dayBefore = ukInstant(addDays(facts.eventDate, -1), '00:00').getTime();
     if (!config.allocation.enabled) return 'disabled';
     const changed = facts.changed ?? false;
-    // Sent, and nothing has changed since. A change reopens it (ADR-0087).
+    // Sent, and nothing has changed since. A change reopens it (ADR-0088).
     if (facts.autoQueuedAt && !changed) return 'already_sent';
     if (facts.cancelled) return 'cancelled';
     if (t < dueAt) return 'not_yet';

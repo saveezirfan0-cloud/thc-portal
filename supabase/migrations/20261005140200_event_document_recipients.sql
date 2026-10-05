@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261005140200 · Who receives the timesheet is chosen per event
---                            (§9.7, §11.4; ADR-0088, THC 05.10.2026)
+--                            (§9.7, §11.4; ADR-0089, THC 05.10.2026)
 --
 -- Until now both documents went to every contact email on the client card.
 -- THC: events on the same day for the same client sometimes need the sheet
@@ -8,7 +8,7 @@
 --
 --   events.document_recipients  text[], null = "every contact email on the
 --                               client card" (today's behaviour, and every
---                               existing event). Otherwise 1–5 addresses
+--                               existing event). Otherwise 1–10 addresses
 --                               for THIS event only: a pick from the client's
 --                               contacts and/or other addresses.
 --   event_document_recipients(event)
@@ -38,10 +38,10 @@ alter table events add column if not exists document_recipients text[];
 alter table events drop constraint if exists events_document_recipients_check;
 alter table events add constraint events_document_recipients_check
   check (document_recipients is null
-         or cardinality(document_recipients) between 1 and 5);
+         or cardinality(document_recipients) between 1 and 10);
 
 comment on column events.document_recipients is
-  'ADR-0088: who the Allocation Timesheet and the Completed Allocation Timesheet go to for THIS event. Null = every contact email on the client card (§9.7). Written only by set_event_document_recipients().';
+  'ADR-0089: who the Allocation Timesheet and the Completed Allocation Timesheet go to for THIS event. Null = every contact email on the client card (§9.7). Written only by set_event_document_recipients().';
 
 create or replace function public.event_document_recipients(p_event uuid)
 returns text[]
@@ -53,7 +53,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.event_document_recipients(uuid) is
-  'ADR-0088: who a timesheet for this event goes to — the event''s own list, else the contact emails on the client card.';
+  'ADR-0089: who a timesheet for this event goes to — the event''s own list, else the contact emails on the client card.';
 
 create or replace function public.set_event_document_recipients(p_event uuid, p_recipients text[])
 returns jsonb
@@ -79,7 +79,7 @@ begin
   if coalesce(array_length(v_clean, 1), 0) = 0 then
     v_clean := null;                                  -- back to the client's contacts
   else
-    if array_length(v_clean, 1) > 5 then
+    if array_length(v_clean, 1) > 10 then
       raise exception 'too_many_recipients' using errcode = '22023';
     end if;
     select a into v_bad from unnest(v_clean) as a
@@ -101,7 +101,7 @@ begin
 end $$;
 
 comment on function public.set_event_document_recipients(uuid, text[]) is
-  'ADR-0088: sets who the event''s timesheets go to (1–5 addresses, any valid email); null or empty = the client card''s contacts. Admin only; audited with the previous list. Refuses a cancelled event.';
+  'ADR-0089: sets who the event''s timesheets go to (1–10 addresses, any valid email); null or empty = the client card''s contacts. Admin only; audited with the previous list. Refuses a cancelled event.';
 
 -- ---------------------------------------------------------------------
 -- The manual Send (20261002100000's body), the automatic send

@@ -125,7 +125,7 @@ export interface BoardEvent {
   nameBadges: boolean;
   /** The contact emails on the client card (§9.7): who a timesheet goes to by default. */
   clientContactEmails: string[];
-  /** ADR-0088: this event's own recipients, or null = every contact email on the client card. */
+  /** ADR-0089: this event's own recipients, or null = every contact email on the client card. */
   documentRecipients: string[] | null;
   venueName: string;
   venueAddress: string;
