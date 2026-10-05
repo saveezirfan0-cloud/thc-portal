@@ -38,8 +38,10 @@ select is(outbox_backoff(0), interval '1 minute',
 -- transaction timestamp, so that row satisfies `send_after <= now()` and is
 -- claimable — it would land in the second drain below and make the counts
 -- wrong. Push it out of reach so the claim assertions only see TEST- rows.
+-- Likewise the two E5b rows the fixtures' own bank_details inserts queue
+-- (20261005130000, ADR-0089: a bank write outside staff_save_bank() is emailed).
 update notification_outbox set send_after = now() + interval '1 day'
- where key = 'RLS:fixture:outbox';
+ where key = 'RLS:fixture:outbox' or template = 'E5b';
 
 insert into notification_outbox (key, channel, template, send_after) values
   ('TEST-N9:booking:1',  'push', 'N9',  now() - interval '1 minute'),

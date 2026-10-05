@@ -64,6 +64,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         label: 'Bank & payroll details updated',
         when: 'A worker changes their bank details',
       },
+      {
+        code: 'E5b',
+        label: 'Bank details changed outside the app',
+        when: 'The office, or the system, changes a worker’s bank details',
+        warning:
+          'Payroll is not told when an office login or the system changes a worker’s bank details.',
+      },
       { code: 'E6', label: 'NI number entered', when: 'A worker who joined without one enters it' },
       {
         code: 'E7',

@@ -449,6 +449,21 @@ export const TEMPLATES = {
     timing: 'on save',
     mandatory: true,
   },
+  // ADR-0089: a change to bank details that did NOT come through the Staff
+  // App — an office login with finance, or the service role — is emailed to
+  // the same two addresses as E5. Not in §8, so it is the "b" of E5. It names
+  // the worker and who, and never a sort code or an account number.
+  E5b: {
+    code: 'E5b',
+    channel: 'email',
+    sender: 'admin',
+    recipients: PAYROLL,
+    title: 'Bank & payroll details changed — {name}, Employee ID {employeeId}',
+    body: "A worker's bank & payroll details were changed outside the Staff App.\n\nName: {name}\nEmployee ID: {employeeId}\nChanged: {changedAt}\nChanged by: {changedBy}\n\nIf you were not expecting this change, check it with the office before the next payroll run.",
+    trigger:
+      "Bank details are inserted or changed by anything other than the worker's own save: an office login with the finance permission, or the service role (bank_details trigger, 20261005130000, ADR-0089). Not in §8: E5 covers the worker's own save, and THC asked that any change reach Gisela and Payroll",
+    timing: 'immediately on the change',
+  },
   E6: {
     code: 'E6',
     channel: 'email',
@@ -938,6 +953,7 @@ export const REQUIREMENT_CODES = [
  */
 export const EXTENSION_CODES = [
   'E2b',
+  'E5b',
   'E10',
   'N10d',
   'N11b',

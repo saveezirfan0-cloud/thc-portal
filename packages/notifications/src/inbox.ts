@@ -28,6 +28,7 @@ export const OFFICE_ADDRESSES = [
 
 export const OFFICE_INBOX = [
   { code: 'E5', label: 'Bank & payroll details updated' },
+  { code: 'E5b', label: 'Bank details changed outside the app' },
   { code: 'E6', label: 'NI number entered' },
   { code: 'E7', label: 'Contact details updated' },
   { code: 'E8', label: 'P45 requested' },
