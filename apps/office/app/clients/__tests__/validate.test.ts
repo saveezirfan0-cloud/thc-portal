@@ -46,7 +46,9 @@ describe('validateClient', () => {
 
   it('holds the column’s ceiling of five addresses', () => {
     const many = Array.from({ length: MAX_CONTACT_EMAILS + 1 }, (_, i) => `a${i}@b.co`);
-    expect(validateClient(draft({ contact_emails: many }))).toMatch(new RegExp(`Up to ${MAX_CONTACT_EMAILS}`));
+    expect(validateClient(draft({ contact_emails: many }))).toMatch(
+      new RegExp(`Up to ${MAX_CONTACT_EMAILS}`),
+    );
   });
 
   it('accepts either setting of both policies, because neither is optional', () => {
