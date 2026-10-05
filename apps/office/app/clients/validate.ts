@@ -10,7 +10,7 @@ import type { ClientDraft } from './types';
  */
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-/** The `contact_emails` column is `check (array_length between 1 and 10)` (ADR-0086). */
+/** The `contact_emails` column is `check (array_length between 1 and 10)` (ADR-0087). */
 export const MAX_CONTACT_EMAILS = 10;
 
 export function isEmail(value: string): boolean {

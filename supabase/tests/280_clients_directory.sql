@@ -138,7 +138,7 @@ select throws_ok(
   $$ select create_client('N', 'A', '1', 'P', array['a@b.co'], null, true) $$,
   '23514', null, 'neither policy has a "not set" state (§9.7)');
 
--- Up to ten contact emails (ADR-0086).
+-- Up to ten contact emails (ADR-0087).
 select lives_ok(
   $$ select create_client('Ten Emails Ltd', 'T', '1', 'P',
        array['a1@b.co','a2@b.co','a3@b.co','a4@b.co','a5@b.co','a6@b.co','a7@b.co','a8@b.co','a9@b.co','a10@b.co'],
