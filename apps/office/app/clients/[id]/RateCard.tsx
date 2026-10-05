@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Addon, Alert, Button, Chip, Input, InputRow, Panel, Select, TableScroll } from '@thc/ui';
 import { addRole, removeRole, updateRole } from './actions';
-import { gbp, marginTone } from './card';
+import { dressCodeSuggestions, gbp, marginTone } from './card';
 import type { RateCardRow, RoleOption } from './types';
 
 /**
@@ -38,25 +38,37 @@ export function RateCard({
   clientId,
   rows,
   roles,
+  dressCodeLibrary = [],
   ratesVisible = true,
 }: {
   clientId: string;
   rows: RateCardRow[];
   roles: RoleOption[];
+  /** Dress codes already stored on any client's card, offered while editing. */
+  dressCodeLibrary?: string[];
   ratesVisible?: boolean;
 }) {
   if (!ratesVisible) return <RateCardWithoutRates rows={rows} />;
-  return <EditableRateCard clientId={clientId} rows={rows} roles={roles} />;
+  return (
+    <EditableRateCard
+      clientId={clientId}
+      rows={rows}
+      roles={roles}
+      dressCodeLibrary={dressCodeLibrary}
+    />
+  );
 }
 
 function EditableRateCard({
   clientId,
   rows,
   roles,
+  dressCodeLibrary,
 }: {
   clientId: string;
   rows: RateCardRow[];
   roles: RoleOption[];
+  dressCodeLibrary: string[];
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [rate, setRate] = useState('');
@@ -100,9 +112,9 @@ function EditableRateCard({
     setCodeDraft('');
   };
 
-  const addCode = () => {
-    const value = codeDraft.trim();
-    if (!value || codes.includes(value)) {
+  const addCode = (code = codeDraft) => {
+    const value = code.trim();
+    if (!value || codes.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
       setCodeDraft('');
       return;
     }
@@ -185,6 +197,7 @@ function EditableRateCard({
                   codeDraft={codeDraft}
                   setCodeDraft={setCodeDraft}
                   addCode={addCode}
+                  library={dressCodeLibrary}
                   pending={pending}
                   saveDisabled={rate.trim() === ''}
                   onCancel={() => setDraft(null)}
@@ -210,6 +223,7 @@ function EditableRateCard({
                     codeDraft={codeDraft}
                     setCodeDraft={setCodeDraft}
                     addCode={addCode}
+                    library={dressCodeLibrary}
                     pending={pending}
                     saveDisabled={false}
                     onCancel={() => setEditing(null)}
@@ -366,6 +380,7 @@ function EditingRow({
   codeDraft,
   setCodeDraft,
   addCode,
+  library,
   pending,
   saveDisabled,
   onCancel,
@@ -380,12 +395,15 @@ function EditingRow({
   setCodes: (value: string[]) => void;
   codeDraft: string;
   setCodeDraft: (value: string) => void;
-  addCode: () => void;
+  addCode: (code?: string) => void;
+  /** Dress codes already stored for any client, offered as one-click adds. */
+  library: string[];
   pending: boolean;
   saveDisabled: boolean;
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const suggestions = dressCodeSuggestions(library, codes, codeDraft);
   return (
     <tr>
       <td>
@@ -434,10 +452,25 @@ function EditingRow({
               }
             }}
           />
-          <Button size="sm" onClick={addCode}>
+          <Button size="sm" onClick={() => addCode()}>
             + Add
           </Button>
         </div>
+        {suggestions.length > 0 ? (
+          <div className="dcs dcs-suggest" role="group" aria-label="Dress codes already stored">
+            <span className="muted sm">Already stored — click to add:</span>
+            {suggestions.map((code) => (
+              <button
+                key={code}
+                type="button"
+                className="chip outline"
+                onClick={() => addCode(code)}
+              >
+                + {code}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </td>
       <td className="right-align">
         <Button size="sm" tone="ghost" onClick={onCancel}>

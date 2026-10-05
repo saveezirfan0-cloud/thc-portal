@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dressCodeLibrary,
+  dressCodeSuggestions,
   gbp,
   gbpRound,
   grantedHow,
@@ -136,5 +138,29 @@ describe('+ New event for this client (§9.7)', () => {
   it('opens the Shift Builder with this client picked', () => {
     expect(newEventHref('c-123')).toBe('/events/new?client=c-123');
     expect(newEventHref('a b&c')).toBe('/events/new?client=a%20b%26c');
+  });
+});
+
+describe('dress-code suggestions on the rate card', () => {
+  it('builds the library most-used first, case-insensitively, without blanks', () => {
+    expect(
+      dressCodeLibrary([
+        ['Black tie', 'Smart casual'],
+        ['black tie', ' '],
+        null,
+        ['Aprons'],
+        ['Smart casual', 'Black tie'],
+      ]),
+    ).toEqual(['Black tie', 'Smart casual', 'Aprons']);
+  });
+
+  it('offers only codes not already chosen that match what is typed, capped', () => {
+    const library = ['Black tie', 'Black & whites', 'Smart casual'];
+    expect(dressCodeSuggestions(library, ['black tie'], '')).toEqual([
+      'Black & whites',
+      'Smart casual',
+    ]);
+    expect(dressCodeSuggestions(library, [], 'BLACK')).toEqual(['Black tie', 'Black & whites']);
+    expect(dressCodeSuggestions(library, [], '', 1)).toEqual(['Black tie']);
   });
 });

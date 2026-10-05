@@ -60,6 +60,14 @@
   font: inherit;
   padding: 0 0 0 var(--sp-4);
 }
+.dcs-suggest {
+  margin-top: var(--sp-8);
+}
+.dcs-suggest .chip {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
 .dcs .input {
   height: 28px;
   width: 160px;

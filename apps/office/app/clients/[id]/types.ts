@@ -93,6 +93,8 @@ export interface ClientCardData {
   /** `clients.name_badges` (ADR-0081): badges go with every Allocation Timesheet. */
   nameBadges: boolean;
   rateCard: RateCardRow[];
+  /** Every dress code stored on any client's rate card, most-used first. */
+  dressCodeLibrary: string[];
   qualified: QualifiedStaffRow[];
   events: ClientEventRow[];
   roles: RoleOption[];

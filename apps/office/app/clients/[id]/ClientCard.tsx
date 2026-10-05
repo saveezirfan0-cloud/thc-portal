@@ -159,6 +159,7 @@ export function ClientCard({
           clientId={client.id}
           rows={data.rateCard}
           roles={data.roles}
+          dressCodeLibrary={data.dressCodeLibrary}
           ratesVisible={ratesVisible}
         />
 
