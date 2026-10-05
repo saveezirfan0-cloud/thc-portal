@@ -30,8 +30,8 @@
  *  RULE-01 pay window. Payable time is the intersection of [check-in,
  *    check-out] with the scheduled [start, end]. The two graces are not
  *    symmetric in effect:
- *      - check-in inside the 30-minute grace is paid FROM THE SCHEDULED START;
- *      - check-in past it is paid from the ACTUAL time;
+ *      - check-in on or before the start is paid FROM THE SCHEDULED START;
+ *      - check-in after it is paid from the ACTUAL time, grace or not (ADR-0087);
  *      - check-out after the end is paid only to the end, whether it is one
  *        minute or three hours late. The 15-minute mark changes no money; past
  *        it the monitor turns the pill red so a manager can verify (§9.5).
@@ -432,14 +432,13 @@ export interface PayResult {
 }
 
 /**
- * When the paid clock starts. Inside the check-in grace the worker is paid
- * from the scheduled start; past it, from when they actually arrived. Arriving
- * early never pays early.
+ * When the paid clock starts: the later of the scheduled start and the actual
+ * check-in (ADR-0087). Arriving early never pays early, and arriving late is
+ * paid only from the press — the 30-minute grace decides Late vs No-show, not
+ * pay.
  */
 export function effectiveStart(shift: ShiftWindow, checkInAt: Date): Date {
-  if (checkInAt <= shift.startsAt) return shift.startsAt;
-  const graceEnds = addMinutes(shift.startsAt, CHECK_IN_GRACE_MIN);
-  return checkInAt < graceEnds ? shift.startsAt : checkInAt;
+  return checkInAt > shift.startsAt ? checkInAt : shift.startsAt;
 }
 
 /** When the paid clock stops. Never past the scheduled end, however late the press. */

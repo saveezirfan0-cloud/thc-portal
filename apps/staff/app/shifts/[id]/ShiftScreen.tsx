@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer, useTimeFormat } from '@thc/ui';
-import { UK_ZONE, canCancelShift, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
+import {
+  UK_ZONE,
+  canCancelShift,
+  effectiveStart,
+  formatTimeIn,
+  needsDualZone,
+  viewerZone,
+} from '@thc/domain';
 import { CHECK_IN_FIX, TRACKING_FIX, getFix } from '../../../lib/geo';
 import type { Fix, FixFailure, FixOptions } from '../../../lib/geo';
 import { CancelShift } from '../../_components/CancelShift';
@@ -67,6 +74,19 @@ interface CheckOutOutcome {
   recordedAt: string | null;
   pressedAt: string;
   distanceM: number | null;
+}
+
+/** RULE-01 / ADR-0087: the later of the scheduled start and the actual check-in. */
+function paidFromIso(shift: {
+  startsAt: string;
+  endsAt: string;
+  checkInAt?: string | null;
+}): string {
+  if (!shift.checkInAt) return shift.startsAt;
+  return effectiveStart(
+    { startsAt: new Date(shift.startsAt), endsAt: new Date(shift.endsAt) },
+    new Date(shift.checkInAt),
+  ).toISOString();
 }
 
 export function ShiftScreen({
@@ -301,7 +321,7 @@ export function ShiftScreen({
         head={head}
         distanceM={outcome.distanceM}
         checkedIn={shift.checkInAt ? local(shift.checkInAt) : null}
-        paidFrom={`${uk(shift.startsAt)} (UK)`}
+        paidFrom={`${uk(paidFromIso(shift))} (UK)`}
         lastOnSite={outcome.recordedAt ? local(outcome.recordedAt) : null}
         pressedAt={local(outcome.pressedAt)}
         onContinue={() => setOutcome(null)}
@@ -486,9 +506,9 @@ export function ShiftScreen({
           ) : (
             <p className="xs muted">
               Check-in window <UkTime at={window_.opens} /> – <UkTime at={window_.locks} />. You’re
-              paid from {uk(shift.startsAt)} whenever you arrive before it; after{' '}
-              {uk(shift.startsAt)} you’re marked Late; at <UkTime at={window_.locks} /> check-in
-              locks.
+              paid from {uk(shift.startsAt)} if you arrive before it. After {uk(shift.startsAt)}{' '}
+              you’re marked Late and paid only from when you check in; at{' '}
+              <UkTime at={window_.locks} /> check-in locks.
             </p>
           )}
           {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}

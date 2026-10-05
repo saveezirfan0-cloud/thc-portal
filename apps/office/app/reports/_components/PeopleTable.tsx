@@ -4,13 +4,10 @@ import { Fragment, useMemo, useState } from 'react';
 import { Avatar, Chip, Panel, Pill, useTimeFormat } from '@thc/ui';
 import type { PayrollLine, PayrollPerson } from '../data';
 import { breakLabel, dayLabel, employeeId, hours, pounds } from '../view-model';
-import { UK_ZONE, formatTimeIn } from '@thc/domain';
+import { formatTimeIn } from '@thc/domain';
 import { ActualTime, ScheduledWindow, useViewerZone } from './zone';
 
 const PAGE = 25;
-
-/** §5.1: a check-in inside the first 30 minutes is paid from the scheduled start. */
-const GRACE_MS = 30 * 60_000;
 
 /**
  * The per-person breakdown (§9.9 Tab 2): click a person to expand ALL their
@@ -345,13 +342,7 @@ function Actual({ line }: { line: PayrollLine }) {
       {line.status === 'pending' ? (
         <span className="sub rp-coral">No check-out — unresolved</span>
       ) : line.late_check_in ? (
-        <span className="sub rp-amber">
-          late check-in —{' '}
-          {line.check_in_at &&
-          new Date(line.check_in_at).getTime() - new Date(line.starts_at).getTime() < GRACE_MS
-            ? `inside the 30-min grace, paid from ${formatTimeIn(new Date(line.starts_at), UK_ZONE, format)} UK`
-            : 'paid from arrival'}
-        </span>
+        <span className="sub rp-amber">late check-in — paid from arrival</span>
       ) : line.early_check_out ? (
         <span className="sub rp-amber">early check-out — paid to the actual finish</span>
       ) : null}

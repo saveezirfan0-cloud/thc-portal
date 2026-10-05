@@ -1423,8 +1423,9 @@ known on-site GPS time when pressed off-site) or, for a shift closed via the "No
 the finish date and time the manager enters when resolving it. Arrived 13:30 for a 14:00 start → those 30 
 minutes are NOT paid; left early → deducted. A 15-minute grace window applies symmetrically on check-
 out: checking out up to 15 minutes after the scheduled end is still paid only up to the scheduled end time 
-(e.g. checked out at 16:15 for a 16:00 finish → paid to 16:00 — mirrors the check-in side, where checking in 
-during the 30-minute grace window is paid from the scheduled start, not the actual check-in time). Between 
+(e.g. checked out at 16:15 for a 16:00 finish → paid to 16:00 — mirrors the check-in side only in having a grace window: 
+a late check-in, even inside the 30-minute grace window, is paid only from the actual check-in time, not from the 
+scheduled start — changed 05.10.2026, ADR-0087). Between 
 15 minutes and 4 hours after the scheduled end, a late check-out still pays only up to the scheduled end and 
 raises a red flag on the Check-in monitor (§9.5) so the manager can verify with the worker — it does not 
 change the payable amount. If check-out is still not pressed 4 hours after the scheduled end, RULE-02 takes 

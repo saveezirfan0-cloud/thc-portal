@@ -495,18 +495,18 @@
         }
       },
       {
-        "name": "inside the 30-minute grace is paid from the scheduled start",
+        "name": "inside the 30-minute grace is Late and paid from the actual arrival (ADR-0087)",
         "input": { "checkInMinFromStart": 20, "checkOutMinFromStart": 480 },
         "expect": {
           "status": "settled",
-          "payableMin": 480,
-          "workedMin": 480,
+          "payableMin": 460,
+          "workedMin": 460,
           "floorApplied": false,
           "lateCheckOutFlag": false
         }
       },
       {
-        "name": "past the grace is paid from the actual arrival",
+        "name": "past the grace (manager Get back) is paid from the actual arrival",
         "input": { "checkInMinFromStart": 45, "checkOutMinFromStart": 480 },
         "expect": {
           "status": "settled",

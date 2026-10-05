@@ -102,8 +102,8 @@ grant select on b to authenticated, service_role;
 --   s1 Mon Bar 18:00–23:00, in 17:55 out 23:02 → 300 min (capped both ends)
 --        base 300×15.50/60 = 77.50 · holiday 9.35 · total 86.85
 --   s2 Tue Waiting 10:00–16:00 clean → 360 → 84.00 · 10.14 · 94.14
---   s3 Wed Host 08:00–16:00, in 08:14 (inside the grace: paid from 08:00)
---        → 480 → 128.00 · 15.45 · 143.45, late check-in highlighted
+--   s3 Wed Host 08:00–16:00, in 08:14 (Late: paid from the actual check-in, ADR-0087)
+--        → 466 → 124.27 · 15.00 · 139.27, late check-in highlighted
 --   s4 Thu Bar 17:00–22:00, client does not pay breaks, 20 min break
 --        → 280 → 72.33 · 8.73 · 81.06
 --   s5 Sun Waiting 11:00–16:00, out 15:40 + Left early → 280 → 65.33 · 7.89 · 73.22
@@ -213,8 +213,8 @@ select is((select payable_min from pr where booking_id = (select id from b where
   'W1 Tue: a clean six hours is 360 payable minutes');
 select ok((select late_check_in from pr where booking_id = (select id from b where name = 'w1s3')),
   'W1 Wed: checked in 08:14 — highlighted late (amber)');
-select is((select payable_min from pr where booking_id = (select id from b where name = 'w1s3')), 480,
-  'W1 Wed: …but inside the 30-minute grace, so paid from the scheduled 08:00 (RULE-01)');
+select is((select payable_min from pr where booking_id = (select id from b where name = 'w1s3')), 466,
+  'W1 Wed: …and paid only from the actual 08:14, not the scheduled 08:00 (RULE-01, ADR-0087)');
 select is((select row(unpaid_break_min, payable_min, base)::text from pr where booking_id = (select id from b where name = 'w1s4')),
   row(20, 280, 72.33)::text,
   'W1 Thu: the client does not pay breaks, so the 20-minute break is deducted and shown (§5.2b)');
@@ -259,8 +259,8 @@ select is((select count(*)::int from pr where booking_id = (select id from b whe
 -- =====================================================================
 -- 23-27 · Tab 2 · per person and the period summary
 --
--- Base:    W1 427.16 + W2 224.00 + W3 118.00 + W5 62.00 + W7 56.00 + W8 70.00 = 957.16
--- Holiday: W1  51.56 + W2  27.04 + W3  14.24 + W5  7.48 + W7  6.76 + W8  8.45 = 115.53
+-- Base:    W1 423.43 + W2 224.00 + W3 118.00 + W5 62.00 + W7 56.00 + W8 70.00 = 953.43
+-- Holiday: W1  51.11 + W2  27.04 + W3  14.24 + W5  7.48 + W7  6.76 + W8  8.45 = 115.08
 -- Shifts:  5 + 4 + 2 + 1 (W4) + 2 (W5) + 1 + 1 = 16; workers 7 (W6 is not one)
 -- =====================================================================
 set local role authenticated;
@@ -268,8 +268,8 @@ create temp table pp as select * from payroll_report_people('2025-03-03', '2025-
 reset role;
 
 select is((select row(shifts, payable_min, base, holiday, total)::text from pp where staff_id = :'w1'),
-  row(5, 1700, 427.16, 51.56, 478.72)::text,
-  'W1 summary row: 5 shifts · 28.33 h · base £427.16 · holiday £51.56 · total £478.72 — base and holiday never blended');
+  row(5, 1686, 423.43, 51.11, 474.54)::text,
+  'W1 summary row: 5 shifts · 28.10 h · base £423.43 · holiday £51.11 · total £474.54 — base and holiday never blended');
 select is((select row(shifts, pending, total)::text from pp where staff_id = :'w4'),
   row(1, 1, 0)::text,
   'W4 summary row: one shift, pending, and nothing priced');
@@ -277,29 +277,29 @@ select is((select row(workers, shifts, pending, turned_away)::text from pp where
   row(7, 16, 1, 2)::text,
   'Period summary: 7 workers on shifts · 16 shifts · 1 pending · 2 turned away');
 select is((select row(base, holiday, total)::text from pp where is_total),
-  row(957.16, 115.53, 1072.69)::text,
-  'Period summary: total to be paid £1,072.69 = base £957.16 + holiday £115.53');
-select is((select payable_min from pp where is_total), 3920,
-  'Period summary: 3,920 payable minutes after break deductions');
+  row(953.43, 115.08, 1068.51)::text,
+  'Period summary: total to be paid £1,068.51 = base £953.43 + holiday £115.08');
+select is((select payable_min from pp where is_total), 3906,
+  'Period summary: 3,906 payable minutes after break deductions');
 
 -- =====================================================================
 -- 28-33 · Tab 1 · Financial
 --
 -- Invoicing at the charge rate, turn-aways never invoiced:
---   W1 122.50 + 137.82 + 208.00 + 114.33 + 107.19 = 689.84
+--   W1 122.50 + 137.82 + 201.93 + 114.33 + 107.19 = 683.77
 --   W2 4 × 91.88 = 367.52 · W3 98.00 + 91.88 = 189.88 · W7 91.88 · W8 114.85
---   = 1,453.97; margin 1,453.97 − 1,072.69 = 381.28 (26.2%)
+--   = 1,447.90; margin 1,447.90 − 1,068.51 = 379.39 (26.2%)
 -- =====================================================================
 set local role authenticated;
 create temp table fr as select * from finance_report('2025-03-03', '2025-03-09', 'day');
 reset role;
 
 select is((select row(base, holiday, payroll)::text from fr where is_total),
-  row(957.16, 115.53, 1072.69)::text,
-  'Financial KPI Staff payroll: base £957.16 and holiday £115.53 separately, £1,072.69 including holiday — the same money as the Payroll tab');
-select is((select invoicing from fr where is_total), 1453.97,
+  row(953.43, 115.08, 1068.51)::text,
+  'Financial KPI Staff payroll: base £953.43 and holiday £115.08 separately, £1,068.51 including holiday — the same money as the Payroll tab');
+select is((select invoicing from fr where is_total), 1447.90,
   'Financial KPI Client invoicing: payable hours at each section''s charge rate; the RULE-15 turn-away is absorbed by THC, not invoiced');
-select is((select row(margin, margin_pct)::text from fr where is_total), row(381.28, 26.2)::text,
+select is((select row(margin, margin_pct)::text from fr where is_total), row(379.39, 26.2)::text,
   'Financial KPI Gross margin: invoicing − payroll including holiday');
 select is((select pending from fr where is_total), 1, 'Financial: the pending shift is counted, not priced');
 select ok((select 'Cancelled Before' = any(cancelled_events) from fr where group_key = '2025-03-06'),
