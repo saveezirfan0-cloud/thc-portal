@@ -77,7 +77,7 @@ interface CheckOutOutcome {
 }
 
 /** RULE-01 / ADR-0087: the later of the scheduled start and the actual check-in. */
-function paidFromIso(shift: {
+export function paidFromIso(shift: {
   startsAt: string;
   endsAt: string;
   checkInAt?: string | null;

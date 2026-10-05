@@ -26,7 +26,9 @@ Status: accepted · 05.10.2026 · changes RULE-01 / §5.1 / §5.2 (scope wins el
 
 ## Consequences
 
-- Payroll, the Financial report and client invoicing (payable hours at the charge rate) all
-  fall for late arrivals: they read `payable_minutes()`.
+- Payroll, the Financial report and client invoicing (payable hours at the charge rate)
+  all fall for late arrivals: they read `payable_minutes()`. The late minutes are dropped
+  from the §9.9 invoicing forecast too; that is intended (the client is not billed for time
+  nobody worked).
 - Exports already issued are never corrected retroactively (RULE-01 notes); only rows
   computed after the migration use the new rule.

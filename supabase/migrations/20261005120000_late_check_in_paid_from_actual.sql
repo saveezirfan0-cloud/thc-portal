@@ -21,7 +21,7 @@ declare
   v_floor   boolean;
   v_payable int;
 begin
-  if p_check_out_at is null then
+  if p_check_out_at is null or p_check_in_at is null then
     return jsonb_build_object('status','undetermined','payableMin',null,'workedMin',null,
       'floorApplied',false,'lateCheckOutFlag',false);
   end if;

@@ -342,7 +342,10 @@ function Actual({ line }: { line: PayrollLine }) {
       {line.status === 'pending' ? (
         <span className="sub rp-coral">No check-out — unresolved</span>
       ) : line.late_check_in ? (
-        <span className="sub rp-amber">late check-in — paid from arrival</span>
+        <span className="sub rp-amber">
+          late check-in — paid from{' '}
+          {line.check_in_at ? <ActualTime at={line.check_in_at} /> : 'arrival'}
+        </span>
       ) : line.early_check_out ? (
         <span className="sub rp-amber">early check-out — paid to the actual finish</span>
       ) : null}
