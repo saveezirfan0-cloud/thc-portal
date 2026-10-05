@@ -135,3 +135,27 @@ export function dressCodeSuggestions(
     .filter((code) => !have.has(code.toLowerCase()) && code.toLowerCase().includes(needle))
     .slice(0, limit);
 }
+
+/**
+ * The dress codes a newly added role starts with: the ones most of this
+ * client's existing roles already carry (strictly more than half). A client
+ * is usually dressed one way whatever the role, so the first role teaches
+ * the rest; where its roles disagree there is nothing to learn and the
+ * draft starts empty rather than guessing. Still editable before Save.
+ */
+export function defaultDressCodes(rows: { dress_codes: string[] | null }[]): string[] {
+  const seen = new Map<string, { code: string; uses: number }>();
+  for (const row of rows) {
+    const own = new Set<string>();
+    for (const raw of row.dress_codes ?? []) {
+      const code = raw.trim();
+      const key = code.toLowerCase();
+      if (!code || own.has(key)) continue;
+      own.add(key);
+      const entry = seen.get(key);
+      if (entry) entry.uses += 1;
+      else seen.set(key, { code, uses: 1 });
+    }
+  }
+  return [...seen.values()].filter((entry) => entry.uses * 2 > rows.length).map((e) => e.code);
+}

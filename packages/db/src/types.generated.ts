@@ -11535,7 +11535,7 @@ export type Database = {
     };
     Enums: {
       app_role: 'admin' | 'client' | 'staff';
-      application_outcome: 'candidate_created' | 'returning_applicant';
+      application_outcome: 'candidate_created' | 'returning_applicant' | 'duplicate_candidate';
       block_kind: 'auto_document' | 'manual' | 'conviction_review';
       booking_source: 'auto' | 'manual' | 'self' | 'escalation' | 'offer';
       booking_status:
@@ -11717,7 +11717,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ['admin', 'client', 'staff'],
-      application_outcome: ['candidate_created', 'returning_applicant'],
+      application_outcome: ['candidate_created', 'returning_applicant', 'duplicate_candidate'],
       block_kind: ['auto_document', 'manual', 'conviction_review'],
       booking_source: ['auto', 'manual', 'self', 'escalation', 'offer'],
       booking_status: [

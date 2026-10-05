@@ -309,7 +309,7 @@ export interface ContractVersion {
 export interface Application {
   created_at: string;
   consented_at: string;
-  outcome: 'candidate_created' | 'returning_applicant';
+  outcome: 'candidate_created' | 'returning_applicant' | 'duplicate_candidate';
   matched_on: string | null;
 }
 
