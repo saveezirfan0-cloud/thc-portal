@@ -16,6 +16,10 @@
 .tbl .client-name:hover {
   color: var(--cyan-ink);
 }
+/* A phone number is one token: never break "0207 333 1000" across two lines. */
+.tbl td.phone {
+  white-space: nowrap;
+}
 .tbl td.num.margin {
   color: var(--green-ink);
   font-family: var(--font-num);
