@@ -36,6 +36,13 @@
  *     any copy generated after the removal, sorted last in their role
  *     because the surname is gone. (The data arrives that way from
  *     `event_document_data`; this module never sees the real name.)
+ *   · Buffer (ADR-0087, THC 05.10.2026): THC overbooks a role by its buffer
+ *     (§3.2), so the sheet can list more people than the client asked for.
+ *     A role section that does says so in its own heading — "7 staff (6
+ *     required + 1 buffer)" — and the last page carries one note saying
+ *     what buffer staff are, so a client never reads the larger list as
+ *     "too many booked". Nobody is singled out: who works is decided by
+ *     check-in order (§3.2, RULE-15), not by the sheet.
  *   · No money anywhere on the document (§11.1).
  */
 
@@ -103,6 +110,11 @@ export interface SheetPerson {
   /** The ROLE SECTION's window (RULE-18), never the event's. */
   startsAt: string;
   endsAt: string;
+  /**
+   * ADR-0087: how many the client asked for in this role section. Absent on
+   * data that predates it, which is read as "unknown": no buffer is claimed.
+   */
+  headcount?: number | null;
   finishAt: string | null;
   workedMin: number | null;
   /** scheduled (not started) · settled · pending (No check-out) · no_show. */
@@ -151,6 +163,10 @@ export interface SheetLayout {
   dateLabel: string;
   poNumber: string | null;
   rowCount: number;
+  /** ADR-0087: people listed beyond the number asked for, across the roles. 0 = none. */
+  bufferStaff: number;
+  /** ADR-0087: the note on the last page when `bufferStaff` > 0, else null. */
+  bufferNote: string | null;
   /** Whole event, not the page. Blank on the allocation sheet. */
   totalHours: string;
   pages: SheetPage[];
@@ -161,8 +177,19 @@ interface Section {
   roleName: string;
   startsAt: string;
   endsAt: string;
+  /** What the client asked for, when the data says (ADR-0087). */
+  headcount: number | null;
   people: SheetPerson[];
 }
+
+/** The people listed beyond the number asked for, in one role section. */
+export function bufferIn(section: Pick<Section, 'headcount' | 'people'>): number {
+  return section.headcount === null ? 0 : Math.max(section.people.length - section.headcount, 0);
+}
+
+/** ADR-0087: printed once, on the last page, when any role lists more than was asked for. */
+export const BUFFER_NOTE =
+  'Buffer staff are booked in addition to the number required, to cover late arrivals and drop-outs on the day.';
 
 const collator = new Intl.Collator('en-GB', { sensitivity: 'base', numeric: true });
 
@@ -185,6 +212,7 @@ export function orderPeople(people: readonly SheetPerson[]): Section[] {
         roleName: person.roleName,
         startsAt: person.startsAt,
         endsAt: person.endsAt,
+        headcount: person.headcount ?? null,
         people: [],
       };
       sections.set(key, section);
@@ -273,10 +301,16 @@ export function layoutSheet(input: SheetInput, perPage: number = ROWS_PER_PAGE):
         const continuesLater =
           index < of - 1 && chunks[index + 1]!.some((e) => e.section === current);
         let label = `${current.roleName} · ${window} · `;
+        const extra = bufferIn(current);
+        // ADR-0087: "7 staff (6 required + 1 buffer)" — only where there is some.
+        const count =
+          extra > 0 && current.headcount !== null
+            ? `${total} staff (${current.headcount} required + ${extra} buffer)`
+            : `${total} staff`;
         if (startedEarlier) {
           label += `continued (${onThisPage} of ${total})`;
         } else {
-          label += `${total} staff`;
+          label += count;
           if (continuesLater)
             label += ` (${onThisPage} on this page, continued on page ${index + 2})`;
         }
@@ -296,6 +330,7 @@ export function layoutSheet(input: SheetInput, perPage: number = ROWS_PER_PAGE):
         )
       : null;
 
+  const bufferStaff = sections.reduce((sum, section) => sum + bufferIn(section), 0);
   const title = `${event.clientName} – ${event.title}`;
   return {
     kind,
@@ -304,6 +339,8 @@ export function layoutSheet(input: SheetInput, perPage: number = ROWS_PER_PAGE):
     dateLabel: ukDateFromIsoDate(event.eventDate),
     poNumber: event.poNumber && event.poNumber.trim() !== '' ? event.poNumber.trim() : null,
     rowCount: flat.length,
+    bufferStaff,
+    bufferNote: bufferStaff > 0 ? BUFFER_NOTE : null,
     totalHours: totalMin === null ? '' : hoursMinutes(totalMin),
     pages,
   };
@@ -348,6 +385,7 @@ export function sheetText(layout: SheetLayout): string {
       out.push(
         `Total Hours: ${layout.totalHours} | Manager's Name (PRINT): | Manager's Signature: | Date:`,
       );
+      if (layout.bufferNote) out.push(`Note: ${layout.bufferNote}`);
       out.push(COMPANY_LINE);
     }
     out.push(`Page ${page.number} of ${page.of}`);

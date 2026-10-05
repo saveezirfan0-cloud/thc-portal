@@ -101,11 +101,11 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}{updateTag}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}{updateLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
-        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}{updateLine}",
+        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}",
       stepsLead: 'On the day, please ask your manager on site to:',
       steps: [
         "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
@@ -126,11 +126,11 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Completed Allocation Timesheet — {event}, {date}{poSuffix}',
-    body: "Hello,\n\nPlease find attached the completed Allocation Timesheet for the {event} on {date} — {staffCount} staff, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.{poLine}\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the completed Allocation Timesheet for the {event} on {date} — {staffCount} staff, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.{bufferLine}{poLine}\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Completed Allocation Timesheet',
       intro:
-        "Please find attached the completed Allocation Timesheet for the {event} on {date} — {staffCount} staff, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.{poLine}",
+        "Please find attached the completed Allocation Timesheet for the {event} on {date} — {staffCount} staff, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.{bufferLine}{poLine}",
       closing:
         "If anything doesn't match your records, just reply to this email and we'll look into it.",
       attachmentNote: 'Completed Allocation Timesheet · attached',
@@ -228,8 +228,15 @@ function derivedValues(
   // ADR-0081: a client with name badges on gets them with the D1 sheet. The
   // count is in the facts box ("Name badges"), so the sentence needs none.
   const badges = Number((values.nameBadges ?? '').trim()) || 0;
+  // ADR-0087: people listed beyond what the client asked for ('' or absent = none).
+  const buffer = Number((values.bufferStaff ?? '').trim()) || 0;
   return {
     ...values,
+    bufferStaff: values.bufferStaff ?? '',
+    bufferLine:
+      buffer > 0
+        ? ` It includes ${buffer} buffer ${buffer === 1 ? 'person' : 'people'}, booked in addition to the number required to cover late arrivals and drop-outs on the day.`
+        : '',
     updateTag: values.updateTag ?? '',
     updateLine: updated
       ? ' This replaces the Allocation Timesheet we sent earlier: the line-up has changed since, so please use this one.'
@@ -242,6 +249,12 @@ function derivedValues(
           : ' Their THC name badges are attached too, as a second PDF: print them, cut along the dashed lines and slide each one into a badge holder.'
         : '',
   };
+}
+
+/** "17 (incl. 2 buffer)" — the count the client reads, with the reason it is larger (ADR-0087). */
+function staffWithBuffer(count: string, buffer: string): string {
+  const n = Number(buffer) || 0;
+  return count && n > 0 ? `${count} (incl. ${n} buffer)` : count;
 }
 
 /**
@@ -268,7 +281,7 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
   if (code === 'D1') {
     return [
       ...common,
-      { label: 'Staff booked', value: get('staffCount') },
+      { label: 'Staff booked', value: staffWithBuffer(get('staffCount'), get('bufferStaff')) },
       // "Chef 07:00 – 15:00 · Waiting Staff 17:00 – 23:30": one role a line.
       { label: 'Scheduled', value: get('schedule').split(' · ').join('\n') },
       { label: 'PO number', value: get('poNumber') },
@@ -278,7 +291,7 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
   }
   return [
     ...common,
-    { label: 'Staff', value: get('staffCount') },
+    { label: 'Staff', value: staffWithBuffer(get('staffCount'), get('bufferStaff')) },
     { label: 'Total hours', value: get('totalHours') },
     { label: 'PO number', value: get('poNumber') },
   ];

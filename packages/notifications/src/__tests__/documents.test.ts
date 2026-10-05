@@ -144,6 +144,24 @@ describe('§11.4 allocation sheet email', () => {
     );
   });
 
+  it('says when buffer staff are on the sheet, in the sentence and beside the count (ADR-0087)', () => {
+    const payload = { ...d1().payload, staffCount: '19', bufferStaff: '2' };
+    const message = documentMessageFor(d1({ payload }));
+    const sentence =
+      'It includes 2 buffer people, booked in addition to the number required to cover late arrivals and drop-outs on the day.';
+    expect(message.body).toContain(sentence);
+    expect(message.html).toContain(sentence);
+    expect(message.html).toContain('19 (incl. 2 buffer)');
+    expect(documentMessageFor(d1({ payload: { ...payload, bufferStaff: '1' } })).body).toContain(
+      'It includes 1 buffer person, booked',
+    );
+    // None, and rows older than the key, say nothing about a buffer.
+    expect(documentMessageFor(d1()).body).not.toContain('buffer');
+    expect(
+      documentMessageFor(d1({ payload: { ...d1().payload, bufferStaff: '' } })).html,
+    ).not.toContain('buffer');
+  });
+
   it('attaches the stored PDF by reference', () => {
     expect(documentMessageFor(d1()).attachments).toEqual([
       {
