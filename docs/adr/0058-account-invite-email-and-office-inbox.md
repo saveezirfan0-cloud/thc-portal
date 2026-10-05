@@ -29,3 +29,7 @@ Separately, the platform sends the office and payroll a dozen kinds of email (E5
 ## Update — set-up links are owners' only (20261001200600)
 
 The QA review found that an E11 row's `payload.link` was readable by every Back Office login through `notification_outbox`'s `admin_read`, so after ADR-0056 a manager or scheduler could take over a login an owner had just invited. A restrictive policy now shows E11 rows only to a session with `office_can('users')`, and a trigger removes the link from an E11 row once it is sent or has failed for good (`linkRedacted: true`). pgTAP 746.
+
+## Update — the Inbox now lists every email (ADR-0086)
+
+`/inbox` gained a Candidates & workers view and a Clients view, and a search by address or name, read through `office_email_log()`, which returns the recipient and the subject's values but never a payload link. Decision 5's "the Inbox never lists E3 / E11" no longer holds; the owner-only policies still guard the link in the table.

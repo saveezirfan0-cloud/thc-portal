@@ -5,6 +5,13 @@
   flex: 0 1 220px;
 }
 
+.inbox-search {
+  flex: 1 1 280px;
+}
+.inbox-note {
+  margin: 0 0 var(--sp-12);
+}
+
 .inbox-when {
   white-space: nowrap;
 }
@@ -50,6 +57,9 @@
 }
 
 @media (max-width: 760px) {
+  .inbox-search {
+    flex: 1 1 100%;
+  }
   .inbox-filters > select.input {
     flex: 1 1 160px;
   }

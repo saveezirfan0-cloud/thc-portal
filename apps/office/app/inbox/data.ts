@@ -1,16 +1,18 @@
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { OFFICE_INBOX_CODES, SWITCHED_OFF_ERROR } from '@thc/notifications';
-import type { OfficeInboxCode } from '@thc/notifications';
+import { SWITCHED_OFF_ERROR, emailAudienceCodes } from '@thc/notifications';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
-import { type InboxStatus, type Period, periodStart } from './filters';
+import { type Audience, type InboxStatus, type Period, periodStart } from './filters';
 import type { InboxRow } from './view-model';
 
 export const PAGE_SIZE = 50;
 
 export interface InboxFilters {
-  type: OfficeInboxCode | null;
+  audience: Audience;
+  /** Search text: part of an address, a name or an Employee ID. */
+  q: string | null;
+  type: string | null;
   status: InboxStatus | null;
   period: Period;
   before: number | null;
@@ -18,22 +20,22 @@ export interface InboxFilters {
 
 export interface InboxPageData {
   rows: InboxRow[];
-  /** Office emails failed in the period, whatever the other filters say. */
+  /** Emails of this audience failed in the period, whatever the other filters say. */
   failedInPeriod: number;
   /** The id to page from for "Older", when there may be more. */
   nextBefore: number | null;
   problem: string | null;
 }
 
-const COLUMNS =
-  'id, key, template, recipient_emails, payload, queued_at, send_after, sent_at, failed_at, error, attempts';
-
 /**
- * Read straight from `notification_outbox` under its `admin_read` policy
- * (001_rls_guard assertion 8): a worker or a client reads nothing here, and
- * nothing on this page writes. Only the office emails — the codes whose
- * recipients the register pins (`OFFICE_INBOX_CODES`) — so a candidate's E3
- * or a new login's E11, which carry live set-up links, never appear.
+ * Read through `office_email_log()` and `office_email_failures()`
+ * (20261005120500, ADR-0086): Back Office logins only, read-only, and the
+ * payload comes back reduced to the values that fill the subject line, so a
+ * candidate's or a new login's set-up link (E3, E11, OC2) never reaches this
+ * page even for the owners who may read it on the table. The office emails
+ * were read straight from `notification_outbox` before; the shape of a row
+ * is the same. The codes asked for are the register's for the audience
+ * (`EMAIL_AUDIENCES`), so a code added there is on the page.
  */
 export async function loadInbox(filters: InboxFilters, now = new Date()): Promise<InboxPageData> {
   const empty = { rows: [], failedInPeriod: 0, nextBefore: null };
@@ -46,38 +48,30 @@ export async function loadInbox(filters: InboxFilters, now = new Date()): Promis
   }
   const supabase = createClient(await cookies()) as unknown as SupabaseClient;
   const since = periodStart(filters.period, now);
-  const codes: readonly string[] = filters.type ? [filters.type] : OFFICE_INBOX_CODES;
-
-  let list = supabase
-    .from('notification_outbox')
-    .select(COLUMNS)
-    .eq('channel', 'email')
-    .in('template', [...codes]);
-  if (filters.status === 'sent') list = list.not('sent_at', 'is', null).is('failed_at', null);
-  if (filters.status === 'failed') list = list.not('failed_at', 'is', null);
-  if (filters.status === 'queued') list = list.is('sent_at', null).is('failed_at', null);
-  if (since) list = list.gte('queued_at', since);
-  if (filters.before) list = list.lt('id', filters.before);
-
-  let failed = supabase
-    .from('notification_outbox')
-    .select('id', { count: 'exact', head: true })
-    .eq('channel', 'email')
-    .in('template', [...OFFICE_INBOX_CODES])
-    .not('failed_at', 'is', null)
-    // An email switched off on /settings → Notifications was not sent on
-    // purpose (ADR-0083); it is listed with its reason, not counted as a failure.
-    .or(`error.is.null,error.neq."${SWITCHED_OFF_ERROR}"`);
-  if (since) failed = failed.gte('queued_at', since);
+  const audienceCodes = emailAudienceCodes(filters.audience);
+  const codes = filters.type ? [filters.type] : audienceCodes;
 
   const [rows, failures] = await Promise.all([
-    list.order('id', { ascending: false }).limit(PAGE_SIZE),
-    failed,
+    supabase.rpc('office_email_log', {
+      p_templates: codes,
+      p_status: filters.status,
+      p_since: since,
+      p_before: filters.before,
+      p_search: filters.q,
+      p_limit: PAGE_SIZE,
+    }),
+    // An email switched off on /settings → Notifications was not sent on
+    // purpose (ADR-0083); it is listed with its reason, not counted as a failure.
+    supabase.rpc('office_email_failures', {
+      p_templates: audienceCodes,
+      p_since: since,
+      p_ignore_error: SWITCHED_OFF_ERROR,
+    }),
   ]);
   const data = (rows.data ?? []) as unknown as InboxRow[];
   return {
     rows: data,
-    failedInPeriod: failures.count ?? 0,
+    failedInPeriod: typeof failures.data === 'number' ? failures.data : 0,
     nextBefore: data.length === PAGE_SIZE ? (data[data.length - 1]?.id ?? null) : null,
     problem: rows.error?.message ?? failures.error?.message ?? null,
   };

@@ -4,6 +4,36 @@
  * browser bundle.
  */
 
+/**
+ * Whose emails: the office and payroll (the default, ADR-0058), the
+ * candidates and workers (and new logins) the platform emails, or a client's
+ * contacts (ADR-0086). The codes in each are the register's
+ * (`EMAIL_AUDIENCES`); a test holds these values to it.
+ */
+export type Audience = 'office' | 'people' | 'clients';
+
+export const AUDIENCES: readonly { value: Audience; label: string }[] = [
+  { value: 'office', label: 'Office & payroll' },
+  { value: 'people', label: 'Candidates & workers' },
+  { value: 'clients', label: 'Clients' },
+];
+
+export const DEFAULT_AUDIENCE: Audience = 'office';
+
+export function parseAudience(value: unknown): Audience {
+  return AUDIENCES.some((a) => a.value === value) ? (value as Audience) : DEFAULT_AUDIENCE;
+}
+
+/** Longest search text kept: an address or a name, never a paragraph. */
+export const MAX_SEARCH = 100;
+
+/** The search box's text, trimmed and capped; null when empty. */
+export function parseSearch(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim().slice(0, MAX_SEARCH);
+  return text === '' ? null : text;
+}
+
 export type InboxStatus = 'queued' | 'sent' | 'failed';
 
 export const STATUSES: readonly { value: InboxStatus; label: string }[] = [
@@ -39,6 +69,8 @@ export function periodStart(period: Period, now: Date): string | null {
 }
 
 export interface InboxQuery {
+  audience: Audience;
+  q: string | null;
   type: string | null;
   status: InboxStatus | null;
   period: Period;
@@ -52,18 +84,24 @@ export interface InboxQuery {
  */
 export function inboxHref(
   current: InboxQuery,
-  patch: Partial<Record<'type' | 'status' | 'period' | 'before', string | null>>,
+  patch: Partial<Record<'who' | 'q' | 'type' | 'status' | 'period' | 'before', string | null>>,
 ): string {
+  // The codes of one audience mean nothing in another, so a change of
+  // audience drops the type unless the caller names one.
+  const changesAudience = 'who' in patch && (patch['who'] ?? DEFAULT_AUDIENCE) !== current.audience;
   const merged: Record<string, string | null> = {
-    type: current.type,
+    who: current.audience === DEFAULT_AUDIENCE ? null : current.audience,
+    q: current.q,
+    type: changesAudience ? null : current.type,
     status: current.status,
     period: current.period === DEFAULT_PERIOD ? null : current.period,
     before: null,
     ...patch,
   };
   if (merged['period'] === DEFAULT_PERIOD) merged['period'] = null;
+  if (merged['who'] === DEFAULT_AUDIENCE) merged['who'] = null;
   const search = new URLSearchParams();
-  for (const key of ['type', 'status', 'period', 'before']) {
+  for (const key of ['who', 'q', 'type', 'status', 'period', 'before']) {
     const value = merged[key];
     if (value) search.set(key, value);
   }
