@@ -96,3 +96,42 @@ export function byMargin(a: RateCardRow, b: RateCardRow): number {
 export function newEventHref(clientId: string): string {
   return `/events/new?client=${encodeURIComponent(clientId)}`;
 }
+
+/**
+ * Every dress code already stored on any client's rate card, most-used first
+ * (then A–Z), so the rate card can offer them instead of being retyped.
+ * Compared case-insensitively; the first spelling seen is the one offered.
+ */
+export function dressCodeLibrary(lists: (string[] | null)[]): string[] {
+  const seen = new Map<string, { code: string; uses: number }>();
+  for (const list of lists) {
+    for (const raw of list ?? []) {
+      const code = raw.trim();
+      if (!code) continue;
+      const key = code.toLowerCase();
+      const entry = seen.get(key);
+      if (entry) entry.uses += 1;
+      else seen.set(key, { code, uses: 1 });
+    }
+  }
+  return [...seen.values()]
+    .sort((a, b) => b.uses - a.uses || a.code.localeCompare(b.code))
+    .map((entry) => entry.code);
+}
+
+/**
+ * The stored codes still worth offering while a row is being edited: not
+ * already chosen, and containing what has been typed so far.
+ */
+export function dressCodeSuggestions(
+  library: string[],
+  chosen: string[],
+  typed: string,
+  limit = 8,
+): string[] {
+  const have = new Set(chosen.map((code) => code.toLowerCase()));
+  const needle = typed.trim().toLowerCase();
+  return library
+    .filter((code) => !have.has(code.toLowerCase()) && code.toLowerCase().includes(needle))
+    .slice(0, limit);
+}
