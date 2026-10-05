@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import type { TimeFormat } from '@thc/domain';
 import { autosendHint, parseAutosendConfig } from '../../api/jobs/event-documents/_lib/schedule';
 import type { AutosendConfig } from '../../api/jobs/event-documents/_lib/schedule';
 import { eventsDb, supabaseConfigured } from '../db';
@@ -25,6 +26,8 @@ const OFF: AutosendConfig = parseAutosendConfig({
 export async function loadAutosendHints(
   eventId: string,
   state: { started: boolean; ended: boolean },
+  /** The operator's clock (ADR-0085): the hint is read on screen. */
+  format?: TimeFormat,
 ): Promise<AutosendHints> {
   const none = { allocation: null, signout: null };
   if (!supabaseConfigured()) return none;
@@ -45,9 +48,14 @@ export async function loadAutosendHints(
       ((sends.data ?? []) as { kind: string; queued_at: string }[]).find((r) => r.kind === kind)
         ?.queued_at ?? null;
     return {
-      allocation: autosendHint('allocation', config, { ...state, sentAt: sentAt('allocation') }),
+      allocation: autosendHint(
+        'allocation',
+        config,
+        { ...state, sentAt: sentAt('allocation') },
+        format,
+      ),
       signout: state.started
-        ? autosendHint('signout', config, { ...state, sentAt: sentAt('signout') })
+        ? autosendHint('signout', config, { ...state, sentAt: sentAt('signout') }, format)
         : null,
     };
   } catch {

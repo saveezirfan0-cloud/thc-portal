@@ -1,16 +1,18 @@
 import {
   COMPLETION_EVIDENCE_FORM_LABELS,
+  DEFAULT_TIME_FORMAT,
   DOC_LABELS,
   canActOnDocuments,
   canDeclareConviction,
   canSignOptOut,
+  clockLabel,
   completionEffectiveFrom,
   daysBetween,
   documentState,
   isDocType,
   rtwCheckInFlight,
 } from '@thc/domain';
-import type { DocType, DocumentState } from '@thc/domain';
+import type { DocType, DocumentState, TimeFormat } from '@thc/domain';
 import type { DeclarationRecord, DocumentRecord, DocumentsData } from './types';
 
 /**
@@ -94,8 +96,11 @@ export function formatDay(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-/** "18.09.2026 14:44" — an audit stamp, UK time only (§1.8). */
-export function formatStamp(iso: string): string {
+/**
+ * "18.09.2026 14:44" — an audit stamp, UK time only (§1.8); "2:44 pm" on the
+ * 12-hour clock (ADR-0085), which changes the writing and nothing else.
+ */
+export function formatStamp(iso: string, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/London',
     day: '2-digit',
@@ -106,7 +111,7 @@ export function formatStamp(iso: string): string {
     hour12: false,
   }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}`;
+  return `${get('day')}.${get('month')}.${get('year')} ${clockLabel(`${get('hour')}:${get('minute')}`, format)}`;
 }
 
 /** The UK calendar day of a timestamp. */
@@ -367,7 +372,10 @@ function missingRows(data: DocumentsData, present: ReadonlySet<string>, canUploa
  * here to show — `staff_documents()` does not return them — and the row
  * says so for a pending one, as the wireframe does.
  */
-function declarationRow(declarations: readonly DeclarationRecord[]): DocRowView | null {
+function declarationRow(
+  declarations: readonly DeclarationRecord[],
+  format: TimeFormat,
+): DocRowView | null {
   const latest = declarations.find((d) => !d.superseded);
   if (!latest) return null;
   const when = latest.source === 'onboarding' ? 'at onboarding' : 'from the app';
@@ -382,7 +390,7 @@ function declarationRow(declarations: readonly DeclarationRecord[]): DocRowView 
       state: 'in_review',
       tone: 'pending',
       icon: '…',
-      meta: `In review · declared ${formatStamp(latest.declaredAt)} · details not shown here`,
+      meta: `In review · declared ${formatStamp(latest.declaredAt, format)} · details not shown here`,
       metaTone: null,
       pill: { tone: 'amber', text: 'In review' },
       action: null,
@@ -584,7 +592,10 @@ function historyRows(data: DocumentsData): DocRowView[] {
 // The whole tab
 // ---------------------------------------------------------------------
 
-export function buildDocumentsView(data: DocumentsData): DocumentsView {
+export function buildDocumentsView(
+  data: DocumentsData,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): DocumentsView {
   const canUpload = canActOnDocuments(data.status, data.blockKind);
 
   const byType = new Map<DocType, DocumentRecord[]>();
@@ -604,7 +615,7 @@ export function buildDocumentsView(data: DocumentsData): DocumentsView {
   docRows.push(...missingRows(data, present, canUpload));
   docRows.sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.title.localeCompare(b.title));
 
-  const declaration = declarationRow(data.declarations);
+  const declaration = declarationRow(data.declarations, format);
   const rows = declaration ? [...docRows, declaration] : docRows;
 
   const needs = docRows.filter(

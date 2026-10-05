@@ -1,3 +1,5 @@
+import { clockLabel } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import { formatUkDate } from '../staff';
 import { formatUkStamp } from './profile';
 import type { AvailabilityRow, EmergencyContact } from './types';
@@ -39,13 +41,14 @@ export function ukDay(at: Date): string {
   return `${part('weekday')} ${part('day')} ${part('month').slice(0, 3)}`;
 }
 
-function ukTime(at: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
+function ukTime(at: Date, format?: TimeFormat): string {
+  const hhmm = new Intl.DateTimeFormat('en-GB', {
     timeZone: UK,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(at);
+  return clockLabel(hhmm, format);
 }
 
 /**
@@ -57,6 +60,7 @@ function ukTime(at: Date): string {
  */
 export function availabilityWhen(
   row: Pick<AvailabilityRow, 'starts_at' | 'ends_at' | 'all_day'>,
+  format?: TimeFormat,
 ): string {
   const start = new Date(row.starts_at);
   const end = new Date(row.ends_at);
@@ -67,12 +71,12 @@ export function availabilityWhen(
       : `${ukDay(start)} – ${ukDay(last)} · all day`;
   }
   if (ukDateKey(start) === ukDateKey(end)) {
-    return `${ukDay(start)} · ${ukTime(start)} – ${ukTime(end)}`;
+    return `${ukDay(start)} · ${ukTime(start, format)} – ${ukTime(end, format)}`;
   }
   if (end.getTime() - start.getTime() < DAY_MS) {
-    return `${ukDay(start)} · ${ukTime(start)} – ${ukTime(end)} next day`;
+    return `${ukDay(start)} · ${ukTime(start, format)} – ${ukTime(end, format)} next day`;
   }
-  return `${ukDay(start)} ${ukTime(start)} – ${ukDay(end)} ${ukTime(end)}`;
+  return `${ukDay(start)} ${ukTime(start, format)} – ${ukDay(end)} ${ukTime(end, format)}`;
 }
 
 function hoursAndMinutes(ms: number): string {
@@ -121,6 +125,7 @@ export function formatPhone(e164: string): string {
 /** "18.09.2026 14:36 UK time · by the worker" — an audit stamp, UK only (§1.8). */
 export function contactUpdatedLine(
   contact: Pick<EmergencyContact, 'updatedAt' | 'updatedBy' | 'updatedByName'>,
+  format?: TimeFormat,
 ): string {
   const who =
     contact.updatedBy === 'worker'
@@ -128,7 +133,8 @@ export function contactUpdatedLine(
       : contact.updatedBy === 'office'
         ? `by the office${contact.updatedByName ? ` (${contact.updatedByName})` : ''}`
         : null;
-  return who ? `${formatUkStamp(contact.updatedAt)} · ${who}` : formatUkStamp(contact.updatedAt);
+  const stamp = formatUkStamp(contact.updatedAt, format);
+  return who ? `${stamp} · ${who}` : stamp;
 }
 
 /** The Added column. */

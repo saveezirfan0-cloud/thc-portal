@@ -17,6 +17,7 @@ import {
   type ScoreBreakdown,
   type ScoreInput,
   type ScoreWeights,
+  type TimeFormat,
   UK_ZONE,
   type Wave,
   bookingReopenableBy,
@@ -501,6 +502,7 @@ export interface UnavailableWindow {
 }
 
 function isUkMidnight(instant: Date): boolean {
+  // A test on the value, not a label: always the 24-hour form (ADR-0085).
   return formatTimeIn(instant, UK_ZONE) === '00:00';
 }
 
@@ -510,7 +512,7 @@ function isUkMidnight(instant: Date): boolean {
  * "Thu 12 Oct 22:00 – Fri 13 Oct 02:00 UK". The range is half-open, so an
  * all-day entry's last day is the day before its end.
  */
-export function ukWindowLabel(window: UnavailableWindow): string {
+export function ukWindowLabel(window: UnavailableWindow, format?: TimeFormat): string {
   const start = new Date(window.startsAt);
   const end = new Date(window.endsAt);
   const day = (d: Date) => formatDateIn(d, UK_ZONE, { weekday: 'short' });
@@ -520,18 +522,21 @@ export function ukWindowLabel(window: UnavailableWindow): string {
     const final = day(last);
     return first === final ? `${first} · all day` : `${first} – ${final} · all day`;
   }
-  const from = formatTimeIn(start, UK_ZONE);
-  const to = formatTimeIn(end, UK_ZONE);
+  const from = formatTimeIn(start, UK_ZONE, format);
+  const to = formatTimeIn(end, UK_ZONE, format);
   return day(start) === day(end)
     ? `${day(start)} ${from}–${to} UK`
     : `${day(start)} ${from} – ${day(end)} ${to} UK`;
 }
 
 /** "Marked unavailable · Thu 12 Oct 06:00–09:00 UK" (ADR-0043, docs/19 §1). */
-export function unavailableLabel(windows: readonly UnavailableWindow[]): string {
+export function unavailableLabel(
+  windows: readonly UnavailableWindow[],
+  format?: TimeFormat,
+): string {
   if (windows.length === 0) return GATE_COPY[CALENDAR_GATE]!.label;
   const sorted = [...windows].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  return `Marked unavailable · ${sorted.map(ukWindowLabel).join('; ')}`;
+  return `Marked unavailable · ${sorted.map((w) => ukWindowLabel(w, format)).join('; ')}`;
 }
 
 /** The confirm in front of Invite anyway, in the spirit of RULE-17's override. */
@@ -575,6 +580,8 @@ export function buildUnavailable(
   listedElsewhere: ReadonlySet<string>,
   /** ADR-0043: `auto_assign_unavailable(section)`, by worker. */
   away: ReadonlyMap<string, readonly UnavailableWindow[]> = new Map(),
+  /** The operator's clock (ADR-0085), for the windows the labels name. */
+  format?: TimeFormat,
 ): UnavailableEntry[] {
   const out = new Map<string, UnavailableEntry>();
   const endedByStaff = new Map(ended.map((b) => [b.staffId, b]));
@@ -616,7 +623,7 @@ export function buildUnavailable(
       ...personFor(people, row.staff_id),
       reason: CALENDAR_GATE,
       ...GATE_COPY[CALENDAR_GATE]!,
-      label: unavailableLabel(windows),
+      label: unavailableLabel(windows, format),
       appliedAt: null,
       inviteAnyway: true,
     });
@@ -1010,14 +1017,20 @@ export interface BoardOffer {
  * office has opened it to the pool, "Open to pool · until Sat 20 Sep,
  * 16:00 UK".
  */
-export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'amber' } {
+export function offerChip(
+  offer: BoardOffer,
+  format?: TimeFormat,
+): { label: string; tone: 'cyan' | 'amber' } {
   if (offer.mode === 'office') {
     const note = offer.note?.trim();
     return { label: note ? `Asked for cover: ${note}` : 'Asked for cover', tone: 'amber' };
   }
   const at = new Date(offer.expiresAt);
   const day = formatDateIn(at, UK_ZONE, { weekday: 'short' });
-  return { label: `Open to pool · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
+  return {
+    label: `Open to pool · until ${day}, ${formatTimeIn(at, UK_ZONE, format)} UK`,
+    tone: 'cyan',
+  };
 }
 
 /** A completed hand-over on one role section. */

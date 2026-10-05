@@ -3,6 +3,7 @@ import { Alert, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
+import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { EventToolbar, hrefFor } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
@@ -38,14 +39,15 @@ export default async function Page({
   const { view, date } = query;
 
   const { from, to } = periodRange(view, date);
-  const [reference, { events, problem }, savedViews] = await Promise.all([
+  const [reference, { events, problem }, savedViews, format] = await Promise.all([
     loadReferenceData(),
     loadEventsInRange(from, to),
     // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),
+    currentTimeFormat(),
   ]);
 
-  const rows = filterEventRows(toEventRows(events), {
+  const rows = filterEventRows(toEventRows(events, new Date(), format), {
     clientId: query.clientId,
     status: query.status,
     q: query.q,

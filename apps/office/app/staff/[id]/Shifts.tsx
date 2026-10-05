@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Checkbox, Chip, Panel, Pill, ScheduledWindow, Select, TableScroll } from '@thc/ui';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  Panel,
+  Pill,
+  ScheduledWindow,
+  Select,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import { ResolveModal } from '../../checkin/ResolveModal';
 import { violationRowProps } from '../../checkin/violationRow';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
@@ -53,6 +63,7 @@ export function Shifts({
   // The Detected stamp is the monitor's: viewer-local (§1.8), because §9.6
   // says this log and /checkin's are the same log for the same reader.
   const zone = useViewerZone();
+  const format = useTimeFormat();
   const [showResolved, setShowResolved] = useState(true);
   // Wireframe: "Last 90 days / All", 90 days by default.
   const [range, setRange] = useState<ShiftRange>('90');
@@ -139,7 +150,8 @@ export function Shifts({
                     <td data-label="Check in / out" className="mono sm">
                       {row.check_in_at || row.check_out_at ? (
                         <>
-                          {formatLocalTime(row.check_in_at)} · {formatLocalTime(row.check_out_at)}
+                          {formatLocalTime(row.check_in_at, format)} ·{' '}
+                          {formatLocalTime(row.check_out_at, format)}
                         </>
                       ) : (
                         <span className="muted">—</span>
@@ -232,7 +244,7 @@ export function Shifts({
                         ) : null}
                       </td>
                       <td data-label="Time (your time)" className="mono sm">
-                        {formatLocalStamp(row.detected_at, zone)}
+                        {formatLocalStamp(row.detected_at, zone, format)}
                       </td>
                       <td data-label="Status">
                         <Pill tone={row.resolved ? 'green' : 'coral'}>

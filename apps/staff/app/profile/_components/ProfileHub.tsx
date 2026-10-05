@@ -174,6 +174,10 @@ export function ProfileHub({
             sub="Password, signed-in devices"
           />
         ) : null}
+        {/* ADR-0085: the same workers who can reach Security settings. */}
+        {working ? (
+          <HubRow href="/profile/preferences" title="Preferences" sub="Time format" />
+        ) : null}
         <HubRow
           href="/notifications"
           title="Notifications"

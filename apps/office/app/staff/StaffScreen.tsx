@@ -14,6 +14,7 @@ import {
   SaveBar,
   SegToggle,
   Select,
+  useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { SendPush } from './SendPush';
@@ -549,6 +550,7 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
  * marks nothing when the P45 goes out, so the pill stays at Requested.
  */
 function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
+  const format = useTimeFormat();
   return (
     <tr className={picker?.checked ? 'picked' : undefined}>
       <td className="cell-lead">
@@ -564,7 +566,7 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
         {employeeId(row.employee_id)}
       </td>
       <td data-label="Left" className="mono sm">
-        {formatUkStamp(row.left_at)}
+        {formatUkStamp(row.left_at, format)}
       </td>
       <td data-label="Reason given">
         {row.leave_reason ? (
@@ -594,7 +596,7 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
         {row.p45_requested_at ? (
           <>
             <Pill tone="amber">Requested</Pill>
-            <span className="sub">E8 sent {formatUkStamp(row.p45_requested_at)}</span>
+            <span className="sub">E8 sent {formatUkStamp(row.p45_requested_at, format)}</span>
           </>
         ) : (
           <span className="muted">—</span>

@@ -8,6 +8,7 @@ import { ActionButton } from '../_components/ActionButton';
 import { LoadProblem } from '../_components/LoadProblem';
 import { acceptInvite, declineInvite } from '../actions';
 import { loadBookings, openInvites, overlapWarning, shiftsBadge } from '../data';
+import { getTimeFormat } from '../_lib/timeFormat';
 import { invitedAgo } from './ago';
 import '../staff-app.css';
 
@@ -39,6 +40,7 @@ export const metadata = { title: 'Invites · THC Staff' };
  */
 export default async function Page() {
   const { rows: bookings, problem } = await loadBookings();
+  const format = await getTimeFormat();
   const invites = openInvites(bookings);
   const now = new Date();
 
@@ -67,7 +69,7 @@ export default async function Page() {
                 shiftHours: sectionHours(invite),
               })
             : null;
-          const overlap = overlapWarning(invite, bookings);
+          const overlap = overlapWarning(invite, bookings, format);
           return (
             <div className={`mcard${invite.hoursLimit ? ' muted' : ''}`} key={invite.bookingId}>
               <div className="card-head">

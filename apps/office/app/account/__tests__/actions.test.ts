@@ -15,6 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *                        cookie-less client BEFORE anything changes, and a
  *                        success signs every other device out.
  *   signOutOtherDevices  `signOut({ scope: 'others' })` on the session.
+ *   saveMyTimeFormat     ADR-0085: `set_my_time_format` on the user's own
+ *                        session, then the device cookie; any value but
+ *                        "24h" / "12h" is refused before the database.
  */
 
 const session = vi.hoisted(() => ({
@@ -34,14 +37,17 @@ const createProbe = vi.hoisted(() => vi.fn());
 const createSession = vi.hoisted(() => vi.fn());
 const revalidatePath = vi.hoisted(() => vi.fn());
 const configured = vi.hoisted(() => ({ value: true }));
+const cookieSet = vi.hoisted(() => vi.fn());
 
-vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ getAll: () => [], get: () => undefined, set: cookieSet }),
+}));
 vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('@thc/db/server', () => ({ createClient: createSession }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: createProbe }));
 vi.mock('../../staff/data', () => ({ supabaseConfigured: () => configured.value }));
 
-const { changeMyEmail, changeMyPassword, saveMyDetails, signOutOtherDevices } =
+const { changeMyEmail, changeMyPassword, saveMyDetails, saveMyTimeFormat, signOutOtherDevices } =
   await import('../actions');
 
 const NOT_CONFIGURED =
@@ -411,5 +417,82 @@ describe('signOutOtherDevices', () => {
     configured.value = false;
     expect(await signOutOtherDevices()).toEqual({ ok: false, message: NOT_CONFIGURED });
     expect(session.auth.signOut).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------
+// saveMyTimeFormat (ADR-0085)
+// ---------------------------------------------------------------------
+
+describe('saveMyTimeFormat', () => {
+  beforeEach(() => {
+    session.rpc.mockResolvedValue({ data: '12h', error: null });
+  });
+
+  it('saves the choice to the profile, then the device cookie, and refreshes every screen', async () => {
+    expect(await saveMyTimeFormat('12h')).toEqual({
+      ok: true,
+      message: 'Saved. Times now read on your chosen clock.',
+    });
+    expect(session.rpc).toHaveBeenCalledTimes(1);
+    expect(session.rpc).toHaveBeenCalledWith('set_my_time_format', { p_format: '12h' });
+    expect(cookieSet).toHaveBeenCalledWith(
+      'thc-time-format',
+      '12h',
+      expect.objectContaining({ path: '/' }),
+    );
+    expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
+  });
+
+  it('switches back to 24-hour the same way', async () => {
+    expect(await saveMyTimeFormat('24h')).toMatchObject({ ok: true });
+    expect(session.rpc).toHaveBeenCalledWith('set_my_time_format', { p_format: '24h' });
+    expect(cookieSet).toHaveBeenCalledWith('thc-time-format', '24h', expect.anything());
+  });
+
+  it.each([['am'], ['12'], [''], [null], [undefined], [12], ['12H'], ['24h '], [{}]])(
+    'refuses %j before asking the database, and writes no cookie',
+    async (value) => {
+      expect(await saveMyTimeFormat(value)).toEqual({
+        ok: false,
+        message: 'Choose 24-hour or 12-hour.',
+      });
+      expect(session.rpc).not.toHaveBeenCalled();
+      expect(cookieSet).not.toHaveBeenCalled();
+      expect(revalidatePath).not.toHaveBeenCalled();
+    },
+  );
+
+  it('says so, without a call, when there is no Supabase project', async () => {
+    configured.value = false;
+    expect(await saveMyTimeFormat('12h')).toEqual({ ok: false, message: NOT_CONFIGURED });
+    expect(session.rpc).not.toHaveBeenCalled();
+    expect(cookieSet).not.toHaveBeenCalled();
+  });
+
+  it('leaves the cookie and the screens alone when the database refuses', async () => {
+    session.rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    expect(await saveMyTimeFormat('12h')).toEqual({
+      ok: false,
+      message: "That didn't save. Try again in a moment.",
+    });
+    expect(cookieSet).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('tells a signed-out session to sign in again', async () => {
+    session.rpc.mockResolvedValue({ data: null, error: { message: 'not_signed_in' } });
+    expect(await saveMyTimeFormat('12h')).toEqual({
+      ok: false,
+      message: 'Your session has ended. Sign in again.',
+    });
+  });
+
+  it('does not gate on the office role: a viewer sets their own clock like anyone (ADR-0060)', async () => {
+    // Nothing here reads a role, and the database holds no read-only trigger
+    // on `profiles`; the only gate is the caller's own session.
+    await saveMyTimeFormat('12h');
+    expect(session.auth.getUser).not.toHaveBeenCalled();
+    expect(session.rpc).toHaveBeenCalledWith('set_my_time_format', { p_format: '12h' });
   });
 });

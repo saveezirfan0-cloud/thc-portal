@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
-import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
+import { type TimeFormat, UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import {
   Alert,
   Avatar,
@@ -17,6 +17,7 @@ import {
   SearchInput,
   SegToggle,
   Select,
+  useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { ROLE_LABEL } from '../_lib/accounts';
@@ -71,8 +72,8 @@ const ACCESS_NOTE: Record<Tab, string> = {
     'Staff App: only their own onboarding, documents, invites, shifts and check-in. Created when a candidate is accepted in Onboarding; closed by Block or Remove on the staff profile.',
 };
 
-function ukStamp(iso: string | null): string {
-  return iso ? formatDateTimeIn(new Date(iso), UK_ZONE) : 'Never';
+function ukStamp(iso: string | null, format: TimeFormat): string {
+  return iso ? formatDateTimeIn(new Date(iso), UK_ZONE, format) : 'Never';
 }
 
 function statusOf(account: AccountRow): { tone: 'green' | 'amber' | 'neutral'; label: string } {
@@ -265,6 +266,7 @@ function UserRow({
   onResetTwoStep: () => void;
   onIssued: (link: string, emailed: boolean, emailNote?: string) => void;
 }) {
+  const format = useTimeFormat();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const status = statusOf(account);
@@ -311,7 +313,7 @@ function UserRow({
       ) : null}
       {tab === 'client' ? <td data-label="Client">{account.client_name ?? '—'}</td> : null}
       <td data-label="Last signed in" className="mono sm">
-        {ukStamp(account.last_sign_in_at)}
+        {ukStamp(account.last_sign_in_at, format)}
       </td>
       <td data-label="Status">
         <Pill tone={status.tone}>{status.label}</Pill>

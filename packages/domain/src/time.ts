@@ -25,17 +25,116 @@ export function needsDualZone(zone: string = viewerZone()): boolean {
   return zone !== UK_ZONE;
 }
 
+/**
+ * The clock a person reads times on (ADR-0085). 24-hour is the platform
+ * default for everyone; a worker or a Back Office user can switch their own
+ * view to 12-hour in their settings. It changes how a time is WRITTEN and
+ * how a typed time is read — never what is stored (always `timestamptz`) and
+ * never a rule (every rule runs on Europe/London instants).
+ */
+export type TimeFormat = '24h' | '12h';
+
+export const TIME_FORMATS: readonly TimeFormat[] = ['24h', '12h'];
+export const DEFAULT_TIME_FORMAT: TimeFormat = '24h';
+
+/** The cookie that carries the choice to server-rendered pages (ADR-0085). */
+export const TIME_FORMAT_COOKIE = 'thc-time-format';
+
+/**
+ * A day, in seconds. The profile is the record; the cookie is only a cache of
+ * it, so a change made on another device reaches this one within a day, and a
+ * lapsed one costs a single profile read.
+ */
+export const TIME_FORMAT_COOKIE_MAX_AGE = 60 * 60 * 24;
+
+export function isTimeFormat(value: unknown): value is TimeFormat {
+  return value === '24h' || value === '12h';
+}
+
+/** Anything that is not exactly "12h" is the default: a stale or hand-edited value never breaks a page. */
+export function parseTimeFormat(value: unknown): TimeFormat {
+  return value === '12h' ? '12h' : DEFAULT_TIME_FORMAT;
+}
+
+/**
+ * "17:00" → "17:00" or "5:00 pm". Built by hand, not by Intl's hour12: ICU
+ * 72+ writes a narrow no-break space before "pm" in some engines and a plain
+ * one in others, which is a hydration mismatch (the same trap `formatDateIn`
+ * avoids for month names). Midnight is "12:00 am", noon "12:00 pm".
+ */
+export function clockLabel(hhmm: string, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
+  if (format === '24h') return hhmm;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  if (!match) return hhmm;
+  const hour = Number(match[1]);
+  const suffix = hour >= 12 && hour < 24 ? 'pm' : 'am';
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${match[2]} ${suffix}`;
+}
+
+/**
+ * Reads a typed time into the "HH:MM" the platform stores and posts, or null
+ * when it is not a time. Forgiving on purpose, because it is read from a text
+ * field a person types into, in either clock:
+ *
+ *   "17:00" "1700" "17.00" "17"   → 17:00      "9" "9:5" "0905" → 09:00 / 09:05 / 09:05
+ *   "5pm" "5:30 pm" "5.30PM"      → 17:00 / 17:30 / 17:30
+ *   "12am" "12 am" → 00:00         "12pm" → 12:00
+ *
+ * A number with no am/pm is read on the 24-hour clock whichever format the
+ * person prefers: "17:00" is unambiguous in both, and "5" typed by a 12-hour
+ * person comes straight back as "5:00 am", so the mistake is visible before
+ * anything is saved. "24:00" is refused (a role that ends at midnight ends at
+ * "00:00", and `ukRoleWindow` rolls it into the next day).
+ */
+export function parseClock(text: string): string | null {
+  let body = text.trim().toLowerCase();
+  const suffix = /\s*([ap])\.?m\.?$/.exec(body);
+  if (suffix) body = body.slice(0, suffix.index).trim();
+
+  let hour: number;
+  let minute: number;
+  const split = /^(\d{1,2})[:.](\d{1,2})$/.exec(body);
+  const bare = /^\d{1,4}$/.exec(body);
+  if (split) {
+    // "9:5" is 9:05, as a person means it.
+    hour = Number(split[1]);
+    minute = Number(split[2]!.padStart(2, '0'));
+  } else if (bare) {
+    // No separator: the last two digits are the minutes ("1700", "905").
+    hour = body.length <= 2 ? Number(body) : Number(body.slice(0, -2));
+    minute = body.length <= 2 ? 0 : Number(body.slice(-2));
+  } else {
+    return null;
+  }
+
+  if (suffix) {
+    if (hour < 1 || hour > 12) return null;
+    hour = (hour % 12) + (suffix[1] === 'p' ? 12 : 0);
+  }
+  if (hour > 23 || minute > 59) return null;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
 
-export function formatTimeIn(instant: Date, zone: string): string {
-  return new Intl.DateTimeFormat('en-GB', { ...TIME_OPTS, timeZone: zone }).format(instant);
+export function formatTimeIn(
+  instant: Date,
+  zone: string,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): string {
+  const hhmm = new Intl.DateTimeFormat('en-GB', { ...TIME_OPTS, timeZone: zone }).format(instant);
+  return clockLabel(hhmm, format);
 }
 
 /** "05 Sep, 09:05" — the day and month words from `formatDateIn`, so the
  *  server and Safari agree on "Sep" (Node's ICU writes "Sept"). */
-export function formatDateTimeIn(instant: Date, zone: string): string {
+export function formatDateTimeIn(
+  instant: Date,
+  zone: string,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): string {
   const [d = '', m = ''] = formatDateIn(instant, zone).split(' ');
-  return `${d.padStart(2, '0')} ${m}, ${formatTimeIn(instant, zone)}`;
+  return `${d.padStart(2, '0')} ${m}, ${formatTimeIn(instant, zone, format)}`;
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -121,8 +220,10 @@ export function displayTime(
   kind: TimeDisplayKind,
   zone: string = viewerZone(),
   withDate = false,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
 ): DisplayedTime {
-  const fmt = withDate ? formatDateTimeIn : formatTimeIn;
+  const fmt = (at: Date, z: string) =>
+    withDate ? formatDateTimeIn(at, z, format) : formatTimeIn(at, z, format);
 
   if (kind === 'actual') {
     // The worker's own clock. Never dual.

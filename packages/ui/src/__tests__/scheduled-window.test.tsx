@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ScheduledWindow } from '../components/ScheduledWindow';
+import { TimeFormatProvider } from '../components/TimeFormat';
 
 /**
  * §1.8: a scheduled time is UK first, with a "your time" line only when the
@@ -81,5 +82,30 @@ describe('ScheduledWindow (§1.8)', () => {
         </div>,
       ),
     ).toMatchSnapshot();
+  });
+});
+
+describe('ScheduledWindow on a 12-hour clock (ADR-0085)', () => {
+  it('writes both ends on the chosen clock and keeps §1.8 intact', () => {
+    const uk = renderToStaticMarkup(
+      <ScheduledWindow startsAt={STARTS} endsAt={ENDS} zone="Europe/London" format="12h" />,
+    );
+    expect(uk).toBe('<span>5:00 pm – 11:30 pm</span>');
+
+    const abroad = renderToStaticMarkup(
+      <ScheduledWindow startsAt={STARTS} endsAt={ENDS} zone="Europe/Berlin" format="12h" />,
+    );
+    expect(abroad).toBe(
+      '<span>5:00 pm – 11:30 pm UK time<span class="sub">6:00 pm – 12:30 am your time</span></span>',
+    );
+  });
+
+  it('follows the provider when no clock is passed', () => {
+    const markup = renderToStaticMarkup(
+      <TimeFormatProvider format="12h">
+        <ScheduledWindow startsAt={STARTS} endsAt={ENDS} zone="Europe/London" />
+      </TimeFormatProvider>,
+    );
+    expect(markup).toBe('<span>5:00 pm – 11:30 pm</span>');
   });
 });

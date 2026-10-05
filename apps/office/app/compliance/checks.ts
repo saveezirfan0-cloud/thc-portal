@@ -1,4 +1,4 @@
-import { rtwCheckInFlight } from '@thc/domain';
+import { type TimeFormat, rtwCheckInFlight } from '@thc/domain';
 import { rtwCheckView, ukStampFull } from '../_lib/rtwCheck';
 import type { RtwCheckRow, RtwTone } from '../_lib/rtwCheck';
 
@@ -96,8 +96,8 @@ export interface CheckLine {
   elapsed: string;
 }
 
-export function checkLine(row: RtwCheckRow, now: string): CheckLine {
-  const view = rtwCheckView(row, { docStatus: 'pending', enabled: true });
+export function checkLine(row: RtwCheckRow, now: string, format?: TimeFormat): CheckLine {
+  const view = rtwCheckView(row, { docStatus: 'pending', enabled: true, format });
   const status = view.status ?? { tone: 'neutral' as const, label: row.status };
   const inFlight = rtwCheckInFlight(row.status);
   const stuck = inFlight && row.stuck;
@@ -111,7 +111,7 @@ export function checkLine(row: RtwCheckRow, now: string): CheckLine {
   } else if (row.status === 'queued') {
     detail =
       `Attempt ${row.attempts} of ${row.max_attempts} did not finish` +
-      (row.next_attempt_at ? ` — next try ${ukStampFull(row.next_attempt_at)}.` : '.');
+      (row.next_attempt_at ? ` — next try ${ukStampFull(row.next_attempt_at, format)}.` : '.');
   } else if (row.status === 'running') {
     detail = 'With gov.uk now.';
   } else if (row.status === 'needs_review') {
@@ -136,7 +136,7 @@ export function checkLine(row: RtwCheckRow, now: string): CheckLine {
     label: status.label,
     detail,
     tries: `${row.attempts} of ${row.max_attempts}`,
-    filed: ukStampFull(row.created_at),
+    filed: ukStampFull(row.created_at, format),
     elapsed: elapsedLabel(row.created_at, inFlight ? now : (row.finished_at ?? now)),
   };
 }

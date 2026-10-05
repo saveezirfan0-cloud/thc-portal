@@ -510,3 +510,13 @@
   font-size: var(--fs-26);
   font-weight: 600;
 }
+
+/* --- Preferences (ADR-0085) -------------------------------------------- */
+.pref {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.pref p {
+  margin: 0;
+}

@@ -73,6 +73,9 @@ export type { DocRowProps, DocState } from './components/DocRow';
 export { AuthCard } from './components/AuthCard';
 export type { AuthCardProps } from './components/AuthCard';
 
+export { TimeFormatProvider, TimeField, useTimeFormat } from './components/TimeFormat';
+export type { TimeFieldProps } from './components/TimeFormat';
+
 export { ScheduledWindow, useViewerZone } from './components/ScheduledWindow';
 export type { ScheduledWindowProps } from './components/ScheduledWindow';
 

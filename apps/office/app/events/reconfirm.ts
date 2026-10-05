@@ -85,6 +85,8 @@ export function planReconfirmations(
       code: reconfirmMovesTime(triggers) ? 'N11' : 'N11b',
       startsAt,
       endsAt,
+      // Notification copy (N11, §8): 24-hour for every recipient, whatever the
+      // manager who saved the change reads (ADR-0085).
       window: `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)} (UK)`,
     });
   }

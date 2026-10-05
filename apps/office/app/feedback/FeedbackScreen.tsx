@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactNode } from 'react';
-import { Alert, Button, EmptyState, Pill, SegToggle, Tabs } from '@thc/ui';
+import { Alert, Button, EmptyState, Pill, SegToggle, Tabs, useTimeFormat } from '@thc/ui';
 import { markRead } from './actions';
 import { DeleteFeedbackModal, EditFeedbackModal } from './_components/FeedbackDialogs';
 import { OfficeFeedbackForm } from './_components/OfficeFeedbackForm';
@@ -221,6 +221,7 @@ function WorkerName({ entry }: { entry: FeedbackEntry }) {
 }
 
 function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => void }) {
+  const format = useTimeFormat();
   const router = useRouter();
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -244,7 +245,7 @@ function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => 
       </div>
       <div className="txt">
         {quoted(entry.text) ?? <span className="muted">No comment — stars only.</span>}
-        <span className="m">{clientMetaLine(entry)}</span>
+        <span className="m">{clientMetaLine(entry, format)}</span>
       </div>
       <div className="acts">
         <Pill tone={status.tone}>{status.label}</Pill>
@@ -281,6 +282,7 @@ function OfficeRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const format = useTimeFormat();
   return (
     <div className="fb office" role="listitem">
       <Stars rating={entry.rating} />
@@ -290,7 +292,7 @@ function OfficeRow({
       </div>
       <div className="txt">
         {quoted(entry.text)}
-        <span className="m">{officeMetaLine(entry)}</span>
+        <span className="m">{officeMetaLine(entry, format)}</span>
       </div>
       <div className="acts">
         <Pill tone="purple">{entry.author_name ?? 'Unknown manager'}</Pill>

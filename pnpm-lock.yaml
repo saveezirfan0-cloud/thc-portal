@@ -245,6 +245,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.58.0
         version: 2.116.0
+      '@thc/domain':
+        specifier: workspace:*
+        version: link:../domain
       server-only:
         specifier: 0.0.1
         version: 0.0.1

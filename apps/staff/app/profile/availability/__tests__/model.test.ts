@@ -160,6 +160,12 @@ describe('the Add sheet', () => {
 
   it('explains the repeat, and that the UK time holds across the clock change', () => {
     expect(repeatHint(form())).toBe('Up to 26 weeks. Leave at 0 for just this day.');
+    // The time in the clause follows the worker's clock, and is left out until it is one.
+    expect(repeatHint(form({ repeatWeeks: 2, fromTime: '18:00' }), '12h')).toContain(
+      'Keeps 6:00 pm UK across the clock change.',
+    );
+    expect(repeatHint(form({ repeatWeeks: 2, fromTime: '18:00' }))).toContain('Keeps 18:00 UK');
+    expect(repeatHint(form({ repeatWeeks: 2, fromTime: '' }), '12h')).not.toContain('Keeps');
     expect(repeatHint(form({ repeatWeeks: 2 }))).toBe(
       'Every Wednesday to Wed 4 Nov. Keeps 18:00 UK across the clock change.',
     );

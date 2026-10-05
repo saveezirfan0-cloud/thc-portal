@@ -18,6 +18,7 @@ import {
   Panel,
   Pill,
   Textarea,
+  useTimeFormat,
 } from '@thc/ui';
 import { contractClause28Pending, formatLanguages } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -1170,7 +1171,12 @@ function ShareCodeCard({
   /** ADR-0070: a date of birth entered with this code, when it differs. */
   claim?: DobClaim | null;
 }) {
-  const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
+  const format = useTimeFormat();
+  const view = rtwCheckView(check, {
+    docStatus: doc.review_status,
+    enabled: checkEnabled,
+    format,
+  });
   const pill = view.status ?? REVIEW_PILL[doc.review_status];
   // ADR-0041: a check that recommends Verify or Reject is the check's own
   // pill ("Recommend verify — compare the photo", "Recommend reject"), not "Manual review".

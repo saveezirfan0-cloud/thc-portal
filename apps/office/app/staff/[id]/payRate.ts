@@ -1,4 +1,5 @@
 import { HOLIDAY_RATE } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import { finalPence, formatAddition, formatPounds, holidayPence, toPence } from '../../roles/money';
 import { formatUkStamp } from './profile';
 import type { PersonalPayRate } from './types';
@@ -39,8 +40,8 @@ export function storedPence(row: Pick<PersonalPayRate, 'pay_rate'>): number {
 }
 
 /** "Set 29.09.2026 14:02 UK time" — an office stamp, UK only (§1.8). */
-export function payRateSetLine(row: Pick<PersonalPayRate, 'set_at'>): string {
-  return `Set ${formatUkStamp(row.set_at)}`;
+export function payRateSetLine(row: Pick<PersonalPayRate, 'set_at'>, format?: TimeFormat): string {
+  return `Set ${formatUkStamp(row.set_at, format)}`;
 }
 
 /**

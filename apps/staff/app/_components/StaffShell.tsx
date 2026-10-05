@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AppBody, AppFrame } from '@thc/ui';
+import { AppBody, AppFrame, TimeFormatProvider } from '@thc/ui';
 import { AppChrome } from './AppChrome';
 import { BottomTabs } from './BottomTabs';
 import { TabLockedScreen } from './DocumentsLock';
@@ -10,6 +10,7 @@ import { appLock, reachableTabs, showsBottomNav, STAFF_TABS } from '../profile/l
 import type { StaffTab } from '../profile/lock';
 import { readProfile } from '../profile/data';
 import { signOwnPhoto } from '../profile/photos';
+import { timeFormatChoice } from '../_lib/timeFormat';
 import type { StaffProfile } from '../profile/types';
 import '../chrome.css';
 
@@ -66,6 +67,15 @@ export async function StaffShell({
   children: ReactNode;
 }) {
   const read = await readProfile();
+  // ADR-0085: every working screen reads times on the worker's clock. Read
+  // here (cached per request, a cookie after the first) and not in the root
+  // layout, so a static page such as /offline stays static for the PWA.
+  const { format, remember } = await timeFormatChoice();
+  const withClock = (frame: ReactNode) => (
+    <TimeFormatProvider format={format} remember={remember}>
+      {frame}
+    </TimeFormatProvider>
+  );
 
   // The lock is computed from this row, so a read that FAILED cannot be
   // treated as "nothing to lock on" (audit D16): that would show a held or
@@ -77,13 +87,13 @@ export async function StaffShell({
   // /notifications) keeps its content, since no lock would have hidden it;
   // it still loses the tabs, which a failed read cannot vouch for.
   if (read.kind === 'problem') {
-    return (
+    return withClock(
       <AppFrame>
         <AppChrome title={ignoreLock ? title : 'The Hospitality Company'} worker={null} />
         <AppBody className={ignoreLock ? undefined : 'center'}>
           {ignoreLock ? children : <LoadProblem what="your account" />}
         </AppBody>
-      </AppFrame>
+      </AppFrame>,
     );
   }
 
@@ -119,7 +129,7 @@ export async function StaffShell({
   const open = ignoreLock || lock === 'none';
   const showNav = showsBottomNav(lock);
 
-  return (
+  return withClock(
     <AppFrame>
       <AppChrome
         title={open ? title : 'The Hospitality Company'}
@@ -138,7 +148,7 @@ export async function StaffShell({
         )}
       </AppBody>
       {showNav ? <BottomTabs tabs={items} {...(active ? { active } : {})} /> : null}
-    </AppFrame>
+    </AppFrame>,
   );
 }
 

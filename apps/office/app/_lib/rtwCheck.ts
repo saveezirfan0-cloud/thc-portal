@@ -1,11 +1,12 @@
 import {
   RTW_CHECK_SOURCE_LABEL,
   RTW_CHECK_STATUS_LABEL,
+  clockLabel,
   isRtwCheckSource,
   isRtwCheckStatus,
   rtwCheckInFlight,
 } from '@thc/domain';
-import type { RtwCheckSource, RtwCheckStatus } from '@thc/domain';
+import type { RtwCheckSource, RtwCheckStatus, TimeFormat } from '@thc/domain';
 import { rtwDateValue } from '../compliance/rtw';
 
 /**
@@ -144,8 +145,8 @@ export function ukDateOnly(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-/** "25.09.2026 07:12 UK time". */
-export function ukStampFull(iso: string): string {
+/** "25.09.2026 07:12 UK time", or "25.09.2026 7:12 am UK time" on the 12-hour clock (ADR-0085). */
+export function ukStampFull(iso: string, format?: TimeFormat): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/London',
     day: '2-digit',
@@ -156,7 +157,8 @@ export function ukStampFull(iso: string): string {
     hour12: false,
   }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')} UK time`;
+  const time = clockLabel(`${get('hour')}:${get('minute')}`, format);
+  return `${get('day')}.${get('month')}.${get('year')} ${time} UK time`;
 }
 
 // ---------------------------------------------------------------------
@@ -259,7 +261,7 @@ const TONE: Record<RtwCheckStatus, RtwTone> = {
 
 export function rtwCheckView(
   row: RtwCheckRow | null,
-  context: { docStatus: string; enabled: boolean },
+  context: { docStatus: string; enabled: boolean; format?: TimeFormat },
 ): RtwCheckView {
   const stuck = Boolean(row?.stuck) && rtwCheckInFlight(row?.status);
   const inFlight = rtwCheckInFlight(row?.status);
@@ -289,10 +291,10 @@ export function rtwCheckView(
     k: 'Checked',
     v:
       inFlight && row.status === 'queued' && row.attempts > 0 && row.next_attempt_at
-        ? `attempt ${row.attempts} of ${row.max_attempts} failed · next try ${ukStampFull(row.next_attempt_at)}`
+        ? `attempt ${row.attempts} of ${row.max_attempts} failed · next try ${ukStampFull(row.next_attempt_at, context.format)}`
         : inFlight
-          ? `checking with gov.uk… (queued ${ukStampFull(row.created_at)})`
-          : `${ukStampFull(row.finished_at ?? row.created_at)}${
+          ? `checking with gov.uk… (queued ${ukStampFull(row.created_at, context.format)})`
+          : `${ukStampFull(row.finished_at ?? row.created_at, context.format)}${
               row.source ? ` · ${RTW_CHECK_SOURCE_LABEL[row.source]}` : ''
             }`,
   });

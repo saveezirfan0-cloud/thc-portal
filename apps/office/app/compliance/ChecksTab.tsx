@@ -2,7 +2,17 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Alert, Avatar, EmptyState, KpiTile, Panel, Pill, SegToggle, TileGrid } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  EmptyState,
+  KpiTile,
+  Panel,
+  Pill,
+  SegToggle,
+  TileGrid,
+  useTimeFormat,
+} from '@thc/ui';
 import { ukStampFull } from '../_lib/rtwCheck';
 import { checkCounts, checkLine, elapsedLabel, filterChecks } from './checks';
 import type { CheckFilter, CheckMonitorData } from './checks';
@@ -25,6 +35,7 @@ export function ChecksTab({
   enabled: boolean;
   onOpenReview: () => void;
 }) {
+  const format = useTimeFormat();
   const [filter, setFilter] = useState<CheckFilter>('all');
   const counts = checkCounts(monitor.checks);
   const shown = filterChecks(monitor.checks, filter);
@@ -77,7 +88,7 @@ export function ChecksTab({
         {lastRun ? (
           <div className="sm stack tight">
             <div>
-              Last pass <b>{ukStampFull(lastRun.startedAt)}</b> (
+              Last pass <b>{ukStampFull(lastRun.startedAt, format)}</b> (
               {elapsedLabel(lastRun.startedAt, now)} ago) · claimed {lastRun.counts['claimed'] ?? 0}{' '}
               · passed {lastRun.counts['passed'] ?? 0} · needs review{' '}
               {lastRun.counts['needs_review'] ?? 0} · re-enter {lastRun.counts['rejected'] ?? 0} ·
@@ -116,7 +127,7 @@ export function ChecksTab({
                     <Link href={`/staff/${doc.staffId}`}>{doc.name}</Link>
                   </td>
                   <td data-label="Filed" className="mono sm">
-                    {ukStampFull(doc.filedAt)}
+                    {ukStampFull(doc.filedAt, format)}
                   </td>
                   <td data-label="Why" className="sm muted">
                     {enabled
@@ -184,7 +195,7 @@ export function ChecksTab({
               </thead>
               <tbody>
                 {shown.map(({ check, name }) => {
-                  const line = checkLine(check, now);
+                  const line = checkLine(check, now, format);
                   return (
                     <tr key={check.check_id}>
                       <td className="cell-title">

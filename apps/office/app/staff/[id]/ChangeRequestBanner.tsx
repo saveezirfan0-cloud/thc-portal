@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Alert, Button, Pill } from '@thc/ui';
+import { Alert, Button, Pill, useTimeFormat } from '@thc/ui';
 import { DecideDialog } from '../requests/DecideDialog';
 import type { DecideStage } from '../requests/DecideDialog';
 import { dobBefore, dobRequested, nameBefore, nameRequested, ukStamp } from '../requests/model';
@@ -28,6 +28,7 @@ export function ChangeRequestBanner({
   /** ADR-0070: owners and managers decide a date of birth. */
   canDecideDob?: boolean;
 }) {
+  const format = useTimeFormat();
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
   const [outcome, setOutcome] = useState<{ note: string; warning: string | null } | null>(null);
   const current = requests.find((row) => row.id === open?.id) ?? null;
@@ -72,7 +73,7 @@ export function ChangeRequestBanner({
             ) : (
               <>Photo change requested</>
             )}{' '}
-            · <span className="mono sm">{ukStamp(row.created_at)}</span>
+            · <span className="mono sm">{ukStamp(row.created_at, format)}</span>
           </span>
           <span className="ml-auto row">
             <Link href="/staff/requests" className="sm">

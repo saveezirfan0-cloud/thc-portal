@@ -1,11 +1,12 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { Alert, Button, Input, Pill, Select } from '@thc/ui';
+import { Alert, Button, Input, Pill, Select, TimeField, useTimeFormat } from '@thc/ui';
 import {
   type EditableField,
   ROLE_SECTION_MESSAGE,
   type RoleSectionIssue,
+  clockLabel,
   defaultAllocationPerHour,
   finalHourlyPence,
   formatAllocationPair,
@@ -74,6 +75,7 @@ export function RoleSection({
   onChange,
   onRemove,
 }: RoleSectionProps) {
+  const format = useTimeFormat();
   const roleName = roles.find((r) => r.id === role.roleId)?.name ?? 'Choose a role';
   const resolvable = isResolvable(date, role);
   const hours = resolvable ? sectionHours(resolveRole(role, date)) : null;
@@ -103,7 +105,7 @@ export function RoleSection({
           <span className="n">Role {index + 1}</span>
           <b>{roleName}</b>
           <span className="mono sm muted">
-            {role.start} – {role.end}
+            {clockLabel(role.start, format)} – {clockLabel(role.end, format)}
           </span>
           <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
           {role.requiredGender ? (
@@ -123,7 +125,7 @@ export function RoleSection({
         <span className="n">Role {index + 1}</span>
         <b>{roleName}</b>
         <span className="mono sm muted">
-          {role.start} – {role.end}
+          {clockLabel(role.start, format)} – {clockLabel(role.end, format)}
           {hours === null ? '' : ` · ${formatHours(hours)}`}
         </span>
         {/* Absolute buffer: "12 (+2)", never the total (§3.2). */}
@@ -177,24 +179,24 @@ export function RoleSection({
           </Select>
 
           {/* Manager-typed times carry "(UK time)" — the server reads a
-              zoneless value as Europe/London (§1.8). */}
-          <Input
+              zoneless value as Europe/London (§1.8). Typed on the operator's
+              clock (ADR-0085); the value stays "HH:MM", and the "was" hints
+              are written on that clock too. */}
+          <TimeField
             label={ukInputLabel('Start')}
-            type="time"
-            mono
             value={role.start}
-            onChange={(e) => onChange({ start: e.target.value })}
-            {...(changed.has('starts_at') && original ? { hint: `was ${original.start}` } : {})}
+            onChange={(start) => onChange({ start })}
+            {...(changed.has('starts_at') && original
+              ? { hint: `was ${clockLabel(original.start, format)}` }
+              : {})}
           />
-          <Input
+          <TimeField
             label={ukInputLabel('End')}
-            type="time"
-            mono
             value={role.end}
-            onChange={(e) => onChange({ end: e.target.value })}
+            onChange={(end) => onChange({ end })}
             {...(lengthIssue ? { error: ROLE_SECTION_MESSAGE[lengthIssue] } : {})}
             {...(!lengthIssue && changed.has('ends_at') && original
-              ? { hint: `was ${original.end}` }
+              ? { hint: `was ${clockLabel(original.end, format)}` }
               : {})}
           />
           <Input

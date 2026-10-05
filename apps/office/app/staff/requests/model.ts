@@ -1,6 +1,7 @@
 import { formatLocalStamp, formatUkStamp } from '../[id]/profile';
 import { formatUkDate } from '../staff';
 import { DOB_CORRECTION_MESSAGES } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import type { ChangeKind, ChangeRequestRow, ChangeStatus } from './types';
 
 /**
@@ -90,13 +91,13 @@ export function decidedBy(row: ChangeRequestRow): string {
 }
 
 /** "Requested Wed 17 Sep · 09:12 UK time" — a record of when, so UK only (§1.8). */
-export function requestedAt(iso: string): string {
-  return `${formatLocalStamp(iso, UK)} UK time`;
+export function requestedAt(iso: string, format?: TimeFormat): string {
+  return `${formatLocalStamp(iso, UK, format)} UK time`;
 }
 
 /** The dotted audit stamp the Decided table and the banner use (§1.8). */
-export function ukStamp(iso: string | null): string {
-  return formatUkStamp(iso);
+export function ukStamp(iso: string | null, format?: TimeFormat): string {
+  return formatUkStamp(iso, format);
 }
 
 /** The evidence link's text: the file name the worker uploaded under. */

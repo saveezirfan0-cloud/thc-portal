@@ -8,6 +8,7 @@ import { appLock, canReachProfileDetails } from '../../lock';
 import { loadChangeRequests, loadProfile, supabaseConfigured } from '../../data';
 import { signOwnPhoto } from '../../photos';
 import { canRequest, statusLine } from '../../change-requests';
+import { getTimeFormat } from '../../../_lib/timeFormat';
 import { ChangeStatus } from '../ChangeStatus';
 import { NameRequestForm } from './NameRequestForm';
 import { PhotoRequestForm } from './PhotoRequestForm';
@@ -87,7 +88,7 @@ export default async function Page({
         )
       ) : (
         <>
-          <ChangeStatus kind={kind} line={statusLine(requests, kind)} />
+          <ChangeStatus kind={kind} line={statusLine(requests, kind, await getTimeFormat())} />
           <Link className="btn outline block" href="/profile/details">
             Back to Profile details
           </Link>

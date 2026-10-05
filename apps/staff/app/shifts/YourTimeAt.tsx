@@ -1,5 +1,6 @@
 'use client';
 
+import { useTimeFormat } from '@thc/ui';
 import { useViewerZone } from '../_components/useViewerZone';
 import { yourTimeAt } from './offers';
 
@@ -24,7 +25,8 @@ export function YourTimeAt({
   className?: string;
 }) {
   const zone = useViewerZone();
-  const line = yourTimeAt(at, zone, withDate);
+  const format = useTimeFormat();
+  const line = yourTimeAt(at, zone, withDate, format);
   if (!line) return null;
   return (
     <span className={`your-time ${className}`.trim()} style={{ display: 'block' }}>

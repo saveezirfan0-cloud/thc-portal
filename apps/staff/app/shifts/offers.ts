@@ -1,12 +1,14 @@
 import {
   ACCEPT_REFUSAL_COPY,
   APPLY_REFUSAL_COPY,
+  DEFAULT_TIME_FORMAT,
   UK_ZONE,
   canCancelShift,
   formatDateIn,
   formatTimeIn,
   needsDualZone,
 } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 
 /**
  * Cover requests and office-opened offers, as the worker sees them —
@@ -42,14 +44,14 @@ export interface BookingOffer {
 }
 
 /** "Sat 20 Sep, 16:00" — the dialog's and the detail's UK date and time. */
-export function ukDateTime(at: Date): string {
-  return `${formatDateIn(at, UK_ZONE, { weekday: 'short' })}, ${formatTimeIn(at, UK_ZONE)}`;
+export function ukDateTime(at: Date, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
+  return `${formatDateIn(at, UK_ZONE, { weekday: 'short' })}, ${formatTimeIn(at, UK_ZONE, format)}`;
 }
 
 /** "Sat 20, 16:00" — the chip's short form (wireframe (c), (d)). */
-export function ukShortDateTime(at: Date): string {
+export function ukShortDateTime(at: Date, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
   const [weekday = '', day = ''] = formatDateIn(at, UK_ZONE, { weekday: 'short' }).split(' ');
-  return `${weekday} ${day}, ${formatTimeIn(at, UK_ZONE)}`;
+  return `${weekday} ${day}, ${formatTimeIn(at, UK_ZONE, format)}`;
 }
 
 /**
@@ -60,28 +62,33 @@ export function ukShortDateTime(at: Date): string {
  * time: there is no second line to draw. The first line is always UK and
  * says so.
  */
-export function yourTimeAt(at: Date, zone: string, withDate = true): string | null {
+export function yourTimeAt(
+  at: Date,
+  zone: string,
+  withDate = true,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): string | null {
   if (!needsDualZone(zone)) return null;
   const [weekday = '', day = ''] = formatDateIn(at, zone, { weekday: 'short' }).split(' ');
-  const time = `${formatTimeIn(at, zone)} your time`;
+  const time = `${formatTimeIn(at, zone, format)} your time`;
   if (withDate) return `${weekday} ${day}, ${time}`;
   const sameDay = formatDateIn(at, zone) === formatDateIn(at, UK_ZONE);
   return sameDay ? time : `${weekday} ${day} · ${time}`;
 }
 
 /** "Offered · open until Sat 20, 16:00 (UK time)" */
-export function offeredChip(expiresAt: Date): string {
-  return `Offered · open until ${ukShortDateTime(expiresAt)} (UK time)`;
+export function offeredChip(expiresAt: Date, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
+  return `Offered · open until ${ukShortDateTime(expiresAt, format)} (UK time)`;
 }
 
 /** Wireframe (c): the still-booked line under the chip. */
-export function offeredLine(expiresAt: Date): string {
-  return `You're still booked. If someone takes it before ${ukShortDateTime(expiresAt)} (UK time), it's theirs and we'll let you know. If nobody does, you keep it.`;
+export function offeredLine(expiresAt: Date, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
+  return `You're still booked. If someone takes it before ${ukShortDateTime(expiresAt, format)} (UK time), it's theirs and we'll let you know. If nobody does, you keep it.`;
 }
 
 /** Wireframe (d): the line on the `/shifts` card. */
-export function offeredCardLine(expiresAt: Date): string {
-  return `Offered to other workers · open until ${ukShortDateTime(expiresAt)} (UK time)`;
+export function offeredCardLine(expiresAt: Date, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
+  return `Offered to other workers · open until ${ukShortDateTime(expiresAt, format)} (UK time)`;
 }
 
 export const WITHDRAW_OFFER_BUTTON = 'Withdraw offer';

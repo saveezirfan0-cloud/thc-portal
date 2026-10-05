@@ -1,6 +1,6 @@
 'use client';
 
-import { Panel, Pill } from '@thc/ui';
+import { Panel, Pill, useTimeFormat } from '@thc/ui';
 import { type Forecast, displayTime, formatAllocationPair, formatHours } from '@thc/domain';
 import type { RoleSectionWindow } from '@thc/domain';
 import { useViewerZone } from './useViewerZone';
@@ -41,10 +41,11 @@ export function SummaryPanel({
   ratesVisible,
 }: SummaryPanelProps) {
   const zone = useViewerZone();
+  const format = useTimeFormat();
   // A scheduled time shows both zones, with the local line dropped when they
   // coincide — never a bare clock the reader could take for their own (§1.8).
-  const start = window ? displayTime(window.startsAt, 'scheduled', zone) : null;
-  const end = window ? displayTime(window.endsAt, 'scheduled', zone) : null;
+  const start = window ? displayTime(window.startsAt, 'scheduled', zone, false, format) : null;
+  const end = window ? displayTime(window.endsAt, 'scheduled', zone, false, format) : null;
 
   return (
     <Panel title="Summary">

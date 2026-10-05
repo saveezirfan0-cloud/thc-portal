@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, DocRow, Panel, Pill } from '@thc/ui';
+import { Alert, Button, DocRow, Panel, Pill, useTimeFormat } from '@thc/ui';
+import type { TimeFormat } from '@thc/domain';
 import { SETTLED_NO_TIME_LIMIT, formatUkDate } from '../staff';
 import {
   complianceSummary,
@@ -88,17 +89,17 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  * right-to-work Verify carries the course level or the visa's hours limit
  * (D32, D36). All of that is the shared dialogs'.
  */
-function meta(row: DocumentRow): string {
+function meta(row: DocumentRow, format: TimeFormat): string {
   const parts: string[] = [];
   if (row.expires_on) parts.push(`Expires ${formatUkDate(row.expires_on)}`);
   else if (row.rtw_no_time_limit) parts.push(SETTLED_NO_TIME_LIMIT);
   if (row.ai_confidence !== null) parts.push(`AI ${Math.round(row.ai_confidence * 100)}%`);
   if (row.reviewed_at) {
     parts.push(
-      `${row.reviewed_by_name ? `Verified by ${row.reviewed_by_name}` : 'Reviewed'} · ${formatUkStamp(row.reviewed_at)}`,
+      `${row.reviewed_by_name ? `Verified by ${row.reviewed_by_name}` : 'Reviewed'} · ${formatUkStamp(row.reviewed_at, format)}`,
     );
   } else {
-    parts.push(`Uploaded ${formatUkStamp(row.uploaded_at)}`);
+    parts.push(`Uploaded ${formatUkStamp(row.uploaded_at, format)}`);
   }
   if (row.rejection_reason) parts.push(`Rejected: ${row.rejection_reason}`);
   if (row.share_code) parts.push(`share code ${row.share_code}`);
@@ -146,6 +147,7 @@ export function Documents({
   dobClaims?: DobClaim[];
 }) {
   const router = useRouter();
+  const format = useTimeFormat();
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -281,7 +283,7 @@ export function Documents({
             <DocRow
               icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
               title={row.doc_label}
-              meta={withHint(meta(row), queue.get(row.id), row.review_status === 'pending')}
+              meta={withHint(meta(row, format), queue.get(row.id), row.review_status === 'pending')}
               state={STATE[row.review_status]}
               actions={
                 <>
@@ -321,7 +323,7 @@ export function Documents({
             icon="DECL"
             title={`Criminal Record declaration · ${row.answer ? 'Yes' : 'No'}`}
             meta={withHint(
-              declarationMeta(row),
+              declarationMeta(row, format),
               declarationActionable(row) ? queue.get(row.id) : undefined,
               declarationActionable(row),
             )}
@@ -376,7 +378,7 @@ export function Documents({
                 key={row.id}
                 icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
                 title={row.doc_label}
-                meta={meta(row)}
+                meta={meta(row, format)}
                 state="pending"
                 actions={
                   <>
@@ -391,7 +393,7 @@ export function Documents({
                 key={row.id}
                 icon="DECL"
                 title={`Criminal Record declaration · ${row.answer ? 'Yes' : 'No'}`}
-                meta={declarationMeta(row)}
+                meta={declarationMeta(row, format)}
                 state="pending"
                 actions={<Pill>Superseded</Pill>}
               />
@@ -404,7 +406,7 @@ export function Documents({
           is signed it closes "Compliant and bookable." instead of
           trailing off after a colon.
         */}
-        <div className="sm">{complianceSummary(profile)}</div>
+        <div className="sm">{complianceSummary(profile, format)}</div>
       </div>
 
       {/*

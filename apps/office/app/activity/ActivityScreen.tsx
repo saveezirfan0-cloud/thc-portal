@@ -4,7 +4,16 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Avatar, EmptyState, Panel, Pill, SearchInput, Select } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  EmptyState,
+  Panel,
+  Pill,
+  SearchInput,
+  Select,
+  useTimeFormat,
+} from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { actionLabel, entityHref, entityLabel } from '../_lib/accounts';
 import type { ActivityFilters, ActivityPageData } from './data';
@@ -27,6 +36,7 @@ export function ActivityScreen({
   data: ActivityPageData;
   filters: ActivityFilters;
 }) {
+  const format = useTimeFormat();
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState(filters.query ?? '');
@@ -150,7 +160,7 @@ export function ActivityScreen({
                   return (
                     <tr key={row.id}>
                       <td data-label="When" className="mono sm activity-when">
-                        {formatDateTimeIn(new Date(row.at), UK_ZONE)}
+                        {formatDateTimeIn(new Date(row.at), UK_ZONE, format)}
                       </td>
                       <td data-label="Who" className="activity-who">
                         {row.actor ? (

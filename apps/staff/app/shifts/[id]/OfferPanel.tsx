@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Button, MobileCard, Modal, Pill, Textarea } from '@thc/ui';
+import { Alert, Button, MobileCard, Modal, Pill, Textarea, useTimeFormat } from '@thc/ui';
 import { ActionButton } from '../../_components/ActionButton';
 import { requestCover, withdrawShiftOffer } from '../../actions';
 import type { Refusal } from '../../actions';
@@ -45,6 +45,7 @@ export function OfferPanel({
   offer: BookingOffer | null;
   now: Date;
 }) {
+  const format = useTimeFormat();
   const start = new Date(startsAt);
   const panel = offerPanel({ status, startsAt: start }, offer, now);
 
@@ -52,9 +53,9 @@ export function OfferPanel({
 
   if (panel === 'offered' && offer?.offerId && offer.expiresAt) {
     return (
-      <MobileCard badge={<Pill tone="cyan">{offeredChip(offer.expiresAt)}</Pill>}>
+      <MobileCard badge={<Pill tone="cyan">{offeredChip(offer.expiresAt, format)}</Pill>}>
         <p className="sm">
-          {offeredLine(offer.expiresAt)}
+          {offeredLine(offer.expiresAt, format)}
           {/* §1.8: the close is scheduled UK time; a phone elsewhere gets its own clock too. */}
           <YourTimeAt at={offer.expiresAt} lead="Open until " />
         </p>

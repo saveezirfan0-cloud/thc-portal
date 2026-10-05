@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
+import { clearTimeFormatCookie } from '@thc/db/time-format';
 
 /**
  * Where the Back Office's emailed reset link lands — §10.2 (A1 → A3),
@@ -27,7 +28,10 @@ export async function GET(request: Request) {
   const next = safeNextPath(url.searchParams.get('next'), '/reset', url.origin);
 
   if (tokenHash && type === 'recovery') {
-    const supabase = createClient(await cookies());
+    const jar = await cookies();
+    // A new session: the clock is read from THIS login's profile, not the last one's (ADR-0085).
+    clearTimeFormatCookie(jar);
+    const supabase = createClient(jar);
     const { error } = await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash });
     if (error) {
       console.error('[auth] recovery token rejected', {
@@ -40,7 +44,10 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = createClient(await cookies());
+    const jar = await cookies();
+    // A new session: the clock is read from THIS login's profile, not the last one's (ADR-0085).
+    clearTimeFormatCookie(jar);
+    const supabase = createClient(jar);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error('[auth] code exchange failed', {

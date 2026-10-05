@@ -1,4 +1,4 @@
-import { UK_ZONE, formatDateIn, formatTimeIn, ukInstant } from '@thc/domain';
+import { type TimeFormat, UK_ZONE, formatDateIn, formatTimeIn, ukInstant } from '@thc/domain';
 import type { ViolationType } from './types';
 
 /**
@@ -85,11 +85,17 @@ export function pageRange(page: number, size = VIOLATION_PAGE_SIZE): { from: num
  * The Time column (§9.5, checkin.html): the viewer's own clock, like every
  * actual instant on this screen (§1.8), with the day it happened — "today
  * 16:12", "Wed 17 · 22:48"; the month once it is another month, and the
- * year once it is another year.
+ * year once it is another year. "today 4:12 pm" on the 12-hour clock
+ * (ADR-0085).
  */
-export function logTime(iso: string, zone: string, now: Date = new Date()): string {
+export function logTime(
+  iso: string,
+  zone: string,
+  now: Date = new Date(),
+  format?: TimeFormat,
+): string {
   const at = new Date(iso);
-  const time = formatTimeIn(at, zone);
+  const time = formatTimeIn(at, zone, format);
   const day = formatDateIn(at, zone, { year: true });
   const today = formatDateIn(now, zone, { year: true });
   if (day === today) return `today ${time}`;

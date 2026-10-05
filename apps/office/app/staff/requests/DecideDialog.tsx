@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Avatar, Button, Checkbox, Modal, Textarea } from '@thc/ui';
+import { Alert, Avatar, Button, Checkbox, Modal, Textarea, useTimeFormat } from '@thc/ui';
 import { CHANGE_REASON_MAX } from '@thc/domain';
 import { changeEvidenceLink, decideChangeRequest } from './actions';
 import {
@@ -60,6 +60,7 @@ export function DecideDialog({
    */
   onDone?: (outcome: { note: string; warning: string | null }) => void;
 }) {
+  const format = useTimeFormat();
   const [checked, setChecked] = useState(false);
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -180,7 +181,7 @@ export function DecideDialog({
               </>
             ) : null}
             <span className="k">Requested</span>
-            <span className="mono sm">{requestedAt(request.created_at)}</span>
+            <span className="mono sm">{requestedAt(request.created_at, format)}</span>
           </div>
         ) : request.kind === 'name' ? (
           <div className="kv">
@@ -199,7 +200,7 @@ export function DecideDialog({
               </>
             ) : null}
             <span className="k">Requested</span>
-            <span className="mono sm">{requestedAt(request.created_at)}</span>
+            <span className="mono sm">{requestedAt(request.created_at, format)}</span>
           </div>
         ) : (
           <div className="cr-sides">

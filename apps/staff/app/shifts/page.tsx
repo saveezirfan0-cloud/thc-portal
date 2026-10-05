@@ -13,6 +13,7 @@ import {
   readyDeadlinePassed,
   sectionHours,
 } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
@@ -23,6 +24,7 @@ import { UkTime } from '../_components/UkTime';
 import { applyForShift, confirmToday, markReady, reconfirm } from '../actions';
 import { loadBookings, loadOpenShifts, loadWeekMeter, openInvites } from '../data';
 import type { BookingRow } from '../data';
+import { getTimeFormat } from '../_lib/timeFormat';
 import { WeekMeter } from '../radar/WeekMeter';
 import { weekLabel } from '../radar/model';
 import { checkOutClosesAt, myShiftCard, myShifts } from './model';
@@ -61,6 +63,7 @@ export const metadata = { title: 'Shifts · THC Staff' };
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
   const open = tab === 'open';
+  const format = await getTimeFormat();
 
   const [
     { rows: bookings, problem: bookingsProblem },
@@ -215,6 +218,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                     group={group}
                     now={now}
                     offer={offers.get(booking.bookingId) ?? null}
+                    format={format}
                   />
                 ))}
               </section>
@@ -245,12 +249,15 @@ function ShiftCardView({
   group,
   now,
   offer,
+  format,
 }: {
   booking: BookingRow;
   group: ShiftGroup;
   now: Date;
   /** ADR-0046: the open offer on this booking, if any. */
   offer: BookingOffer | null;
+  /** The worker's clock (ADR-0085), for the times this card writes itself. */
+  format: TimeFormat;
 }) {
   const card = myShiftCard(booking, now);
   // The worker is still booked while an offer is open; the chip says it
@@ -306,7 +313,7 @@ function ShiftCardView({
 
       {offered && offered.mode !== 'office' && offered.expiresAt ? (
         <p className="m">
-          {offeredCardLine(offered.expiresAt)}
+          {offeredCardLine(offered.expiresAt, format)}
           <YourTimeAt at={offered.expiresAt} />
         </p>
       ) : null}
@@ -316,7 +323,7 @@ function ShiftCardView({
       {card === 'ended' ? (
         <p className="m">
           Not checked out yet? Do it on the shift screen before{' '}
-          {formatTimeIn(checkOutClosesAt(booking), UK_ZONE)} (UK).
+          {formatTimeIn(checkOutClosesAt(booking), UK_ZONE, format)} (UK).
           <YourTimeAt at={checkOutClosesAt(booking)} withDate={false} />
         </p>
       ) : null}

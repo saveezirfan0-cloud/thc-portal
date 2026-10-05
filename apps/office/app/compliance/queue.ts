@@ -3,6 +3,7 @@
  * screen shows lives here, so it is tested without a database or a browser;
  * the components only lay it out.
  */
+import { type TimeFormat, clockLabel } from '@thc/domain';
 import { rtwLockedUntil } from '../_lib/rtwCheck';
 import type { RtwCheckRow, RtwLockedUntil } from '../_lib/rtwCheck';
 import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
@@ -51,10 +52,10 @@ export function ukDayMonth(iso: string): string {
   return `${p.day} ${p.month}`;
 }
 
-/** `13 Sep 15:02` in UK time — the Uploaded column. */
-export function ukStamp(iso: string): string {
+/** `13 Sep 15:02` in UK time — the Uploaded column; `13 Sep 3:02 pm` on the 12-hour clock (ADR-0085). */
+export function ukStamp(iso: string, format?: TimeFormat): string {
   const p = ukParts(iso);
-  return `${p.day} ${p.month} ${p.hour}:${p.minute}`;
+  return `${p.day} ${p.month} ${clockLabel(`${p.hour}:${p.minute}`, format)}`;
 }
 
 /** The UK calendar day of an instant, `YYYY-MM-DD`. */
@@ -581,11 +582,17 @@ export function remindersLine(row: RadarRow): string {
   return '—';
 }
 
-export function radarStatus(row: RadarRow): { tone: 'coral' | 'amber' | 'neutral'; label: string } {
+export function radarStatus(
+  row: RadarRow,
+  format?: TimeFormat,
+): { tone: 'coral' | 'amber' | 'neutral'; label: string } {
   if (row.state === 'expired') {
     return {
       tone: 'coral',
-      label: row.days_left === 0 ? 'Expires today · blocked 05:00' : 'Expired · blocked',
+      label:
+        row.days_left === 0
+          ? `Expires today · blocked ${clockLabel('05:00', format)}`
+          : 'Expired · blocked',
     };
   }
   if (row.state === 'expiring') return { tone: 'amber', label: 'Expiring' };
