@@ -11,7 +11,8 @@
     "./activation": "./src/activation.ts",
     "./provision": "./src/provision.ts",
     "./willo": "./src/willo.ts",
-    "./chasers": "./src/chasers.ts"
+    "./chasers": "./src/chasers.ts",
+    "./time-format": "./src/time-format.ts"
   },
   "scripts": {
     "lint": "eslint .",
@@ -22,6 +23,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.58.0",
+    "@thc/domain": "workspace:*",
     "server-only": "0.0.1"
   },
   "devDependencies": {
