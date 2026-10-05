@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Pill } from '@thc/ui';
+import { Button, Pill, useTimeFormat } from '@thc/ui';
 import { rtwCheckView } from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 import { markRtwCheckReviewed, rtwReportLink, runRtwCheckAgain } from '../_lib/rtwCheckActions';
@@ -37,10 +37,11 @@ export function RtwCheckPanel({
   enabled: boolean;
   compact?: boolean;
 }) {
+  const format = useTimeFormat();
   const router = useRouter();
   const [busy, start] = useTransition();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
-  const view = rtwCheckView(row, { docStatus, enabled });
+  const view = rtwCheckView(row, { docStatus, enabled, format });
 
   if (!view.status && !view.canRunAgain) return null;
 

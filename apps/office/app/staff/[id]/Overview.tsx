@@ -1,6 +1,6 @@
 'use client';
 
-import { Note, Panel, Pill } from '@thc/ui';
+import { Note, Panel, Pill, useTimeFormat } from '@thc/ui';
 import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
 import { formatUkStamp, reviewLabel } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
@@ -91,6 +91,7 @@ export function Overview({
   /** Finance and write: owners and managers edit; a viewer only reads. */
   canEditPayRate?: boolean;
 }) {
+  const format = useTimeFormat();
   return (
     <div className="grid c2">
       <Panel title="Contacts &amp; identity">
@@ -220,7 +221,8 @@ export function Overview({
                   {row.source === 'onboarding' ? 'Onboarding' : 'In employment'}
                 </span>
                 <span>
-                  <b>{row.answer ? 'Yes' : 'No'}</b> · declared {formatUkStamp(row.declared_at)}
+                  <b>{row.answer ? 'Yes' : 'No'}</b> · declared{' '}
+                  {formatUkStamp(row.declared_at, format)}
                   {row.answer ? null : (
                     <span className="muted xs">
                       {' '}
@@ -291,7 +293,7 @@ export function Overview({
           <span className="k">Declaration</span>
           <span>
             {profile.hmrc_declared_at ? (
-              <span className="green">✓ {formatUkStamp(profile.hmrc_declared_at)}</span>
+              <span className="green">✓ {formatUkStamp(profile.hmrc_declared_at, format)}</span>
             ) : (
               value(null)
             )}

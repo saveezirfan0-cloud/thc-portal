@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Alert, KpiTile, Note, TileGrid } from '@thc/ui';
+import type { TimeFormat } from '@thc/domain';
 import type { PayrollLine, PayrollPerson } from '../data';
 import {
   exportHref,
@@ -31,12 +32,14 @@ export function PayrollTab({
   lines,
   sends,
   today,
+  format,
 }: {
   view: ReportView;
   people: PayrollPerson[];
   lines: PayrollLine[];
   sends: ReportSend[];
   today: string;
+  format?: TimeFormat;
 }) {
   const total = people.find((p) => p.is_total) ?? null;
   const persons = people.filter((p) => !p.is_total);
@@ -61,6 +64,7 @@ export function PayrollTab({
         <div className="right">
           <SendStatus
             send={latest}
+            format={format}
             detail={
               latest && latest.row_count !== null
                 ? `payroll CSV · ${latest.row_count} rows`

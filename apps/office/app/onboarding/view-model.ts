@@ -16,8 +16,8 @@
  *      a button the machine would refuse is never drawn and a request the
  *      machine refuses never lands.
  */
-import { STAFF_STATUSES, canTransitionStaff } from '@thc/domain';
-import type { StaffStatus as MachineStatus } from '@thc/domain';
+import { STAFF_STATUSES, canTransitionStaff, clockLabel } from '@thc/domain';
+import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { capReason, employeeId } from '../staff/staff';
 import type {
   CandidateReferral,
@@ -268,20 +268,21 @@ export function shortDate(iso: string): string {
   return `${p.day} ${MONTHS[p.month - 1]}`;
 }
 
-/** "18:44" in UK time. */
-export function ukTime(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
+/** "18:44" in UK time, or "6:44 pm" on the 12-hour clock (ADR-0085). */
+export function ukTime(iso: string, format?: TimeFormat): string {
+  const hhmm = new Intl.DateTimeFormat('en-GB', {
     timeZone: UK,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(new Date(iso));
+  return clockLabel(hhmm, format);
 }
 
 /** "15 Sep 10:02" in UK time — operational stamps on the card. */
-export function shortStamp(iso: string): string {
+export function shortStamp(iso: string, format?: TimeFormat): string {
   const p = ukParts(iso);
-  return `${p.day} ${MONTHS[p.month - 1]} ${ukTime(iso)}`;
+  return `${p.day} ${MONTHS[p.month - 1]} ${ukTime(iso, format)}`;
 }
 
 // ---------------------------------------------------------------------
@@ -321,11 +322,11 @@ function attemptsLabel(scores: number[]): string {
 }
 
 /** The Willo line on the two interview columns (§2.4). */
-export function willoLine(row: CandidateRow, now: Date): Line {
+export function willoLine(row: CandidateRow, now: Date, format?: TimeFormat): Line {
   if (row.willo_completed_at) {
     const via = row.willo_decided_via === 'office' ? '' : ' (Willo webhook)';
     return {
-      text: `Interview completed ${shortDay(row.willo_completed_at)} ${ukTime(row.willo_completed_at)}${via}`,
+      text: `Interview completed ${shortDay(row.willo_completed_at)} ${ukTime(row.willo_completed_at, format)}${via}`,
     };
   }
   if (!row.willo_linked) {
@@ -336,7 +337,7 @@ export function willoLine(row: CandidateRow, now: Date): Line {
   if (done === 0 && days >= 6) {
     return { text: `No response to the Willo invite in ${days} days`, tone: 'coral' };
   }
-  const sent = row.willo_invited_at ? ` ${shortStamp(row.willo_invited_at)}` : '';
+  const sent = row.willo_invited_at ? ` ${shortStamp(row.willo_invited_at, format)}` : '';
   const progress =
     done > 0 ? `in progress (${done} of ${row.willo_answers_total ?? '?'} answers)` : 'not started';
   return { text: `Willo invite sent${sent} · ${progress}` };
@@ -394,7 +395,12 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
 }
 
 /** Every line a card carries under the name, by column (board, Active). */
-export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line[] {
+export function cardLines(
+  row: CandidateRow,
+  column: ColumnKey,
+  now: Date,
+  format?: TimeFormat,
+): Line[] {
   const lines: Line[] = [];
   const age = stageAge(row.stage_entered_at, now);
 
@@ -403,17 +409,17 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
       // "Applied today 11:20" on the day itself (board, Interview requested).
       const applied =
         ukDaysBetween(row.applied_at, now) === 0
-          ? `Applied today ${ukTime(row.applied_at)}`
+          ? `Applied today ${ukTime(row.applied_at, format)}`
           : `Applied ${shortDay(row.applied_at)}`;
       const bits = [applied];
       if (row.age !== null) bits.push(`age ${row.age}`);
       bits.push(row.phone);
       lines.push({ text: bits.join(' · ') });
-      lines.push(willoLine(row, now));
+      lines.push(willoLine(row, now, format));
       break;
     }
     case 'interview_completed': {
-      lines.push(willoLine(row, now));
+      lines.push(willoLine(row, now, format));
       if (age.days >= 4) {
         lines.push({ text: `Awaiting a Willo decision for ${age.days} days`, tone: 'amber' });
       }

@@ -138,8 +138,11 @@ test('the violation log opens a No-show and a No check-out, with "(UK time)" inp
   await expect(dialog.locator('.kv', { hasText: 'Detected' })).toContainText('your time');
   await expect(dialog.locator('.kv', { hasText: 'Checked in' })).toContainText('never');
   await expect(dialog).toContainText('the same action as “Get back”');
-  const arrived = dialog.getByLabel('Arrived at (UK time)');
-  await expect(arrived).toHaveAttribute('type', 'datetime-local');
+  // A date and a TimeField, not a datetime-local: the browser draws that on
+  // the device's clock (ADR-0085).
+  const arrived = dialog.getByRole('group', { name: /Arrived at \(UK time\)/ });
+  await expect(arrived.getByLabel('Date')).toHaveAttribute('type', 'date');
+  await expect(arrived.getByLabel('Time')).toHaveAttribute('type', 'text');
   await expect(dialog.getByText('Actual finish (UK time)')).toHaveCount(0);
 
   // The note is mandatory for every type: Resolve waits for it.
@@ -164,11 +167,10 @@ test('the violation log opens a No-show and a No check-out, with "(UK time)" inp
   await noCheckOut.getByRole('button', { name: 'Details' }).click();
   dialog = page.getByRole('dialog', { name: `No check-out — ${fullName(avocet)}` });
   await expect(dialog).toBeVisible();
-  const finish = dialog.getByLabel('Actual finish (UK time)');
-  await expect(finish).toHaveAttribute('type', 'datetime-local');
-  await expect(dialog.locator('label.field', { hasText: 'Actual finish (UK time)' })).toContainText(
-    '*',
-  );
+  const finish = dialog.getByRole('group', { name: /Actual finish \(UK time\)/ });
+  await expect(finish.getByLabel('Date')).toHaveAttribute('type', 'date');
+  await expect(finish.getByLabel('Time')).toHaveAttribute('type', 'text');
+  await expect(finish).toContainText('*');
   await dialog.locator('textarea').fill('Note without a finish.');
   // A note alone is not enough for a No check-out.
   await expect(dialog.getByRole('button', { name: 'Resolve', exact: true })).toBeDisabled();

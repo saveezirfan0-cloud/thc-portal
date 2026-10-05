@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { TIME_FORMAT_COOKIE, parseTimeFormat } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { verifiedTotp } from '../login/two-step';
@@ -25,6 +27,8 @@ export interface MyAccount {
   createdAt: string | null;
   lastSignInAt: string | null;
   twoStep: MyTwoStep;
+  /** ADR-0085: how this login reads and types clock times. */
+  timeFormat: TimeFormat;
 }
 
 export interface AccountPageData {
@@ -53,7 +57,8 @@ export async function loadMyAccount(): Promise<AccountPageData> {
         'This environment has no Supabase project, so there is no account to show. See docs/04-setup-github-vercel-supabase.md.',
     };
   }
-  const supabase = createClient(await cookies()) as unknown as SupabaseClient;
+  const store = await cookies();
+  const supabase = createClient(store) as unknown as SupabaseClient;
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
   if (!user) return { account: null, problem: 'Your session has ended. Sign in again.' };
@@ -66,6 +71,11 @@ export async function loadMyAccount(): Promise<AccountPageData> {
     .maybeSingle();
   if (error) return { account: null, problem: error.message };
 
+  // ADR-0085: the profile is the record; the device cookie is only its cache,
+  // so it is the fallback when the profile cannot be read.
+  const { data: stored } = await supabase.rpc('my_time_format');
+  const timeFormat = parseTimeFormat(stored ?? store.get(TIME_FORMAT_COOKIE)?.value);
+
   return {
     account: {
       email: user.email ?? '',
@@ -77,6 +87,7 @@ export async function loadMyAccount(): Promise<AccountPageData> {
       createdAt: data?.created_at ?? user.created_at ?? null,
       lastSignInAt: user.last_sign_in_at ?? null,
       twoStep: twoStepOf(user.factors),
+      timeFormat,
     },
     problem: data ? null : 'This login has no profile yet, so the details below cannot be saved.',
   };

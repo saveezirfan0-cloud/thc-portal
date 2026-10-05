@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Alert, Button, Modal, Note, Textarea } from '@thc/ui';
+import { useId, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Alert, Button, Input, Modal, Note, Textarea, TimeField, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, ukInputLabel, viewerZone } from '@thc/domain';
 import { resolveViolation } from './actions';
 import { flaggedAs } from './log';
@@ -61,7 +62,8 @@ export function ResolveModal({
     !busy;
   // Mounted on a click, so the reader's zone is already the browser's.
   const zone = viewerZone();
-  const actual = (iso: string) => `${formatDateTimeIn(new Date(iso), zone)} your time`;
+  const format = useTimeFormat();
+  const actual = (iso: string) => `${formatDateTimeIn(new Date(iso), zone, format)} your time`;
 
   async function submit() {
     setBusy(true);
@@ -123,7 +125,7 @@ export function ResolveModal({
             <Note tone="green">
               Resolved by {violation.resolvedByName ?? 'a manager'}
               {violation.resolvedAt
-                ? ` · ${formatDateTimeIn(new Date(violation.resolvedAt), UK_ZONE)} UK`
+                ? ` · ${formatDateTimeIn(new Date(violation.resolvedAt), UK_ZONE, format)} UK`
                 : ''}
             </Note>
             <blockquote className="sm">{violation.resolutionNote}</blockquote>
@@ -131,7 +133,7 @@ export function ResolveModal({
               <div className="kv">
                 <span className="k">Actual finish entered</span>
                 <span className="v mono">
-                  {formatDateTimeIn(new Date(violation.actualFinishAt), UK_ZONE)} UK
+                  {formatDateTimeIn(new Date(violation.actualFinishAt), UK_ZONE, format)} UK
                 </span>
               </div>
             ) : null}
@@ -153,43 +155,39 @@ export function ResolveModal({
             ) : null}
 
             {isNoShow ? (
-              <label className="field">
-                <span className="label">
-                  {ukInputLabel('Arrived at')}
-                  {needsArrival ? <span className="coral"> *</span> : null}
-                </span>
-                <input
-                  className="input"
-                  type="datetime-local"
-                  value={arrived}
-                  onChange={(e) => setArrived(e.target.value)}
-                />
-                <span className="hint">
-                  {needsArrival
+              <UkDateTimeField
+                label={
+                  <>
+                    {ukInputLabel('Arrived at')}
+                    {needsArrival ? <span className="coral"> *</span> : null}
+                  </>
+                }
+                value={arrived}
+                onChange={setArrived}
+                hint={
+                  needsArrival
                     ? 'The shift has ended, so enter when the worker actually arrived. Not before check-in opened (start − 30 min), not in the future.'
-                    : 'Leave empty to register them as arriving now. Not before check-in opened (start − 30 min), not in the future.'}
-                </span>
-              </label>
+                    : 'Leave empty to register them as arriving now. Not before check-in opened (start − 30 min), not in the future.'
+                }
+              />
             ) : null}
 
             {wantsFinish || needsArrival ? (
-              <label className="field">
-                <span className="label">
-                  {ukInputLabel('Actual finish')}
-                  {wantsFinish ? <span className="coral"> *</span> : null}
-                </span>
-                <input
-                  className="input"
-                  type="datetime-local"
-                  value={finish}
-                  onChange={(e) => setFinish(e.target.value)}
-                />
-                <span className="hint">
-                  {wantsFinish
+              <UkDateTimeField
+                label={
+                  <>
+                    {ukInputLabel('Actual finish')}
+                    {wantsFinish ? <span className="coral"> *</span> : null}
+                  </>
+                }
+                value={finish}
+                onChange={setFinish}
+                hint={
+                  wantsFinish
                     ? 'Becomes the shift’s check-out, and pay is worked out from it. The four-hour floor applies again once this is resolved.'
-                    : 'Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later.'}
-                </span>
-              </label>
+                    : 'Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later.'
+                }
+              />
             ) : null}
 
             <label className="field">
@@ -228,7 +226,53 @@ export function ResolveModal({
 }
 
 /**
- * `datetime-local` gives a wall clock with no zone. §1.8 says this field is
+ * A date and a time the manager types, as one "YYYY-MM-DDTHH:MM" value (""
+ * until both are set) — the shape `datetime-local` gave `ukLocalToIso`. It is
+ * a date input plus a `TimeField` because the browser's own `datetime-local`
+ * draws its clock on the DEVICE's setting, "5:00 PM" on a 12-hour machine,
+ * whichever clock the manager chose (ADR-0085).
+ */
+function UkDateTimeField({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: ReactNode;
+  hint: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [date, setDate] = useState(value.split('T')[0] ?? '');
+  const [time, setTime] = useState(value.split('T')[1] ?? '');
+  const labelId = useId();
+  const set = (nextDate: string, nextTime: string) => {
+    setDate(nextDate);
+    setTime(nextTime);
+    onChange(nextDate && nextTime ? `${nextDate}T${nextTime}` : '');
+  };
+  return (
+    <div className="field" role="group" aria-labelledby={labelId}>
+      <span className="label" id={labelId}>
+        {label}
+      </span>
+      <div className="dt2">
+        <Input
+          type="date"
+          mono
+          aria-label="Date"
+          value={date}
+          onChange={(e) => set(e.target.value, time)}
+        />
+        <TimeField aria-label="Time" value={time} onChange={(next) => set(date, next)} />
+      </div>
+      <span className="hint">{hint}</span>
+    </div>
+  );
+}
+
+/**
+ * `datetime-local` gave a wall clock with no zone; the field above keeps that shape. §1.8 says this field is
  * UK time, so it is read as UK and converted to the instant the server
  * stores — not as the manager's own zone, which is the bug this avoids for
  * anyone working outside the UK.
@@ -241,6 +285,7 @@ export function ukLocalToIso(local: string): string {
   // Europe/London is UTC or UTC+1; find the offset that round-trips.
   for (const offset of [0, -3600_000]) {
     const candidate = new Date(guess + offset);
+    // Compared as values, so both sides use the default 24-hour form (ADR-0085).
     const back = formatDateTimeIn(candidate, UK_ZONE);
     const wanted = formatDateTimeIn(new Date(guess), 'UTC');
     if (back === wanted) return candidate.toISOString();

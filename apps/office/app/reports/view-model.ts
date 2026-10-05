@@ -8,7 +8,7 @@
  * from `20260923130000_reports_and_finance_send.sql`; this file formats.
  */
 
-import { UK_ZONE } from '@thc/domain';
+import { type TimeFormat, UK_ZONE, clockLabel } from '@thc/domain';
 
 export type ReportTab = 'financial' | 'payroll' | 'newstarter';
 export type FinanceBy = 'day' | 'client' | 'role';
@@ -169,8 +169,11 @@ const MONTHS = [
   'Dec',
 ] as const;
 
-/** "Mon 15 Sep, 09:00" in UK time — a send stamp is an audit stamp (§1.8). */
-export function formatUkStamp(instant: string): string {
+/**
+ * "Mon 15 Sep, 09:00" in UK time — a send stamp is an audit stamp (§1.8);
+ * "Mon 15 Sep, 9:00 am" on the 12-hour clock (ADR-0085).
+ */
+export function formatUkStamp(instant: string, format?: TimeFormat): string {
   const at = new Date(instant);
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-GB', {
@@ -187,7 +190,7 @@ export function formatUkStamp(instant: string): string {
   );
   const iso = `${parts.year}-${parts.month}-${parts.day}`;
   const d = new Date(`${iso}T00:00:00Z`);
-  return `${WEEKDAYS[weekdayIndex(iso)]} ${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]}, ${parts.hour}:${parts.minute}`;
+  return `${WEEKDAYS[weekdayIndex(iso)]} ${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]}, ${clockLabel(`${parts.hour}:${parts.minute}`, format)}`;
 }
 
 /**
@@ -195,22 +198,28 @@ export function formatUkStamp(instant: string): string {
  * need to name: queued, i.e. the job ran and the email is waiting for the
  * mail sender (P2). Showing that as "Last sent" would be a lie.
  */
-export function sendStatus(send: ReportSend | null): { tone: SendTone; text: string } {
+export function sendStatus(
+  send: ReportSend | null,
+  format?: TimeFormat,
+): { tone: SendTone; text: string } {
   if (!send) return { tone: 'none', text: 'Not sent yet' };
   switch (send.status) {
     case 'sent':
-      return { tone: 'ok', text: `Last sent: ${send.sent_at ? formatUkStamp(send.sent_at) : '—'}` };
+      return {
+        tone: 'ok',
+        text: `Last sent: ${send.sent_at ? formatUkStamp(send.sent_at, format) : '—'}`,
+      };
     case 'failed':
       return { tone: 'fail', text: 'Failed to send report' };
     case 'no_new':
       return {
         tone: 'none',
-        text: `No new: ${formatUkStamp(send.sent_at ?? send.created_at ?? new Date().toISOString())}`,
+        text: `No new: ${formatUkStamp(send.sent_at ?? send.created_at ?? new Date().toISOString(), format)}`,
       };
     default:
       return {
         tone: 'queued',
-        text: `Queued: ${send.created_at ? formatUkStamp(send.created_at) : '—'} · waiting for the mail sender`,
+        text: `Queued: ${send.created_at ? formatUkStamp(send.created_at, format) : '—'} · waiting for the mail sender`,
       };
   }
 }

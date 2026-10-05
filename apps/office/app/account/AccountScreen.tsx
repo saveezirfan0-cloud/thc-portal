@@ -2,8 +2,18 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Avatar, Button, Input, ModeSwitch, Panel, Pill } from '@thc/ui';
+import { type TimeFormat, UK_ZONE, clockLabel, formatDateTimeIn } from '@thc/domain';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Input,
+  ModeSwitch,
+  Panel,
+  Pill,
+  SegToggle,
+  useTimeFormat,
+} from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { ROLE_LABEL } from '../_lib/accounts';
 import {
@@ -11,6 +21,7 @@ import {
   changeMyEmail,
   changeMyPassword,
   saveMyDetails,
+  saveMyTimeFormat,
   signOutOtherDevices,
 } from './actions';
 import type { AccountPageData, MyAccount } from './data';
@@ -44,7 +55,7 @@ export function AccountScreen({ data }: { data: AccountPageData }) {
             <EmailBlock account={account} />
             <PasswordBlock />
             <TwoStepPanel twoStep={account.twoStep} />
-            <DeviceBlock />
+            <DeviceBlock timeFormat={account.timeFormat} />
           </div>
         </>
       ) : null}
@@ -56,7 +67,7 @@ function useAction() {
   const router = useRouter();
   const [result, setResult] = useState<AccountResult | null>(null);
   const [pending, start] = useTransition();
-  const run = (action: () => Promise<AccountResult>, after?: () => void) => {
+  const run = (action: () => Promise<AccountResult>, after?: () => void, failed?: () => void) => {
     setResult(null);
     start(async () => {
       const outcome = await action();
@@ -64,6 +75,8 @@ function useAction() {
       if (outcome.ok) {
         after?.();
         router.refresh();
+      } else {
+        failed?.();
       }
     });
   };
@@ -77,11 +90,12 @@ function Feedback({ result }: { result: AccountResult | null }) {
 }
 
 /** Audit-style stamps are UK only (§1.8). */
-function ukStamp(iso: string | null): string {
-  return iso ? `${formatDateTimeIn(new Date(iso), UK_ZONE)} (UK time)` : '—';
+function ukStamp(iso: string | null, format: TimeFormat): string {
+  return iso ? `${formatDateTimeIn(new Date(iso), UK_ZONE, format)} (UK time)` : '—';
 }
 
 function Header({ account }: { account: MyAccount }) {
+  const format = useTimeFormat();
   const role = account.role as keyof typeof ROLE_LABEL;
   return (
     <section className="panel account-head">
@@ -95,7 +109,7 @@ function Header({ account }: { account: MyAccount }) {
       </div>
       <div className="facts">
         <Pill tone="cyan">{ROLE_LABEL[role] ?? account.role}</Pill>
-        <span className="xs muted">Last signed in {ukStamp(account.lastSignInAt)}</span>
+        <span className="xs muted">Last signed in {ukStamp(account.lastSignInAt, format)}</span>
       </div>
     </section>
   );
@@ -245,7 +259,7 @@ function PasswordBlock() {
   );
 }
 
-function DeviceBlock() {
+function DeviceBlock({ timeFormat }: { timeFormat: TimeFormat }) {
   const { result, pending, run } = useAction();
   return (
     <Panel title="Sessions & appearance">
@@ -261,7 +275,57 @@ function DeviceBlock() {
         <hr />
         <p className="sm muted">Light or dark, for this browser only.</p>
         <ModeSwitch />
+        <hr />
+        <TimeFormatChoice saved={timeFormat} />
       </div>
     </Panel>
+  );
+}
+
+/** After noon, so the two clocks read differently: "17:30" and "5:30 pm". */
+const EXAMPLE = '17:30';
+
+/**
+ * Time format (ADR-0085): 24-hour by default, 12-hour if you prefer. It
+ * saves the moment it is chosen — there is nothing to confirm, and a
+ * display preference is easy to flip back — and every screen is refreshed
+ * so the new clock is on the page you are looking at. It changes how a time
+ * is written and how a typed time is read, never a stored time or a rule;
+ * the UK-time labels stay.
+ */
+function TimeFormatChoice({ saved }: { saved: TimeFormat }) {
+  const { result, pending, run } = useAction();
+  // What the control shows at once; put back if the save fails.
+  const [chosen, setChosen] = useState<TimeFormat>(saved);
+  const choose = (next: TimeFormat) => {
+    if (next === chosen || pending) return;
+    const before = chosen;
+    setChosen(next);
+    run(
+      () => saveMyTimeFormat(next),
+      undefined,
+      () => setChosen(before),
+    );
+  };
+  return (
+    <>
+      <p className="sm muted">
+        Time format, for this login on every device. Typed times and every time on screen follow it;
+        stored times and the UK-time labels do not change.
+      </p>
+      <SegToggle<TimeFormat>
+        aria-label="Time format"
+        options={[
+          { value: '24h', label: '24-hour (default)' },
+          { value: '12h', label: '12-hour' },
+        ]}
+        value={chosen}
+        onChange={choose}
+      />
+      <p className="sm" data-testid="time-format-example">
+        Example: <b className="mono">{clockLabel(EXAMPLE, chosen)}</b>
+      </p>
+      <Feedback result={result} />
+    </>
   );
 }

@@ -1,5 +1,5 @@
-import { STAFF_STATUSES, canTransitionStaff, formatTimeIn } from '@thc/domain';
-import type { StaffStatus as MachineStatus } from '@thc/domain';
+import { STAFF_STATUSES, canTransitionStaff, clockLabel, formatTimeIn } from '@thc/domain';
+import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { hoursText, ukNumericDate } from '../staff';
 import type {
   DeclarationRow,
@@ -75,18 +75,21 @@ export function noShowTone(count: number): 'danger' | 'default' {
  * (§1.8) — unlike a scheduled time, which carries the viewer's zone as a
  * second line.
  */
-export function complianceSummary(profile: {
-  status: string;
-  contract_signed_at: string | null;
-  removed?: boolean;
-}): string {
+export function complianceSummary(
+  profile: {
+    status: string;
+    contract_signed_at: string | null;
+    removed?: boolean;
+  },
+  format?: TimeFormat,
+): string {
   // Every clause states the person's real state, and no two clauses of one
   // line may disagree: "Compliant and bookable" belongs to a compliant
   // worker only, and "Contract not yet signed" to somebody still going
   // through onboarding — a leaver, a rejected applicant or a removed record
   // is not waiting for a contract.
   const signed = profile.contract_signed_at
-    ? ` Contract signed electronically: ${formatUkStamp(profile.contract_signed_at)}`
+    ? ` Contract signed electronically: ${formatUkStamp(profile.contract_signed_at, format)}`
     : '';
 
   if (profile.removed || profile.status === 'removed') {
@@ -168,18 +171,14 @@ export function reviewLabel(status: 'pending' | 'verified' | 'rejected' | 'super
  * An audit stamp in UK time, labelled as such (§1.8). Never the viewer's
  * zone: a contract signature and a verification are records of when
  * something happened in the business's own time. Dotted date, as §9.6
- * writes it: "12.07.2026 14:42".
+ * writes it: "12.07.2026 14:42" — or "12.07.2026 2:42 pm" on the 12-hour
+ * clock (ADR-0085, which changes the writing only).
  */
-export function formatUkStamp(iso: string | null): string {
+export function formatUkStamp(iso: string | null, format?: TimeFormat): string {
   if (!iso) return '—';
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '—';
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(at);
+  const time = formatTimeIn(at, 'Europe/London', format);
   return `${ukNumericDate(at)} ${time} UK time`;
 }
 
@@ -191,7 +190,7 @@ export function formatUkStamp(iso: string | null): string {
  * the same clock to the same reader. The zone is a parameter so the test
  * can pin it — the hook that reads the browser lives on the screen.
  */
-export function formatLocalStamp(iso: string | null, zone: string): string {
+export function formatLocalStamp(iso: string | null, zone: string, format?: TimeFormat): string {
   if (!iso) return '—';
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '—';
@@ -205,7 +204,7 @@ export function formatLocalStamp(iso: string | null, zone: string): string {
     day.find((entry) => entry.type === type)?.value ?? '';
   // ICU prints "Sept" in newer builds; the wireframe says "Sep".
   const month = part('month').slice(0, 3);
-  return `${part('weekday')} ${part('day')} ${month} · ${formatTimeIn(at, zone)}`;
+  return `${part('weekday')} ${part('day')} ${month} · ${formatTimeIn(at, zone, format)}`;
 }
 
 /**
@@ -220,14 +219,8 @@ export function canBlock(status: ProfileRow['status']): boolean {
 }
 
 /** A scheduled window, in UK time — RULE-18's role section, never the event's. */
-export function formatUkWindow(startIso: string, endIso: string): string {
-  const time = (iso: string) =>
-    new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/London',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(new Date(iso));
+export function formatUkWindow(startIso: string, endIso: string, format?: TimeFormat): string {
+  const time = (iso: string) => formatTimeIn(new Date(iso), 'Europe/London', format);
   return `${time(startIso)} – ${time(endIso)}`;
 }
 
@@ -236,13 +229,14 @@ export function formatUkWindow(startIso: string, endIso: string): string {
  * "actual check-in/out stamps show viewer-local only". A worker who
  * checked in at 17:03 in Lisbon did so at 17:03 where they were.
  */
-export function formatLocalTime(iso: string | null): string {
+export function formatLocalTime(iso: string | null, format?: TimeFormat): string {
   if (!iso) return '—';
-  return new Intl.DateTimeFormat('en-GB', {
+  const hhmm = new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(new Date(iso));
+  return clockLabel(hhmm, format);
 }
 
 /** Documents in the order §9.6 reads them: actionable, live, then history. */
@@ -350,12 +344,12 @@ export function isActionable(status: ProfileRow['status']): boolean {
  * where it came from, and what happened to it. The stamps are audit
  * records, so UK time (§1.8). A declaration never has a file.
  */
-export function declarationMeta(row: DeclarationRow): string {
+export function declarationMeta(row: DeclarationRow, format?: TimeFormat): string {
   const parts = [
-    `${row.source === 'onboarding' ? 'Onboarding' : 'In employment'} · declared ${formatUkStamp(row.declared_at)}`,
+    `${row.source === 'onboarding' ? 'Onboarding' : 'In employment'} · declared ${formatUkStamp(row.declared_at, format)}`,
   ];
   if (!row.answer) parts.push('auto-verified on submission — no admin action');
-  else if (row.reviewed_at) parts.push(`reviewed ${formatUkStamp(row.reviewed_at)}`);
+  else if (row.reviewed_at) parts.push(`reviewed ${formatUkStamp(row.reviewed_at, format)}`);
   parts.push('no file to download');
   return parts.join(' · ');
 }

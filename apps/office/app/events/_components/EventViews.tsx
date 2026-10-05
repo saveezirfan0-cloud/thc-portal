@@ -255,7 +255,7 @@ function MonthChip({ row }: { row: EventRow }) {
       href={`/events/${row.id}`}
       title={`${row.title} · ${row.clientName} · ${EVENT_STATUS_LABEL[row.status]}`}
     >
-      <span className="t">{row.window ? row.windowLabel.slice(0, 5) : '—'}</span>
+      <span className="t">{row.windowStartLabel}</span>
       {row.title} · {row.clientName}
       {/* §3.2: the status pill appears on the calendar as on the list. */}
       <ChipStatus status={row.status} />

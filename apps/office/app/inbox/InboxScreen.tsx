@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
+import { type TimeFormat, UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { OFFICE_INBOX } from '@thc/notifications';
 import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -11,8 +11,6 @@ import './inbox.css';
 
 const TYPES = OFFICE_INBOX.map(({ code, label }) => ({ code, label }));
 
-const ukStamp = (instant: Date) => formatDateTimeIn(instant, UK_ZONE);
-
 /**
  * /inbox — Inbox (ADR-0058, §8, §1.8).
  *
@@ -22,7 +20,17 @@ const ukStamp = (instant: Date) => formatDateTimeIn(instant, UK_ZONE);
  * was made (the event page, /reports), not here. Every stamp is an audit
  * stamp, so UK only.
  */
-export function InboxScreen({ data, filters }: { data: InboxPageData; filters: InboxFilters }) {
+export function InboxScreen({
+  data,
+  filters,
+  format,
+}: {
+  data: InboxPageData;
+  filters: InboxFilters;
+  /** The operator's clock (ADR-0085): a server component, so the page passes it down. */
+  format?: TimeFormat;
+}) {
+  const ukStamp = (instant: Date) => formatDateTimeIn(instant, UK_ZONE, format);
   const entries = data.rows.map((row) => present(row, ukStamp));
   const filtered = Boolean(filters.type || filters.status || filters.before);
 

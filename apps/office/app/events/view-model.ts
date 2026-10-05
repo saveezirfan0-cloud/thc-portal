@@ -11,6 +11,7 @@ import {
   type EventFill,
   type EventStatus,
   type RoleSectionWindow,
+  type TimeFormat,
   UK_ZONE,
   cancelledFinanceNote,
   ukDayLabel,
@@ -34,10 +35,12 @@ export function scheduledWindowLines(
   startsAt: Date,
   endsAt: Date,
   zone: string,
+  format?: TimeFormat,
 ): { uk: string; local: string | null } {
-  const uk = `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)}`;
+  const at = (instant: Date, z: string) => formatTimeIn(instant, z, format);
+  const uk = `${at(startsAt, UK_ZONE)} – ${at(endsAt, UK_ZONE)}`;
   if (!needsDualZone(zone)) return { uk, local: null };
-  return { uk, local: `${formatTimeIn(startsAt, zone)} – ${formatTimeIn(endsAt, zone)} your time` };
+  return { uk, local: `${at(startsAt, zone)} – ${at(endsAt, zone)} your time` };
 }
 
 /** A role on a list row, with its own window as instants for the zone line (§1.8). */
@@ -63,8 +66,10 @@ export interface EventRow {
   fill: EventFill;
   /** The derived window, or null while the event has no role sections. */
   window: RoleSectionWindow | null;
-  /** "07:00 – 23:30" in UK time, or "—". */
+  /** "07:00 – 23:30" in UK time (or "7:00 am – 11:30 pm", ADR-0085), or "—". */
   windowLabel: string;
+  /** The window's start alone, for a calendar chip: "07:00", or "—". */
+  windowStartLabel: string;
   /** The derived window as ISO instants, for the "your time" line; null without roles. */
   windowIso: { startsAt: string; endsAt: string } | null;
   /** Set when the window runs past midnight: "ends Sat 20". */
@@ -77,7 +82,11 @@ function startedAt(row: EventRow): number {
   return row.window ? row.window.startsAt.getTime() : Number.MAX_SAFE_INTEGER;
 }
 
-export function toEventRow(event: ListedEvent, now: Date = new Date()): EventRow {
+export function toEventRow(
+  event: ListedEvent,
+  now: Date = new Date(),
+  format?: TimeFormat,
+): EventRow {
   const sections = event.roles.map((role) => ukRoleWindow(event.date, role.start, role.end));
   const window = derivedEventWindow(sections);
 
@@ -96,8 +105,9 @@ export function toEventRow(event: ListedEvent, now: Date = new Date()): EventRow
     fill: eventFill(event.roles),
     window,
     windowLabel: window
-      ? `${formatTimeIn(window.startsAt, UK_ZONE)} – ${formatTimeIn(window.endsAt, UK_ZONE)}`
+      ? `${formatTimeIn(window.startsAt, UK_ZONE, format)} – ${formatTimeIn(window.endsAt, UK_ZONE, format)}`
       : '—',
+    windowStartLabel: window ? formatTimeIn(window.startsAt, UK_ZONE, format) : '—',
     windowIso: window
       ? { startsAt: window.startsAt.toISOString(), endsAt: window.endsAt.toISOString() }
       : null,
@@ -118,9 +128,13 @@ function utcDayOf(instant: Date): string {
   return instant.toISOString().slice(0, 10);
 }
 
-export function toEventRows(events: ListedEvent[], now: Date = new Date()): EventRow[] {
+export function toEventRows(
+  events: ListedEvent[],
+  now: Date = new Date(),
+  format?: TimeFormat,
+): EventRow[] {
   return events
-    .map((event) => toEventRow(event, now))
+    .map((event) => toEventRow(event, now, format))
     .sort((a, b) => (a.date === b.date ? startedAt(a) - startedAt(b) : a.date < b.date ? -1 : 1));
 }
 

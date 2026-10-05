@@ -1,4 +1,4 @@
-import { UK_ZONE, formatAllocationPair } from '@thc/domain';
+import { type TimeFormat, UK_ZONE, formatAllocationPair, formatTimeIn } from '@thc/domain';
 import type { Tone } from '@thc/ui';
 
 /**
@@ -298,15 +298,10 @@ export function todayInUk(now: Date = new Date()): string {
 }
 
 /** "as of 14:32 UK time · Thu 24 Sep 2026" — the §9.1 "this minute" stamp. */
-export function formatAsOf(instant: Date): { time: string; date: string } {
+export function formatAsOf(instant: Date, format?: TimeFormat): { time: string; date: string } {
   const ukDate = todayInUk(instant);
   return {
-    time: new Intl.DateTimeFormat('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: UK_ZONE,
-    }).format(instant),
+    time: formatTimeIn(instant, UK_ZONE, format),
     date: `${formatDayLabel(ukDate)} ${ukDate.slice(0, 4)}`,
   };
 }

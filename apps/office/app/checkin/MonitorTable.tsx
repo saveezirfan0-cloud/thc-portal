@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, Pill } from '@thc/ui';
+import { Avatar, Pill, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
 import { statusLabel, breaksCell, statusTone } from './status';
 import type { MonitorRow } from './types';
@@ -28,9 +28,10 @@ import { useViewerZone } from './useViewerZone';
  */
 export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   const zone = useViewerZone();
+  const format = useTimeFormat();
   const dual = needsDualZone(zone);
-  const local = (iso: string) => formatTimeIn(new Date(iso), zone);
-  const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
+  const local = (iso: string) => formatTimeIn(new Date(iso), zone, format);
+  const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE, format);
 
   if (rows.length === 0) {
     // The panel is `flush` (the table runs edge to edge), so the message

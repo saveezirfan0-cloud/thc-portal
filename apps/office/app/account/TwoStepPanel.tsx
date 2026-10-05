@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Button, Input, Panel, Pill } from '@thc/ui';
+import { Alert, Button, Input, Panel, Pill, useTimeFormat } from '@thc/ui';
 import { groupSecret } from '../login/two-step';
 import type { MyTwoStep } from './data';
 import {
@@ -176,6 +176,7 @@ function OffState() {
 }
 
 function OnState({ twoStep }: { twoStep: MyTwoStep }) {
+  const format = useTimeFormat();
   const router = useRouter();
   const [removing, setRemoving] = useState(false);
   const [code, setCode] = useState('');
@@ -207,7 +208,7 @@ function OnState({ twoStep }: { twoStep: MyTwoStep }) {
         After your password, you are asked for the 6-digit code from the authenticator app on{' '}
         <b>{twoStep.deviceName ?? 'your phone'}</b>
         {twoStep.since ? (
-          <> — set up {formatDateTimeIn(new Date(twoStep.since), UK_ZONE)} (UK time)</>
+          <> — set up {formatDateTimeIn(new Date(twoStep.since), UK_ZONE, format)} (UK time)</>
         ) : null}
         .
       </p>

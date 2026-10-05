@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { createClient } from '@thc/db/server';
+import { saveTimeFormat } from '@thc/db/time-format';
 import { supabaseConfigured } from '../staff/data';
 import { appOrigin } from '@thc/db';
 import {
@@ -166,4 +167,20 @@ export async function signOutOtherDevices(): Promise<AccountResult> {
   const { error } = await supabase.auth.signOut({ scope: 'others' });
   if (error) return { ok: false, message: 'That did not work. Try again.' };
   return { ok: true, message: 'Every other device has been signed out.' };
+}
+
+/**
+ * ADR-0085: this login's clock, 24-hour or 12-hour. Any office role may set
+ * its OWN, a viewer included: it is a display preference on the caller's own
+ * profile row, not operational data (the read-only trigger is not on
+ * `profiles`, and `saveMyDetails` above is open to a viewer the same way).
+ * It writes the profile, then the device cookie the pages read; the layout
+ * is revalidated so every screen flips at once.
+ */
+export async function saveMyTimeFormat(value: unknown): Promise<AccountResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const result = await saveTimeFormat(await cookies(), value);
+  if (!result.ok) return { ok: false, message: result.message };
+  revalidatePath('/', 'layout');
+  return { ok: true, message: 'Saved. Times now read on your chosen clock.' };
 }

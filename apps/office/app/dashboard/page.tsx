@@ -5,6 +5,7 @@ import { AutoRefresh } from '../_components/AutoRefresh';
 import { ShortStaffedPanel } from './_components/ShortStaffedPanel';
 import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
+import { currentTimeFormat } from '../_lib/timeFormat';
 import { UpcomingTable } from './_components/UpcomingTable';
 import { ViewerZone } from './_components/ViewerZone';
 import { loadDashboard } from './data';
@@ -47,11 +48,12 @@ export default async function Page() {
   // on the ten-day list. The views withhold it too; this drops the panel
   // rather than drawing it empty.
   const showMoney = officeCan(await currentOfficeRole(), 'finance');
-  const [{ kpis, finance, upcoming, problem }, shortStaffed] = await Promise.all([
+  const [{ kpis, finance, upcoming, problem }, shortStaffed, format] = await Promise.all([
     loadDashboard({ finance: showMoney }),
     loadShortStaffed(),
+    currentTimeFormat(),
   ]);
-  const asOf = kpis ? formatAsOf(new Date(kpis.asOf)) : null;
+  const asOf = kpis ? formatAsOf(new Date(kpis.asOf), format) : null;
   const today = todayInUk();
 
   return (

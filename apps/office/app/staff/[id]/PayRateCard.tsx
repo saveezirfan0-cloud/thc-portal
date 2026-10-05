@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Button, Modal, Note, Panel } from '@thc/ui';
+import { Alert, Button, Modal, Note, Panel, useTimeFormat } from '@thc/ui';
 import { parseRate, poundsInput } from '../../roles/money';
 import { clearPayRate, savePayRate } from './actions';
 import { HOLIDAY_LABEL, payRateFigures, payRateSetLine, storedPence } from './payRate';
@@ -36,6 +36,7 @@ export function PayRateCard({
   /** Finance + write, and not a removed profile. */
   editable: boolean;
 }) {
+  const format = useTimeFormat();
   const [dialog, setDialog] = useState<'edit' | 'clear' | null>(null);
   const [typed, setTyped] = useState('');
   const [failure, setFailure] = useState<string | null>(null);
@@ -119,7 +120,7 @@ export function PayRateCard({
           <span className="k">Final rate</span>
           <span className="mono cyan">{shown.final}</span>
           <span className="k">Updated</span>
-          <span className="mono sm muted">{payRateSetLine(payRate)}</span>
+          <span className="mono sm muted">{payRateSetLine(payRate, format)}</span>
         </div>
       ) : (
         <Note>

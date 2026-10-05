@@ -18,6 +18,7 @@ import {
   SegToggle,
   Select,
   Textarea,
+  useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { useAutoRefresh } from '../_components/useAutoRefresh';
@@ -541,9 +542,10 @@ function CandidateCard({
   chaser?: ChaserState;
   onOpen: (row: CandidateRow) => void;
 }) {
+  const format = useTimeFormat();
   const age = stageAge(stageEnteredAt(row, column), now);
   const reminder = chaserLine(chaser);
-  const lines = [...cardLines(row, column, now), ...(reminder ? [reminder] : [])];
+  const lines = [...cardLines(row, column, now, format), ...(reminder ? [reminder] : [])];
   const interview = column === 'interview_requested' || column === 'interview_completed';
   return (
     <KanbanCard onOpen={() => onOpen(row)}>

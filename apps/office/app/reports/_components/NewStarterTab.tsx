@@ -1,4 +1,5 @@
 import { Alert, Avatar, Panel, Pill } from '@thc/ui';
+import type { TimeFormat } from '@thc/domain';
 import type { NewStarter } from '../data';
 import {
   dottedDate,
@@ -24,10 +25,12 @@ export function NewStarterTab({
   view,
   starters,
   sends,
+  format,
 }: {
   view: ReportView;
   starters: NewStarter[];
   sends: ReportSend[];
+  format?: TimeFormat;
 }) {
   const period = newStarterPeriod(view.date);
   const latest = sends[0] ?? null;
@@ -170,11 +173,11 @@ export function NewStarterTab({
             <span className="muted sm">No Monday run has happened yet.</span>
           ) : null}
           {sends.map((send) => {
-            const status = sendStatus(send);
+            const status = sendStatus(send, format);
             return (
               <div className="row" key={send.id}>
                 <span className="mono sm muted when">
-                  {formatUkStamp(send.created_at ?? send.period_end)}
+                  {formatUkStamp(send.created_at ?? send.period_end, format)}
                 </span>
                 <span className={`sent ${status.tone}`}>{status.text}</span>
                 <span className="sm muted">

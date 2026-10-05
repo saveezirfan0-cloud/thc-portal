@@ -4,6 +4,7 @@ import {
   type CandidateRow,
   type HardGate,
   type ScoreWeights,
+  type TimeFormat,
   normaliseLanguages,
   parseWeights,
   showsUnderUnavailable,
@@ -210,7 +211,12 @@ async function selectIn<T>(
   return { rows: results.flatMap((r) => (r.data ?? []) as T[]), error: null };
 }
 
-export async function loadBoard(eventId: string, now: Date = new Date()): Promise<BoardLoad> {
+export async function loadBoard(
+  eventId: string,
+  now: Date = new Date(),
+  /** The operator's clock (ADR-0085), for the times written into row labels. */
+  format?: TimeFormat,
+): Promise<BoardLoad> {
   if (!supabaseConfigured()) return { event: null, problem: NO_SUPABASE };
   const supabase = eventsDb(await cookies());
 
@@ -650,7 +656,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
               )
             : null,
           poolProblem: problem,
-          unavailable: buildUnavailable(rows, ended, people, live, calendar.windows),
+          unavailable: buildUnavailable(rows, ended, people, live, calendar.windows, format),
           calendarProblem: calendar.problem,
           handovers: handovers(id),
           escalation: escalating.has(id),

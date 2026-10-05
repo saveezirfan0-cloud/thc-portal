@@ -1,4 +1,5 @@
 import { AutoRefresh } from '../_components/AutoRefresh';
+import { currentTimeFormat } from '../_lib/timeFormat';
 import { loadInbox } from './data';
 import { InboxScreen } from './InboxScreen';
 import { parsePeriod, parseStatus } from './filters';
@@ -28,7 +29,11 @@ export default async function Page({
   return (
     <>
       <AutoRefresh />
-      <InboxScreen data={await loadInbox(filters)} filters={filters} />
+      <InboxScreen
+        data={await loadInbox(filters)}
+        filters={filters}
+        format={await currentTimeFormat()}
+      />
     </>
   );
 }

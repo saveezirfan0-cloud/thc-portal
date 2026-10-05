@@ -98,3 +98,10 @@
   justify-content: flex-end;
   padding: 10px 14px;
 }
+
+/* A date and a time side by side (ResolveModal's UkDateTimeField). */
+.dt2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-12);
+}

@@ -1,4 +1,4 @@
-import { ukInstant } from '@thc/domain';
+import { type TimeFormat, clockLabel, ukInstant } from '@thc/domain';
 
 /**
  * When the Allocation Timesheet (D1) and the Completed Allocation Timesheet
@@ -210,9 +210,14 @@ const UK_STAMP = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 });
 
-/** "28/09 14:00", UK — an audit-style stamp (§1.8). */
-export function ukShortStamp(iso: string): string {
-  return UK_STAMP.format(new Date(iso)).replace(',', '');
+/**
+ * "28/09 14:00", UK — an audit-style stamp (§1.8), or "28/09 2:00 pm" for an
+ * operator on the 12-hour clock (ADR-0085). Only the on-screen hint takes a
+ * format; the job itself writes nothing a person reads.
+ */
+export function ukShortStamp(iso: string, format?: TimeFormat): string {
+  const [day = '', time = ''] = UK_STAMP.format(new Date(iso)).replace(',', '').split(' ');
+  return `${day} ${clockLabel(time, format)}`;
 }
 
 /**
@@ -224,14 +229,16 @@ export function autosendHint(
   kind: DocumentKind,
   config: AutosendConfig,
   state: { sentAt: string | null; started: boolean; ended: boolean },
+  format?: TimeFormat,
 ): string | null {
   if (kind === 'allocation') {
     if (state.sentAt)
-      return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
+      return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt, format)}`;
     if (!config.allocation.enabled || state.started) return null;
-    return `Sent automatically the day before at ${config.allocation.time} (UK time)`;
+    return `Sent automatically the day before at ${clockLabel(config.allocation.time, format)} (UK time)`;
   }
-  if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
+  if (state.sentAt)
+    return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt, format)}`;
   if (!config.completed.enabled) return null;
-  return `Sent automatically the morning after at ${config.completed.time} (UK time), once every check-out is resolved`;
+  return `Sent automatically the morning after at ${clockLabel(config.completed.time, format)} (UK time), once every check-out is resolved`;
 }

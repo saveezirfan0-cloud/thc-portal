@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Alert, EmptyState, Note, Panel, Pill, ScheduledWindow } from '@thc/ui';
+import { Alert, EmptyState, Note, Panel, Pill, ScheduledWindow, useTimeFormat } from '@thc/ui';
 import { addedOn, availabilityLength, availabilityRepeats, availabilityWhen } from './additions';
 import type { AvailabilityRow } from './types';
 
@@ -24,6 +24,7 @@ export function Availability({
   problem?: string | null;
   name: string;
 }) {
+  const format = useTimeFormat();
   return (
     <div className="stack">
       {problem ? <Alert tone="coral">The calendar could not be read: {problem}</Alert> : null}
@@ -59,7 +60,7 @@ export function Availability({
                   const repeats = availabilityRepeats(row);
                   return (
                     <tr key={row.id}>
-                      <td className="cell-title">{availabilityWhen(row)}</td>
+                      <td className="cell-title">{availabilityWhen(row, format)}</td>
                       <td data-label="Length" className="mono sm">
                         {availabilityLength(row)}
                       </td>
