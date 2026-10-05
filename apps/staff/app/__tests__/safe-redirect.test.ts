@@ -6,7 +6,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
  * `//evil` already but not `/\evil`, which a browser reads as the same
  * thing. Both now go through packages/db/src/redirect.ts.
  */
-vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
+// `set` is there for the sign-in's clearing of the clock cookie (ADR-0085).
+vi.mock('next/headers', () => ({ cookies: async () => ({ set: () => {} }) }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);

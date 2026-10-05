@@ -1,5 +1,5 @@
-import { UK_ZONE, formatDateIn, formatTimeIn } from '@thc/domain';
-import type { ChangeKind } from '@thc/domain';
+import { DEFAULT_TIME_FORMAT, UK_ZONE, formatDateIn, formatTimeIn } from '@thc/domain';
+import type { ChangeKind, TimeFormat } from '@thc/domain';
 
 /**
  * Request a change — what the worker reads about their own requests
@@ -69,7 +69,11 @@ export type StatusLine =
  *   otherwise  nothing — approved has already changed the field, and a
  *              withdrawal was the worker's own doing.
  */
-export function statusLine(requests: readonly ChangeRequest[], kind: ChangeKind): StatusLine {
+export function statusLine(
+  requests: readonly ChangeRequest[],
+  kind: ChangeKind,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): StatusLine {
   const latest = requests
     .filter((r) => r.kind === kind)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
@@ -85,7 +89,7 @@ export function statusLine(requests: readonly ChangeRequest[], kind: ChangeKind)
       state: 'pending',
       id: latest.id,
       text: `${NOUN[kind]} change requested · with the office`,
-      detail: `Requested: ${what} · ${ukStamp(latest.createdAt)} (UK time)`,
+      detail: `Requested: ${what} · ${ukStamp(latest.createdAt, format)} (UK time)`,
     };
   }
   if (latest.status === 'rejected') {
@@ -104,9 +108,9 @@ export function canRequest(requests: readonly ChangeRequest[], kind: ChangeKind)
 }
 
 /** "Thu 18 Sep, 14:37" in UK time — the moment the request was made. */
-export function ukStamp(iso: string): string {
+export function ukStamp(iso: string, format: TimeFormat = DEFAULT_TIME_FORMAT): string {
   const at = new Date(iso);
-  return `${formatDateIn(at, UK_ZONE, { weekday: 'short' })}, ${formatTimeIn(at, UK_ZONE)}`;
+  return `${formatDateIn(at, UK_ZONE, { weekday: 'short' })}, ${formatTimeIn(at, UK_ZONE, format)}`;
 }
 
 /** Where "Request a change" and "Request again" go. */

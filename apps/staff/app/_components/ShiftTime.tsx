@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  DEFAULT_TIME_FORMAT,
   UK_ZONE,
   formatDateIn,
   formatHours,
@@ -9,6 +10,8 @@ import {
   sectionHours,
   ukToday,
 } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
+import { useTimeFormat } from '@thc/ui';
 import { useViewerZone } from './useViewerZone';
 
 /**
@@ -26,6 +29,9 @@ import { useViewerZone } from './useViewerZone';
  * starts on, relative to the UK's today, because the scheduled line is UK
  * time. The "your time" line underneath is `yourTimeLine()`: the viewer's
  * window, said once, with a date only where the viewer's day differs.
+ *
+ * Both lines are written on the viewer's clock (ADR-0085): 24-hour unless
+ * they chose 12-hour. Which instant, which zone, which day is unchanged.
  */
 export function ShiftTime({
   startsAt,
@@ -45,10 +51,11 @@ export function ShiftTime({
   now?: Date;
 }) {
   const zone = useViewerZone();
+  const format = useTimeFormat();
   // One "(UK)" for the window, not one per end (§1.8).
-  const window = `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)}${needsDualZone(zone) ? ' (UK)' : ''}`;
+  const window = `${formatTimeIn(startsAt, UK_ZONE, format)} – ${formatTimeIn(endsAt, UK_ZONE, format)}${needsDualZone(zone) ? ' (UK)' : ''}`;
   const primary = withDate ? `${dayPrefix(startsAt, now, withMonth)} · ${window}` : window;
-  const secondary = yourTimeLine(startsAt, endsAt, zone);
+  const secondary = yourTimeLine(startsAt, endsAt, zone, format);
   return (
     <span className="shift-time">
       <span className="mono">
@@ -70,9 +77,14 @@ export function ShiftTime({
  * names; an end past midnight reads the way the UK line already does
  * ("18:00 – 01:00"), without a second date.
  */
-export function yourTimeLine(startsAt: Date, endsAt: Date, zone: string): string | null {
+export function yourTimeLine(
+  startsAt: Date,
+  endsAt: Date,
+  zone: string,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): string | null {
   if (!needsDualZone(zone)) return null;
-  const window = `${formatTimeIn(startsAt, zone)} – ${formatTimeIn(endsAt, zone)} your time`;
+  const window = `${formatTimeIn(startsAt, zone, format)} – ${formatTimeIn(endsAt, zone, format)} your time`;
   const ukDay = ukToday(startsAt);
   const localDay = new Intl.DateTimeFormat('en-CA', {
     timeZone: zone,

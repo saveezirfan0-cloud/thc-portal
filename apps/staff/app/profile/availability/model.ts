@@ -1,4 +1,5 @@
 import {
+  DEFAULT_TIME_FORMAT,
   UK_ZONE,
   formatDateIn,
   formatTimeIn,
@@ -6,7 +7,7 @@ import {
   ukInstant,
   ukToday,
 } from '@thc/domain';
-import type { UnavailabilityInput, UnavailabilityRefusal } from '@thc/domain';
+import type { TimeFormat, UnavailabilityInput, UnavailabilityRefusal } from '@thc/domain';
 
 /**
  * Availability — the pure half of `/profile/availability` (ADR-0043,
@@ -104,18 +105,21 @@ function lastUkDay(entry: Pick<UnavailabilityEntry, 'endsAt'>): string {
  *   all day, a range    "Mon 29 Sep – Fri 3 Oct"
  *   a time window       "Wed 1 Oct · 18:00 – 23:00" (the screen adds "UK time")
  */
-export function entryTitle(entry: UnavailabilityEntry): string {
+export function entryTitle(
+  entry: UnavailabilityEntry,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): string {
   const first = ukToday(entry.startsAt);
   if (entry.allDay) {
     const last = lastUkDay(entry);
     return last === first ? ukDayLabel(first) : `${ukDayLabel(first)} – ${ukDayLabel(last)}`;
   }
-  const window = `${formatTimeIn(entry.startsAt, UK_ZONE)} – ${formatTimeIn(entry.endsAt, UK_ZONE)}`;
+  const window = `${formatTimeIn(entry.startsAt, UK_ZONE, format)} – ${formatTimeIn(entry.endsAt, UK_ZONE, format)}`;
   const endDay = ukToday(entry.endsAt);
   // A window over several dates names both; an overnight one reads like a
   // shift, "Fri 3 Oct · 22:00 – 02:00".
   if (daysBetween(first, endDay) > 1) {
-    return `${ukDayLabel(first)} ${formatTimeIn(entry.startsAt, UK_ZONE)} – ${ukDayLabel(endDay)} ${formatTimeIn(entry.endsAt, UK_ZONE)}`;
+    return `${ukDayLabel(first)} ${formatTimeIn(entry.startsAt, UK_ZONE, format)} – ${ukDayLabel(endDay)} ${formatTimeIn(entry.endsAt, UK_ZONE, format)}`;
   }
   return `${ukDayLabel(first)} · ${window}`;
 }
@@ -229,7 +233,11 @@ export function repeatHint(form: AddForm): string {
  * the phone is on UK time, the entry is all day, or the fields are not a
  * window yet. "19:00 – 00:00 your time (Madrid)".
  */
-export function addSheetYourTime(form: AddForm, zone: string): string | null {
+export function addSheetYourTime(
+  form: AddForm,
+  zone: string,
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
+): string | null {
   if (!needsDualZone(zone) || form.allDay) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.fromDate)) return null;
   if (!/^\d{2}:\d{2}$/.test(form.fromTime) || !/^\d{2}:\d{2}$/.test(form.toTime)) return null;
@@ -242,7 +250,7 @@ export function addSheetYourTime(form: AddForm, zone: string): string | null {
   const start = ukInstant(form.fromDate, form.fromTime);
   const end = ukInstant(endDate, form.toTime);
   const city = zone.split('/').pop()?.replace(/_/g, ' ') ?? zone;
-  return `${formatTimeIn(start, zone)} – ${formatTimeIn(end, zone)} your time (${city})`;
+  return `${formatTimeIn(start, zone, format)} – ${formatTimeIn(end, zone, format)} your time (${city})`;
 }
 
 /** Today in the UK, for the date inputs' defaults and `min`. */

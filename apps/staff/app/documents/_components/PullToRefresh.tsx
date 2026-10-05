@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { displayTime, viewerZone } from '@thc/domain';
+import { useTimeFormat } from '@thc/ui';
 
 /**
  * "↓ Pull to refresh" (§10.4).
@@ -24,6 +25,7 @@ const THRESHOLD_PX = 70;
 
 export function PullToRefresh({ updatedAt }: { updatedAt: string }) {
   const router = useRouter();
+  const format = useTimeFormat();
   const [pending, start] = useTransition();
   const [armed, setArmed] = useState(false);
   const [stamp, setStamp] = useState<string | null>(null);
@@ -32,9 +34,11 @@ export function PullToRefresh({ updatedAt }: { updatedAt: string }) {
   useEffect(() => {
     const instant = new Date(updatedAt);
     setStamp(
-      Number.isNaN(instant.getTime()) ? null : displayTime(instant, 'actual', viewerZone()).primary,
+      Number.isNaN(instant.getTime())
+        ? null
+        : displayTime(instant, 'actual', viewerZone(), false, format).primary,
     );
-  }, [updatedAt]);
+  }, [updatedAt, format]);
 
   useEffect(() => {
     function onStart(event: TouchEvent) {

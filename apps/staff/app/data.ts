@@ -1,6 +1,12 @@
 import { cookies } from 'next/headers';
-import { UK_ZONE, formatTimeIn, overlapVerdict } from '@thc/domain';
-import type { CancelCause, OpenShiftRow, StaffBooking, StaffBookingStatus } from '@thc/domain';
+import { DEFAULT_TIME_FORMAT, UK_ZONE, formatTimeIn, overlapVerdict } from '@thc/domain';
+import type {
+  CancelCause,
+  OpenShiftRow,
+  StaffBooking,
+  StaffBookingStatus,
+  TimeFormat,
+} from '@thc/domain';
 import { staffDb, supabaseConfigured } from './db';
 import { isCurrent, isMine } from './shifts/model';
 
@@ -312,6 +318,7 @@ export function overlapWarning(
     | 'eventTitle'
     | 'role'
   >[],
+  format: TimeFormat = DEFAULT_TIME_FORMAT,
 ): string | null {
   const venueKey = (b: { venueName: string; venueAddress: string }) =>
     `${b.venueName}|${b.venueAddress}`;
@@ -328,7 +335,7 @@ export function overlapWarning(
       venueId: venueKey(held),
     });
     if (verdict === 'clear') continue;
-    const window = `${formatTimeIn(held.startsAt, UK_ZONE)} – ${formatTimeIn(held.endsAt, UK_ZONE)}`;
+    const window = `${formatTimeIn(held.startsAt, UK_ZONE, format)} – ${formatTimeIn(held.endsAt, UK_ZONE, format)}`;
     const which = `${held.eventTitle} · ${held.role} ${window}`;
     return verdict === 'intersects'
       ? `Overlaps your confirmed ${which}`

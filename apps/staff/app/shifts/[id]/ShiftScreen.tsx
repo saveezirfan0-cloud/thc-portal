@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer } from '@thc/ui';
+import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, canCancelShift, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
 import { CHECK_IN_FIX, TRACKING_FIX, getFix } from '../../../lib/geo';
 import type { Fix, FixFailure, FixOptions } from '../../../lib/geo';
@@ -123,8 +123,10 @@ export function ShiftScreen({
   // press, so they do not ask for the worker's location either.
   const dead = isEndScreen(phase) || turnedAway !== null;
   const zone = viewerZone();
-  const local = (iso: string) => formatTimeIn(new Date(iso), zone);
-  const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
+  // ADR-0085: written on the worker's own clock; which instant is unchanged.
+  const format = useTimeFormat();
+  const local = (iso: string) => formatTimeIn(new Date(iso), zone, format);
+  const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE, format);
   const dual = needsDualZone(zone);
 
   const locate = useCallback(async (options: FixOptions): Promise<Fix | null> => {

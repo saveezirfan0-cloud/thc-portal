@@ -6,6 +6,7 @@ import { DocumentsHub } from './_components/DocumentsHub';
 import { PullToRefresh } from './_components/PullToRefresh';
 import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
 import { loadMyRtwChecks } from '../_lib/rtwCheck';
+import { getTimeFormat } from '../_lib/timeFormat';
 import { loadDocuments, supabaseConfigured } from './data';
 import { documentsGate } from './gate';
 import { buildDocumentsView } from './model';
@@ -68,7 +69,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
     ? await Promise.all([loadDocuments(), loadMyRtwChecks()])
     : [null, {}];
   const data = loaded ? { ...loaded, rtwChecks } : null;
-  const view = data ? buildDocumentsView(data) : null;
+  const view = data ? buildDocumentsView(data, await getTimeFormat()) : null;
   const locked = gate.lock === 'documents';
   // The instant of this read; PullToRefresh words it in the phone's own
   // zone (§1.8: an actual stamp is viewer-local only).

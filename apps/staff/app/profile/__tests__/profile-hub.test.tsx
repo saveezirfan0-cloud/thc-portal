@@ -68,6 +68,7 @@ describe('the Profile tab (ADR-0042)', () => {
       '/profile/refer',
       '/profile/payments',
       '/profile/security',
+      '/profile/preferences', // ADR-0085, beside Security
       '/notifications',
     ]);
     expect(html).toContain('Edit profile');
@@ -103,6 +104,24 @@ describe('the Profile tab (ADR-0042)', () => {
     );
   });
 
+  it('offers Preferences to exactly the workers who can reach Security settings (ADR-0085)', () => {
+    const security = (h: string) => hrefs(h).includes('/profile/security');
+    const prefs = (h: string) => hrefs(h).includes('/profile/preferences');
+    const cases = [
+      worker(),
+      worker({ blockers: ['document_expired:passport'] }),
+      worker({ status: 'documents', employeeId: null }),
+      worker({ status: 'blocked', blockKind: 'manual' }),
+      worker({ status: 'inactive' }),
+    ];
+    for (const profile of cases) {
+      const page = render(profile);
+      expect(prefs(page)).toBe(security(page));
+    }
+    expect(prefs(render(worker()))).toBe(true);
+    expect(prefs(render(worker({ status: 'blocked', blockKind: 'manual' })))).toBe(false);
+  });
+
   it('offers Refer a friend to a compliant worker only, with no reward copy (ADR-0047)', () => {
     expect(hrefs(render(worker()))).toContain('/profile/refer');
     expect(html(worker({ blockers: ['document_expired:passport'] }))).not.toContain(
@@ -128,6 +147,7 @@ describe('the Profile tab (ADR-0042)', () => {
     expect(links[0]).toBe('/onboarding');
     expect(links).not.toContain('/profile/details');
     expect(links).not.toContain('/profile/security');
+    expect(links).not.toContain('/profile/preferences');
     expect(links).not.toContain('/profile/payments');
     expect(links).toContain('/notifications');
     expect(hrefs(render(worker()))).not.toContain('/onboarding');

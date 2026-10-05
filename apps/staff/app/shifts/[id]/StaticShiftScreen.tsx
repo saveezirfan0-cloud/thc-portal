@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Pill } from '@thc/ui';
+import { Pill, useTimeFormat } from '@thc/ui';
 import {
   STATIC_SCREEN_ACTION,
   STATIC_SCREEN_CONTACT_LEAD,
@@ -36,7 +36,8 @@ export function StaticShiftScreen({
 }) {
   const copy: { badge: string; tone: 'coral' | 'amber'; title: string; body?: string } =
     kind === 'handed_over' ? HANDED_OVER_COPY : STATIC_SCREEN_COPY[kind];
-  const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
+  const format = useTimeFormat();
+  const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE, format);
   const day = formatDateIn(new Date(shift.startsAt), UK_ZONE, { weekday: 'short' });
 
   // The wireframe's summary line: enough to tell WHICH shift this was, which
