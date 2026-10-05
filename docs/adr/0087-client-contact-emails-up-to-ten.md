@@ -4,7 +4,7 @@
 
 ## Decision
 
-`clients.contact_emails` holds 1–10 addresses (`clients_contact_emails_check`, migration `20261005120100`). `MAX_CONTACT_EMAILS` in `apps/office/app/clients/validate.ts` is 10 and the form's message follows it.
+`clients.contact_emails` holds 1–10 addresses (`clients_contact_emails_check`, migration `20261005130000`). `MAX_CONTACT_EMAILS` in `apps/office/app/clients/validate.ts` is 10 and the form's message follows it.
 
 ## Consequences
 
