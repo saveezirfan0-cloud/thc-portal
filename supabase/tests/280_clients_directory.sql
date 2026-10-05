@@ -12,7 +12,7 @@
 -- delete function anywhere.
 -- =====================================================================
 begin;
-select plan(31);
+select plan(33);
 \ir _shared/fixtures.psql
 
 \set past_event '9c9c9c9c-0000-4000-8000-000000000001'
@@ -137,6 +137,18 @@ select throws_ok(
 select throws_ok(
   $$ select create_client('N', 'A', '1', 'P', array['a@b.co'], null, true) $$,
   '23514', null, 'neither policy has a "not set" state (§9.7)');
+
+-- Up to ten contact emails (ADR-0086).
+select lives_ok(
+  $$ select create_client('Ten Emails Ltd', 'T', '1', 'P',
+       array['a1@b.co','a2@b.co','a3@b.co','a4@b.co','a5@b.co','a6@b.co','a7@b.co','a8@b.co','a9@b.co','a10@b.co'],
+       true, false) $$,
+  'a client can have ten contact emails');
+select throws_ok(
+  $$ select create_client('Eleven Emails Ltd', 'T', '1', 'P',
+       array['a1@b.co','a2@b.co','a3@b.co','a4@b.co','a5@b.co','a6@b.co','a7@b.co','a8@b.co','a9@b.co','a10@b.co','a11@b.co'],
+       true, false) $$,
+  '23514', null, 'but not eleven');
 
 select lives_ok(
   $$ select update_client('aaaaaaaa-0000-4000-8000-000000000001', 'Renamed Client', 'Ada A',
