@@ -24,6 +24,8 @@ import type {
   ReferredOnBoard,
   ReturningRow,
   RoleOption,
+  UnmatchedWilloRead,
+  UnmatchedWilloRow,
 } from './types';
 import { candidateReferral, referredOnBoard } from './view-model';
 
@@ -175,9 +177,46 @@ export async function loadBoardChasers(
   }
 }
 
+// ---------------------------------------------------------------------
+// Unmatched Willo responses (ADR-0087) — a separate read of
+// `willo_unmatched_responses()`, a Back Office-only definer
+// (20261005110000), like the chasers: the pipeline view is not restated.
+// A failed read is said out loud: "no panel because the read failed" would
+// be the very silence this panel exists to end.
+// ---------------------------------------------------------------------
+export interface UnmatchedWilloReader {
+  rpc(
+    fn: 'willo_unmatched_responses',
+    args: { p_include_resolved: boolean },
+  ): PromiseLike<{
+    data: UnmatchedWilloRow[] | null;
+    error: { message: string } | null;
+  }>;
+}
+
+export async function loadUnmatchedWillo(
+  reader: UnmatchedWilloReader,
+): Promise<UnmatchedWilloRead> {
+  try {
+    const answer = await reader.rpc('willo_unmatched_responses', { p_include_resolved: false });
+    if (answer.error) return { rows: [], problem: answer.error.message };
+    // Unresolved only, whatever the database was asked: a resolved row on
+    // the board would be a response nobody needs to act on.
+    return { rows: (answer.data ?? []).filter((row) => !row.resolved), problem: null };
+  } catch (error) {
+    return { rows: [], problem: messageOf(error) };
+  }
+}
+
 export async function loadBoard(): Promise<BoardData> {
   if (!supabaseConfigured()) {
-    return { candidates: [], returning: [], roles: [], problem: NOT_CONFIGURED };
+    return {
+      candidates: [],
+      returning: [],
+      roles: [],
+      unmatchedWillo: { rows: [], problem: NOT_CONFIGURED, noProject: true },
+      problem: NOT_CONFIGURED,
+    };
   }
   const supabase = createClient(await cookies());
   const [candidates, returning, roles] = await Promise.all([
@@ -197,12 +236,13 @@ export async function loadBoard(): Promise<BoardData> {
 
   const error = candidates.error ?? returning.error ?? roles.error;
   if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
-  const [referrals, chasers] = await Promise.all([
+  const [referrals, chasers, unmatchedWillo] = await Promise.all([
     loadBoardReferrals(supabase as unknown as ReferralReader, [
       ...(candidates.data ?? []).map((row) => row.id),
       ...(returning.data ?? []).map((row) => row.staff_id),
     ]),
     loadBoardChasers(supabase as unknown as ChaserReader),
+    loadUnmatchedWillo(supabase as unknown as UnmatchedWilloReader),
   ]);
   return {
     // §2.7: the onboarding selfie follows them through the whole system —
@@ -214,6 +254,7 @@ export async function loadBoard(): Promise<BoardData> {
     referredProblem: referrals.problem,
     chasers: chasers.chasers,
     chasersProblem: chasers.problem,
+    unmatchedWillo,
     problem: null,
   };
 }

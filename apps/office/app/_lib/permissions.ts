@@ -152,3 +152,14 @@ export function explainOfficeError(message: string): string | null {
 export function canMarkInterviewComplete(role: OfficeRole | null | undefined): boolean {
   return role === 'owner' || role === 'manager';
 }
+
+/**
+ * May this role link an unmatched Willo response to a candidate, or dismiss
+ * it (ADR-0087)? Owners and managers — the pair `willo_unmatched_link()` and
+ * `willo_unmatched_dismiss()` let through. Linking can reject a candidate
+ * (a Willo "Rejected" is replayed), so as with the interview override an
+ * unknown role is answered `false`.
+ */
+export function canResolveUnmatchedWillo(role: OfficeRole | null | undefined): boolean {
+  return role === 'owner' || role === 'manager';
+}

@@ -475,6 +475,192 @@ export function describeShape(rawBody: string, limit = 60): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------------
+// Who the delivery is about — for a participant we do not know (ADR-0087)
+// ---------------------------------------------------------------------
+
+export interface CapturedApplicant {
+  /** "First Last", or the single name field, tidied; null if the body has none. */
+  name: string | null;
+  /** Lower-cased, shaped like an address; null if the body has none. */
+  email: string | null;
+}
+
+/**
+ * Keys whose subtree is somebody else: the reviewer who moved the card, the
+ * interview itself, THC's own company and departments. Nothing under them is
+ * ever taken for the applicant.
+ */
+const NOT_THE_APPLICANT = new Set([
+  'user',
+  'users',
+  'reviewer',
+  'reviewers',
+  'reviewedby',
+  'createdby',
+  'updatedby',
+  'owner',
+  'member',
+  'members',
+  'author',
+  'actor',
+  'assignedto',
+  'assignee',
+  'team',
+  'company',
+  'organisation',
+  'organization',
+  'department',
+  'departments',
+  'interview',
+  'interviews',
+  'webhook',
+]);
+
+/** Prefixes an applicant's field may carry (`participant_email`, `candidate_name`). */
+const APPLICANT_PREFIX = '(?:participant|candidate|applicant|contact)?';
+const EMAIL_FIELD = new RegExp(`^${APPLICANT_PREFIX}(?:email|emailaddress)$`);
+const FIRST_FIELD = new RegExp(`^${APPLICANT_PREFIX}(?:firstname|givenname|forename)$`);
+const LAST_FIELD = new RegExp(`^${APPLICANT_PREFIX}(?:lastname|familyname|surname)$`);
+const FULL_FIELD = new RegExp(`^${APPLICANT_PREFIX}(?:fullname|displayname)$`);
+const PREFIXED_NAME = /^(?:participant|candidate|applicant|contact)name$/;
+const EMAIL_SHAPE = /^[^\s@<>"']{1,64}@[^\s@<>"']{1,190}\.[^\s@<>"']{2,}$/;
+
+const norm = (key: string): string => key.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function tidyName(value: string): string | null {
+  // Control characters become spaces (no regex range: the linter rightly
+  // distrusts one).
+  const spaced = Array.from(value, (ch) => {
+    const code = ch.charCodeAt(0);
+    return code < 32 || code === 127 ? ' ' : ch;
+  }).join('');
+  const text = spaced.replace(/\s+/g, ' ').trim();
+  return text === '' ? null : text.slice(0, 120);
+}
+
+function tidyEmail(value: string): string | null {
+  const text = value.trim().toLowerCase();
+  return text.length <= 254 && EMAIL_SHAPE.test(text) ? text : null;
+}
+
+/**
+ * The name and email fields of ONE object's own properties. `allowBareName`
+ * is true only for the object that holds the participant's key: a bare
+ * `name` elsewhere is as likely to be the interview's or the company's.
+ */
+function identityOf(node: Json, allowBareName: boolean): CapturedApplicant {
+  let email: string | null = null;
+  let first: string | null = null;
+  let last: string | null = null;
+  let full: string | null = null;
+  for (const [rawKey, value] of Object.entries(node)) {
+    if (typeof value !== 'string') continue;
+    const key = norm(rawKey);
+    if (!email && EMAIL_FIELD.test(key)) email = tidyEmail(value);
+    else if (!first && FIRST_FIELD.test(key)) first = tidyName(value);
+    else if (!last && LAST_FIELD.test(key)) last = tidyName(value);
+    else if (
+      !full &&
+      (FULL_FIELD.test(key) || PREFIXED_NAME.test(key) || (allowBareName && key === 'name'))
+    )
+      full = tidyName(value);
+  }
+  const joined = [first, last].filter(Boolean).join(' ');
+  return { name: joined !== '' ? joined : full, email };
+}
+
+interface Holder {
+  node: Json;
+  /** The holder first, then its parents, nearest first. */
+  chain: Json[];
+  depth: number;
+}
+
+/** Every object that has `key` as one of its own string values. */
+function holdersOf(root: unknown, key: string): Holder[] {
+  const found: Holder[] = [];
+  const walk = (node: unknown, chain: Json[], depth: number) => {
+    if (depth > MAX_DEPTH) return;
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, chain, depth + 1);
+      return;
+    }
+    if (!isObject(node)) return;
+    const here = [node, ...chain];
+    if (Object.values(node).some((value) => value === key)) {
+      found.push({ node, chain: here, depth });
+    }
+    for (const [childKey, child] of Object.entries(node)) {
+      if (NOT_THE_APPLICANT.has(norm(childKey))) continue;
+      walk(child, here, depth + 1);
+    }
+  };
+  walk(root, [], 0);
+  return found;
+}
+
+/**
+ * Best-effort name and email for the participant a delivery is about, for
+ * the Back Office's "unmatched Willo responses" (ADR-0087). THC's payload is
+ * not pinned down (ADR-0066), so this looks where a participant's details
+ * usually are and never throws:
+ *
+ *   1. the object that holds the participant's key, then its parents (two
+ *      levels): `{participant: {key, name, email}}`, `{candidate_key,
+ *      candidate_email}` and the like;
+ *   2. otherwise any first/last/full-name or email field anywhere in the
+ *      body, except under the reviewer, the interview or the company.
+ *
+ * A bare `name` is trusted only in step 1, on the object holding the key.
+ * Values are tidied and capped; an address must look like one. The result is
+ * personal data: the caller stores it (willo_record_refusal) and must never
+ * log it — the delivery log stays values-free (`describeShape`).
+ */
+export function capturedApplicant(rawBody: string, willoCandidateId: string): CapturedApplicant {
+  const none: CapturedApplicant = { name: null, email: null };
+  let body: unknown;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return none;
+  }
+  if (!isObject(body)) return none;
+
+  const found: CapturedApplicant = { name: null, email: null };
+  const take = (from: CapturedApplicant) => {
+    found.name ??= from.name;
+    found.email ??= from.email;
+  };
+  const complete = () => found.name !== null && found.email !== null;
+
+  const holders = holdersOf(body, willoCandidateId).sort((a, b) => b.depth - a.depth);
+  for (const holder of holders) {
+    holder.chain.slice(0, 3).forEach((node, index) => {
+      if (!complete()) take(identityOf(node, index === 0));
+    });
+    if (found.name !== null || found.email !== null) break;
+  }
+
+  if (!complete()) {
+    const walk = (node: unknown, depth: number) => {
+      if (depth > MAX_DEPTH || complete()) return;
+      if (Array.isArray(node)) {
+        for (const item of node) walk(item, depth + 1);
+        return;
+      }
+      if (!isObject(node)) return;
+      take(identityOf(node, false));
+      for (const [childKey, child] of Object.entries(node)) {
+        if (NOT_THE_APPLICANT.has(norm(childKey))) continue;
+        walk(child, depth + 1);
+      }
+    };
+    walk(body, 0);
+  }
+  return found;
+}
+
 /**
  * `eventHint` is the event our webhook address names (`?event=new_response`):
  * Willo sends one event per webhook, so the address we registered says which

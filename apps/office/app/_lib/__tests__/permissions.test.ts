@@ -3,6 +3,7 @@ import {
   DEFAULT_OFFICE_ROLE,
   OFFICE_ROLES,
   canMarkInterviewComplete,
+  canResolveUnmatchedWillo,
   canOpen,
   explainOfficeError,
   isOfficeRole,
@@ -144,5 +145,19 @@ describe('mark interview complete without Willo (ADR-0077)', () => {
   it('is hidden when the role is unknown', () => {
     expect(canMarkInterviewComplete(null)).toBe(false);
     expect(canMarkInterviewComplete(undefined)).toBe(false);
+  });
+});
+
+describe('resolve an unmatched Willo response (ADR-0087)', () => {
+  it('is for owners and managers — the pair 774_willo_unmatched_responses lets through', () => {
+    expect(OFFICE_ROLES.filter((role) => canResolveUnmatchedWillo(role))).toEqual([
+      'owner',
+      'manager',
+    ]);
+  });
+
+  it('is hidden when the role is unknown', () => {
+    expect(canResolveUnmatchedWillo(null)).toBe(false);
+    expect(canResolveUnmatchedWillo(undefined)).toBe(false);
   });
 });

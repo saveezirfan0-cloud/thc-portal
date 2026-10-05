@@ -408,3 +408,36 @@
   color: var(--cyan-ink);
   text-decoration: underline;
 }
+
+/* ---- unmatched Willo responses (ADR-0087) ---- */
+.unmatched-willo .unmatched-intro {
+  padding: var(--sp-12) var(--sp-20);
+  font-size: var(--fs-13);
+  border-bottom: 1px solid var(--line);
+}
+.unmatched-table .unmatched-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+.unmatched-table .unmatched-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  align-items: center;
+  justify-content: flex-end;
+}
+.unmatched-table tr.is-busy td {
+  opacity: 0.6;
+}
+.unmatched-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.unmatched-done {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-12);
+}

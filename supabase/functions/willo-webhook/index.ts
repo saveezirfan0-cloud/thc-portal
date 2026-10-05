@@ -31,6 +31,7 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { runJob } from '../_shared/job.ts';
 import {
+  capturedApplicant,
   describeShape,
   eventTime,
   isPermanentRefusal,
@@ -42,7 +43,7 @@ import {
   willoLookupPath,
   willoSignatureConfig,
 } from '../../../packages/db/src/willo.ts';
-import type { InviteDue } from '../../../packages/db/src/willo.ts';
+import type { CapturedApplicant, InviteDue } from '../../../packages/db/src/willo.ts';
 import { issueActivationLink } from '../../../packages/db/src/provision.ts';
 import type { AdminAuth } from '../../../packages/db/src/provision.ts';
 
@@ -78,27 +79,87 @@ interface Plan {
   needsAccount: boolean;
 }
 
+/**
+ * Nothing the receiver answers 500 to may leave no trace (security brief
+ * Invariant 7): this is the retryable twin of `refuse`. One audit row per
+ * failed delivery (`willo_event_failed`, willo_record_failure, migration
+ * 20260927161300), then 500 so Willo retries. Recording is best effort — if
+ * the database is the reason for the failure, the 500 must still go out.
+ */
+async function fail(
+  db: SupabaseClient | null,
+  candidate: string,
+  eventKey: string,
+  code: string,
+): Promise<Response> {
+  if (db) {
+    try {
+      const { error } = await db.rpc('willo_record_failure', {
+        p_willo_candidate_id: candidate,
+        p_event: eventKey,
+        p_code: code,
+      });
+      if (error)
+        console.error('[willo-webhook] could not record the failure', { error: error.message });
+    } catch (cause) {
+      console.error('[willo-webhook] could not record the failure', {
+        error: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+  }
+  return json(500, { error: code.replace(/_/g, ' ') });
+}
+
+/** Best effort by definition: a failure to read a name must never lose the refusal row. */
+function applicantOf(raw: string, willoCandidateId: string): CapturedApplicant {
+  try {
+    return capturedApplicant(raw, willoCandidateId);
+  } catch {
+    return { name: null, email: null };
+  }
+}
+
 async function refuse(
   db: SupabaseClient,
   candidate: string,
   eventKey: string,
   message: string,
+  extra: { applicant?: CapturedApplicant; occurredAt?: string } = {},
 ): Promise<Response> {
   const code = refusalCode(message);
   console.error('[willo-webhook] refused for good', { candidate, eventKey, code });
+  // The applicant's name and email are personal data kept in the audit row
+  // (only for a participant no staff row owns) so the office can find them;
+  // they are never logged, here or anywhere (ADR-0087).
   const { error } = await db.rpc('willo_record_refusal', {
     p_willo_candidate_id: candidate,
     p_event: eventKey,
     p_code: code,
+    p_name: extra.applicant?.name ?? null,
+    p_email: extra.applicant?.email ?? null,
+    p_occurred_at: extra.occurredAt ?? null,
   });
-  if (error)
+  if (error) {
+    // The refusal row is the ONLY trace of an interview response that matched
+    // nobody. If it was not written, 200 would lose the response for good:
+    // answer 500 so Willo retries.
     console.error('[willo-webhook] could not record the refusal', { error: error.message });
+    return fail(db, candidate, eventKey, 'refusal_not_recorded');
+  }
   // 200: Willo must stop retrying something no retry can change. The
-  // office sees the card still waiting for a decision, and the audit row.
+  // office sees the card still waiting for a decision, and the audit row —
+  // for an unknown participant, in "Unmatched Willo responses" on /onboarding.
   return json(200, { outcome: 'refused', code });
 }
 
-async function webhook(request: Request): Promise<Response> {
+/** What the catch-all in `Deno.serve` can say about a delivery that threw. */
+interface Context {
+  db: SupabaseClient | null;
+  candidate: string;
+  event: string;
+}
+
+async function webhook(request: Request, ctx: Context): Promise<Response> {
   const declared = Number(request.headers.get('content-length') ?? '0');
   if (declared > MAX_BODY_BYTES) return json(413, { error: 'too large' });
   const raw = await request.text();
@@ -142,6 +203,9 @@ async function webhook(request: Request): Promise<Response> {
   const at = eventTime(event.occurredAt, Date.now());
 
   const db = serviceClient();
+  ctx.db = db;
+  ctx.candidate = event.willoCandidateId;
+  ctx.event = event.eventKey;
 
   // Which of the delivery's keys is one of our candidates: the named path
   // first, then any 32-hex value (the interview's own key matches nobody).
@@ -159,7 +223,7 @@ async function webhook(request: Request): Promise<Response> {
         event: event.eventKey,
         error: planError.message,
       });
-      return json(500, { error: 'plan failed' });
+      return fail(db, key, event.eventKey, 'plan_failed');
     }
     if (data) {
       event.willoCandidateId = key;
@@ -175,7 +239,10 @@ async function webhook(request: Request): Promise<Response> {
   if (!plan) {
     // Created in Willo by hand, or removed (§1.7) since. Nothing to move.
     console.warn('[willo-webhook] unknown Willo candidate', log);
-    return refuse(db, event.willoCandidateId, event.eventKey, 'unknown_willo_candidate');
+    return refuse(db, event.willoCandidateId, event.eventKey, 'unknown_willo_candidate', {
+      applicant: applicantOf(raw, event.willoCandidateId),
+      occurredAt: at,
+    });
   }
   const p = plan as Plan;
 
@@ -191,7 +258,7 @@ async function webhook(request: Request): Promise<Response> {
         return refuse(db, event.willoCandidateId, event.eventKey, error.message);
       }
       console.error('[willo-webhook] record failed', { ...log, error: error.message });
-      return json(500, { error: 'record failed' });
+      return fail(db, event.willoCandidateId, event.eventKey, 'record_failed');
     }
     console.log('[willo-webhook] applied', { ...log, result: data });
     return json(200, { outcome: (data as { outcome?: string } | null)?.outcome ?? 'applied' });
@@ -203,7 +270,7 @@ async function webhook(request: Request): Promise<Response> {
   if (!origin) {
     // Retryable on purpose: set the secret and Willo's next retry lands.
     console.error('[willo-webhook] STAFF_APP_URL is not set — E3 cannot carry a link', log);
-    return json(500, { error: 'not configured' });
+    return fail(db, event.willoCandidateId, event.eventKey, 'not_configured');
   }
   const issued = await issueActivationLink(
     db.auth.admin as unknown as AdminAuth,
@@ -219,7 +286,7 @@ async function webhook(request: Request): Promise<Response> {
       code: issued.code,
       detail: issued.detail,
     });
-    return json(500, { error: 'provisioning failed' });
+    return fail(db, event.willoCandidateId, event.eventKey, 'provisioning_failed');
   }
 
   const { data, error } = await db.rpc('willo_accept_with_account', {
@@ -234,7 +301,7 @@ async function webhook(request: Request): Promise<Response> {
       return refuse(db, event.willoCandidateId, event.eventKey, error.message);
     }
     console.error('[willo-webhook] accept failed', { ...log, error: error.message });
-    return json(500, { error: 'accept failed' });
+    return fail(db, event.willoCandidateId, event.eventKey, 'accept_failed');
   }
   console.log('[willo-webhook] accepted', { ...log, result: data });
   return json(200, { outcome: (data as { outcome?: string } | null)?.outcome ?? 'applied' });
@@ -316,10 +383,14 @@ Deno.serve((request) => {
   if (request.method !== 'POST') return json(405, { error: 'POST only' });
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
   if (path.endsWith('/invite')) return invite(request);
-  return webhook(request).catch((cause) => {
+  const ctx: Context = { db: null, candidate: '', event: '' };
+  return webhook(request, ctx).catch((cause) => {
     console.error('[willo-webhook] unexpected', {
       error: cause instanceof Error ? cause.message : String(cause),
     });
-    return json(500, { error: 'unexpected' });
+    // Only once the delivery was read is there a candidate and event to name.
+    return ctx.db
+      ? fail(ctx.db, ctx.candidate, ctx.event, 'unexpected')
+      : json(500, { error: 'unexpected' });
   });
 });

@@ -127,7 +127,55 @@ export interface BoardData {
   chasers?: Record<string, ChaserState>;
   /** Set when that read failed: the board says so, not "nobody was reminded". */
   chasersProblem?: string | null;
+  /**
+   * Willo responses that matched no candidate (ADR-0087): a separate read of
+   * `willo_unmatched_responses()`. Absent draws nothing; a failed read is said
+   * out loud (`problem`), never shown as "none".
+   */
+  unmatchedWillo?: UnmatchedWilloRead;
   problem: string | null;
+}
+
+/**
+ * One row of `willo_unmatched_responses()` (20261005110000, ADR-0087): a
+ * Willo participant the receiver has no candidate for, with the events it
+ * sent. `name` and `email` are whatever the delivery carried, if anything.
+ */
+export interface UnmatchedWilloRow {
+  willo_candidate_id: string;
+  first_seen: string;
+  last_seen: string;
+  event_count: number;
+  /** Distinct events, oldest first: `new_response`, `accepted`, `rejected`, … */
+  events: string[];
+  name: string | null;
+  email: string | null;
+  review_url: string | null;
+  resolved: boolean;
+  resolution: 'linked' | 'dismissed' | null;
+  resolved_at: string | null;
+  resolved_by_name: string | null;
+  resolution_reason: string | null;
+  staff_id: string | null;
+}
+
+/** What the board knows about the unmatched responses. */
+export interface UnmatchedWilloRead {
+  rows: UnmatchedWilloRow[];
+  /** Set when the read failed, or when there is no Supabase project. */
+  problem: string | null;
+  /** True when `problem` is only that this environment has no Supabase project. */
+  noProject?: boolean;
+}
+
+/** What `willo_unmatched_link()` answers. */
+export interface UnmatchedLinkResult {
+  outcome: 'linked' | 'already_linked';
+  staffId: string;
+  status?: string;
+  replayed?: { event: string; outcome: string }[];
+  /** Willo accepted them; the office's ordinary Accept (roles + E3) finishes it. */
+  acceptPending?: boolean;
 }
 
 /** One row of `onboarding_chaser_state()` (20261001212000, ADR-0071). */

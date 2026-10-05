@@ -24,6 +24,7 @@ import { OfficeShell } from '../_components/OfficeShell';
 import { useAutoRefresh } from '../_components/useAutoRefresh';
 import { employeeId, formatRating, formatShowRate } from '../staff/staff';
 import { resolveReturning } from './actions';
+import { UnmatchedWilloPanel } from './UnmatchedWilloPanel';
 import {
   COLUMNS,
   boardColumns,
@@ -125,11 +126,14 @@ export function OnboardingBoard({
   data,
   now,
   applyUrl,
+  canResolveUnmatched = false,
 }: {
   data: BoardData;
   now: string;
   /** Null when the Staff App's origin is not configured in production. */
   applyUrl: string | null;
+  /** Owners and managers may link or dismiss an unmatched Willo response (ADR-0087). */
+  canResolveUnmatched?: boolean;
 }) {
   const router = useRouter();
   // Cards move on their own (Willo webhook, documents verified, quiz passed),
@@ -227,6 +231,13 @@ export function OnboardingBoard({
     >
       <div className="stack">
         {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
+        {/* ADR-0087: Willo responses that matched no candidate. Shown only when
+            there is one, or when the read failed — never silently. */}
+        <UnmatchedWilloPanel
+          read={data.unmatchedWillo}
+          candidates={data.candidates}
+          canResolve={canResolveUnmatched}
+        />
         {data.referredProblem ? (
           // Audit D18: no chip because the read failed is not "nobody referred".
           <Alert tone="coral">

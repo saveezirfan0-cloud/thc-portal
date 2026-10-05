@@ -11515,8 +11515,42 @@ export type Database = {
         Returns: undefined;
       };
       willo_record_refusal: {
-        Args: { p_code: string; p_event: string; p_willo_candidate_id: string };
+        Args: {
+          p_code: string;
+          p_email?: string;
+          p_event: string;
+          p_name?: string;
+          p_occurred_at?: string;
+          p_willo_candidate_id: string;
+        };
         Returns: undefined;
+      };
+      willo_unmatched_dismiss: {
+        Args: { p_reason: string; p_willo_candidate_id: string };
+        Returns: Json;
+      };
+      willo_unmatched_link: {
+        Args: { p_staff: string; p_willo_candidate_id: string };
+        Returns: Json;
+      };
+      willo_unmatched_responses: {
+        Args: { p_include_resolved?: boolean };
+        Returns: {
+          email: string;
+          event_count: number;
+          events: string[];
+          first_seen: string;
+          last_seen: string;
+          name: string;
+          resolution: string;
+          resolution_reason: string;
+          resolved: boolean;
+          resolved_at: string;
+          resolved_by_name: string;
+          review_url: string;
+          staff_id: string;
+          willo_candidate_id: string;
+        }[];
       };
       withdraw_application: { Args: { p_booking: string }; Returns: Json };
       withdraw_booking: { Args: { p_booking: string }; Returns: Json };

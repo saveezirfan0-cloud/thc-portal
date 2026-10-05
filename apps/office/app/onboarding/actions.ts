@@ -11,7 +11,8 @@ import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
 import type { AcceptRpc, AdminAuth, ResendRpc } from './activation';
 import type { Period } from './view-model';
-import type { ActionResult } from './types';
+import { linkedMessage } from './unmatched';
+import type { ActionResult, UnmatchedLinkResult } from './types';
 
 /**
  * Writes for /onboarding and /onboarding/:id (§2.2, §2.3, §2.4, §2.12).
@@ -75,6 +76,12 @@ const MESSAGES: Record<string, string> = {
   unknown_staff: 'This person no longer exists — refresh the page.',
   // Mark interview complete without Willo (ADR-0077)
   not_permitted: 'Only an owner or a manager can do this.',
+  // Unmatched Willo responses (20261005110000, ADR-0087)
+  unknown_unmatched_response: 'That Willo response is no longer in the list — refresh the page.',
+  key_linked_elsewhere:
+    'That Willo response already belongs to another candidate — refresh the page.',
+  candidate_already_linked:
+    'That candidate is already linked to a Willo interview, so it cannot be attached to a second one.',
 };
 
 function explain(message: string): string {
@@ -245,6 +252,51 @@ export async function markInterviewComplete(
     'onboarding_mark_interview_complete',
     { p_staff: staffId, p_reason: reason.trim() },
     paths(staffId),
+  );
+}
+
+/**
+ * Link an unmatched Willo response to a candidate (ADR-0087). The database
+ * does it all in one transaction — sets the Willo key on the candidate and
+ * replays what Willo said, in order, through the same path the webhook uses —
+ * and refuses anyone but an owner or a manager, a candidate already linked
+ * to Willo, a removed one, and one past the interview decision. The answer
+ * says whether the card still needs the office's Accept.
+ */
+export async function linkUnmatchedWillo(
+  willoCandidateId: string,
+  staffId: string,
+  name: string,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as {
+    rpc(
+      fn: 'willo_unmatched_link',
+      args: { p_willo_candidate_id: string; p_staff: string },
+    ): PromiseLike<{ data: UnmatchedLinkResult | null; error: { message: string } | null }>;
+  };
+  const { data, error } = await supabase.rpc('willo_unmatched_link', {
+    p_willo_candidate_id: willoCandidateId,
+    p_staff: staffId,
+  });
+  if (error) return { ok: false, message: explain(error.message) };
+  for (const path of paths(staffId)) revalidatePath(path);
+  return {
+    ok: true,
+    message: linkedMessage(data ?? { outcome: 'linked', staffId }, name),
+  };
+}
+
+/** Dismiss an unmatched Willo response with a reason (ADR-0087); audited. */
+export async function dismissUnmatchedWillo(
+  willoCandidateId: string,
+  reason: string,
+): Promise<ActionResult> {
+  if (reason.trim() === '') return { ok: false, message: MESSAGES.reason_required! };
+  return call(
+    'willo_unmatched_dismiss',
+    { p_willo_candidate_id: willoCandidateId, p_reason: reason.trim() },
+    ['/onboarding'],
   );
 }
 

@@ -1,3 +1,5 @@
+import { currentOfficeRole } from '../_components/officeUser';
+import { canResolveUnmatchedWillo } from '../_lib/permissions';
 import { loadBoard } from './data';
 import { OnboardingBoard } from './OnboardingBoard';
 
@@ -13,8 +15,15 @@ export const dynamic = 'force-dynamic';
  * so the whole board is judged against the same moment.
  */
 export default async function Page() {
-  const data = await loadBoard();
-  return <OnboardingBoard data={data} now={new Date().toISOString()} applyUrl={applyUrl()} />;
+  const [data, role] = await Promise.all([loadBoard(), currentOfficeRole()]);
+  return (
+    <OnboardingBoard
+      data={data}
+      now={new Date().toISOString()}
+      applyUrl={applyUrl()}
+      canResolveUnmatched={canResolveUnmatchedWillo(role)}
+    />
+  );
 }
 
 /**
