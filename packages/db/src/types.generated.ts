@@ -8595,25 +8595,6 @@ export type Database = {
         Args: { p_status: Database['public']['Enums']['staff_status'] };
         Returns: string;
       };
-      new_starter_export_rows: {
-        Args: { p_send: number };
-        Returns: {
-          country: string;
-          date_of_birth: string;
-          employee_id: number;
-          first_shift_date: string;
-          gender: string;
-          hmrc_statement: string;
-          home_address: string;
-          ni_number: string;
-          photo_path: string;
-          postcode: string;
-          removed: boolean;
-          staff_id: string;
-          staff_name: string;
-          student_loan: string;
-        }[];
-      };
       new_starter_postcode: { Args: { p_address: string }; Returns: string };
       new_starter_report: {
         Args: { p_date: string };
@@ -9168,11 +9149,7 @@ export type Database = {
         Returns: Json;
       };
       queue_finance_report_email: {
-        Args: {
-          p_new_starter_path?: string;
-          p_payroll_path: string;
-          p_payroll_send: number;
-        };
+        Args: { p_payroll_path: string; p_payroll_send: number };
         Returns: Json;
       };
       queue_offer_notice: {

@@ -1,13 +1,18 @@
 /**
- * The three emails that carry a FILE — Scope §9.9 (BG-08) and §11.4.
+ * The emails that carry a FILE — Scope §9.9 (BG-08) and §11.4, and the New
+ * Starter (HMRC) report's own Monday email (ADR-0088).
  *
  * They are not in §8's register, and `TEMPLATES` is held to exactly that
  * register by its test, so they live here instead, beside it:
  *
- *   BG08  the Monday 09:00 finance email — payroll CSV always, the New
- *         Starter (HMRC) CSV only if there were new starters (§9.9, §7).
+ *   BG08  the Monday 09:00 finance email — the payroll CSV (§9.9, §7). The
+ *         New Starter (HMRC) CSV used to be a second attachment; since
+ *         ADR-0088 it is NS1's.
  *         From admin@ (§9.12: "the finance reports"), to the same two
  *         payroll addresses as E5/E6 — read from E5, not retyped.
+ *   NS1   the New Starter (HMRC) report, every Monday from 09:00 UK, only
+ *         when there were new starters (§9.9, ADR-0088). Same sender and
+ *         the same two addresses as BG08.
  *   D1    the Allocation Timesheet, "Send allocation sheet" from the event
  *         page (§11.4), sent BEFORE the event — so it never speaks of
  *         check-in, check-out or hours worked from them.
@@ -66,7 +71,7 @@ export interface DocumentEmailTemplate {
  * What the THC Light HTML of a document email says, in its order: eyebrow,
  * title (the event, or the subject), "Hello,", `intro`, the facts box, the
  * `steps`, the file cards, `closing`, the reply button, the sign-off.
- * BG08 has no `intro`: its HTML is its text body, laid out.
+ * BG08 and NS1 have no `intro`: their HTML is their text body, laid out.
  */
 export interface DocumentEmailHtml {
   eyebrow: string;
@@ -94,6 +99,19 @@ export const DOCUMENT_EMAILS = {
     html: { eyebrow: 'Weekly payroll', attachmentNote: 'CSV · attached' },
     trigger: 'BG-08 — every Monday at 09:00 UK (§9.9, §7)',
     timing: 'Monday 09:00 Europe/London; a missed Monday is caught up the same week',
+  },
+  NS1: {
+    code: 'NS1',
+    channel: 'email',
+    sender: 'admin',
+    recipients: TEMPLATES.E5.recipients,
+    bucket: 'reports',
+    title: 'THC new starters (HMRC) — {periodStart} to {periodEnd}',
+    body: 'Hello,\n\nAttached is the New Starter (HMRC) report for Monday {periodStart} to Sunday {periodEnd}: {newStarterLine}\n\nEach row is a worker who has worked their first shift, with the details needed to set them up: NI number, home address, date of birth, first shift date, HMRC statement and student loan answers.\n\nThe Hospitality Company\nadmin@thehospitalitycompany.co.uk',
+    html: { eyebrow: 'New starters (HMRC)', attachmentNote: 'CSV · attached' },
+    trigger: 'NS1 — every Monday at 09:00 UK, when there were new starters (§9.9, ADR-0088)',
+    timing:
+      'Monday 09:00 Europe/London; a missed Monday is caught up the same week. A week with nobody new sends nothing',
   },
   D1: {
     code: 'D1',
@@ -211,14 +229,25 @@ function derivedValues(
     const held = Number(values.held ?? 0);
     return {
       ...values,
+      // ADR-0088: the New Starter (HMRC) report is NS1's own email. A row queued
+      // before that (it carries `newStarters`) still says what it attached.
       newStarterLine:
-        newStarters > 0
-          ? `The New Starter (HMRC) report is attached too: ${newStarters} new starter${newStarters === 1 ? '' : 's'} who worked their first shift in this run.\n\n`
-          : 'There were no new starters this week, so there is no New Starter (HMRC) report.\n\n',
+        values.newStarters === undefined
+          ? 'The New Starter (HMRC) report comes in its own email every Monday.\n\n'
+          : newStarters > 0
+            ? `The New Starter (HMRC) report is attached too: ${newStarters} new starter${newStarters === 1 ? '' : 's'} who worked their first shift in this run.\n\n`
+            : 'There were no new starters this week, so there is no New Starter (HMRC) report.\n\n',
       heldLine:
         held > 0
           ? `${held} shift${held === 1 ? ' is' : 's are'} held out of this file: ${held === 1 ? 'it has' : 'they have'} an unresolved "No check-out" and will go out with the first Monday run after a manager resolves ${held === 1 ? 'it' : 'them'}.`
           : 'No shifts were held back this week.',
+    };
+  }
+  if (code === 'NS1') {
+    const n = Number(values.newStarters ?? 0);
+    return {
+      ...values,
+      newStarterLine: `${n} new starter${n === 1 ? '' : 's'}.`,
     };
   }
   const po = (values.poNumber ?? '').trim();
@@ -272,6 +301,14 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
       { label: 'Shifts', value: get('rows') },
       { label: 'New starters', value: get('newStarters') },
       { label: 'Held back', value: get('held') },
+    ];
+  }
+  if (code === 'NS1') {
+    const start = get('periodStart');
+    const end = get('periodEnd');
+    return [
+      { label: 'Period', value: start && end ? `Monday ${start} to Sunday ${end}` : '' },
+      { label: 'New starters', value: get('newStarters') },
     ];
   }
   const common = [

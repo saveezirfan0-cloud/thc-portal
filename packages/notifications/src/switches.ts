@@ -48,9 +48,16 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       {
         code: 'BG08',
         label: 'Weekly payroll email',
-        when: 'Monday 09:00 UK — last week’s payroll CSV, and the New Starter (HMRC) CSV',
+        when: 'Monday 09:00 UK — last week’s payroll CSV',
         warning:
           'The weekly job does not run, so no week is exported or marked as sent. Switched back on, it sends last week; earlier weeks are exported from Reports.',
+      },
+      {
+        code: 'NS1',
+        label: 'New Starter (HMRC) report',
+        when: 'Monday 09:00 UK, when there were new starters — to Payroll and Gisela, on its own',
+        warning:
+          'New starters are not sent to Payroll. Switched back on, the next Monday sends everyone not yet sent, including the weeks in between.',
       },
       {
         code: 'E5',

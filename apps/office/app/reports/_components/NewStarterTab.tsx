@@ -69,7 +69,9 @@ export function NewStarterTab({
         Only NEW workers who actually worked a shift last week — not every new starter, only those
         who need to be paid. Onboarded on a Friday, first shift two weeks later → they appear in
         that Monday&apos;s report. Columns and data are entirely different from payroll&apos;s and
-        are never merged. Role and a title / salutation field are explicitly excluded.
+        are never merged. Role and a title / salutation field are explicitly excluded. The report is
+        emailed to Payroll and Gisela on its own every Monday from 09:00, and not at all for a week
+        with nobody new.
       </Alert>
 
       <Panel

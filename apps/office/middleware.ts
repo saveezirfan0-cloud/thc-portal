@@ -49,14 +49,18 @@ function isPublic(pathname: string): boolean {
 const SIGN_OUT_PATH = '/auth/signout';
 
 /**
- * The job routes pg_cron calls (ADR-0025, ADR-0074). They carry no Supabase
+ * The job routes pg_cron calls (ADR-0025, ADR-0074, ADR-0088). They carry no Supabase
  * session — they are machine-to-machine — and gate themselves on a bearer
  * secret in constant time (RTW_JOB_SECRET, app/api/jobs/_lib/auth.ts),
  * refusing everything when it is unset. So the session gate steps aside for
  * exactly these paths and POST only; a page added under /api/jobs later
  * does not inherit the exemption.
  */
-const JOB_PATHS = ['/api/jobs/rtw-check', '/api/jobs/event-documents'];
+const JOB_PATHS = [
+  '/api/jobs/rtw-check',
+  '/api/jobs/event-documents',
+  '/api/jobs/new-starter-report',
+];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
