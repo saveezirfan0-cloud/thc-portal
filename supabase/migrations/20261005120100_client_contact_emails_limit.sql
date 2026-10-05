@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261005120000 · up to 10 contact emails per client (ADR-0087)
+-- Migration 20261005120100 · up to 10 contact emails per client (ADR-0087)
 --
 -- 0001_init.sql capped clients.contact_emails at 5 addresses. A council
 -- client (Hackney Town Council) names six people who all need the
