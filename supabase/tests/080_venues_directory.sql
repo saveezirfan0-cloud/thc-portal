@@ -11,7 +11,7 @@
 -- itself, which is nothing.
 -- =====================================================================
 begin;
-select plan(45);
+select plan(51);
 \ir _shared/fixtures.psql
 
 -- The fixtures give the venue two events, both in the future (current_date
@@ -114,6 +114,27 @@ select lives_ok(
   'admin edits a venue through update_venue');
 select is((select geofence_radius_m from venues where id = :'venue_new'), 3000,
   'the edited radius is stored');
+
+-- A venue can belong to a client (20261005120000, ADR-0087): the Shift
+-- Builder pre-selects it when that client is chosen.
+select is((select client_id from venues where name = 'Fixture Created'), null,
+  'a venue is tied to no client unless asked — create_venue''s client argument is optional');
+select lives_ok(
+  $$ select create_venue('Fixture Client Venue', '4 Test Street, London', 51.53, -0.12, 'hotel', 150,
+                         'aaaaaaaa-0000-4000-8000-000000000001') $$,
+  'admin creates a venue tied to a client');
+select is((select client_id from venues where name = 'Fixture Client Venue'), :'clienta'::uuid,
+  'the venue stores the client it belongs to');
+select is((select client_name from venue_directory_v where name = 'Fixture Client Venue'),
+          (select name from clients where id = :'clienta'),
+  'the directory names that client');
+select lives_ok(
+  $$ select update_venue('7a7a7a7a-0000-4000-8000-00000000000a', 'Fixture Edited',
+                         '3 Test Street, London', 51.6, -0.2, 'outdoor', 3000,
+                         'aaaaaaaa-0000-4000-8000-000000000002') $$,
+  'admin changes the client a venue belongs to through update_venue');
+select is((select client_id from venues where id = :'venue_new'), :'clientb'::uuid,
+  'the edited client is stored');
 
 select lives_ok(
   $$ select delete_venue('7a7a7a7a-0000-4000-8000-00000000000a') $$,

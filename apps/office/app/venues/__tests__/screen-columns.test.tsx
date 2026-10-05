@@ -31,6 +31,8 @@ const venue = (over: Partial<Venue>): Venue => ({
   created_at: '2026-10-04T23:30:00Z',
   created_by: 'u1',
   created_by_name: 'Gisela M.',
+  client_id: null,
+  client_name: null,
   ...over,
 });
 
@@ -38,6 +40,7 @@ describe('/venues list — Date added and Added by (§9.11)', () => {
   const markup = renderToStaticMarkup(
     <VenuesScreen
       venueTypes={TYPES}
+      clients={[]}
       venues={[
         venue({}),
         venue({ id: 'v2', name: 'Sky Garden', created_by: null, created_by_name: null }),

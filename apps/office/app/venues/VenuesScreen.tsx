@@ -15,7 +15,7 @@ import { VenueMap, markerLabel } from './VenueMap';
 import { VenueModal } from './VenueModal';
 import { DeleteVenueModal } from './DeleteVenueModal';
 import { formatCoordinates } from './geo';
-import type { Venue, VenueType } from './types';
+import type { ClientChoice, Venue, VenueType } from './types';
 import './venues.css';
 
 type Tab = 'list' | 'map';
@@ -26,6 +26,7 @@ type Sort = 'name' | 'newest' | 'oldest' | 'events';
 export interface VenuesScreenProps {
   venues: Venue[];
   venueTypes: VenueType[];
+  clients: ClientChoice[];
 }
 
 /**
@@ -37,7 +38,7 @@ export interface VenuesScreenProps {
  * about that, and it is the one thing about this screen that is easy to
  * get wrong.
  */
-export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
+export function VenuesScreen({ venues, venueTypes, clients }: VenuesScreenProps) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('list');
   const [query, setQuery] = useState('');
@@ -340,6 +341,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           key={editing === 'new' ? 'new' : editing.id}
           venue={editing === 'new' ? null : editing}
           venueTypes={venueTypes}
+          clients={clients}
           onClose={close}
           onSaved={saved}
         />

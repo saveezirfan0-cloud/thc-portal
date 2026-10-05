@@ -47,6 +47,8 @@ export interface VenueOption {
   venueType: string;
   venueTypeLabel: string;
   geofenceRadiusM: number;
+  /** The client this venue belongs to (ADR-0087), or null. */
+  clientId: string | null;
 }
 
 export interface ReferenceData {
@@ -84,6 +86,7 @@ interface VenueRow {
   address: string;
   venue_type: string;
   geofence_radius_m: number;
+  client_id: string | null;
 }
 interface RoleRow {
   id: string;
@@ -109,7 +112,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     supabase.from('client_rate_cards').select('client_id, role_id, dress_codes'),
     supabase
       .from('venues')
-      .select('id, name, address, venue_type, geofence_radius_m')
+      .select('id, name, address, venue_type, geofence_radius_m, client_id')
       .is('deleted_at', null)
       .order('name'),
     supabase.from('venue_types').select('key, label'),
@@ -174,6 +177,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       venueType: v.venue_type,
       venueTypeLabel: typeLabels.get(v.venue_type) ?? v.venue_type,
       geofenceRadiusM: v.geofence_radius_m,
+      clientId: v.client_id,
     })),
     roles: ((roles.data ?? []) as RoleRow[]).map((r) => ({
       id: r.id,

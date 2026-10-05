@@ -42,7 +42,7 @@ async function callerIsAdmin(): Promise<boolean> {
  * names still have to match 0007_venues_directory.sql, and regenerating
  * (`pnpm --filter @thc/db gen:types`) makes the cast redundant.
  */
-type RpcArguments = Record<string, string | number>;
+type RpcArguments = Record<string, string | number | null>;
 
 interface RpcClient {
   rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
@@ -69,6 +69,7 @@ export async function createVenue(draft: VenueDraft): Promise<ActionResult> {
     p_lng: draft.lng,
     p_venue_type: draft.venue_type,
     p_geofence_radius_m: draft.geofence_radius_m,
+    p_client_id: draft.client_id,
   });
 }
 
@@ -85,6 +86,7 @@ export async function updateVenue(id: string, draft: VenueDraft): Promise<Action
     p_lng: draft.lng,
     p_venue_type: draft.venue_type,
     p_geofence_radius_m: draft.geofence_radius_m,
+    p_client_id: draft.client_id,
   });
 }
 

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import type { Venue, VenueType } from './types';
+import type { ClientChoice, Venue, VenueType } from './types';
 
 /**
  * Reads for /venues (§9.11).
@@ -18,6 +18,7 @@ export function supabaseConfigured(): boolean {
 export interface VenuesPageData {
   venues: Venue[];
   venueTypes: VenueType[];
+  clients: ClientChoice[];
   /** Set when the screen cannot be filled; rendered instead of an empty table. */
   problem: string | null;
 }
@@ -27,6 +28,7 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
     return {
       venues: [],
       venueTypes: [],
+      clients: [],
       problem:
         'This environment has no Supabase project, so the venue directory cannot be read. See docs/04-setup-github-vercel-supabase.md.',
     };
@@ -34,11 +36,11 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
 
   const supabase = createClient(await cookies());
 
-  const [venues, venueTypes] = await Promise.all([
+  const [venues, venueTypes, clients] = await Promise.all([
     supabase
       .from('venue_directory_v')
       .select(
-        'id, name, address, venue_type, venue_type_label, default_radius_m, geofence_radius_m, lat, lng, events_past, events_upcoming, created_at, created_by, created_by_name',
+        'id, name, address, venue_type, venue_type_label, default_radius_m, geofence_radius_m, lat, lng, events_past, events_upcoming, created_at, created_by, created_by_name, client_id, client_name',
       )
       // No deleted-venue filter here: venue_directory_v is the live
       // directory (0007_venues_directory.sql), so soft delete is one rule
@@ -52,10 +54,16 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
       .select('key, label, default_radius_m, sort_order')
       .order('sort_order')
       .returns<VenueType[]>(),
+    supabase.from('clients').select('id, name').order('name').returns<ClientChoice[]>(),
   ]);
 
-  const error = venues.error ?? venueTypes.error;
-  if (error) return { venues: [], venueTypes: [], problem: error.message };
+  const error = venues.error ?? venueTypes.error ?? clients.error;
+  if (error) return { venues: [], venueTypes: [], clients: [], problem: error.message };
 
-  return { venues: venues.data ?? [], venueTypes: venueTypes.data ?? [], problem: null };
+  return {
+    venues: venues.data ?? [],
+    venueTypes: venueTypes.data ?? [],
+    clients: clients.data ?? [],
+    problem: null,
+  };
 }

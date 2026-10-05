@@ -3,6 +3,7 @@ import { Alert } from '@thc/ui';
 import { createEvent } from '../actions';
 import { loadEvent, loadReferenceData } from '../data';
 import { preselectClient } from './preselect';
+import { venueAfterClientPick } from '../_lib/venue-for-client';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
@@ -79,6 +80,8 @@ export default async function Page({
     : {
         ...BLANK,
         clientId: preselected?.id ?? '',
+        // ADR-0087: the client's only venue arrives with it, as when picked.
+        venueId: venueAfterClientPick(reference.venues, preselected?.id ?? '', ''),
         onsiteContact: preselected?.staffContactPoint ?? '',
       };
 

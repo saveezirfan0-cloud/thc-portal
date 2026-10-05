@@ -16,6 +16,7 @@ const CLARIDGES: VenueDraft = {
   lng: -0.1477,
   venue_type: 'hotel',
   geofence_radius_m: 150,
+  client_id: null,
 };
 
 const draft = (overrides: Partial<VenueDraft>): VenueDraft => ({ ...CLARIDGES, ...overrides });

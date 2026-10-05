@@ -14,12 +14,13 @@ import {
   formatRadius,
 } from './geo';
 import type { LatLng } from './geo';
-import type { Venue, VenueType } from './types';
+import type { ClientChoice, Venue, VenueType } from './types';
 
 export interface VenueModalProps {
   /** Null creates; a venue edits it, pre-filled with its pin, address and radius. */
   venue: Venue | null;
   venueTypes: VenueType[];
+  clients: ClientChoice[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -41,10 +42,11 @@ interface Pin {
  *   · the address comes from the pin by reverse geocoding and is read-only,
  *     with the coordinates printed underneath as plain text.
  */
-export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalProps) {
+export function VenueModal({ venue, venueTypes, clients, onClose, onSaved }: VenueModalProps) {
   const editing = venue !== null;
 
   const [name, setName] = useState(venue?.name ?? '');
+  const [clientId, setClientId] = useState(venue?.client_id ?? '');
   const [venueType, setVenueType] = useState(venue?.venue_type ?? venueTypes[0]?.key ?? '');
   const [radius, setRadius] = useState(
     venue?.geofence_radius_m ?? venueTypes[0]?.default_radius_m ?? MIN_RADIUS_M,
@@ -146,6 +148,7 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
         lng: pin.point.lng,
         venue_type: venueType,
         geofence_radius_m: radius,
+        client_id: clientId || null,
       };
       const result = venue ? await updateVenue(venue.id, draft) : await createVenue(draft);
       if (result.ok) onSaved();
@@ -221,6 +224,24 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
             ))}
           </Select>
         </div>
+
+        <Select
+          label={
+            <>
+              Client <span className="muted">· optional</span>
+            </>
+          }
+          value={clientId}
+          onChange={(event) => setClientId(event.target.value)}
+          hint="Building an event for this client pre-selects the venue, so its address appears without being chosen. A client with several venues still picks one."
+        >
+          <option value="">Not tied to a client</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </Select>
 
         <div className="field">
           <label className="label" htmlFor="venue-radius">

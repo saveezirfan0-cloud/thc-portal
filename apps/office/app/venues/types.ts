@@ -37,6 +37,15 @@ export interface Venue {
   /** The manager who added it; NULL for venues that pre-date the column. */
   created_by: string | null;
   created_by_name: string | null;
+  /** The client this venue belongs to (ADR-0087), or NULL when it is not tied to one. */
+  client_id: string | null;
+  client_name: string | null;
+}
+
+/** A client the venue modal can tie a venue to. */
+export interface ClientChoice {
+  id: string;
+  name: string;
 }
 
 /** Named in the delete confirmation: "Gala Dinner (Fri 19 Sep)". */
@@ -55,6 +64,7 @@ export interface VenueDraft {
   lng: number;
   venue_type: string;
   geofence_radius_m: number;
+  client_id: string | null;
 }
 
 export type ActionResult = { ok: true } | { ok: false; message: string };

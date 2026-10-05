@@ -14,7 +14,7 @@ export const metadata = { title: 'Venues · THC Back Office' };
  * radii: they come from `venue_types`.
  */
 export default async function Page() {
-  const { venues, venueTypes, problem } = await loadVenuesPage();
+  const { venues, venueTypes, clients, problem } = await loadVenuesPage();
 
   return (
     <OfficeShell
@@ -28,7 +28,7 @@ export default async function Page() {
       }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
-      <VenuesScreen venues={venues} venueTypes={venueTypes} />
+      <VenuesScreen venues={venues} venueTypes={venueTypes} clients={clients} />
     </OfficeShell>
   );
 }

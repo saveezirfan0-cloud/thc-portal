@@ -90,18 +90,19 @@ on conflict (id) do update set
 -- Hurst Manor is deliberately 250 m (widened from the 150 m private
 -- residence default for the grounds) to exercise the override path (§9.11).
 -- ---------------------------------------------------------------------
-insert into venues (id, name, address, location, venue_type, geofence_radius_m) values
- ('50000000-0000-4000-8000-000000000001','Leonardo Royal Hotel','10 Godliman St, London EC4V 5AJ',st_setsrid(st_makepoint(-0.0990,51.5133),4326)::geography,'hotel',150),
- ('50000000-0000-4000-8000-000000000002','Mandarin Oriental Hyde Park','66 Knightsbridge, London SW1X 7LA',st_setsrid(st_makepoint(-0.1601,51.5022),4326)::geography,'hotel',150),
- ('50000000-0000-4000-8000-000000000003','The Dorchester','53 Park Lane, London W1K 1QA',st_setsrid(st_makepoint(-0.1523,51.5071),4326)::geography,'hotel',150),
- ('50000000-0000-4000-8000-000000000004','Hurst Manor','Cuckfield, Haywards Heath RH17 5LB',st_setsrid(st_makepoint(-0.1455,51.0034),4326)::geography,'private_residence',250),
- ('50000000-0000-4000-8000-000000000005','ExCeL London','Royal Victoria Dock, London E16 1XL',st_setsrid(st_makepoint(0.0294,51.5081),4326)::geography,'exhibition',400),
- ('50000000-0000-4000-8000-000000000006','Sky Garden','1 Sky Garden Walk, London EC3M 8AF',st_setsrid(st_makepoint(-0.0836,51.5112),4326)::geography,'restaurant_bar',100),
- ('50000000-0000-4000-8000-000000000007','Lord''s Cricket Ground','St John''s Wood Rd, London NW8 8QN',st_setsrid(st_makepoint(-0.1727,51.5294),4326)::geography,'stadium',500),
- ('50000000-0000-4000-8000-000000000008','Epsom Downs Racecourse','Epsom Downs, Epsom KT18 5LQ',st_setsrid(st_makepoint(-0.2586,51.3113),4326)::geography,'racecourse',1500)
+insert into venues (id, name, address, location, venue_type, geofence_radius_m, client_id) values
+ ('50000000-0000-4000-8000-000000000001','Leonardo Royal Hotel','10 Godliman St, London EC4V 5AJ',st_setsrid(st_makepoint(-0.0990,51.5133),4326)::geography,'hotel',150,'40000000-0000-4000-8000-000000000001'),
+ ('50000000-0000-4000-8000-000000000002','Mandarin Oriental Hyde Park','66 Knightsbridge, London SW1X 7LA',st_setsrid(st_makepoint(-0.1601,51.5022),4326)::geography,'hotel',150,'40000000-0000-4000-8000-000000000002'),
+ ('50000000-0000-4000-8000-000000000003','The Dorchester','53 Park Lane, London W1K 1QA',st_setsrid(st_makepoint(-0.1523,51.5071),4326)::geography,'hotel',150,'40000000-0000-4000-8000-000000000003'),
+ ('50000000-0000-4000-8000-000000000004','Hurst Manor','Cuckfield, Haywards Heath RH17 5LB',st_setsrid(st_makepoint(-0.1455,51.0034),4326)::geography,'private_residence',250,'40000000-0000-4000-8000-000000000004'),
+ ('50000000-0000-4000-8000-000000000005','ExCeL London','Royal Victoria Dock, London E16 1XL',st_setsrid(st_makepoint(0.0294,51.5081),4326)::geography,'exhibition',400,'40000000-0000-4000-8000-000000000005'),
+ ('50000000-0000-4000-8000-000000000006','Sky Garden','1 Sky Garden Walk, London EC3M 8AF',st_setsrid(st_makepoint(-0.0836,51.5112),4326)::geography,'restaurant_bar',100,null),
+ ('50000000-0000-4000-8000-000000000007','Lord''s Cricket Ground','St John''s Wood Rd, London NW8 8QN',st_setsrid(st_makepoint(-0.1727,51.5294),4326)::geography,'stadium',500,null),
+ ('50000000-0000-4000-8000-000000000008','Epsom Downs Racecourse','Epsom Downs, Epsom KT18 5LQ',st_setsrid(st_makepoint(-0.2586,51.3113),4326)::geography,'racecourse',1500,null)
 on conflict (id) do update set
   name = excluded.name, address = excluded.address, location = excluded.location,
-  venue_type = excluded.venue_type, geofence_radius_m = excluded.geofence_radius_m, deleted_at = null;
+  venue_type = excluded.venue_type, geofence_radius_m = excluded.geofence_radius_m,
+  client_id = excluded.client_id, deleted_at = null;
 
 -- ---------------------------------------------------------------------
 -- WORKERS (40) — statuses spread across the whole staff_status enum

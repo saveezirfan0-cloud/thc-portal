@@ -5110,6 +5110,7 @@ export type Database = {
       venues: {
         Row: {
           address: string;
+          client_id: string | null;
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
@@ -5121,6 +5122,7 @@ export type Database = {
         };
         Insert: {
           address: string;
+          client_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
@@ -5132,6 +5134,7 @@ export type Database = {
         };
         Update: {
           address?: string;
+          client_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
@@ -5142,6 +5145,13 @@ export type Database = {
           venue_type?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'venues_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'venues_created_by_fkey';
             columns: ['created_by'];
@@ -8190,6 +8200,8 @@ export type Database = {
       venue_directory_v: {
         Row: {
           address: string | null;
+          client_id: string | null;
+          client_name: string | null;
           created_at: string | null;
           created_by: string | null;
           created_by_name: string | null;
@@ -8921,6 +8933,7 @@ export type Database = {
       create_venue: {
         Args: {
           p_address: string;
+          p_client_id?: string;
           p_geofence_radius_m: number;
           p_lat: number;
           p_lng: number;
@@ -11331,6 +11344,7 @@ export type Database = {
       update_venue: {
         Args: {
           p_address: string;
+          p_client_id?: string;
           p_geofence_radius_m: number;
           p_id: string;
           p_lat: number;

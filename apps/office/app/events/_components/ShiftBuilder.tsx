@@ -43,7 +43,8 @@ import {
   resolveRole,
   roleChanges,
 } from '../draft';
-import type { ClientOption, ReferenceData, SavedEvent } from '../data';
+import type { ClientOption, ReferenceData, SavedEvent, VenueOption } from '../data';
+import { venueAfterClientPick, venuesOfClient } from '../_lib/venue-for-client';
 import type { EventInput } from '../actions';
 
 export interface ShiftBuilderProps {
@@ -123,6 +124,15 @@ export function ShiftBuilder({
 
   const client: ClientOption | undefined = reference.clients.find((c) => c.id === draft.clientId);
   const venue = reference.venues.find((v) => v.id === draft.venueId);
+  const clientVenues = useMemo(
+    () => venuesOfClient(reference.venues, draft.clientId),
+    [reference.venues, draft.clientId],
+  );
+  const venueOption = (option: VenueOption) => (
+    <option key={option.id} value={option.id}>
+      {option.name} — {option.address}
+    </option>
+  );
 
   const issues = useMemo(() => draftIssues(draft), [draft]);
   const window = useMemo(() => draftWindow(draft), [draft]);
@@ -191,6 +201,13 @@ export function ShiftBuilder({
     setDraft((current) => ({
       ...current,
       clientId,
+      // ADR-0087: a client with one venue brings its address with it. An
+      // event being edited keeps its venue unless it has none — changing the
+      // venue re-confirms everyone booked, so it is never a side effect.
+      venueId:
+        mode === 'new' || !current.venueId
+          ? venueAfterClientPick(reference.venues, clientId, current.venueId)
+          : current.venueId,
       onsiteContact: current.onsiteContact || (picked?.staffContactPoint ?? ''),
       roles: current.roles.map((role) => {
         const card = picked?.rateCard[role.roleId];
@@ -337,11 +354,18 @@ export function ShiftBuilder({
                 }
               >
                 <option value="">Choose…</option>
-                {reference.venues.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name} — {option.address}
-                  </option>
-                ))}
+                {clientVenues.length > 0 ? (
+                  <>
+                    <optgroup label={`${client?.name ?? 'Client'} venues`}>
+                      {clientVenues.map(venueOption)}
+                    </optgroup>
+                    <optgroup label="Other venues">
+                      {reference.venues.filter((v) => !clientVenues.includes(v)).map(venueOption)}
+                    </optgroup>
+                  </>
+                ) : (
+                  reference.venues.map(venueOption)
+                )}
               </Select>
             </div>
 
