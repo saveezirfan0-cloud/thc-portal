@@ -16,8 +16,8 @@
  *      a button the machine would refuse is never drawn and a request the
  *      machine refuses never lands.
  */
-import { STAFF_STATUSES, canTransitionStaff } from '@thc/domain';
-import type { StaffStatus as MachineStatus } from '@thc/domain';
+import { STAFF_STATUSES, canTransitionStaff, clockLabel } from '@thc/domain';
+import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { capReason, employeeId } from '../staff/staff';
 import type {
   CandidateReferral,
@@ -268,20 +268,21 @@ export function shortDate(iso: string): string {
   return `${p.day} ${MONTHS[p.month - 1]}`;
 }
 
-/** "18:44" in UK time. */
-export function ukTime(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
+/** "18:44" in UK time, or "6:44 pm" on the 12-hour clock (ADR-0085). */
+export function ukTime(iso: string, format?: TimeFormat): string {
+  const hhmm = new Intl.DateTimeFormat('en-GB', {
     timeZone: UK,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(new Date(iso));
+  return clockLabel(hhmm, format);
 }
 
 /** "15 Sep 10:02" in UK time — operational stamps on the card. */
-export function shortStamp(iso: string): string {
+export function shortStamp(iso: string, format?: TimeFormat): string {
   const p = ukParts(iso);
-  return `${p.day} ${MONTHS[p.month - 1]} ${ukTime(iso)}`;
+  return `${p.day} ${MONTHS[p.month - 1]} ${ukTime(iso, format)}`;
 }
 
 // ---------------------------------------------------------------------
@@ -321,11 +322,11 @@ function attemptsLabel(scores: number[]): string {
 }
 
 /** The Willo line on the two interview columns (§2.4). */
-export function willoLine(row: CandidateRow, now: Date): Line {
+export function willoLine(row: CandidateRow, now: Date, format?: TimeFormat): Line {
   if (row.willo_completed_at) {
     const via = row.willo_decided_via === 'office' ? '' : ' (Willo webhook)';
     return {
-      text: `Interview completed ${shortDay(row.willo_completed_at)} ${ukTime(row.willo_completed_at)}${via}`,
+      text: `Interview completed ${shortDay(row.willo_completed_at)} ${ukTime(row.willo_completed_at, format)}${via}`,
     };
   }
   if (!row.willo_linked) {
@@ -336,7 +337,7 @@ export function willoLine(row: CandidateRow, now: Date): Line {
   if (done === 0 && days >= 6) {
     return { text: `No response to the Willo invite in ${days} days`, tone: 'coral' };
   }
-  const sent = row.willo_invited_at ? ` ${shortStamp(row.willo_invited_at)}` : '';
+  const sent = row.willo_invited_at ? ` ${shortStamp(row.willo_invited_at, format)}` : '';
   const progress =
     done > 0 ? `in progress (${done} of ${row.willo_answers_total ?? '?'} answers)` : 'not started';
   return { text: `Willo invite sent${sent} · ${progress}` };
@@ -394,7 +395,12 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
 }
 
 /** Every line a card carries under the name, by column (board, Active). */
-export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line[] {
+export function cardLines(
+  row: CandidateRow,
+  column: ColumnKey,
+  now: Date,
+  format?: TimeFormat,
+): Line[] {
   const lines: Line[] = [];
   const age = stageAge(row.stage_entered_at, now);
 
@@ -403,17 +409,17 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
       // "Applied today 11:20" on the day itself (board, Interview requested).
       const applied =
         ukDaysBetween(row.applied_at, now) === 0
-          ? `Applied today ${ukTime(row.applied_at)}`
+          ? `Applied today ${ukTime(row.applied_at, format)}`
           : `Applied ${shortDay(row.applied_at)}`;
       const bits = [applied];
       if (row.age !== null) bits.push(`age ${row.age}`);
       bits.push(row.phone);
       lines.push({ text: bits.join(' · ') });
-      lines.push(willoLine(row, now));
+      lines.push(willoLine(row, now, format));
       break;
     }
     case 'interview_completed': {
-      lines.push(willoLine(row, now));
+      lines.push(willoLine(row, now, format));
       if (age.days >= 4) {
         lines.push({ text: `Awaiting a Willo decision for ${age.days} days`, tone: 'amber' });
       }
@@ -564,11 +570,41 @@ export function rejectedLines(row: CandidateRow): Line[] {
 export type BoardFilter = 'active' | 'rejected';
 export type ReasonFilter = 'any' | RejectionCause;
 
+/** Which column a card sits in, or every column. */
+export type StageFilter = 'any' | ColumnKey;
+
+/** "Needs attention" is what the card already colours amber or coral. */
+export type AttentionFilter = 'any' | 'attention' | 'stalled' | 'referred' | 'not_activated';
+
+/** How long ago they applied, in UK calendar days. */
+export type AppliedFilter = 'any' | 'today' | '7d' | '30d';
+
+export const APPLIED_DAYS: Record<Exclude<AppliedFilter, 'any'>, number> = {
+  today: 0,
+  '7d': 7,
+  '30d': 30,
+};
+
 export interface BoardQuery {
   filter: BoardFilter;
   query: string;
   roleName: string;
   reason: ReasonFilter;
+  /** Optional so a caller that only searches need not name them; absent means "any". */
+  stage?: StageFilter;
+  attention?: AttentionFilter;
+  applied?: AppliedFilter;
+}
+
+/** What the filters need that is not on the candidate row. */
+export interface BoardContext {
+  now: Date;
+  /** Candidate staff ids that arrived through a referral link (ADR-0047). */
+  referredCandidates?: ReadonlySet<string>;
+  /** Returning-applicant application ids that did. */
+  referredApplications?: ReadonlySet<string>;
+  /** The onboarding chasers' state by staff id (ADR-0071). */
+  chasers?: Readonly<Record<string, ChaserState>>;
 }
 
 export interface BoardColumn {
@@ -587,6 +623,29 @@ function matchesQuery(name: string, extra: readonly string[], query: string): bo
 }
 
 /**
+ * Does this card carry a line the office should act on? The same signals the
+ * card colours: a stage age of four days or more, a reminder that stalled or
+ * could not be delivered, a rejected document, a Criminal Record "Yes" waiting
+ * for a manual Verify.
+ */
+export function needsAttention(
+  row: CandidateRow,
+  column: ColumnKey,
+  now: Date,
+  chaser?: ChaserState,
+): boolean {
+  if (stageAge(stageEnteredAt(row, column), now).tone !== 'ok') return true;
+  if (chaser && (chaser.stalled || chaser.last_failed)) return true;
+  if (row.docs_rejected > 0) return true;
+  return row.declaration_answer === true && row.declaration_status === 'pending';
+}
+
+function appliedWithin(appliedAt: string, applied: AppliedFilter, now: Date): boolean {
+  if (applied === 'any') return true;
+  return ukDaysBetween(appliedAt, now) <= APPLIED_DAYS[applied];
+}
+
+/**
  * The six columns for one toggle position. Rejected cards are hidden by
  * default and reachable through the toggle (§2.2); returning-applicant
  * cards belong to Interview requested and to the Active view only (§2.12).
@@ -597,18 +656,58 @@ export function boardColumns(
   candidates: readonly CandidateRow[],
   returning: readonly ReturningRow[],
   q: BoardQuery,
+  ctx: BoardContext = { now: new Date() },
 ): BoardColumn[] {
+  const stage = q.stage ?? 'any';
+  const attention = q.attention ?? 'any';
+  const applied = q.applied ?? 'any';
+  const active = q.filter === 'active';
+
   const wanted = candidates.filter((row) => {
-    if (q.filter === 'active' ? !ON_BOARD.has(row.status) : row.status !== 'rejected') return false;
+    if (active ? !ON_BOARD.has(row.status) : row.status !== 'rejected') return false;
     if (!matchesQuery(row.display_name, [row.email, row.phone], q.query)) return false;
     if (q.roleName && !row.role_names.includes(q.roleName)) return false;
-    if (q.filter === 'rejected' && q.reason !== 'any' && row.rejection_cause !== q.reason)
-      return false;
+    if (!active && q.reason !== 'any' && row.rejection_cause !== q.reason) return false;
+    const column = columnFor(row);
+    if (stage !== 'any' && column !== stage) return false;
+    if (!appliedWithin(row.applied_at, applied, ctx.now)) return false;
+    // The attention filters read the live board; a rejected card has none of
+    // those lines, so the toolbar only offers them on Active.
+    if (active && column) {
+      const chaser = ctx.chasers?.[row.id];
+      switch (attention) {
+        case 'attention':
+          if (!needsAttention(row, column, ctx.now, chaser)) return false;
+          break;
+        case 'stalled':
+          if (!chaser || !(chaser.stalled || chaser.last_failed)) return false;
+          break;
+        case 'referred':
+          if (!ctx.referredCandidates?.has(row.id)) return false;
+          break;
+        case 'not_activated':
+          if (row.activated) return false;
+          break;
+      }
+    }
     return true;
   });
+
+  // A returning-applicant card is not a candidate: it has no role, stage of
+  // its own beyond Interview requested, reminders or activation. It stays for
+  // the filters that can describe it and drops out of the ones that cannot.
   const cards =
-    q.filter === 'active' && !q.roleName
-      ? returning.filter((r) => matchesQuery(r.applicant_name, [r.existing_name], q.query))
+    active &&
+    !q.roleName &&
+    (stage === 'any' || stage === 'interview_requested') &&
+    attention !== 'stalled' &&
+    attention !== 'not_activated'
+      ? returning.filter(
+          (r) =>
+            matchesQuery(r.applicant_name, [r.existing_name], q.query) &&
+            appliedWithin(r.applied_at, applied, ctx.now) &&
+            (attention !== 'referred' || ctx.referredApplications?.has(r.application_id) === true),
+        )
       : [];
 
   return COLUMNS.map((column) => {

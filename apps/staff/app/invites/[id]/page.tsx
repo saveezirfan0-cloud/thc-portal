@@ -8,6 +8,7 @@ import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { acceptInvite, declineInvite } from '../../actions';
 import { loadBookings, openInvites, overlapWarning, shiftsBadge } from '../../data';
+import { getTimeFormat } from '../../_lib/timeFormat';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         shiftHours: hours,
       })
     : null;
-  const overlap = overlapWarning(invite, all);
+  const overlap = overlapWarning(invite, all, await getTimeFormat());
 
   return (
     <StaffShell

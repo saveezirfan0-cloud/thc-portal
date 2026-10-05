@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
+import { clearTimeFormatCookie } from '@thc/db/time-format';
 
 /**
  * Where the Back Office's emailed reset link lands — §10.2 (A1 → A3).
@@ -23,7 +24,13 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/reset?error=missing', url.origin));
   }
 
-  const supabase = createClient(await cookies());
+  const jar = await cookies();
+
+  // A new session: the clock is read from THIS login's profile, not the last one's (ADR-0085).
+
+  clearTimeFormatCookie(jar);
+
+  const supabase = createClient(jar);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     console.error('[auth] code exchange failed', { status: error.status, message: error.message });

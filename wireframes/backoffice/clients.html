@@ -64,69 +64,77 @@
       <section data-state-of="cl" data-state="list" class="stack">
         <div class="toolbar">
           <div class="search"><input class="input" style="height:32px;width:280px" placeholder="Search client, contact, email"></div>
-          <select class="input" style="height:32px;width:170px"><option>Sort: name A–Z</option><option>Sort: most events</option><option>Sort: margin</option></select>
+          <select class="input" style="height:32px;width:170px"><option>Sort: name A–Z</option><option>Sort: most events</option><option>Sort: margin</option><option>Sort: newest added</option><option>Sort: oldest added</option></select>
           <div class="right"><span class="muted sm">Average margin = (charge − final pay) ÷ charge across completed events, after holiday pay</span></div>
+        </div>
+        <div class="toolbar">
+          <select class="input" style="height:32px;width:160px"><option>Breaks: all</option><option>Breaks: paid</option><option>Breaks: unpaid</option></select>
+          <select class="input" style="height:32px;width:160px"><option>Buffer: all</option><option>Buffer: paid</option><option>Buffer: strict</option></select>
+          <select class="input" style="height:32px;width:190px"><option>Rate card role: any</option><option>Waiting Staff</option><option>Bar Staff</option><option>Host</option><option>Chef</option><option>Kitchen Porter</option></select>
+          <select class="input" style="height:32px;width:170px"><option>Added by: anyone</option><option>Gisela M.</option></select>
+          <label class="row sm muted" style="gap:6px;align-items:center">Added from <input class="input" type="date" style="height:32px;width:150px"></label>
+          <label class="row sm muted" style="gap:6px;align-items:center">to <input class="input" type="date" style="height:32px;width:150px"></label>
         </div>
         <div class="panel">
           <div class="panel-b tight">
             <table class="tbl">
-              <thead><tr><th>Client</th><th>Contact</th><th>Phone</th><th>Rate card roles</th><th>Policies</th><th class="num">Events</th><th class="num">Avg margin</th></tr></thead>
+              <thead><tr><th>Client</th><th>Contact</th><th>Phone</th><th>Rate card roles</th><th>Policies</th><th class="num">Events</th><th class="num">Avg margin</th><th>Date added</th><th>Added by</th></tr></thead>
               <tbody>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">Leonardo Hotel St Pauls</a><span class="sub">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</span></td>
                   <td>Marco V.<span class="sub">F&amp;B manager · events@leonardo-stpauls.example +1</span></td><td class="mono sm">+44 20 7074 1000</td>
                   <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span><span class="chip">Chef</span><span class="chip">Kitchen Porter</span><span class="chip">Host</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
-                  <td class="num">47</td><td class="num green">32.4%</td>
+                  <td class="num">47</td><td class="num green">32.4%</td><td class="sm">12 Jan 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">Mandarin Oriental</a><span class="sub">66 Knightsbridge, SW1X 7LA</span></td>
                   <td>Sophie L.<span class="sub">Banqueting · banqueting@mo-london.example +2</span></td><td class="mono sm">+44 20 7235 2000</td>
                   <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span><span class="chip">Host</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> strict</td>
-                  <td class="num">31</td><td class="num green">33.1%</td>
+                  <td class="num">31</td><td class="num green">33.1%</td><td class="sm">12 Jan 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">The Dorchester</a><span class="sub">53 Park Lane, W1K 1QA</span></td>
                   <td>James H.<span class="sub">Banqueting manager · 3 allocation emails</span></td><td class="mono sm">+44 20 7629 8888</td>
                   <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span><span class="chip">Host</span><span class="chip">Chef</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> paid · <span class="muted">Buffer:</span> paid</td>
-                  <td class="num">58</td><td class="num green">31.8%</td>
+                  <td class="num">58</td><td class="num green">31.8%</td><td class="sm">12 Jan 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">Private client (Hurst)</a><span class="sub">Hurst Manor, Cuckfield RH17 5LB</span></td>
                   <td>Eleanor Hurst<span class="sub">Owner · eleanor@hurst.example +1</span></td><td class="mono sm">+44 7700 900 555</td>
                   <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Host</span><span class="chip">Chef</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
-                  <td class="num">6</td><td class="num green">36.0%</td>
+                  <td class="num">6</td><td class="num green">36.0%</td><td class="sm">3 Mar 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">ExCeL London</a><span class="sub">Royal Victoria Dock, E16 1XL</span></td>
                   <td>Dana R.<span class="sub">Events desk · 2 allocation emails</span></td><td class="mono sm">+44 20 7069 5000</td>
                   <td><div class="chips"><span class="chip">Host</span><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> paid · <span class="muted">Buffer:</span> strict</td>
-                  <td class="num">72</td><td class="num green">29.9%</td>
+                  <td class="num">72</td><td class="num green">29.9%</td><td class="sm">3 Mar 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">Sky Garden Events</a><span class="sub">1 Sky Garden Walk, EC3M 8AF</span></td>
                   <td>Priyanka D.<span class="sub">Events coordinator</span></td><td class="mono sm">+44 20 7337 2344</td>
                   <td><div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
-                  <td class="num">12</td><td class="num green">30.6%</td>
+                  <td class="num">12</td><td class="num green">30.6%</td><td class="sm">21 Apr 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">Lord's Cricket Ground</a><span class="sub">St John's Wood Rd, NW8 8QN</span></td>
                   <td>Ollie F.<span class="sub">Hospitality operations · 3 allocation emails</span></td><td class="mono sm">+44 20 7616 8500</td>
                   <td><div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span><span class="chip">Kitchen Porter</span></div></td>
                   <td class="sm"><span class="muted">Breaks:</span> paid · <span class="muted">Buffer:</span> paid</td>
-                  <td class="num">9</td><td class="num amber">27.2%</td>
+                  <td class="num">9</td><td class="num amber">27.2%</td><td class="sm">9 Jun 2026</td><td class="sm">Gisela M.</td>
                 </tr>
                 <tr class="clickable" onclick="location.href='client-card.html'">
                   <td class="name"><a href="client-card.html">Riverside Rooms</a><span class="sub">Bankside, SE1 9DT</span></td>
                   <td>Tomasz W.<span class="sub">General manager</span></td><td class="mono sm">+44 20 7928 1111</td>
                   <td><div class="chips"><span class="chip">Waiting Staff</span></div><span class="sub amber">rate card has 1 role — add roles before building events</span></td>
                   <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
-                  <td class="num">0</td><td class="num muted">—</td>
+                  <td class="num">0</td><td class="num muted">—</td><td class="sm">2 Sep 2026</td><td class="sm">Gisela M.</td>
                 </tr>
               </tbody>
             </table>

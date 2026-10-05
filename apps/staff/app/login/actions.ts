@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
+import { clearTimeFormatCookie } from '@thc/db/time-format';
 
 /**
  * Email + password sign-in (§1.4).
@@ -25,7 +26,8 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Sign-in is not available yet — this environment has no Supabase project.';
   }
 
-  const supabase = createClient(await cookies());
+  const store = await cookies();
+  const supabase = createClient(store);
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     // The visitor gets a message that reveals nothing; the real reason goes to
@@ -40,5 +42,8 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Email or password is incorrect. Try again or reset your password.';
   }
 
+  // ADR-0085: a session that ended without a sign-out (expiry) can leave the
+  // last person's clock on this device; the next page reads this login's own.
+  clearTimeFormatCookie(store);
   redirect(next);
 }

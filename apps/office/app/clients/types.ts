@@ -20,6 +20,11 @@ export interface Client {
   event_count: number;
   /** Null where nothing has been delivered: no margin is not 0% (§9.7). */
   avg_margin_pct: number | null;
+  /** When the client was added (an instant; shown as a UK date). */
+  created_at: string;
+  /** The manager who added it; NULL for clients that pre-date the column. */
+  created_by: string | null;
+  created_by_name: string | null;
 }
 
 /** §9.7: every field on the form is mandatory, both policies included. */

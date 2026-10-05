@@ -1,4 +1,4 @@
-# ADR-0088 · The New Starter (HMRC) report is emailed to Payroll and Gisela every Monday, on its own
+# ADR-0090 · The New Starter (HMRC) report is emailed to Payroll and Gisela every Monday, on its own
 
 **Status:** Accepted (THC, 05.10.2026). Agreed deviation from scope v1.6 §9.9, which sent the New Starter (HMRC) CSV only as a second attachment to the weekly payroll email. **§9.9, §7 (BG-08)**
 
@@ -19,7 +19,7 @@
 
 ## Consequences
 
-- `20261005120000_new_starter_report_own_email.sql` (the ledger, the setting, four functions, BG08's two functions restated, the `job_schedules` row `new-starter-report`). pgTAP: `410_reports_payroll.sql` holds the new starters across a held first shift, and `190_job_function_grants.sql` the grants and the schedule.
+- `20261005140400_new_starter_report_own_email.sql` (the ledger, the setting, four functions, BG08's two functions restated, the `job_schedules` row `new-starter-report`). pgTAP: `410_reports_payroll.sql` holds the new starters across a held first shift, and `190_job_function_grants.sql` the grants and the schedule.
 - `apps/office/app/api/jobs/new-starter-report/` and its tests; `middleware.ts` lets the path through for POST with the bearer secret, as for the other two jobs. `supabase/functions/finance-reports` loses its New Starter step.
 - `packages/notifications`: the NS1 email in `documents.ts`, its switch in `switches.ts`, its row in the office Inbox.
 - **To go live:** deploy, then run `select install_job_schedules();` (docs/16 §4.7) so the new row reaches pg_cron. The two vault secrets `office_base_url` and `rtw_job_secret` already exist wherever event-documents runs. Nothing else is needed.

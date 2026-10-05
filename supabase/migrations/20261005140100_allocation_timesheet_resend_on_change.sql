@@ -1,9 +1,9 @@
 -- =====================================================================
--- Migration 20261004110000 · A changed event gets a fresh Allocation
+-- Migration 20261005140100 · A changed event gets a fresh Allocation
 --                            Timesheet, once everyone has confirmed the
---                            change (§11.3, §11.4; ADR-0085, THC 04.10.2026)
+--                            change (§11.3, §11.4; ADR-0087, THC 04.10.2026)
 --
--- 20261004100000 holds the FIRST automatic send until the event is 100%
+-- 20261005140000 holds the FIRST automatic send until the event is 100%
 -- confirmed. This is the other half of the same decision: once a sheet has
 -- gone, a change to the event (a time, a role, a headcount that gets
 -- filled, a worker swapped) sends an UPDATED sheet automatically — again
@@ -57,7 +57,7 @@
 -- it replaces the earlier sheet (payload.updateTag).
 --
 -- D2 (the Completed Allocation Timesheet) still goes once.
--- Restated here from 20261004100000 / 20261002100000 / 20261002112000.
+-- Restated here from 20261005140000 / 20261002100000 / 20261002112000.
 -- Forward-only.
 -- =====================================================================
 
@@ -66,11 +66,11 @@
 -- ---------------------------------------------------------------------
 alter table event_documents add column if not exists line_up_fp text;
 comment on column event_documents.line_up_fp is
-  'ADR-0085: event_document_line_up_fp() at the moment the copy was recorded. Null for copies drawn before 20261004110000. The latest queued D1''s value against the current one is how the job knows the event has changed since.';
+  'ADR-0087: event_document_line_up_fp() at the moment the copy was recorded. Null for copies drawn before 20261005140100. The latest queued D1''s value against the current one is how the job knows the event has changed since.';
 
 alter table event_document_autosends add column if not exists sends int not null default 0 check (sends >= 0);
 comment on column event_document_autosends.sends is
-  'ADR-0085: automatic emails queued so far for this event and kind. The first is keyed D1:auto:<event>; the n-th (n >= 2) D1:auto:<event>:<n>.';
+  'ADR-0087: automatic emails queued so far for this event and kind. The first is keyed D1:auto:<event>; the n-th (n >= 2) D1:auto:<event>:<n>.';
 update event_document_autosends set sends = 1 where queued_at is not null and sends = 0;
 
 create or replace function public.event_document_line_up_fp(p_event uuid)
@@ -96,7 +96,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.event_document_line_up_fp(uuid) is
-  'ADR-0085: md5 of what the Allocation Timesheet prints — event title, date, PO number, and each confirmed/worked booking''s worker, role and section start/end. Service role only.';
+  'ADR-0087: md5 of what the Allocation Timesheet prints — event title, date, PO number, and each confirmed/worked booking''s worker, role and section start/end. Service role only.';
 
 create or replace function public.event_documents_stamp_line_up()
 returns trigger
@@ -196,7 +196,7 @@ create or replace function public.document_autosend_verdict(
   p_attempts             int default 0,
   -- Places short of the headcount (event_document_unfilled); D1 only.
   p_unfilled             int default 0,
-  -- D1 only: the line-up differs from the latest D1 that was sent (ADR-0085).
+  -- D1 only: the line-up differs from the latest D1 that was sent (ADR-0087).
   p_changed              boolean default false
 ) returns text
 language plpgsql immutable set search_path = public, extensions as $$
@@ -274,7 +274,7 @@ begin
 end $$;
 
 comment on function public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz, int, int, boolean) is
-  'ADR-0074/0085: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | not_fully_confirmed | held_no_checkout | gave_up for one automatic D1/D2. D1 is reopened by p_changed (the line-up differs from the latest D1 sent) and waits for p_unfilled = 0. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
+  'ADR-0074/0087: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | not_fully_confirmed | held_no_checkout | gave_up for one automatic D1/D2. D1 is reopened by p_changed (the line-up differs from the latest D1 sent) and waits for p_unfilled = 0. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
 
 -- ---------------------------------------------------------------------
 -- 4 · event_documents_due — plus `changed`
@@ -337,7 +337,7 @@ begin
                       where a.event_id = ev.id and a.kind = k.kind), 0) as attempts,
            -- D1 only: the latest D1 actually queued (a manager's or the
            -- job's) was drawn from a different line-up. A copy with no
-           -- fingerprint (older than 20261004110000) is never "changed".
+           -- fingerprint (older than 20261005140100) is never "changed".
            (k.kind = 'allocation' and coalesce(
               (select d.line_up_fp is not null
                       and d.line_up_fp is distinct from event_document_line_up_fp(ev.id)
@@ -362,7 +362,7 @@ begin
 end $$;
 
 comment on function public.event_documents_due(timestamptz, uuid) is
-  'ADR-0074/0085: the event-documents job''s candidates — events dated hold_days + 2 days ago to tomorrow (UK), or one event — with the facts document_autosend_verdict() reads (unfilled: places short of the headcount; changed: the line-up differs from the latest D1 sent) and its verdict per kind. Service role only.';
+  'ADR-0074/0087: the event-documents job''s candidates — events dated hold_days + 2 days ago to tomorrow (UK), or one event — with the facts document_autosend_verdict() reads (unfilled: places short of the headcount; changed: the line-up differs from the latest D1 sent) and its verdict per kind. Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 5 · Claim, record, queue, release — a sent row can be claimed again

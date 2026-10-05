@@ -3,6 +3,8 @@ import { Alert, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
+import { currentTimeFormat } from '../_lib/timeFormat';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { EventToolbar, hrefFor } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
 import { parseEventQuery } from './_lib/filters';
@@ -37,14 +39,15 @@ export default async function Page({
   const { view, date } = query;
 
   const { from, to } = periodRange(view, date);
-  const [reference, { events, problem }, savedViews] = await Promise.all([
+  const [reference, { events, problem }, savedViews, format] = await Promise.all([
     loadReferenceData(),
     loadEventsInRange(from, to),
     // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),
+    currentTimeFormat(),
   ]);
 
-  const rows = filterEventRows(toEventRows(events), {
+  const rows = filterEventRows(toEventRows(events, new Date(), format), {
     clientId: query.clientId,
     status: query.status,
     q: query.q,
@@ -70,6 +73,8 @@ export default async function Page({
       }
     >
       <div className="stack">
+        {/* Fill moves as staff accept and the office books. */}
+        <AutoRefresh />
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}

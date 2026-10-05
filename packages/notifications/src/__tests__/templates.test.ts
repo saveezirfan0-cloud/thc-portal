@@ -212,7 +212,7 @@ describe('notification register (§8)', () => {
     expect(TEMPLATES.E9.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
   });
 
-  it('E5b: a bank change outside the app goes to the same two addresses as E5, and never carries the details (ADR-0089)', () => {
+  it('E5b: a bank change outside the app goes to the same two addresses as E5, and never carries the details (ADR-0091)', () => {
     expect(TEMPLATES.E5b.recipients).toEqual(TEMPLATES.E5.recipients);
     const text = render(TEMPLATES.E5b.body, {
       name: 'Tom Reid',

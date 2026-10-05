@@ -296,6 +296,8 @@ export function draftFromSaved(
     venueId: event.venueId,
     title: event.title,
     date: duplicate ? '' : event.date,
+    // Draft values stay "HH:MM" on the 24-hour clock, which `ukRoleWindow`
+    // reads back; `TimeField` shows them on the operator's clock (ADR-0085).
     overallStart: window ? formatTimeIn(window.startsAt, UK_ZONE) : '07:00',
     overallEnd: window ? formatTimeIn(window.endsAt, UK_ZONE) : '23:30',
     poNumber: event.poNumber,

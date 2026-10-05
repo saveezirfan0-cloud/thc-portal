@@ -1,6 +1,6 @@
 -- =====================================================================
--- 772 · Who receives the timesheet is chosen per event
---       20261005100000 · ADR-0086 (THC 05.10.2026)
+-- 773 · Who receives the timesheet is chosen per event
+--       20261005140200 · ADR-0088 (THC 05.10.2026)
 --
 -- events.document_recipients (null = every contact email on the client
 -- card), event_document_recipients(), the admin-only

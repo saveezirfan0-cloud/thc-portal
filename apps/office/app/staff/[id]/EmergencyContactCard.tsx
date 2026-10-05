@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Button, Input, Modal, Note, Panel } from '@thc/ui';
+import { Alert, Button, Input, Modal, Note, Panel, useTimeFormat } from '@thc/ui';
 import {
   EMERGENCY_CONTACT_NAME_MAX,
   EMERGENCY_CONTACT_RELATIONSHIP_MAX,
@@ -35,6 +35,7 @@ export function EmergencyContactCard({
   /** False on a removed profile: §1.7 deleted it and nothing puts it back. */
   editable: boolean;
 }) {
+  const format = useTimeFormat();
   const [dialog, setDialog] = useState<'edit' | 'clear' | null>(null);
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
@@ -124,7 +125,7 @@ export function EmergencyContactCard({
             </a>
           </span>
           <span className="k">Updated</span>
-          <span className="mono sm muted">{contactUpdatedLine(contact)}</span>
+          <span className="mono sm muted">{contactUpdatedLine(contact, format)}</span>
         </div>
       ) : (
         <Note>Not provided. It is optional — the worker adds it in the app (Profile details).</Note>

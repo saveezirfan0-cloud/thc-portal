@@ -1,7 +1,7 @@
 'use client';
 
 import { UK_ZONE, displayTime, formatDateIn } from '@thc/domain';
-import { Pill } from '@thc/ui';
+import { Pill, useTimeFormat } from '@thc/ui';
 import { useViewerZone } from '../../_components/useViewerZone';
 import { formatMoney, formatWorked } from './earnings';
 import { formatPayDate } from './pay-date';
@@ -24,8 +24,9 @@ import type { EarningsRow } from '../types';
  */
 export function EarningsCard({ row }: { row: EarningsRow }) {
   const zone = useViewerZone();
-  const from = displayTime(row.startsAt, 'scheduled', zone);
-  const to = displayTime(row.endsAt, 'scheduled', zone);
+  const format = useTimeFormat();
+  const from = displayTime(row.startsAt, 'scheduled', zone, false, format);
+  const to = displayTime(row.endsAt, 'scheduled', zone, false, format);
   const date = formatDateIn(new Date(row.startsAt), UK_ZONE, { weekday: 'short' });
 
   return (

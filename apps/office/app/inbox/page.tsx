@@ -1,3 +1,5 @@
+import { AutoRefresh } from '../_components/AutoRefresh';
+import { currentTimeFormat } from '../_lib/timeFormat';
 import { loadInbox } from './data';
 import { InboxScreen } from './InboxScreen';
 import { parsePeriod, parseStatus } from './filters';
@@ -24,5 +26,14 @@ export default async function Page({
     period: parsePeriod(params['period']),
     before: Number.isSafeInteger(before) && before > 0 ? before : null,
   };
-  return <InboxScreen data={await loadInbox(filters)} filters={filters} />;
+  return (
+    <>
+      <AutoRefresh />
+      <InboxScreen
+        data={await loadInbox(filters)}
+        filters={filters}
+        format={await currentTimeFormat()}
+      />
+    </>
+  );
 }

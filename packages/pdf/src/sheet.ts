@@ -36,7 +36,7 @@
  *     any copy generated after the removal, sorted last in their role
  *     because the surname is gone. (The data arrives that way from
  *     `event_document_data`; this module never sees the real name.)
- *   · Buffer (ADR-0087, THC 05.10.2026): THC overbooks a role by its buffer
+ *   · Buffer (ADR-0089, THC 05.10.2026): THC overbooks a role by its buffer
  *     (§3.2), so the sheet can list more people than the client asked for.
  *     A role section that does says so in its own heading — "7 staff (6
  *     required + 1 buffer)" — and the last page carries one note saying
@@ -111,7 +111,7 @@ export interface SheetPerson {
   startsAt: string;
   endsAt: string;
   /**
-   * ADR-0087: how many the client asked for in this role section. Absent on
+   * ADR-0089: how many the client asked for in this role section. Absent on
    * data that predates it, which is read as "unknown": no buffer is claimed.
    */
   headcount?: number | null;
@@ -163,9 +163,9 @@ export interface SheetLayout {
   dateLabel: string;
   poNumber: string | null;
   rowCount: number;
-  /** ADR-0087: people listed beyond the number asked for, across the roles. 0 = none. */
+  /** ADR-0089: people listed beyond the number asked for, across the roles. 0 = none. */
   bufferStaff: number;
-  /** ADR-0087: the note on the last page when `bufferStaff` > 0, else null. */
+  /** ADR-0089: the note on the last page when `bufferStaff` > 0, else null. */
   bufferNote: string | null;
   /** Whole event, not the page. Blank on the allocation sheet. */
   totalHours: string;
@@ -177,7 +177,7 @@ interface Section {
   roleName: string;
   startsAt: string;
   endsAt: string;
-  /** What the client asked for, when the data says (ADR-0087). */
+  /** What the client asked for, when the data says (ADR-0089). */
   headcount: number | null;
   people: SheetPerson[];
 }
@@ -187,7 +187,7 @@ export function bufferIn(section: Pick<Section, 'headcount' | 'people'>): number
   return section.headcount === null ? 0 : Math.max(section.people.length - section.headcount, 0);
 }
 
-/** ADR-0087: printed once, on the last page, when any role lists more than was asked for. */
+/** ADR-0089: printed once, on the last page, when any role lists more than was asked for. */
 export const BUFFER_NOTE =
   'Buffer staff are booked in addition to the number required, to cover late arrivals and drop-outs on the day.';
 
@@ -302,7 +302,7 @@ export function layoutSheet(input: SheetInput, perPage: number = ROWS_PER_PAGE):
           index < of - 1 && chunks[index + 1]!.some((e) => e.section === current);
         let label = `${current.roleName} · ${window} · `;
         const extra = bufferIn(current);
-        // ADR-0087: "7 staff (6 required + 1 buffer)" — only where there is some.
+        // ADR-0089: "7 staff (6 required + 1 buffer)" — only where there is some.
         const count =
           extra > 0 && current.headcount !== null
             ? `${total} staff (${current.headcount} required + ${extra} buffer)`

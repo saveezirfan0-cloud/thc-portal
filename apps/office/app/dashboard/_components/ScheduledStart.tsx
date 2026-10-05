@@ -1,6 +1,7 @@
 'use client';
 
 import { UK_ZONE, formatDateIn, formatTimeIn, needsDualZone } from '@thc/domain';
+import { useTimeFormat } from '@thc/ui';
 import { useViewerZone } from './useViewerZone';
 
 /**
@@ -26,9 +27,10 @@ export function ScheduledStart({
 }) {
   const browser = useViewerZone();
   const zone = override ?? browser;
+  const format = useTimeFormat();
   const instant = new Date(startsAt);
   const label = (tz: string) =>
-    `${formatDateIn(instant, tz, { weekday: 'short' })} · ${formatTimeIn(instant, tz)}`;
+    `${formatDateIn(instant, tz, { weekday: 'short' })} · ${formatTimeIn(instant, tz, format)}`;
   const dual = needsDualZone(zone);
 
   return (

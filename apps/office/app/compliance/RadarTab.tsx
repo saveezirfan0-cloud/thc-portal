@@ -2,7 +2,18 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Avatar, EmptyState, KpiTile, Panel, Pill, SegToggle, Select, TileGrid } from '@thc/ui';
+import {
+  Avatar,
+  EmptyState,
+  KpiTile,
+  Panel,
+  Pill,
+  SegToggle,
+  Select,
+  TileGrid,
+  useTimeFormat,
+} from '@thc/ui';
+import { clockLabel } from '@thc/domain';
 import {
   DOCUMENT_FILTERS,
   daysLabel,
@@ -45,6 +56,7 @@ export function RadarTab({
   warnings: WarningRow[];
   mode: 'block' | 'warn';
 }) {
+  const format = useTimeFormat();
   const [state, setState] = useState<RadarFilter>('all');
   const [query, setQuery] = useState('');
   const [document, setDocument] = useState('any');
@@ -64,7 +76,7 @@ export function RadarTab({
           tone="danger"
           label="Expired · blocking"
           value={counts.expired}
-          description="Auto-blocked on the expiry day (compliance_daily 05:00) · future bookings released · app locked to Documents"
+          description={`Auto-blocked on the expiry day (compliance_daily ${clockLabel('05:00', format)}) · future bookings released · app locked to Documents`}
         />
         <KpiTile
           tone="warn"
@@ -156,7 +168,7 @@ export function RadarTab({
               </thead>
               <tbody>
                 {shown.map((row) => {
-                  const status = radarStatus(row);
+                  const status = radarStatus(row, format);
                   return (
                     <tr key={row.doc_id}>
                       <td className="cell-title">
@@ -275,6 +287,7 @@ export function RadarTab({
  * they are always refused.
  */
 function RotaGuardPanel({ warnings, mode }: { warnings: WarningRow[]; mode: 'block' | 'warn' }) {
+  const format = useTimeFormat();
   if (mode === 'block' && warnings.length === 0) return null;
   return (
     <Panel
@@ -304,14 +317,16 @@ function RotaGuardPanel({ warnings, mode }: { warnings: WarningRow[]; mode: 'blo
             {warnings.map((w) => (
               <tr key={w.id}>
                 <td data-label="When" className="mono sm">
-                  {ukStamp(w.at)}
+                  {ukStamp(w.at, format)}
                 </td>
                 <td className="cell-title">
                   <Link href={`/staff/${w.staff_id}`}>{w.worker}</Link>
                 </td>
                 <td data-label="Shift" className="sm">
                   {w.event_title ?? '—'}
-                  {w.starts_at ? <span className="sub">{ukStamp(w.starts_at)} (UK)</span> : null}
+                  {w.starts_at ? (
+                    <span className="sub">{ukStamp(w.starts_at, format)} (UK)</span>
+                  ) : null}
                 </td>
                 <td data-label="Hours that week" className="mono sm">
                   {Number(w.booked_hours ?? 0) + Number(w.shift_hours ?? 0)} h of{' '}

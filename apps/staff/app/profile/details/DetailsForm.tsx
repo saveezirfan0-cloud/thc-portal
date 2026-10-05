@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Note } from '@thc/ui';
+import { Alert, Button, Input, Note, useTimeFormat } from '@thc/ui';
 import {
   confirmEmailChange,
   requestEmailChange,
@@ -74,8 +74,9 @@ export function DetailsForm({
 }) {
   const router = useRouter();
   const name = `${profile.firstName} ${profile.lastName}`.trim();
-  const nameLine = statusLine(requests, 'name');
-  const dobStatus = statusLine(requests, 'dob');
+  const format = useTimeFormat();
+  const nameLine = statusLine(requests, 'name', format);
+  const dobStatus = statusLine(requests, 'dob', format);
 
   const [phone, setPhone] = useState(profile.phone);
   const [saved] = useState<HomeAddressParts>(() => splitHomeAddress(profile.homeAddress));
@@ -133,7 +134,7 @@ export function DetailsForm({
         photoUrl={photoUrl}
         locked={profile.photoLocked}
         canRequestChange={!requestsProblem && canRequest(requests, 'photo')}
-        status={requestsProblem ? null : statusLine(requests, 'photo')}
+        status={requestsProblem ? null : statusLine(requests, 'photo', format)}
       />
 
       <div className="field lockf">

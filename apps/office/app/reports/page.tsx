@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { Alert } from '@thc/ui';
+import { clockLabel } from '@thc/domain';
 import { NotAvailable } from '../_components/NotAvailable';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
+import { currentTimeFormat } from '../_lib/timeFormat';
 import { FinancialTab } from './_components/FinancialTab';
 import { NewStarterTab } from './_components/NewStarterTab';
 import { PayrollTab } from './_components/PayrollTab';
@@ -51,7 +53,7 @@ export default async function Page({
 
   const today = todayInUk();
   const view = parseReportView(await searchParams, today);
-  const data = await loadReports(view);
+  const [data, format] = await Promise.all([loadReports(view), currentTimeFormat()]);
 
   return (
     <OfficeShell
@@ -59,7 +61,7 @@ export default async function Page({
       title="Reports"
       crumbs={
         <>
-          three tabs · automatic send-out every <b>Monday 09:00</b> to
+          three tabs · automatic send-out every <b>Monday {clockLabel('09:00', format)}</b> to
           thc_payroll@topsourceworldwide.com + gisela@thehospitalitycompany.co.uk
         </>
       }
@@ -91,10 +93,11 @@ export default async function Page({
             lines={data.lines}
             sends={data.sends}
             today={today}
+            format={format}
           />
         ) : null}
         {view.tab === 'newstarter' ? (
-          <NewStarterTab view={view} starters={data.starters} sends={data.sends} />
+          <NewStarterTab view={view} starters={data.starters} sends={data.sends} format={format} />
         ) : null}
       </div>
     </OfficeShell>

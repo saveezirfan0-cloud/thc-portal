@@ -9,6 +9,7 @@ import {
   blockerLabel,
   boardColumns,
   boardCounts,
+  needsAttention,
   canResendActivation,
   candidateActions,
   candidateCap,
@@ -630,5 +631,128 @@ describe('the right-to-work panel header (§2.5, ADR-0078)', () => {
     expect(RTW_REQUIRED['dependant_other']).toBe(
       'passport + share code · expiry from the gov.uk check',
     );
+  });
+});
+
+describe('the board filters', () => {
+  const now = new Date('2026-09-24T12:00:00Z');
+  const base = { filter: 'active' as const, query: '', roleName: '', reason: 'any' as const };
+  const rows = [
+    // Four days in the stage: amber, so "needs attention".
+    candidate({
+      id: 'old',
+      display_name: 'Old Stage',
+      status: 'interview_requested',
+      stage_entered_at: '2026-09-20T09:00:00Z',
+      applied_at: '2026-08-01T09:00:00Z',
+      activated: false,
+    }),
+    candidate({
+      id: 'fresh',
+      display_name: 'Fresh Today',
+      status: 'interview_requested',
+      stage_entered_at: '2026-09-24T09:00:00Z',
+      applied_at: '2026-09-24T09:00:00Z',
+      activated: true,
+    }),
+    candidate({
+      id: 'docs',
+      display_name: 'Rejected Doc',
+      status: 'documents',
+      stage_entered_at: '2026-09-23T09:00:00Z',
+      applied_at: '2026-09-18T09:00:00Z',
+      docs_total: 2,
+      docs_rejected: 1,
+      activated: true,
+    }),
+    candidate({
+      id: 'rej',
+      display_name: 'Was Rejected',
+      status: 'rejected',
+      rejected_from: 'quiz',
+      rejection_cause: 'quiz_failed',
+      applied_at: '2026-09-22T09:00:00Z',
+    }),
+  ];
+  const returning: ReturningRow[] = [
+    {
+      application_id: 'app-1',
+      applied_at: '2026-09-23T08:00:00Z',
+      applicant_name: 'Back Again',
+      matched_on: 'email_dob',
+      staff_id: 's-9',
+      existing_name: 'Back Again',
+      employee_id: 412,
+      status: 'blocked',
+      block_kind: null,
+      block_reason: null,
+      rating: null,
+      reliability: null,
+      shifts_worked: 0,
+    },
+  ];
+  const ids = (cols: ReturnType<typeof boardColumns>) =>
+    cols.flatMap((c) => [
+      ...c.returning.map((r) => r.application_id),
+      ...c.candidates.map((r) => r.id),
+    ]);
+  const run = (q: Partial<Parameters<typeof boardColumns>[2]>, ctx = {}) =>
+    ids(boardColumns(rows, returning, { ...base, ...q }, { now, ...ctx }));
+
+  it('defaults leave everyone on the board', () => {
+    expect(run({}).sort()).toEqual(['app-1', 'docs', 'fresh', 'old']);
+  });
+
+  it('filters by stage, and a stage other than the first drops the returning card', () => {
+    expect(run({ stage: 'documents' })).toEqual(['docs']);
+    expect(run({ stage: 'interview_requested' }).sort()).toEqual(['app-1', 'fresh', 'old']);
+  });
+
+  it('on Rejected, the stage is the one they were rejected from', () => {
+    expect(run({ filter: 'rejected', stage: 'quiz' })).toEqual(['rej']);
+    expect(run({ filter: 'rejected', stage: 'documents' })).toEqual([]);
+  });
+
+  it('filters by when they applied, in UK days', () => {
+    expect(run({ applied: 'today' })).toEqual(['fresh']);
+    expect(run({ applied: '7d' }).sort()).toEqual(['app-1', 'docs', 'fresh']);
+    expect(run({ applied: '30d' }).sort()).toEqual(['app-1', 'docs', 'fresh']);
+  });
+
+  it('needs attention: a stage age of 4+ days, a rejected document, an undelivered reminder', () => {
+    expect(needsAttention(rows[0]!, 'interview_requested', now)).toBe(true);
+    expect(needsAttention(rows[1]!, 'interview_requested', now)).toBe(false);
+    expect(needsAttention(rows[2]!, 'documents', now)).toBe(true);
+    const chaser = {
+      staff_id: 'fresh',
+      track: 'interview' as const,
+      step: null,
+      progress_at: '2026-09-20T09:00:00Z',
+      rungs_sent: 1,
+      last_sent_at: '2026-09-23T09:00:00Z',
+      next_due_at: null,
+      stalled: false,
+      last_failed: true,
+    };
+    expect(needsAttention(rows[1]!, 'interview_requested', now, chaser)).toBe(true);
+    expect(run({ attention: 'attention' }).sort()).toEqual(['app-1', 'docs', 'old']);
+    expect(run({ attention: 'stalled' }, { chasers: { fresh: chaser } })).toEqual(['fresh']);
+  });
+
+  it('referred and not-activated', () => {
+    const referred = {
+      referredCandidates: new Set(['docs']),
+      referredApplications: new Set(['app-1']),
+    };
+    expect(run({ attention: 'referred' }, referred).sort()).toEqual(['app-1', 'docs']);
+    expect(run({ attention: 'referred' })).toEqual([]);
+    // A returning applicant has no activation: it drops out.
+    expect(run({ attention: 'not_activated' })).toEqual(['old']);
+  });
+
+  it('filters combine', () => {
+    expect(run({ stage: 'interview_requested', applied: '7d', attention: 'attention' })).toEqual([
+      'app-1',
+    ]);
   });
 });

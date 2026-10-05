@@ -1,17 +1,17 @@
 /**
  * The emails that carry a FILE — Scope §9.9 (BG-08) and §11.4, and the New
- * Starter (HMRC) report's own Monday email (ADR-0088).
+ * Starter (HMRC) report's own Monday email (ADR-0090).
  *
  * They are not in §8's register, and `TEMPLATES` is held to exactly that
  * register by its test, so they live here instead, beside it:
  *
  *   BG08  the Monday 09:00 finance email — the payroll CSV (§9.9, §7). The
  *         New Starter (HMRC) CSV used to be a second attachment; since
- *         ADR-0088 it is NS1's.
+ *         ADR-0090 it is NS1's.
  *         From admin@ (§9.12: "the finance reports"), to the same two
  *         payroll addresses as E5/E6 — read from E5, not retyped.
  *   NS1   the New Starter (HMRC) report, every Monday from 09:00 UK, only
- *         when there were new starters (§9.9, ADR-0088). Same sender and
+ *         when there were new starters (§9.9, ADR-0090). Same sender and
  *         the same two addresses as BG08.
  *   D1    the Allocation Timesheet, "Send allocation sheet" from the event
  *         page (§11.4), sent BEFORE the event — so it never speaks of
@@ -109,7 +109,7 @@ export const DOCUMENT_EMAILS = {
     title: 'THC new starters (HMRC) — {periodStart} to {periodEnd}',
     body: 'Hello,\n\nAttached is the New Starter (HMRC) report for Monday {periodStart} to Sunday {periodEnd}: {newStarterLine}\n\nEach row is a worker who has worked their first shift, with the details needed to set them up: NI number, home address, date of birth, first shift date, HMRC statement and student loan answers.\n\nThe Hospitality Company\nadmin@thehospitalitycompany.co.uk',
     html: { eyebrow: 'New starters (HMRC)', attachmentNote: 'CSV · attached' },
-    trigger: 'NS1 — every Monday at 09:00 UK, when there were new starters (§9.9, ADR-0088)',
+    trigger: 'NS1 — every Monday at 09:00 UK, when there were new starters (§9.9, ADR-0090)',
     timing:
       'Monday 09:00 Europe/London; a missed Monday is caught up the same week. A week with nobody new sends nothing',
   },
@@ -229,7 +229,7 @@ function derivedValues(
     const held = Number(values.held ?? 0);
     return {
       ...values,
-      // ADR-0088: the New Starter (HMRC) report is NS1's own email. A row queued
+      // ADR-0090: the New Starter (HMRC) report is NS1's own email. A row queued
       // before that (it carries `newStarters`) still says what it attached.
       newStarterLine:
         values.newStarters === undefined
@@ -251,13 +251,13 @@ function derivedValues(
     };
   }
   const po = (values.poNumber ?? '').trim();
-  // ADR-0085: an automatic D1 that follows one already sent says so. A row
+  // ADR-0087: an automatic D1 that follows one already sent says so. A row
   // without the key (older) is a first sheet.
   const updated = (values.updateTag ?? '').trim() !== '';
   // ADR-0081: a client with name badges on gets them with the D1 sheet. The
   // count is in the facts box ("Name badges"), so the sentence needs none.
   const badges = Number((values.nameBadges ?? '').trim()) || 0;
-  // ADR-0087: people listed beyond what the client asked for ('' or absent = none).
+  // ADR-0089: people listed beyond what the client asked for ('' or absent = none).
   const buffer = Number((values.bufferStaff ?? '').trim()) || 0;
   return {
     ...values,
@@ -280,7 +280,7 @@ function derivedValues(
   };
 }
 
-/** "17 (incl. 2 buffer)" — the count the client reads, with the reason it is larger (ADR-0087). */
+/** "17 (incl. 2 buffer)" — the count the client reads, with the reason it is larger (ADR-0089). */
 function staffWithBuffer(count: string, buffer: string): string {
   const n = Number(buffer) || 0;
   return count && n > 0 ? `${count} (incl. ${n} buffer)` : count;

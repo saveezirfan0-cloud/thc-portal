@@ -1,7 +1,7 @@
 'use client';
 
 import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
-import { ScheduledWindow as Shared, useViewerZone } from '@thc/ui';
+import { ScheduledWindow as Shared, useTimeFormat, useViewerZone } from '@thc/ui';
 
 export { useViewerZone };
 
@@ -37,6 +37,7 @@ export function ScheduledWindow({ startsAt, endsAt }: { startsAt: string; endsAt
 /** An actual stamp: the reader's own clock, never dual (§1.8). */
 export function ActualTime({ at, className }: { at: string | null; className?: string }) {
   const zone = useViewerZone();
+  const format = useTimeFormat();
   if (!at) return <span className={className}>—</span>;
-  return <span className={className}>{formatTimeIn(new Date(at), zone)}</span>;
+  return <span className={className}>{formatTimeIn(new Date(at), zone, format)}</span>;
 }

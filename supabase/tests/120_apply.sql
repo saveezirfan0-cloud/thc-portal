@@ -15,7 +15,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(73);
+select plan(78);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -326,6 +326,33 @@ select is((select outcome::text from applications where email = 'was.blocked@rls
   '§2.12 a blocked worker who re-applies is a returning applicant, not a new candidate');
 select is((select outcome::text from applications where email = 'was.rejected@rls.test'), 'returning_applicant',
   'and so is a rejected one — both are what "reset to candidate" acts on');
+
+-- ---------------------------------------------------------------------
+-- A live candidate who applies again is a duplicate, not a returning worker
+--
+-- Candidates and workers share the staff table, so the match above also
+-- finds a person still in the pipeline. There is nothing to reset on that
+-- record, so it must not become a "Returning applicant" card (its only
+-- action would reject the application they just made).
+-- ---------------------------------------------------------------------
+insert into staff (first_name, last_name, email, phone, dob, status)
+values ('Live','Candidate','live.candidate@rls.test','+447700900881', date '1991-05-05', 'interview_requested');
+
+set local role service_role;
+select submit_application('Live','Candidate','live.candidate@rls.test','+447700900882', date '1991-05-05', true);
+reset role;
+select is((select count(*)::int from staff where lower(email) = 'live.candidate@rls.test'), 1,
+  '§2.12 a candidate applying twice still has one record');
+select is((select outcome::text from applications where email = 'live.candidate@rls.test'), 'duplicate_candidate',
+  'a match on a record still in the onboarding pipeline is a duplicate, not a returning applicant');
+select is((select count(*)::int from applications
+            where email = 'live.candidate@rls.test' and outcome = 'returning_applicant'), 0,
+  'so no Returning applicant card is filed for it');
+select is((select staff_id from applications where email = 'live.candidate@rls.test'),
+  (select id from staff where email = 'live.candidate@rls.test'),
+  'the duplicate still names the existing record');
+select is((select status::text from staff where email = 'live.candidate@rls.test'), 'interview_requested',
+  'and the candidate''s own record is not touched');
 
 -- ---------------------------------------------------------------------
 -- The band boundaries, in SQL

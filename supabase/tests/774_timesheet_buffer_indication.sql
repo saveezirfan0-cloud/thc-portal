@@ -1,6 +1,6 @@
 -- =====================================================================
--- 773 · The timesheet says when buffer staff are on it
---       20261005110000 · ADR-0087 (THC 05.10.2026)
+-- 774 · The timesheet says when buffer staff are on it
+--       20261005140300 · ADR-0089 (THC 05.10.2026)
 --
 -- event_document_data() gives each row its role section's headcount;
 -- event_document_buffer_count() counts the people listed beyond it; the

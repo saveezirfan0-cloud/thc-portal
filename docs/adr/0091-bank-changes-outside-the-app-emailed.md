@@ -1,4 +1,4 @@
-# ADR-0089 · Every change to bank details is emailed to Gisela and Payroll
+# ADR-0091 · Every change to bank details is emailed to Gisela and Payroll
 
 **Status:** Accepted (THC, 05.10.2026). Adds E5b to the register, beside §8's E5. **§2.10, §8 (E5), §10.1**
 
@@ -19,7 +19,7 @@ The gap was every other way a `bank_details` row can change. An office login hol
 
 ## Consequences
 
-- `20261005130000_bank_changes_by_the_office_emailed.sql` (the trigger, `staff_save_bank` restated with the flag). pgTAP `774_bank_change_by_office_emailed.sql`. The fixtures' own bank inserts now queue E5b as the owner, which is correct, so `110_jobs_and_outbox.sql` pushes those two rows out of the drain it counts.
+- `20261005140500_bank_changes_by_the_office_emailed.sql` (the trigger, `staff_save_bank` restated with the flag). pgTAP `775_bank_change_by_office_emailed.sql`. The fixtures' own bank inserts now queue E5b as the owner, which is correct, so `110_jobs_and_outbox.sql` pushes those two rows out of the drain it counts.
 - `packages/notifications`: E5b in `templates.ts`, its eyebrow in `email-layouts.ts`, its row in the office Inbox and its switch.
 - The worker's own change is exactly as before (E5).
 - Today the Back Office has no screen that edits a worker's bank details. The trigger covers a direct write (an API call by an office login, a script, an import) and any screen added later.

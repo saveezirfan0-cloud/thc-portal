@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261005110000 · The timesheet says when buffer staff are on it
---                            (§3.2, §11.3; ADR-0087, THC 05.10.2026)
+-- Migration 20261005140300 · The timesheet says when buffer staff are on it
+--                            (§3.2, §11.3; ADR-0089, THC 05.10.2026)
 --
 -- THC overbooks a role by its buffer (§3.2), and the Allocation Timesheet
 -- lists everyone confirmed — so it can list more people than the client
@@ -22,7 +22,7 @@
 --
 -- Nobody is singled out: who works is decided by check-in order (§3.2,
 -- RULE-15), and for a client who pays for the buffer everyone works.
--- Restated from 20261002112000 (event_document_data) and 20261004110000
+-- Restated from 20261002112000 (event_document_data) and 20261005140100
 -- (event_document_email_payload); nothing else in either changes.
 -- Forward-only.
 -- =====================================================================
@@ -41,7 +41,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.event_document_buffer_count(uuid) is
-  'ADR-0087: people on the timesheet beyond what the client asked for — per role section, confirmed or worked bookings above the headcount, summed. 0 = none.';
+  'ADR-0089: people on the timesheet beyond what the client asked for — per role section, confirmed or worked bookings above the headcount, summed. 0 = none.';
 
 create or replace function public.event_document_data(p_event uuid)
 returns jsonb
@@ -84,7 +84,7 @@ begin
                'sectionId',    sr.id,
                'startsAt',     sr.starts_at,
                'endsAt',       sr.ends_at,
-               -- ADR-0087: what the client asked for in this role section; the sheet
+               -- ADR-0089: what the client asked for in this role section; the sheet
                -- prints "7 staff (6 required + 1 buffer)" when more are listed.
                'headcount',    sr.headcount,
                'checkInAt',    ps.check_in_at,
@@ -155,7 +155,7 @@ begin
     'schedule',   event_document_schedule(ev.id),
     'nameBadges', coalesce(d.badges_count::text, ''),
     'updateTag',  case when v_update then ' (updated)' else '' end,
-    -- ADR-0087: people listed beyond what the client asked for ('' = none).
+    -- ADR-0089: people listed beyond what the client asked for ('' = none).
     'bufferStaff', coalesce(nullif(event_document_buffer_count(ev.id), 0)::text, ''));
 
   if d.kind = 'signout' then

@@ -367,7 +367,7 @@ export async function setEventAutoAssign(eventId: string, on: boolean): Promise<
 }
 
 /**
- * ADR-0086: who the Allocation Timesheet and the Completed Allocation
+ * ADR-0088: who the Allocation Timesheet and the Completed Allocation
  * Timesheet go to for this event. `null` (or nothing) puts the event back on
  * every contact email on the client card. One RPC,
  * `set_event_document_recipients()`: admin only, trims, lower-cases and

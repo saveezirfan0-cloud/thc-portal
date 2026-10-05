@@ -2,9 +2,22 @@
 
 import { useId, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Alert, Button, Chip, Input, Note, Panel, SaveBar, Select, Textarea } from '@thc/ui';
+import {
+  Alert,
+  Button,
+  Chip,
+  Input,
+  Note,
+  Panel,
+  SaveBar,
+  Select,
+  Textarea,
+  TimeField,
+  useTimeFormat,
+} from '@thc/ui';
 import {
   UK_ZONE,
+  clockLabel,
   extraLanguages,
   forecastEvent,
   formatLanguages,
@@ -102,6 +115,7 @@ export function ShiftBuilder({
   ratesVisible,
   save,
 }: ShiftBuilderProps) {
+  const format = useTimeFormat();
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [error, setError] = useState<string | null>(null);
   const fieldId = useId();
@@ -252,7 +266,10 @@ export function ShiftBuilder({
           <Alert tone="coral">
             <b>
               Editing is locked — {draft.title} started at{' '}
-              {window ? `${formatTimeIn(window.startsAt, UK_ZONE)} (UK)` : 'its scheduled start'}.
+              {window
+                ? `${formatTimeIn(window.startsAt, UK_ZONE, format)} (UK)`
+                : 'its scheduled start'}
+              .
             </b>{' '}
             Once the event has started, and for any past event, no field can be changed. What is
             still possible is on the event board: Withdraw, No show / Get back, Cancel event, Send /
@@ -413,30 +430,26 @@ export function ShiftBuilder({
                 disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, date: e.target.value }))}
               />
-              <Input
+              <TimeField
                 label={
                   <>
                     {ukInputLabel('Overall start')} <span className="coral">*</span>
                   </>
                 }
-                type="time"
-                mono
                 value={draft.overallStart}
                 disabled={readOnly}
-                onChange={(e) => setDraft((c) => ({ ...c, overallStart: e.target.value }))}
+                onChange={(overallStart) => setDraft((c) => ({ ...c, overallStart }))}
               />
-              <Input
+              <TimeField
                 label={
                   <>
                     {ukInputLabel('Overall end')} <span className="coral">*</span>
                   </>
                 }
-                type="time"
-                mono
                 value={draft.overallEnd}
                 disabled={readOnly}
-                onChange={(e) => setDraft((c) => ({ ...c, overallEnd: e.target.value }))}
-                hint="A role may end after midnight (e.g. 17:00–01:30)."
+                onChange={(overallEnd) => setDraft((c) => ({ ...c, overallEnd }))}
+                hint={`A role may end after midnight (e.g. ${clockLabel('17:00', format)}–${clockLabel('01:30', format)}).`}
               />
             </div>
             <Note>

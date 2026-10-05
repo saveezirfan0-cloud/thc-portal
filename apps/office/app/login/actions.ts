@@ -9,6 +9,7 @@ import {
   safeNextPath,
 } from '@thc/db';
 import { createClient } from '@thc/db/server';
+import { clearTimeFormatCookie } from '@thc/db/time-format';
 import { SIGN_IN_REFUSED } from './messages';
 import { nextLevelFor, verifyStepPath } from './two-step';
 
@@ -78,6 +79,10 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   // token refresh, route handlers, the browser client (packages/db/src/session.ts).
   const preference = keepSignedInCookie(persistence);
   cookieStore.set(preference.name, preference.value, preference.options);
+  // The clock (ADR-0085) is this login's, not whoever used the device last:
+  // drop a cookie a session that timed out left behind, so the next page
+  // reads this profile's choice.
+  clearTimeFormatCookie(cookieStore);
 
   // Two-step sign-in (ADR-0057): a password alone is aal1. A login with a
   // verified authenticator goes to the code step before anything else, with

@@ -1,7 +1,7 @@
 -- =====================================================================
--- Migration 20261005120000 · The New Starter (HMRC) report is emailed to
+-- Migration 20261005140400 · The New Starter (HMRC) report is emailed to
 --                            Payroll and Gisela every Monday, on its own
---                            (§9.9; ADR-0088, THC 05.10.2026)
+--                            (§9.9; ADR-0090, THC 05.10.2026)
 --
 -- §9.9 sent the New Starter (HMRC) CSV only as a second attachment to the
 -- weekly payroll email (BG08). The owner paused that email (ADR-0083), and
@@ -63,7 +63,7 @@ grant select on new_starter_reported to authenticated;
 grant all on new_starter_reported to service_role;
 
 comment on table new_starter_reported is
-  'ADR-0088: every worker already sent on a New Starter (HMRC) report — one row each, tied to the send. Written by prepare_new_starter_report() (service role); admin read only.';
+  'ADR-0090: every worker already sent on a New Starter (HMRC) report — one row each, tied to the send. Written by prepare_new_starter_report() (service role); admin read only.';
 
 -- Seed: whoever BG08's New Starter attachments already carried.
 insert into new_starter_reported (staff_id, report_send_id)
@@ -98,7 +98,7 @@ returns boolean language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.new_starter_report_due(timestamptz) is
-  'ADR-0088 gate: from Monday 09:00 Europe/London until last week''s New Starter (HMRC) email is queued (or the week had nobody new), and only while NS1 is switched on in /settings → Notifications. DST-proof: reads the London clock.';
+  'ADR-0090 gate: from Monday 09:00 Europe/London until last week''s New Starter (HMRC) email is queued (or the week had nobody new), and only while NS1 is switched on in /settings → Notifications. DST-proof: reads the London clock.';
 
 create or replace function public.prepare_new_starter_report(p_now timestamptz default now())
 returns jsonb
@@ -154,7 +154,7 @@ begin
 end $$;
 
 comment on function public.prepare_new_starter_report(timestamptz) is
-  'ADR-0088 step 1: records who is on last week''s New Starter (HMRC) report (first shift settled, not reported before, on or after settings.new_starter_report.not_before) or notes "no new". Idempotent per week. Service role.';
+  'ADR-0090 step 1: records who is on last week''s New Starter (HMRC) report (first shift settled, not reported before, on or after settings.new_starter_report.not_before) or notes "no new". Idempotent per week. Service role.';
 
 create or replace function public.new_starter_report_rows(p_send bigint)
 returns table (
@@ -172,7 +172,7 @@ begin
 end $$;
 
 comment on function public.new_starter_report_rows(bigint) is
-  'ADR-0088 step 2: the CSV rows for a prepared New Starter (HMRC) send — the workers recorded against it, with the §9.9 Tab 3 columns.';
+  'ADR-0090 step 2: the CSV rows for a prepared New Starter (HMRC) send — the workers recorded against it, with the §9.9 Tab 3 columns.';
 
 create or replace function public.queue_new_starter_report_email(p_send bigint, p_path text)
 returns jsonb
@@ -209,7 +209,7 @@ begin
 end $$;
 
 comment on function public.queue_new_starter_report_email(bigint, text) is
-  'ADR-0088 step 3: the New Starter (HMRC) email — one outbox row NS1:<week start>, the CSV as a storage path. The drain sends it from admin@ to Payroll and Gisela.';
+  'ADR-0090 step 3: the New Starter (HMRC) email — one outbox row NS1:<week start>, the CSV as a storage path. The drain sends it from admin@ to Payroll and Gisela.';
 
 -- ---------------------------------------------------------------------
 -- 3 · BG08 without its New Starter half
@@ -324,17 +324,17 @@ begin
 end $$;
 
 comment on function public.prepare_finance_reports(timestamptz) is
-  'BG-08 step 1: stamps last week''s payroll — exported lines with their figures as sent, held lines for unresolved No check-outs (rolled forward to the next run) — and sets events.payroll_exported_at. Idempotent per week. The New Starter (HMRC) report is its own email (ADR-0088).';
+  'BG-08 step 1: stamps last week''s payroll — exported lines with their figures as sent, held lines for unresolved No check-outs (rolled forward to the next run) — and sets events.payroll_exported_at. Idempotent per week. The New Starter (HMRC) report is its own email (ADR-0090).';
 
 comment on function public.queue_finance_report_email(bigint, text) is
-  'BG-08 step 3: one email to finance with the payroll CSV, queued in notification_outbox under BG08:<week>. The drain sends it from admin@. The New Starter (HMRC) report goes separately (NS1, ADR-0088).';
+  'BG-08 step 3: one email to finance with the payroll CSV, queued in notification_outbox under BG08:<week>. The drain sends it from admin@. The New Starter (HMRC) report goes separately (NS1, ADR-0090).';
 
 -- ---------------------------------------------------------------------
 -- 4 · The job, and who may call what
 -- ---------------------------------------------------------------------
 insert into job_schedules (job, cron_expression, edge_path, enabled, note, base_url_source, secret_name) values
   ('new-starter-report', '*/15 * * * *', 'api/jobs/new-starter-report', true,
-   '§9.9 / ADR-0088 the New Starter (HMRC) report, emailed to Payroll and Gisela every Monday from 09:00 UK (a missed Monday is caught up). A Back Office Node route (apps/office/app/api/jobs/new-starter-report); new_starter_report_due() picks the UK minute. Shares rtw-check''s bearer (vault rtw_job_secret, env RTW_JOB_SECRET).',
+   '§9.9 / ADR-0090 the New Starter (HMRC) report, emailed to Payroll and Gisela every Monday from 09:00 UK (a missed Monday is caught up). A Back Office Node route (apps/office/app/api/jobs/new-starter-report); new_starter_report_due() picks the UK minute. Shares rtw-check''s bearer (vault rtw_job_secret, env RTW_JOB_SECRET).',
    'office_base_url', 'rtw_job_secret')
 on conflict (job) do nothing;
 

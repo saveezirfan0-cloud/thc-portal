@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from 'react';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Avatar, Button, EmptyState, Panel, Pill } from '@thc/ui';
+import { Alert, Avatar, Button, EmptyState, Panel, Pill, useTimeFormat } from '@thc/ui';
 import { actionLabel, entityLabel } from '../../_lib/accounts';
 import { actorName, describe } from '../../activity/view-model';
 import { loadRecordHistory } from './actions';
@@ -41,6 +41,7 @@ export function RecordHistory({
   /** Closed until "Show history" is pressed (the event board). */
   deferred?: boolean;
 }) {
+  const format = useTimeFormat();
   const [open, setOpen] = useState(!deferred);
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [older, setOlder] = useState<number | null>(null);
@@ -121,7 +122,7 @@ export function RecordHistory({
                     return (
                       <tr key={row.id}>
                         <td data-label="When" className="mono sm activity-when">
-                          {formatDateTimeIn(new Date(row.at), UK_ZONE)}
+                          {formatDateTimeIn(new Date(row.at), UK_ZONE, format)}
                         </td>
                         <td data-label="Who">
                           {row.actor ? (

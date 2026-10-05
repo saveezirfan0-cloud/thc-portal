@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
+import { dressCodeLibrary } from './card';
 import { withPhotoUrls } from '../../_lib/photos';
 import type { Client } from '../types';
 import type {
@@ -33,6 +34,7 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
   nameBadges: false,
   rateCard: [],
+  dressCodeLibrary: [],
   qualified: [],
   events: [],
   roles: [],
@@ -86,55 +88,64 @@ export async function loadClientCard(
 
   const supabase = createClient(await cookies());
 
-  const [client, badges, rateCard, qualified, events, roles, payRates, staff] = await Promise.all([
-    supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
-    // ADR-0081: one switch, read from the table rather than restating the view.
-    supabase
-      .from('clients')
-      .select('name_badges')
-      .eq('id', id)
-      .maybeSingle<{ name_badges: boolean | null }>(),
-    ratesVisible
-      ? supabase
-          .from('clients_rate_card_v')
-          .select('*')
-          .eq('client_id', id)
-          .order('role_name')
-          .returns<RateCardRow[]>()
-      : rateCardWithoutRates(supabase, id),
-    supabase
-      .from('clients_qualified_staff_v')
-      .select('*')
-      .eq('client_id', id)
-      .order('display_name')
-      .returns<QualifiedStaffRow[]>(),
-    supabase
-      .from('clients_event_list_v')
-      .select('*')
-      .eq('client_id', id)
-      .order('event_date', { ascending: false })
-      .returns<ClientEventRow[]>(),
-    supabase
-      .from('roles')
-      .select('id, name')
-      .order('name')
-      .returns<{ id: string; name: string }[]>(),
-    // ADR-0061: the catalogue base pay beside each role in the "+ Add" picker.
-    ratesVisible
-      ? supabase.from('role_rates_v').select('role_id, pay_rate')
-      : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from('staff_directory_v')
-      .select('id, display_name, employee_id, role_names')
-      .eq('status', 'compliant')
-      .order('display_name')
-      .returns<StaffOption[]>(),
-  ]);
+  const [client, badges, rateCard, library, qualified, events, roles, payRates, staff] =
+    await Promise.all([
+      supabase
+        .from('clients_directory_v')
+        .select(CLIENT_COLUMNS)
+        .eq('id', id)
+        .maybeSingle<Client>(),
+      // ADR-0081: one switch, read from the table rather than restating the view.
+      supabase
+        .from('clients')
+        .select('name_badges')
+        .eq('id', id)
+        .maybeSingle<{ name_badges: boolean | null }>(),
+      ratesVisible
+        ? supabase
+            .from('clients_rate_card_v')
+            .select('*')
+            .eq('client_id', id)
+            .order('role_name')
+            .returns<RateCardRow[]>()
+        : rateCardWithoutRates(supabase, id),
+      // Dress codes only, from every client: what the add-a-code box offers so a
+      // code already stored is picked, not retyped. No rate or worker data.
+      supabase.from('client_rate_cards').select('dress_codes'),
+      supabase
+        .from('clients_qualified_staff_v')
+        .select('*')
+        .eq('client_id', id)
+        .order('display_name')
+        .returns<QualifiedStaffRow[]>(),
+      supabase
+        .from('clients_event_list_v')
+        .select('*')
+        .eq('client_id', id)
+        .order('event_date', { ascending: false })
+        .returns<ClientEventRow[]>(),
+      supabase
+        .from('roles')
+        .select('id, name')
+        .order('name')
+        .returns<{ id: string; name: string }[]>(),
+      // ADR-0061: the catalogue base pay beside each role in the "+ Add" picker.
+      ratesVisible
+        ? supabase.from('role_rates_v').select('role_id, pay_rate')
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from('staff_directory_v')
+        .select('id, display_name, employee_id, role_names')
+        .eq('status', 'compliant')
+        .order('display_name')
+        .returns<StaffOption[]>(),
+    ]);
 
   const error =
     client.error ??
     badges.error ??
     rateCard.error ??
+    library.error ??
     qualified.error ??
     events.error ??
     roles.error ??
@@ -158,6 +169,9 @@ export async function loadClientCard(
     client: client.data ?? null,
     nameBadges: badges.data?.name_badges === true,
     rateCard: rateCard.data ?? [],
+    dressCodeLibrary: dressCodeLibrary(
+      (library.data ?? []).map((card: { dress_codes: string[] | null }) => card.dress_codes),
+    ),
     // The selfie is a private-bucket key; signed here, initials if not.
     qualified: await withPhotoUrls(qualified.data ?? []),
     events: events.data ?? [],

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select } from '@thc/ui';
+import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
 import { type LogQuery, logQueryHref, logTime } from './log';
@@ -83,6 +83,7 @@ export function MonitorScreen({
 
   // §1.8: the reader's own zone, mount-guarded (audit D41).
   const zone = useViewerZone();
+  const format = useTimeFormat();
 
   return (
     <div className="stack" style={{ gap: 16 }}>
@@ -177,7 +178,7 @@ export function MonitorScreen({
                     ) : null}
                   </td>
                   <td data-label="Time" className="mono sm">
-                    {logTime(v.detectedAt, zone)}
+                    {logTime(v.detectedAt, zone, new Date(), format)}
                   </td>
                   <td className="right-align cell-actions">
                     <Button
@@ -221,6 +222,7 @@ export function MonitorScreen({
  * still has time to pull someone from the buffer.
  */
 function EventStrip({ rows }: { rows: MonitorRow[] }) {
+  const format = useTimeFormat();
   const byEvent = new Map<string, MonitorRow[]>();
   for (const r of rows) byEvent.set(r.eventId, [...(byEvent.get(r.eventId) ?? []), r]);
 
@@ -240,7 +242,9 @@ function EventStrip({ rows }: { rows: MonitorRow[] }) {
               {first.eventTitle}
               {short > 0 ? <span className="evflag">−{short} worker</span> : null}
             </div>
-            <div className="m">{formatDateTimeIn(new Date(first.startsAt), UK_ZONE)} UK</div>
+            <div className="m">
+              {formatDateTimeIn(new Date(first.startsAt), UK_ZONE, format)} UK
+            </div>
             <div className="c">
               {onShift > 0 ? <span className="green">{onShift} on shift</span> : null}
               {offSite > 0 ? <span className="amber">{offSite} off-site</span> : null}

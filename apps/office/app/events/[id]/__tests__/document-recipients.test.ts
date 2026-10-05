@@ -9,7 +9,7 @@ import {
 
 const CLIENT = ['Hannah.Brooks@leonardo.co.uk', 'marco@leonardo.co.uk', 'events@leonardo.co.uk'];
 
-describe('ADR-0086 · who receives the timesheet for one event', () => {
+describe('ADR-0088 · who receives the timesheet for one event', () => {
   it('reads commas, semicolons, spaces and new lines; lower-cases and drops repeats', () => {
     expect(parseAddresses('A@x.co, b@x.co;\n C@x.co  a@X.co')).toEqual([
       'a@x.co',

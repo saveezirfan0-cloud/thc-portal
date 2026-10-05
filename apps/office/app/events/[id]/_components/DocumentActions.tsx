@@ -45,7 +45,7 @@ export function DocumentActions({
   started: boolean;
   /** The client card's Name badges switch (ADR-0081). */
   nameBadges?: boolean;
-  /** ADR-0086: who the Send goes to — this event's own list, else the client card's contacts. */
+  /** ADR-0088: who the Send goes to — this event's own list, else the client card's contacts. */
   recipients?: string[];
   /** True when the list was chosen for this event rather than being the client card. */
   customRecipients?: boolean;

@@ -369,10 +369,10 @@ select ok((select payroll_exported_at is null from events e
             join shift_requirements sr on sr.event_id = e.id
             join bookings bk on bk.shift_id = sr.id where bk.id = (select id from b where name = 'w4s1')),
   '…and not on the event whose only shift was held');
--- ADR-0088: the New Starter (HMRC) report is its own email now (NS1); BG08
--- neither prepares nor attaches it. 774 holds the new starters.
+-- ADR-0090: the New Starter (HMRC) report is its own email now (NS1); BG08
+-- neither prepares nor attaches it. This file's NS1 section holds the new starters.
 select is((select count(*)::int from report_sends where kind = 'new_starter' and period_start = '2025-03-03'), 0,
-  'BG08 prepares no New Starter send: that report is NS1''s (ADR-0088)');
+  'BG08 prepares no New Starter send: that report is NS1''s (ADR-0090)');
 
 set local role service_role;
 select is((select (prepare_finance_reports('2025-03-10 09:10+00')->>'alreadyPrepared')::boolean), true,
@@ -393,7 +393,7 @@ reset role;
 select is((select row(template, channel::text, jsonb_array_length((payload->>'attachments')::jsonb))::text
              from notification_outbox where key = 'BG08:2025-03-03'),
   row('BG08', 'email', 1)::text,
-  'One email in the outbox for the week, with the payroll CSV only (the New Starter report is NS1, ADR-0088)');
+  'One email in the outbox for the week, with the payroll CSV only (the New Starter report is NS1, ADR-0090)');
 
 -- =====================================================================
 -- 59-61 · Send status follows the email (§9.9 "Last sent" / "Failed")
@@ -406,7 +406,7 @@ select ok((select sent_at is not null from report_sends where kind = 'payroll' a
   '…with the time it went, for "Last sent: [date], [time]"');
 
 -- =====================================================================
--- NS1 · The New Starter (HMRC) report, its own Monday email (ADR-0088)
+-- NS1 · The New Starter (HMRC) report, its own Monday email (ADR-0090)
 --
 -- Same week, same fixtures. Six first shifts are settled; W4's first shift
 -- is held for an unresolved No check-out, so W4 waits.

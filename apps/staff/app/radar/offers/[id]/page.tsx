@@ -8,6 +8,7 @@ import { ShiftTime } from '../../../_components/ShiftTime';
 import { ActionButton } from '../../../_components/ActionButton';
 import { takeOfferedShift } from '../../../actions';
 import { loadBookings, openInvites, shiftsBadge } from '../../../data';
+import { getTimeFormat } from '../../../_lib/timeFormat';
 import { RadarMap } from '../../RadarMap';
 import { TAKE_BUTTON, TAKE_NOTE, UP_FOR_GRABS, ukDateTime } from '../../../shifts/offers';
 import { findOpenOffer } from '../../../shifts/offers-data';
@@ -36,6 +37,7 @@ export const metadata = { title: 'Up for grabs · THC Staff' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const format = await getTimeFormat();
   const [{ row: offer, problem }, { rows: bookings, problem: bookingsProblem }] = await Promise.all(
     [findOpenOffer(id), loadBookings()],
   );
@@ -101,7 +103,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <div className="kv">
           <span className="k">Open until</span>
           <span className="v">
-            {ukDateTime(offer.expiresAt)} (UK time)
+            {ukDateTime(offer.expiresAt, format)} (UK time)
             <YourTimeAt at={offer.expiresAt} />
           </span>
         </div>

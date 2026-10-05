@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Avatar, Button, EmptyState, Note, Pill, Select } from '@thc/ui';
+import { Alert, Avatar, Button, EmptyState, Note, Pill, Select, useTimeFormat } from '@thc/ui';
 import {
   DOCUMENT_FILTERS,
   actionsFor,
@@ -207,6 +207,7 @@ function QueueLine({
   onVerify: () => void;
   onReject: () => void;
 }) {
+  const format = useTimeFormat();
   const who = whoLine(row);
   const found = foundLine(row);
   const flag = reviewFlag(row);
@@ -260,7 +261,7 @@ function QueueLine({
         {row.kind === 'document' ? <DobClaimNote claim={row.dob_claim} /> : null}
       </td>
       <td data-label="Uploaded" className="mono sm">
-        {ukStamp(row.submitted_at)}
+        {ukStamp(row.submitted_at, format)}
         <span className="sub">{uploadedLine(row)}</span>
       </td>
       <td data-label="AI found">

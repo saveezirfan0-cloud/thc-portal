@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
+import { useTimeFormat } from './TimeFormat';
 
 /**
  * The zone the person reading this screen is actually in (§1.8).
@@ -47,6 +49,8 @@ export interface ScheduledWindowProps {
    * read once mounted (`useViewerZone`).
    */
   zone?: string;
+  /** The clock (ADR-0085), for previews and snapshots. Otherwise the viewer's, from `TimeFormatProvider`. */
+  format?: TimeFormat;
 }
 
 /**
@@ -68,13 +72,16 @@ export function ScheduledWindow({
   className,
   lineClass = 'sub',
   zone: override,
+  format: formatOverride,
 }: ScheduledWindowProps) {
   const browser = useViewerZone();
   const zone = override ?? browser;
+  const viewerFormat = useTimeFormat();
+  const format = formatOverride ?? viewerFormat;
   const start = typeof startsAt === 'string' ? new Date(startsAt) : startsAt;
   const end = typeof endsAt === 'string' ? new Date(endsAt) : endsAt;
   const dual = needsDualZone(zone);
-  const uk = `${formatTimeIn(start, UK_ZONE)}${separator}${formatTimeIn(end, UK_ZONE)}`;
+  const uk = `${formatTimeIn(start, UK_ZONE, format)}${separator}${formatTimeIn(end, UK_ZONE, format)}`;
   const labelled = suffix && (suffixWhen === 'always' || dual);
   return (
     <span className={className}>
@@ -82,9 +89,9 @@ export function ScheduledWindow({
       {labelled ? ` ${suffix}` : null}
       {dual ? (
         <span className={lineClass}>
-          {formatTimeIn(start, zone)}
+          {formatTimeIn(start, zone, format)}
           {separator}
-          {formatTimeIn(end, zone)} your time
+          {formatTimeIn(end, zone, format)} your time
         </span>
       ) : null}
     </span>

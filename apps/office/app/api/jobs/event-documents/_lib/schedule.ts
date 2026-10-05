@@ -1,9 +1,9 @@
-import { ukInstant } from '@thc/domain';
+import { type TimeFormat, clockLabel, ukInstant } from '@thc/domain';
 
 /**
  * When the Allocation Timesheet (D1) and the Completed Allocation Timesheet
  * (D2) go out on their own — ADR-0074, agreed with THC on 29.09.2026; D1 amended
- * by ADR-0085 (16:00, and only once fully confirmed), 04.10.2026.
+ * by ADR-0087 (16:00, and only once fully confirmed), 04.10.2026.
  *
  * Pure: the facts come from `event_documents_due()` and the settings row
  * `document_autosend`; the answer is one verdict. The SQL twin is
@@ -16,7 +16,7 @@ import { ukInstant } from '@thc/domain';
  *        after that until the first shift starts (an event created or
  *        filled late still gets one), but only while the event is 100%
  *        confirmed: every role section at its headcount and nobody
- *        awaiting re-confirmation (`unfilled` = 0, ADR-0085). A headcount,
+ *        awaiting re-confirmation (`unfilled` = 0, ADR-0087). A headcount,
  *        role or time change after the cut-off holds the sheet until the
  *        line-up is whole again. Skipped if a manager queued a D1 since
  *        00:00 UK the day before and it still matches the line-up.
@@ -140,7 +140,7 @@ export interface AutosendFacts {
    * D1 only: the line-up differs from the latest D1 that was actually sent
    * (a manager's or the job's), by its fingerprint. A copy older than the
    * fingerprint is never "changed". A change reopens a sent sheet
-   * (ADR-0085).
+   * (ADR-0087).
    */
   changed?: boolean;
 }
@@ -187,7 +187,7 @@ export function autosendVerdict(
     const dayBefore = ukInstant(addDays(facts.eventDate, -1), '00:00').getTime();
     if (!config.allocation.enabled) return 'disabled';
     const changed = facts.changed ?? false;
-    // Sent, and nothing has changed since. A change reopens it (ADR-0085).
+    // Sent, and nothing has changed since. A change reopens it (ADR-0087).
     if (facts.autoQueuedAt && !changed) return 'already_sent';
     if (facts.cancelled) return 'cancelled';
     if (t < dueAt) return 'not_yet';
@@ -240,9 +240,14 @@ const UK_STAMP = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 });
 
-/** "28/09 14:00", UK — an audit-style stamp (§1.8). */
-export function ukShortStamp(iso: string): string {
-  return UK_STAMP.format(new Date(iso)).replace(',', '');
+/**
+ * "28/09 14:00", UK — an audit-style stamp (§1.8), or "28/09 2:00 pm" for an
+ * operator on the 12-hour clock (ADR-0085). Only the on-screen hint takes a
+ * format; the job itself writes nothing a person reads.
+ */
+export function ukShortStamp(iso: string, format?: TimeFormat): string {
+  const [day = '', time = ''] = UK_STAMP.format(new Date(iso)).replace(',', '').split(' ');
+  return `${day} ${clockLabel(time, format)}`;
 }
 
 /**
@@ -254,14 +259,16 @@ export function autosendHint(
   kind: DocumentKind,
   config: AutosendConfig,
   state: { sentAt: string | null; started: boolean; ended: boolean },
+  format?: TimeFormat,
 ): string | null {
   if (kind === 'allocation') {
     if (state.sentAt)
-      return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
+      return `Allocation Timesheet sent automatically ${ukShortStamp(state.sentAt, format)}`;
     if (!config.allocation.enabled || state.started) return null;
-    return `Sent automatically the day before at ${config.allocation.time} (UK time), once every role is fully confirmed`;
+    return `Sent automatically the day before at ${clockLabel(config.allocation.time, format)} (UK time), once every role is fully confirmed`;
   }
-  if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
+  if (state.sentAt)
+    return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt, format)}`;
   if (!config.completed.enabled) return null;
-  return `Sent automatically the morning after at ${config.completed.time} (UK time), once every check-out is resolved`;
+  return `Sent automatically the morning after at ${clockLabel(config.completed.time, format)} (UK time), once every check-out is resolved`;
 }

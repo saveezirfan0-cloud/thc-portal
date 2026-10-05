@@ -10,12 +10,15 @@ import {
   radarGroups,
   sectionHours,
 } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { LoadProblem } from '../_components/LoadProblem';
 import { withdrawApplication } from '../actions';
 import { loadBookings, loadOpenShifts, loadWeekMeter, openInvites, shiftsBadge } from '../data';
+import { getTimeFormat } from '../_lib/timeFormat';
 import type { OpenShift } from '../data';
 import { WeekMeter } from './WeekMeter';
 import { weekLabel } from './model';
@@ -49,6 +52,7 @@ export const metadata = { title: 'Radar · THC Staff' };
  * this week's hours under "This week".
  */
 export default async function Page() {
+  const format = await getTimeFormat();
   const [
     { rows: shifts, problem },
     { rows: bookings, problem: bookingsProblem },
@@ -83,6 +87,7 @@ export default async function Page() {
         ? {}
         : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
+      <AutoRefresh />
       {problem ? (
         // Audit D18: a failed read is not "Nothing open nearby".
         <LoadProblem what="open shifts" />
@@ -112,7 +117,7 @@ export default async function Page() {
         <>
           <div className="grp cyan">{UP_FOR_GRABS}</div>
           {offers.map((offer) => (
-            <OfferCard key={offer.offerId} offer={offer} />
+            <OfferCard key={offer.offerId} offer={offer} format={format} />
           ))}
         </>
       ) : null}
@@ -121,7 +126,7 @@ export default async function Page() {
         <>
           <div className="grp purple">{RADAR_GROUP_LABEL.qualified}</div>
           {groups.qualified.map((shift) => (
-            <RadarCard key={shift.shiftId} shift={shift} />
+            <RadarCard key={shift.shiftId} shift={shift} format={format} />
           ))}
         </>
       ) : null}
@@ -133,7 +138,7 @@ export default async function Page() {
             Shown only once every worker qualified for this role at that client has been invited.
           </p>
           {groups.other.map((shift) => (
-            <RadarCard key={shift.shiftId} shift={shift} />
+            <RadarCard key={shift.shiftId} shift={shift} format={format} />
           ))}
         </>
       ) : null}
@@ -145,6 +150,7 @@ export default async function Page() {
             <RadarCard
               key={shift.shiftId}
               shift={shift}
+              format={format}
               {...(applications.get(shift.shiftId)
                 ? { bookingId: applications.get(shift.shiftId)! }
                 : {})}
@@ -165,7 +171,7 @@ export default async function Page() {
  * confirmed booking at once if taken, so it opens the offer's own detail,
  * not the open shift's. The base rate only; never who offered it.
  */
-function OfferCard({ offer }: { offer: OpenOffer }) {
+function OfferCard({ offer, format }: { offer: OpenOffer; format: TimeFormat }) {
   return (
     <div className="mcard">
       <div className="card-head">
@@ -181,7 +187,7 @@ function OfferCard({ offer }: { offer: OpenOffer }) {
       <div className="m">
         £{offer.payRate.toFixed(2)}/h
         {offer.dressCode ? ` · Dress code: ${offer.dressCode}` : ''} · open until{' '}
-        {ukShortDateTime(offer.expiresAt)} (UK time)
+        {ukShortDateTime(offer.expiresAt, format)} (UK time)
         {/* §1.8: a scheduled close — the viewer's own clock too, when it differs. */}
         <YourTimeAt at={offer.expiresAt} />
       </div>
@@ -192,7 +198,15 @@ function OfferCard({ offer }: { offer: OpenOffer }) {
   );
 }
 
-function RadarCard({ shift, bookingId }: { shift: OpenShift; bookingId?: string }) {
+function RadarCard({
+  shift,
+  bookingId,
+  format,
+}: {
+  shift: OpenShift;
+  bookingId?: string;
+  format: TimeFormat;
+}) {
   const applied = Boolean(shift.appliedAt);
   return (
     <div className={`mcard${applied ? ' applied' : shift.hoursLimit ? ' muted' : ''}`}>
@@ -232,8 +246,8 @@ function RadarCard({ shift, bookingId }: { shift: OpenShift; bookingId?: string 
       {applied ? (
         <>
           <p className="m">
-            Applied {formatDateTimeIn(shift.appliedAt!, UK_ZONE)} (UK) · you’ll get a push either
-            way.
+            Applied {formatDateTimeIn(shift.appliedAt!, UK_ZONE, format)} (UK) · you’ll get a push
+            either way.
           </p>
           {bookingId ? (
             <ActionButton

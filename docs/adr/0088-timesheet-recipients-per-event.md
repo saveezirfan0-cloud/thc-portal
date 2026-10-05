@@ -1,4 +1,4 @@
-# ADR-0086 · Who receives the timesheet is chosen per event
+# ADR-0088 · Who receives the timesheet is chosen per event
 
 **Status:** Accepted (THC, 05.10.2026). Agreed deviation from scope v1.6 §9.7 and §11.4, which send both documents to every contact email on the client card. The manual Send and Download buttons work as before. **§9.7, §11.3, §11.4**
 
@@ -23,7 +23,7 @@
    - Save.
 
    Everyone ticked with nothing added is saved as null, so a contact added to the client card later still reaches that event. The Send confirmation names the recipients it will use, and a line under the buttons reads "Timesheets go to … (set for this event / the client card)".
-5. **Saving does not send anything.** The next send, automatic or the manager's Send button, uses the new list. In particular, changing the recipients **after** the automatic Allocation Timesheet has gone does not resend it, and the recipients are not part of the line-up fingerprint (ADR-0085). A new person who needs the sheet now gets it from Send Allocation Timesheet.
+5. **Saving does not send anything.** The next send, automatic or the manager's Send button, uses the new list. In particular, changing the recipients **after** the automatic Allocation Timesheet has gone does not resend it, and the recipients are not part of the line-up fingerprint (ADR-0087). A new person who needs the sheet now gets it from Send Allocation Timesheet.
 
 ## Not done
 
@@ -34,6 +34,6 @@
 
 ## Consequences
 
-- `20261005100000_event_document_recipients.sql` (the column, `event_document_recipients()`, `set_event_document_recipients()`, and `queue_event_document_email`, `queue_event_document_autosend` and `event_documents_due` restated). pgTAP `772_event_document_recipients.sql`.
+- `20261005140200_event_document_recipients.sql` (the column, `event_document_recipients()`, `set_event_document_recipients()`, and `queue_event_document_email`, `queue_event_document_autosend` and `event_documents_due` restated). pgTAP `773_event_document_recipients.sql`.
 - `apps/office/app/events/[id]/`: `document-recipients.ts` (the form's half of the rules), `_components/DocumentRecipients.tsx`, `actions.ts` (`setDocumentRecipients`), `board-data.ts`, `page.tsx`, `_components/DocumentActions.tsx`. `packages/db` types gain the column and the two functions.
 - The client role holds no policy on `events` (ADR-0026), so the list is never visible to a client.

@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
-import { Avatar, Chip, Panel, Pill } from '@thc/ui';
+import { Avatar, Chip, Panel, Pill, useTimeFormat } from '@thc/ui';
 import type { PayrollLine, PayrollPerson } from '../data';
 import { breakLabel, dayLabel, employeeId, hours, pounds } from '../view-model';
 import { UK_ZONE, formatTimeIn } from '@thc/domain';
@@ -299,6 +299,7 @@ function ShiftRow({ line }: { line: PayrollLine }) {
 
 function Actual({ line }: { line: PayrollLine }) {
   const zone = useViewerZone();
+  const format = useTimeFormat();
   if (line.kind === 'turned_away') {
     const onTime = (line.payable_min ?? 0) > 0;
     return (
@@ -306,7 +307,7 @@ function Actual({ line }: { line: PayrollLine }) {
         <Pill tone="amber">Turned away</Pill>
         <span className="sub">
           strict buffer · attempt logged{' '}
-          {line.attempted_at ? formatTimeIn(new Date(line.attempted_at), zone) : '—'},{' '}
+          {line.attempted_at ? formatTimeIn(new Date(line.attempted_at), zone, format) : '—'},{' '}
           {onTime ? 'on time → fixed 4 h, absorbed by THC' : 'late → nothing'}
         </span>
       </>
@@ -348,7 +349,7 @@ function Actual({ line }: { line: PayrollLine }) {
           late check-in —{' '}
           {line.check_in_at &&
           new Date(line.check_in_at).getTime() - new Date(line.starts_at).getTime() < GRACE_MS
-            ? `inside the 30-min grace, paid from ${formatTimeIn(new Date(line.starts_at), UK_ZONE)} UK`
+            ? `inside the 30-min grace, paid from ${formatTimeIn(new Date(line.starts_at), UK_ZONE, format)} UK`
             : 'paid from arrival'}
         </span>
       ) : line.early_check_out ? (

@@ -13,7 +13,7 @@ import {
 } from '../document-recipients';
 
 /**
- * "Who receives the timesheet" for one event (ADR-0086). Events on the same
+ * "Who receives the timesheet" for one event (ADR-0088). Events on the same
  * day for the same client sometimes need the sheet to go to different
  * people, so the recipients are chosen per event: tick any of the client's
  * contacts, and/or add other addresses. Everyone ticked and nothing added is

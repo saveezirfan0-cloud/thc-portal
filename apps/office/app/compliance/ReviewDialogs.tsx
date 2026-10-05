@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Avatar, Button, Input, Modal, Note, Textarea } from '@thc/ui';
+import { Avatar, Button, Input, Modal, Note, Textarea, useTimeFormat } from '@thc/ui';
 import {
   approveCompletionLetter,
   confirmRtwDate,
@@ -259,6 +259,7 @@ function ConfirmVerifyModal({
   onClose: () => void;
   onVerify: (conditions: ConfirmedConditions) => void;
 }) {
+  const format = useTimeFormat();
   const conditions = useConditions(row);
   const ni = row.item_type === 'ni_evidence';
   return (
@@ -286,7 +287,7 @@ function ConfirmVerifyModal({
         <Avatar name={row.display_name} size="sm" />
         <div className="sm">
           {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
-          uploaded {ukStamp(row.submitted_at)}
+          uploaded {ukStamp(row.submitted_at, format)}
         </div>
       </div>
       {ni ? (
@@ -322,6 +323,7 @@ function RejectModal({
   onClose: () => void;
   onReject: (reason: string) => void;
 }) {
+  const format = useTimeFormat();
   // ADR-0041: a share code the gov.uk check recommends rejecting opens with
   // its suggested N8 text — the admin reads it, edits it if need be, and it
   // reaches the worker only when they press Reject.
@@ -360,7 +362,7 @@ function RejectModal({
         <Avatar name={row.display_name} size="sm" />
         <div className="sm">
           {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
-          uploaded {ukStamp(row.submitted_at)}
+          uploaded {ukStamp(row.submitted_at, format)}
         </div>
       </div>
       {niCheck && row.ni_number ? <div className="sm">{niEvidenceLine(row.ni_number)}</div> : null}
@@ -418,6 +420,7 @@ function ApproveModal({
   onClose: () => void;
   onApprove: (completionDate: string, visaExpiry: string) => void;
 }) {
+  const format = useTimeFormat();
   const [completionDate, setCompletionDate] = useState(row.completion_date_claimed ?? '');
   const [visaExpiry, setVisaExpiry] = useState(row.staff_right_to_work_until ?? '');
   const onFile = row.staff_right_to_work_until;
@@ -447,7 +450,7 @@ function ApproveModal({
         <div className="sm">
           {row.display_name} ·{' '}
           {row.evidence_form ? EVIDENCE_FORM_LABEL[row.evidence_form] : 'Completion letter'} ·
-          uploaded {ukStamp(row.submitted_at)}
+          uploaded {ukStamp(row.submitted_at, format)}
         </div>
       </div>
       <Input
@@ -509,6 +512,7 @@ function RightToWorkModal({
   onClose: () => void;
   onVerify: (field: RtwDateRule['field'], value: string, conditions: ConfirmedConditions) => void;
 }) {
+  const format = useTimeFormat();
   const conditions = useConditions(row);
   const [date, setDate] = useState(
     (rule.field === 'expiry'
@@ -556,7 +560,7 @@ function RightToWorkModal({
         <Avatar name={row.display_name} size="sm" />
         <div className="sm">
           {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·{' '}
-          {reverify ? 'verified without a date' : 'uploaded'} {ukStamp(row.submitted_at)}
+          {reverify ? 'verified without a date' : 'uploaded'} {ukStamp(row.submitted_at, format)}
           {row.share_code ? (
             <>
               {' '}

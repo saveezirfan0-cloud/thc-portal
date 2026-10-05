@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261005100000 · Who receives the timesheet is chosen per event
---                            (§9.7, §11.4; ADR-0086, THC 05.10.2026)
+-- Migration 20261005140200 · Who receives the timesheet is chosen per event
+--                            (§9.7, §11.4; ADR-0088, THC 05.10.2026)
 --
 -- Until now both documents went to every contact email on the client card.
 -- THC: events on the same day for the same client sometimes need the sheet
@@ -41,7 +41,7 @@ alter table events add constraint events_document_recipients_check
          or cardinality(document_recipients) between 1 and 5);
 
 comment on column events.document_recipients is
-  'ADR-0086: who the Allocation Timesheet and the Completed Allocation Timesheet go to for THIS event. Null = every contact email on the client card (§9.7). Written only by set_event_document_recipients().';
+  'ADR-0088: who the Allocation Timesheet and the Completed Allocation Timesheet go to for THIS event. Null = every contact email on the client card (§9.7). Written only by set_event_document_recipients().';
 
 create or replace function public.event_document_recipients(p_event uuid)
 returns text[]
@@ -53,7 +53,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.event_document_recipients(uuid) is
-  'ADR-0086: who a timesheet for this event goes to — the event''s own list, else the contact emails on the client card.';
+  'ADR-0088: who a timesheet for this event goes to — the event''s own list, else the contact emails on the client card.';
 
 create or replace function public.set_event_document_recipients(p_event uuid, p_recipients text[])
 returns jsonb
@@ -101,11 +101,11 @@ begin
 end $$;
 
 comment on function public.set_event_document_recipients(uuid, text[]) is
-  'ADR-0086: sets who the event''s timesheets go to (1–5 addresses, any valid email); null or empty = the client card''s contacts. Admin only; audited with the previous list. Refuses a cancelled event.';
+  'ADR-0088: sets who the event''s timesheets go to (1–5 addresses, any valid email); null or empty = the client card''s contacts. Admin only; audited with the previous list. Refuses a cancelled event.';
 
 -- ---------------------------------------------------------------------
 -- The manual Send (20261002100000's body), the automatic send
--- (20261004110000's) and the job's candidates (20261004110000's) now ask
+-- (20261005140100's) and the job's candidates (20261005140100's) now ask
 -- event_document_recipients(). Nothing else in them changes.
 -- ---------------------------------------------------------------------
 create or replace function public.queue_event_document_email(p_document uuid)
@@ -269,7 +269,7 @@ begin
                       where a.event_id = ev.id and a.kind = k.kind), 0) as attempts,
            -- D1 only: the latest D1 actually queued (a manager's or the
            -- job's) was drawn from a different line-up. A copy with no
-           -- fingerprint (older than 20261004110000) is never "changed".
+           -- fingerprint (older than 20261005140100) is never "changed".
            (k.kind = 'allocation' and coalesce(
               (select d.line_up_fp is not null
                       and d.line_up_fp is distinct from event_document_line_up_fp(ev.id)

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
+import { clearTimeFormatCookie } from '@thc/db/time-format';
 import { isActivationToken, parseActivationType } from '@thc/db/activation';
 import { HELP_EMAIL } from '../profile/types';
 import { EXPIRED_MESSAGE } from './copy';
@@ -66,6 +67,8 @@ export async function activateAccount(
 
   const jar = await cookies();
   const supabase = createClient(jar);
+  // A new session: the clock is read from THIS login's profile, not the last one's (ADR-0085).
+  clearTimeFormatCookie(jar);
   const mark = marker(token);
 
   let user: { id: string; email?: string | null; app_metadata?: Record<string, unknown> } | null =

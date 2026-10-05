@@ -1,3 +1,4 @@
+import { type TimeFormat, clockLabel } from '@thc/domain';
 import type {
   EventOption,
   FeedbackEntry,
@@ -84,8 +85,8 @@ export function ukDay(iso: string): string {
   return `${p.weekday} ${p.day} ${p.month}`;
 }
 
-/** "Thu 18 Sep 09:12" */
-export function ukDayTime(iso: string): string {
+/** "Thu 18 Sep 09:12", or "Thu 18 Sep 9:12 am" on the 12-hour clock (ADR-0085). */
+export function ukDayTime(iso: string, format?: TimeFormat): string {
   const at = instant(iso);
   if (!valid(at)) return '—';
   const p = parts(at, {
@@ -96,11 +97,11 @@ export function ukDayTime(iso: string): string {
     minute: '2-digit',
     hourCycle: 'h23',
   });
-  return `${p.weekday} ${p.day} ${p.month} ${p.hour}:${p.minute}`;
+  return `${p.weekday} ${p.day} ${p.month} ${clockLabel(`${p.hour}:${p.minute}`, format)}`;
 }
 
-/** "17 Sep 2026 · 23:50" */
-export function ukStamp(iso: string): string {
+/** "17 Sep 2026 · 23:50", or "17 Sep 2026 · 11:50 pm" on the 12-hour clock (ADR-0085). */
+export function ukStamp(iso: string, format?: TimeFormat): string {
   const at = instant(iso);
   if (!valid(at)) return '—';
   const p = parts(at, {
@@ -111,7 +112,7 @@ export function ukStamp(iso: string): string {
     minute: '2-digit',
     hourCycle: 'h23',
   });
-  return `${p.day} ${p.month} ${p.year} · ${p.hour}:${p.minute}`;
+  return `${p.day} ${p.month} ${p.year} · ${clockLabel(`${p.hour}:${p.minute}`, format)}`;
 }
 
 /** "07 Sep" */
@@ -151,9 +152,9 @@ export function eventLine(entry: FeedbackEntry, withRole: boolean): string {
  * submitted Thu 18 Sep 09:12", plus §1.7's note when the worker has since
  * been removed and the comment is kept verbatim.
  */
-export function clientMetaLine(entry: FeedbackEntry): string {
+export function clientMetaLine(entry: FeedbackEntry, format?: TimeFormat): string {
   const who = entry.author_name ?? entry.client_name ?? 'the client';
-  const bits = [`from ${who} (client)`, `submitted ${ukDayTime(entry.created_at)}`];
+  const bits = [`from ${who} (client)`, `submitted ${ukDayTime(entry.created_at, format)}`];
   if (entry.staff_removed && entry.staff_removed_at) {
     bits.push(`worker GDPR-removed ${ukShort(entry.staff_removed_at)} — comment retained verbatim`);
   }
@@ -161,8 +162,8 @@ export function clientMetaLine(entry: FeedbackEntry): string {
 }
 
 /** The meta line under an office comment: "17 Sep 2026 · 23:50 · edited 19 Sep". */
-export function officeMetaLine(entry: FeedbackEntry): string {
-  const base = ukStamp(entry.created_at);
+export function officeMetaLine(entry: FeedbackEntry, format?: TimeFormat): string {
+  const base = ukStamp(entry.created_at, format);
   return entry.updated_at ? `${base} · edited ${ukShort(entry.updated_at)}` : base;
 }
 

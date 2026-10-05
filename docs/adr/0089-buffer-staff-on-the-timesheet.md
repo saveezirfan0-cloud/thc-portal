@@ -1,4 +1,4 @@
-# ADR-0087 · The timesheet says when buffer staff are on it
+# ADR-0089 · The timesheet says when buffer staff are on it
 
 **Status:** Accepted (THC, 05.10.2026). Agreed addition to scope v1.6 §11.3. The columns, the pagination and the order of the sheet are unchanged. **§3.2, §11.3**
 
@@ -17,7 +17,7 @@ THC deliberately overbooks a role by its buffer (§3.2, RULE-07): the buffer is 
 
 ## Consequences
 
-- `20261005110000_timesheet_buffer_indication.sql` (`event_document_buffer_count`, `event_document_data` and `event_document_email_payload` restated). pgTAP `773_timesheet_buffer_indication.sql`.
+- `20261005140300_timesheet_buffer_indication.sql` (`event_document_buffer_count`, `event_document_data` and `event_document_email_payload` restated). pgTAP `774_timesheet_buffer_indication.sql`.
 - `packages/pdf/src/sheet.ts` (`SheetPerson.headcount`, `SheetLayout.bufferStaff` / `bufferNote`, `BUFFER_NOTE`), `SheetDocument.tsx`, and tests, including a render test that the worst case still fits on one A4 page.
 - `packages/notifications/src/documents.ts`: `{bufferLine}` in both emails and "(incl. N buffer)" in the facts box.
 - The wireframe `wireframes/client/timesheet.html` is the visual contract for the sheet; this ADR is the deviation record for the heading and note.

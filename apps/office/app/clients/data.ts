@@ -32,7 +32,7 @@ export async function loadClients(): Promise<ClientsPageData> {
   const { data, error } = await supabase
     .from('clients_directory_v')
     .select(
-      'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct',
+      'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct, created_at, created_by, created_by_name',
     )
     .order('name')
     .returns<Client[]>();

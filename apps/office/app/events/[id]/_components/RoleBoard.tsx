@@ -2,6 +2,7 @@ import { Avatar, Pill } from '@thc/ui';
 import {
   type EventStatus,
   type ScoreWeights,
+  type TimeFormat,
   UK_ZONE,
   appliedAgo,
   canCancelBooking,
@@ -70,6 +71,7 @@ export function RoleBoard({
   eventAutoAssign,
   weights,
   payrollExported,
+  format,
   now = new Date(),
 }: {
   section: BoardSection;
@@ -79,6 +81,8 @@ export function RoleBoard({
   eventAutoAssign: boolean;
   weights: ScoreWeights;
   payrollExported: boolean;
+  /** The operator's clock (ADR-0085): this is a server component, so the page passes it down. */
+  format?: TimeFormat;
   now?: Date;
 }) {
   const startsAt = new Date(section.startsAt);
@@ -181,7 +185,7 @@ export function RoleBoard({
         ) : (
           section.confirmed.map((booking) => (
             <div className={booking.noShow ? 'prow noshow' : 'prow'} key={booking.bookingId}>
-              <Person person={booking} sub={confirmedLine(booking, section.roleName)} />
+              <Person person={booking} sub={confirmedLine(booking, section.roleName, format)} />
               <AttendanceStamp attendance={booking.attendance} />
               {booking.qualified ? (
                 <Pill tone="cyan">
@@ -194,7 +198,9 @@ export function RoleBoard({
               {booking.reconfirmRequired ? <Pill tone="amber">Awaiting re-confirm</Pill> : null}
               {/* ADR-0046: still confirmed, still counted — only a chip. */}
               {booking.offer ? (
-                <Pill tone={offerChip(booking.offer).tone}>{offerChip(booking.offer).label}</Pill>
+                <Pill tone={offerChip(booking.offer, format).tone}>
+                  {offerChip(booking.offer, format).label}
+                </Pill>
               ) : null}
               <div className="right">
                 <AttendancePills attendance={booking.attendance} />
@@ -234,7 +240,7 @@ export function RoleBoard({
           ) : (
             section.invited.map((booking) => (
               <div className="prow" key={booking.bookingId}>
-                <Person person={booking} sub={invitedLine(booking)} />
+                <Person person={booking} sub={invitedLine(booking, format)} />
                 {booking.qualified ? (
                   <Pill tone="cyan">
                     Qualified — {clientName} · {section.roleName}
@@ -348,16 +354,16 @@ export function RoleBoard({
   );
 }
 
-function confirmedLine(booking: BoardBooking, roleName: string): string {
+function confirmedLine(booking: BoardBooking, roleName: string, format?: TimeFormat): string {
   const parts = [roleName];
   if (booking.confirmedAt) {
-    parts.push(`confirmed ${formatTimeIn(new Date(booking.confirmedAt), UK_ZONE)}`);
+    parts.push(`confirmed ${formatTimeIn(new Date(booking.confirmedAt), UK_ZONE, format)}`);
   }
   // The day-before "I'm ready" is the one hard deadline (§3.5), so whether it
   // has been pressed is what the manager most needs to see here.
   parts.push(
     booking.dayBeforeConfirmedAt
-      ? `I'm ready ✓ ${formatTimeIn(new Date(booking.dayBeforeConfirmedAt), UK_ZONE)}`
+      ? `I'm ready ✓ ${formatTimeIn(new Date(booking.dayBeforeConfirmedAt), UK_ZONE, format)}`
       : "I'm ready — not yet",
   );
   if (booking.source === 'self') parts.push('self-applied via Radar');
@@ -371,7 +377,7 @@ function appliedMarker(booking: BoardBooking): string {
   return booking.appliedAt ? appliedAgo(new Date(booking.appliedAt)) : 'Applied';
 }
 
-function invitedLine(booking: BoardBooking): string {
-  const at = formatTimeIn(new Date(booking.createdAt), UK_ZONE);
+function invitedLine(booking: BoardBooking, format?: TimeFormat): string {
+  const at = formatTimeIn(new Date(booking.createdAt), UK_ZONE, format);
   return `invited ${at} UK · ${booking.source}`;
 }

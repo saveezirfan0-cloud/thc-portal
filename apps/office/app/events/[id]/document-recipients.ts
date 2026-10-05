@@ -1,7 +1,7 @@
 import { isEmail } from '../../clients/validate';
 
 /**
- * Who the timesheets for ONE event go to (ADR-0086). Null/empty is "every
+ * Who the timesheets for ONE event go to (ADR-0088). Null/empty is "every
  * contact email on the client card"; otherwise 1–5 addresses for this event
  * only, picked from the client's contacts and/or typed in. The database
  * (`set_event_document_recipients`) checks the same things and is the one

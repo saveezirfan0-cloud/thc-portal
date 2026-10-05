@@ -52,6 +52,8 @@ test('the list shows each venue with its type, radius and any override of the de
     'Type',
     'Geofence (m)',
     'Events',
+    'Date added',
+    'Added by',
     'Actions',
   ]);
 

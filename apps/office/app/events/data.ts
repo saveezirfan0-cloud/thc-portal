@@ -262,7 +262,12 @@ export interface SectionRateRow {
 /** A booking that still ties a worker to the shift (§3.6). */
 export const LIVE_BOOKING_STATUSES = ['invited', 'confirmed', 'applied', 'worked'] as const;
 
-/** Reads a Europe/London wall-clock "HH:MM" back out of a stored timestamptz. */
+/**
+ * Reads a Europe/London wall-clock "HH:MM" back out of a stored timestamptz.
+ * A VALUE for the draft and `ukRoleWindow`, not a label: always the 24-hour
+ * form whatever clock the operator reads (ADR-0085); `TimeField` and the
+ * views write it on theirs.
+ */
 function ukTime(iso: string): string {
   return formatTimeIn(new Date(iso), UK_ZONE);
 }

@@ -2,23 +2,28 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Panel, Pill } from '@thc/ui';
 import {
+  type TimeFormat,
+  UK_ZONE,
   cancelledOnTheDay,
   derivedEventWindow,
   eventFill,
   eventStatus,
   formatEventFill,
   formatOpen,
+  formatTimeIn,
   isEditLocked,
   isNotifiedOnCancel,
   orderSections,
   requiredLanguagesLabel,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { AutoRefresh } from '../../_components/AutoRefresh';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
+import { currentTimeFormat } from '../../_lib/timeFormat';
 import { canMessageLineUp, canToggleAutoAssign, messagePeople, pushDate } from './board-model';
 import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
 import { RoleBoard } from './_components/RoleBoard';
@@ -45,7 +50,8 @@ export const metadata = { title: 'Event board · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { event, problem } = await loadBoard(id);
+  const format = await currentTimeFormat();
+  const { event, problem } = await loadBoard(id, new Date(), format);
   // A read that FAILED is not a missing event: say what went wrong instead
   // of a 404 that tells the manager the event does not exist.
   if (problem) {
@@ -87,12 +93,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const autosend =
     status === 'cancelled'
       ? { allocation: null, signout: null }
-      : await loadAutosendHints(event.id, {
-          started: status === 'ongoing' || status === 'completed',
-          ended: status === 'completed',
-        });
+      : await loadAutosendHints(
+          event.id,
+          {
+            started: status === 'ongoing' || status === 'completed',
+            ended: status === 'completed',
+          },
+          format,
+        );
   const autosendLine = [autosend.allocation, autosend.signout].filter(Boolean).join(' · ');
-  // ADR-0086: the people the timesheets go to — this event's own list, else the client card.
+  // ADR-0088: the people the timesheets go to — this event's own list, else the client card.
   const documentRecipients = event.documentRecipients ?? event.clientContactEmails;
   const recipientsLine =
     status === 'cancelled' || documentRecipients.length === 0
@@ -136,7 +146,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           {/* §11.4. No document at all for a cancelled event (§3.3). */}
           {status === 'cancelled' ? null : (
             <>
-              {/* ADR-0086: who the timesheets go to, for this event. */}
+              {/* ADR-0088: who the timesheets go to, for this event. */}
               <DocumentRecipients
                 eventId={event.id}
                 clientContacts={event.clientContactEmails}
@@ -158,7 +168,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               pushTitle={`${event.title} · ${pushDate(event.date)}`}
               sections={sections.map((section) => ({
                 id: section.id,
-                label: `${section.roleName} · ${ukClock(section.startsAt)}–${ukClock(new Date(section.endsAt))} (UK time)`,
+                label: `${section.roleName} · ${ukClock(section.startsAt, format)}–${ukClock(new Date(section.endsAt), format)} (UK time)`,
                 roleName: section.roleName,
                 people: messagePeople(section),
               }))}
@@ -169,6 +179,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
     >
       <div className="stack">
+        {/* Accepts, ready confirmations and check-ins arrive while the manager watches. */}
+        <AutoRefresh />
         {autosendLine || recipientsLine ? (
           <div className="stack" style={{ gap: 2, textAlign: 'right' }}>
             {autosendLine ? <span className="xs muted">{autosendLine}</span> : null}
@@ -270,6 +282,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               eventAutoAssign={event.autoAssign}
               weights={event.weights}
               payrollExported={Boolean(event.payrollExportedAt)}
+              format={format}
             />
           ))
         )}
@@ -281,15 +294,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   );
 }
 
-const UK_CLOCK = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-/** "17:00" — a role's scheduled time, in UK time (§1.8). */
-function ukClock(at: Date): string {
-  return UK_CLOCK.format(at);
+/** "17:00" or "5:00 pm" — a role's scheduled time, in UK time (§1.8), on the operator's clock. */
+function ukClock(at: Date, format: TimeFormat): string {
+  return formatTimeIn(at, UK_ZONE, format);
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

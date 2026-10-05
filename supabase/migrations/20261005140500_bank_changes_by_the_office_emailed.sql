@@ -1,7 +1,7 @@
 -- =====================================================================
--- Migration 20261005130000 · Any other change to bank details is emailed to
+-- Migration 20261005140500 · Any other change to bank details is emailed to
 --                            Gisela and Payroll too (§2.10, §8 E5;
---                            ADR-0089, THC 05.10.2026)
+--                            ADR-0091, THC 05.10.2026)
 --
 -- THC: "Any changes in bank details of existing staff should be immediately
 -- emailed to both Gisela and Payroll."
@@ -63,7 +63,7 @@ begin
 
   select * into s from staff where id = v_id;
 
-  -- ADR-0089: this function queues E5 itself, so the bank_details trigger
+  -- ADR-0091: this function queues E5 itself, so the bank_details trigger
   -- (which catches every OTHER write) stands down for this transaction.
   perform set_config('thc.bank_write', 'rpc', true);
 
@@ -131,7 +131,7 @@ begin
 end $$;
 
 comment on function public.bank_details_notify_change() is
-  'ADR-0089: queues E5b to Gisela and Payroll for any insert or real change to bank_details that did not come through staff_save_bank() (which queues E5 itself): an office login with finance, the service role. Names the worker and who, never the sort code or account number.';
+  'ADR-0091: queues E5b to Gisela and Payroll for any insert or real change to bank_details that did not come through staff_save_bank() (which queues E5 itself): an office login with finance, the service role. Names the worker and who, never the sort code or account number.';
 
 revoke execute on function public.bank_details_notify_change() from public, anon, authenticated;
 
@@ -141,7 +141,7 @@ create trigger bank_details_notify_change
   for each row execute function public.bank_details_notify_change();
 
 comment on function public.staff_save_bank(text, text, text) is
-  '§2.10/§10.1: the ONLY worker write path to bank_details (the direct self insert/update policies were dropped in 20260927120100). Validates sort code and account number and queues E5 to payroll in the same transaction, one E5 per save (microsecond key, 20260930120200). Tells bank_details_notify_change() (ADR-0089) that E5 is queued, so any other write queues E5b instead.';
+  '§2.10/§10.1: the ONLY worker write path to bank_details (the direct self insert/update policies were dropped in 20260927120100). Validates sort code and account number and queues E5 to payroll in the same transaction, one E5 per save (microsecond key, 20260930120200). Tells bank_details_notify_change() (ADR-0091) that E5 is queued, so any other write queues E5b instead.';
 
 revoke execute on function public.staff_save_bank(text, text, text) from public, anon;
 grant  execute on function public.staff_save_bank(text, text, text) to authenticated;

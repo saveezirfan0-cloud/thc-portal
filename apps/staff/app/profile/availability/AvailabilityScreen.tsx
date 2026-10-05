@@ -13,7 +13,9 @@ import {
   SegToggle,
   Sheet,
   Switch,
+  TimeField,
   Toast,
+  useTimeFormat,
 } from '@thc/ui';
 import { ShiftTime, yourTimeLine } from '../../_components/ShiftTime';
 import { useViewerZone } from '../../_components/useViewerZone';
@@ -54,6 +56,7 @@ export type EntryWire = Omit<UnavailabilityEntry, 'startsAt' | 'endsAt'> & {
 export function AvailabilityScreen({ entries: wire }: { entries: EntryWire[] }) {
   const router = useRouter();
   const zone = useViewerZone();
+  const format = useTimeFormat();
   const entries = useMemo<UnavailabilityEntry[]>(
     () => wire.map((e) => ({ ...e, startsAt: new Date(e.startsAt), endsAt: new Date(e.endsAt) })),
     [wire],
@@ -134,12 +137,14 @@ export function AvailabilityScreen({ entries: wire }: { entries: EntryWire[] }) 
         <section key={group.weekOf} className="avail-week" aria-label={group.label}>
           <div className="avail-grp">{group.label}</div>
           {group.entries.map((entry) => {
-            const second = entry.allDay ? null : yourTimeLine(entry.startsAt, entry.endsAt, zone);
+            const second = entry.allDay
+              ? null
+              : yourTimeLine(entry.startsAt, entry.endsAt, zone, format);
             return (
               <div className="avail-row" key={entry.id}>
                 <div className="avail-copy">
                   <div className="t">
-                    {entryTitle(entry)}
+                    {entryTitle(entry, format)}
                     {entry.allDay ? null : <span className="xs muted"> UK time</span>}
                   </div>
                   {second ? <div className="xs muted mono">{second}</div> : null}
@@ -150,7 +155,7 @@ export function AvailabilityScreen({ entries: wire }: { entries: EntryWire[] }) 
                   size="sm"
                   disabled={pending}
                   onClick={() => setDeleting(entry)}
-                  aria-label={`Delete ${entryTitle(entry)}`}
+                  aria-label={`Delete ${entryTitle(entry, format)}`}
                 >
                   Delete
                 </Button>
@@ -215,7 +220,8 @@ function AddSheet({
   const [pending, start] = useTransition();
   const set = <K extends keyof AddForm>(key: K, value: AddForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
-  const yourTime = addSheetYourTime(form, zone);
+  const format = useTimeFormat();
+  const yourTime = addSheetYourTime(form, zone, format);
   const today = ukTodayIso();
 
   function save() {
@@ -274,19 +280,17 @@ function AddSheet({
       {form.allDay ? null : (
         <>
           <div className="row avail-pair">
-            <Input
+            {/* ADR-0085: a text field on the worker's clock, not the browser's
+                device-clock time input; its value is always "HH:MM". */}
+            <TimeField
               label="From (UK time)"
-              type="time"
-              mono
               value={form.fromTime}
-              onChange={(event) => set('fromTime', event.target.value)}
+              onChange={(value) => set('fromTime', value)}
             />
-            <Input
+            <TimeField
               label="To (UK time)"
-              type="time"
-              mono
               value={form.toTime}
-              onChange={(event) => set('toTime', event.target.value)}
+              onChange={(value) => set('toTime', value)}
             />
           </div>
           {yourTime ? <div className="xs muted mono">{yourTime}</div> : null}
@@ -301,7 +305,7 @@ function AddSheet({
         max={MAX_REPEAT_WEEKS}
         value={String(form.repeatWeeks)}
         onChange={(event) => set('repeatWeeks', Number(event.target.value || 0))}
-        hint={repeatHint(form)}
+        hint={repeatHint(form, format)}
       />
       {error ? <Alert tone="coral">{error}</Alert> : null}
       <Button tone="primary" size="lg" block disabled={pending} onClick={save}>
@@ -328,8 +332,9 @@ function DeleteDialog({
   onClose: () => void;
   onDelete: (entry: UnavailabilityEntry, wholeSeries: boolean) => void;
 }) {
+  const format = useTimeFormat();
   if (!entry) return null;
-  const title = `${entryTitle(entry)}${entry.allDay ? '' : ' (UK time)'}`;
+  const title = `${entryTitle(entry, format)}${entry.allDay ? '' : ' (UK time)'}`;
   const series = entry.seriesId !== null && count > 1;
   return (
     <Modal

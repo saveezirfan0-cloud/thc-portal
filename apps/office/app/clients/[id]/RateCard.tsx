@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Addon, Alert, Button, Chip, Input, InputRow, Panel, Select, TableScroll } from '@thc/ui';
 import { addRole, removeRole, updateRole } from './actions';
-import { gbp, marginTone } from './card';
+import { defaultDressCodes, dressCodeSuggestions, gbp, marginTone } from './card';
 import type { RateCardRow, RoleOption } from './types';
 
 /**
@@ -38,25 +38,37 @@ export function RateCard({
   clientId,
   rows,
   roles,
+  dressCodeLibrary = [],
   ratesVisible = true,
 }: {
   clientId: string;
   rows: RateCardRow[];
   roles: RoleOption[];
+  /** Dress codes already stored on any client's card, offered while editing. */
+  dressCodeLibrary?: string[];
   ratesVisible?: boolean;
 }) {
   if (!ratesVisible) return <RateCardWithoutRates rows={rows} />;
-  return <EditableRateCard clientId={clientId} rows={rows} roles={roles} />;
+  return (
+    <EditableRateCard
+      clientId={clientId}
+      rows={rows}
+      roles={roles}
+      dressCodeLibrary={dressCodeLibrary}
+    />
+  );
 }
 
 function EditableRateCard({
   clientId,
   rows,
   roles,
+  dressCodeLibrary,
 }: {
   clientId: string;
   rows: RateCardRow[];
   roles: RoleOption[];
+  dressCodeLibrary: string[];
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [rate, setRate] = useState('');
@@ -65,6 +77,8 @@ function EditableRateCard({
   const [adding, setAdding] = useState('');
   /** A role picked from the catalogue, on screen but not yet saved. */
   const [draft, setDraft] = useState<RoleOption | null>(null);
+  /** The draft's dress codes were filled in from the client's other roles. */
+  const [learned, setLearned] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -86,6 +100,7 @@ function EditableRateCard({
 
   const open = (row: RateCardRow) => {
     setDraft(null);
+    setLearned(false);
     setEditing(row.id);
     setRate((row.charge_rate ?? 0).toFixed(2));
     setCodes(row.dress_codes);
@@ -96,13 +111,16 @@ function EditableRateCard({
     setEditing(null);
     setDraft(role);
     setRate('');
-    setCodes([]);
+    // The client's usual dress code carries over; see defaultDressCodes().
+    const usual = defaultDressCodes(rows);
+    setCodes(usual);
+    setLearned(usual.length > 0);
     setCodeDraft('');
   };
 
-  const addCode = () => {
-    const value = codeDraft.trim();
-    if (!value || codes.includes(value)) {
+  const addCode = (code = codeDraft) => {
+    const value = code.trim();
+    if (!value || codes.some((entry) => entry.toLowerCase() === value.toLowerCase())) {
       setCodeDraft('');
       return;
     }
@@ -185,6 +203,8 @@ function EditableRateCard({
                   codeDraft={codeDraft}
                   setCodeDraft={setCodeDraft}
                   addCode={addCode}
+                  library={dressCodeLibrary}
+                  learned={learned}
                   pending={pending}
                   saveDisabled={rate.trim() === ''}
                   onCancel={() => setDraft(null)}
@@ -210,6 +230,7 @@ function EditableRateCard({
                     codeDraft={codeDraft}
                     setCodeDraft={setCodeDraft}
                     addCode={addCode}
+                    library={dressCodeLibrary}
                     pending={pending}
                     saveDisabled={false}
                     onCancel={() => setEditing(null)}
@@ -366,6 +387,8 @@ function EditingRow({
   codeDraft,
   setCodeDraft,
   addCode,
+  library,
+  learned = false,
   pending,
   saveDisabled,
   onCancel,
@@ -380,12 +403,17 @@ function EditingRow({
   setCodes: (value: string[]) => void;
   codeDraft: string;
   setCodeDraft: (value: string) => void;
-  addCode: () => void;
+  addCode: (code?: string) => void;
+  /** Dress codes already stored for any client, offered as one-click adds. */
+  library: string[];
+  /** The codes were pre-filled from this client's other roles (new-role draft only). */
+  learned?: boolean;
   pending: boolean;
   saveDisabled: boolean;
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const suggestions = dressCodeSuggestions(library, codes, codeDraft);
   return (
     <tr>
       <td>
@@ -434,10 +462,31 @@ function EditingRow({
               }
             }}
           />
-          <Button size="sm" onClick={addCode}>
+          <Button size="sm" onClick={() => addCode()}>
             + Add
           </Button>
         </div>
+        {learned ? (
+          <div className="muted sm dcs-suggest">
+            Pre-filled from this client&rsquo;s other roles &mdash; remove any that don&rsquo;t
+            apply to {roleName}.
+          </div>
+        ) : null}
+        {suggestions.length > 0 ? (
+          <div className="dcs dcs-suggest" role="group" aria-label="Dress codes already stored">
+            <span className="muted sm">Already stored — click to add:</span>
+            {suggestions.map((code) => (
+              <button
+                key={code}
+                type="button"
+                className="chip outline"
+                onClick={() => addCode(code)}
+              >
+                + {code}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </td>
       <td className="right-align">
         <Button size="sm" tone="ghost" onClick={onCancel}>

@@ -119,7 +119,7 @@ select is_empty(
           'event_documents_due', 'event_document_autosend_claim',
           'record_event_document_autosend', 'queue_event_document_autosend',
           'event_document_autosend_release',
-          -- ADR-0088: the New Starter (HMRC) report's four steps.
+          -- ADR-0090: the New Starter (HMRC) report's four steps.
           'new_starter_report_due', 'prepare_new_starter_report',
           'new_starter_report_rows', 'queue_new_starter_report_email'
         )
@@ -365,7 +365,7 @@ select bag_eq(
             ('compliance-daily'), ('notify-drain'), ('finance-reports'),
             ('gdpr-purge'), ('willo-invite'), ('onboarding-chasers'), ('event-documents'),
             ('new-starter-report') $$,
-  'exactly the twelve schedules whose function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set; onboarding-chasers (20261001212000, ADR-0071) with its function; event-documents (20261002100000, ADR-0074) with its Back Office route; new-starter-report (20261005120000, ADR-0088) likewise'
+  'exactly the twelve schedules whose function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set; onboarding-chasers (20261001212000, ADR-0071) with its function; event-documents (20261002100000, ADR-0074) with its Back Office route; new-starter-report (20261005140400, ADR-0090) likewise'
 );
 
 -- ---------------------------------------------------------------------

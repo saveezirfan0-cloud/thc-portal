@@ -1,4 +1,4 @@
-# ADR-0085 · The Allocation Timesheet goes at 16:00, only once the event is fully confirmed, and again when it changes
+# ADR-0087 · The Allocation Timesheet goes at 16:00, only once the event is fully confirmed, and again when it changes
 
 **Status:** Accepted (THC, 04.10.2026). Amends ADR-0074 §2 (D1 only). The manual Send and Download buttons are unchanged. **§11.3, §11.4**
 
@@ -14,7 +14,7 @@ On 04.10.2026 THC asked for two changes:
 
 ## Decision
 
-1. **16:00 UK** is the new default for `settings.document_autosend.allocation.time`. The migration (`20261004100000`) moves a row still on the shipped `14:00` and leaves a value the office has edited alone. The SQL and TypeScript defaults move with it. UK wall-clock time still holds through the clock changes.
+1. **16:00 UK** is the new default for `settings.document_autosend.allocation.time`. The migration (`20261005140000`) moves a row still on the shipped `14:00` and leaves a value the office has edited alone. The SQL and TypeScript defaults move with it. UK wall-clock time still holds through the clock changes.
 2. **"100% confirmed"** means every role section holds at least its **headcount** of firmly confirmed workers. A firmly confirmed worker has a booking in `confirmed` or `worked` with `reconfirm_required = false`. `event_document_unfilled(event)` returns the places still short, summed across the sections. It is 0 when the event is whole.
    - Headcount raised, or a role section added, after the cut-off: the new places are open, so `unfilled > 0`.
    - Time, venue or dress change: the bookings go to `reconfirm_required` (§3.5 "Awaiting"). They do not count until the worker re-confirms in the Staff App.
@@ -35,7 +35,7 @@ On 04.10.2026 THC asked for two changes:
 
 ## Consequences
 
-- `20261004100000_allocation_timesheet_1600_fully_confirmed.sql` (16:00 and the `unfilled` rule) and `20261004110000_allocation_timesheet_resend_on_change.sql` (the fingerprint, `changed`, `sends`, and the claim, record, queue and release functions restated so a sent row can be claimed again). `document_autosend_verdict()` gains `p_unfilled` and `p_changed`. `event_documents_due()` gains the columns `unfilled` and `changed`. All stay service-role-only.
+- `20261005140000_allocation_timesheet_1600_fully_confirmed.sql` (16:00 and the `unfilled` rule) and `20261005140100_allocation_timesheet_resend_on_change.sql` (the fingerprint, `changed`, `sends`, and the claim, record, queue and release functions restated so a sent row can be claimed again). `document_autosend_verdict()` gains `p_unfilled` and `p_changed`. `event_documents_due()` gains the columns `unfilled` and `changed`. All stay service-role-only.
 - `packages/notifications/src/documents.ts`: the D1 subject and text carry `{updateTag}` and `{updateLine}`.
 - `apps/office/app/api/jobs/event-documents/_lib/{schedule,run}.ts` and their tests. `supabase/tests/760_document_autosend.sql` holds the same cases.
 - D2 (the Completed Allocation Timesheet) is unchanged.

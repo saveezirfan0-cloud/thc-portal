@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Alert, Avatar, Button, EmptyState, Panel, Pill, Tabs } from '@thc/ui';
+import { Alert, Avatar, Button, EmptyState, Panel, Pill, Tabs, useTimeFormat } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { RTW_LABEL, employeeId, formatUkDate } from '../staff';
 import { DecideDialog } from './DecideDialog';
@@ -134,6 +134,7 @@ export function PendingCard({
   onDecide: (stage: DecideStage) => void;
   canDecideDob?: boolean;
 }) {
+  const format = useTimeFormat();
   const first = row.display_name.split(' ')[0] ?? row.display_name;
   const [problem, setProblem] = useState<string | null>(null);
   const evidence = evidenceName(row.evidence_path);
@@ -154,7 +155,9 @@ export function PendingCard({
         </span>
         <span className="mono sm muted">{employeeId(row.employee_id)}</span>
         <Pill>{kindLabel(row.kind)}</Pill>
-        <span className="ml-auto mono sm muted">Requested {requestedAt(row.created_at)}</span>
+        <span className="ml-auto mono sm muted">
+          Requested {requestedAt(row.created_at, format)}
+        </span>
       </div>
       <div className="rb">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
@@ -240,6 +243,7 @@ export function PendingCard({
 }
 
 export function DecidedTable({ rows }: { rows: ChangeRequestView[] }) {
+  const format = useTimeFormat();
   if (rows.length === 0) {
     return (
       <EmptyState>
@@ -277,7 +281,7 @@ export function DecidedTable({ rows }: { rows: ChangeRequestView[] }) {
                     {changeSummary(row)}
                   </td>
                   <td data-label="Requested (UK)" className="mono sm">
-                    {ukStamp(row.created_at).replace(' UK time', '')}
+                    {ukStamp(row.created_at, format).replace(' UK time', '')}
                   </td>
                   <td data-label="Decision">
                     <Pill tone={decision.tone}>{decision.label}</Pill>
@@ -289,7 +293,7 @@ export function DecidedTable({ rows }: { rows: ChangeRequestView[] }) {
                     {decidedBy(row)}
                   </td>
                   <td data-label="Decided (UK)" className="mono sm">
-                    {ukStamp(row.decided_at).replace(' UK time', '')}
+                    {ukStamp(row.decided_at, format).replace(' UK time', '')}
                   </td>
                 </tr>
               );

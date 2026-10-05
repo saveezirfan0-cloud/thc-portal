@@ -1,4 +1,5 @@
 import { OfficeShell } from '../_components/OfficeShell';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { loadFeedback } from './data';
 import { FeedbackScreen } from './FeedbackScreen';
 import { parseQuery } from './view-model';
@@ -36,6 +37,7 @@ export default async function Page({
         </>
       }
     >
+      <AutoRefresh />
       <FeedbackScreen data={data} query={query} />
     </OfficeShell>
   );

@@ -1,4 +1,7 @@
+'use client';
+
 import { UK_ZONE, cancelDeadline, formatDateTimeIn } from '@thc/domain';
+import { useTimeFormat } from '@thc/ui';
 import { ActionButton } from './ActionButton';
 import { cancelShift } from '../actions';
 
@@ -23,11 +26,12 @@ export function CancelShift({
   /** The shift screen leaves for the list: the booking is no longer theirs. */
   onDone?: string;
 }) {
+  const format = useTimeFormat();
   return (
     <div className="row" style={{ gap: 'var(--sp-8)', alignItems: 'center' }}>
       <span className="xs muted">
-        Cancel available until {formatDateTimeIn(cancelDeadline(startsAt), UK_ZONE)} (UK), 72 h
-        before the start
+        Cancel available until {formatDateTimeIn(cancelDeadline(startsAt), UK_ZONE, format)} (UK),
+        72 h before the start
       </span>
       <span style={{ marginLeft: 'auto' }}>
         <ActionButton
