@@ -65,6 +65,71 @@ const d1 = (over: Partial<OutboxRow> = {}): OutboxRow => ({
   ...over,
 });
 
+/** ADR-0091: the payload exactly as queue_new_starter_report_email() writes it (410 pgTAP). */
+const ns1 = (over: Partial<OutboxRow> = {}): OutboxRow => ({
+  id: 9,
+  key: 'NS1:2026-09-08',
+  channel: 'email',
+  template: 'NS1',
+  recipient_staff_id: null,
+  recipient_emails: null,
+  payload: {
+    periodStart: '08/09/2026',
+    periodEnd: '14/09/2026',
+    newStarters: '3',
+    attachments: JSON.stringify([
+      {
+        bucket: 'reports',
+        path: 'new-starter/2026-09-08.csv',
+        filename: 'THC new starters (HMRC) 2026-09-08 to 2026-09-14.csv',
+      },
+    ]),
+  },
+  attempts: 1,
+  ...over,
+});
+
+describe('New Starter (HMRC) report email (§9.9, ADR-0091)', () => {
+  it('goes from admin@ to Payroll and Gisela, the same two addresses as the payroll email', () => {
+    const message = documentMessageFor(ns1());
+    expect(message.sender).toBe('admin');
+    expect(message.to).toEqual(TEMPLATES.E5.recipients);
+    expect(message.to).toContain('thc_payroll@topsourceworldwide.com');
+    expect(message.to).toContain('gisela@thehospitalitycompany.co.uk');
+  });
+
+  it('names the week and the count, and attaches the one CSV from the reports bucket', () => {
+    const message = documentMessageFor(ns1());
+    expect(message.subject).toBe('THC new starters (HMRC) — 08/09/2026 to 14/09/2026');
+    expect(message.body).toContain('Monday 08/09/2026 to Sunday 14/09/2026: 3 new starters.');
+    expect(message.attachments).toEqual([
+      {
+        bucket: 'reports',
+        path: 'new-starter/2026-09-08.csv',
+        filename: 'THC new starters (HMRC) 2026-09-08 to 2026-09-14.csv',
+      },
+    ]);
+    expect(message.html).toContain('New starters');
+    expect(message.html).toContain('3');
+  });
+
+  it('says "1 new starter", not "1 new starters"', () => {
+    const message = documentMessageFor(ns1({ payload: { ...ns1().payload, newStarters: '1' } }));
+    expect(message.body).toContain(': 1 new starter.');
+  });
+
+  it('refuses a file from another bucket or with no file at all', () => {
+    const bad = {
+      ...ns1().payload,
+      attachments: JSON.stringify([{ bucket: 'timesheets', path: 'x.csv', filename: 'x.csv' }]),
+    };
+    expect(() => documentMessageFor(ns1({ payload: bad }))).toThrow(UnsendableRow);
+    expect(() =>
+      documentMessageFor(ns1({ payload: { ...ns1().payload, attachments: '[]' } })),
+    ).toThrow(UnsendableRow);
+  });
+});
+
 describe('BG-08 finance email (§9.9)', () => {
   it('goes from admin@ to the same payroll addresses as E5/E6', () => {
     const message = documentMessageFor(bg08());
@@ -83,6 +148,19 @@ describe('BG-08 finance email (§9.9)', () => {
     ]);
     expect(message.body).toContain('3 new starters');
     expect(message.body).toContain('1 shift is held out of this file');
+  });
+
+  it('a payroll email queued after ADR-0091 points to the New Starter email instead', () => {
+    const row = bg08();
+    const { newStarters: _unused, ...rest } = row.payload;
+    const payload = {
+      ...rest,
+      attachments: JSON.stringify([JSON.parse(row.payload.attachments!)[0]]),
+    };
+    const message = documentMessageFor({ ...row, payload });
+    expect(message.attachments).toHaveLength(1);
+    expect(message.body).toContain('comes in its own email every Monday');
+    expect(message.body).not.toContain('attached too');
   });
 
   it('says there were no new starters rather than attaching an empty file', () => {
@@ -129,6 +207,39 @@ describe('§11.4 allocation sheet email', () => {
     expect(message.body).not.toContain('PO number');
   });
 
+  it('says an automatic resend replaces the earlier sheet (ADR-0088), in subject, text and HTML', () => {
+    const payload = { ...d1().payload, updateTag: ' (updated)' };
+    const message = documentMessageFor(d1({ payload }));
+    expect(message.subject).toBe(
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A) (updated)',
+    );
+    expect(message.body).toContain('This replaces the Allocation Timesheet we sent earlier');
+    expect(message.html).toContain('This replaces the Allocation Timesheet we sent earlier');
+    // A first sheet, and a row older than the key, say nothing of the kind.
+    expect(documentMessageFor(d1()).body).not.toContain('replaces');
+    expect(documentMessageFor(d1({ payload: { ...d1().payload, updateTag: '' } })).subject).toBe(
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+    );
+  });
+
+  it('says when buffer staff are on the sheet, in the sentence and beside the count (ADR-0090)', () => {
+    const payload = { ...d1().payload, staffCount: '19', bufferStaff: '2' };
+    const message = documentMessageFor(d1({ payload }));
+    const sentence =
+      'It includes 2 buffer people, booked in addition to the number required to cover late arrivals and drop-outs on the day.';
+    expect(message.body).toContain(sentence);
+    expect(message.html).toContain(sentence);
+    expect(message.html).toContain('19 (incl. 2 buffer)');
+    expect(documentMessageFor(d1({ payload: { ...payload, bufferStaff: '1' } })).body).toContain(
+      'It includes 1 buffer person, booked',
+    );
+    // None, and rows older than the key, say nothing about a buffer.
+    expect(documentMessageFor(d1()).body).not.toContain('buffer');
+    expect(
+      documentMessageFor(d1({ payload: { ...d1().payload, bufferStaff: '' } })).html,
+    ).not.toContain('buffer');
+  });
+
   it('attaches the stored PDF by reference', () => {
     expect(documentMessageFor(d1()).attachments).toEqual([
       {
@@ -154,8 +265,8 @@ describe('§11.4 allocation sheet email', () => {
 });
 
 describe('the drain can tell the two registers apart', () => {
-  it('knows the three document emails and nothing from §8', () => {
-    expect(Object.keys(DOCUMENT_EMAILS).sort()).toEqual(['BG08', 'D1', 'D2']);
+  it('knows the four document emails and nothing from §8', () => {
+    expect(Object.keys(DOCUMENT_EMAILS).sort()).toEqual(['BG08', 'D1', 'D2', 'NS1']);
     expect(isDocumentEmail('D1')).toBe(true);
     expect(isDocumentEmail('E5')).toBe(false);
   });

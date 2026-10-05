@@ -67,6 +67,22 @@ describe('rendered PDF (§11.3)', () => {
     expectA4Pages(await renderSheetPdf(layout), 1);
   });
 
+  it('fits the worst case with the buffer note: twelve one-person sections, each with buffer, plus footer', async () => {
+    // ADR-0090: every section lists one more than was asked for, so every
+    // heading carries "(0 required + 1 buffer)"-style text and the last page
+    // carries the buffer note above the company line.
+    const people = galaPeople(12).map((p, i) => ({
+      ...p,
+      roleName: `Role ${String(i).padStart(2, '0')}`,
+      sectionId: `s${i}`,
+      headcount: 0,
+    }));
+    const layout = layoutSheet({ kind: 'signout', event: GALA, people: people.slice(0, 12) });
+    expect(layout.bufferNote).not.toBeNull();
+    expect(layout.pages).toHaveLength(1);
+    expectA4Pages(await renderSheetPdf(layout), 1);
+  });
+
   it('draws a short sheet — three rows, five rows — on a full A4 page, not a strip', async () => {
     for (const rows of [3, 5]) {
       const people = galaPeople(0).slice(0, rows);

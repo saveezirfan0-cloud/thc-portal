@@ -1758,6 +1758,7 @@ export type Database = {
           client_id: string;
           created_at: string;
           created_by: string | null;
+          document_recipients: string[] | null;
           event_date: string;
           geofence_radius_m: number;
           id: string;
@@ -1782,6 +1783,7 @@ export type Database = {
           client_id: string;
           created_at?: string;
           created_by?: string | null;
+          document_recipients?: string[] | null;
           event_date: string;
           geofence_radius_m: number;
           id?: string;
@@ -1806,6 +1808,7 @@ export type Database = {
           client_id?: string;
           created_at?: string;
           created_by?: string | null;
+          document_recipients?: string[] | null;
           event_date?: string;
           geofence_radius_m?: number;
           id?: string;
@@ -9068,6 +9071,10 @@ export type Database = {
         Args: { p_document: string };
         Returns: Json;
       };
+      event_document_recipients: {
+        Args: { p_event: string };
+        Returns: string[];
+      };
       event_document_schedule: { Args: { p_event: string }; Returns: string };
       event_document_tally: {
         Args: { p_event: string };
@@ -9376,25 +9383,6 @@ export type Database = {
       n8_link: {
         Args: { p_status: Database['public']['Enums']['staff_status'] };
         Returns: string;
-      };
-      new_starter_export_rows: {
-        Args: { p_send: number };
-        Returns: {
-          country: string;
-          date_of_birth: string;
-          employee_id: number;
-          first_shift_date: string;
-          gender: string;
-          hmrc_statement: string;
-          home_address: string;
-          ni_number: string;
-          photo_path: string;
-          postcode: string;
-          removed: boolean;
-          staff_id: string;
-          staff_name: string;
-          student_loan: string;
-        }[];
       };
       new_starter_postcode: { Args: { p_address: string }; Returns: string };
       new_starter_report: {
@@ -10027,11 +10015,7 @@ export type Database = {
         Returns: Json;
       };
       queue_finance_report_email: {
-        Args: {
-          p_new_starter_path?: string;
-          p_payroll_path: string;
-          p_payroll_send: number;
-        };
+        Args: { p_payroll_path: string; p_payroll_send: number };
         Returns: Json;
       };
       queue_offer_notice: {
@@ -10320,6 +10304,10 @@ export type Database = {
       };
       set_do_not_return: {
         Args: { p_id: string; p_on: boolean; p_reason?: string };
+        Returns: Json;
+      };
+      set_event_document_recipients: {
+        Args: { p_event: string; p_recipients: string[] };
         Returns: Json;
       };
       set_my_time_format: { Args: { p_format: string }; Returns: string };

@@ -38,11 +38,17 @@ export function DocumentActions({
   eventId,
   started,
   nameBadges = false,
+  recipients = [],
+  customRecipients = false,
 }: {
   eventId: string;
   started: boolean;
   /** The client card's Name badges switch (ADR-0081). */
   nameBadges?: boolean;
+  /** ADR-0089: who the Send goes to — this event's own list, else the client card's contacts. */
+  recipients?: string[];
+  /** True when the list was chosen for this event rather than being the client card. */
+  customRecipients?: boolean;
 }) {
   const kinds: Kind[] = started ? ['allocation', 'signout'] : ['allocation'];
   const [confirming, setConfirming] = useState<Kind | null>(null);
@@ -128,8 +134,18 @@ export function DocumentActions({
           {confirming ? (
             <p className="sm">
               A fresh {LABEL[confirming].noun} goes, as one PDF for the whole event with the PO
-              number on it, from <b>timesheets@thehospitalitycompany.co.uk</b> to every contact
-              email on the client card.
+              number on it, from <b>timesheets@thehospitalitycompany.co.uk</b> to{' '}
+              {recipients.length > 0 ? (
+                <>
+                  <b>{recipients.join(', ')}</b>{' '}
+                  {customRecipients
+                    ? '(chosen for this event)'
+                    : '(every contact email on the client card)'}
+                </>
+              ) : (
+                'every contact email on the client card'
+              )}
+              . Use Timesheet recipients to change who.
               {confirming === 'allocation' && nameBadges
                 ? ' The name badges for everyone on it go in the same email, as a second PDF to print and cut out.'
                 : ''}

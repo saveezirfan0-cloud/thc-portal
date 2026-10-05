@@ -36,6 +36,7 @@ export const EMAIL_PRESENTATION = {
   },
   E4: { eyebrow: 'Health & Safety assessment' },
   E5: { eyebrow: 'Payroll · bank details' },
+  E5b: { eyebrow: 'Payroll · bank details changed' },
   E6: { eyebrow: 'Payroll · NI number' },
   E7: { eyebrow: 'Contact details' },
   E8: { eyebrow: 'P45 request' },

@@ -3,7 +3,10 @@
  *
  * "One email to the finance team — thc_payroll@topsourceworldwide.com and
  * gisela@thehospitalitycompany.co.uk — with 1–2 CSVs: Payroll — always; New
- * Starter (HMRC) — only if there were new starters."
+ * Starter (HMRC) — only if there were new starters." Since ADR-0091 (THC,
+ * 05.10.2026) the New Starter (HMRC) report is its own email to the same two
+ * addresses, every Monday — apps/office/app/api/jobs/new-starter-report — and
+ * this email carries the payroll CSV only.
  *
  * Four steps, each idempotent, so a run that dies between any two of them is
  * finished by the next five-minute tick rather than repeated:
@@ -14,8 +17,7 @@
  *   2. prepare_finance_reports()  stamps last week into payroll_export_lines:
  *                                 exported shifts with their figures AS SENT,
  *                                 unresolved No check-outs HELD and rolled to
- *                                 next Monday; sets events.payroll_exported_at;
- *                                 decides whether there is a New Starter CSV.
+ *                                 next Monday; sets events.payroll_exported_at.
  *                                 A second call for the same week resumes.
  *   3. the CSVs                   built from the stamped rows by the SAME
  *                                 builder as the /reports Export buttons
@@ -24,7 +26,7 @@
  *                                 with upsert, so a retry overwrites its own
  *                                 file with identical bytes.
  *   4. queue_finance_report_email()  one notification_outbox row, keyed
- *                                 BG08:<week>, carrying the two storage paths.
+ *                                 BG08:<week>, carrying the storage path.
  *
  * Sending is the outbox drain's job (P2, `notify-drain`), which routes BG08 to
  * `documentMessageFor()` in packages/notifications and sends from admin@
@@ -39,19 +41,16 @@
  */
 
 import { runJob } from '../_shared/job.ts';
-import { newStarterCsv, payrollCsv } from '../../../packages/pdf/src/csv.ts';
-import type { NewStarterCsvRow, PayrollCsvRow } from '../../../packages/pdf/src/csv.ts';
+import { payrollCsv } from '../../../packages/pdf/src/csv.ts';
+import type { PayrollCsvRow } from '../../../packages/pdf/src/csv.ts';
 
 interface Prepared {
   alreadyPrepared: boolean;
   periodStart: string;
   periodEnd: string;
   payrollSendId: number;
-  newStarterSendId: number | null;
-  newStarterStatus: string | null;
   rows: number;
   held: number;
-  newStarters: number;
   queued: boolean;
 }
 
@@ -81,21 +80,9 @@ Deno.serve((request) =>
     const payrollPath = `payroll/${run.periodStart}_${run.periodEnd}.csv`;
     await upload(db, payrollPath, payrollCsv((payrollRows ?? []) as PayrollCsvRow[]));
 
-    // New Starter (HMRC) — only if there is anybody in it.
-    let newStarterPath: string | null = null;
-    if (run.newStarterSendId !== null && run.newStarterStatus !== 'no_new') {
-      const { data: nsRows, error: nsError } = await db.rpc('new_starter_export_rows', {
-        p_send: run.newStarterSendId,
-      });
-      if (nsError) throw new Error(`new_starter_export_rows: ${nsError.message}`);
-      newStarterPath = `new-starter/${run.periodStart}_${run.periodEnd}.csv`;
-      await upload(db, newStarterPath, newStarterCsv((nsRows ?? []) as NewStarterCsvRow[]));
-    }
-
     const { data: queued, error: queueError } = await db.rpc('queue_finance_report_email', {
       p_payroll_send: run.payrollSendId,
       p_payroll_path: payrollPath,
-      p_new_starter_path: newStarterPath,
     });
     if (queueError) throw new Error(`queue_finance_report_email: ${queueError.message}`);
 
@@ -104,7 +91,6 @@ Deno.serve((request) =>
       periodEnd: run.periodEnd,
       rows: run.rows,
       held: run.held,
-      newStarters: run.newStarters,
       resumed: run.alreadyPrepared,
       queued,
     };

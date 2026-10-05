@@ -212,6 +212,23 @@ describe('notification register (§8)', () => {
     expect(TEMPLATES.E9.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
   });
 
+  it('E5b: a bank change outside the app goes to the same two addresses as E5, and never carries the details (ADR-0092)', () => {
+    expect(TEMPLATES.E5b.recipients).toEqual(TEMPLATES.E5.recipients);
+    const text = render(TEMPLATES.E5b.body, {
+      name: 'Tom Reid',
+      employeeId: '97001',
+      changedAt: '05 Oct 2026 11:46',
+      changedBy: 'Gisela M.',
+    });
+    expect(text).toContain('Changed by: Gisela M.');
+    expect(text).not.toMatch(/\{\w+\}/);
+    // The placeholders are the facts a payroll person needs; none is a sort code or an account number.
+    expect(TEMPLATES.E5b.body + TEMPLATES.E5b.title).not.toMatch(/\{(sort|account)/i);
+    expect(render(TEMPLATES.E5b.title, { name: 'Tom Reid', employeeId: '97001' })).toBe(
+      'Bank & payroll details changed — Tom Reid, Employee ID 97001',
+    );
+  });
+
   it('carries the §8 subjects for E8 and E9 verbatim', () => {
     expect(TEMPLATES.E8.title).toBe('P45 requested — {name}, Employee ID {employeeId}');
     expect(TEMPLATES.E9.title).toBe(

@@ -1,6 +1,6 @@
 # ADR-0074 · The Allocation Timesheet and the Completed Allocation Timesheet: new names, automatic sending, THC's alcohol-policy column
 
-**Status:** Accepted (THC, 29.09.2026). Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
+**Status:** Accepted (THC, 29.09.2026). **D1's time (14:00 → 16:00) and its "fully confirmed" wait are amended by ADR-0088 (04.10.2026).** Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
 
 ## Context
 

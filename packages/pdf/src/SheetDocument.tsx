@@ -155,6 +155,7 @@ const s = StyleSheet.create({
   },
   signKey: { fontSize: 7, color: MUTED, textTransform: 'uppercase' },
   signVal: { fontFamily: 'Helvetica-Bold', fontSize: 11, marginTop: 6 },
+  note: { fontSize: 8, color: MUTED, marginTop: 6, textAlign: 'center' },
   company: { fontSize: 7.5, color: MUTED, marginTop: 6, textAlign: 'center' },
   pageNo: { position: 'absolute', bottom: 10, right: 28, fontSize: 7.5, color: MUTED },
 });
@@ -262,6 +263,7 @@ function Footer({ layout }: { layout: SheetLayout }) {
           <Text style={s.signKey}>Date</Text>
         </View>
       </View>
+      {layout.bufferNote ? <Text style={s.note}>{layout.bufferNote}</Text> : null}
       <Text style={s.company}>{COMPANY_LINE}</Text>
     </View>
   );

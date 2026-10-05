@@ -15,7 +15,7 @@ import type { AutosendFacts } from '../schedule';
  * keep the two lists in step.
  */
 const CONFIG = parseAutosendConfig({
-  allocation: { enabled: true, time: '14:00' },
+  allocation: { enabled: true, time: '16:00' },
   completed: { enabled: true, time: '10:00', hold_days: 14 },
 });
 
@@ -47,17 +47,17 @@ const d1 = (facts: Partial<AutosendFacts>, now: string) =>
 const d2 = (facts: Partial<AutosendFacts>, now: string, config = CONFIG) =>
   autosendVerdict({ ...SUMMER, ...facts, kind: 'signout' }, new Date(now), config);
 
-describe('D1 · Allocation Timesheet, the day before at 14:00 UK', () => {
-  it('is not due at 13:59:59 the day before, and due at 14:00 (BST: 13:00Z)', () => {
-    expect(d1({}, '2026-07-10T12:59:59Z')).toBe('not_yet');
-    expect(d1({}, '2026-07-10T13:00:00Z')).toBe('due');
+describe('D1 · Allocation Timesheet, the day before at 16:00 UK', () => {
+  it('is not due at 15:59:59 the day before, and due at 16:00 (BST: 15:00Z)', () => {
+    expect(d1({}, '2026-07-10T14:59:59Z')).toBe('not_yet');
+    expect(d1({}, '2026-07-10T15:00:00Z')).toBe('due');
   });
 
-  it('in GMT, 14:00 UK is 14:00Z', () => {
+  it('in GMT, 16:00 UK is 16:00Z', () => {
     const w = (now: string) =>
       autosendVerdict({ ...WINTER, kind: 'allocation' }, new Date(now), CONFIG);
-    expect(w('2026-12-04T13:59:00Z')).toBe('not_yet');
-    expect(w('2026-12-04T14:00:00Z')).toBe('due');
+    expect(w('2026-12-04T15:59:00Z')).toBe('not_yet');
+    expect(w('2026-12-04T16:00:00Z')).toBe('due');
   });
 
   it('catches up an event created or filled late — any run before the first shift starts', () => {
@@ -72,52 +72,132 @@ describe('D1 · Allocation Timesheet, the day before at 14:00 UK', () => {
 
   it('is skipped when a manager queued a D1 since 00:00 UK the day before', () => {
     // 00:00 BST on Fri 10 Jul = 23:00Z on the 9th.
-    expect(d1({ manualAllocationAt: '2026-07-09T23:00:00Z' }, '2026-07-10T13:00:00Z')).toBe(
+    expect(d1({ manualAllocationAt: '2026-07-09T23:00:00Z' }, '2026-07-10T15:00:00Z')).toBe(
       'manual_sent',
     );
-    expect(d1({ manualAllocationAt: '2026-07-10T09:12:00Z' }, '2026-07-10T13:00:00Z')).toBe(
+    expect(d1({ manualAllocationAt: '2026-07-10T09:12:00Z' }, '2026-07-10T15:00:00Z')).toBe(
       'manual_sent',
     );
     // A week-old manual copy is not "fresh": the automatic one still goes.
-    expect(d1({ manualAllocationAt: '2026-07-09T22:59:00Z' }, '2026-07-10T13:00:00Z')).toBe('due');
+    expect(d1({ manualAllocationAt: '2026-07-09T22:59:00Z' }, '2026-07-10T15:00:00Z')).toBe('due');
   });
 
   it('skips a cancelled event, no confirmed staff, and a client card with no contact emails', () => {
-    expect(d1({ cancelled: true }, '2026-07-10T13:00:00Z')).toBe('cancelled');
-    expect(d1({ confirmed: 0 }, '2026-07-10T13:00:00Z')).toBe('no_confirmed_staff');
-    expect(d1({ contacts: 0 }, '2026-07-10T13:00:00Z')).toBe('no_contact_emails');
+    expect(d1({ cancelled: true }, '2026-07-10T15:00:00Z')).toBe('cancelled');
+    expect(d1({ confirmed: 0 }, '2026-07-10T15:00:00Z')).toBe('no_confirmed_staff');
+    expect(d1({ contacts: 0 }, '2026-07-10T15:00:00Z')).toBe('no_contact_emails');
   });
 
   it('an event with no role sections at all has nobody confirmed', () => {
-    expect(d1({ firstStart: null, lastEnd: null, confirmed: 0 }, '2026-07-10T13:00:00Z')).toBe(
+    expect(d1({ firstStart: null, lastEnd: null, confirmed: 0 }, '2026-07-10T15:00:00Z')).toBe(
       'no_confirmed_staff',
     );
   });
 
   it('goes once: already sent automatically is final', () => {
-    expect(d1({ autoQueuedAt: '2026-07-10T13:00:05Z' }, '2026-07-10T13:15:00Z')).toBe(
+    expect(d1({ autoQueuedAt: '2026-07-10T15:00:05Z' }, '2026-07-10T15:15:00Z')).toBe(
       'already_sent',
     );
   });
 
+  it('waits for a fully confirmed line-up — a short role section holds the sheet', () => {
+    // Headcount raised (or a role added) after 16:00: the new places are open.
+    // A time change leaves workers awaiting re-confirmation, which counts the same way.
+    expect(d1({ unfilled: 1 }, '2026-07-10T15:00:00Z')).toBe('not_fully_confirmed');
+    expect(d1({ unfilled: 3 }, '2026-07-10T22:45:00Z')).toBe('not_fully_confirmed');
+    expect(d1({ unfilled: 0 }, '2026-07-10T22:45:00Z')).toBe('due');
+  });
+
+  it('goes on the first run after the last place is confirmed, up to the first shift', () => {
+    expect(d1({ unfilled: 1 }, '2026-07-11T05:59:00Z')).toBe('not_fully_confirmed');
+    expect(d1({ unfilled: 0 }, '2026-07-11T05:59:00Z')).toBe('due');
+    // Never once the first shift has started, whatever is still open.
+    expect(d1({ unfilled: 1 }, '2026-07-11T06:00:00Z')).toBe('too_late');
+  });
+
+  it('reports the cheaper reasons first, and a hold before gave_up', () => {
+    expect(d1({ unfilled: 1, confirmed: 0 }, '2026-07-10T15:00:00Z')).toBe('no_confirmed_staff');
+    expect(d1({ unfilled: 1, contacts: 0 }, '2026-07-10T15:00:00Z')).toBe('no_contact_emails');
+    expect(
+      d1({ unfilled: 1, manualAllocationAt: '2026-07-10T09:12:00Z' }, '2026-07-10T15:00:00Z'),
+    ).toBe('manual_sent');
+    expect(d1({ unfilled: 1, attempts: 8 }, '2026-07-10T15:00:00Z')).toBe('not_fully_confirmed');
+    expect(d1({ unfilled: 1, autoQueuedAt: '2026-07-10T15:00:05Z' }, '2026-07-10T18:00:00Z')).toBe(
+      'already_sent',
+    );
+  });
+
+  describe('a change after the sheet went out (ADR-0088)', () => {
+    const SENT = { autoQueuedAt: '2026-07-10T15:00:05Z' };
+
+    it('stays sent while nothing has changed', () => {
+      expect(d1({ ...SENT, changed: false }, '2026-07-10T22:45:00Z')).toBe('already_sent');
+      // A copy with no fingerprint (older) is never "changed": the fact is false.
+      expect(d1({ ...SENT }, '2026-07-10T22:45:00Z')).toBe('already_sent');
+    });
+
+    it('a changed line-up reopens it, but waits until everyone has confirmed the change', () => {
+      expect(d1({ ...SENT, changed: true, unfilled: 2 }, '2026-07-10T22:45:00Z')).toBe(
+        'not_fully_confirmed',
+      );
+      // The next 15-minute run after the last re-confirmation sends the updated sheet.
+      expect(d1({ ...SENT, changed: true, unfilled: 0 }, '2026-07-10T23:00:00Z')).toBe('due');
+    });
+
+    it('goes up to the first shift and no further — the office sends by hand after that', () => {
+      expect(d1({ ...SENT, changed: true, unfilled: 0 }, '2026-07-11T05:59:00Z')).toBe('due');
+      expect(d1({ ...SENT, changed: true, unfilled: 0 }, '2026-07-11T06:00:00Z')).toBe('too_late');
+    });
+
+    it('still needs a confirmed worker, a contact email and a live event', () => {
+      expect(d1({ ...SENT, changed: true, confirmed: 0 }, '2026-07-10T23:00:00Z')).toBe(
+        'no_confirmed_staff',
+      );
+      expect(d1({ ...SENT, changed: true, contacts: 0 }, '2026-07-10T23:00:00Z')).toBe(
+        'no_contact_emails',
+      );
+      expect(d1({ ...SENT, changed: true, cancelled: true }, '2026-07-10T23:00:00Z')).toBe(
+        'cancelled',
+      );
+    });
+
+    it('is not suppressed by the first-send manual rule, and has its own retry ceiling', () => {
+      const manual = { manualAllocationAt: '2026-07-10T09:12:00Z' };
+      expect(d1({ ...SENT, ...manual, changed: true }, '2026-07-10T23:00:00Z')).toBe('due');
+      expect(d1({ ...SENT, changed: true, attempts: 8 }, '2026-07-10T23:00:00Z')).toBe('gave_up');
+    });
+
+    it('a manager copy that a later change has outdated no longer suppresses the automatic one', () => {
+      const manual = { manualAllocationAt: '2026-07-10T09:12:00Z' };
+      expect(d1({ ...manual, changed: false }, '2026-07-10T15:00:00Z')).toBe('manual_sent');
+      expect(d1({ ...manual, changed: true }, '2026-07-10T15:00:00Z')).toBe('due');
+    });
+
+    it('does not touch the Completed Timesheet, which still goes once', () => {
+      expect(
+        d2({ changed: true, autoQueuedAt: '2026-07-12T09:00:04Z' }, '2026-07-12T09:15:00Z'),
+      ).toBe('already_sent');
+    });
+  });
+
   it('gives up after eight spent claims — a fault never retries for ever', () => {
-    expect(d1({ attempts: 7 }, '2026-07-10T13:00:00Z')).toBe('due');
-    expect(d1({ attempts: 8 }, '2026-07-10T13:00:00Z')).toBe('gave_up');
+    expect(d1({ attempts: 7 }, '2026-07-10T15:00:00Z')).toBe('due');
+    expect(d1({ attempts: 8 }, '2026-07-10T15:00:00Z')).toBe('gave_up');
   });
 
   it('can be switched off in settings', () => {
     const off = parseAutosendConfig({ allocation: { enabled: false } });
     expect(
-      autosendVerdict({ ...SUMMER, kind: 'allocation' }, new Date('2026-07-10T13:00:00Z'), off),
+      autosendVerdict({ ...SUMMER, kind: 'allocation' }, new Date('2026-07-10T15:00:00Z'), off),
     ).toBe('disabled');
   });
 
   it('reads its time from settings', () => {
-    const at16 = parseAutosendConfig({ allocation: { time: '16:30' } });
+    const at1730 = parseAutosendConfig({ allocation: { time: '17:30' } });
     const v = (now: string) =>
-      autosendVerdict({ ...SUMMER, kind: 'allocation' }, new Date(now), at16);
-    expect(v('2026-07-10T15:29:00Z')).toBe('not_yet');
-    expect(v('2026-07-10T15:30:00Z')).toBe('due');
+      autosendVerdict({ ...SUMMER, kind: 'allocation' }, new Date(now), at1730);
+    expect(v('2026-07-10T16:29:00Z')).toBe('not_yet');
+    expect(v('2026-07-10T16:30:00Z')).toBe('due');
   });
 });
 
@@ -159,6 +239,10 @@ describe('D2 · Completed Allocation Timesheet, the morning after at 10:00 UK', 
     expect(d2({ contacts: 0 }, '2026-07-12T09:00:00Z')).toBe('no_contact_emails');
   });
 
+  it('is not held by the headcount — only the Allocation Timesheet waits for a full line-up', () => {
+    expect(d2({ unfilled: 2 }, '2026-07-12T09:00:00Z')).toBe('due');
+  });
+
   it('gives up after eight spent claims, but a hold is reported first', () => {
     expect(d2({ attempts: 8 }, '2026-07-12T09:00:00Z')).toBe('gave_up');
     expect(d2({ attempts: 8, undetermined: 1 }, '2026-07-12T09:00:00Z')).toBe('held_no_checkout');
@@ -187,27 +271,27 @@ describe('D2 · Completed Allocation Timesheet, the morning after at 10:00 UK', 
 
 describe('the clock-change weekends (Europe/London)', () => {
   it('October: BST ends on Sun 25 Oct 2026', () => {
-    // Sunday event: D1 is Sat 24 Oct 14:00 BST (13:00Z); D2 Mon 26 Oct 10:00 GMT (10:00Z).
+    // Sunday event: D1 is Sat 24 Oct 16:00 BST (15:00Z); D2 Mon 26 Oct 10:00 GMT (10:00Z).
     const facts = { eventDate: '2026-10-25', lastEnd: '2026-10-25T20:00:00Z' };
     expect(autosendDueAt('allocation', facts, CONFIG).toISOString()).toBe(
-      '2026-10-24T13:00:00.000Z',
+      '2026-10-24T15:00:00.000Z',
     );
     expect(autosendDueAt('signout', facts, CONFIG).toISOString()).toBe('2026-10-26T10:00:00.000Z');
-    // Monday event: D1 on the Sunday of the change, 14:00 GMT.
+    // Monday event: D1 on the Sunday of the change, 16:00 GMT.
     expect(
       autosendDueAt('allocation', { eventDate: '2026-10-26', lastEnd: null }, CONFIG).toISOString(),
-    ).toBe('2026-10-25T14:00:00.000Z');
+    ).toBe('2026-10-25T16:00:00.000Z');
   });
 
   it('March: BST starts on Sun 29 Mar 2026', () => {
     const facts = { eventDate: '2026-03-29', lastEnd: '2026-03-29T20:00:00Z' };
     expect(autosendDueAt('allocation', facts, CONFIG).toISOString()).toBe(
-      '2026-03-28T14:00:00.000Z',
+      '2026-03-28T16:00:00.000Z',
     );
     expect(autosendDueAt('signout', facts, CONFIG).toISOString()).toBe('2026-03-30T09:00:00.000Z');
     expect(
       autosendDueAt('allocation', { eventDate: '2026-03-30', lastEnd: null }, CONFIG).toISOString(),
-    ).toBe('2026-03-29T13:00:00.000Z');
+    ).toBe('2026-03-29T15:00:00.000Z');
   });
 
   it('the manual-D1 cut-off is 00:00 UK on the day before, on either side of a change', () => {
@@ -219,7 +303,7 @@ describe('the clock-change weekends (Europe/London)', () => {
       firstStart: '2026-10-26T18:00:00Z',
       lastEnd: '2026-10-26T23:00:00Z',
     };
-    const now = new Date('2026-10-25T14:00:00Z');
+    const now = new Date('2026-10-25T16:00:00Z');
     expect(
       autosendVerdict({ ...facts, manualAllocationAt: '2026-10-24T23:00:00Z' }, now, CONFIG),
     ).toBe('manual_sent');
@@ -232,10 +316,10 @@ describe('the clock-change weekends (Europe/London)', () => {
 describe('settings', () => {
   it('fills the defaults, and ignores a malformed time rather than sending at midnight', () => {
     expect(parseAutosendConfig(null)).toEqual({
-      allocation: { enabled: true, time: '14:00' },
+      allocation: { enabled: true, time: '16:00' },
       completed: { enabled: true, time: '10:00', holdDays: 14, notBefore: null },
     });
-    expect(parseAutosendConfig({ allocation: { time: '2pm' } }).allocation.time).toBe('14:00');
+    expect(parseAutosendConfig({ allocation: { time: '2pm' } }).allocation.time).toBe('16:00');
     expect(parseAutosendConfig({ completed: { hold_days: -3 } }).completed.holdDays).toBe(14);
     expect(parseAutosendConfig({ completed: { hold_days: 7 } }).completed.holdDays).toBe(7);
     // The SQL twin reads only a JSON number and a JSON boolean; so does this.
@@ -253,10 +337,10 @@ describe('the hint under the event page buttons', () => {
   it('says when the automatic send happens, and when it happened (UK)', () => {
     const idle = { sentAt: null, started: false, ended: false };
     expect(autosendHint('allocation', CONFIG, idle)).toBe(
-      'Sent automatically the day before at 14:00 (UK time)',
+      'Sent automatically the day before at 16:00 (UK time), once every role is fully confirmed',
     );
-    expect(autosendHint('allocation', CONFIG, { ...idle, sentAt: '2026-09-28T13:00:04Z' })).toBe(
-      'Allocation Timesheet sent automatically 28/09 14:00',
+    expect(autosendHint('allocation', CONFIG, { ...idle, sentAt: '2026-09-28T15:00:04Z' })).toBe(
+      'Allocation Timesheet sent automatically 28/09 16:00',
     );
     expect(
       autosendHint('signout', CONFIG, {

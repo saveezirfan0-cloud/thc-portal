@@ -22,10 +22,11 @@ select results_eq(
   'the rtw-check row: every 10 minutes, the office route, its own secret — and disabled until the keys exist');
 
 -- event-documents (20261002100000, ADR-0074) is the other Back Office
--- route, sharing this secret on purpose; 760 holds its row.
+-- route, sharing this secret on purpose; 760 holds its row. new-starter-report
+-- (20261005140400, ADR-0091) is the third; 410 holds what it does.
 select is_empty(
   $$ select job from job_schedules
-      where job not in ('rtw-check', 'event-documents')
+      where job not in ('rtw-check', 'event-documents', 'new-starter-report')
         and (base_url_source <> 'edge_base_url' or secret_name <> 'service_role_key') $$,
   'every other job still posts to an Edge Function with the service key');
 

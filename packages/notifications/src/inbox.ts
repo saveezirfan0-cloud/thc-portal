@@ -28,6 +28,7 @@ export const OFFICE_ADDRESSES = [
 
 export const OFFICE_INBOX = [
   { code: 'E5', label: 'Bank & payroll details updated' },
+  { code: 'E5b', label: 'Bank details changed outside the app' },
   { code: 'E6', label: 'NI number entered' },
   { code: 'E7', label: 'Contact details updated' },
   { code: 'E8', label: 'P45 requested' },
@@ -38,6 +39,7 @@ export const OFFICE_INBOX = [
   { code: 'CL5', label: '48-hour opt-out signed' },
   { code: 'CL6', label: '48-hour opt-out cancelled' },
   { code: 'BG08', label: 'Weekly payroll email' },
+  { code: 'NS1', label: 'New Starter (HMRC) report' },
   // The Staff App additions (main #76): the office is told of a name, photo
   // or date-of-birth change request (RC1, ADR-0045, ADR-0070), payroll of an approved name change
   // (RC4, as E7), and the office of a cover request inside 72 hours (OF5, ADR-0046).
