@@ -1,4 +1,10 @@
-import { isResultPageRtwError, rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
+import {
+  isResultPageRtwError,
+  nameTokens,
+  rtwCheckError,
+  safeErrorCode,
+  termTimeLimitFrom,
+} from '@thc/domain';
 import type { RtwCheckResult } from '@thc/domain';
 import { envNumber, envText, looksLikePdf, looksLikePng, parseUkDate, ukToday } from './checker';
 import type { CheckInput, CheckOutput, EnvReader, RightToWorkChecker } from './checker';
@@ -147,6 +153,38 @@ export function onlyFutureDate(text: string, today: string): string | 'ambiguous
   }
   if (future.size > 1) return 'ambiguous';
   return future.size === 1 ? [...future][0]! : null;
+}
+
+/**
+ * The lines of a result page that carry a number or a date, with the worker's
+ * name, date of birth and share code left out, for the office (see
+ * `CheckOutput.hint`). A line about birth, the share code, a reference or a
+ * name is dropped whole; a date alone on a line keeps the label above it.
+ * Never more than eight short lines.
+ */
+export function pageHint(text: string, input: CheckInput): string | null {
+  const code = input.shareCode.replace(/\s+/g, '').toUpperCase();
+  const names = new Set(
+    (input.redact ?? []).flatMap((n) => nameTokens(n)).filter((n) => n.length > 1),
+  );
+  const dob = input.dateOfBirth.slice(0, 10);
+  const lines = text.split('\n').map((l) => l.replace(/\s+/g, ' ').trim());
+  const banned = /birth|\bborn\b|share\s*code|\bcode\b|reference|\bname\b|nationality|photo/i;
+  const keep: string[] = [];
+  for (let i = 0; i < lines.length && keep.length < 8; i += 1) {
+    const line = lines[i]!;
+    if (!/\d/.test(line)) continue;
+    const bare =
+      line.replace(/[\d/.\-:,]|(?<=\d)(?:st|nd|rd|th)|[A-Za-z]{3,9}\.?(?=\s+\d)/g, '').trim() ===
+      '';
+    const shown = bare && i > 0 && lines[i - 1] ? `${lines[i - 1]} ${line}` : line;
+    if (banned.test(shown)) continue;
+    if (shown.replace(/\s+/g, '').toUpperCase().includes(code)) continue;
+    if (datesOnLine(shown).includes(dob)) continue;
+    if (nameTokens(shown).some((t) => names.has(t))) continue;
+    keep.push(shown.slice(0, 120));
+  }
+  return keep.length > 0 ? keep.join(' | ') : null;
 }
 
 /** The work conditions: the lines under a Conditions heading, and any line that reads as one. */
@@ -409,7 +447,8 @@ export function createGovukChecker(
           const bytes = await page.pdf({ format: 'A4', printBackground: true });
           report = looksLikePdf(bytes) ? bytes : null;
         }
-        return { result, report, photo };
+        const hint = result.error === 'govuk_no_expiry' ? pageHint(fullText || text, input) : null;
+        return { result, report, photo, hint };
       } catch (cause) {
         const code =
           cause instanceof PageChanged
