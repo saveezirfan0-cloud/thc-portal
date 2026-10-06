@@ -26,6 +26,7 @@ import {
 import type { ActionResult, QueueRow } from '../../compliance/types';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { DobClaimNote } from '../../_components/DobClaimNote';
+import { RejectSelfie } from '../../_components/RejectSelfie';
 import type { DobClaim } from '../../_lib/dobCorrection';
 import { checksByDocument } from '../../_lib/rtwCheck';
 import type { RtwCheckRow } from '../../_lib/rtwCheck';
@@ -341,11 +342,16 @@ export function Documents({
           <DocRow
             icon="IMG"
             title="Profile selfie"
-            meta="locked — changes go through the office"
+            meta="locked — changes go through the office; reject it here if it is not appropriate"
             state="verified"
             actions={
               <>
                 <Pill tone="green">Set</Pill>
+                {/* ADR-0094: not for a worker who has left or been removed. */}
+                {!profile.removed &&
+                !['rejected', 'inactive', 'removed'].includes(profile.status) ? (
+                  <RejectSelfie staffId={profile.id} name={profile.display_name} />
+                ) : null}
                 {profile.photo_url ? (
                   <a
                     className="btn sm ghost"

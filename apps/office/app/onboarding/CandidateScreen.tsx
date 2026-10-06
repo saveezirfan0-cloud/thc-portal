@@ -23,6 +23,7 @@ import {
 } from '@thc/ui';
 import { contractClause28Pending, formatLanguages } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
+import { RejectSelfie } from '../_components/RejectSelfie';
 import {
   RTW_LABEL,
   employeeId,
@@ -1858,7 +1859,21 @@ function DocumentsPhase({
             }
             state={row.photo_path ? 'verified' : 'pending'}
             actions={
-              row.photo_path ? <Pill tone="green">Set</Pill> : <Pill tone="amber">Not taken</Pill>
+              row.photo_path ? (
+                <>
+                  <Pill tone="green">Set</Pill>
+                  {/* ADR-0094: an inappropriate selfie comes down, with a reason the candidate reads. */}
+                  {row.status !== 'rejected' ? (
+                    <RejectSelfie
+                      staffId={row.id}
+                      name={row.display_name}
+                      disabled={doc.readOnly}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <Pill tone="amber">Not taken</Pill>
+              )
             }
           />
 

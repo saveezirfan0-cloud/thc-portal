@@ -56,7 +56,7 @@ const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
  * requirement's. RC = Request a change (ADR-0045), OF = Offer up a shift
  * (ADR-0046). RF1 (ADR-0047) is proposed only and must NOT be here.
  */
-const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
+const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'RC5', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
 const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
 
 /** Office messages (ADR-0069, ADR-0082): the manager writes the body. */
@@ -125,6 +125,7 @@ describe('notification register (§8)', () => {
       'RC2',
       'RC3',
       'RC4',
+      'RC5',
       'OF1',
       'OF2',
       'OF3',
@@ -706,6 +707,14 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
       timing: 'on reject',
     },
     {
+      code: 'RC5',
+      channel: 'push',
+      title: 'Profile photo not accepted',
+      body: 'Your profile photo was not accepted: {reason}. Please take a new one.',
+      deepLink: '/profile/details',
+      timing: 'on reject',
+    },
+    {
       code: 'RC4',
       channel: 'email',
       title: 'Name changed — {name}, Employee ID {employeeId}',
@@ -765,6 +774,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
     RC2: ['field'],
     RC3: ['field', 'reason'],
     RC4: ['name', 'employeeId', 'previousName', 'approvedAt'],
+    RC5: ['reason'],
     OF1: ['role', 'event', 'dateTime', 'rate', 'offerId'],
     OF2: ['event', 'dateTime'],
     OF3: ['event', 'date', 'bookingId'],
@@ -810,7 +820,8 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
 
   it('names its ADR in every trigger — RC → ADR-0045, OF → ADR-0046', () => {
     for (const code of ADDITION_CODES) {
-      const adr = code.startsWith('RC') ? 'ADR-0045' : 'ADR-0046';
+      // RC5 is the office rejecting a selfie outright (ADR-0094), not deciding a request.
+      const adr = code === 'RC5' ? 'ADR-0094' : code.startsWith('RC') ? 'ADR-0045' : 'ADR-0046';
       expect(template(code).trigger, code).toContain(adr);
       expect(template(code).trigger, code).toMatch(/Not in §8/);
     }

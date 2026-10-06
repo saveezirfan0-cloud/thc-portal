@@ -11,6 +11,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../actions', () => ({}));
+vi.mock('../../staff/[id]/actions', () => ({ rejectSelfie: vi.fn() }));
 vi.mock('../../compliance/actions', () => ({}));
 vi.mock('../../_lib/rtwCheckActions', () => ({}));
 vi.mock('../../_lib/dobCorrectionActions', () => ({ correctDob: vi.fn() }));
@@ -239,6 +240,28 @@ describe('the candidate profile, Documents phase', () => {
     const html = render(data());
     expect(html).not.toContain('class="annot');
     expect(html).not.toContain('ml-auto annot');
+  });
+});
+
+describe('the candidate profile · profile selfie (ADR-0094)', () => {
+  const withPhoto = (over: Partial<CandidateRow> = {}) =>
+    data({
+      candidate: { ...ROW, photo_path: 'c-1/selfie.jpg', ...over } as CandidateRow,
+    });
+
+  it('offers one more Reject — the selfie’s — when it is set, and none while it is not taken', () => {
+    const count = (html: string) => html.split('>Reject<').length - 1;
+    const without = render(data());
+    expect(without).toContain('Not taken');
+    expect(count(render(withPhoto()))).toBe(count(without) + 1);
+  });
+
+  it('does not offer it on a rejected candidate', () => {
+    const count = (html: string) => html.split('>Reject<').length - 1;
+    const rejected = { status: 'rejected' as CandidateRow['status'] };
+    expect(count(render(withPhoto(rejected)))).toBe(
+      count(render(data({ candidate: { ...ROW, ...rejected } as CandidateRow }))),
+    );
   });
 });
 
