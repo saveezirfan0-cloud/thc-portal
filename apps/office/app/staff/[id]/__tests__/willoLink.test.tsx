@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 /**
- * ADR-0093 · the Willo interview link stays on the staff profile.
+ * ADR-0094 · the Willo interview link stays on the staff profile.
  *
  *   · a worker with a Willo handle keeps "Review interview on Willo ↗" on
  *     the Overview after onboarding, opening in a new tab;
@@ -41,7 +41,7 @@ const render = (willoReviewUrl: string | null | undefined, removed = false) =>
     />,
   );
 
-describe('the Interview row (ADR-0093)', () => {
+describe('the Interview row (ADR-0094)', () => {
   it('keeps the link for a working member of staff', () => {
     const html = render('https://app.willo.video/review/abc');
     expect(html).toContain('href="https://app.willo.video/review/abc"');
