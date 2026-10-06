@@ -88,7 +88,15 @@ function explain(message: string): string {
     return 'Reset to candidate is only possible on a blocked, rejected or inactive record.';
   }
   if (code === 'not_under_review') return 'This item is no longer under review — refresh the page.';
-  if (code === 'not_awaiting_decision') return 'The interview is not marked complete yet.';
+  if (code === 'not_awaiting_decision') {
+    // The status follows the colon: 'documents' means Willo's Accept already
+    // moved the card on, so there is nothing left to accept here.
+    const status = message.split(':').slice(1).join(':').trim();
+    if (status && status !== 'interview_requested') {
+      return 'This candidate has already moved past the interview (accepted in Willo). Refresh — the role(s) and clients are set on the Documents step.';
+    }
+    return 'The interview is not marked complete yet.';
+  }
   if (code === 'not_awaiting_interview')
     return 'This candidate is no longer waiting on the interview — refresh the page.';
   if (code === 'not_a_candidate')
@@ -251,6 +259,31 @@ export async function markInterviewComplete(
 /** §2.4 / §9.6: a role picked after Willo accepted the candidate by itself. */
 export async function addQualifiedRole(staffId: string, roleId: string): Promise<ActionResult> {
   return call('add_staff_role', { p_staff: staffId, p_role: roleId }, paths(staffId));
+}
+
+/** §9.6: take a role back off a candidate (also removes the client entries that named it). */
+export async function removeQualifiedRole(staffId: string, roleId: string): Promise<ActionResult> {
+  return call('remove_staff_role', { p_staff: staffId, p_role: roleId }, paths(staffId));
+}
+
+/** §9.6: clear the candidate at a client for one of the roles they hold. */
+export async function grantClientQualification(
+  staffId: string,
+  clientId: string,
+  roleId: string,
+): Promise<ActionResult> {
+  return call(
+    'grant_client_qualification',
+    { p_staff: staffId, p_client: clientId, p_role: roleId },
+    paths(staffId),
+  );
+}
+
+export async function revokeClientQualification(
+  staffId: string,
+  qualificationId: string,
+): Promise<ActionResult> {
+  return call('revoke_client_qualification', { p_id: qualificationId }, paths(staffId));
 }
 
 // ---------------------------------------------------------------------
