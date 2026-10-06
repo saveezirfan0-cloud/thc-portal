@@ -383,16 +383,30 @@ describe('pageHint — what the office is shown when the date cannot be read', (
       ].join('\n'),
       input,
     );
-    expect(hint).toBe('Permission valid for 5 years | Status granted 12 August 2021');
+    expect(hint).toBe(
+      'Pre-settled status | Permission valid for 5 years | Status granted 12 August 2021',
+    );
     expect(hint).not.toMatch(/Marta|Villanueva|W123|1996|AB-1234/);
   });
 
-  it('is null when the page has no numbers, and never more than eight lines', () => {
-    expect(pageHint('They have permission to work in the UK.', input)).toBeNull();
+  it('drops the page footer, and is null when nothing is about status or a number', () => {
+    expect(pageHint('Welcome\nSomething else entirely', input)).toBeNull();
+    expect(
+      pageHint(
+        'keep a secure copy of this online check for 2 years\nAll content is available under the Open Government Licence v3.0',
+        input,
+      ),
+    ).toBeNull();
+    expect(pageHint('They have permission to work in the UK.', input)).toBe(
+      'They have permission to work in the UK.',
+    );
+  });
+
+  it('never returns more than six lines', () => {
     const many = Array.from({ length: 20 }, (_, i) => `Item ${i + 1} on 1${i} June 2030`).join(
       '\n',
     );
-    expect(pageHint(many, input)!.split(' | ')).toHaveLength(8);
+    expect(pageHint(many, input)!.split(' | ')).toHaveLength(6);
   });
 
   it('comes back from the checker when a pass has no end date', async () => {
@@ -410,7 +424,7 @@ describe('pageHint — what the office is shown when the date cannot be read', (
       async () => fake.browser,
     )!.check({ ...input, redact: ['Olu', 'Ade'] });
     expect(out.result.error).toBe('govuk_no_expiry');
-    expect(out.hint).toBe('Status type 4');
+    expect(out.hint).toBe('They have permission to work in the UK. | Status type 4');
   });
 });
 

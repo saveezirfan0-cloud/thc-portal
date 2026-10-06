@@ -229,9 +229,7 @@ describe('runRtwCheckSweep', () => {
     const d = t.recorded[0]!.decision;
     expect(d.action).toBe('needs_review');
     if (d.action === 'needs_review') {
-      expect(d.officeReason).toContain(
-        "Lines on gov.uk's page: Status type 4 | Review due 12 August 2027",
-      );
+      expect(d.officeReason).toContain('Page: Status type 4 | Review due 12 August 2027');
       expect(d.officeReason.length).toBeLessThanOrEqual(500);
     }
   });
