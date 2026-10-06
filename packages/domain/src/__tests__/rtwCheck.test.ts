@@ -330,6 +330,24 @@ describe('gov.uk live "no limit" condition (06.10.2026)', () => {
   });
 });
 
+describe('a condition line holding several sentences (live wording, 06.10.2026)', () => {
+  it('is recognised only when every sentence is', () => {
+    expect(
+      unrecognisedConditions([
+        'They can work in any job. There is no limit on how long they can stay in the UK.',
+      ]),
+    ).toEqual([]);
+    expect(
+      unrecognisedConditions([
+        'They can work in any job. They cannot work more than 10 hours a week.',
+      ]),
+    ).toHaveLength(1);
+    expect(
+      unrecognisedConditions(['They can work in any job. They can only work for one employer.']),
+    ).toHaveLength(1);
+  });
+});
+
 describe('retry backoff and error codes', () => {
   it('spreads five attempts over about three hours, the first retries quick', () => {
     expect(RTW_CHECK_BACKOFF_MINUTES).toEqual([2, 10, 30, 120]);

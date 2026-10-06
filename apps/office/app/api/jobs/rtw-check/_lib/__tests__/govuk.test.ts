@@ -218,6 +218,25 @@ describe('parseGovukResult', () => {
     expect(decideRtwCheck(r, subject('work_visa'), ctx).action).toBe('needs_review');
   });
 
+  it('verifies when gov.uk prints both condition sentences as ONE line (live, 06.10.2026)', () => {
+    const r = parseGovukResult(page('govuk-pass-no-limit-one-line.txt'), AT);
+    expect(r).toMatchObject({
+      outcome: 'right_to_work',
+      fullName: 'Olu Ade',
+      rightToWorkUntil: null,
+    });
+    expect(r.conditions).toEqual([
+      'They can work in any job. There is no limit on how long they can stay in the UK.',
+    ]);
+    expect(
+      decideRtwCheck(
+        r,
+        { firstName: 'Olu', lastName: 'Ade', rtwBranch: 'eu_settled', belowDegreeLevel: false },
+        { attempt: 1, maxAttempts: 5, today: '2026-10-06' },
+      ),
+    ).toEqual({ action: 'verify', rightToWorkUntil: null, noTimeLimit: true });
+  });
+
   it('pre-settled status is never read as no time limit (QA 25.09)', () => {
     expect(parseGovukResult(page('govuk-pre-settled-no-date.txt'), AT)).toMatchObject({
       outcome: 'error',
