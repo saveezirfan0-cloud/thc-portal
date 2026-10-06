@@ -341,3 +341,64 @@ describe('the candidate profile · phase strip (§2.3)', () => {
     expect(html.match(/class="st-btn"/g) ?? []).toHaveLength(1);
   });
 });
+
+describe('the candidate profile, roles and clients on the Documents step (§2.4, §9.6)', () => {
+  const roles = [
+    { id: 'r1', name: 'Waiting Staff' },
+    { id: 'r2', name: 'Bar Staff' },
+    { id: 'r3', name: 'Host' },
+  ];
+
+  it('lists every role as a tick box once a role is held, not only when there is none', () => {
+    const html = render(data({ roles }));
+    expect(html).toContain('Qualified role type(s)');
+    expect(html).toContain('1 selected');
+    for (const role of roles) expect(html).toContain(role.name);
+  });
+
+  it('offers a client picker limited to the roles the candidate holds', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [{ id: 'c1', name: 'Grand Hotel' }],
+        qualifications: [],
+      }),
+    );
+    expect(html).toContain('Add a client');
+    expect(html).toContain('Grand Hotel');
+    expect(html).toContain('Not cleared at any client yet.');
+  });
+
+  it('shows the clients the candidate is already cleared at', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [{ id: 'c1', name: 'Grand Hotel' }],
+        qualifications: [
+          {
+            id: 'q1',
+            client_id: 'c1',
+            client_name: 'Grand Hotel',
+            role_id: 'r1',
+            role_name: 'Waiting Staff',
+            do_not_return: false,
+          },
+        ],
+      }),
+    );
+    expect(html).toContain('Grand Hotel');
+    expect(html).toContain('Remove');
+  });
+
+  it('asks for a role first when none is held', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [{ id: 'c1', name: 'Grand Hotel' }],
+        candidate: { ...ROW, role_names: [], role_ids: [] } as CandidateRow,
+      }),
+    );
+    expect(html).toContain('none yet');
+    expect(html).toContain('Pick at least one role first, then add clients.');
+  });
+});

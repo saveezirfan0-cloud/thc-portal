@@ -17,6 +17,7 @@ import {
   Note,
   Panel,
   Pill,
+  Select,
   Textarea,
   useTimeFormat,
 } from '@thc/ui';
@@ -33,12 +34,15 @@ import { formatUkStamp } from '../staff/[id]/profile';
 import {
   acceptCandidate,
   addQualifiedRole,
+  grantClientQualification,
   documentLink,
   markInterviewComplete,
   rejectCandidate,
   rejectDeclaration,
   rejectDocument,
+  removeQualifiedRole,
   resendActivationLink,
+  revokeClientQualification,
   verifyDeclaration,
   verifyDocument,
 } from './actions';
@@ -364,7 +368,23 @@ export function CandidateScreen({
             row={row}
             data={data}
             doc={doc}
-            onAddRole={(roleId) => run(() => addQualifiedRole(row.id, roleId))}
+            onToggleRole={(roleId, on) =>
+              run(() =>
+                on ? addQualifiedRole(row.id, roleId) : removeQualifiedRole(row.id, roleId),
+              )
+            }
+            onGrantClient={(clientId, roleIds, after) =>
+              run(async () => {
+                // One entry per role, as the table holds them (client + one
+                // role). The first refusal stops the run.
+                for (const roleId of roleIds) {
+                  const result = await grantClientQualification(row.id, clientId, roleId);
+                  if (!result.ok) return result;
+                }
+                return { ok: true } as const;
+              }, after)
+            }
+            onRevokeClient={(id) => run(() => revokeClientQualification(row.id, id))}
             onVerifyDeclaration={(d) => run(() => verifyDeclaration(row.id, d.id, ''))}
             onRejectDeclaration={(d) => {
               setReason('');
@@ -1510,18 +1530,207 @@ function TermDates({
   );
 }
 
+// ---------------------------------------------------------------------
+// Roles and clients (§2.4, §9.6)
+// ---------------------------------------------------------------------
+/**
+ * The qualified role type(s) and the client qualifications, editable for
+ * as long as the candidate is onboarding. They are the same two lists the
+ * staff profile edits (add_staff_role / grant_client_qualification), so
+ * nothing picked here is lost at the contract.
+ *
+ * This is where roles are set when Willo's Accept moved the card on before
+ * the office picked any (§2.4: "roles are picked on the profile"), and where
+ * a candidate gets more than one role, or any client, at all.
+ */
+function RolesAndClients({
+  row,
+  data,
+  readOnly,
+  busy,
+  onToggleRole,
+  onGrantClient,
+  onRevokeClient,
+}: {
+  row: CandidateRow;
+  data: CandidateData;
+  readOnly: boolean;
+  busy: boolean;
+  onToggleRole: (roleId: string, on: boolean) => void;
+  onGrantClient: (clientId: string, roleIds: string[], after: () => void) => void;
+  onRevokeClient: (id: string) => void;
+}) {
+  const [clientId, setClientId] = useState('');
+  const [clientRoles, setClientRoles] = useState<string[]>([]);
+  const clients = data.clients ?? [];
+  const qualifications = data.qualifications ?? [];
+  // §9.6: a client entry names one of the roles the person already holds.
+  const held = data.roles.filter((role) => row.role_ids.includes(role.id));
+  const toggleClientRole = (id: string) =>
+    setClientRoles((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+
+  return (
+    <div className="grid c2">
+      <Panel
+        title="Qualified role type(s)"
+        actions={
+          row.role_ids.length === 0 ? (
+            <Pill tone="amber">none yet</Pill>
+          ) : (
+            <Pill tone="green">{row.role_ids.length} selected</Pill>
+          )
+        }
+      >
+        <div className="stack">
+          <div className="sm muted">
+            {row.role_ids.length === 0
+              ? 'Pick the role(s) the candidate is qualified for — without one they receive no invitations later. '
+              : ''}
+            Tick as many as apply; each tick saves straight away. Editable later on the staff
+            profile.
+          </div>
+          {data.roles.length === 0 ? (
+            <EmptyState>No roles exist yet — add them under Roles.</EmptyState>
+          ) : (
+            <div className="rolepick">
+              {data.roles.map((role) => {
+                const on = row.role_ids.includes(role.id);
+                return (
+                  <label key={role.id} className={on ? 'check sel' : 'check'}>
+                    <input
+                      type="checkbox"
+                      className="check-input"
+                      checked={on}
+                      disabled={readOnly || busy}
+                      onChange={() => onToggleRole(role.id, !on)}
+                    />
+                    <span className={on ? 'box on' : 'box'} />
+                    {role.name}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+          <Note>
+            Un-ticking a role also removes the client entries that name it. A &ldquo;Do not
+            return&rdquo; entry is kept.
+          </Note>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Client qualification"
+        actions={<span className="muted sm">auto-assign&rsquo;s first wave</span>}
+      >
+        <div className="stack">
+          {qualifications.length === 0 ? (
+            <span className="muted sm">Not cleared at any client yet.</span>
+          ) : (
+            <div className="stack">
+              {qualifications.map((q) => (
+                <div key={q.id} className="row wrap">
+                  <b>{q.client_name}</b>
+                  <Chip>{q.role_name}</Chip>
+                  {q.do_not_return ? <Pill tone="coral">Do not return</Pill> : null}
+                  {readOnly ? null : (
+                    <Button
+                      size="sm"
+                      tone="ghost"
+                      disabled={busy || q.do_not_return}
+                      title={
+                        q.do_not_return
+                          ? 'Switch Do not return off on the staff profile first'
+                          : undefined
+                      }
+                      onClick={() => onRevokeClient(q.id)}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {readOnly ? null : held.length === 0 ? (
+            <div className="sm muted">Pick at least one role first, then add clients.</div>
+          ) : clients.length === 0 ? (
+            <EmptyState>No clients exist yet — add them under Clients.</EmptyState>
+          ) : (
+            <div className="stack">
+              <Select
+                label="Add a client"
+                value={clientId}
+                disabled={busy}
+                onChange={(event) => setClientId(event.target.value)}
+              >
+                <option value="">Choose a client…</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </Select>
+              <div className="rolepick">
+                {held.map((role) => {
+                  const on = clientRoles.includes(role.id);
+                  return (
+                    <label key={role.id} className={on ? 'check sel' : 'check'}>
+                      <input
+                        type="checkbox"
+                        className="check-input"
+                        checked={on}
+                        disabled={busy}
+                        onChange={() => toggleClientRole(role.id)}
+                      />
+                      <span className={on ? 'box on' : 'box'} />
+                      {role.name}
+                    </label>
+                  );
+                })}
+              </div>
+              <div>
+                <Button
+                  tone="primary"
+                  disabled={busy || clientId === '' || clientRoles.length === 0}
+                  onClick={() =>
+                    onGrantClient(clientId, clientRoles, () => {
+                      setClientId('');
+                      setClientRoles([]);
+                    })
+                  }
+                >
+                  {clientRoles.length > 1 ? `Add ${clientRoles.length} entries` : 'Add client'}
+                </Button>
+              </div>
+            </div>
+          )}
+          <Note>
+            Optional. Pick a client, then one or more of the roles above; each role is its own
+            entry. A clean shift also adds entries by itself, and the list is editable later on the
+            staff profile and the client card.
+          </Note>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 function DocumentsPhase({
   row,
   data,
   doc,
-  onAddRole,
+  onToggleRole,
+  onGrantClient,
+  onRevokeClient,
   onVerifyDeclaration,
   onRejectDeclaration,
 }: {
   row: CandidateRow;
   data: CandidateData;
   doc: DocHandlers;
-  onAddRole: (roleId: string) => void;
+  onToggleRole: (roleId: string, on: boolean) => void;
+  onGrantClient: (clientId: string, roleIds: string[], after: () => void) => void;
+  onRevokeClient: (id: string) => void;
   onVerifyDeclaration: (d: Declaration) => void;
   onRejectDeclaration: (d: Declaration) => void;
 }) {
@@ -1548,32 +1757,18 @@ function DocumentsPhase({
     row.docs_verified +
     (row.declaration_answer === true && row.declaration_status === 'verified' ? 1 : 0);
   const totalItems = row.docs_total + (row.declaration_answer === true ? 1 : 0);
-  const unheld = data.roles.filter((role) => !row.role_ids.includes(role.id));
 
   return (
     <>
-      {row.role_names.length === 0 && !doc.readOnly ? (
-        <Panel title="Qualified role type(s)" actions={<Pill tone="amber">none yet</Pill>}>
-          <div className="stack">
-            <div className="sm muted">
-              Accepted in Willo before any role was picked. Pick the role(s) the candidate is
-              qualified for — without one they receive no invitations later.
-            </div>
-            <div className="row wrap">
-              {unheld.map((role) => (
-                <Button
-                  key={role.id}
-                  size="sm"
-                  disabled={doc.busy}
-                  onClick={() => onAddRole(role.id)}
-                >
-                  + {role.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </Panel>
-      ) : null}
+      <RolesAndClients
+        row={row}
+        data={data}
+        readOnly={doc.readOnly}
+        busy={doc.busy}
+        onToggleRole={onToggleRole}
+        onGrantClient={onGrantClient}
+        onRevokeClient={onRevokeClient}
+      />
 
       <Alert tone={gate.unlocked ? 'green' : 'amber'}>
         <b>
