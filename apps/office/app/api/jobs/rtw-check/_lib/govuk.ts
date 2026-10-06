@@ -1,6 +1,7 @@
 import {
   isResultPageRtwError,
   nameTokens,
+  namesMatch,
   rtwCheckError,
   safeErrorCode,
   termTimeLimitFrom,
@@ -157,14 +158,15 @@ export function onlyFutureDate(text: string, today: string): string | 'ambiguous
 
 /**
  * Lines of a result page about the person's status and permission, or that
- * carry a number or a date — with the worker's name, date of birth and share
- * code left out — for the office (see `CheckOutput.hint`). A line about
- * birth, the share code, a reference or a name is dropped whole, as is the
- * page's footer; a date alone on a line keeps the label above it. At most six
- * lines of 100 characters.
+ * carry a number or a date, for the office (see `CheckOutput.hint`). The
+ * worker's name, date of birth and share code, and any long reference, are
+ * replaced by ▢ — never dropped — so the LAYOUT of the page can be read
+ * (where the name sits, what labels it) without the person being identified.
+ * The page footer is dropped; a date alone on its line keeps the label above
+ * it. At most eight lines of 100 characters.
  */
 const HINT_STATUS_WORDS =
-  /status|settled|permission|right to work|expir|time limit|indefinite|\bleave\b|visa|scheme|valid|until|condition|\bcan work\b|\bcannot work\b/i;
+  /status|settled|permission|right to work|expir|time limit|indefinite|\bleave\b|visa|scheme|valid|until|condition|\bcan work\b|\bcannot work\b|\bname\b|birth|share code|reference/i;
 const HINT_BOILERPLATE =
   /secure copy|open government licence|cookies?|privacy|accessibility statement|crown copyright|terms and conditions|skip to|\bmenu\b|\bfeedback\b/i;
 
@@ -175,28 +177,53 @@ function isBareDate(line: string): boolean {
   );
 }
 
+/**
+ * The record holder's name when the page has no recognisable "Name" label: the
+ * shortest short line that carries BOTH the profile's first and last name (the
+ * same test `decideRtwCheck` applies). A page naming someone else has no such
+ * line, so the name stays missing and the check goes to the office.
+ */
+export function recordNameFromPage(text: string, names: readonly string[]): string | null {
+  const [first, last] = names;
+  if (!first || !last) return null;
+  const found = text
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => l.length > 0 && l.length <= 80 && namesMatch(l, first, last));
+  return found.sort((a, b) => a.length - b.length)[0] ?? null;
+}
+
 export function pageHint(text: string, input: CheckInput): string | null {
   const code = input.shareCode.replace(/\s+/g, '').toUpperCase();
   const names = new Set(
     (input.redact ?? []).flatMap((n) => nameTokens(n)).filter((n) => n.length > 1),
   );
   const dob = input.dateOfBirth.slice(0, 10);
+  const mask = (line: string): string => {
+    let out = line;
+    if (code) out = out.replace(new RegExp(code.split('').join('\\s*'), 'gi'), '▢');
+    for (const pattern of DATE_PATTERNS) {
+      out = out.replace(pattern, (m, g: string) => (datesOnLine(g).includes(dob) ? '▢' : m));
+    }
+    out = out.replace(/[\p{L}][\p{L}'’-]*/gu, (w) =>
+      nameTokens(w).some((t) => names.has(t)) ? '▢' : w,
+    );
+    return out.replace(/\b[A-Za-z0-9][A-Za-z0-9-]{7,}\b(?=\W|$)/g, (w) => (/\d/.test(w) ? '▢' : w));
+  };
   const lines = text.split('\n').map((l) => l.replace(/\s+/g, ' ').trim());
-  const banned = /birth|\bborn\b|share\s*code|\bcode\b|reference|\bname\b|nationality|photo/i;
   const keep: string[] = [];
-  for (let i = 0; i < lines.length && keep.length < 6; i += 1) {
-    const line = lines[i]!;
-    if (!line || !(/\d/.test(line) || HINT_STATUS_WORDS.test(line))) continue;
-    const bare = isBareDate(line);
+  for (let i = 0; i < lines.length && keep.length < 8; i += 1) {
+    const raw = lines[i]!;
+    if (!raw) continue;
+    const masked = mask(raw);
+    if (HINT_BOILERPLATE.test(masked)) continue;
+    const bare = isBareDate(raw);
+    if (!(masked.includes('▢') || /\d/.test(masked) || HINT_STATUS_WORDS.test(masked))) continue;
     // A label above a date alone on its line is shown with that date, once.
-    if (!bare && isBareDate(lines[i + 1] ?? '') && i + 1 < lines.length) continue;
-    const shown = bare && i > 0 && lines[i - 1] ? `${lines[i - 1]} ${line}` : line;
-    if (banned.test(shown) || HINT_BOILERPLATE.test(shown)) continue;
-    if (shown.replace(/\s+/g, '').toUpperCase().includes(code)) continue;
-    if (datesOnLine(shown).includes(dob)) continue;
-    if (nameTokens(shown).some((t) => names.has(t))) continue;
-    if (keep.includes(shown.slice(0, 100))) continue;
-    keep.push(shown.slice(0, 100));
+    if (!bare && isBareDate(lines[i + 1] ?? '')) continue;
+    const prev = lines[i - 1] ? mask(lines[i - 1]!) : '';
+    const shown = (bare && prev ? `${prev} ${masked}` : masked).slice(0, 100);
+    if (!keep.includes(shown)) keep.push(shown);
   }
   return keep.length > 0 ? keep.join(' | ') : null;
 }
@@ -461,7 +488,16 @@ export function createGovukChecker(
           const bytes = await page.pdf({ format: 'A4', printBackground: true });
           report = looksLikePdf(bytes) ? bytes : null;
         }
-        const hint = result.error === 'govuk_no_expiry' ? pageHint(fullText || text, input) : null;
+        // No "Name" label found: look for the profile's own name on the page.
+        if (result.outcome === 'right_to_work' && !result.fullName) {
+          const found = recordNameFromPage(fullText || text, input.redact ?? []);
+          if (found) result = { ...result, fullName: found };
+        }
+        const hint =
+          result.error === 'govuk_no_expiry' ||
+          (result.outcome === 'right_to_work' && !result.fullName)
+            ? pageHint(fullText || text, input)
+            : null;
         return { result, report, photo, hint };
       } catch (cause) {
         const code =

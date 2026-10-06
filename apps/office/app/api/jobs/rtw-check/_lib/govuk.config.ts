@@ -163,7 +163,12 @@ export const GOVUK_RESULT = {
     /\bno limit on how long (?:they|this person|the applicant) can (?:stay|remain|live)\b/i,
   ],
   /** The person's name, on a "Name" line or as the page's H1. */
-  name: [/^\s*(?:full )?name\s*[:\n]\s*(.+)$/im],
+  name: [
+    // "Name: Olu Ade", "Name\tOlu Ade" (a table row read as text), "Name  Olu Ade"
+    /^[^\S\r\n]*(?:full )?name[:\t ]+(\S.*)$/im,
+    // the label alone on its line, the name on the next
+    /^\s*(?:full )?name\s*[:\n]\s*(\S.*)$/im,
+  ],
   /** gov.uk's reference for the check. */
   reference: [/reference(?: number)?[:\s]+([A-Z0-9][A-Z0-9-]{5,})/i],
   /** The heading after which conditions are listed, one per line. */
