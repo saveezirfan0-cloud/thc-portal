@@ -125,15 +125,23 @@ export const GOVUK_RESULT = {
   ],
   /**
    * The end date, captured as printed ("31 March 2028", "31st March 2028",
-   * "31/03/2028"). The lead-in words are a guess at gov.uk's wording
-   * (pre-settled and visa pages word it differently); the date itself must
-   * follow within the same sentence, so a date of birth elsewhere on the page
-   * is never picked up.
+   * "31/03/2028"). Read one LINE at a time (a label alone on a line takes the
+   * next line, see `captureUntil`): the lead-in must start at a word boundary
+   * and the date must follow on the same line, so a date of birth below a
+   * "Date of birth" label, or a word ending in "end", never matches. A line
+   * about the share code is skipped by the reader, and two different dates
+   * on one page are an error, not a guess. The lead-in words are a guess at
+   * gov.uk's wording (pre-settled and visa pages word it differently).
    */
   until: [
-    /(?:until(?:\s+and\s+including)?|expires?(?:\s+on)?|expiry(?:\s+date)?|date\s+of\s+expiry|valid\s+(?:until|to)|ends?(?:\s+on)?|end\s+date|expire[sd]\s+on)[:\s]+(?:on\s+)?(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,9}\.?\s+\d{4})/i,
-    /(?:until(?:\s+and\s+including)?|expires?(?:\s+on)?|expiry(?:\s+date)?|date\s+of\s+expiry|valid\s+(?:until|to)|ends?(?:\s+on)?|end\s+date|expire[sd]\s+on)[:\s]+(?:on\s+)?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
+    /\b(?:until(?:[^\S\r\n]+and[^\S\r\n]+including)?|expires?(?:[^\S\r\n]+on)?|expiry[^\S\r\n]+date|date[^\S\r\n]+of[^\S\r\n]+expiry|valid[^\S\r\n]+(?:until|to)|ends?[^\S\r\n]+on|end[^\S\r\n]+date)[:\t ]+(?:on[^\S\r\n]+)?(\d{1,2}(?:st|nd|rd|th)?[^\S\r\n]+[A-Za-z]{3,9}\.?[^\S\r\n]+\d{4})/i,
+    /\b(?:until(?:[^\S\r\n]+and[^\S\r\n]+including)?|expires?(?:[^\S\r\n]+on)?|expiry[^\S\r\n]+date|date[^\S\r\n]+of[^\S\r\n]+expiry|valid[^\S\r\n]+(?:until|to)|ends?[^\S\r\n]+on|end[^\S\r\n]+date)[:\t ]+(?:on[^\S\r\n]+)?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
   ],
+  /** A line that is only an end-date label: the date is on the next line. */
+  untilLabelOnly:
+    /\b(?:until|expiry\s+date|date\s+of\s+expiry|valid\s+(?:until|to)|end\s+date|expires(?:\s+on)?)\s*:?\s*$/i,
+  /** Lines never read for the end date: they are about the share code, not the permission. */
+  untilNotLine: /share\s*code/i,
   /** Settled status / indefinite leave: no end date, stated, never inferred. */
   noTimeLimit: [
     /no time limit/i,

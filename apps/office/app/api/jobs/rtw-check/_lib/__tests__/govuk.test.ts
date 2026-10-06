@@ -121,6 +121,34 @@ describe('parseGovukResult', () => {
       rightToWorkUntil: '2027-08-12',
     });
     expect(valid('Valid to 12/08/2027')).toMatchObject({ rightToWorkUntil: '2027-08-12' });
+    // The share code's own expiry is not the permission's end date…
+    expect(
+      parseGovukResult(
+        'Name\nMarta Villanueva\nThey have permission to work in the UK until 12 August 2027.\nThis share code expires on 5 January 2027.\n',
+        AT,
+      ),
+    ).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: '2027-08-12' });
+    // …a word that merely ends in "end" is not a label…
+    expect(
+      parseGovukResult(
+        'Name\nMarta Villanueva\nThey have permission to work in the UK.\nWeekend\n12 June 2026\n',
+        AT,
+      ),
+    ).toMatchObject({ error: 'govuk_no_expiry' });
+    // …and two different end dates are an error, not a guess.
+    expect(
+      parseGovukResult(
+        'Name\nMarta Villanueva\nThey have permission to work in the UK until 12 August 2027.\nTheir visa expires on 3 March 2028.\n',
+        AT,
+      ),
+    ).toMatchObject({ error: 'govuk_unreadable_date' });
+    // A label alone on a line takes the date on the next line.
+    expect(
+      parseGovukResult(
+        'Name\nMarta Villanueva\nThey have permission to work in the UK.\nExpiry date\n12 August 2027\n',
+        AT,
+      ),
+    ).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: '2027-08-12' });
     // A date of birth on the page is never taken for the end date.
     expect(
       parseGovukResult(
@@ -175,6 +203,20 @@ describe('parseGovukResult', () => {
       'govuk_unrecognised_result',
     );
     expect(parseGovukResult('   ', AT).error).toBe('govuk_empty_page');
+    // A maintenance page looks like this: it is retried, never filed as a report.
+    const maintenance = parseGovukResult(page('govuk-maintenance.txt'), AT);
+    expect(
+      decideRtwCheck(
+        maintenance,
+        {
+          firstName: 'Marta',
+          lastName: 'Villanueva',
+          rtwBranch: 'eu_settled',
+          belowDegreeLevel: false,
+        },
+        { attempt: 1, maxAttempts: 5, today: '2026-09-25' },
+      ).action,
+    ).toBe('retry');
   });
 });
 
@@ -316,6 +358,25 @@ describe('createGovukChecker', () => {
     expect(out.result.outcome).toBe('not_found');
     expect(out.report).toBeNull();
     expect(fake.pdfCalls()).toBe(0);
+  });
+
+  it('a result page whose end date cannot be read is printed for the office; a maintenance page is not', async () => {
+    const screens = (text: string) => [
+      { fields: ['shareCode'], text: '' },
+      { fields: ['day', 'month', 'year'], text: '' },
+      { fields: ['company'], text: '' },
+      { fields: [], text },
+    ];
+    const unreadable = fakeBrowser(screens(page('govuk-pass-no-date.txt')));
+    const out = await createGovukChecker(enabled, async () => unreadable.browser)!.check(INPUT);
+    expect(out.result).toMatchObject({ outcome: 'error', error: 'govuk_no_expiry' });
+    expect(new TextDecoder().decode(out.report!)).toMatch(/^%PDF-/);
+
+    const maintenance = fakeBrowser(screens(page('govuk-maintenance.txt')));
+    const down = await createGovukChecker(enabled, async () => maintenance.browser)!.check(INPUT);
+    expect(down.result).toMatchObject({ error: 'govuk_unrecognised_result' });
+    expect(down.report).toBeNull();
+    expect(maintenance.pdfCalls()).toBe(0);
   });
 
   it('a page without Continue is page_changed, naming only the step', async () => {

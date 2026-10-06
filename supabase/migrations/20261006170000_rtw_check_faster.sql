@@ -10,7 +10,7 @@
 --   1 · rtw_check_backoff(): 2 min, 10 min, 30 min, 2 h — five attempts over
 --       about three hours. Equal to RTW_CHECK_BACKOFF_MINUTES in
 --       packages/domain (rtwCheck.sql.test.ts compares the literal).
---   2 · The runner row fires every minute, not every 10 (pg_cron's floor).
+--   2 · The runner row fires every minute, not every 10.
 --       Run install_job_schedules() once after this migration so an already
 --       enabled row is rescheduled; a disabled one is untouched.
 --   3 · A retry already waiting on the old schedule is pulled forward to

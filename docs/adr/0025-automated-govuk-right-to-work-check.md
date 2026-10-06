@@ -53,7 +53,7 @@ Neither gov.uk nor any provider was reachable from the environment this was buil
 
 | Result | Action |
 |---|---|
-| `error` | **retry**. The database backs off 2 min, 10 min, 30 min and 2 h (5 attempts over about three hours; was 30 min … 16 h until 06.10.2026). The fifth failure becomes **needs_review** with the reason. An error where gov.uk answered and the system could not read it (`govuk_no_expiry`, `govuk_unreadable_date`, `govuk_unrecognised_result`, `govuk_contradictory_result`) is **not retried**: it goes straight to **needs_review** with gov.uk's PDF attached, because the page will read the same later. |
+| `error` | **retry**. The database backs off 2 min, 10 min, 30 min and 2 h (5 attempts over about three hours; was 30 min … 16 h until 06.10.2026). The fifth failure becomes **needs_review** with the reason. An error where gov.uk answered and the system could not read it (`govuk_no_expiry`, `govuk_unreadable_date`, `govuk_contradictory_result`; an unrecognised page such as a maintenance notice is still retried) is **not retried**: it goes straight to **needs_review** with gov.uk's PDF attached, because the page will read the same later. |
 | `not_found` | **reject** through the office's Reject, so the worker gets N8: "gov.uk did not recognise this share code with your date of birth — check both and try again". |
 | `no_right_to_work` | **reject** (N8) **and needs_review**. The office must know, whatever the worker does next. |
 | `right_to_work` | **verify**, unless any rule below sends it to **needs_review** instead. Nothing on this list is ever auto-verified. |

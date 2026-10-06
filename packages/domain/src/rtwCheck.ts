@@ -363,15 +363,16 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const RTW_CHECK_BACKOFF_MINUTES: readonly number[] = [2, 10, 30, 120];
 
 /**
- * Error codes where gov.uk ANSWERED and the system could not read the
- * answer. The page will read the same in half an hour, so retrying only
- * delays the office: these go straight to Needs review, with gov.uk's own
- * PDF attached when the adapter could print it.
+ * Error codes where gov.uk gave a RESULT page and the system could not read
+ * it. The page will read the same in half an hour, so retrying only delays
+ * the office: these go straight to Needs review, with gov.uk's own PDF
+ * attached when the adapter could print it. `govuk_unrecognised_result` is
+ * deliberately not here: a maintenance or "try again later" page looks the
+ * same, clears in minutes, and is not a report to file on a worker.
  */
 export const RTW_CHECK_PERMANENT_ERRORS: readonly string[] = [
   'govuk_no_expiry',
   'govuk_unreadable_date',
-  'govuk_unrecognised_result',
   'govuk_contradictory_result',
 ];
 

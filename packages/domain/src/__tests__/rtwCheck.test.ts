@@ -330,7 +330,10 @@ describe('retry backoff and error codes', () => {
     }
     const d = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 });
     if (d.action === 'needs_review') expect(d.officeReason).toMatch(/end date could not be read/);
-    // A timeout is still worth another go.
+    // A maintenance page (govuk_unrecognised_result) and a timeout are still worth another go.
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_unrecognised_result'), eu, ctx).action,
+    ).toBe('retry');
     expect(decideRtwCheck(rtwCheckError('govuk', 'govuk_timeout'), eu, ctx).action).toBe('retry');
   });
 
