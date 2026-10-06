@@ -216,6 +216,26 @@ describe('runRtwCheckSweep', () => {
     expect(last.recorded[0]!.reportPath).toBe('s1/share-code-report/rtw-check-c1.pdf');
   });
 
+  it('hands the office what the gov.uk page showed when the date could not be read', async () => {
+    const t = deps(
+      checker('govuk', {
+        result: rtwCheckError('govuk', 'govuk_no_expiry'),
+        report: PDF,
+        hint: 'Status type 4 | Review due 12 August 2027',
+      }),
+      { claim: async () => [{ ...row, attempt: 3 }] },
+    );
+    await runRtwCheckSweep(t.d);
+    const d = t.recorded[0]!.decision;
+    expect(d.action).toBe('needs_review');
+    if (d.action === 'needs_review') {
+      expect(d.officeReason).toContain(
+        "Lines on gov.uk's page: Status type 4 | Review due 12 August 2027",
+      );
+      expect(d.officeReason.length).toBeLessThanOrEqual(500);
+    }
+  });
+
   it('runs the claimed checks a couple at a time, and records every one', async () => {
     let live = 0;
     let peak = 0;

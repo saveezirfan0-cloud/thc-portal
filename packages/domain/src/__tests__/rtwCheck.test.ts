@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   RTW_CHECK_BACKOFF_MINUTES,
+  RTW_CHECK_NO_DATE_MAX_ATTEMPTS,
   RTW_CHECK_PERMANENT_ERRORS,
   rtwCheckErrorLabel,
   rtwCheckStatusLabel,
@@ -332,9 +333,13 @@ describe('retry backoff and error codes', () => {
     expect(
       decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 }).action,
     ).toBe('retry');
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 2 }).action,
+    ).toBe('retry');
+    // Three reads of a page with no date is enough: the office, with what the page said.
     const last = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, {
       ...ctx,
-      attempt: ctx.maxAttempts,
+      attempt: RTW_CHECK_NO_DATE_MAX_ATTEMPTS,
     });
     expect(last.action).toBe('needs_review');
     if (last.action === 'needs_review')

@@ -195,6 +195,7 @@ export async function runRtwCheckSweep(
       shareCode: row.share_code,
       dateOfBirth: String(row.date_of_birth).slice(0, 10),
       companyName: deps.companyName,
+      redact: [row.first_name, row.last_name],
     };
     const output = await runOrchestrated(deps.primary, deps.fallback, input);
     let decision = decideRtwCheck(
@@ -209,6 +210,18 @@ export async function runRtwCheckSweep(
       },
       { attempt: row.attempt, maxAttempts: row.max_attempts, today: ukToday(now()) },
     );
+
+    // What gov.uk's page showed, for the office, when the system could not
+    // read the end date and is handing the check over (SQL keeps 500 characters).
+    if (decision.action === 'needs_review' && output.hint) {
+      const room = 500 - decision.officeReason.length - 40;
+      if (room > 40) {
+        decision = {
+          ...decision,
+          officeReason: `${decision.officeReason} Lines on gov.uk's page: ${output.hint.slice(0, room)}`,
+        };
+      }
+    }
 
     // A retry keeps nothing — the next attempt makes its own report — so a
     // report is only uploaded when this run's outcome will store it.
