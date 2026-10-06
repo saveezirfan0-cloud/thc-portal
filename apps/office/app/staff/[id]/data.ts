@@ -120,6 +120,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     manager,
     activated,
     location,
+    willo,
     violationDetails,
     rtw,
     reviewQueue,
@@ -199,6 +200,15 @@ export async function loadProfile(id: string): Promise<ProfileData> {
         gender: 'M' | 'F' | null;
         languages: string[] | null;
       }>(),
+    // ADR-0093: the Willo interview link stays on the profile after
+    // onboarding. The same column the candidate screen reads, built from
+    // staff.willo_candidate_id + settings.willo_review_url_template; a
+    // failed read shows no link, nothing more.
+    supabase
+      .from('onboarding_candidates_v')
+      .select('willo_review_url')
+      .eq('id', id)
+      .maybeSingle<{ willo_review_url: string | null }>(),
     // The Shifts tab opens the /checkin detail window and Resolve (§9.6),
     // so it reads the entries through the monitor's own query.
     loadStaffViolationLog(supabase, id),
@@ -265,6 +275,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     clients: clients.data ?? [],
     managerName: manager,
     activated: activated.error ? null : (activated.data ?? null),
+    willoReviewUrl: willo.error ? undefined : (willo.data?.willo_review_url ?? null),
     locationStale: location.error ? null : (location.data?.home_location_stale ?? null),
     ...(location.error
       ? {}
