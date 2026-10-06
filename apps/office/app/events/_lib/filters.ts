@@ -29,6 +29,12 @@ export interface EventQuery {
   clientId: string;
   /** An `EventStatus`, or '' for any. */
   status: string;
+  /**
+   * Leave cancelled events out of the diary. A view over the list, never a
+   * delete: §3.3 keeps a cancelled event for the record, and it stays one
+   * click away. Not part of a saved view.
+   */
+  hideCancelled: boolean;
 }
 
 export type SearchParamsLike = Record<string, string | string[] | undefined>;
@@ -66,6 +72,7 @@ export function parseEventQuery(params: SearchParamsLike, today: string): EventQ
     q: single(params, 'q').trim(),
     clientId: single(params, 'client').trim(),
     status: isEventStatus(status) ? status : '',
+    hideCancelled: single(params, 'hide') === 'cancelled',
   };
 }
 
@@ -79,6 +86,7 @@ export function eventsHref(query: Partial<EventQuery> & { view: CalendarView; da
   if (query.q) params.set('q', query.q);
   if (query.clientId) params.set('client', query.clientId);
   if (query.status) params.set('status', query.status);
+  if (query.hideCancelled) params.set('hide', 'cancelled');
   return `/events?${params.toString()}`;
 }
 

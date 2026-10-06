@@ -7,6 +7,7 @@ import {
   driveGovuk,
   govukConfig,
   govukPhoto,
+  pageHint,
   parseGovukResult,
 } from '../govuk';
 import type { GovukBrowser, GovukLocator, GovukPage } from '../govuk';
@@ -354,6 +355,62 @@ describe('driveGovuk', () => {
       { fields: [], text: page('govuk-pass-settled.txt') },
     ]);
     expect((await driveGovuk(await browser.newPage(), INPUT, CONFIG)).complete).toBe(true);
+  });
+});
+
+describe('pageHint — what the office is shown when the date cannot be read', () => {
+  const input = {
+    shareCode: 'W123AB4CD',
+    dateOfBirth: '1996-05-05',
+    companyName: 'The Hospitality Company',
+    redact: ['Marta', 'Villanueva'],
+  };
+
+  it('keeps the labelled dates and numbers, and nothing that identifies the worker', () => {
+    const hint = pageHint(
+      [
+        'Name',
+        'Marta Villanueva',
+        'Date of birth',
+        '5 May 1996',
+        'Share code W123AB4CD',
+        'Reference number: AB-1234',
+        'Pre-settled status',
+        'Permission valid for 5 years',
+        'Status granted',
+        '12 August 2021',
+        'Marta Villanueva checked on 06/10/2026',
+      ].join('\n'),
+      input,
+    );
+    expect(hint).toBe('Permission valid for 5 years | Status granted 12 August 2021');
+    expect(hint).not.toMatch(/Marta|Villanueva|W123|1996|AB-1234/);
+  });
+
+  it('is null when the page has no numbers, and never more than eight lines', () => {
+    expect(pageHint('They have permission to work in the UK.', input)).toBeNull();
+    const many = Array.from({ length: 20 }, (_, i) => `Item ${i + 1} on 1${i} June 2030`).join(
+      '\n',
+    );
+    expect(pageHint(many, input)!.split(' | ')).toHaveLength(8);
+  });
+
+  it('comes back from the checker when a pass has no end date', async () => {
+    const fake = fakeBrowser([
+      { fields: ['shareCode'], text: '' },
+      { fields: ['day', 'month', 'year'], text: '' },
+      { fields: ['company'], text: '' },
+      {
+        fields: [],
+        text: 'Name\nOlu Ade\nThey have permission to work in the UK.\nStatus type 4\n',
+      },
+    ]);
+    const out = await createGovukChecker(
+      (n) => (n === 'RTW_GOVUK_ENABLED' ? 'true' : undefined),
+      async () => fake.browser,
+    )!.check({ ...input, redact: ['Olu', 'Ade'] });
+    expect(out.result.error).toBe('govuk_no_expiry');
+    expect(out.hint).toBe('Status type 4');
   });
 });
 

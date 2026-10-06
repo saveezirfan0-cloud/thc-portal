@@ -1,4 +1,4 @@
-# ADR-0094 · A late check-in is paid from the actual check-in, not the scheduled start
+# ADR-0095 · A late check-in is paid from the actual check-in, not the scheduled start
 
 Status: accepted · 05.10.2026 · changes RULE-01 / §5.1 / §5.2 (scope wins elsewhere); raise with THC
 

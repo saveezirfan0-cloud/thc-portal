@@ -216,6 +216,36 @@ describe('the toolbar filters (§3.1)', () => {
     expect(filterEventRows(rows, { clientId: '', status: 'completed', q: '' })).toEqual([]);
     expect(filterEventRows(rows, { clientId: '', status: 'upcoming', q: '' })).toHaveLength(3);
   });
+
+  describe('Hide cancelled', () => {
+    const mixed = toEventRows(
+      [event({ id: 'live' }), event({ id: 'gone', cancelledAt: '2026-09-16T10:00:00Z' })],
+      before,
+    );
+
+    it('leaves cancelled events out, and only those', () => {
+      expect(
+        filterEventRows(mixed, { clientId: '', status: '', q: '', hideCancelled: true }).map(
+          (r) => r.id,
+        ),
+      ).toEqual(['live']);
+    });
+
+    it('keeps them by default — §3.3 does not delete a cancelled event', () => {
+      expect(filterEventRows(mixed, { clientId: '', status: '', q: '' })).toHaveLength(2);
+    });
+
+    it('lets asking for Cancelled by name outrank hiding them', () => {
+      expect(
+        filterEventRows(mixed, {
+          clientId: '',
+          status: 'cancelled',
+          q: '',
+          hideCancelled: true,
+        }).map((r) => r.id),
+      ).toEqual(['gone']);
+    });
+  });
 });
 
 describe('scheduled windows carry a "your time" line outside the UK (§1.8)', () => {

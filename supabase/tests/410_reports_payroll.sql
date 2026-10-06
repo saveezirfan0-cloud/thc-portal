@@ -102,7 +102,7 @@ grant select on b to authenticated, service_role;
 --   s1 Mon Bar 18:00–23:00, in 17:55 out 23:02 → 300 min (capped both ends)
 --        base 300×15.50/60 = 77.50 · holiday 9.35 · total 86.85
 --   s2 Tue Waiting 10:00–16:00 clean → 360 → 84.00 · 10.14 · 94.14
---   s3 Wed Host 08:00–16:00, in 08:14 (Late: paid from the actual check-in, ADR-0094)
+--   s3 Wed Host 08:00–16:00, in 08:14 (Late: paid from the actual check-in, ADR-0095)
 --        → 466 → 124.27 · 15.00 · 139.27, late check-in highlighted
 --   s4 Thu Bar 17:00–22:00, client does not pay breaks, 20 min break
 --        → 280 → 72.33 · 8.73 · 81.06
@@ -214,7 +214,7 @@ select is((select payable_min from pr where booking_id = (select id from b where
 select ok((select late_check_in from pr where booking_id = (select id from b where name = 'w1s3')),
   'W1 Wed: checked in 08:14 — highlighted late (amber)');
 select is((select payable_min from pr where booking_id = (select id from b where name = 'w1s3')), 466,
-  'W1 Wed: …and paid only from the actual 08:14, not the scheduled 08:00 (RULE-01, ADR-0094)');
+  'W1 Wed: …and paid only from the actual 08:14, not the scheduled 08:00 (RULE-01, ADR-0095)');
 select is((select row(unpaid_break_min, payable_min, base)::text from pr where booking_id = (select id from b where name = 'w1s4')),
   row(20, 280, 72.33)::text,
   'W1 Thu: the client does not pay breaks, so the 20-minute break is deducted and shown (§5.2b)');

@@ -387,6 +387,14 @@ export const RTW_CHECK_PERMANENT_ERRORS: readonly string[] = [
   'govuk_contradictory_result',
 ];
 
+/**
+ * A result page with no end date reads the same on every attempt except when
+ * it had not finished loading, which the adapter already covers inside one
+ * attempt (whole page, waited for load). So the office gets it after this many
+ * attempts, not after all five.
+ */
+export const RTW_CHECK_NO_DATE_MAX_ATTEMPTS = 3;
+
 export function isPermanentRtwError(code: string | null | undefined): boolean {
   return typeof code === 'string' && RTW_CHECK_PERMANENT_ERRORS.includes(code);
 }
@@ -453,7 +461,11 @@ export function decideRtwCheck(
         officeReason: `${capitalise(rtwCheckErrorLabel(error))}. Read gov.uk’s report and verify by hand, or run the check again.`,
       };
     }
-    if (context.attempt < context.maxAttempts) return { action: 'retry', error };
+    const limit =
+      error === 'govuk_no_expiry'
+        ? Math.min(context.maxAttempts, RTW_CHECK_NO_DATE_MAX_ATTEMPTS)
+        : context.maxAttempts;
+    if (context.attempt < limit) return { action: 'retry', error };
     return {
       action: 'needs_review',
       officeReason: `The automatic check could not be completed after ${context.attempt} attempts (${rtwCheckErrorLabel(error)}). Run it again, or check the share code on gov.uk by hand.`,
