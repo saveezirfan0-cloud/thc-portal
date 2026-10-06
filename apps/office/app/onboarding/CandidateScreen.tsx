@@ -1620,7 +1620,7 @@ function RolesAndClients({
 
       <Panel
         title="Client qualification"
-        actions={<span className="muted sm">auto-assign&rsquo;s first wave (§9.6)</span>}
+        actions={<span className="muted sm">auto-assign&rsquo;s first wave</span>}
       >
         <div className="stack">
           {qualifications.length === 0 ? (
