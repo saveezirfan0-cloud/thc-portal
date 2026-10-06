@@ -297,12 +297,22 @@ export function conditionRecognised(line: string): boolean {
   return !RESTRICTIVE_WORDS.test(l.replace(/\bno\s+(?:time\s+)?limit\b/i, ''));
 }
 
-/** Conditions that are neither a whole term-time line nor a whole benign line. */
+/**
+ * A condition line is judged one SENTENCE at a time: gov.uk prints "They can
+ * work in any job. There is no limit on how long they can stay in the UK." as
+ * ONE line (06.10.2026). A line is recognised only when every sentence in it
+ * is, so a restrictive sentence beside a benign one still goes to the office.
+ */
+function sentencesOf(line: string): string[] {
+  return line.split(/(?<=[.!?])\s+(?=[A-Z])/).filter((s) => s.length > 0);
+}
+
+/** Conditions that are neither a whole term-time line nor a whole benign line (per sentence). */
 export function unrecognisedConditions(conditions: readonly string[]): string[] {
   return conditions
     .map(normaliseLine)
     .filter((c) => c.length > 0)
-    .filter((c) => !conditionRecognised(c));
+    .filter((c) => !sentencesOf(c).every((s) => conditionRecognised(s)));
 }
 
 // ---------------------------------------------------------------------
