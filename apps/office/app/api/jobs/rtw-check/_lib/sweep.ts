@@ -214,13 +214,14 @@ export async function runRtwCheckSweep(
     // What gov.uk's page showed, for the office, when the system could not
     // read the end date and is handing the check over (SQL keeps 500 characters).
     if (decision.action === 'needs_review' && output.hint) {
-      const room = 500 - decision.officeReason.length - 40;
-      if (room > 40) {
-        decision = {
-          ...decision,
-          officeReason: `${decision.officeReason} Lines on gov.uk's page: ${output.hint.slice(0, room)}`,
-        };
-      }
+      decision = {
+        ...decision,
+        officeReason:
+          `No end date could be read from gov.uk's page. Read it from the PDF and verify by hand, or run the check again. Page: ${output.hint}`.slice(
+            0,
+            500,
+          ),
+      };
     }
 
     // A retry keeps nothing — the next attempt makes its own report — so a

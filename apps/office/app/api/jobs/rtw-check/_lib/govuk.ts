@@ -156,12 +156,25 @@ export function onlyFutureDate(text: string, today: string): string | 'ambiguous
 }
 
 /**
- * The lines of a result page that carry a number or a date, with the worker's
- * name, date of birth and share code left out, for the office (see
- * `CheckOutput.hint`). A line about birth, the share code, a reference or a
- * name is dropped whole; a date alone on a line keeps the label above it.
- * Never more than eight short lines.
+ * Lines of a result page about the person's status and permission, or that
+ * carry a number or a date — with the worker's name, date of birth and share
+ * code left out — for the office (see `CheckOutput.hint`). A line about
+ * birth, the share code, a reference or a name is dropped whole, as is the
+ * page's footer; a date alone on a line keeps the label above it. At most six
+ * lines of 100 characters.
  */
+const HINT_STATUS_WORDS =
+  /status|settled|permission|right to work|expir|time limit|indefinite|\bleave\b|visa|scheme|valid|until|condition|\bcan work\b|\bcannot work\b/i;
+const HINT_BOILERPLATE =
+  /secure copy|open government licence|cookies?|privacy|accessibility statement|crown copyright|terms and conditions|skip to|\bmenu\b|\bfeedback\b/i;
+
+function isBareDate(line: string): boolean {
+  return (
+    /\d/.test(line) &&
+    line.replace(/[\d/.\-:,]|(?<=\d)(?:st|nd|rd|th)|[A-Za-z]{3,9}\.?(?=\s+\d)/g, '').trim() === ''
+  );
+}
+
 export function pageHint(text: string, input: CheckInput): string | null {
   const code = input.shareCode.replace(/\s+/g, '').toUpperCase();
   const names = new Set(
@@ -171,18 +184,19 @@ export function pageHint(text: string, input: CheckInput): string | null {
   const lines = text.split('\n').map((l) => l.replace(/\s+/g, ' ').trim());
   const banned = /birth|\bborn\b|share\s*code|\bcode\b|reference|\bname\b|nationality|photo/i;
   const keep: string[] = [];
-  for (let i = 0; i < lines.length && keep.length < 8; i += 1) {
+  for (let i = 0; i < lines.length && keep.length < 6; i += 1) {
     const line = lines[i]!;
-    if (!/\d/.test(line)) continue;
-    const bare =
-      line.replace(/[\d/.\-:,]|(?<=\d)(?:st|nd|rd|th)|[A-Za-z]{3,9}\.?(?=\s+\d)/g, '').trim() ===
-      '';
+    if (!line || !(/\d/.test(line) || HINT_STATUS_WORDS.test(line))) continue;
+    const bare = isBareDate(line);
+    // A label above a date alone on its line is shown with that date, once.
+    if (!bare && isBareDate(lines[i + 1] ?? '') && i + 1 < lines.length) continue;
     const shown = bare && i > 0 && lines[i - 1] ? `${lines[i - 1]} ${line}` : line;
-    if (banned.test(shown)) continue;
+    if (banned.test(shown) || HINT_BOILERPLATE.test(shown)) continue;
     if (shown.replace(/\s+/g, '').toUpperCase().includes(code)) continue;
     if (datesOnLine(shown).includes(dob)) continue;
     if (nameTokens(shown).some((t) => names.has(t))) continue;
-    keep.push(shown.slice(0, 120));
+    if (keep.includes(shown.slice(0, 100))) continue;
+    keep.push(shown.slice(0, 100));
   }
   return keep.length > 0 ? keep.join(' | ') : null;
 }
