@@ -159,6 +159,8 @@ export const GOVUK_RESULT = {
     // old lookahead read pre-settled as no time limit — QA 25.09).
     /(?<!pre[-\s])settled status/i,
     /\bwithout (?:a )?time limit/i,
+    // Live wording (06.10.2026): "There is no limit on how long they can stay in the UK."
+    /\bno limit on how long (?:they|this person|the applicant) can (?:stay|remain|live)\b/i,
   ],
   /** The person's name, on a "Name" line or as the page's H1. */
   name: [/^\s*(?:full )?name\s*[:\n]\s*(.+)$/im],
@@ -191,4 +193,4 @@ export const GOVUK_RESULT = {
 
 /** Section headings that end a conditions list. */
 export const GOVUK_SECTION_END =
-  /^\s*(?:name|date of birth|reference|details|what (?:you|to) (?:need|do)|download|print|photo|nationality)\b/i;
+  /^\s*(?:name|date of birth|reference|details|what (?:you|to) (?:need|do)|download|print|photo|nationality|legal basis of status)\b/i;

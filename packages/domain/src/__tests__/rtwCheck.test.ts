@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   RTW_CHECK_BACKOFF_MINUTES,
+  conditionRecognised,
   RTW_CHECK_NO_DATE_MAX_ATTEMPTS,
   RTW_CHECK_PERMANENT_ERRORS,
   rtwCheckErrorLabel,
@@ -312,6 +313,20 @@ describe('decideRtwCheck', () => {
       );
       expect(d.action).toBe('needs_review');
     });
+  });
+});
+
+describe('gov.uk live "no limit" condition (06.10.2026)', () => {
+  it('is harmless as a whole line, and only as a whole line', () => {
+    expect(conditionRecognised('There is no limit on how long they can stay in the UK.')).toBe(
+      true,
+    );
+    expect(
+      conditionRecognised('There is no limit on how long they can stay in the UK for 20 hours.'),
+    ).toBe(false);
+    expect(
+      conditionRecognised('They can work in any job. There is no limit on how long they can stay.'),
+    ).toBe(false);
   });
 });
 

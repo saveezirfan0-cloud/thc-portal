@@ -241,6 +241,8 @@ export const BENIGN_CONDITION_PATTERNS: readonly RegExp[] = [
     String.raw`^${SUBJECT}cannot\s+work\s+as\s+a\s+professional\s+sports\s?person(?:\s+or\s+(?:sports\s+)?coach)?\.?$`,
     'i',
   ),
+  // Live wording (06.10.2026): "There is no limit on how long they can stay in the UK."
+  /^there\s+is\s+no\s+limit\s+on\s+how\s+long\s+(?:they|this\s+person|the\s+applicant)\s+can\s+(?:stay|remain|live)\s+in\s+the\s+UK\.?$/i,
   new RegExp(String.raw`^${SUBJECT}cannot\s+be\s+self[\s-]?employed\.?$`, 'i'),
   new RegExp(
     String.raw`^${SUBJECT}cannot\s+fill\s+a\s+permanent\s+full[\s-]?time\s+vacancy\.?$`,
