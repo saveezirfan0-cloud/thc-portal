@@ -52,10 +52,10 @@ export interface VenueMapProps {
  *
  * A Web Mercator surface drawn on the design system's `.map` token
  * background, so it reads as a map with or without a tile provider. When
- * `NEXT_PUBLIC_MAPBOX_TOKEN` is set the raster tiles for the current
- * appearance are laid over that background; without one, the grid and the
- * scale bar still place every pin and size every geofence correctly,
- * because the projection — not the tiles — is what positions them.
+ * `NEXT_PUBLIC_MAPBOX_TOKEN` is set the Mapbox raster tiles for the current
+ * appearance are laid over that background; without one, OpenStreetMap's
+ * tiles are (ADR-0093). Either way the projection — not the tiles — is what
+ * positions every pin and sizes every geofence.
  *
  * Zoom is whole levels only, moved with the +/− controls (and a
  * double-click), never with the wheel: this map is full width, and hijacking
@@ -277,7 +277,7 @@ export function VenueMap({
       {tiles.map((tile) => (
         <img
           key={tile.key}
-          className="tile"
+          className={tile.url.startsWith('https://tile.openstreetmap.org') ? 'tile osm' : 'tile'}
           src={tile.url}
           alt=""
           draggable={false}
@@ -362,6 +362,14 @@ export function VenueMap({
           </span>
           <span>zoom to compare sizes</span>
         </div>
+      ) : null}
+
+      {tiles.length > 0 ? (
+        <span className="attribution">
+          {process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+            ? '© Mapbox © OpenStreetMap'
+            : '© OpenStreetMap contributors'}
+        </span>
       ) : null}
 
       <div className="scale" aria-hidden="true">
@@ -460,8 +468,10 @@ interface Tile {
 function useTiles(origin: Point, zoom: number, viewport: Viewport, mode: 'light' | 'dark'): Tile[] {
   return useMemo(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!token || viewport.width === 0) return [];
+    if (viewport.width === 0) return [];
 
+    // ADR-0093: with no Mapbox token the map falls back to OpenStreetMap's
+    // public tiles, so a venue can be placed on a real map in any environment.
     const style = mode === 'dark' ? 'dark-v11' : 'light-v11';
     const count = 2 ** zoom;
     const out: Tile[] = [];
@@ -477,7 +487,9 @@ function useTiles(origin: Point, zoom: number, viewport: Viewport, mode: 'light'
         const wrapped = ((x % count) + count) % count; // the world repeats east–west
         out.push({
           key: `${zoom}/${x}/${y}`,
-          url: `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/256/${zoom}/${wrapped}/${y}@2x?access_token=${token}`,
+          url: token
+            ? `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/256/${zoom}/${wrapped}/${y}@2x?access_token=${token}`
+            : `https://tile.openstreetmap.org/${zoom}/${wrapped}/${y}.png`,
           left: x * TILE_SIZE - origin.x,
           top: y * TILE_SIZE - origin.y,
         });

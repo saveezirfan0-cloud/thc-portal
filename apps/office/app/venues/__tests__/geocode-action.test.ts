@@ -73,4 +73,40 @@ describe('reverseGeocode (§9.11, D52)', () => {
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('falls back to OpenStreetMap when no Mapbox token is set (ADR-0093)', async () => {
+    const before = { ...process.env };
+    delete process.env['MAPBOX_TOKEN'];
+    delete process.env['NEXT_PUBLIC_MAPBOX_TOKEN'];
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ display_name: '2 Test Road, London' }), { status: 200 }),
+    );
+    try {
+      expect(await reverseGeocode(51.5, -0.1)).toEqual({
+        ok: true,
+        address: '2 Test Road, London',
+      });
+      const called = String((fetchMock.mock.calls[0] as unknown[])[0]);
+      expect(called).toContain('nominatim.openstreetmap.org/reverse');
+    } finally {
+      process.env = before;
+    }
+  });
+
+  it('reports no address when OpenStreetMap has none for the point', async () => {
+    const before = { ...process.env };
+    delete process.env['MAPBOX_TOKEN'];
+    delete process.env['NEXT_PUBLIC_MAPBOX_TOKEN'];
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Unable to geocode' }), { status: 200 }),
+    );
+    try {
+      expect(await reverseGeocode(0, 0)).toEqual({
+        ok: false,
+        message: 'No address at this point — move the pin.',
+      });
+    } finally {
+      process.env = before;
+    }
+  });
 });
