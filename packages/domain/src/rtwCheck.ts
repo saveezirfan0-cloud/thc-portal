@@ -364,20 +364,35 @@ export const RTW_CHECK_BACKOFF_MINUTES: readonly number[] = [2, 10, 30, 120];
 
 /**
  * Error codes where gov.uk gave a RESULT page and the system could not read
- * it. The page will read the same in half an hour, so retrying only delays
- * the office: these go straight to Needs review, with gov.uk's own PDF
- * attached when the adapter could print it. `govuk_unrecognised_result` is
- * deliberately not here: a maintenance or "try again later" page looks the
- * same, clears in minutes, and is not a report to file on a worker.
+ * it. The adapter prints that page to PDF for the office (it is the evidence
+ * a person needs when every automatic route has run out).
+ */
+export const RTW_CHECK_RESULT_PAGE_ERRORS: readonly string[] = [
+  'govuk_no_expiry',
+  'govuk_unreadable_date',
+  'govuk_contradictory_result',
+];
+
+/**
+ * Of those, the ones a retry cannot change: two different end dates, or a
+ * page that says both "can" and "cannot work". They go straight to the
+ * office. `govuk_no_expiry` is NOT here: the office is the LAST resort, so a
+ * page whose date was not found is read again (a page that had not finished
+ * loading reads differently a minute later) until the attempts run out.
+ * `govuk_unrecognised_result` is not here either: a maintenance page looks
+ * the same, clears in minutes, and is not a report to file on a worker.
  */
 export const RTW_CHECK_PERMANENT_ERRORS: readonly string[] = [
-  'govuk_no_expiry',
   'govuk_unreadable_date',
   'govuk_contradictory_result',
 ];
 
 export function isPermanentRtwError(code: string | null | undefined): boolean {
   return typeof code === 'string' && RTW_CHECK_PERMANENT_ERRORS.includes(code);
+}
+
+export function isResultPageRtwError(code: string | null | undefined): boolean {
+  return typeof code === 'string' && RTW_CHECK_RESULT_PAGE_ERRORS.includes(code);
 }
 
 /** What an error code means, in words the office can act on. Unknown codes are shown as they are. */

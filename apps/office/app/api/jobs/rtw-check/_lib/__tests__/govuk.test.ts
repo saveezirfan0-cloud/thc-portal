@@ -158,6 +158,41 @@ describe('parseGovukResult', () => {
     ).toMatchObject({ outcome: 'error', error: 'govuk_no_expiry' });
   });
 
+  it('finds the end date wherever and however gov.uk words it, when it is the only future date', () => {
+    const pass = (...lines: string[]) =>
+      parseGovukResult(
+        ['Name', 'Marta Villanueva', 'They have permission to work in the UK.', ...lines, ''].join(
+          '\n',
+        ),
+        AT,
+      );
+    expect(
+      pass('Immigration status: Pre-settled', 'Permission runs out 12 August 2027'),
+    ).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(pass('Granted 12 August 2021', 'Status finishes', 'August 12, 2027')).toMatchObject({
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(pass('Final day: 2027-08-12')).toMatchObject({ rightToWorkUntil: '2027-08-12' });
+    // The share code's own validity and a date of birth are never the end date…
+    expect(pass('This share code is valid for 90 days, to 5 January 2027.')).toMatchObject({
+      error: 'govuk_no_expiry',
+    });
+    expect(pass('Date of birth', '5 May 2999')).toMatchObject({ error: 'govuk_no_expiry' });
+    // …a past date is not one…
+    expect(pass('Permission granted 12 August 2021')).toMatchObject({ error: 'govuk_no_expiry' });
+    // …and two future dates are an error, not a guess.
+    expect(pass('Visa ends 12 August 2027', 'Review 3 March 2028')).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(pass('Permission runs out 12 August 2027', 'Then 3 March 2028')).toMatchObject({
+      error: 'govuk_unreadable_date',
+    });
+  });
+
   it('pre-settled status is never read as no time limit (QA 25.09)', () => {
     expect(parseGovukResult(page('govuk-pre-settled-no-date.txt'), AT)).toMatchObject({
       outcome: 'error',
