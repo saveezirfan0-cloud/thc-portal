@@ -17,7 +17,9 @@ import {
   ukDayLabel,
   ukInstant,
   derivedEventWindow,
+  EVENT_STATUS_LABEL,
   eventFill,
+  formatEventFill,
   eventStatus,
   formatTimeIn,
   needsDualZone,
@@ -204,10 +206,9 @@ export function periodTotals(rows: EventRow[]): { events: number; open: number }
   };
 }
 
-/** The tone the chip and the fill pill carry (§3.1). */
 /**
- * One month-cell chip: events that read the same ("Morning Waiting Staff" at
- * 07:00) collapse into one chip with a count and their summed open positions
+ * One month-cell chip: events that read the same ("Morning Waiting Staff" for one
+ * client at 07:00) collapse into one chip with a count and their summed open positions
  * (ADR-0094). A group of one is the event itself.
  */
 export interface ChipGroup {
@@ -220,7 +221,8 @@ export interface ChipGroup {
 }
 
 /**
- * Collapses same-title, same-start events in a day, in first-seen order — the
+ * Collapses same-title, same-client, same-start events in a day, in first-seen
+ * order (§3.1's chip is "start · event · client", so two clients never merge) — the
  * rows arrive sorted by window start, so the chips still read in time order.
  * A cancelled event never joins a live one: its strike-through and its zero
  * open count must stay visible.
@@ -229,7 +231,7 @@ export function groupSimilarEvents(rows: EventRow[]): ChipGroup[] {
   const groups = new Map<string, ChipGroup>();
   for (const row of rows) {
     const cancelled = row.status === 'cancelled';
-    const key = `${row.title.trim().toLowerCase()}|${row.windowStartLabel}|${cancelled}`;
+    const key = `${row.title.trim().toLowerCase()}|${row.clientId}|${row.windowStartLabel}|${cancelled}`;
     const group = groups.get(key);
     if (group) {
       group.rows.push(row);
@@ -270,6 +272,89 @@ export function monthCell(rows: EventRow[], limit: number = MONTH_CELL_CHIPS): M
     shown: groups.slice(0, limit),
     hiddenEvents: hidden.reduce((sum, g) => sum + g.rows.length, 0),
     hiddenOpen: hidden.reduce((sum, g) => sum + g.open, 0),
+  };
+}
+
+/** One row of the day popup — plain data, so it can cross to a client component. */
+export interface PopupEvent {
+  id: string;
+  title: string;
+  clientName: string;
+  venueName: string;
+  windowLabel: string;
+  status: EventStatus;
+  /** "N of M" (§3.1), or null once cancelled. */
+  fill: string | null;
+  tone: 'green' | 'amber' | 'neutral';
+}
+
+export function popupEvent(row: EventRow): PopupEvent {
+  return {
+    id: row.id,
+    title: row.title,
+    clientName: row.clientName,
+    venueName: row.venueName,
+    windowLabel: row.windowLabel,
+    status: row.status,
+    fill: row.status === 'cancelled' ? null : formatEventFill(row.fill),
+    tone: fillTone(row),
+  };
+}
+
+/** A month-cell chip as the client component draws it. */
+export interface MonthChipModel {
+  key: string;
+  startLabel: string;
+  label: string;
+  tooltip: string;
+  /** The shared status, or null when a group mixes statuses. */
+  status: EventStatus | null;
+  /** "full", "4 open", or null for a cancelled chip. */
+  fill: string | null;
+  cancelled: boolean;
+  ongoing: boolean;
+  full: boolean;
+  /** A single event's board; null for a group, which opens the day popup. */
+  href: string | null;
+}
+
+export interface MonthCellModel {
+  chips: MonthChipModel[];
+  hiddenEvents: number;
+  hiddenOpen: number;
+  /** Every event that day, for the popup. */
+  events: PopupEvent[];
+}
+
+/** What a month cell and its popup draw (ADR-0094). */
+export function monthCellModel(rows: EventRow[], limit: number = MONTH_CELL_CHIPS): MonthCellModel {
+  const { shown, hiddenEvents, hiddenOpen } = monthCell(rows, limit);
+  return {
+    chips: shown.map((group) => {
+      const first = group.rows[0]!;
+      const many = group.rows.length > 1;
+      const live = group.rows.filter((row) => row.status !== 'cancelled');
+      const statuses = new Set(group.rows.map((row) => row.status));
+      return {
+        key: group.key,
+        startLabel: group.startLabel,
+        label: many
+          ? `${first.title} ×${group.rows.length} · ${first.clientName}`
+          : `${first.title} · ${first.clientName}`,
+        tooltip: many
+          ? `${group.rows.length} × ${first.title} · ${first.clientName}`
+          : `${first.title} · ${first.clientName} · ${EVENT_STATUS_LABEL[first.status]}`,
+        status: statuses.size === 1 ? first.status : null,
+        fill: group.cancelled ? null : group.open > 0 ? `${group.open} open` : 'full',
+        cancelled: group.cancelled,
+        ongoing: group.rows.some((row) => row.status === 'ongoing'),
+        full: !group.cancelled && live.every((row) => fillTone(row) === 'green'),
+        href: many ? null : `/events/${first.id}`,
+      };
+    }),
+    hiddenEvents,
+    hiddenOpen,
+    events: rows.map(popupEvent),
   };
 }
 
@@ -316,6 +401,8 @@ export interface DayBand {
   label: string;
   events: EventRow[];
   open: number;
+  /** Every event in the band is cancelled — it reads "1 ev · cancelled", as a month cell does. */
+  allCancelled: boolean;
 }
 
 /** A week column's events folded into the bands that have any, in day order. */
@@ -323,9 +410,18 @@ export function bandDay(rows: EventRow[]): DayBand[] {
   const bands = new Map<DayBandKey, DayBand>();
   for (const row of rows) {
     const key = dayBandOf(row);
-    const band = bands.get(key) ?? { key, label: DAY_BAND_LABEL[key], events: [], open: 0 };
+    const band = bands.get(key) ?? {
+      key,
+      label: DAY_BAND_LABEL[key],
+      events: [],
+      open: 0,
+      allCancelled: true,
+    };
     band.events.push(row);
-    if (row.status !== 'cancelled') band.open += row.fill.open;
+    if (row.status !== 'cancelled') {
+      band.open += row.fill.open;
+      band.allCancelled = false;
+    }
     bands.set(key, band);
   }
   return DAY_BAND_ORDER.flatMap((key) => bands.get(key) ?? []);
@@ -334,6 +430,7 @@ export function bandDay(rows: EventRow[]): DayBand[] {
 /** A column this short never folds: nothing to save by hiding it. */
 export const WEEK_COLUMN_FOLD_AT = 8;
 
+/** The tone the chip and the fill pill carry (§3.1). */
 export function fillTone(row: EventRow): 'green' | 'amber' | 'neutral' {
   if (row.status === 'cancelled') return 'neutral';
   return row.fill.open === 0 ? 'green' : 'amber';

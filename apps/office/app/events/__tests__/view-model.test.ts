@@ -262,12 +262,20 @@ describe('the month cell folds a busy day (ADR-0094)', () => {
   const waiting = (id: string, over: Partial<ListedEvent> = {}) =>
     event({ id, title: 'Morning Waiting Staff', roles: [role('07:00', '15:00')], ...over });
 
-  it('collapses same-title, same-start events into one chip with the summed open count', () => {
-    const rows = toEventRows([waiting('a'), waiting('b', { clientName: 'Dorchester' })], before);
+  it('collapses same-title, same-client, same-start events into one chip with the summed open count', () => {
+    const rows = toEventRows([waiting('a'), waiting('b')], before);
     const groups = groupSimilarEvents(rows);
     expect(groups).toHaveLength(1);
     expect(groups[0]!.rows).toHaveLength(2);
     expect(groups[0]!.open).toBe(6); // 4 headcount − 1 confirmed, twice
+  });
+
+  it('never merges two clients — §3.1 names the client on every chip', () => {
+    const rows = toEventRows(
+      [waiting('a'), waiting('b', { clientId: 'client-dorchester', clientName: 'Dorchester' })],
+      before,
+    );
+    expect(groupSimilarEvents(rows)).toHaveLength(2);
   });
 
   it('does not merge events that start at different times, or a cancelled one into a live one', () => {

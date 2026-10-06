@@ -10,14 +10,15 @@ import {
 } from '@thc/domain';
 import { formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
 import {
-  type ChipGroup,
   type DayBucket,
   type EventRow,
   WEEK_COLUMN_FOLD_AT,
   bandDay,
   fillTone,
-  monthCell,
+  monthCellModel,
 } from '../view-model';
+import { ChipStatus } from './ChipStatus';
+import { MonthCellEvents } from './MonthCellEvents';
 import { ScheduledWindow } from './ScheduledWindow';
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
@@ -36,19 +37,6 @@ export function StatusPill({ status }: { status: EventStatus }) {
 }
 
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
-
-/**
- * The status pill, small, for a calendar chip (§3.2: "the same pill appears
- * on each event's row in the List view and Calendar"). The chip's border
- * already carries the fill colour, so the pill carries the words.
- */
-function ChipStatus({ status }: { status: EventStatus }) {
-  return (
-    <span className={classes('st', status)} aria-label={`Status: ${EVENT_STATUS_LABEL[status]}`}>
-      {EVENT_STATUS_LABEL[status]}
-    </span>
-  );
-}
 
 // ---------------------------------------------------------------------
 // List
@@ -230,91 +218,20 @@ export function MonthView({
               ) : null}
             </div>
             {bucket && bucket.events.length > 0 ? (
-              <MonthCellEvents date={cell.iso} rows={bucket.events} dayHref={dayHref} />
+              <MonthCellEvents
+                model={monthCellModel(bucket.events)}
+                heading={`${formatDayLong(cell.iso)} · ${
+                  bucket.allCancelled
+                    ? `${bucket.count} ev · cancelled`
+                    : formatCounter(bucket.count, bucket.open)
+                }`}
+                dayHref={dayHref ? dayHref(cell.iso) : null}
+              />
             ) : null}
           </div>
         );
       })}
     </div>
-  );
-}
-
-/**
- * A month cell's events: a few chips, same-named events collapsed into one,
- * and "+N more" to the day for the rest — no scroll box inside a cell, so a
- * 30-event day no longer hides behind a 96px window (ADR-0094).
- */
-function MonthCellEvents({
-  date,
-  rows,
-  dayHref,
-}: {
-  date: string;
-  rows: EventRow[];
-  dayHref?: (iso: string) => string;
-}) {
-  const { shown, hiddenEvents, hiddenOpen } = monthCell(rows);
-  return (
-    <div className="scroll">
-      {shown.map((group) => (
-        <MonthChip key={group.key} group={group} dayHref={dayHref} date={date} />
-      ))}
-      {hiddenEvents > 0 ? (
-        dayHref ? (
-          <Link
-            className="evmore"
-            href={dayHref(date)}
-            aria-label={`${hiddenEvents} more events on ${formatDayLong(date)}`}
-          >
-            +{hiddenEvents} more{hiddenOpen > 0 ? ` · ${hiddenOpen} open` : ''}
-          </Link>
-        ) : (
-          <span className="evmore">+{hiddenEvents} more</span>
-        )
-      ) : null}
-    </div>
-  );
-}
-
-function MonthChip({
-  group,
-  date,
-  dayHref,
-}: {
-  group: ChipGroup;
-  date: string;
-  dayHref?: (iso: string) => string;
-}) {
-  const first = group.rows[0]!;
-  const many = group.rows.length > 1;
-  const live = group.rows.filter((row) => row.status !== 'cancelled');
-  const statuses = new Set(group.rows.map((row) => row.status));
-  const status = statuses.size === 1 ? first.status : null;
-  const fill = group.cancelled ? null : group.open > 0 ? `${group.open} open` : 'full';
-  // One event opens its board; a group opens the day it sits in, where its
-  // events are listed one by one.
-  const href = many && dayHref ? dayHref(date) : `/events/${first.id}`;
-  return (
-    <Link
-      className={classes(
-        'evchip',
-        group.cancelled && 'cancelled',
-        group.rows.some((row) => row.status === 'ongoing') && 'ongoing',
-        !group.cancelled && live.every((row) => fillTone(row) === 'green') && 'full',
-      )}
-      href={href}
-      title={
-        many
-          ? `${group.rows.length} × ${first.title} · ${[...new Set(group.rows.map((r) => r.clientName))].join(', ')}`
-          : `${first.title} · ${first.clientName} · ${EVENT_STATUS_LABEL[first.status]}`
-      }
-    >
-      <span className="t">{group.startLabel}</span>
-      {many ? `${first.title} ×${group.rows.length}` : `${first.title} · ${first.clientName}`}
-      {/* §3.2: the status pill appears on the calendar as on the list. */}
-      {status ? <ChipStatus status={status} /> : null}
-      {fill ? <span className="f">{fill}</span> : null}
-    </Link>
   );
 }
 
@@ -344,8 +261,12 @@ export function WeekView({
                 {WEEKDAY_HEADS[weekdayIndex(iso)]} {Number(iso.slice(8, 10))}
                 {iso === today ? ' · today' : ''}
               </span>
-              <span className={classes('c', open === 0 && 'ok')}>
-                {count === 0 ? '0 ev' : formatCounter(count, open)}
+              <span className={classes('c', open === 0 && !bucket?.allCancelled && 'ok')}>
+                {count === 0
+                  ? '0 ev'
+                  : bucket?.allCancelled
+                    ? `${count} ev · cancelled`
+                    : formatCounter(count, open)}
               </span>
             </div>
             <WeekColumnBands rows={bucket?.events ?? []} />
@@ -357,7 +278,8 @@ export function WeekView({
 }
 
 /**
- * A column's events, folded into Morning / Afternoon / Evening bands that open
+ * A column's events, folded into day bands (Overnight, Morning, Afternoon, Evening, and
+ * "No roles yet" for an event with no role sections) that open
  * and close on their own (ADR-0094). A column of 8 or fewer shows everything;
  * a longer one opens only the bands that still need staff, so the page — not
  * seven inner scroll boxes — is what scrolls, and what is short is on top.
@@ -371,8 +293,10 @@ function WeekColumnBands({ rows }: { rows: EventRow[] }) {
         <details className="band" key={band.key} open={!fold || band.open > 0}>
           <summary>
             <span className="bn">{band.label}</span>
-            <span className={classes('bc', band.open === 0 && 'ok')}>
-              {formatCounter(band.events.length, band.open)}
+            <span className={classes('bc', band.open === 0 && !band.allCancelled && 'ok')}>
+              {band.allCancelled
+                ? `${band.events.length} ev · cancelled`
+                : formatCounter(band.events.length, band.open)}
             </span>
           </summary>
           <div className="bl">
