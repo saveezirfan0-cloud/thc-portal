@@ -8,6 +8,7 @@ import {
   govukConfig,
   govukPhoto,
   pageHint,
+  recordNameFromPage,
   parseGovukResult,
 } from '../govuk';
 import type { GovukBrowser, GovukLocator, GovukPage } from '../govuk';
@@ -381,7 +382,7 @@ describe('driveGovuk', () => {
   });
 });
 
-describe('pageHint — what the office is shown when the date cannot be read', () => {
+describe('pageHint — what the office is shown when the page cannot be read', () => {
   const input = {
     shareCode: 'W123AB4CD',
     dateOfBirth: '1996-05-05',
@@ -389,7 +390,7 @@ describe('pageHint — what the office is shown when the date cannot be read', (
     redact: ['Marta', 'Villanueva'],
   };
 
-  it('keeps the labelled dates and numbers, and nothing that identifies the worker', () => {
+  it('masks the name, date of birth, share code and reference, and keeps the layout', () => {
     const hint = pageHint(
       [
         'Name',
@@ -397,22 +398,26 @@ describe('pageHint — what the office is shown when the date cannot be read', (
         'Date of birth',
         '5 May 1996',
         'Share code W123AB4CD',
-        'Reference number: AB-1234',
+        'Reference number: SYNTH-RTW-9ZX1PA',
         'Pre-settled status',
-        'Permission valid for 5 years',
         'Status granted',
         '12 August 2021',
-        'Marta Villanueva checked on 06/10/2026',
       ].join('\n'),
       input,
-    );
-    expect(hint).toBe(
-      'Pre-settled status | Permission valid for 5 years | Status granted 12 August 2021',
-    );
-    expect(hint).not.toMatch(/Marta|Villanueva|W123|1996|AB-1234/);
+    )!;
+    expect(hint).not.toMatch(/Marta|Villanueva|W123|1996|SYNTH/);
+    expect(hint.split(' | ')).toEqual([
+      'Name',
+      '▢ ▢',
+      'Date of birth ▢',
+      'Share code ▢',
+      'Reference number: ▢',
+      'Pre-settled status',
+      'Status granted 12 August 2021',
+    ]);
   });
 
-  it('drops the page footer, and is null when nothing is about status or a number', () => {
+  it('drops the page footer, and is null when nothing is about status, a name or a number', () => {
     expect(pageHint('Welcome\nSomething else entirely', input)).toBeNull();
     expect(
       pageHint(
@@ -425,11 +430,11 @@ describe('pageHint — what the office is shown when the date cannot be read', (
     );
   });
 
-  it('never returns more than six lines', () => {
+  it('never returns more than eight lines', () => {
     const many = Array.from({ length: 20 }, (_, i) => `Item ${i + 1} on 1${i} June 2030`).join(
       '\n',
     );
-    expect(pageHint(many, input)!.split(' | ')).toHaveLength(6);
+    expect(pageHint(many, input)!.split(' | ')).toHaveLength(8);
   });
 
   it('comes back from the checker when a pass has no end date', async () => {
@@ -447,7 +452,46 @@ describe('pageHint — what the office is shown when the date cannot be read', (
       async () => fake.browser,
     )!.check({ ...input, redact: ['Olu', 'Ade'] });
     expect(out.result.error).toBe('govuk_no_expiry');
-    expect(out.hint).toBe('They have permission to work in the UK. | Status type 4');
+    expect(out.hint).toBe('Name | ▢ ▢ | They have permission to work in the UK. | Status type 4');
+  });
+});
+
+describe("the record holder's name, whatever the layout", () => {
+  const text = (nameBlock: string) =>
+    `${nameBlock}\nThey have the right to work in the UK.\nConditions\nThey can work in any job.\nThere is no limit on how long they can stay in the UK.\n`;
+
+  it('reads "Name: X", "Name<tab>X" and a name on the line below its label', () => {
+    for (const block of ['Name: Olu Ade', 'Name\tOlu Ade', 'Name   Olu Ade', 'Name\nOlu Ade']) {
+      expect(parseGovukResult(text(block), AT).fullName, block).toBe('Olu Ade');
+    }
+  });
+
+  it("finds the profile's own name on a page with no label, and never a stranger's", () => {
+    expect(recordNameFromPage('View details\nOlu Ade\nRight to work', ['Olu', 'Ade'])).toBe(
+      'Olu Ade',
+    );
+    expect(recordNameFromPage('View details\nSam Jones\nRight to work', ['Olu', 'Ade'])).toBeNull();
+    expect(recordNameFromPage('Olu Ade', ['Olu'])).toBeNull();
+  });
+
+  it('a pass whose name has no label still reaches the checker with the name filled in', async () => {
+    const fake = fakeBrowser([
+      { fields: ['shareCode'], text: '' },
+      { fields: ['day', 'month', 'year'], text: '' },
+      { fields: ['company'], text: '' },
+      { fields: [], text: text('Olu Ade') },
+    ]);
+    const out = await createGovukChecker(
+      (n) => (n === 'RTW_GOVUK_ENABLED' ? 'true' : undefined),
+      async () => fake.browser,
+    )!.check({
+      shareCode: 'W123AB4CD',
+      dateOfBirth: '1996-05-05',
+      companyName: 'The Hospitality Company',
+      redact: ['Olu', 'Ade'],
+    });
+    expect(out.result).toMatchObject({ outcome: 'right_to_work', fullName: 'Olu Ade' });
+    expect(out.hint).toBeNull();
   });
 });
 

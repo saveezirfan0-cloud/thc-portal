@@ -234,6 +234,32 @@ describe('runRtwCheckSweep', () => {
     }
   });
 
+  it('keeps the office reason and adds the page lines when the page was read but the name did not match', async () => {
+    const t = deps(
+      checker('govuk', {
+        result: {
+          outcome: 'right_to_work',
+          fullName: null,
+          rightToWorkUntil: null,
+          conditions: [],
+          termTimeLimitHours: null,
+          referenceNumber: null,
+          checkedAt: '2026-10-06T21:00:00.000Z',
+          source: 'govuk',
+        },
+        report: PDF,
+        hint: 'Name | ▢ ▢ | They have the right to work in the UK.',
+      }),
+    );
+    await runRtwCheckSweep(t.d);
+    const d = t.recorded[0]!.decision;
+    expect(d.action).toBe('needs_review');
+    if (d.action === 'needs_review') {
+      expect(d.officeReason).toMatch(/^The name on the gov\.uk record does not match/);
+      expect(d.officeReason).toContain('Page: Name | ▢ ▢ | They have the right to work');
+    }
+  });
+
   it('runs the claimed checks a couple at a time, and records every one', async () => {
     let live = 0;
     let peak = 0;
