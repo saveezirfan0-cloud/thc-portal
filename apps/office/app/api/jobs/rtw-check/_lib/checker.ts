@@ -111,7 +111,7 @@ export function parseUkDate(raw: unknown): string | null {
     [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
   } else if ((match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(text))) {
     [d, m, y] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  } else if ((match = /^(\d{1,2})\s+([A-Za-z]{3,9})\.?\s+(\d{4})$/.exec(text))) {
+  } else if ((match = /^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?\s+(\d{4})$/.exec(text))) {
     const name = match[2]!.toLowerCase();
     const month = Object.entries(MONTHS).find(([full]) => full.startsWith(name.slice(0, 3)));
     if (!month || (name.length > 3 && !month[0].startsWith(name))) return null;

@@ -107,6 +107,29 @@ describe('parseGovukResult', () => {
     });
   });
 
+  it('reads the end date in the other ways gov.uk may word it (ordinal day, "ends on", "valid to")', () => {
+    expect(parseGovukResult(page('govuk-pre-settled-ends-on.txt'), AT)).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-08-12',
+    });
+    const valid = (line: string) =>
+      parseGovukResult(
+        `Name\nMarta Villanueva\nThey have permission to work in the UK.\n${line}\n`,
+        AT,
+      );
+    expect(valid('Their status expires 12 August 2027.')).toMatchObject({
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(valid('Valid to 12/08/2027')).toMatchObject({ rightToWorkUntil: '2027-08-12' });
+    // A date of birth on the page is never taken for the end date.
+    expect(
+      parseGovukResult(
+        'Name\nMarta Villanueva\nDate of birth\n5 May 1996\nThey have permission to work in the UK.\n',
+        AT,
+      ),
+    ).toMatchObject({ outcome: 'error', error: 'govuk_no_expiry' });
+  });
+
   it('pre-settled status is never read as no time limit (QA 25.09)', () => {
     expect(parseGovukResult(page('govuk-pre-settled-no-date.txt'), AT)).toMatchObject({
       outcome: 'error',

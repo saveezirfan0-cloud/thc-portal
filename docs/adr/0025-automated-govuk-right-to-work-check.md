@@ -53,7 +53,7 @@ Neither gov.uk nor any provider was reachable from the environment this was buil
 
 | Result | Action |
 |---|---|
-| `error` | **retry**. The database backs off 30 min, 2 h, 6 h and 16 h, so 5 attempts span about a day. The fifth failure becomes **needs_review** with the reason. |
+| `error` | **retry**. The database backs off 2 min, 10 min, 30 min and 2 h (5 attempts over about three hours; was 30 min … 16 h until 06.10.2026). The fifth failure becomes **needs_review** with the reason. An error where gov.uk answered and the system could not read it (`govuk_no_expiry`, `govuk_unreadable_date`, `govuk_unrecognised_result`, `govuk_contradictory_result`) is **not retried**: it goes straight to **needs_review** with gov.uk's PDF attached, because the page will read the same later. |
 | `not_found` | **reject** through the office's Reject, so the worker gets N8: "gov.uk did not recognise this share code with your date of birth — check both and try again". |
 | `no_right_to_work` | **reject** (N8) **and needs_review**. The office must know, whatever the worker does next. |
 | `right_to_work` | **verify**, unless any rule below sends it to **needs_review** instead. Nothing on this list is ever auto-verified. |
@@ -99,7 +99,7 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
   - `rtw_check_claim()` leases due checks, `for update skip locked`, with a 10-minute lease. A lapsed lease is re-taken as a new attempt. It hands the share code and date of birth to the runner **for that run only**.
   - `rtw_check_record()` applies the decision.
 - **The report** is uploaded to the private `documents` bucket at `<staff_id>/share-code-report/rtw-check-<check_id>.pdf`. The path is refused unless it is under that worker. It is written to `rtw_checks.report_path` and to `compliance_docs.gov_report_path`. §2.6: "stored on the profile".
-- **The schedule:** a `job_schedules` row `rtw-check` runs every 10 minutes. `job_schedules` gained `base_url_source` and `secret_name` (each checked: `edge_base_url` / `office_base_url`, `service_role_key` / `rtw_job_secret`, and the service key only ever to `edge_base_url`):
+- **The schedule:** a `job_schedules` row `rtw-check` runs every minute (every 10 until 06.10.2026) and checks run two at a time. `job_schedules` gained `base_url_source` and `secret_name` (each checked: `edge_base_url` / `office_base_url`, `service_role_key` / `rtw_job_secret`, and the service key only ever to `edge_base_url`):
   - this row posts to `office_base_url()` + `/api/jobs/rtw-check` with the vault secret `rtw_job_secret`, never the service key;
   - **the base is a Vault secret named `office_base_url`, not a settings row** (security review, 26.09). An admin session can write `settings`, so a stolen one could have pointed the base at its own host and collected `Bearer <rtw_job_secret>` on every tick. Only the owner and the service role can set a Vault secret. `office_base_url()` still checks at run time that it is an https origin with no path;
   - without either Vault secret the installer skips that row with a notice and installs the rest;

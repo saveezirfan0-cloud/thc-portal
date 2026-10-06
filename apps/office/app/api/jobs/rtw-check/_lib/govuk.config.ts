@@ -123,10 +123,16 @@ export const GOVUK_RESULT = {
     /^\s*(?:this person|they|the applicant)\s+(?:can|is allowed to|are allowed to)\s+work\s+in\s+the\s+UK\b/im,
     /^\s*(?:their )?right to work (?:in the UK )?(?:is )?(?:valid|confirmed)\b/im,
   ],
-  /** The end date, captured as printed ("31 March 2028"). */
+  /**
+   * The end date, captured as printed ("31 March 2028", "31st March 2028",
+   * "31/03/2028"). The lead-in words are a guess at gov.uk's wording
+   * (pre-settled and visa pages word it differently); the date itself must
+   * follow within the same sentence, so a date of birth elsewhere on the page
+   * is never picked up.
+   */
   until: [
-    /(?:until|expires on|expiry date|valid until|end date)[:\s]+(\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4})/i,
-    /(?:until|expires on|expiry date|valid until|end date)[:\s]+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
+    /(?:until(?:\s+and\s+including)?|expires?(?:\s+on)?|expiry(?:\s+date)?|date\s+of\s+expiry|valid\s+(?:until|to)|ends?(?:\s+on)?|end\s+date|expire[sd]\s+on)[:\s]+(?:on\s+)?(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,9}\.?\s+\d{4})/i,
+    /(?:until(?:\s+and\s+including)?|expires?(?:\s+on)?|expiry(?:\s+date)?|date\s+of\s+expiry|valid\s+(?:until|to)|ends?(?:\s+on)?|end\s+date|expire[sd]\s+on)[:\s]+(?:on\s+)?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
   ],
   /** Settled status / indefinite leave: no end date, stated, never inferred. */
   noTimeLimit: [

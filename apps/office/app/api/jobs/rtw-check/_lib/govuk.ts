@@ -1,4 +1,4 @@
-import { rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
+import { isPermanentRtwError, rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
 import type { RtwCheckResult } from '@thc/domain';
 import { envNumber, envText, looksLikePdf, looksLikePng, parseUkDate } from './checker';
 import type { CheckInput, CheckOutput, EnvReader, RightToWorkChecker } from './checker';
@@ -305,7 +305,13 @@ export function createGovukChecker(
         const result = parseGovukResult(text, checkedAt);
         let report: Uint8Array | null = null;
         let photo: Uint8Array | null = null;
-        if (result.outcome === 'right_to_work' || result.outcome === 'no_right_to_work') {
+        // A page gov.uk answered but we could not read goes to the office
+        // (`isPermanentRtwError`): they need gov.uk's own report to decide.
+        if (
+          result.outcome === 'right_to_work' ||
+          result.outcome === 'no_right_to_work' ||
+          (result.outcome === 'error' && isPermanentRtwError(result.error))
+        ) {
           photo = await govukPhoto(page);
           const bytes = await page.pdf({ format: 'A4', printBackground: true });
           report = looksLikePdf(bytes) ? bytes : null;
