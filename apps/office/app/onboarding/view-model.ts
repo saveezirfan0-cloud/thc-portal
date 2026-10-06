@@ -377,7 +377,7 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
       ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
       : '';
     return {
-      text: `Stalled — no progress after ${state.rungs_sent} reminders (last ${last}${undelivered}), still reminding daily. Phone them.`,
+      text: `Stalled — ${state.rungs_sent} reminders, no progress (last ${last}${undelivered}). Phone them.`,
       tone: 'coral',
     };
   }

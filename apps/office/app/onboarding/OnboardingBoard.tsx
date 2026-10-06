@@ -508,19 +508,29 @@ function CardTop({
   return (
     <div className="top">
       <Avatar size="sm" name={name} src={photo ?? undefined} />
-      <div className="nm">{name}</div>
+      <div className="nm" title={name}>
+        {name}
+      </div>
       <span className={tone && tone !== 'ok' ? `age ${tone}` : 'age'}>{age}</span>
     </div>
   );
 }
 
+/** A card shows this many role chips; the rest fold into one "+N" chip. */
+const ROLE_CHIPS_SHOWN = 2;
+
 function RoleChips({ roles, referred = false }: { roles: string[]; referred?: boolean }) {
   if (roles.length === 0 && !referred) return null;
+  // Someone can pick every role THC runs (nine chips was a card taller than
+  // the screen). The profile has the full list; the "+N" chip's tooltip too.
+  const shown = roles.slice(0, ROLE_CHIPS_SHOWN);
+  const hidden = roles.slice(ROLE_CHIPS_SHOWN);
   return (
     <div className="chips">
-      {roles.map((role) => (
+      {shown.map((role) => (
         <Chip key={role}>{role}</Chip>
       ))}
+      {hidden.length > 0 ? <Chip title={hidden.join(', ')}>+{hidden.length}</Chip> : null}
       {referred ? <ReferredChip /> : null}
     </div>
   );
