@@ -53,7 +53,7 @@ Neither gov.uk nor any provider was reachable from the environment this was buil
 
 | Result | Action |
 |---|---|
-| `error` | **retry**. The database backs off 2 min, 10 min, 30 min and 2 h (5 attempts over about three hours; was 30 min … 16 h until 06.10.2026). The fifth failure becomes **needs_review** with the reason. An error where gov.uk answered and the system could not read it (`govuk_no_expiry`, `govuk_unreadable_date`, `govuk_contradictory_result`; an unrecognised page such as a maintenance notice is still retried) is **not retried**: it goes straight to **needs_review** with gov.uk's PDF attached, because the page will read the same later. |
+| `error` | **retry**. The database backs off 2 min, 10 min, 30 min and 2 h (5 attempts over about three hours; was 30 min … 16 h until 06.10.2026). The fifth failure becomes **needs_review** with the reason. The office is the LAST resort. A result page whose end date was not found (`govuk_no_expiry`) is first read again inside the attempt (whole page, not only `<main>`, after the page has loaded; with no labelled date, the only future date on the page is taken — never a share-code or birth line, and two candidates is an error), then retried, and after three reads in all goes to **needs_review** with gov.uk's PDF attached. A page that carries two different end dates or contradicts itself (`govuk_unreadable_date`, `govuk_contradictory_result`) cannot change on a retry and goes to the office at once; an unrecognised page such as a maintenance notice is retried and never filed as a report. |
 | `not_found` | **reject** through the office's Reject, so the worker gets N8: "gov.uk did not recognise this share code with your date of birth — check both and try again". |
 | `no_right_to_work` | **reject** (N8) **and needs_review**. The office must know, whatever the worker does next. |
 | `right_to_work` | **verify**, unless any rule below sends it to **needs_review** instead. Nothing on this list is ever auto-verified. |
@@ -264,3 +264,7 @@ These steps are in `OWNER-TODO.md` §8, with the keys in `docs/12-keys-and-asset
 4. Run one check by hand with a consenting worker's share code, and confirm assumptions 7–12.
 5. Set `settings.rtw_check.enabled = true`.
 6. Ask a session to enable the `rtw-check` schedule. That is a migration plus pgTAP 190's list. Then run `select install_job_schedules();`.
+
+### Amendment 06.10.2026 (late): what the office is shown
+
+When the system hands over a result page whose end date it could not read, the office reason carries **the lines of that page that hold a number or a date** (at most eight, 120 characters each), so the date can be read, and the wording added to the reader, without opening the PDF. A line about birth, the share code, a reference or a name is dropped whole, the worker's own names are blanked, and a line holding their date of birth is dropped. It is built in `pageHint()` (`govuk.ts`), kept only in `rtw_checks.review_reason` (500 characters), and **never logged**; the page text itself is still never stored or logged.
