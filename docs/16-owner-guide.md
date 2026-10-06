@@ -746,7 +746,7 @@ automatically.
 **Step 3 — install the schedules.** Only after §4.6:
 
 ```sql
-select public.install_job_schedules();   -- returns 10; 11 once the office vault secrets exist (event-documents, ADR-0074)
+select public.install_job_schedules();   -- returns 10; 12 once the office vault secrets exist (event-documents, ADR-0074; new-starter-report, ADR-0091)
 ```
 
 It is idempotent: it unschedules every registered job and re-schedules the

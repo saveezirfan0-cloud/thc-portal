@@ -8,7 +8,7 @@ import {
   safeFileName,
   sheetText,
 } from '../sheet';
-import type { SheetLayout, SheetRow } from '../sheet';
+import type { SheetLayout, SheetPerson, SheetRow } from '../sheet';
 import { GALA, galaPeople, removedWaiter, signOutPeople } from './fixtures';
 
 function rows(layout: SheetLayout, page?: number): SheetRow[] {
@@ -220,5 +220,88 @@ describe('THC form changes of 29.09.2026 (ADR-0074, ADR-0084)', () => {
       allocation: 'Allocation Timesheet',
       signout: 'Completed Allocation Timesheet',
     });
+  });
+});
+
+describe('buffer staff on the sheet (ADR-0090)', () => {
+  const person = (n: number, over: Partial<SheetPerson> = {}): SheetPerson => ({
+    bookingId: `b-${n}`,
+    employeeId: 100 + n,
+    name: `Person ${n}`,
+    firstName: 'Person',
+    surname: `S${String(n).padStart(2, '0')}`,
+    removed: false,
+    photoPath: null,
+    roleName: 'Waiting Staff',
+    sectionId: 'wait',
+    startsAt: '2026-09-19T16:00:00Z',
+    endsAt: '2026-09-19T22:30:00Z',
+    headcount: 6,
+    finishAt: null,
+    workedMin: null,
+    status: 'scheduled',
+    breakMin: 0,
+    ...over,
+  });
+  const seven = Array.from({ length: 7 }, (_, i) => person(i + 1));
+
+  it('says so in the role heading, and adds one note on the last page', () => {
+    const layout = layoutSheet({ kind: 'allocation', event: GALA, people: seven });
+    expect(layout.bufferStaff).toBe(1);
+    const text = sheetText(layout);
+    expect(text).toContain('Waiting Staff · 17:00 – 23:30 · 7 staff (6 required + 1 buffer)');
+    expect(text).toContain(
+      'Note: Buffer staff are booked in addition to the number required, to cover late arrivals and drop-outs on the day.',
+    );
+    // Nobody is singled out: no row is marked.
+    expect(text).not.toMatch(/\| buffer/i);
+  });
+
+  it('says nothing when the role holds exactly what was asked for, or the data does not say', () => {
+    const exact = layoutSheet({ kind: 'allocation', event: GALA, people: seven.slice(0, 6) });
+    expect(exact.bufferStaff).toBe(0);
+    expect(exact.bufferNote).toBeNull();
+    expect(sheetText(exact)).not.toContain('buffer');
+    const unknown = layoutSheet({
+      kind: 'allocation',
+      event: GALA,
+      people: seven.map((p) => ({ ...p, headcount: null })),
+    });
+    expect(unknown.bufferNote).toBeNull();
+    expect(sheetText(unknown)).toContain('7 staff');
+    const older = layoutSheet({
+      kind: 'allocation',
+      event: GALA,
+      people: seven.map(({ headcount: _unused, ...rest }) => rest),
+    });
+    expect(older.bufferNote).toBeNull();
+  });
+
+  it('counts the buffer per role, and keeps the heading across a page break', () => {
+    const chefs = Array.from({ length: 3 }, (_, i) =>
+      person(50 + i, {
+        roleName: 'Chef',
+        sectionId: 'chef',
+        headcount: 2,
+        startsAt: '2026-09-19T06:00:00Z',
+        endsAt: '2026-09-19T14:00:00Z',
+      }),
+    );
+    const layout = layoutSheet(
+      { kind: 'allocation', event: GALA, people: [...chefs, ...seven] },
+      6,
+    );
+    expect(layout.bufferStaff).toBe(2);
+    const text = sheetText(layout);
+    expect(text).toContain('Chef · 07:00 – 15:00 · 3 staff (2 required + 1 buffer)');
+    expect(text).toMatch(/Waiting Staff · 17:00 – 23:30 · 7 staff \(6 required \+ 1 buffer\) \(/);
+    expect(text).toContain('continued (');
+    // The note is printed once.
+    expect(text.match(/Note: Buffer staff/g)).toHaveLength(1);
+  });
+
+  it('also appears on the completed timesheet', () => {
+    const layout = layoutSheet({ kind: 'signout', event: GALA, people: seven });
+    expect(sheetText(layout)).toContain('(6 required + 1 buffer)');
   });
 });

@@ -68,13 +68,21 @@ describe('middleware · the job routes', () => {
   const passes = (res: Response) => res.status === 200 && !res.headers.get('location');
 
   it('lets a POST to each job path through to its own bearer check', async () => {
-    for (const path of ['/api/jobs/rtw-check', '/api/jobs/event-documents']) {
+    for (const path of [
+      '/api/jobs/rtw-check',
+      '/api/jobs/event-documents',
+      '/api/jobs/new-starter-report',
+    ]) {
       expect(passes(await call(path, 'POST')), path).toBe(true);
     }
   });
 
   it('sends a GET to a job path to /login like any signed-out request', async () => {
-    for (const path of ['/api/jobs/rtw-check', '/api/jobs/event-documents']) {
+    for (const path of [
+      '/api/jobs/rtw-check',
+      '/api/jobs/event-documents',
+      '/api/jobs/new-starter-report',
+    ]) {
       const res = await call(path, 'GET');
       expect(res.status, path).toBe(307);
       expect(new URL(res.headers.get('location')!).pathname, path).toBe('/login');
@@ -82,7 +90,12 @@ describe('middleware · the job routes', () => {
   });
 
   it('does not exempt a path under a job route', async () => {
-    for (const path of ['/api/jobs/rtw-check/x', '/api/jobs/event-documents/x', '/api/jobs']) {
+    for (const path of [
+      '/api/jobs/rtw-check/x',
+      '/api/jobs/event-documents/x',
+      '/api/jobs/new-starter-report/x',
+      '/api/jobs',
+    ]) {
       const res = await call(path, 'POST');
       expect(passes(res), path).toBe(false);
       expect(new URL(res.headers.get('location')!).pathname, path).toBe('/login');

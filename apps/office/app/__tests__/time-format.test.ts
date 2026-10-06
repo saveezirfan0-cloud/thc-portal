@@ -105,15 +105,15 @@ describe('/events', () => {
 
   it('writes the automatic-send hint on the clock; the job’s own config stays HH:MM', () => {
     const config = parseAutosendConfig({
-      allocation: { enabled: true, time: '14:00' },
+      allocation: { enabled: true, time: '16:00' },
       completed: { enabled: true, time: '10:00' },
     });
     const idle = { sentAt: null, started: false, ended: false };
     expect(autosendHint('allocation', config, idle)).toBe(
-      'Sent automatically the day before at 14:00 (UK time)',
+      'Sent automatically the day before at 16:00 (UK time), once every role is fully confirmed',
     );
     expect(autosendHint('allocation', config, idle, '12h')).toBe(
-      'Sent automatically the day before at 2:00 pm (UK time)',
+      'Sent automatically the day before at 4:00 pm (UK time), once every role is fully confirmed',
     );
     expect(ukShortStamp('2026-09-28T13:00:04Z')).toBe('28/09 14:00');
     expect(ukShortStamp('2026-09-28T13:00:04Z', '12h')).toBe('28/09 2:00 pm');

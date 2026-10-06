@@ -48,14 +48,28 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       {
         code: 'BG08',
         label: 'Weekly payroll email',
-        when: 'Monday 09:00 UK — last week’s payroll CSV, and the New Starter (HMRC) CSV',
+        when: 'Monday 09:00 UK — last week’s payroll CSV',
         warning:
           'The weekly job does not run, so no week is exported or marked as sent. Switched back on, it sends last week; earlier weeks are exported from Reports.',
+      },
+      {
+        code: 'NS1',
+        label: 'New Starter (HMRC) report',
+        when: 'Monday 09:00 UK, when there were new starters — to Payroll and Gisela, on its own',
+        warning:
+          'New starters are not sent to Payroll. Switched back on, the next Monday sends everyone not yet sent, including the weeks in between.',
       },
       {
         code: 'E5',
         label: 'Bank & payroll details updated',
         when: 'A worker changes their bank details',
+      },
+      {
+        code: 'E5b',
+        label: 'Bank details changed outside the app',
+        when: 'The office, or the system, changes a worker’s bank details',
+        warning:
+          'Payroll is not told when an office login or the system changes a worker’s bank details.',
       },
       { code: 'E6', label: 'NI number entered', when: 'A worker who joined without one enters it' },
       {

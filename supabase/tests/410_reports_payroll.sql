@@ -22,7 +22,7 @@
 -- dashboard.
 -- =====================================================================
 begin;
-select plan(74);
+select plan(101);
 \ir _shared/fixtures.psql
 
 \set r_wait '41000000-0000-4000-8000-000000000001'
@@ -102,7 +102,7 @@ grant select on b to authenticated, service_role;
 --   s1 Mon Bar 18:00–23:00, in 17:55 out 23:02 → 300 min (capped both ends)
 --        base 300×15.50/60 = 77.50 · holiday 9.35 · total 86.85
 --   s2 Tue Waiting 10:00–16:00 clean → 360 → 84.00 · 10.14 · 94.14
---   s3 Wed Host 08:00–16:00, in 08:14 (Late: paid from the actual check-in, ADR-0088)
+--   s3 Wed Host 08:00–16:00, in 08:14 (Late: paid from the actual check-in, ADR-0093)
 --        → 466 → 124.27 · 15.00 · 139.27, late check-in highlighted
 --   s4 Thu Bar 17:00–22:00, client does not pay breaks, 20 min break
 --        → 280 → 72.33 · 8.73 · 81.06
@@ -214,7 +214,7 @@ select is((select payable_min from pr where booking_id = (select id from b where
 select ok((select late_check_in from pr where booking_id = (select id from b where name = 'w1s3')),
   'W1 Wed: checked in 08:14 — highlighted late (amber)');
 select is((select payable_min from pr where booking_id = (select id from b where name = 'w1s3')), 466,
-  'W1 Wed: …and paid only from the actual 08:14, not the scheduled 08:00 (RULE-01, ADR-0088)');
+  'W1 Wed: …and paid only from the actual 08:14, not the scheduled 08:00 (RULE-01, ADR-0093)');
 select is((select row(unpaid_break_min, payable_min, base)::text from pr where booking_id = (select id from b where name = 'w1s4')),
   row(20, 280, 72.33)::text,
   'W1 Thu: the client does not pay breaks, so the 20-minute break is deducted and shown (§5.2b)');
@@ -369,10 +369,10 @@ select ok((select payroll_exported_at is null from events e
             join shift_requirements sr on sr.event_id = e.id
             join bookings bk on bk.shift_id = sr.id where bk.id = (select id from b where name = 'w4s1')),
   '…and not on the event whose only shift was held');
-select is((select (r->>'newStarters')::int from run1), 6,
-  'Run 1 New Starter CSV: the six whose first paid shift went out in this run (W4''s is held, so W4 waits)');
-select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-03'), 'preparing',
-  'There are new starters, so the HMRC CSV is due with this email');
+-- ADR-0091: the New Starter (HMRC) report is its own email now (NS1); BG08
+-- neither prepares nor attaches it. This file's NS1 section holds the new starters.
+select is((select count(*)::int from report_sends where kind = 'new_starter' and period_start = '2025-03-03'), 0,
+  'BG08 prepares no New Starter send: that report is NS1''s (ADR-0091)');
 
 set local role service_role;
 select is((select (prepare_finance_reports('2025-03-10 09:10+00')->>'alreadyPrepared')::boolean), true,
@@ -385,17 +385,15 @@ select is((select count(*)::int from payroll_export_lines x join report_sends r 
 set local role service_role;
 select is((select count(*)::int from payroll_export_rows((select (r->>'payrollSendId')::bigint from run1))), 14,
   'The CSV rows for the run are exactly the 14 exported shifts');
-select is((select count(*)::int from new_starter_export_rows((select (r->>'newStarterSendId')::bigint from run1))), 6,
-  'The New Starter CSV rows for the run are the six new starters');
-select lives_ok(format($$ select queue_finance_report_email(%s, 'payroll/2025-03-03.csv', 'new-starter/2025-03-03.csv') $$,
+select lives_ok(format($$ select queue_finance_report_email(%s, 'payroll/2025-03-03.csv') $$,
                        (select r->>'payrollSendId' from run1)),
   'Queueing the email succeeds');
 reset role;
 
 select is((select row(template, channel::text, jsonb_array_length((payload->>'attachments')::jsonb))::text
              from notification_outbox where key = 'BG08:2025-03-03'),
-  row('BG08', 'email', 2)::text,
-  'One email in the outbox for the week, with two CSV attachments (payroll + HMRC)');
+  row('BG08', 'email', 1)::text,
+  'One email in the outbox for the week, with the payroll CSV only (the New Starter report is NS1, ADR-0091)');
 
 -- =====================================================================
 -- 59-61 · Send status follows the email (§9.9 "Last sent" / "Failed")
@@ -403,9 +401,62 @@ select is((select row(template, channel::text, jsonb_array_length((payload->>'at
 select ok(not finance_reports_due('2025-03-10 09:15+00'), 'Once queued, the week is no longer due');
 select complete_outbox_send((select id from notification_outbox where key = 'BG08:2025-03-03'), true);
 select is((select string_agg(status, ',' order by kind) from report_sends where period_start = '2025-03-03'),
-  'sent,sent', 'When the drain sends it, both report rows read "sent"');
+  'sent', 'When the drain sends it, the payroll row reads "sent"');
 select ok((select sent_at is not null from report_sends where kind = 'payroll' and period_start = '2025-03-03'),
   '…with the time it went, for "Last sent: [date], [time]"');
+
+-- =====================================================================
+-- NS1 · The New Starter (HMRC) report, its own Monday email (ADR-0091)
+--
+-- Same week, same fixtures. Six first shifts are settled; W4's first shift
+-- is held for an unresolved No check-out, so W4 waits.
+-- =====================================================================
+update settings set value = '{"not_before": "2025-03-01"}'::jsonb where key = 'new_starter_report';
+
+select ok(not new_starter_report_due('2025-03-10 08:55+00'), 'NS1 is not due at 08:55 UK on the Monday');
+select ok(new_starter_report_due('2025-03-10 09:00+00'), 'NS1 is due from 09:00 UK on the Monday');
+select ok(not new_starter_report_due('2025-03-31 07:59+00'),
+  'After the clocks go forward, 07:59 UTC is 08:59 BST — not due yet');
+update settings set value = '{"NS1": false}'::jsonb where key = 'notification_switches';
+select ok(not new_starter_report_due('2025-03-10 09:00+00'), 'switched off in /settings, it is never due');
+update settings set value = '{}'::jsonb where key = 'notification_switches';
+
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select throws_ok($$ select prepare_new_starter_report('2025-03-10 09:05+00') $$, '42501', null,
+  'an office login cannot run the job''s step');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+set local role service_role;
+create temp table ns1 as select prepare_new_starter_report('2025-03-10 09:05+00') as r;
+reset role;
+select is((select (r->>'newStarters')::int from ns1), 6,
+  'NS1 week 1: the six whose first shift is settled; W4 (held for a No check-out) waits');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-03'), 'preparing',
+  'there are new starters, so a send is prepared');
+select is((select count(*)::int from new_starter_reported r join report_sends s on s.id = r.report_send_id
+            where s.period_start = '2025-03-03'), 6, 'and they are recorded against it, so nobody is sent twice');
+select ok(not exists (select 1 from new_starter_reported r
+                       where r.staff_id = (select bk.staff_id from bookings bk where bk.id = (select id from b where name = 'w4s1'))),
+  'W4 is not recorded');
+set local role service_role;
+select is((select (prepare_new_starter_report('2025-03-10 09:10+00')->>'alreadyPrepared')::boolean), true,
+  'a second call for the same week resumes the first');
+select is((select count(*)::int from new_starter_report_rows((select (r->>'sendId')::bigint from ns1))), 6,
+  'the CSV rows are the six new starters');
+select lives_ok(format($$ select queue_new_starter_report_email(%s, 'new-starter/2025-03-03.csv') $$, (select r->>'sendId' from ns1)),
+  'queueing the email succeeds');
+select throws_ok(format($$ select queue_new_starter_report_email(%s, '../x.csv') $$, (select r->>'sendId' from ns1)), '22023', 'new_starter_csv_required',
+  'a path outside the bucket is refused');
+reset role;
+select is((select row(template, channel::text, jsonb_array_length((payload->>'attachments')::jsonb), payload->>'newStarters')::text
+             from notification_outbox where key = 'NS1:2025-03-03'),
+  row('NS1', 'email', 1, '6')::text, 'one email in the outbox for the week, with one CSV attachment');
+select ok(not new_starter_report_due('2025-03-10 09:15+00'), 'once queued, the week is no longer due');
+select complete_outbox_send((select id from notification_outbox where key = 'NS1:2025-03-03'), true);
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-03'), 'sent',
+  'when the drain sends it, the New Starter row reads "sent"');
 
 -- =====================================================================
 -- 62-66 · Never corrected retroactively; held shifts roll forward
@@ -440,8 +491,61 @@ select is((select row(state, payable_min, base)::text from payroll_export_lines 
            where r.period_start = '2025-03-10' and x.booking_id = (select id from b where name = 'w4s1')),
   row('exported', 300, 77.50)::text,
   'W4''s resolved shift goes out with the following Monday''s run, priced from the manager-entered finish (BG-08)');
-select is((select (r->>'newStarters')::int from run2), 1,
-  'W4 is a new starter in the run that first pays them, not the one that held them');
+
+-- NS1, the following Monday: W4's first shift is resolved, so W4 goes out now,
+-- once; and a week with nobody new sends no email at all (§9.9 "No new").
+set local role service_role;
+create temp table ns2 as select prepare_new_starter_report('2025-03-17 09:05+00') as r;
+reset role;
+select is((select (r->>'newStarters')::int from ns2), 1, 'NS1 week 2: W4 only — the Monday after their held first shift is resolved');
+select is((select count(*)::int from new_starter_reported r where r.report_send_id = (select (r->>'sendId')::bigint from ns2)
+              and r.staff_id = (select bk.staff_id from bookings bk where bk.id = (select id from b where name = 'w4s1'))), 1,
+  'and they are the one recorded');
+-- "Retry send" on a failed New Starter send re-queues the NEW STARTER email
+-- (NS1), with its own attachment, never the payroll one (BG08).
+set local role service_role;
+select lives_ok(format($$ select queue_new_starter_report_email(%s, 'new-starter/2025-03-10.csv') $$, (select r->>'sendId' from ns2)),
+  'week 2''s New Starter email is queued');
+reset role;
+select fail_outbox_send((select id from notification_outbox where key = 'NS1:2025-03-10'), 'Not sent: switched off in Settings');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'failed',
+  'and it fails (a switch turned off after queueing, ADR-0083)');
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(format($$ select retry_finance_report(%s) $$,
+                       (select id from report_sends where kind = 'new_starter' and period_start = '2025-03-10')),
+  'the office presses Retry send');
+reset role;
+select results_eq(
+  $$ select template, key, payload->>'attachments' = (select payload->>'attachments' from notification_outbox where key = 'NS1:2025-03-10')
+       from notification_outbox where key like 'NS1:2025-03-10:retry:%' $$,
+  $$ values ('NS1'::text, 'NS1:2025-03-10:retry:1'::text, true) $$,
+  'the retry is an NS1 email with the same attachment — not the payroll email');
+select is((select count(*)::int from notification_outbox where key like 'BG08:2025-03-10%'), 0, 'and no BG08 row was made for it');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'queued',
+  'the send reads queued again');
+
+-- An old BG08 run left a stamped-but-never-queued New Starter row for week 3:
+-- it is not a prepared week, so NS1 starts it again instead of mailing an empty CSV.
+insert into report_sends (kind, period_start, period_end, status, row_count)
+values ('new_starter', '2025-03-17', '2025-03-23', 'preparing', 4);
+select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+set local role service_role;
+create temp table ns3 as select prepare_new_starter_report('2025-03-24 09:05+00') as r;
+reset role;
+select is((select (r->>'alreadyPrepared')::boolean from ns3), false,
+  'a stale "preparing" row with nobody recorded is replaced, not resumed');
+select is((select status from report_sends where kind = 'new_starter' and period_start = '2025-03-10'), 'queued',
+  'week 2 (Mon 10 – Sun 16 Mar) had its send prepared, and is queued again after the retry');
+select is((select row(r->>'status', r->>'newStarters')::text from ns3), row('no_new', '0')::text,
+  'NS1 week 3, nobody new: "no_new", not a failure');
+select ok((select sent_at is not null from report_sends where kind = 'new_starter' and period_start = '2025-03-17'),
+  '…with the time, for "No new: [date], [time]"');
+select ok(not new_starter_report_due('2025-03-24 09:15+00'), 'and the empty week is not due again');
+set local role service_role;
+select throws_ok(format($$ select queue_new_starter_report_email(%s, 'new-starter/x.csv') $$, (select r->>'sendId' from ns3)),
+  'P0001', 'nothing_to_send', 'no email is ever queued for a week with nobody new');
+reset role;
 
 -- =====================================================================
 -- Who reads payroll_export_lines — the record of exactly what money was

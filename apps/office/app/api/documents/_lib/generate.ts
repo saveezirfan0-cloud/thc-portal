@@ -136,7 +136,11 @@ export function refusal(message: string): { status: number; message: string } {
   if (message.includes('event_not_found'))
     return { status: 404, message: 'That event does not exist.' };
   if (message.includes('client_has_no_contact_email'))
-    return { status: 409, message: 'The client card has no contact email to send to.' };
+    return {
+      status: 409,
+      message:
+        'This event has no recipient to send to: the client card has no contact email, and none is set for the event.',
+    };
   if (message.includes('client_has_no_name_badges'))
     return { status: 409, message: 'Name badges are switched off on the client card.' };
   return { status: 500, message };

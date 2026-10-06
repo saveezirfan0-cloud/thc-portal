@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { acceptApplicationRefusal, cancelEventRefusal, payrollWarning } from '@thc/domain';
 import { adminRefusal } from '../admin';
+import { recipientsRefusal, recipientsRpcRefusal } from './document-recipients';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
   messageRefusal,
@@ -361,6 +362,38 @@ export async function setEventAutoAssign(eventId: string, on: boolean): Promise<
       error: 'The switch was not changed: the event is cancelled, or you are not an admin.',
     };
   }
+  revalidatePath(`/events/${eventId}`);
+  return { ok: true };
+}
+
+/**
+ * ADR-0089: who the Allocation Timesheet and the Completed Allocation
+ * Timesheet go to for this event. `null` (or nothing) puts the event back on
+ * every contact email on the client card. One RPC,
+ * `set_event_document_recipients()`: admin only, trims, lower-cases and
+ * de-duplicates, refuses an invalid address, more than ten, or a cancelled
+ * event, and audits the change with the previous list.
+ *
+ * Saving does not resend anything: the next send, automatic or the Send
+ * button, uses the new list.
+ */
+export async function setDocumentRecipients(
+  eventId: string,
+  recipients: string[] | null,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = await db();
+  const refused = await adminRefusal(supabase);
+  if (refused) return { error: refused };
+  const list = recipients ?? [];
+  const problem = recipientsRefusal(list);
+  if (problem) return { error: problem };
+
+  const { error } = await supabase.rpc('set_event_document_recipients', {
+    p_event: eventId,
+    p_recipients: list,
+  });
+  if (error) return { error: recipientsRpcRefusal(error.message) };
   revalidatePath(`/events/${eventId}`);
   return { ok: true };
 }
