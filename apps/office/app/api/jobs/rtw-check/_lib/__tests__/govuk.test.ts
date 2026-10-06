@@ -194,6 +194,29 @@ describe('parseGovukResult', () => {
     });
   });
 
+  it('reads gov.uk\'s live "no limit on how long they can stay" as no time limit, and reaches a verify', () => {
+    const r = parseGovukResult(page('govuk-pass-no-limit-live-wording.txt'), AT);
+    expect(r).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: null });
+    expect(r.conditions).toEqual([
+      'They can work in any job.',
+      'There is no limit on how long they can stay in the UK.',
+    ]);
+    const subject = (rtwBranch: 'eu_settled' | 'work_visa') => ({
+      firstName: 'Olu',
+      lastName: 'Ade',
+      rtwBranch,
+      belowDegreeLevel: false,
+    });
+    const ctx = { attempt: 1, maxAttempts: 5, today: '2026-10-06' };
+    expect(decideRtwCheck(r, subject('eu_settled'), ctx)).toEqual({
+      action: 'verify',
+      rightToWorkUntil: null,
+      noTimeLimit: true,
+    });
+    // A branch whose right to work always ends is still sent to the office.
+    expect(decideRtwCheck(r, subject('work_visa'), ctx).action).toBe('needs_review');
+  });
+
   it('pre-settled status is never read as no time limit (QA 25.09)', () => {
     expect(parseGovukResult(page('govuk-pre-settled-no-date.txt'), AT)).toMatchObject({
       outcome: 'error',
