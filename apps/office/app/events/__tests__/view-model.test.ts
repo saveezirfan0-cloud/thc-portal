@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { ukInstant } from '@thc/domain';
 import type { ListedEvent } from '../data';
 import {
+  bandDay,
   bucketByDay,
+  dayBandOf,
+  groupSimilarEvents,
+  monthCell,
   filterEventRows,
   fillTone,
   periodTotals,
@@ -251,5 +255,90 @@ describe('scheduled windows carry a "your time" line outside the UK (§1.8)', ()
       [ukInstant(DATE, '17:00').toISOString(), ukInstant(DATE, '23:30').toISOString()],
     ]);
     expect(toEventRow(event({ roles: [] }), before).windowIso).toBeNull();
+  });
+});
+
+describe('the month cell folds a busy day (ADR-0094)', () => {
+  const waiting = (id: string, over: Partial<ListedEvent> = {}) =>
+    event({ id, title: 'Morning Waiting Staff', roles: [role('07:00', '15:00')], ...over });
+
+  it('collapses same-title, same-start events into one chip with the summed open count', () => {
+    const rows = toEventRows([waiting('a'), waiting('b', { clientName: 'Dorchester' })], before);
+    const groups = groupSimilarEvents(rows);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.rows).toHaveLength(2);
+    expect(groups[0]!.open).toBe(6); // 4 headcount − 1 confirmed, twice
+  });
+
+  it('does not merge events that start at different times, or a cancelled one into a live one', () => {
+    const rows = toEventRows(
+      [
+        waiting('a'),
+        waiting('b', { roles: [role('09:00', '15:00')] }),
+        waiting('c', { cancelledAt: '2026-09-16T10:00:00Z' }),
+      ],
+      before,
+    );
+    const groups = groupSimilarEvents(rows);
+    expect(groups).toHaveLength(3);
+    expect(groups.find((g) => g.cancelled)!.open).toBe(0);
+  });
+
+  it('shows every chip while the day fits, limit + 1 included', () => {
+    const rows = toEventRows(
+      ['a', 'b', 'c', 'd'].map((id, i) =>
+        event({ id, title: `Event ${i}`, roles: [role('07:00', '15:00')] }),
+      ),
+      before,
+    );
+    const cell = monthCell(rows, 3);
+    expect(cell.shown).toHaveLength(4);
+    expect(cell.hiddenEvents).toBe(0);
+  });
+
+  it('says how many events and open positions the "+N more" holds', () => {
+    const rows = toEventRows(
+      ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) =>
+        event({ id, title: `Event ${i}`, roles: [role(`0${i + 1}:00`, '15:00')] }),
+      ),
+      before,
+    );
+    const cell = monthCell(rows, 3);
+    expect(cell.shown.map((g) => g.rows[0]!.id)).toEqual(['a', 'b', 'c']);
+    expect(cell.hiddenEvents).toBe(3);
+    expect(cell.hiddenOpen).toBe(9);
+  });
+});
+
+describe('the week column folds into day bands (ADR-0094)', () => {
+  const at = (id: string, start: string) =>
+    toEventRow(event({ id, roles: [role(start, '23:00')] }), before);
+
+  it('bands by the UK start hour, with the edges on 05:00, 12:00 and 17:00', () => {
+    expect(dayBandOf(at('a', '01:00'))).toBe('overnight');
+    expect(dayBandOf(at('b', '04:59'))).toBe('overnight');
+    expect(dayBandOf(at('c', '05:00'))).toBe('morning');
+    expect(dayBandOf(at('d', '11:59'))).toBe('morning');
+    expect(dayBandOf(at('e', '12:00'))).toBe('afternoon');
+    expect(dayBandOf(at('f', '17:00'))).toBe('evening');
+    expect(dayBandOf(toEventRow(event({ roles: [] }), before))).toBe('unscheduled');
+  });
+
+  it('reads bands in day order, drops empty ones and keeps list order inside', () => {
+    const bands = bandDay([at('eve', '19:00'), at('m1', '07:00'), at('m2', '08:00')]);
+    expect(bands.map((b) => b.key)).toEqual(['morning', 'evening']);
+    expect(bands[0]!.events.map((r) => r.id)).toEqual(['m1', 'm2']);
+    expect(bands[0]!.open).toBe(6);
+  });
+
+  it('takes the UK hour across the clock change, not the UTC one', () => {
+    // 2026-10-25 is the day the clocks go back; 04:30 BST is 03:30 UTC.
+    const row = toEventRow(event({ date: '2026-10-24', roles: [role('04:30', '10:00')] }), before);
+    expect(dayBandOf(row)).toBe('overnight');
+    const summer = toEventRow(
+      event({ date: '2026-07-01', roles: [role('05:00', '10:00')] }),
+      before,
+    );
+    expect(dayBandOf(summer)).toBe('morning');
   });
 });

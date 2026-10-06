@@ -205,6 +205,135 @@ export function periodTotals(rows: EventRow[]): { events: number; open: number }
 }
 
 /** The tone the chip and the fill pill carry (§3.1). */
+/**
+ * One month-cell chip: events that read the same ("Morning Waiting Staff" at
+ * 07:00) collapse into one chip with a count and their summed open positions
+ * (ADR-0094). A group of one is the event itself.
+ */
+export interface ChipGroup {
+  key: string;
+  rows: EventRow[];
+  startLabel: string;
+  /** Open positions across the group; a cancelled event contributes none. */
+  open: number;
+  cancelled: boolean;
+}
+
+/**
+ * Collapses same-title, same-start events in a day, in first-seen order — the
+ * rows arrive sorted by window start, so the chips still read in time order.
+ * A cancelled event never joins a live one: its strike-through and its zero
+ * open count must stay visible.
+ */
+export function groupSimilarEvents(rows: EventRow[]): ChipGroup[] {
+  const groups = new Map<string, ChipGroup>();
+  for (const row of rows) {
+    const cancelled = row.status === 'cancelled';
+    const key = `${row.title.trim().toLowerCase()}|${row.windowStartLabel}|${cancelled}`;
+    const group = groups.get(key);
+    if (group) {
+      group.rows.push(row);
+      if (!cancelled) group.open += row.fill.open;
+    } else {
+      groups.set(key, {
+        key,
+        rows: [row],
+        startLabel: row.windowStartLabel,
+        open: cancelled ? 0 : row.fill.open,
+        cancelled,
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
+/** Chips a month cell draws before it says "+N more" and sends you to the day. */
+export const MONTH_CELL_CHIPS = 3;
+
+export interface MonthCell {
+  shown: ChipGroup[];
+  /** Events (not chips) left out, and the open positions among them. */
+  hiddenEvents: number;
+  hiddenOpen: number;
+}
+
+/**
+ * What a month cell draws. At most `limit` chips — never a scroll box inside
+ * a cell — and the rest as "+N more". A day that overflows by a single chip
+ * shows it instead, since "+1 more" is no shorter than the chip it hides.
+ */
+export function monthCell(rows: EventRow[], limit: number = MONTH_CELL_CHIPS): MonthCell {
+  const groups = groupSimilarEvents(rows);
+  if (groups.length <= limit + 1) return { shown: groups, hiddenEvents: 0, hiddenOpen: 0 };
+  const hidden = groups.slice(limit);
+  return {
+    shown: groups.slice(0, limit),
+    hiddenEvents: hidden.reduce((sum, g) => sum + g.rows.length, 0),
+    hiddenOpen: hidden.reduce((sum, g) => sum + g.open, 0),
+  };
+}
+
+export type DayBandKey = 'overnight' | 'morning' | 'afternoon' | 'evening' | 'unscheduled';
+
+export const DAY_BAND_LABEL: Record<DayBandKey, string> = {
+  overnight: 'Overnight',
+  morning: 'Morning',
+  afternoon: 'Afternoon',
+  evening: 'Evening',
+  unscheduled: 'No roles yet',
+};
+
+const DAY_BAND_ORDER: DayBandKey[] = [
+  'overnight',
+  'morning',
+  'afternoon',
+  'evening',
+  'unscheduled',
+];
+
+const UK_HOUR = new Intl.DateTimeFormat('en-GB', {
+  timeZone: UK_ZONE,
+  hour: '2-digit',
+  hourCycle: 'h23',
+});
+
+/**
+ * The band an event starts in, by the UK hour of its derived window start
+ * (RULE-18 / §1.8: rules read in Europe/London). A band is a way to fold a
+ * long column, not a time grid: events keep their list order inside it.
+ */
+export function dayBandOf(row: EventRow): DayBandKey {
+  if (!row.window) return 'unscheduled';
+  const hour = Number(UK_HOUR.format(row.window.startsAt));
+  if (hour < 5) return 'overnight';
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+export interface DayBand {
+  key: DayBandKey;
+  label: string;
+  events: EventRow[];
+  open: number;
+}
+
+/** A week column's events folded into the bands that have any, in day order. */
+export function bandDay(rows: EventRow[]): DayBand[] {
+  const bands = new Map<DayBandKey, DayBand>();
+  for (const row of rows) {
+    const key = dayBandOf(row);
+    const band = bands.get(key) ?? { key, label: DAY_BAND_LABEL[key], events: [], open: 0 };
+    band.events.push(row);
+    if (row.status !== 'cancelled') band.open += row.fill.open;
+    bands.set(key, band);
+  }
+  return DAY_BAND_ORDER.flatMap((key) => bands.get(key) ?? []);
+}
+
+/** A column this short never folds: nothing to save by hiding it. */
+export const WEEK_COLUMN_FOLD_AT = 8;
+
 export function fillTone(row: EventRow): 'green' | 'amber' | 'neutral' {
   if (row.status === 'cancelled') return 'neutral';
   return row.fill.open === 0 ? 'green' : 'amber';

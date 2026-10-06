@@ -60,11 +60,55 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
-  overflow: auto;
-  max-height: 480px;
 }
 .wk .list > * {
   flex: 0 0 auto;
+}
+
+/* ADR-0094: the column no longer scrolls on its own; the page does. A long
+   column folds into Morning / Afternoon / Evening bands instead. */
+.wk .band > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-6);
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  font-weight: var(--label-weight);
+  color: var(--muted);
+}
+.wk .band > summary::-webkit-details-marker {
+  display: none;
+}
+.wk .band > summary::before {
+  content: '▸';
+}
+.wk .band[open] > summary::before {
+  content: '▾';
+}
+.wk .band > summary:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: 1px;
+}
+.wk .band .bc {
+  margin-left: auto;
+  font-family: var(--font-num);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--amber-ink);
+}
+.wk .band .bc.ok {
+  color: var(--green-ink);
+}
+.wk .band .bl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding-top: var(--sp-4);
 }
 
 /* The fill accent travels on --accent so the rounded look can draw it as an
@@ -302,6 +346,24 @@
   background: var(--accent);
 }
 
+/* ADR-0094: a month cell shows its chips in full and says "+N more" for the
+   rest. The design system's 96px scroll window is lifted here, in the app,
+   so the shared package is untouched. */
+:root .cal .day .scroll {
+  max-height: none;
+  overflow: visible;
+}
+.cal .day .evmore {
+  font-family: var(--font-num);
+  font-size: var(--fs-10);
+  color: var(--cyan-ink);
+  text-decoration: none;
+  padding: 0 var(--sp-6);
+}
+.cal .day a.evmore:hover {
+  text-decoration: underline;
+}
+
 /* The month grid's day number, when it links to that day (MonthView). */
 .cal .day .dlink {
   color: inherit;
@@ -366,6 +428,10 @@
   }
   .cal .evchip > *,
   :root[data-style] .cal .evchip::before {
+    display: none;
+  }
+  /* A 46px cell has no room for the words; the cell itself opens the day. */
+  .cal .day .evmore {
     display: none;
   }
 }

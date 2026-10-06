@@ -9,7 +9,15 @@ import {
   formatOpen,
 } from '@thc/domain';
 import { formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
-import { type DayBucket, type EventRow, fillTone } from '../view-model';
+import {
+  type ChipGroup,
+  type DayBucket,
+  type EventRow,
+  WEEK_COLUMN_FOLD_AT,
+  bandDay,
+  fillTone,
+  monthCell,
+} from '../view-model';
 import { ScheduledWindow } from './ScheduledWindow';
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
@@ -40,12 +48,6 @@ function ChipStatus({ status }: { status: EventStatus }) {
       {EVENT_STATUS_LABEL[status]}
     </span>
   );
-}
-
-/** The chip's fill word: "full", "4 open", or nothing once cancelled. */
-function chipFill(row: EventRow): string | null {
-  if (row.status === 'cancelled') return null;
-  return formatOpen(row.fill) ?? 'full';
 }
 
 // ---------------------------------------------------------------------
@@ -228,11 +230,7 @@ export function MonthView({
               ) : null}
             </div>
             {bucket && bucket.events.length > 0 ? (
-              <div className="scroll">
-                {bucket.events.map((row) => (
-                  <MonthChip key={row.id} row={row} />
-                ))}
-              </div>
+              <MonthCellEvents date={cell.iso} rows={bucket.events} dayHref={dayHref} />
             ) : null}
           </div>
         );
@@ -241,24 +239,80 @@ export function MonthView({
   );
 }
 
-function MonthChip({ row }: { row: EventRow }) {
-  const tone = fillTone(row);
-  const fill = chipFill(row);
+/**
+ * A month cell's events: a few chips, same-named events collapsed into one,
+ * and "+N more" to the day for the rest — no scroll box inside a cell, so a
+ * 30-event day no longer hides behind a 96px window (ADR-0094).
+ */
+function MonthCellEvents({
+  date,
+  rows,
+  dayHref,
+}: {
+  date: string;
+  rows: EventRow[];
+  dayHref?: (iso: string) => string;
+}) {
+  const { shown, hiddenEvents, hiddenOpen } = monthCell(rows);
+  return (
+    <div className="scroll">
+      {shown.map((group) => (
+        <MonthChip key={group.key} group={group} dayHref={dayHref} date={date} />
+      ))}
+      {hiddenEvents > 0 ? (
+        dayHref ? (
+          <Link
+            className="evmore"
+            href={dayHref(date)}
+            aria-label={`${hiddenEvents} more events on ${formatDayLong(date)}`}
+          >
+            +{hiddenEvents} more{hiddenOpen > 0 ? ` · ${hiddenOpen} open` : ''}
+          </Link>
+        ) : (
+          <span className="evmore">+{hiddenEvents} more</span>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+function MonthChip({
+  group,
+  date,
+  dayHref,
+}: {
+  group: ChipGroup;
+  date: string;
+  dayHref?: (iso: string) => string;
+}) {
+  const first = group.rows[0]!;
+  const many = group.rows.length > 1;
+  const live = group.rows.filter((row) => row.status !== 'cancelled');
+  const statuses = new Set(group.rows.map((row) => row.status));
+  const status = statuses.size === 1 ? first.status : null;
+  const fill = group.cancelled ? null : group.open > 0 ? `${group.open} open` : 'full';
+  // One event opens its board; a group opens the day it sits in, where its
+  // events are listed one by one.
+  const href = many && dayHref ? dayHref(date) : `/events/${first.id}`;
   return (
     <Link
       className={classes(
         'evchip',
-        row.status === 'cancelled' && 'cancelled',
-        row.status === 'ongoing' && 'ongoing',
-        row.status !== 'cancelled' && tone === 'green' && 'full',
+        group.cancelled && 'cancelled',
+        group.rows.some((row) => row.status === 'ongoing') && 'ongoing',
+        !group.cancelled && live.every((row) => fillTone(row) === 'green') && 'full',
       )}
-      href={`/events/${row.id}`}
-      title={`${row.title} · ${row.clientName} · ${EVENT_STATUS_LABEL[row.status]}`}
+      href={href}
+      title={
+        many
+          ? `${group.rows.length} × ${first.title} · ${[...new Set(group.rows.map((r) => r.clientName))].join(', ')}`
+          : `${first.title} · ${first.clientName} · ${EVENT_STATUS_LABEL[first.status]}`
+      }
     >
-      <span className="t">{row.windowStartLabel}</span>
-      {row.title} · {row.clientName}
+      <span className="t">{group.startLabel}</span>
+      {many ? `${first.title} ×${group.rows.length}` : `${first.title} · ${first.clientName}`}
       {/* §3.2: the status pill appears on the calendar as on the list. */}
-      <ChipStatus status={row.status} />
+      {status ? <ChipStatus status={status} /> : null}
       {fill ? <span className="f">{fill}</span> : null}
     </Link>
   );
@@ -294,14 +348,40 @@ export function WeekView({
                 {count === 0 ? '0 ev' : formatCounter(count, open)}
               </span>
             </div>
-            <div className="list">
-              {(bucket?.events ?? []).map((row) => (
-                <WeekChip key={row.id} row={row} />
-              ))}
-            </div>
+            <WeekColumnBands rows={bucket?.events ?? []} />
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * A column's events, folded into Morning / Afternoon / Evening bands that open
+ * and close on their own (ADR-0094). A column of 8 or fewer shows everything;
+ * a longer one opens only the bands that still need staff, so the page — not
+ * seven inner scroll boxes — is what scrolls, and what is short is on top.
+ */
+function WeekColumnBands({ rows }: { rows: EventRow[] }) {
+  const bands = bandDay(rows);
+  const fold = rows.length > WEEK_COLUMN_FOLD_AT;
+  return (
+    <div className="list">
+      {bands.map((band) => (
+        <details className="band" key={band.key} open={!fold || band.open > 0}>
+          <summary>
+            <span className="bn">{band.label}</span>
+            <span className={classes('bc', band.open === 0 && 'ok')}>
+              {formatCounter(band.events.length, band.open)}
+            </span>
+          </summary>
+          <div className="bl">
+            {band.events.map((row) => (
+              <WeekChip key={row.id} row={row} />
+            ))}
+          </div>
+        </details>
+      ))}
     </div>
   );
 }
