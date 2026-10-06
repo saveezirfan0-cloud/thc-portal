@@ -36,7 +36,7 @@ that photo with the app selfie, and only the gov.uk adapter supplied it.
   | `WDEMOCOND` | Work visa | Needs review: a condition the system cannot apply |
   | `WDEMONONE` | any | Recommend reject: not recognised with this date of birth |
   | `WDEMONORW` | any | Recommend reject: no right to work |
-  | `WDEMODOWN` | any | Provider down: retried at 30 min, 2 h, 6 h and 16 h, then Needs review |
+  | `WDEMODOWN` | any | Provider down: retried at 2 min, 10 min, 30 min and 2 h, then Needs review |
 
   A code on a branch it does not fit goes to Needs review with the branch reason. That
   is the real rule, and it can be demonstrated too.

@@ -1,4 +1,4 @@
-import { rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
+import { isPermanentRtwError, rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
 import type { RtwCheckResult } from '@thc/domain';
 import { envNumber, envText, looksLikePdf, looksLikePng, parseUkDate } from './checker';
 import type { CheckInput, CheckOutput, EnvReader, RightToWorkChecker } from './checker';
@@ -78,6 +78,29 @@ function firstCapture(patterns: readonly RegExp[], text: string): string | null 
 
 const any = (patterns: readonly RegExp[], text: string) => patterns.some((p) => p.test(text));
 
+/**
+ * The end date as printed, or null (none found) — or 'ambiguous' when two
+ * different dates qualify. Never a guess (ADR-0018): a wrong future date
+ * would otherwise reach Verify.
+ */
+export function captureUntil(text: string): string | 'ambiguous' | null {
+  const lines = text.split('\n').map((l) => l.trim());
+  const found = new Set<string>();
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    if (!line || GOVUK_RESULT.untilNotLine.test(line)) continue;
+    const candidate = GOVUK_RESULT.untilLabelOnly.test(line)
+      ? `${line} ${lines[i + 1] ?? ''}`
+      : line;
+    for (const pattern of GOVUK_RESULT.until) {
+      const raw = pattern.exec(candidate)?.[1];
+      if (raw) found.add(parseUkDate(raw) ?? raw.trim());
+    }
+  }
+  if (found.size > 1) return 'ambiguous';
+  return found.size === 1 ? [...found][0]! : null;
+}
+
 /** The work conditions: the lines under a Conditions heading, and any line that reads as one. */
 export function govukConditions(text: string): string[] {
   const advice = (line: string) => any(GOVUK_RESULT.notCondition, line);
@@ -136,7 +159,8 @@ export function parseGovukResult(text: string, checkedAt: string): RtwCheckResul
   if (noRight) return { ...base, outcome: 'no_right_to_work', fullName };
   if (!right) return rtwCheckError('govuk', 'govuk_unrecognised_result', checkedAt);
 
-  const rawUntil = firstCapture(GOVUK_RESULT.until, t);
+  const rawUntil = captureUntil(t);
+  if (rawUntil === 'ambiguous') return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
   const until = rawUntil ? parseUkDate(rawUntil) : null;
   if (rawUntil && !until) return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
   // ADR-0018: "no time limit" only when gov.uk says so, never from a blank.
@@ -305,7 +329,13 @@ export function createGovukChecker(
         const result = parseGovukResult(text, checkedAt);
         let report: Uint8Array | null = null;
         let photo: Uint8Array | null = null;
-        if (result.outcome === 'right_to_work' || result.outcome === 'no_right_to_work') {
+        // A page gov.uk answered but we could not read goes to the office
+        // (`isPermanentRtwError`): they need gov.uk's own report to decide.
+        if (
+          result.outcome === 'right_to_work' ||
+          result.outcome === 'no_right_to_work' ||
+          (result.outcome === 'error' && isPermanentRtwError(result.error))
+        ) {
           photo = await govukPhoto(page);
           const bytes = await page.pdf({ format: 'A4', printBackground: true });
           report = looksLikePdf(bytes) ? bytes : null;

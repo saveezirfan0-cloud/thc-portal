@@ -111,6 +111,8 @@ export interface SweepDeps {
   fallback: RightToWorkChecker | null;
   companyName: string;
   limit: number;
+  /** How many checks run at once (default 2: each is its own headless browser). */
+  concurrency?: number;
   claim(limit: number): Promise<ClaimedCheck[]>;
   uploadReport(path: string, bytes: Uint8Array): Promise<void>;
   /** Delete an uploaded report nothing will reference (best effort). */
@@ -188,7 +190,7 @@ export async function runRtwCheckSweep(
   const claimed = await deps.claim(deps.limit);
   counts.claimed = claimed.length;
 
-  for (const row of claimed) {
+  const processOne = async (row: ClaimedCheck): Promise<void> => {
     const input: CheckInput = {
       shareCode: row.share_code,
       dateOfBirth: String(row.date_of_birth).slice(0, 10),
@@ -270,6 +272,17 @@ export async function runRtwCheckSweep(
         }
       }
     }
-  }
+  };
+
+  // A few at a time: each check is a gov.uk page load, so one slow page no
+  // longer holds up the rest of the batch. The counts are plain additions,
+  // safe across awaits.
+  const width = Math.max(1, Math.min(deps.concurrency ?? 2, claimed.length));
+  const queue = [...claimed];
+  await Promise.all(
+    Array.from({ length: width }, async () => {
+      for (let row = queue.shift(); row; row = queue.shift()) await processOne(row);
+    }),
+  );
   return counts;
 }

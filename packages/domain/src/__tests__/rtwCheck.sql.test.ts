@@ -20,6 +20,12 @@ const MIGRATION = join(
   '../../../../supabase/migrations/20260928100000_rtw_check.sql',
 );
 const sql = readFileSync(MIGRATION, 'utf8');
+// rtw_check_backoff() is restated by the newest migration that defines it.
+const BACKOFF_MIGRATION = join(
+  import.meta.dirname,
+  '../../../../supabase/migrations/20261006170000_rtw_check_faster.sql',
+);
+const backoffSql = readFileSync(BACKOFF_MIGRATION, 'utf8');
 
 function sqlEdges(): string[] {
   const start = sql.indexOf('create or replace function public.rtw_check_transitions()');
@@ -49,7 +55,7 @@ describe('rtw_checks: TypeScript and SQL agree', () => {
   });
 
   it('backs off on the same schedule', () => {
-    const m = /\(array\[([\d,\s]+)\]\)\[least\(greatest\(coalesce\(p_attempt/.exec(sql);
+    const m = /\(array\[([\d,\s]+)\]\)\[least\(greatest\(coalesce\(p_attempt/.exec(backoffSql);
     expect(m).not.toBeNull();
     expect(m![1]!.split(',').map((x) => Number(x.trim()))).toEqual([...RTW_CHECK_BACKOFF_MINUTES]);
   });

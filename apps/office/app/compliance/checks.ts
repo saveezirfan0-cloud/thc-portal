@@ -1,4 +1,4 @@
-import { type TimeFormat, rtwCheckInFlight } from '@thc/domain';
+import { type TimeFormat, rtwCheckErrorLabel, rtwCheckInFlight } from '@thc/domain';
 import { rtwCheckView, ukStampFull } from '../_lib/rtwCheck';
 import type { RtwCheckRow, RtwTone } from '../_lib/rtwCheck';
 
@@ -107,11 +107,13 @@ export function checkLine(row: RtwCheckRow, now: string, format?: TimeFormat): C
     detail =
       'The runner has not touched this for longer than the stale limit. Check that the schedule is on, RTW_GOVUK_ENABLED and the job secret are set on the office project, and job_runs.';
   } else if (row.status === 'queued' && row.attempts === 0) {
-    detail = 'Waiting for the next runner pass (every 10 minutes).';
+    detail = 'Waiting for the next runner pass (every minute).';
   } else if (row.status === 'queued') {
     detail =
       `Attempt ${row.attempts} of ${row.max_attempts} did not finish` +
-      (row.next_attempt_at ? ` — next try ${ukStampFull(row.next_attempt_at, format)}.` : '.');
+      (row.next_attempt_at
+        ? `, trying again at ${ukStampFull(row.next_attempt_at, format)}.`
+        : '.');
   } else if (row.status === 'running') {
     detail = 'With gov.uk now.';
   } else if (row.status === 'needs_review') {
@@ -128,7 +130,7 @@ export function checkLine(row: RtwCheckRow, now: string, format?: TimeFormat): C
         : null;
   }
   if (row.error && (row.status === 'failed' || row.status === 'queued' || stuck)) {
-    detail = `${detail ?? ''} Last error: ${row.error}`.trim();
+    detail = `${detail ?? ''} Why: ${rtwCheckErrorLabel(row.error)}.`.trim();
   }
 
   return {

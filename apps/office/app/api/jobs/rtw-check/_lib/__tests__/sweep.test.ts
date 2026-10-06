@@ -190,6 +190,37 @@ describe('runRtwCheckSweep', () => {
     });
   });
 
+  it('a page gov.uk answered but we could not read goes to the office with its report, never to a retry', async () => {
+    const t = deps(
+      checker('govuk', { result: rtwCheckError('govuk', 'govuk_no_expiry'), report: PDF }),
+    );
+    const counts = await runRtwCheckSweep(t.d);
+    expect(t.recorded[0]!.decision.action).toBe('needs_review');
+    expect(t.recorded[0]!.reportPath).toBe('s1/share-code-report/rtw-check-c1.pdf');
+    expect(counts).toMatchObject({ needs_review: 1, queued: 0 });
+  });
+
+  it('runs the claimed checks a couple at a time, and records every one', async () => {
+    let live = 0;
+    let peak = 0;
+    const slow: RightToWorkChecker = {
+      source: 'provider',
+      async check() {
+        live += 1;
+        peak = Math.max(peak, live);
+        await new Promise((r) => setTimeout(r, 5));
+        live -= 1;
+        return { result: pass('provider'), report: PDF };
+      },
+    };
+    const rows = [1, 2, 3, 4, 5].map((n) => ({ ...row, check_id: `c${n}` }));
+    const t = deps(slow, { claim: async () => rows });
+    const counts = await runRtwCheckSweep(t.d);
+    expect(t.recorded.map((r) => r.checkId).sort()).toEqual(['c1', 'c2', 'c3', 'c4', 'c5']);
+    expect(peak).toBe(2);
+    expect(counts).toMatchObject({ claimed: 5, passed: 5 });
+  });
+
   it('a report that cannot be stored turns a pass into a retry', async () => {
     const t = deps(checker('provider', { result: pass('provider'), report: PDF }), {
       uploadReport: async () => {

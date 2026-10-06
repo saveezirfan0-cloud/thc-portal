@@ -1,6 +1,8 @@
 import {
   RTW_CHECK_SOURCE_LABEL,
   RTW_CHECK_STATUS_LABEL,
+  rtwCheckErrorLabel,
+  rtwCheckStatusLabel,
   clockLabel,
   isRtwCheckSource,
   isRtwCheckStatus,
@@ -291,7 +293,7 @@ export function rtwCheckView(
     k: 'Checked',
     v:
       inFlight && row.status === 'queued' && row.attempts > 0 && row.next_attempt_at
-        ? `attempt ${row.attempts} of ${row.max_attempts} failed · next try ${ukStampFull(row.next_attempt_at, context.format)}`
+        ? `attempt ${row.attempts} of ${row.max_attempts} failed${row.error ? ` (${rtwCheckErrorLabel(row.error)})` : ''} · next try ${ukStampFull(row.next_attempt_at, context.format)}`
         : inFlight
           ? `checking with gov.uk… (queued ${ukStampFull(row.created_at, context.format)})`
           : `${ukStampFull(row.finished_at ?? row.created_at, context.format)}${
@@ -328,7 +330,7 @@ export function rtwCheckView(
             tone: TONE[row.status],
             label: RTW_CHECK_STATUS_LABEL[row.status],
           })
-        : { tone: TONE[row.status], label: RTW_CHECK_STATUS_LABEL[row.status] },
+        : { tone: TONE[row.status], label: rtwCheckStatusLabel(row.status, row.attempts) },
     lines,
     reason:
       row.status === 'needs_review'
