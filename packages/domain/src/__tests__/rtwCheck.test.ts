@@ -323,13 +323,22 @@ describe('retry backoff and error codes', () => {
     expect(rtwCheckRetryDelayMinutes(9)).toBe(120);
   });
 
-  it('a page gov.uk answered but we could not read is never retried — it goes to the office', () => {
+  it('a page whose dates contradict each other is never retried; a missing date is, with the office last', () => {
     for (const code of RTW_CHECK_PERMANENT_ERRORS) {
       const d = decideRtwCheck(rtwCheckError('govuk', code), eu, { ...ctx, attempt: 1 });
       expect(d.action, code).toBe('needs_review');
     }
-    const d = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 });
-    if (d.action === 'needs_review') expect(d.officeReason).toMatch(/end date could not be read/);
+    // A page whose date was not found is read again first — the office is the last resort.
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 }).action,
+    ).toBe('retry');
+    const last = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, {
+      ...ctx,
+      attempt: ctx.maxAttempts,
+    });
+    expect(last.action).toBe('needs_review');
+    if (last.action === 'needs_review')
+      expect(last.officeReason).toMatch(/end date could not be read/);
     // A maintenance page (govuk_unrecognised_result) and a timeout are still worth another go.
     expect(
       decideRtwCheck(rtwCheckError('govuk', 'govuk_unrecognised_result'), eu, ctx).action,
