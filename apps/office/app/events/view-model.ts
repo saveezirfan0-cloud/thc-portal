@@ -142,6 +142,8 @@ export interface EventFilters {
   /** `clients.id`, from the toolbar's Client select; '' for all. */
   clientId: string;
   status: string;
+  /** Drop cancelled rows unless `status` asks for them by name. */
+  hideCancelled?: boolean;
   q: string;
 }
 
@@ -155,6 +157,10 @@ export function filterEventRows(rows: EventRow[], filters: EventFilters): EventR
   return rows.filter((row) => {
     if (filters.clientId && row.clientId !== filters.clientId) return false;
     if (filters.status && row.status !== filters.status) return false;
+    // Asking for cancelled events by name outranks hiding them.
+    if (filters.hideCancelled && filters.status !== 'cancelled' && row.status === 'cancelled') {
+      return false;
+    }
     if (!needle) return true;
     return [row.title, row.clientName, row.venueName, row.poNumber]
       .join(' ')

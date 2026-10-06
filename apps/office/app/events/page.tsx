@@ -50,6 +50,7 @@ export default async function Page({
   const rows = filterEventRows(toEventRows(events, new Date(), format), {
     clientId: query.clientId,
     status: query.status,
+    hideCancelled: query.hideCancelled,
     q: query.q,
   });
 

@@ -68,6 +68,18 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
         ))}
       </select>
 
+      <label className="row sm" style={{ gap: 6 }}>
+        <input
+          type="checkbox"
+          checked={query.hideCancelled && query.status !== 'cancelled'}
+          disabled={query.status === 'cancelled'}
+          onChange={(event) =>
+            router.push(hrefFor({ ...query, hideCancelled: event.target.checked }))
+          }
+        />
+        Hide cancelled
+      </label>
+
       <button type="submit" className="sb-sr-only">
         Search
       </button>
