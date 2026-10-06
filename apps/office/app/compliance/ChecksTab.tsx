@@ -96,9 +96,9 @@ export function ChecksTab({
             </div>
             {lastRun.error ? <div className="coral">Error: {lastRun.error}</div> : null}
             <div className="muted">
-              It runs every 10 minutes and picks up whatever is queued, so a new share code can wait
-              up to 10 minutes before its first attempt. A pass that claims 0 with nothing queued is
-              normal.
+              It runs every minute and picks up whatever is queued, and a new share code starts it
+              straight away, so a first attempt rarely waits. A pass that claims 0 with nothing
+              queued is normal.
             </div>
           </div>
         ) : (

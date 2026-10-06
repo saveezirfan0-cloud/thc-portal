@@ -13,7 +13,7 @@ import type { RightToWorkChecker } from './_lib/checker';
  * POST /api/jobs/rtw-check — the automated gov.uk right-to-work check
  * (Scope §2.3, §2.6; ADR-0025).
  *
- * A job, not a screen: pg_cron calls it every 10 minutes (job_schedules
+ * A job, not a screen: pg_cron calls it every minute (job_schedules
  * `rtw-check`, office_base_url + this path), and a share code being filed
  * nudges it through pg_net. It is a Node route in the Back Office rather
  * than a Supabase Edge Function because the gov.uk fallback drives a

@@ -190,6 +190,53 @@ describe('runRtwCheckSweep', () => {
     });
   });
 
+  it('a page with two different end dates goes to the office with its report, never to a retry', async () => {
+    const t = deps(
+      checker('govuk', { result: rtwCheckError('govuk', 'govuk_unreadable_date'), report: PDF }),
+    );
+    const counts = await runRtwCheckSweep(t.d);
+    expect(t.recorded[0]!.decision.action).toBe('needs_review');
+    expect(t.recorded[0]!.reportPath).toBe('s1/share-code-report/rtw-check-c1.pdf');
+    expect(counts).toMatchObject({ needs_review: 1, queued: 0 });
+  });
+
+  it('a missing end date is retried first; only the last attempt goes to the office, with the report', async () => {
+    const noDate = checker('govuk', {
+      result: rtwCheckError('govuk', 'govuk_no_expiry'),
+      report: PDF,
+    });
+    const early = deps(noDate);
+    await runRtwCheckSweep(early.d);
+    expect(early.recorded[0]!.decision.action).toBe('retry');
+    expect(early.uploads).toEqual([]);
+
+    const last = deps(noDate, { claim: async () => [{ ...row, attempt: 5 }] });
+    await runRtwCheckSweep(last.d);
+    expect(last.recorded[0]!.decision.action).toBe('needs_review');
+    expect(last.recorded[0]!.reportPath).toBe('s1/share-code-report/rtw-check-c1.pdf');
+  });
+
+  it('runs the claimed checks a couple at a time, and records every one', async () => {
+    let live = 0;
+    let peak = 0;
+    const slow: RightToWorkChecker = {
+      source: 'provider',
+      async check() {
+        live += 1;
+        peak = Math.max(peak, live);
+        await new Promise((r) => setTimeout(r, 5));
+        live -= 1;
+        return { result: pass('provider'), report: PDF };
+      },
+    };
+    const rows = [1, 2, 3, 4, 5].map((n) => ({ ...row, check_id: `c${n}` }));
+    const t = deps(slow, { claim: async () => rows });
+    const counts = await runRtwCheckSweep(t.d);
+    expect(t.recorded.map((r) => r.checkId).sort()).toEqual(['c1', 'c2', 'c3', 'c4', 'c5']);
+    expect(peak).toBe(2);
+    expect(counts).toMatchObject({ claimed: 5, passed: 5 });
+  });
+
   it('a report that cannot be stored turns a pass into a retry', async () => {
     const t = deps(checker('provider', { result: pass('provider'), report: PDF }), {
       uploadReport: async () => {

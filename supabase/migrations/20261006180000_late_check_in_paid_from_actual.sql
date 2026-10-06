@@ -1,4 +1,4 @@
--- ADR-0093 · RULE-01. A late check-in is paid from the actual check-in, not
+-- ADR-0094 · RULE-01. A late check-in is paid from the actual check-in, not
 -- from the scheduled start. The 30-minute grace still decides Late vs No-show
 -- (§5.1) but no longer decides pay. Arriving early still pays from the
 -- scheduled start. RULE-14's four-hour floor is unchanged.
@@ -57,4 +57,4 @@ alter function public.payable_minutes(timestamptz, timestamptz, timestamptz, tim
   set search_path = public, extensions;
 
 comment on function payable_minutes is
-  'RULE-01/02/14 pay window. Paid from the later of the scheduled start and the actual check-in (ADR-0093). Mirrored by payableMinutes() in packages/domain/pay.ts; both are held to pay.vectors.json.';
+  'RULE-01/02/14 pay window. Paid from the later of the scheduled start and the actual check-in (ADR-0094). Mirrored by payableMinutes() in packages/domain/pay.ts; both are held to pay.vectors.json.';

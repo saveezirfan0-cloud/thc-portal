@@ -75,6 +75,24 @@
   /* Tiles are decorative: the projection, not the image, places the pins. */
   user-select: none;
 }
+/* OpenStreetMap only has a light style: darken it for the navy ground. */
+:root[data-theme='dark'] .venue-map .tile.osm {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+}
+.map .attribution {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-size: var(--fs-10);
+  color: var(--muted);
+  background: var(--glass-strong);
+  padding: 1px var(--sp-6);
+  border-radius: var(--r-pill);
+  pointer-events: none;
+}
+.map .legend ~ .attribution {
+  bottom: 44px;
+}
 .venue-map .pin-button {
   padding: 0;
   border: 0;

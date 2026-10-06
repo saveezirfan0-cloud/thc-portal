@@ -470,7 +470,7 @@ screens for a cancelled event and a removal, and the push registration.
 >
 > Pay is computed by `payableMinutes` in `@thc/domain`. Note the asymmetry it encodes:
 > checking in on or before the start pays from the SCHEDULED start, checking in late
-> (grace or not, ADR-0093) pays from the ACTUAL time.
+> (grace or not, ADR-0094) pays from the ACTUAL time.
 >
 > Done when: it matches the frame and the earnings screen agrees with the domain function
 > in every case.

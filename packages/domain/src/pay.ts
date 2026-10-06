@@ -31,7 +31,7 @@
  *    check-out] with the scheduled [start, end]. The two graces are not
  *    symmetric in effect:
  *      - check-in on or before the start is paid FROM THE SCHEDULED START;
- *      - check-in after it is paid from the ACTUAL time, grace or not (ADR-0093);
+ *      - check-in after it is paid from the ACTUAL time, grace or not (ADR-0094);
  *      - check-out after the end is paid only to the end, whether it is one
  *        minute or three hours late. The 15-minute mark changes no money; past
  *        it the monitor turns the pill red so a manager can verify (§9.5).
@@ -433,7 +433,7 @@ export interface PayResult {
 
 /**
  * When the paid clock starts: the later of the scheduled start and the actual
- * check-in (ADR-0093). Arriving early never pays early, and arriving late is
+ * check-in (ADR-0094). Arriving early never pays early, and arriving late is
  * paid only from the press — the 30-minute grace decides Late vs No-show, not
  * pay.
  */

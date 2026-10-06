@@ -67,8 +67,8 @@ describe('the gov.uk check monitor', () => {
       NOW,
     );
     expect(line.detail).toContain('Attempt 2 of 5 did not finish');
-    expect(line.detail).toContain('next try 30.09.2026 14:40 UK time');
-    expect(line.detail).toContain('Last error: timeout');
+    expect(line.detail).toContain('trying again at 30.09.2026 14:40 UK time');
+    expect(line.detail).toContain('Why: gov.uk did not answer in time');
     expect(line.tries).toBe('2 of 5');
   });
 

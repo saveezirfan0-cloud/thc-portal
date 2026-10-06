@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   RTW_CHECK_BACKOFF_MINUTES,
+  RTW_CHECK_PERMANENT_ERRORS,
+  rtwCheckErrorLabel,
+  rtwCheckStatusLabel,
   RTW_NOT_FOUND_REASON,
   RTW_NO_RIGHT_REASON,
   decideRtwCheck,
@@ -312,12 +315,43 @@ describe('decideRtwCheck', () => {
 });
 
 describe('retry backoff and error codes', () => {
-  it('spreads five attempts over about a day', () => {
-    expect(RTW_CHECK_BACKOFF_MINUTES).toEqual([30, 120, 360, 960]);
+  it('spreads five attempts over about three hours, the first retries quick', () => {
+    expect(RTW_CHECK_BACKOFF_MINUTES).toEqual([2, 10, 30, 120]);
     const total = [1, 2, 3, 4].reduce((sum, n) => sum + rtwCheckRetryDelayMinutes(n), 0);
-    expect(total / 60).toBeGreaterThan(20);
-    expect(total / 60).toBeLessThan(28);
-    expect(rtwCheckRetryDelayMinutes(9)).toBe(960);
+    expect(total / 60).toBeGreaterThan(2);
+    expect(total / 60).toBeLessThan(4);
+    expect(rtwCheckRetryDelayMinutes(9)).toBe(120);
+  });
+
+  it('a page whose dates contradict each other is never retried; a missing date is, with the office last', () => {
+    for (const code of RTW_CHECK_PERMANENT_ERRORS) {
+      const d = decideRtwCheck(rtwCheckError('govuk', code), eu, { ...ctx, attempt: 1 });
+      expect(d.action, code).toBe('needs_review');
+    }
+    // A page whose date was not found is read again first — the office is the last resort.
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 }).action,
+    ).toBe('retry');
+    const last = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, {
+      ...ctx,
+      attempt: ctx.maxAttempts,
+    });
+    expect(last.action).toBe('needs_review');
+    if (last.action === 'needs_review')
+      expect(last.officeReason).toMatch(/end date could not be read/);
+    // A maintenance page (govuk_unrecognised_result) and a timeout are still worth another go.
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_unrecognised_result'), eu, ctx).action,
+    ).toBe('retry');
+    expect(decideRtwCheck(rtwCheckError('govuk', 'govuk_timeout'), eu, ctx).action).toBe('retry');
+  });
+
+  it('says in words what an error code means, and what a retried check is called', () => {
+    expect(rtwCheckErrorLabel('govuk_no_expiry')).toMatch(/end date/);
+    expect(rtwCheckErrorLabel('some_new_code')).toBe('some_new_code');
+    expect(rtwCheckStatusLabel('queued', 0)).toBe('Queued');
+    expect(rtwCheckStatusLabel('queued', 1)).toBe('Retrying');
+    expect(rtwCheckStatusLabel('passed', 1)).toBe('Passed');
   });
 
   it('never lets personal text through as an error code', () => {

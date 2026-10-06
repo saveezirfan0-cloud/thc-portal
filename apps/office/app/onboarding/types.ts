@@ -325,6 +325,10 @@ export interface CandidateData {
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
   contract: ContractVersion | null;
   roles: RoleOption[];
+  /** Every client, for the client-qualification picker (§9.6). */
+  clients?: ClientOption[];
+  /** The candidate's client qualifications (§9.6), read from `staff_client_qualifications_v`. */
+  qualifications?: CandidateQualification[];
   /** The latest automated gov.uk check per share-code document (ADR-0025). */
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
@@ -340,6 +344,21 @@ export interface CandidateData {
   /** Set when the interview was marked complete by hand, not by Willo (ADR-0077). */
   interviewOverride?: InterviewOverride | null;
   problem: string | null;
+}
+
+export interface ClientOption {
+  id: string;
+  name: string;
+}
+
+/** One client + role entry on the candidate's profile (§9.6). */
+export interface CandidateQualification {
+  id: string;
+  client_id: string;
+  client_name: string;
+  role_id: string;
+  role_name: string;
+  do_not_return: boolean;
 }
 
 /** The audit row `onboarding_mark_interview_complete()` leaves (ADR-0077). */

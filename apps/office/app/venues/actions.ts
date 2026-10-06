@@ -146,13 +146,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeR
   }
 
   const token = process.env.MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-  if (!token) {
-    return {
-      ok: false,
-      message:
-        'Address lookup is not configured in this environment (MAPBOX_TOKEN). See docs/04-setup-github-vercel-supabase.md.',
-    };
-  }
+  if (!token) return reverseGeocodeOpenStreetMap(lat, lng);
 
   const url = new URL('https://api.mapbox.com/search/geocode/v6/reverse');
   url.searchParams.set('longitude', String(lng));
@@ -178,6 +172,39 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeR
       return { ok: false, message: 'No address at this point — move the pin.' };
     }
     return { ok: true, address };
+  } catch {
+    return { ok: false, message: 'Address lookup is unreachable. Try again.' };
+  }
+}
+
+/**
+ * The keyless fallback (ADR-0093): with no Mapbox token the pin is still
+ * looked up, against OpenStreetMap's Nominatim, so a venue can be created in
+ * any environment. Nominatim's usage policy asks for an identifying
+ * User-Agent and no more than one request a second; the modal debounces the
+ * pin and drops stale answers, and a manager creates venues by hand.
+ */
+async function reverseGeocodeOpenStreetMap(lat: number, lng: number): Promise<GeocodeResult> {
+  const url = new URL('https://nominatim.openstreetmap.org/reverse');
+  url.searchParams.set('format', 'jsonv2');
+  url.searchParams.set('lat', String(lat));
+  url.searchParams.set('lon', String(lng));
+  url.searchParams.set('zoom', '18');
+  url.searchParams.set('accept-language', 'en');
+
+  try {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'thc-portal-back-office/1.0' },
+    });
+    if (!response.ok) {
+      return { ok: false, message: `Address lookup failed (${response.status}). Try again.` };
+    }
+    const body = (await response.json()) as { display_name?: string; error?: string };
+    if (!body.display_name) {
+      return { ok: false, message: 'No address at this point — move the pin.' };
+    }
+    return { ok: true, address: body.display_name };
   } catch {
     return { ok: false, message: 'Address lookup is unreachable. Try again.' };
   }

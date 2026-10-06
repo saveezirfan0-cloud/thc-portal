@@ -24,6 +24,8 @@ import type {
   ReferredOnBoard,
   ReturningRow,
   RoleOption,
+  ClientOption,
+  CandidateQualification,
 } from './types';
 import { candidateReferral, referredOnBoard } from './view-model';
 
@@ -306,6 +308,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc,
     application,
     roles,
+    clients,
+    qualifications,
     rtw,
     referral,
     facts,
@@ -359,6 +363,14 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .limit(1)
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
+    // §9.6: the clients to qualify the candidate at, and what they already hold.
+    supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
+    supabase
+      .from('staff_client_qualifications_v')
+      .select('id, client_id, client_name, role_id, role_name, do_not_return')
+      .eq('staff_id', id)
+      .order('client_name')
+      .returns<CandidateQualification[]>(),
     // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
     loadRtwChecks(supabase, id),
     // Who referred them (ADR-0047); best-effort, never an error panel.
@@ -438,6 +450,9 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     application: application.data ?? null,
     contract,
     roles: roles.data ?? [],
+    clients: clients.data ?? [],
+    // Best-effort: a failed read only empties the list; the role panel still works.
+    qualifications: qualifications.error ? [] : (qualifications.data ?? []),
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
     dobClaims: rtw.dobClaims,

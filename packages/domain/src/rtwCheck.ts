@@ -346,14 +346,76 @@ const BRANCH_WORDS: Record<RtwBranch, string> = {
   dependant_other: 'Dependant / other',
 };
 
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Minutes to wait after failed attempt N (1-based) before attempt N + 1.
- * Five attempts span about a day: 30 min, 2 h, 6 h, 16 h. The same literal
- * is `rtw_check_backoff()` in SQL.
+ * Five attempts span about three hours: 2 min, 10 min, 30 min, 2 h. The
+ * retries are for a gov.uk that was briefly unreachable, so the first ones
+ * are quick; a failure that waiting cannot fix never gets here
+ * (`RTW_CHECK_PERMANENT_ERRORS`). The same literal is `rtw_check_backoff()`
+ * in SQL (20261006170000).
  */
-export const RTW_CHECK_BACKOFF_MINUTES: readonly number[] = [30, 120, 360, 960];
+export const RTW_CHECK_BACKOFF_MINUTES: readonly number[] = [2, 10, 30, 120];
+
+/**
+ * Error codes where gov.uk gave a RESULT page and the system could not read
+ * it. The adapter prints that page to PDF for the office (it is the evidence
+ * a person needs when every automatic route has run out).
+ */
+export const RTW_CHECK_RESULT_PAGE_ERRORS: readonly string[] = [
+  'govuk_no_expiry',
+  'govuk_unreadable_date',
+  'govuk_contradictory_result',
+];
+
+/**
+ * Of those, the ones a retry cannot change: two different end dates, or a
+ * page that says both "can" and "cannot work". They go straight to the
+ * office. `govuk_no_expiry` is NOT here: the office is the LAST resort, so a
+ * page whose date was not found is read again (a page that had not finished
+ * loading reads differently a minute later) until the attempts run out.
+ * `govuk_unrecognised_result` is not here either: a maintenance page looks
+ * the same, clears in minutes, and is not a report to file on a worker.
+ */
+export const RTW_CHECK_PERMANENT_ERRORS: readonly string[] = [
+  'govuk_unreadable_date',
+  'govuk_contradictory_result',
+];
+
+export function isPermanentRtwError(code: string | null | undefined): boolean {
+  return typeof code === 'string' && RTW_CHECK_PERMANENT_ERRORS.includes(code);
+}
+
+export function isResultPageRtwError(code: string | null | undefined): boolean {
+  return typeof code === 'string' && RTW_CHECK_RESULT_PAGE_ERRORS.includes(code);
+}
+
+/** What an error code means, in words the office can act on. Unknown codes are shown as they are. */
+export function rtwCheckErrorLabel(code: string | null | undefined): string {
+  if (!code) return 'unknown error';
+  if (code === 'govuk_no_expiry')
+    return 'gov.uk confirmed the right to work but the end date could not be read from the page';
+  if (code === 'govuk_unreadable_date')
+    return 'gov.uk printed an end date the system could not read';
+  if (code === 'govuk_unrecognised_result')
+    return 'the gov.uk result page was not one the system recognises';
+  if (code === 'govuk_contradictory_result')
+    return 'the gov.uk result page said both that the person can and cannot work';
+  if (code === 'govuk_timeout' || code.startsWith('timeout'))
+    return 'gov.uk did not answer in time';
+  if (code === 'govuk_browser_launch_failed') return 'the checking browser could not start';
+  if (code === 'govuk_empty_page') return 'gov.uk returned an empty page';
+  if (code.startsWith('govuk_page_changed'))
+    return 'gov.uk’s pages no longer match what the system expects';
+  if (code === 'not_configured') return 'the check is not configured';
+  if (/^http_5\d\d$/.test(code)) return 'gov.uk is unavailable';
+  return code;
+}
 
 export const RTW_CHECK_DEFAULT_MAX_ATTEMPTS = 5;
 
@@ -385,10 +447,16 @@ export function decideRtwCheck(
 ): RtwCheckDecision {
   if (result.outcome === 'error') {
     const error = safeErrorCode(result.error ?? 'unknown_error');
+    if (isPermanentRtwError(error)) {
+      return {
+        action: 'needs_review',
+        officeReason: `${capitalise(rtwCheckErrorLabel(error))}. Read gov.uk’s report and verify by hand, or run the check again.`,
+      };
+    }
     if (context.attempt < context.maxAttempts) return { action: 'retry', error };
     return {
       action: 'needs_review',
-      officeReason: `The automatic check could not be completed after ${context.attempt} attempts (${error}). Run it again, or check the share code on gov.uk by hand.`,
+      officeReason: `The automatic check could not be completed after ${context.attempt} attempts (${rtwCheckErrorLabel(error)}). Run it again, or check the share code on gov.uk by hand.`,
     };
   }
 
@@ -530,3 +598,15 @@ export const RTW_CHECK_SOURCE_LABEL: Readonly<Record<RtwCheckSource, string>> = 
   provider: 'right-to-work provider',
   govuk: 'gov.uk (browser check)',
 };
+
+/**
+ * The status chip. A check back in the queue after a failed attempt is
+ * "Retrying", not "Queued": the office should not read it as never started.
+ */
+export function rtwCheckStatusLabel(
+  status: RtwCheckStatus,
+  attempts: number | null | undefined,
+): string {
+  if (status === 'queued' && (attempts ?? 0) > 0) return 'Retrying';
+  return RTW_CHECK_STATUS_LABEL[status];
+}
