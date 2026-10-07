@@ -68,6 +68,7 @@ select is_empty(
           -- Function. Without these every share code waits for ever.
           -- rtw_check_attach_photo files the gov.uk photo (ADR-0041).
           'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
+          'job_runs_purge',
           -- The automatic Allocation Timesheet / Completed Allocation
           -- Timesheet (20261002100000, ADR-0074), a Back Office route on the
           -- service key. Without these no document goes out on its own.
@@ -114,6 +115,7 @@ select is_empty(
           -- rtw_check_record verifies a worker's right to work. The two
           -- *_as bodies take the reviewer as an argument.
           'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
+          'job_runs_purge',
           'compliance_verify_document_as', 'compliance_reject_document_as',
           -- ADR-0074: the event-documents job's claim / record / queue.
           'event_documents_due', 'event_document_autosend_claim',
@@ -152,6 +154,7 @@ select is_empty(
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
           'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
           'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
+          'job_runs_purge',
           'compliance_verify_document_as', 'compliance_reject_document_as',
           -- rtw_check_manual_allowed is NOT here on purpose: the office's
           -- security_invoker queue view calls it as `authenticated`, so it
