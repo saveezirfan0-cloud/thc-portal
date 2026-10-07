@@ -2,7 +2,6 @@ import type * as React from 'react';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CONTRACT_VERSION_CLAUSE_28_PENDING } from '@thc/domain';
 import type { CandidateData, CandidateDocument, CandidateRow } from '../types';
 
 // The stepper's "look back at a finished step" is client state with no static
@@ -332,38 +331,6 @@ describe('the candidate profile · mark interview complete (ADR-0077)', () => {
   });
 });
 
-describe('the candidate profile, Contract phase (§2.11)', () => {
-  const signed = (version: string) =>
-    render(
-      data({
-        candidate: {
-          ...ROW,
-          status: 'compliant',
-          contract_version: version,
-          contract_signed_at: '2026-09-26T09:00:00Z',
-        } as CandidateData['candidate'],
-        contract: {
-          version,
-          title: 'Agreement',
-          body: '1. PARTIES.\n\n28. DUTY TO DISCLOSE CRIMINAL CONVICTIONS. Declare any unspent criminal conviction.',
-          is_placeholder: true,
-        },
-      }),
-    );
-
-  it('names clause 28 only for THC’s agreement, the version it was added to', () => {
-    expect(signed(CONTRACT_VERSION_CLAUSE_28_PENDING)).toContain(
-      'Clause 28, the ongoing duty to disclose an unspent conviction, is awaiting THC’s approval.',
-    );
-  });
-
-  it('any other flagged version gets the generic placeholder note', () => {
-    const html = signed('placeholder-2026-09');
-    expect(html).toContain('Placeholder wording until THC supplies the agreement text.');
-    expect(html).not.toContain('Clause 28');
-  });
-});
-
 describe('the candidate profile · phase strip (§2.3)', () => {
   const strip = (html: string) => html.match(/<ol class="stepper">.*?<\/ol>/s)?.[0] ?? '';
 
@@ -376,7 +343,7 @@ describe('the candidate profile · phase strip (§2.3)', () => {
 
   it('opens on the current phase, not the first', () => {
     const html = render(data({ candidate: { ...ROW, status: 'additional_info' } }));
-    expect(html).toContain('Everything from wizard steps 7');
+    expect(html).toContain('Two references');
     expect(html).not.toContain('Viewing <b>');
   });
 

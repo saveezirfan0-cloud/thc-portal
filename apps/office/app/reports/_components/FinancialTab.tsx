@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Alert, KpiTile, Panel, Pill, TileGrid } from '@thc/ui';
+import { KpiTile, Panel, Pill, TileGrid } from '@thc/ui';
 import { financialStatus } from '@thc/pdf/csv';
 import type { FinanceRow } from '../data';
 import {
@@ -115,14 +115,6 @@ export function FinancialTab({
           }
         />
       </TileGrid>
-
-      <Alert tone="cyan">
-        <b>Invoicing here is a revenue forecast for the period, not the PO-based invoices.</b> THC
-        has its own invoicing process; PO Numbers carry into the timesheet documents, not into this
-        figure. Payable hours = the intersection of check-in/out with the scheduled window; a
-        section still to finish is forecast at headcount × its hours. Cancelled events contribute
-        nothing.
-      </Alert>
 
       <Panel
         title={<>Breakdown · {periodLabel(view.from, view.to)}</>}

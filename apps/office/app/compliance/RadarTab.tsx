@@ -245,15 +245,15 @@ export function RadarTab({
         <Panel title="Reminder ladder · push, not email">
           <div className="ladder">
             <span className="k">1 month before</span>
-            <span>N1 “Update your [document] — it expires on [date]”</span>
+            <span>“Update your [document] — it expires on [date]”</span>
             <span className="k">2 weeks before</span>
-            <span>N2 the same, more insistent</span>
+            <span>The same, more insistent</span>
             <span className="k">1 week before</span>
-            <span>N3 final warning</span>
+            <span>Final warning</span>
             <span className="k">Expiry day</span>
             <span>
-              N4 “You have been blocked — update your document” + the automatic block fires at the
-              same moment
+              “You have been blocked — update your document” + the automatic block fires at the same
+              moment
             </span>
           </div>
         </Panel>

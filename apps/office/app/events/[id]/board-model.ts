@@ -437,7 +437,7 @@ export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
   },
   event_cancelled: {
     label: 'Event cancelled',
-    detail: 'booking cancelled with the event (N12)',
+    detail: 'booking cancelled with the event',
     tone: 'neutral',
   },
   blocked: {
@@ -758,7 +758,7 @@ const MESSAGE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   audience_unknown: 'Choose who the message is for.',
   message_required: 'Write the message first.',
   message_too_long: `Keep the message to ${MESSAGE_MAX} characters — a phone cuts off anything longer.`,
-  event_cancelled: 'This event is cancelled. Everyone on it has already been told (N12).',
+  event_cancelled: 'This event is cancelled. Everyone on it has already been told.',
   event_over: 'This event is over — every role has ended, so there is nobody left to tell.',
   section_not_on_event: 'That role is no longer on this event. Reload the page and try again.',
   nobody_to_message: 'Nobody is booked on that yet — there is nobody to message.',

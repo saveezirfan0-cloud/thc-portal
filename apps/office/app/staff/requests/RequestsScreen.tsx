@@ -88,7 +88,7 @@ export function RequestsScreen({
               <h3>No change requests waiting</h3>
               <p>
                 Workers ask for a name, photo or date-of-birth change from Profile details in the
-                app. New requests arrive here and by email to admin@ (RC1).
+                app. New requests arrive here and by email to admin@.
               </p>
             </EmptyState>
           ) : (

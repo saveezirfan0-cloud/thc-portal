@@ -287,7 +287,7 @@ export async function acceptApplication(eventId: string, bookingId: string): Pro
   return closed > 0
     ? {
         ok: true,
-        warning: `The role is now fully confirmed: ${closed} other ${closed === 1 ? 'applicant was' : 'applicants were'} told it filled (N10c).`,
+        warning: `The role is now fully confirmed: ${closed} other ${closed === 1 ? 'applicant was' : 'applicants were'} told it filled.`,
       }
     : { ok: true };
 }

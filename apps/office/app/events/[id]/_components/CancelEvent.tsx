@@ -57,7 +57,7 @@ export function CancelEvent({ eventId, affected }: { eventId: string; affected: 
           <Alert tone="amber">
             The event stays on the list and the calendar, greyed out, for the record — it is never
             deleted. {affected} {affected === 1 ? 'person' : 'people'} still attached to it{' '}
-            {affected === 1 ? 'is' : 'are'} notified (N12), their bookings move to cancelled, open
+            {affected === 1 ? 'is' : 'are'} notified, their bookings move to cancelled, open
             invitations are withdrawn, and auto-assign stops for this event immediately.
           </Alert>
           <Textarea

@@ -357,10 +357,6 @@ export function Overview({
             </div>
           </div>
         </div>
-        <Note>
-          The cap is calculated live from this evidence, never stored. Correcting a date on the
-          Documents tab changes it from that moment.
-        </Note>
       </Panel>
     </div>
   );

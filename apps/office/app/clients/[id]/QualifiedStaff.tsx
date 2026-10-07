@@ -9,7 +9,6 @@ import {
   Checkbox,
   Chip,
   Modal,
-  Note,
   Panel,
   SearchInput,
   Switch,
@@ -412,12 +411,6 @@ export function QualifiedStaff({
           </span>
         </div>
       </Modal>
-
-      <Note>
-        Removing a qualification is not barring somebody. A removed automatic grant can be
-        re-granted by the next clean shift — where a client has asked for someone not to return,
-        switch the toggle rather than deleting the row.
-      </Note>
     </Panel>
   );
 }

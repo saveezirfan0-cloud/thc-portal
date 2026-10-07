@@ -450,7 +450,7 @@ export function cardLines(
       }
       if (row.docs_rejected > 0) {
         const sent = row.last_doc_rejected_at
-          ? ` (push N8 sent ${shortDay(row.last_doc_rejected_at)})`
+          ? ` (push sent ${shortDay(row.last_doc_rejected_at)})`
           : '';
         lines.push({
           text: `${plural(row.docs_rejected, 'document')} rejected — awaiting re-upload${sent}`,
@@ -478,7 +478,7 @@ export function cardLines(
       }
       if (used === QUIZ_MAX_ATTEMPTS - 1) {
         lines.push({
-          text: 'One attempt left — a third failure rejects automatically (E4)',
+          text: 'One attempt left — a third failure rejects automatically',
           tone: 'amber',
         });
       }
@@ -533,7 +533,7 @@ export function rejectedLines(row: CandidateRow): Line[] {
     case 'willo':
       return [
         {
-          text: 'Rejected in Willo → the system rejected automatically and sent email E2 (THC wording, not Willo’s).',
+          text: 'Rejected in Willo → the system rejected automatically and sent the rejection email (THC wording, not Willo’s).',
         },
       ];
     case 'quiz_failed': {
@@ -545,7 +545,7 @@ export function rejectedLines(row: CandidateRow): Line[] {
           : `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts`;
       return [
         {
-          text: `${attempts} — automatic rejection after the third failure; email E4 + terminal screen in the app.`,
+          text: `${attempts} — automatic rejection after the third failure; email sent + final screen in the app.`,
         },
       ];
     }

@@ -99,14 +99,7 @@ export default async function Page({
             The event to duplicate was not found, so this is a blank new event.
           </Alert>
         ) : null}
-        {source ? (
-          <Alert tone="cyan">
-            <b>Duplicating {source.title}.</b> The roles are copied — times, headcount, buffer,
-            {ratesVisible ? ' rates,' : ''} dress code — but <b>not the staff</b>: the new event
-            starts filling from zero. Set the new date, then save.{' '}
-            <Link href={`/events/${source.id}`}>Back to the original</Link>
-          </Alert>
-        ) : null}
+
         <ShiftBuilder
           mode="new"
           reference={reference}

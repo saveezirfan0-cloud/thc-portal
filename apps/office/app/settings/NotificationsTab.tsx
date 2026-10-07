@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Note, Panel, Pill, Switch } from '@thc/ui';
+import { Alert, Panel, Pill, Switch } from '@thc/ui';
 import { NOTIFICATION_SWITCH_GROUPS } from '@thc/notifications';
 import type { NotificationSwitch } from '@thc/notifications';
 import { saveNotificationSwitch } from './actions';
@@ -20,11 +20,6 @@ export function NotificationsTab({ off }: { off: readonly string[] }) {
 
   return (
     <div className="stack notif-tab">
-      <Note>
-        A notification that is <b>off</b> is not sent. Nothing is saved up to send later: anything
-        that falls due while it is off shows in the Inbox as “Not sent: switched off in Settings”.
-        Each switch saves at once.
-      </Note>
       {offCount > 0 ? (
         <Alert tone="amber">
           {offCount === 1 ? '1 notification is' : `${offCount} notifications are`} switched off.
@@ -87,9 +82,7 @@ function SwitchRow({ item, on }: { item: NotificationSwitch; on: boolean }) {
   return (
     <div className={draft ? 'notif-row' : 'notif-row is-off'}>
       <div className="notif-text">
-        <div className="notif-label">
-          {item.label} <span className="mono muted notif-code">{item.code}</span>
-        </div>
+        <div className="notif-label">{item.label}</div>
         <div className="sm muted">{item.when}</div>
         {!draft && item.warning ? <div className="sm notif-warning">{item.warning}</div> : null}
         {error ? <Alert tone="coral">{error}</Alert> : null}

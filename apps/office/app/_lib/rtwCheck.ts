@@ -318,7 +318,7 @@ export function rtwCheckView(
   if (row.record_name) lines.push({ k: 'Name on the record', v: row.record_name });
   if (row.reference_number) lines.push({ k: 'gov.uk reference', v: row.reference_number });
   if (row.status === 'rejected' && row.worker_reason) {
-    lines.push({ k: 'Worker asked to re-enter', v: `“${row.worker_reason}” (N8)` });
+    lines.push({ k: 'Worker asked to re-enter', v: `“${row.worker_reason}”` });
   }
 
   return {

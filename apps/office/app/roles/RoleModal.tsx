@@ -148,19 +148,6 @@ export function RoleModal({ role, onClose, onSaved }: RoleModalProps) {
         rows={3}
         hint="Never shown to the client."
       />
-
-      <div className="note">
-        No dress code here and no charge rate — both are client-specific and live on that
-        client&rsquo;s rate card.
-        {editing && changed && role.rate_card_count > 0 ? (
-          <>
-            {' '}
-            This role is on <b>{role.rate_card_count}</b>{' '}
-            {role.rate_card_count === 1 ? 'rate card' : 'rate cards'}; their margin moves unless
-            those charge rates are updated too.
-          </>
-        ) : null}
-      </div>
     </Modal>
   );
 }

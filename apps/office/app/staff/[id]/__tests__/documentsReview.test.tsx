@@ -281,12 +281,12 @@ describe('every click lands in /compliance’s own actions', () => {
     expect(actions.verifyDocument).not.toHaveBeenCalled();
   });
 
-  it('Reject needs a worker-facing reason, then sends it (N8)', async () => {
+  it('Reject needs a worker-facing reason, then sends it ', async () => {
     render({ documents: [doc({})], reviewQueue: [queued({})] });
     await click(buttons('Reject')[0]);
     const submit = buttons('Reject document', dialog())[0]!;
     expect(submit.disabled).toBe(true);
-    expect(dialog().textContent).toContain('push N8');
+    expect(dialog().textContent).toContain('in a push');
     type(dialog().querySelector('textarea')!, 'Photo page is cut off');
     expect(submit.disabled).toBe(false);
     await click(submit);

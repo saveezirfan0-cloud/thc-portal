@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, EmptyState, Note, Panel, Pill } from '@thc/ui';
+import { Avatar, EmptyState, Panel, Pill } from '@thc/ui';
 import { capReason, employeeId, formatUkDate, matchesCapFilter } from './staff';
 import type { CapFilter } from './staff';
 import type { StudentRow } from './types';
@@ -157,15 +157,6 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
           )}
         </div>
       </Panel>
-
-      <Note>
-        The cap is never typed or stored — it is derived on the date it is evaluated from the
-        verified term dates: 20 h in term (10 h below degree level), 48 h in a holiday range, 48 h
-        from the course completion date on an approved completion letter — never before it, and
-        never past the right-to-work expiry. The 48h opt-out cannot lift the in-term visa limit.
-        Push N14 tells the worker on the morning a band changes. Completion letters are approved in
-        Compliance → Needs review.
-      </Note>
     </>
   );
 }

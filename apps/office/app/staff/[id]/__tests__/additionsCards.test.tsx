@@ -104,7 +104,7 @@ describe('Referrals card (ADR-0047)', () => {
 
   it('never mentions a reward (Q19)', () => {
     const html = renderToStaticMarkup(<ReferralsCard referrals={referrals} />);
-    expect(html.replace('no reward (Q19)', '')).not.toMatch(/reward|bonus|£/i);
+    expect(html).not.toMatch(/reward|bonus|£/i);
   });
 
   it('says so when nobody referred them', () => {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Modal, Note, Textarea } from '@thc/ui';
+import { Alert, Button, Input, Modal, Textarea } from '@thc/ui';
 import {
   DOB_CORRECTION_MESSAGES,
   DOB_CORRECTION_REASON_MAX,
@@ -151,11 +151,6 @@ export function DobCorrection({
             hint={`Required, ${DOB_CORRECTION_REASON_MIN}–${DOB_CORRECTION_REASON_MAX} characters — say how you checked it, e.g. “Passport checked in the office”. Don’t type the date here: the log already records it.`}
             onChange={(event) => setReason(event.target.value)}
           />
-          <Note>
-            gov.uk matches the share code against this date. If a share code is waiting for review,
-            it is checked again with the new date. The change and your reason are written to the
-            activity log with your name; the worker sees the new date in the app.
-          </Note>
         </div>
       </Modal>
     </>

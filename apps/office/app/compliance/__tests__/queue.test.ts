@@ -247,7 +247,7 @@ describe('Needs review (§4.1)', () => {
         item_type: 'criminal_declaration',
         declaration_source: 'in_employment',
       }),
-    ).toContain('N15');
+    ).toContain('your shifts are open again');
   });
 });
 
@@ -296,7 +296,7 @@ describe('Radar (§4.1, §4.2)', () => {
   });
 
   it('shows the rungs the ladder actually queued, never inferred ones', () => {
-    expect(remindersLine(RADAR)).toBe('N1 25 Aug · N2 11 Sep');
+    expect(remindersLine(RADAR)).toBe('Reminder 1 25 Aug · Reminder 2 11 Sep');
     expect(
       remindersLine({
         ...RADAR,
