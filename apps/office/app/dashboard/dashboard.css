@@ -41,13 +41,50 @@
   white-space: nowrap;
 }
 
+/* The panel title's explanatory note sits on its own line, set off from
+   "next 10 days" rather than run into it. */
+.dash-note {
+  display: block;
+  font-weight: normal;
+}
+
+/* Desktop and tablet. Six columns with five-part role lines are wider than
+   the card on a laptop, and the Status pill was cut off at the right edge.
+   Tighter cell padding, a title column that keeps a readable measure, a
+   window and a status that never wrap, role lines that wrap instead of
+   pushing the table out, and a card that scrolls sideways as the last
+   resort rather than clipping. */
+@media (min-width: 761px) {
+  .table-scroll:has(> .dash-upcoming) {
+    overflow-x: auto;
+  }
+  .dash-upcoming {
+    min-width: 860px;
+  }
+  .dash-upcoming th,
+  .dash-upcoming td {
+    padding-inline: var(--sp-12);
+  }
+  .dash-upcoming td.cell-title {
+    min-width: 12rem;
+  }
+  .dash-upcoming td.mono,
+  .dash-upcoming td.dash-status {
+    white-space: nowrap;
+  }
+  .dash-upcoming .dash-roles .r {
+    flex-wrap: wrap;
+    row-gap: var(--sp-4);
+  }
+}
+
 /* Client and venue each keep to one line: a long client name such as
    "Leonardo Hotel St Paul's - M&E" would otherwise wrap and make the row
    taller than its neighbours. Past the cap it ends in an ellipsis; the full
    name is in the title attribute. */
 .dash-upcoming .dash-clip {
   display: block;
-  max-width: min(36ch, 100%);
+  max-width: min(26ch, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

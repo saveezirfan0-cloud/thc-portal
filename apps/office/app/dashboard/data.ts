@@ -68,6 +68,9 @@ export async function loadDashboard({ finance: withFinance = true } = {}): Promi
     supabase
       .from('dashboard_upcoming_v')
       .select('*')
+      // A cancelled event never appears on the Dashboard (ADR-0102). The
+      // row is kept for the record; this screen just does not list it.
+      .is('cancelled_at', null)
       // By date, then by the event's own window, then by when the role
       // section starts — the order §9.1 asks for and the order a manager
       // reads the day in.

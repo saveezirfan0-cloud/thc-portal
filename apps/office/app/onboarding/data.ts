@@ -182,6 +182,9 @@ export async function loadBoard(): Promise<BoardData> {
     return { candidates: [], returning: [], roles: [], problem: NOT_CONFIGURED };
   }
   const supabase = createClient(await cookies());
+  // The chaser read needs nothing from the others, so it starts with them
+  // instead of waiting behind the referrals.
+  const chasersRead = loadBoardChasers(supabase as unknown as ChaserReader);
   const [candidates, returning, roles] = await Promise.all([
     supabase
       .from('onboarding_candidates_v')
@@ -204,7 +207,7 @@ export async function loadBoard(): Promise<BoardData> {
       ...(candidates.data ?? []).map((row) => row.id),
       ...(returning.data ?? []).map((row) => row.staff_id),
     ]),
-    loadBoardChasers(supabase as unknown as ChaserReader),
+    chasersRead,
   ]);
   return {
     // §2.7: the onboarding selfie follows them through the whole system —
