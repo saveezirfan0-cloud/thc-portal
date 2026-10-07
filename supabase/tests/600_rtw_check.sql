@@ -16,7 +16,7 @@
 --   E. A dated pass sets the worker's right-to-work date.
 --   F. no_right_to_work → rejected AND a needs-review item of its own,
 --      cleared by Mark reviewed.
---   G. Errors back off (30 min …) and the last attempt goes to the office,
+--   G. Errors back off (2 min …) and the last attempt goes to the office,
 --      where the hand-typed date is allowed again.
 --   H. A name mismatch waits for the office with gov.uk's date pre-filled;
 --      Run check again; a pass Verify refuses becomes needs_review.
@@ -254,10 +254,10 @@ select is(
     jsonb_build_object('action', 'retry', 'error', 'timeout'), null, 'Timeout for W60000003') ->> 'status',
   'queued', 'G: a failed attempt goes back in the queue');
 select results_eq(
-  format($$ select attempts, error, next_attempt_at between now() + interval '29 minutes' and now() + interval '31 minutes'
+  format($$ select attempts, error, next_attempt_at between now() + interval '1 minute' and now() + interval '3 minutes'
               from rtw_checks where compliance_doc_id = %L $$, :'d3'),
   $$ values (1, 'timeout_for_share_code'::text, true) $$,
-  'G: after 30 minutes, with an error that has had the share code taken out of it');
+  'G: after 2 minutes (20261006170000), with an error that has had the share code taken out of it');
 select is((select count(*)::int from rtw_check_claim(10, 600) where document_id = :'d3'), 0,
   'G: not before its time');
 

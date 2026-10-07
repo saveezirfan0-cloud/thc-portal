@@ -93,10 +93,14 @@ describe('rtwCheckView', () => {
         attempts: 2,
         next_attempt_at: '2026-09-25T09:00:00Z',
         outcome: 'error',
+        error: 'govuk_timeout',
       }),
       { docStatus: 'pending', enabled: true },
     );
-    expect(view.lines[0]!.v).toBe('attempt 2 of 5 failed · next try 25.09.2026 10:00 UK time');
+    expect(view.lines[0]!.v).toBe(
+      'attempt 2 of 5 failed (gov.uk did not answer in time) · next try 25.09.2026 10:00 UK time',
+    );
+    expect(view.status?.label).toBe('Retrying');
   });
 
   it('stuck (the runner is not running): surfaced, with the hand-typed date (QA 25.09)', () => {

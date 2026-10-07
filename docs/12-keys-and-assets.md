@@ -305,7 +305,7 @@ photo comparison; false restores ADR-0025's automatic verify / reject), `company
 `stale_after_minutes` (60: a check the runner has not touched for this long shows in
 Needs review with the hand-typed date allowed) and `reenter_per_day` (5: how often a
 candidate may re-enter a share code in 24 hours).
-The `rtw-check` schedule (every 10 minutes) is registered **disabled**. Enabling it is a
+The `rtw-check` schedule (every minute) is registered **disabled**. Enabling it is a
 migration plus pgTAP 190, then `select install_job_schedules();`. Without the two vault
 secrets `office_base_url` and `rtw_job_secret` that row is skipped (with a notice) and the
 rest install; the nudge likewise does nothing.

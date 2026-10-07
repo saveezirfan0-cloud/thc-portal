@@ -75,7 +75,7 @@ export async function runRtwCheckAgain(docId: string): Promise<RtwActionResult> 
   return {
     ok: true,
     message:
-      'Queued. The gov.uk check runs within 10 minutes; a pass verifies the share code by itself.',
+      'Queued. The gov.uk check runs within a minute; the result then waits on the Needs review tab for Verify or Reject.',
   };
 }
 

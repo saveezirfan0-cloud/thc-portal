@@ -21,6 +21,8 @@ export interface CheckInput {
   dateOfBirth: string;
   /** Who gov.uk is told is checking (settings.rtw_check.company_name). */
   companyName: string;
+  /** The worker's own names: blanked from any text shown to the office (`pageHint`). */
+  redact?: string[];
 }
 
 export interface CheckOutput {
@@ -29,6 +31,13 @@ export interface CheckOutput {
   report: Uint8Array | null;
   /** The applicant's photo gov.uk showed (PNG), for the admin to compare with the selfie (ADR-0041). */
   photo?: Uint8Array | null;
+  /**
+   * Only when the page said "right to work" but no end date could be read:
+   * the lines of that page that carry a date or a number, with the worker's
+   * name, date of birth and share code taken out — so the office can read the
+   * date without opening the PDF, and the wording can be added to the reader.
+   */
+  hint?: string | null;
 }
 
 export interface RightToWorkChecker {
@@ -111,7 +120,7 @@ export function parseUkDate(raw: unknown): string | null {
     [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
   } else if ((match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(text))) {
     [d, m, y] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  } else if ((match = /^(\d{1,2})\s+([A-Za-z]{3,9})\.?\s+(\d{4})$/.exec(text))) {
+  } else if ((match = /^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?\s+(\d{4})$/.exec(text))) {
     const name = match[2]!.toLowerCase();
     const month = Object.entries(MONTHS).find(([full]) => full.startsWith(name.slice(0, 3)));
     if (!month || (name.length > 3 && !month[0].startsWith(name))) return null;

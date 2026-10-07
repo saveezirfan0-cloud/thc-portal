@@ -53,7 +53,7 @@ Neither gov.uk nor any provider was reachable from the environment this was buil
 
 | Result | Action |
 |---|---|
-| `error` | **retry**. The database backs off 30 min, 2 h, 6 h and 16 h, so 5 attempts span about a day. The fifth failure becomes **needs_review** with the reason. |
+| `error` | **retry**. The database backs off 2 min, 10 min, 30 min and 2 h (5 attempts over about three hours; was 30 min … 16 h until 06.10.2026). The fifth failure becomes **needs_review** with the reason. The office is the LAST resort. A result page whose end date was not found (`govuk_no_expiry`) is first read again inside the attempt (whole page, not only `<main>`, after the page has loaded; with no labelled date, the only future date on the page is taken — never a share-code or birth line, and two candidates is an error), then retried, and after three reads in all goes to **needs_review** with gov.uk's PDF attached. A page that carries two different end dates or contradicts itself (`govuk_unreadable_date`, `govuk_contradictory_result`) cannot change on a retry and goes to the office at once; an unrecognised page such as a maintenance notice is retried and never filed as a report. |
 | `not_found` | **reject** through the office's Reject, so the worker gets N8: "gov.uk did not recognise this share code with your date of birth — check both and try again". |
 | `no_right_to_work` | **reject** (N8) **and needs_review**. The office must know, whatever the worker does next. |
 | `right_to_work` | **verify**, unless any rule below sends it to **needs_review** instead. Nothing on this list is ever auto-verified. |
@@ -99,7 +99,7 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
   - `rtw_check_claim()` leases due checks, `for update skip locked`, with a 10-minute lease. A lapsed lease is re-taken as a new attempt. It hands the share code and date of birth to the runner **for that run only**.
   - `rtw_check_record()` applies the decision.
 - **The report** is uploaded to the private `documents` bucket at `<staff_id>/share-code-report/rtw-check-<check_id>.pdf`. The path is refused unless it is under that worker. It is written to `rtw_checks.report_path` and to `compliance_docs.gov_report_path`. §2.6: "stored on the profile".
-- **The schedule:** a `job_schedules` row `rtw-check` runs every 10 minutes. `job_schedules` gained `base_url_source` and `secret_name` (each checked: `edge_base_url` / `office_base_url`, `service_role_key` / `rtw_job_secret`, and the service key only ever to `edge_base_url`):
+- **The schedule:** a `job_schedules` row `rtw-check` runs every minute (every 10 until 06.10.2026) and checks run two at a time. `job_schedules` gained `base_url_source` and `secret_name` (each checked: `edge_base_url` / `office_base_url`, `service_role_key` / `rtw_job_secret`, and the service key only ever to `edge_base_url`):
   - this row posts to `office_base_url()` + `/api/jobs/rtw-check` with the vault secret `rtw_job_secret`, never the service key;
   - **the base is a Vault secret named `office_base_url`, not a settings row** (security review, 26.09). An admin session can write `settings`, so a stolen one could have pointed the base at its own host and collected `Bearer <rtw_job_secret>` on every tick. Only the owner and the service role can set a Vault secret. `office_base_url()` still checks at run time that it is an https origin with no path;
   - without either Vault secret the installer skips that row with a notice and installs the rest;
@@ -264,3 +264,19 @@ These steps are in `OWNER-TODO.md` §8, with the keys in `docs/12-keys-and-asset
 4. Run one check by hand with a consenting worker's share code, and confirm assumptions 7–12.
 5. Set `settings.rtw_check.enabled = true`.
 6. Ask a session to enable the `rtw-check` schedule. That is a migration plus pgTAP 190's list. Then run `select install_job_schedules();`.
+
+### Amendment 06.10.2026 (late): what the office is shown
+
+When the system hands over a result page whose end date it could not read, the office reason carries **the lines of that page about the person's status or permission, or that hold a number or a date** (at most six, 100 characters each; the page footer is dropped), so the date can be read, and the wording added to the reader, without opening the PDF. A line about birth, the share code, a reference or a name is dropped whole, the worker's own names are blanked, and a line holding their date of birth is dropped. It is built in `pageHint()` (`govuk.ts`), kept only in `rtw_checks.review_reason` (500 characters), and **never logged**; the page text itself is still never stored or logged.
+
+### Amendment 06.10.2026 (night): the live wording for a status with no end date
+
+The first live page for a worker on the EU settled / pre-settled branch (captured through `pageHint()`) states: "They have the right to work in the UK." … "Conditions" … "They can work in any job." / "There is no limit on how long they can stay in the UK." … "Legal basis of status". There is **no date anywhere on it**, and no "no time limit" wording the reader knew. It is now read as gov.uk saying there is no time limit: the sentence is a `noTimeLimit` pattern (gov.uk says so, in words — ADR-0018 still forbids reading a blank that way), it is a recognised whole-line benign condition, and "Legal basis of status" ends a conditions list. A pass on a branch whose right to work always ends (work visa, student, dependant) with no date still goes to the office.
+
+### Amendment 06.10.2026 (night, 2): the record holder's name, and a hint that masks instead of drops
+
+The second live page was read as a pass with no end date, then stopped at Needs review: "The name on the gov.uk record does not match the name on the profile." The stored result had **no name at all**: the page's name is not laid out as the reader's "Name" label expected. Two changes. (1) The name is read from "Name: X", "Name<tab>X", "Name  X" and the label-above form; and when the page has no recognisable label, the shortest short line carrying **both** the profile's first and last name is taken as the record name (`recordNameFromPage`). A page naming someone else has no such line, so the name stays missing and the check still goes to the office. (2) `pageHint()` now **masks** the worker's name, date of birth, share code and any long reference with ▢ instead of dropping those lines, so the page's layout (where the name sits, what labels it) can be read without identifying the person; it is attached whenever a pass is handed over with no end date or no record name, and appended to the office reason (500 characters) without replacing it.
+
+### Amendment 06.10.2026 (night, 3): a condition line is judged one sentence at a time
+
+With the date and the name read, the third live check stopped on "a work condition the system cannot apply automatically": gov.uk prints "They can work in any job. There is no limit on how long they can stay in the UK." as **one** line, and the whole-line benign patterns match one sentence each. `unrecognisedConditions()` now splits a line into sentences and recognises it only when **every** sentence is recognised, so a restrictive sentence beside a benign one ("They can work in any job. They cannot work more than 10 hours a week.") still goes to the office.

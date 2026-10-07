@@ -469,8 +469,8 @@ screens for a cancelled event and a removal, and the push registration.
 > and absent entirely where the client pays for breaks (§3.2).
 >
 > Pay is computed by `payableMinutes` in `@thc/domain`. Note the asymmetry it encodes:
-> checking in inside the grace pays from the SCHEDULED start, checking in past it pays
-> from the ACTUAL time.
+> checking in on or before the start pays from the SCHEDULED start, checking in late
+> (grace or not, ADR-0095) pays from the ACTUAL time.
 >
 > Done when: it matches the frame and the earnings screen agrees with the domain function
 > in every case.
