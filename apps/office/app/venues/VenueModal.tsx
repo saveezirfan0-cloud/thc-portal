@@ -228,7 +228,7 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
 
         <div className="field venue-search">
           <label className="label" htmlFor={searchId}>
-            Find the venue <span className="muted">· postcode or street address</span>
+            Find the venue <span className="muted">· by postcode or street</span>
           </label>
           <div className="venue-search-row">
             <input

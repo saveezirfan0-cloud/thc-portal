@@ -31,10 +31,21 @@ describe('New venue modal — search by postcode or street address (§9.11, ADR-
   );
 
   it('offers a postcode / street-address search above the map', () => {
-    expect(markup).toContain('postcode or street address');
+    expect(markup).toContain('Find the venue');
+    expect(markup).toContain('by postcode or street');
     expect(markup).toContain('type="search"');
     // Nothing to search for yet, so Search cannot be pressed.
     expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Search<\/button>/);
+  });
+
+  it('leaves the read-only Address as the only field labelled "address"', () => {
+    // e2e/tests/office.venues.spec.ts finds it with getByLabel('Address'),
+    // which matches by substring: a second label containing the word makes
+    // that a strict-mode violation (and two "address" fields for a screen reader).
+    const labels = [...markup.matchAll(/<label[^>]*>(.*?)<\/label>/g)].map((m) =>
+      (m[1] ?? '').replace(/<[^>]+>/g, ''),
+    );
+    expect(labels.filter((text) => /address/i.test(text))).toHaveLength(1);
   });
 
   it('keeps the address read-only: search places the pin, it does not make the address typeable', () => {
