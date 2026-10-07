@@ -68,6 +68,7 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Branch `feat/<domain>-<thing>`; small PRs; one domain per PR; shared-package changes in their own PR first.
 - Every table: RLS + pgTAP test for admin/client/staff.
 - Every screen: matches its wireframe; states listed in `docs/08-screen-inventory.md`; deviations → `docs/adr/`.
+- The Back Office `/events` calendar deliberately departs from §3.1 ("cells scroll", "columns scroll independently"): month cells show a few chips and a "+N more" day popup, week columns fold into day bands (ADR-0096).
 - Never put secrets in code; Edge Function secrets via `supabase secrets`, Vercel env vars per app.
 - Sample/seed data mirrors `wireframes/CONVENTIONS.md` so screenshots and tests read the same.
 - Use the domain bots in `.claude/agents/` (see `docs/05-domain-bots.md`). Ask `qa-reviewer` before opening a PR.

@@ -22,9 +22,10 @@
   .wk .col.today .ch .d { color: var(--cyan); }
   .wk .ch .c { font-family: var(--font-mono); font-size: 10px; color: var(--amber); }
   .wk .ch .c.ok { color: var(--green); }
-  .wk .list { padding: 6px; display: flex; flex-direction: column; gap: 6px; overflow: auto; max-height: 480px; }
+  .wk .list { padding: 6px; display: flex; flex-direction: column; gap: 6px; }
   .wk .list > * { flex: 0 0 auto; }
   .cal .day .scroll > * { flex: 0 0 auto; }
+  .cal .day .evmore { font-family: var(--font-mono); font-size: 10px; color: var(--cyan); text-decoration: none; padding: 2px 6px; }
   .wchip { background: var(--bg); border-left: 3px solid var(--amber); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font-size: 11.5px; }
   .wchip:hover { outline: 1px solid var(--cyan-line); }
   .wchip.full { border-left-color: var(--green); }
@@ -218,7 +219,7 @@
           <div class="day"><div class="d">16 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=completed"><span class="t">11:00</span>Corporate Lunch · Dorchester<span class="f">full</span></a></div></div>
           <div class="day"><div class="d">17 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=completed"><span class="t">17:00</span>Press Night · Mandarin<span class="f">full</span></a></div></div>
           <div class="day today"><div class="d">18 <span class="cnt">3 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=ongoing"><span class="t">08:00</span>Conference Day 2 · ExCeL<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">15:00</span>Afternoon Tea · Leonardo<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">17:00</span>Board Dinner · Dorchester<span class="f">full</span></a></div></div>
-          <div class="day"><div class="d">19 <span class="cnt">11 ev · 9 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">06:00</span>Breakfast · Leonardo<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">07:00</span>Gala Dinner · Leonardo<span class="f">4 open</span></a><a class="evchip full" href="event-board.html"><span class="t">08:00</span>Conference Day 3 · ExCeL<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">11:00</span>Lunch · Dorchester<span class="f">2 open</span></a><a class="evchip full" href="event-board.html"><span class="t">12:00</span>Lunch · Mandarin<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">14:00</span>Tea · Leonardo<span class="f">1 open</span></a><a class="evchip full" href="event-board.html"><span class="t">17:00</span>Drinks · Dorchester<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">18:00</span>Product Launch — Bar · Mandarin<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">18:00</span>Dinner · Hurst<span class="f">2 open</span></a><a class="evchip full" href="event-board.html"><span class="t">19:00</span>Awards · ExCeL<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">20:00</span>Late Bar · Mandarin<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">19 <span class="cnt">11 ev · 9 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">06:00</span>Breakfast · Leonardo<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">07:00</span>Gala Dinner · Leonardo<span class="f">4 open</span></a><a class="evchip full" href="event-board.html"><span class="t">08:00</span>Conference Day 3 · ExCeL<span class="f">full</span></a><a class="evmore" href="#day-19">+8 more · 5 open</a></div></div>
           <div class="day"><div class="d">20 <span class="cnt">2 ev · 7 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">11:00</span>Wedding — Marquee · Hurst<span class="f">7 open</span></a><a class="evchip full" href="event-board.html"><span class="t">19:00</span>Dinner · Dorchester<span class="f">full</span></a></div></div>
           <div class="day"><div class="d">21 <span class="cnt">1 ev · cancelled</span></div><div class="scroll"><a class="evchip cancelled" href="event-board.html"><span class="t">08:00</span>Conference Lunch · ExCeL</a></div></div>
 
@@ -240,7 +241,7 @@
           <div class="day other"><div class="d">4</div></div>
           <div class="day other"><div class="d">5</div></div>
         </div>
-        <span class="annot">Fri 19 holds 11 events — the cell scrolls (10–15 events per day in season, §3.1). Chip = start time · event · client; pill full / N-open; "N ev · M open" per day</span>
+        <span class="annot">Fri 19 holds 11 events — the cell shows three chips and "+8 more · 5 open", which opens a popup listing every event that day, enlarged, with an "Open day view" link (ADR-0096; this replaces the scrolling cell of §3.1). Events with the same title, client and start collapse into one chip, "Morning Waiting Staff ×4 · Client", which opens the same popup. Chip = start time · event · client; pill full / N-open; "N ev · M open" per day</span>
       </section>
 
       <!-- ================= WEEK ================= -->
@@ -301,7 +302,7 @@
             <div class="list"><a class="wchip cancelled" href="event-board.html"><span class="w">08:00 – 16:00</span><span class="n">Conference Lunch</span><span class="m">ExCeL London · Royal Victoria Dock</span></a><div class="empty" style="padding:14px 8px;font-size:11px;text-decoration:none">Cancelled by client 16 Sep — stays visible, greyed (§3.3)</div></div>
           </div>
         </div>
-        <span class="annot">Sunday sits last — Monday to Sunday, the payroll week (RULE-06). Each column scrolls on its own; clicking a chip opens the event board</span>
+        <span class="annot">Sunday sits last — Monday to Sunday, the payroll week (RULE-06). Columns do not scroll on their own — the page does. A column of more than 8 events folds into Overnight / Morning / Afternoon / Evening bands by UK start hour, each its own "N ev · M open" and open only while it still needs staff (ADR-0096); clicking a chip opens the event board</span>
       </section>
 
       <!-- ================= DAY ================= -->
@@ -341,7 +342,7 @@
       </section>
     </div>
 
-    <div class="wf-note note"><b>Behaviour notes.</b> Two views, one toggle reading "List" first, "Calendar" second, working both ways with no duplicate (§3.1). Back / forward arrows around the period label in both views, so past events are browsable in List too. "+ New event" lives in the top-right of the header in every view. Cells and week columns scroll to hold 10–15 events a day; fill indication = EventChip full / N-open plus a daily "N ev · M open" counter (§3.1). Week view: seven Monday–Sunday columns, current day highlighted, chips ordered by event-window start, each chip showing start–end, client, venue and an "N of M" pill — amber while short, green when every role is confirmed; column headers carry the date and the same counter. Headcount reads "N (+buffer)" everywhere, never the total (§3.2, RULE-07); fill counts ONLY confirmed. The event window is derived from the earliest role start to the latest role end (RULE-18) — individual role times are on the row and on the event board. A cancelled event stays visible, greyed, with a Cancelled label; it contributes nothing to financials (§3.3). Status pill Upcoming / Ongoing / Completed / Cancelled per §1.5 appears on every row and chip. Duplicate copies the roles, not the staff (§3.2).</div>
+    <div class="wf-note note"><b>Behaviour notes.</b> Two views, one toggle reading "List" first, "Calendar" second, working both ways with no duplicate (§3.1). Back / forward arrows around the period label in both views, so past events are browsable in List too. "+ New event" lives in the top-right of the header in every view. A month cell shows three chips and "+N more" (a popup listing the day) and a week column folds into day bands, rather than scrolling, to hold 10–15 events a day (ADR-0096); fill indication = EventChip full / N-open plus a daily "N ev · M open" counter (§3.1). Week view: seven Monday–Sunday columns, current day highlighted, chips ordered by event-window start, each chip showing start–end, client, venue and an "N of M" pill — amber while short, green when every role is confirmed; column headers carry the date and the same counter. Headcount reads "N (+buffer)" everywhere, never the total (§3.2, RULE-07); fill counts ONLY confirmed. The event window is derived from the earliest role start to the latest role end (RULE-18) — individual role times are on the row and on the event board. A cancelled event stays visible, greyed, with a Cancelled label; it contributes nothing to financials (§3.3). Status pill Upcoming / Ongoing / Completed / Cancelled per §1.5 appears on every row and chip. Duplicate copies the roles, not the staff (§3.2).</div>
   </div>
 </div>
 </body>

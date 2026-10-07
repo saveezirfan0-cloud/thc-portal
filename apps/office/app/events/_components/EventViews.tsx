@@ -9,7 +9,16 @@ import {
   formatOpen,
 } from '@thc/domain';
 import { formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
-import { type DayBucket, type EventRow, fillTone } from '../view-model';
+import {
+  type DayBucket,
+  type EventRow,
+  WEEK_COLUMN_FOLD_AT,
+  bandDay,
+  fillTone,
+  monthCellModel,
+} from '../view-model';
+import { ChipStatus } from './ChipStatus';
+import { MonthCellEvents } from './MonthCellEvents';
 import { ScheduledWindow } from './ScheduledWindow';
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
@@ -28,25 +37,6 @@ export function StatusPill({ status }: { status: EventStatus }) {
 }
 
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
-
-/**
- * The status pill, small, for a calendar chip (§3.2: "the same pill appears
- * on each event's row in the List view and Calendar"). The chip's border
- * already carries the fill colour, so the pill carries the words.
- */
-function ChipStatus({ status }: { status: EventStatus }) {
-  return (
-    <span className={classes('st', status)} aria-label={`Status: ${EVENT_STATUS_LABEL[status]}`}>
-      {EVENT_STATUS_LABEL[status]}
-    </span>
-  );
-}
-
-/** The chip's fill word: "full", "4 open", or nothing once cancelled. */
-function chipFill(row: EventRow): string | null {
-  if (row.status === 'cancelled') return null;
-  return formatOpen(row.fill) ?? 'full';
-}
 
 // ---------------------------------------------------------------------
 // List
@@ -232,39 +222,20 @@ export function MonthView({
               ) : null}
             </div>
             {bucket && bucket.events.length > 0 ? (
-              <div className="scroll">
-                {bucket.events.map((row) => (
-                  <MonthChip key={row.id} row={row} />
-                ))}
-              </div>
+              <MonthCellEvents
+                model={monthCellModel(bucket.events)}
+                heading={`${formatDayLong(cell.iso)} · ${
+                  bucket.allCancelled
+                    ? `${bucket.count} ev · cancelled`
+                    : formatCounter(bucket.count, bucket.open)
+                }`}
+                dayHref={dayHref ? dayHref(cell.iso) : null}
+              />
             ) : null}
           </div>
         );
       })}
     </div>
-  );
-}
-
-function MonthChip({ row }: { row: EventRow }) {
-  const tone = fillTone(row);
-  const fill = chipFill(row);
-  return (
-    <Link
-      className={classes(
-        'evchip',
-        row.status === 'cancelled' && 'cancelled',
-        row.status === 'ongoing' && 'ongoing',
-        row.status !== 'cancelled' && tone === 'green' && 'full',
-      )}
-      href={`/events/${row.id}`}
-      title={`${row.title} · ${row.clientName} · ${EVENT_STATUS_LABEL[row.status]}`}
-    >
-      <span className="t">{row.windowStartLabel}</span>
-      {row.title} · {row.clientName}
-      {/* §3.2: the status pill appears on the calendar as on the list. */}
-      <ChipStatus status={row.status} />
-      {fill ? <span className="f">{fill}</span> : null}
-    </Link>
   );
 }
 
@@ -294,18 +265,51 @@ export function WeekView({
                 {WEEKDAY_HEADS[weekdayIndex(iso)]} {Number(iso.slice(8, 10))}
                 {iso === today ? ' · today' : ''}
               </span>
-              <span className={classes('c', open === 0 && 'ok')}>
-                {count === 0 ? '0 ev' : formatCounter(count, open)}
+              <span className={classes('c', open === 0 && !bucket?.allCancelled && 'ok')}>
+                {count === 0
+                  ? '0 ev'
+                  : bucket?.allCancelled
+                    ? `${count} ev · cancelled`
+                    : formatCounter(count, open)}
               </span>
             </div>
-            <div className="list">
-              {(bucket?.events ?? []).map((row) => (
-                <WeekChip key={row.id} row={row} />
-              ))}
-            </div>
+            <WeekColumnBands rows={bucket?.events ?? []} />
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * A column's events, folded into day bands (Overnight, Morning, Afternoon, Evening, and
+ * "No roles yet" for an event with no role sections) that open
+ * and close on their own (ADR-0096). A column of 8 or fewer shows everything;
+ * a longer one opens only the bands that still need staff, so the page — not
+ * seven inner scroll boxes — is what scrolls, and what is short is on top.
+ */
+function WeekColumnBands({ rows }: { rows: EventRow[] }) {
+  const bands = bandDay(rows);
+  const fold = rows.length > WEEK_COLUMN_FOLD_AT;
+  return (
+    <div className="list">
+      {bands.map((band) => (
+        <details className="band" key={band.key} open={!fold || band.open > 0}>
+          <summary>
+            <span className="bn">{band.label}</span>
+            <span className={classes('bc', band.open === 0 && !band.allCancelled && 'ok')}>
+              {band.allCancelled
+                ? `${band.events.length} ev · cancelled`
+                : formatCounter(band.events.length, band.open)}
+            </span>
+          </summary>
+          <div className="bl">
+            {band.events.map((row) => (
+              <WeekChip key={row.id} row={row} />
+            ))}
+          </div>
+        </details>
+      ))}
     </div>
   );
 }
