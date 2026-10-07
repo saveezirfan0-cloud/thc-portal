@@ -1649,8 +1649,8 @@ function RolesAndClients({
  * Client qualification (§9.6): who the candidate is cleared for at which
  * client. Two halves, so the list never grows the page:
  *
- *   Add — search the clients, tick as many as needed, choose the roles (all
- *   the candidate holds, unticked to narrow), one button. A client already
+ *   Add — search the clients, tick as many as needed, one button; each client
+ *   is cleared for every role the candidate holds. A client already
  *   cleared for every chosen role is shown as done, not offered again.
  *
  *   Cleared at — one line per client with its roles as chips, scrolling
@@ -1676,9 +1676,9 @@ function ClientQualification({
   const [search, setSearch] = useState('');
   const [listSearch, setListSearch] = useState('');
   const [chosen, setChosen] = useState<string[]>([]);
-  // Every held role starts ticked: the common case is "all of them".
-  const [unticked, setUnticked] = useState<string[]>([]);
-  const roleIds = held.map((role) => role.id).filter((id) => !unticked.includes(id));
+  // The ticks on the left are the role list: every client added is cleared for
+  // all of them, so there is no second role pick here.
+  const roleIds = held.map((role) => role.id);
   const groups = useMemo(() => groupQualifications(qualifications), [qualifications]);
   const cleared = useMemo(
     () => new Set(qualifications.map((q) => `${q.client_id}:${q.role_id}`)),
@@ -1690,8 +1690,6 @@ function ClientQualification({
   const pickable = shown.filter((client) => !doneAt(client.id)).map((client) => client.id);
   const toggleClient = (id: string) =>
     setChosen((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
-  const toggleRole = (id: string) =>
-    setUnticked((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
   const entries = newEntryCount(chosen, roleIds, qualifications);
   const listed = groups.filter((group) => matchesName(group.client_name, listSearch));
 
@@ -1716,27 +1714,10 @@ function ClientQualification({
           <EmptyState>No clients exist yet — add them under Clients.</EmptyState>
         ) : (
           <div className="stack">
-            <div className="field">
-              <span className="label">Add a client — roles to grant</span>
-              <div className="row wrap cq-roles">
-                {held.map((role) => {
-                  const on = roleIds.includes(role.id);
-                  return (
-                    <label key={role.id} className={on ? 'check sel' : 'check'}>
-                      <input
-                        type="checkbox"
-                        className="check-input"
-                        checked={on}
-                        disabled={busy}
-                        onChange={() => toggleRole(role.id)}
-                      />
-                      <span className={on ? 'box on' : 'box'} />
-                      {role.name}
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
+            <span className="label">
+              Add clients — each is cleared for all {held.length}{' '}
+              {held.length === 1 ? 'role' : 'roles'} saved on the left
+            </span>
             <Input
               type="search"
               aria-label="Search clients to add"

@@ -364,7 +364,9 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
         qualifications: [],
       }),
     );
-    expect(html).toContain('Add a client');
+    expect(html).toContain('Add clients');
+    // No second role pick: the roles come from the ticks on the left.
+    expect(html).toContain('saved on the left');
     expect(html).toContain('Search 1 clients');
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Not cleared at any client yet.');
