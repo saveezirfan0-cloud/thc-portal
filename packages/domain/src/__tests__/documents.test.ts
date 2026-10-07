@@ -12,6 +12,9 @@ import {
   parseShareCode,
   termLetterDatesVerdict,
   termLetterExpired,
+  termLetterExpiresOn,
+  termLetterFallbackExpiry,
+  termLetterLastDay,
   usesGenericUpload,
 } from '../documents';
 import type { TermRange } from '../documents';
@@ -139,9 +142,9 @@ describe('§4.2 an already-expired term-dates letter is not accepted', () => {
     expect(termLetterExpired('2026-09-25', null)).toBe(false);
   });
 
-  it('is judged on the printed dates, not on the 31 December doc_expires_on() gives the letter', () => {
-    // Uploaded in September, so doc_expires_on() says 31 December this year
-    // and the ladder has not opened — but every date on it is last year's.
+  it('is judged on the printed dates, whatever expiry the row carries', () => {
+    // Every date on it is last year's, so the refusal fires however the
+    // row's own expiry reads.
     expect(
       documentState(
         {
@@ -163,5 +166,67 @@ describe('§4.2 an already-expired term-dates letter is not accepted', () => {
     expect(sql).toContain('create or replace function public.term_letter_expired(');
     expect(sql).toContain("raise exception 'term_letter_expired");
     expect(sql).toContain("'letter expired'");
+  });
+});
+
+describe('when a term letter expires (ADR-0103)', () => {
+  // The vacation ranges on a 2026/27 letter, as the extractor reads them.
+  const academicYear: TermRange[] = [
+    { from: '2026-12-19', to: '2027-01-10' },
+    { from: '2027-03-27', to: '2027-04-18' },
+    { from: '2027-06-19', to: '2027-09-26' },
+  ];
+
+  it('is the last day printed on the letter, not 31 December', () => {
+    expect(termLetterLastDay(academicYear)).toBe('2027-09-26');
+    expect(termLetterExpiresOn(academicYear, '2026-10-07')).toBe('2027-09-26');
+  });
+
+  it('does not depend on the order the ranges are listed, or on one typed backwards', () => {
+    expect(termLetterLastDay([...academicYear].reverse())).toBe('2027-09-26');
+    expect(termLetterLastDay([{ from: '2027-09-26', to: '2027-06-19' }])).toBe('2027-09-26');
+  });
+
+  it('lets the letter outlive 31 December, which is the point of the change', () => {
+    // Uploaded in October, valid into the next autumn: no December reminder.
+    expect(termLetterExpiresOn(academicYear, '2026-10-07') > '2026-12-31').toBe(true);
+  });
+
+  it('a letter that stops at Christmas expires then, and is chased for the next one', () => {
+    expect(termLetterExpiresOn([{ from: '2026-12-19', to: '2027-01-10' }], '2026-10-07')).toBe(
+      '2027-01-10',
+    );
+  });
+
+  it('with no readable dates, falls back to the calendar rule of ADR-0011', () => {
+    expect(termLetterLastDay([])).toBeNull();
+    expect(termLetterLastDay(null)).toBeNull();
+    expect(termLetterExpiresOn([], '2026-10-07')).toBe('2026-12-31');
+    expect(termLetterExpiresOn(undefined, '2026-11-02')).toBe('2027-12-31');
+    expect(termLetterFallbackExpiry('2026-10-31')).toBe('2026-12-31');
+    expect(termLetterFallbackExpiry('2026-11-01')).toBe('2027-12-31');
+    expect(termLetterFallbackExpiry('2026-12-05')).toBe('2027-12-31');
+  });
+
+  it('feeds the §4.4 state: expiring in the month before the last printed day', () => {
+    const row = (expiresOn: string) => ({
+      docType: 'university_term_dates_letter' as const,
+      reviewStatus: 'verified' as const,
+      expiresOn,
+    });
+    const expiresOn = termLetterExpiresOn(academicYear, '2026-10-07');
+    expect(documentState(row(expiresOn), '2027-08-26')).toBe('verified');
+    expect(documentState(row(expiresOn), '2027-08-27')).toBe('expiring');
+    expect(documentState(row(expiresOn), '2027-09-26')).toBe('expired');
+  });
+
+  it('the SQL twin gives the letter its last printed day, with the calendar rule as the fallback', () => {
+    const sql = readFileSync(
+      resolve(migrations, '20261007130000_term_letter_expires_with_its_own_dates.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('select max(upper(r) - 1)');
+    expect(sql).toContain('term_letter_last_day(p_term_dates)');
+    expect(sql).toContain('extract(month from d) >= 11');
   });
 });

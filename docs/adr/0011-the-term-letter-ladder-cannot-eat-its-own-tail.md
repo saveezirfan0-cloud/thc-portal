@@ -1,6 +1,9 @@
 # ADR-0011 · A term letter uploaded inside the ladder window runs to the following 31 December
 
-**Status:** Accepted, 21.09.2026. A deliberate, narrow deviation from a literal reading of
+**Status:** Superseded by [ADR-0103](0103-term-letter-expires-on-its-last-printed-date.md),
+07.10.2026 — a term letter now expires on the last day printed on it; the rule below
+survives only as the fallback for a letter with no readable dates. Originally: Accepted,
+21.09.2026. A deliberate, narrow deviation from a literal reading of
 §4.2, implemented in `doc_expires_on()` in
 `supabase/migrations/20260921170411_compliance_daily.sql`. Recorded because CLAUDE.md says
 the scope wins where it and the code disagree, and this is the one place in the compliance
