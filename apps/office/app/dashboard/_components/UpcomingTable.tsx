@@ -139,7 +139,7 @@ export function UpcomingTable({
                   })}
                 </div>
               </td>
-              <td data-label="Status">
+              <td data-label="Status" className="dash-status">
                 <Pill tone={STATUS_TONE[status]} dot={status === 'ongoing'}>
                   {EVENT_STATUS_LABEL[status]}
                 </Pill>
