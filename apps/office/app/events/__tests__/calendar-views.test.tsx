@@ -67,7 +67,7 @@ function week(events: ListedEvent[]) {
   );
 }
 
-describe('the month cell on a busy day (ADR-0094)', () => {
+describe('the month cell on a busy day (ADR-0096)', () => {
   const html = renderToStaticMarkup(month(busyDay(12), DAY_HREF));
 
   it('draws three chips and a "+9 more · 27 open" button, with the daily counter intact', () => {
@@ -90,7 +90,7 @@ describe('the month cell on a busy day (ADR-0094)', () => {
   });
 });
 
-describe('the day popup (ADR-0094)', () => {
+describe('the day popup (ADR-0096)', () => {
   let container: HTMLDivElement;
   let root: Root;
   beforeEach(() => {
@@ -146,7 +146,7 @@ describe('the day popup (ADR-0094)', () => {
   });
 });
 
-describe('the week column (ADR-0094)', () => {
+describe('the week column (ADR-0096)', () => {
   it('folds a long column into bands, opening only those that still need staff', () => {
     // Nine events 06:00–14:00 (mornings → afternoon); the first morning one is fully staffed.
     const events = busyDay(9);

@@ -1,4 +1,4 @@
-# ADR-0094 · Calendar density: no scroll boxes inside month cells or week columns
+# ADR-0096 · Calendar density: no scroll boxes inside month cells or week columns
 
 **Status:** Accepted · **Requested:** by the repository owner, in the session that made this change (6 Oct 2026) · **Wireframe:** `backoffice/events.html` still draws the scrolling cell and columns (Fri 19 with 11 chips, "the cell scrolls", "each column scrolls on its own") and is **not yet updated**; this ADR is the deviation record until it is · **§3.1**
 

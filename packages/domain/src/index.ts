@@ -26,3 +26,4 @@ export * from './dob';
 export * from './shiftOffer';
 export * from './referral';
 export * from './languages';
+export * from './roleArea';

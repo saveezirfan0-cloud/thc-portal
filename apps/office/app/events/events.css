@@ -9,7 +9,7 @@
 /* ---- week: seven columns of vertical lists, not a time grid ----------
    §3.1 is explicit that a day carries 10-15 events with overlapping
    windows, which collapses a time-gridded diary — so each column is an
-   ordered list. ADR-0094 supersedes "scrolls on its own": the page scrolls,
+   ordered list. ADR-0096 supersedes "scrolls on its own": the page scrolls,
    and a long column folds into day bands. */
 .wk {
   display: grid;
@@ -66,7 +66,7 @@
   flex: 0 0 auto;
 }
 
-/* ADR-0094: the column no longer scrolls on its own; the page does. A long
+/* ADR-0096: the column no longer scrolls on its own; the page does. A long
    column folds into Morning / Afternoon / Evening bands instead. */
 .wk .band > summary {
   display: flex;
@@ -349,7 +349,7 @@
   background: var(--accent);
 }
 
-/* ADR-0094: a month cell shows its chips in full and says "+N more" for the
+/* ADR-0096: a month cell shows its chips in full and says "+N more" for the
    rest. The design system's 96px scroll window is lifted here, in the app,
    so the shared package is untouched. */
 :root .cal .day .scroll {

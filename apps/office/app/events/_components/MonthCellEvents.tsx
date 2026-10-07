@@ -9,7 +9,7 @@ import { ChipStatus } from './ChipStatus';
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
 
 /**
- * A month cell's events (ADR-0094): a few chips, same-named events collapsed
+ * A month cell's events (ADR-0096): a few chips, same-named events collapsed
  * into one, and "+N more". A collapsed group and "+N more" both open a popup
  * that lists every event of the day at full size, so nothing scrolls inside a
  * cell and nothing needs a page change to read. A single event is still a

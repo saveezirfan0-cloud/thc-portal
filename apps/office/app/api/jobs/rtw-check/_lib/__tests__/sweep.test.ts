@@ -190,14 +190,74 @@ describe('runRtwCheckSweep', () => {
     });
   });
 
-  it('a page gov.uk answered but we could not read goes to the office with its report, never to a retry', async () => {
+  it('a page with two different end dates goes to the office with its report, never to a retry', async () => {
     const t = deps(
-      checker('govuk', { result: rtwCheckError('govuk', 'govuk_no_expiry'), report: PDF }),
+      checker('govuk', { result: rtwCheckError('govuk', 'govuk_unreadable_date'), report: PDF }),
     );
     const counts = await runRtwCheckSweep(t.d);
     expect(t.recorded[0]!.decision.action).toBe('needs_review');
     expect(t.recorded[0]!.reportPath).toBe('s1/share-code-report/rtw-check-c1.pdf');
     expect(counts).toMatchObject({ needs_review: 1, queued: 0 });
+  });
+
+  it('a missing end date is retried first; only the last attempt goes to the office, with the report', async () => {
+    const noDate = checker('govuk', {
+      result: rtwCheckError('govuk', 'govuk_no_expiry'),
+      report: PDF,
+    });
+    const early = deps(noDate);
+    await runRtwCheckSweep(early.d);
+    expect(early.recorded[0]!.decision.action).toBe('retry');
+    expect(early.uploads).toEqual([]);
+
+    const last = deps(noDate, { claim: async () => [{ ...row, attempt: 5 }] });
+    await runRtwCheckSweep(last.d);
+    expect(last.recorded[0]!.decision.action).toBe('needs_review');
+    expect(last.recorded[0]!.reportPath).toBe('s1/share-code-report/rtw-check-c1.pdf');
+  });
+
+  it('hands the office what the gov.uk page showed when the date could not be read', async () => {
+    const t = deps(
+      checker('govuk', {
+        result: rtwCheckError('govuk', 'govuk_no_expiry'),
+        report: PDF,
+        hint: 'Status type 4 | Review due 12 August 2027',
+      }),
+      { claim: async () => [{ ...row, attempt: 3 }] },
+    );
+    await runRtwCheckSweep(t.d);
+    const d = t.recorded[0]!.decision;
+    expect(d.action).toBe('needs_review');
+    if (d.action === 'needs_review') {
+      expect(d.officeReason).toContain('Page: Status type 4 | Review due 12 August 2027');
+      expect(d.officeReason.length).toBeLessThanOrEqual(500);
+    }
+  });
+
+  it('keeps the office reason and adds the page lines when the page was read but the name did not match', async () => {
+    const t = deps(
+      checker('govuk', {
+        result: {
+          outcome: 'right_to_work',
+          fullName: null,
+          rightToWorkUntil: null,
+          conditions: [],
+          termTimeLimitHours: null,
+          referenceNumber: null,
+          checkedAt: '2026-10-06T21:00:00.000Z',
+          source: 'govuk',
+        },
+        report: PDF,
+        hint: 'Name | ▢ ▢ | They have the right to work in the UK.',
+      }),
+    );
+    await runRtwCheckSweep(t.d);
+    const d = t.recorded[0]!.decision;
+    expect(d.action).toBe('needs_review');
+    if (d.action === 'needs_review') {
+      expect(d.officeReason).toMatch(/^The name on the gov\.uk record does not match/);
+      expect(d.officeReason).toContain('Page: Name | ▢ ▢ | They have the right to work');
+    }
   });
 
   it('runs the claimed checks a couple at a time, and records every one', async () => {

@@ -280,7 +280,7 @@ export function WeekView({
 /**
  * A column's events, folded into day bands (Overnight, Morning, Afternoon, Evening, and
  * "No roles yet" for an event with no role sections) that open
- * and close on their own (ADR-0094). A column of 8 or fewer shows everything;
+ * and close on their own (ADR-0096). A column of 8 or fewer shows everything;
  * a longer one opens only the bands that still need staff, so the page — not
  * seven inner scroll boxes — is what scrolls, and what is short is on top.
  */

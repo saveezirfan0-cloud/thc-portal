@@ -144,6 +144,8 @@ export interface EventFilters {
   /** `clients.id`, from the toolbar's Client select; '' for all. */
   clientId: string;
   status: string;
+  /** Drop cancelled rows unless `status` asks for them by name. */
+  hideCancelled?: boolean;
   q: string;
 }
 
@@ -157,6 +159,10 @@ export function filterEventRows(rows: EventRow[], filters: EventFilters): EventR
   return rows.filter((row) => {
     if (filters.clientId && row.clientId !== filters.clientId) return false;
     if (filters.status && row.status !== filters.status) return false;
+    // Asking for cancelled events by name outranks hiding them.
+    if (filters.hideCancelled && filters.status !== 'cancelled' && row.status === 'cancelled') {
+      return false;
+    }
     if (!needle) return true;
     return [row.title, row.clientName, row.venueName, row.poNumber]
       .join(' ')
@@ -209,7 +215,7 @@ export function periodTotals(rows: EventRow[]): { events: number; open: number }
 /**
  * One month-cell chip: events that read the same ("Morning Waiting Staff" for one
  * client at 07:00) collapse into one chip with a count and their summed open positions
- * (ADR-0094). A group of one is the event itself.
+ * (ADR-0096). A group of one is the event itself.
  */
 export interface ChipGroup {
   key: string;
@@ -326,7 +332,7 @@ export interface MonthCellModel {
   events: PopupEvent[];
 }
 
-/** What a month cell and its popup draw (ADR-0094). */
+/** What a month cell and its popup draw (ADR-0096). */
 export function monthCellModel(rows: EventRow[], limit: number = MONTH_CELL_CHIPS): MonthCellModel {
   const { shown, hiddenEvents, hiddenOpen } = monthCell(rows, limit);
   return {

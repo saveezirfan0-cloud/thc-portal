@@ -495,18 +495,51 @@
         }
       },
       {
-        "name": "inside the 30-minute grace is paid from the scheduled start",
+        "name": "inside the 30-minute grace is Late and paid from the actual arrival (ADR-0095)",
         "input": { "checkInMinFromStart": 20, "checkOutMinFromStart": 480 },
         "expect": {
           "status": "settled",
-          "payableMin": 480,
-          "workedMin": 480,
+          "payableMin": 460,
+          "workedMin": 460,
           "floorApplied": false,
           "lateCheckOutFlag": false
         }
       },
       {
-        "name": "past the grace is paid from the actual arrival",
+        "name": "one minute late is paid from the actual arrival",
+        "input": { "checkInMinFromStart": 1, "checkOutMinFromStart": 480 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 479,
+          "workedMin": 479,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "the last minute of the grace is paid from the actual arrival",
+        "input": { "checkInMinFromStart": 29, "checkOutMinFromStart": 480 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 451,
+          "workedMin": 451,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "a late worker on a short shift is still floored to four hours (RULE-14)",
+        "input": { "shiftMin": 240, "checkInMinFromStart": 20, "checkOutMinFromStart": 240 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 220,
+          "floorApplied": true,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "past the grace (manager Get back) is paid from the actual arrival",
         "input": { "checkInMinFromStart": 45, "checkOutMinFromStart": 480 },
         "expect": {
           "status": "settled",

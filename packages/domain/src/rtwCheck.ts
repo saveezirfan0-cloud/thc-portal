@@ -241,6 +241,8 @@ export const BENIGN_CONDITION_PATTERNS: readonly RegExp[] = [
     String.raw`^${SUBJECT}cannot\s+work\s+as\s+a\s+professional\s+sports\s?person(?:\s+or\s+(?:sports\s+)?coach)?\.?$`,
     'i',
   ),
+  // Live wording (06.10.2026): "There is no limit on how long they can stay in the UK."
+  /^there\s+is\s+no\s+limit\s+on\s+how\s+long\s+(?:they|this\s+person|the\s+applicant)\s+can\s+(?:stay|remain|live)\s+in\s+the\s+UK\.?$/i,
   new RegExp(String.raw`^${SUBJECT}cannot\s+be\s+self[\s-]?employed\.?$`, 'i'),
   new RegExp(
     String.raw`^${SUBJECT}cannot\s+fill\s+a\s+permanent\s+full[\s-]?time\s+vacancy\.?$`,
@@ -295,12 +297,22 @@ export function conditionRecognised(line: string): boolean {
   return !RESTRICTIVE_WORDS.test(l.replace(/\bno\s+(?:time\s+)?limit\b/i, ''));
 }
 
-/** Conditions that are neither a whole term-time line nor a whole benign line. */
+/**
+ * A condition line is judged one SENTENCE at a time: gov.uk prints "They can
+ * work in any job. There is no limit on how long they can stay in the UK." as
+ * ONE line (06.10.2026). A line is recognised only when every sentence in it
+ * is, so a restrictive sentence beside a benign one still goes to the office.
+ */
+function sentencesOf(line: string): string[] {
+  return line.split(/(?<=[.!?])\s+(?=[A-Z])/).filter((s) => s.length > 0);
+}
+
+/** Conditions that are neither a whole term-time line nor a whole benign line (per sentence). */
 export function unrecognisedConditions(conditions: readonly string[]): string[] {
   return conditions
     .map(normaliseLine)
     .filter((c) => c.length > 0)
-    .filter((c) => !conditionRecognised(c));
+    .filter((c) => !sentencesOf(c).every((s) => conditionRecognised(s)));
 }
 
 // ---------------------------------------------------------------------
@@ -364,20 +376,43 @@ export const RTW_CHECK_BACKOFF_MINUTES: readonly number[] = [2, 10, 30, 120];
 
 /**
  * Error codes where gov.uk gave a RESULT page and the system could not read
- * it. The page will read the same in half an hour, so retrying only delays
- * the office: these go straight to Needs review, with gov.uk's own PDF
- * attached when the adapter could print it. `govuk_unrecognised_result` is
- * deliberately not here: a maintenance or "try again later" page looks the
- * same, clears in minutes, and is not a report to file on a worker.
+ * it. The adapter prints that page to PDF for the office (it is the evidence
+ * a person needs when every automatic route has run out).
  */
-export const RTW_CHECK_PERMANENT_ERRORS: readonly string[] = [
+export const RTW_CHECK_RESULT_PAGE_ERRORS: readonly string[] = [
   'govuk_no_expiry',
   'govuk_unreadable_date',
   'govuk_contradictory_result',
 ];
 
+/**
+ * Of those, the ones a retry cannot change: two different end dates, or a
+ * page that says both "can" and "cannot work". They go straight to the
+ * office. `govuk_no_expiry` is NOT here: the office is the LAST resort, so a
+ * page whose date was not found is read again (a page that had not finished
+ * loading reads differently a minute later) until the attempts run out.
+ * `govuk_unrecognised_result` is not here either: a maintenance page looks
+ * the same, clears in minutes, and is not a report to file on a worker.
+ */
+export const RTW_CHECK_PERMANENT_ERRORS: readonly string[] = [
+  'govuk_unreadable_date',
+  'govuk_contradictory_result',
+];
+
+/**
+ * A result page with no end date reads the same on every attempt except when
+ * it had not finished loading, which the adapter already covers inside one
+ * attempt (whole page, waited for load). So the office gets it after this many
+ * attempts, not after all five.
+ */
+export const RTW_CHECK_NO_DATE_MAX_ATTEMPTS = 3;
+
 export function isPermanentRtwError(code: string | null | undefined): boolean {
   return typeof code === 'string' && RTW_CHECK_PERMANENT_ERRORS.includes(code);
+}
+
+export function isResultPageRtwError(code: string | null | undefined): boolean {
+  return typeof code === 'string' && RTW_CHECK_RESULT_PAGE_ERRORS.includes(code);
 }
 
 /** What an error code means, in words the office can act on. Unknown codes are shown as they are. */
@@ -438,7 +473,11 @@ export function decideRtwCheck(
         officeReason: `${capitalise(rtwCheckErrorLabel(error))}. Read gov.uk’s report and verify by hand, or run the check again.`,
       };
     }
-    if (context.attempt < context.maxAttempts) return { action: 'retry', error };
+    const limit =
+      error === 'govuk_no_expiry'
+        ? Math.min(context.maxAttempts, RTW_CHECK_NO_DATE_MAX_ATTEMPTS)
+        : context.maxAttempts;
+    if (context.attempt < limit) return { action: 'retry', error };
     return {
       action: 'needs_review',
       officeReason: `The automatic check could not be completed after ${context.attempt} attempts (${rtwCheckErrorLabel(error)}). Run it again, or check the share code on gov.uk by hand.`,

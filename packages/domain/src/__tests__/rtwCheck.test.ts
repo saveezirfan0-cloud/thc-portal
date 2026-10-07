@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   RTW_CHECK_BACKOFF_MINUTES,
+  conditionRecognised,
+  RTW_CHECK_NO_DATE_MAX_ATTEMPTS,
   RTW_CHECK_PERMANENT_ERRORS,
   rtwCheckErrorLabel,
   rtwCheckStatusLabel,
@@ -314,6 +316,38 @@ describe('decideRtwCheck', () => {
   });
 });
 
+describe('gov.uk live "no limit" condition (06.10.2026)', () => {
+  it('is harmless as a whole line, and only as a whole line', () => {
+    expect(conditionRecognised('There is no limit on how long they can stay in the UK.')).toBe(
+      true,
+    );
+    expect(
+      conditionRecognised('There is no limit on how long they can stay in the UK for 20 hours.'),
+    ).toBe(false);
+    expect(
+      conditionRecognised('They can work in any job. There is no limit on how long they can stay.'),
+    ).toBe(false);
+  });
+});
+
+describe('a condition line holding several sentences (live wording, 06.10.2026)', () => {
+  it('is recognised only when every sentence is', () => {
+    expect(
+      unrecognisedConditions([
+        'They can work in any job. There is no limit on how long they can stay in the UK.',
+      ]),
+    ).toEqual([]);
+    expect(
+      unrecognisedConditions([
+        'They can work in any job. They cannot work more than 10 hours a week.',
+      ]),
+    ).toHaveLength(1);
+    expect(
+      unrecognisedConditions(['They can work in any job. They can only work for one employer.']),
+    ).toHaveLength(1);
+  });
+});
+
 describe('retry backoff and error codes', () => {
   it('spreads five attempts over about three hours, the first retries quick', () => {
     expect(RTW_CHECK_BACKOFF_MINUTES).toEqual([2, 10, 30, 120]);
@@ -323,13 +357,26 @@ describe('retry backoff and error codes', () => {
     expect(rtwCheckRetryDelayMinutes(9)).toBe(120);
   });
 
-  it('a page gov.uk answered but we could not read is never retried — it goes to the office', () => {
+  it('a page whose dates contradict each other is never retried; a missing date is, with the office last', () => {
     for (const code of RTW_CHECK_PERMANENT_ERRORS) {
       const d = decideRtwCheck(rtwCheckError('govuk', code), eu, { ...ctx, attempt: 1 });
       expect(d.action, code).toBe('needs_review');
     }
-    const d = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 });
-    if (d.action === 'needs_review') expect(d.officeReason).toMatch(/end date could not be read/);
+    // A page whose date was not found is read again first — the office is the last resort.
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 1 }).action,
+    ).toBe('retry');
+    expect(
+      decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, { ...ctx, attempt: 2 }).action,
+    ).toBe('retry');
+    // Three reads of a page with no date is enough: the office, with what the page said.
+    const last = decideRtwCheck(rtwCheckError('govuk', 'govuk_no_expiry'), eu, {
+      ...ctx,
+      attempt: RTW_CHECK_NO_DATE_MAX_ATTEMPTS,
+    });
+    expect(last.action).toBe('needs_review');
+    if (last.action === 'needs_review')
+      expect(last.officeReason).toMatch(/end date could not be read/);
     // A maintenance page (govuk_unrecognised_result) and a timeout are still worth another go.
     expect(
       decideRtwCheck(rtwCheckError('govuk', 'govuk_unrecognised_result'), eu, ctx).action,

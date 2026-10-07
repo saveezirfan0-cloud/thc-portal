@@ -7,6 +7,8 @@ import {
   driveGovuk,
   govukConfig,
   govukPhoto,
+  pageHint,
+  recordNameFromPage,
   parseGovukResult,
 } from '../govuk';
 import type { GovukBrowser, GovukLocator, GovukPage } from '../govuk';
@@ -156,6 +158,83 @@ describe('parseGovukResult', () => {
         AT,
       ),
     ).toMatchObject({ outcome: 'error', error: 'govuk_no_expiry' });
+  });
+
+  it('finds the end date wherever and however gov.uk words it, when it is the only future date', () => {
+    const pass = (...lines: string[]) =>
+      parseGovukResult(
+        ['Name', 'Marta Villanueva', 'They have permission to work in the UK.', ...lines, ''].join(
+          '\n',
+        ),
+        AT,
+      );
+    expect(
+      pass('Immigration status: Pre-settled', 'Permission runs out 12 August 2027'),
+    ).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(pass('Granted 12 August 2021', 'Status finishes', 'August 12, 2027')).toMatchObject({
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(pass('Final day: 2027-08-12')).toMatchObject({ rightToWorkUntil: '2027-08-12' });
+    // The share code's own validity and a date of birth are never the end date…
+    expect(pass('This share code is valid for 90 days, to 5 January 2027.')).toMatchObject({
+      error: 'govuk_no_expiry',
+    });
+    expect(pass('Date of birth', '5 May 2999')).toMatchObject({ error: 'govuk_no_expiry' });
+    // …a past date is not one…
+    expect(pass('Permission granted 12 August 2021')).toMatchObject({ error: 'govuk_no_expiry' });
+    // …and two future dates are an error, not a guess.
+    expect(pass('Visa ends 12 August 2027', 'Review 3 March 2028')).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-08-12',
+    });
+    expect(pass('Permission runs out 12 August 2027', 'Then 3 March 2028')).toMatchObject({
+      error: 'govuk_unreadable_date',
+    });
+  });
+
+  it('reads gov.uk\'s live "no limit on how long they can stay" as no time limit, and reaches a verify', () => {
+    const r = parseGovukResult(page('govuk-pass-no-limit-live-wording.txt'), AT);
+    expect(r).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: null });
+    expect(r.conditions).toEqual([
+      'They can work in any job.',
+      'There is no limit on how long they can stay in the UK.',
+    ]);
+    const subject = (rtwBranch: 'eu_settled' | 'work_visa') => ({
+      firstName: 'Olu',
+      lastName: 'Ade',
+      rtwBranch,
+      belowDegreeLevel: false,
+    });
+    const ctx = { attempt: 1, maxAttempts: 5, today: '2026-10-06' };
+    expect(decideRtwCheck(r, subject('eu_settled'), ctx)).toEqual({
+      action: 'verify',
+      rightToWorkUntil: null,
+      noTimeLimit: true,
+    });
+    // A branch whose right to work always ends is still sent to the office.
+    expect(decideRtwCheck(r, subject('work_visa'), ctx).action).toBe('needs_review');
+  });
+
+  it('verifies when gov.uk prints both condition sentences as ONE line (live, 06.10.2026)', () => {
+    const r = parseGovukResult(page('govuk-pass-no-limit-one-line.txt'), AT);
+    expect(r).toMatchObject({
+      outcome: 'right_to_work',
+      fullName: 'Olu Ade',
+      rightToWorkUntil: null,
+    });
+    expect(r.conditions).toEqual([
+      'They can work in any job. There is no limit on how long they can stay in the UK.',
+    ]);
+    expect(
+      decideRtwCheck(
+        r,
+        { firstName: 'Olu', lastName: 'Ade', rtwBranch: 'eu_settled', belowDegreeLevel: false },
+        { attempt: 1, maxAttempts: 5, today: '2026-10-06' },
+      ),
+    ).toEqual({ action: 'verify', rightToWorkUntil: null, noTimeLimit: true });
   });
 
   it('pre-settled status is never read as no time limit (QA 25.09)', () => {
@@ -319,6 +398,119 @@ describe('driveGovuk', () => {
       { fields: [], text: page('govuk-pass-settled.txt') },
     ]);
     expect((await driveGovuk(await browser.newPage(), INPUT, CONFIG)).complete).toBe(true);
+  });
+});
+
+describe('pageHint — what the office is shown when the page cannot be read', () => {
+  const input = {
+    shareCode: 'W123AB4CD',
+    dateOfBirth: '1996-05-05',
+    companyName: 'The Hospitality Company',
+    redact: ['Marta', 'Villanueva'],
+  };
+
+  it('masks the name, date of birth, share code and reference, and keeps the layout', () => {
+    const hint = pageHint(
+      [
+        'Name',
+        'Marta Villanueva',
+        'Date of birth',
+        '5 May 1996',
+        'Share code W123AB4CD',
+        'Reference number: SYNTH-RTW-9ZX1PA',
+        'Pre-settled status',
+        'Status granted',
+        '12 August 2021',
+      ].join('\n'),
+      input,
+    )!;
+    expect(hint).not.toMatch(/Marta|Villanueva|W123|1996|SYNTH/);
+    expect(hint.split(' | ')).toEqual([
+      'Name',
+      '▢ ▢',
+      'Date of birth ▢',
+      'Share code ▢',
+      'Reference number: ▢',
+      'Pre-settled status',
+      'Status granted 12 August 2021',
+    ]);
+  });
+
+  it('drops the page footer, and is null when nothing is about status, a name or a number', () => {
+    expect(pageHint('Welcome\nSomething else entirely', input)).toBeNull();
+    expect(
+      pageHint(
+        'keep a secure copy of this online check for 2 years\nAll content is available under the Open Government Licence v3.0',
+        input,
+      ),
+    ).toBeNull();
+    expect(pageHint('They have permission to work in the UK.', input)).toBe(
+      'They have permission to work in the UK.',
+    );
+  });
+
+  it('never returns more than eight lines', () => {
+    const many = Array.from({ length: 20 }, (_, i) => `Item ${i + 1} on 1${i} June 2030`).join(
+      '\n',
+    );
+    expect(pageHint(many, input)!.split(' | ')).toHaveLength(8);
+  });
+
+  it('comes back from the checker when a pass has no end date', async () => {
+    const fake = fakeBrowser([
+      { fields: ['shareCode'], text: '' },
+      { fields: ['day', 'month', 'year'], text: '' },
+      { fields: ['company'], text: '' },
+      {
+        fields: [],
+        text: 'Name\nOlu Ade\nThey have permission to work in the UK.\nStatus type 4\n',
+      },
+    ]);
+    const out = await createGovukChecker(
+      (n) => (n === 'RTW_GOVUK_ENABLED' ? 'true' : undefined),
+      async () => fake.browser,
+    )!.check({ ...input, redact: ['Olu', 'Ade'] });
+    expect(out.result.error).toBe('govuk_no_expiry');
+    expect(out.hint).toBe('Name | ▢ ▢ | They have permission to work in the UK. | Status type 4');
+  });
+});
+
+describe("the record holder's name, whatever the layout", () => {
+  const text = (nameBlock: string) =>
+    `${nameBlock}\nThey have the right to work in the UK.\nConditions\nThey can work in any job.\nThere is no limit on how long they can stay in the UK.\n`;
+
+  it('reads "Name: X", "Name<tab>X" and a name on the line below its label', () => {
+    for (const block of ['Name: Olu Ade', 'Name\tOlu Ade', 'Name   Olu Ade', 'Name\nOlu Ade']) {
+      expect(parseGovukResult(text(block), AT).fullName, block).toBe('Olu Ade');
+    }
+  });
+
+  it("finds the profile's own name on a page with no label, and never a stranger's", () => {
+    expect(recordNameFromPage('View details\nOlu Ade\nRight to work', ['Olu', 'Ade'])).toBe(
+      'Olu Ade',
+    );
+    expect(recordNameFromPage('View details\nSam Jones\nRight to work', ['Olu', 'Ade'])).toBeNull();
+    expect(recordNameFromPage('Olu Ade', ['Olu'])).toBeNull();
+  });
+
+  it('a pass whose name has no label still reaches the checker with the name filled in', async () => {
+    const fake = fakeBrowser([
+      { fields: ['shareCode'], text: '' },
+      { fields: ['day', 'month', 'year'], text: '' },
+      { fields: ['company'], text: '' },
+      { fields: [], text: text('Olu Ade') },
+    ]);
+    const out = await createGovukChecker(
+      (n) => (n === 'RTW_GOVUK_ENABLED' ? 'true' : undefined),
+      async () => fake.browser,
+    )!.check({
+      shareCode: 'W123AB4CD',
+      dateOfBirth: '1996-05-05',
+      companyName: 'The Hospitality Company',
+      redact: ['Olu', 'Ade'],
+    });
+    expect(out.result).toMatchObject({ outcome: 'right_to_work', fullName: 'Olu Ade' });
+    expect(out.hint).toBeNull();
   });
 });
 
