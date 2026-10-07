@@ -41,6 +41,7 @@ vi.mock('../../_components/OfficeShell', () => ({
 }));
 
 const { CandidateScreen } = await import('../CandidateScreen');
+const { phaseIndex } = await import('../view-model');
 
 /**
  * /onboarding/:id at the Documents phase: the NI number beside the NI
@@ -479,10 +480,15 @@ describe('the candidate profile, roles and clients once the candidate has moved 
   const clients = [{ id: 'c1', name: 'Grand Hotel' }];
 
   const lookBackAtDocuments = (status: string) => {
-    lookBack.picked = { phase: 3, index: 2 };
+    const candidate = {
+      ...ROW,
+      status,
+      contract_signed_at: status === 'compliant' ? '2026-09-25T10:00:00Z' : null,
+    } as CandidateRow;
+    lookBack.picked = { phase: phaseIndex(candidate), index: 2 };
     lookBack.nulls = 0;
     try {
-      return render(data({ roles, clients, candidate: { ...ROW, status } as CandidateRow }));
+      return render(data({ roles, clients, candidate }));
     } finally {
       lookBack.picked = null;
     }
@@ -496,5 +502,10 @@ describe('the candidate profile, roles and clients once the candidate has moved 
     // The role ticks are not disabled.
     const ticks = html.match(/<div[^>]*>.*?Waiting Staff.*?<\/div>/s)?.[0] ?? '';
     expect(ticks).not.toContain('disabled');
+  });
+
+  it('and after the contract is signed, but not on a rejected candidate', () => {
+    expect(lookBackAtDocuments('compliant')).toContain('Add clients');
+    expect(lookBackAtDocuments('rejected')).not.toContain('Add clients');
   });
 });

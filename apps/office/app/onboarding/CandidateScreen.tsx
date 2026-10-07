@@ -223,7 +223,7 @@ export function CandidateScreen({
   const doc: DocHandlers = {
     // Looking back at a finished phase never offers its actions again.
     readOnly: readOnly || past,
-    qualificationsLocked: readOnly,
+    qualificationsLocked: row.status === 'rejected',
     busy,
     staffId: row.id,
     branch: row.rtw_branch,
@@ -1070,10 +1070,10 @@ interface DocHandlers {
   /** The documents themselves: also true while looking back at a finished step. */
   readOnly: boolean;
   /**
-   * Roles and clients: locked only once the candidate is rejected or signed
-   * (the staff profile takes over then). Looking back at the Documents step
-   * does not lock them — they are not a step's output, and a candidate who has
-   * moved on to the Quiz still needs a role and a client.
+   * Roles and clients: locked only once the candidate is rejected (final on the
+   * record, §2.3). Looking back at the Documents step, or a signed contract,
+   * does not lock them — they are not a step's output, and the office changes
+   * them at any time.
    */
   qualificationsLocked: boolean;
   busy: boolean;
