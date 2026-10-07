@@ -519,3 +519,42 @@
 .saved-views .chip a:hover {
   text-decoration: underline;
 }
+
+/* ---- period label as a date picker (ADR-0104) ------------------------
+   The label is a button wearing the design system's `.lbl`; the date input
+   only anchors the browser's picker under it, so it is laid over the label
+   and made invisible. `.datenav button` gives a 34px-wide arrow button, so
+   the label puts its width back. */
+.toolbar .datenav {
+  position: relative;
+}
+.datenav button.lbl {
+  width: auto;
+  color: var(--text);
+}
+.datenav button.lbl:hover {
+  background: var(--hover);
+}
+/* A caret says it opens something. A pseudo-element, so the label's text is
+   still exactly the period it names. */
+.datenav button.period-pick::after {
+  content: '▾';
+  margin-left: var(--sp-8);
+  color: var(--muted);
+  font-size: 12px;
+}
+.period-pick-input {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  color-scheme: light;
+}
+:root[data-theme='dark'] .period-pick-input {
+  color-scheme: dark;
+}

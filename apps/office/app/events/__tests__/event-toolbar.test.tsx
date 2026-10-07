@@ -9,6 +9,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../_components/EventFilters', () => ({ EventFilters: () => null }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const { EventToolbar } = await import('../_components/EventToolbar');
 

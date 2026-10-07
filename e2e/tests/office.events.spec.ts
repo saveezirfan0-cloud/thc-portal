@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { openAsAdmin } from './_support/session';
 
 /**
@@ -70,6 +70,42 @@ test('the arrows step a month, a week or a day, per view (§3.1)', async ({ page
   await expect(page.locator('.datenav .lbl')).toHaveText('Fri 18 Sep 2026');
   await page.getByLabel('Next period').click();
   await expect(page.locator('.datenav .lbl')).toHaveText('Sat 19 Sep 2026');
+});
+
+/** The toolbar is server-rendered; a click before React has hydrated it is lost. */
+async function hydrated(page: Page) {
+  await page.waitForFunction(() => {
+    const label = document.querySelector('.datenav .lbl');
+    return label && Object.keys(label).some((key) => key.startsWith('__reactProps'));
+  });
+}
+
+test('the period label opens a date picker that goes to the chosen day (ADR-0104)', async ({
+  page,
+}) => {
+  const label = page.locator('.datenav .lbl');
+  const choose = (date: string) =>
+    page.locator('input.period-pick-input').fill(date, { force: true });
+
+  await openAsAdmin(page, AT('day'));
+  await hydrated(page);
+  await expect(label).toHaveText('Fri 18 Sep 2026');
+  await choose('2026-10-20');
+  await expect(page).toHaveURL(/view=day&date=2026-10-20/);
+  await expect(label).toHaveText('Tue 20 Oct 2026');
+
+  // Week: any day opens its own week.
+  await openAsAdmin(page, AT('week'));
+  await hydrated(page);
+  await choose('2026-09-24');
+  await expect(label).toHaveText('Mon 21 Sep – Sun 27 Sep 2026');
+
+  // List and Month: the month of that day, and the view is kept.
+  await openAsAdmin(page, AT('list'));
+  await hydrated(page);
+  await choose('2026-11-18');
+  await expect(page).toHaveURL(/view=list&date=2026-11-18/);
+  await expect(label).toHaveText('November 2026');
 });
 
 test('past events are browsable in List too, not only in Calendar (§3.1)', async ({ page }) => {

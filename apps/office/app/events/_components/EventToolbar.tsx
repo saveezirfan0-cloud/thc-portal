@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { type CalendarView, periodLabel, shiftPeriod, todayInUk } from '../calendar';
 import { EventFilters } from './EventFilters';
+import { PeriodPicker } from './PeriodPicker';
 import type { ClientFilterOption } from '../data';
 import { type EventQuery, eventsHref } from '../_lib/filters';
 
@@ -68,7 +69,7 @@ export function EventToolbar({
         >
           ‹
         </Link>
-        <span className="lbl">{periodLabel(view, date)}</span>
+        <PeriodPicker query={query} label={periodLabel(view, date)} />
         <Link
           href={hrefFor({ ...query, date: shiftPeriod(view, date, 1) })}
           aria-label="Next period"
