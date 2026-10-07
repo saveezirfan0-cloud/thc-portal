@@ -183,6 +183,38 @@ export async function loadReferenceData(): Promise<ReferenceData> {
   };
 }
 
+/** What the Scheduling filters need of a client: its id and its name, nothing else. */
+export interface ClientFilterOption {
+  id: string;
+  name: string;
+}
+
+/**
+ * The clients for the Scheduling filter and saved views.
+ *
+ * Not `loadReferenceData()`: that is the Shift Builder's read — seven
+ * queries (rate cards, charge and pay rates, venues, venue types, roles) —
+ * and its result, rate cards included, was handed to a client component
+ * that draws a dropdown of names. The list screen needs one query and two
+ * columns (ADR-0103).
+ */
+export async function loadClientFilterOptions(): Promise<{
+  clients: ClientFilterOption[];
+  unavailable?: string;
+}> {
+  if (!supabaseConfigured()) return { clients: [], unavailable: NO_SUPABASE };
+
+  const { data, error } = await eventsDb(await cookies())
+    .from('clients')
+    .select('id, name')
+    .order('name');
+  // Said out loud, never drawn as a filter with no clients in it.
+  if (error) {
+    return { clients: [], unavailable: `Clients could not be loaded: ${error.message}` };
+  }
+  return { clients: (data ?? []) as ClientFilterOption[] };
+}
+
 export interface SavedRoleSection {
   id: string;
   roleId: string;
@@ -416,12 +448,86 @@ export interface EventsInRange {
   problem: string | null;
 }
 
+/**
+ * One event as `office_events_in_range` returns it (20261007143000): the
+ * event, its client's name, and its sections with the confirmed count done
+ * in the database.
+ */
+interface InRangeRow extends ListedEventRow {
+  client_name: string | null;
+  sections: {
+    role_name: string | null;
+    starts_at: string;
+    ends_at: string;
+    headcount: number;
+    buffer: number;
+    confirmed: number;
+  }[];
+}
+
+/**
+ * True when PostgREST says the function is not there — the app has been
+ * deployed and the migration has not (or the database job is not wired up
+ * yet). Anything else is a real failure and must not be papered over.
+ */
+export function isMissingFunction(error: { code?: string } | null | undefined): boolean {
+  return error?.code === 'PGRST202' || error?.code === '42883';
+}
+
 export async function loadEventsInRange(from: string, to: string): Promise<EventsInRange> {
   // No project is reported by loadReferenceData's `unavailable`, once.
   if (!supabaseConfigured()) return { events: [], problem: null };
 
   const supabase = eventsDb(await cookies());
 
+  // One call, not four in a row (ADR-0103). The ids no longer travel in the
+  // URL and the confirmed counts are not capped at the API's 1000 rows.
+  const { data, error } = await supabase.rpc('office_events_in_range', {
+    p_from: from,
+    p_to: to,
+  });
+  if (!error) {
+    return {
+      events: ((data ?? []) as InRangeRow[]).map((row) => ({
+        id: row.id,
+        title: row.title,
+        date: row.event_date,
+        clientId: row.client_id,
+        clientName: row.client_name ?? 'Client',
+        venueName: row.venue_name,
+        venueAddress: row.venue_address,
+        poNumber: row.po_number ?? '',
+        cancelledAt: row.cancelled_at,
+        cancelReason: row.cancel_reason ?? '',
+        roles: row.sections.map((section) => ({
+          roleName: section.role_name ?? 'Role',
+          start: ukTime(section.starts_at),
+          end: ukTime(section.ends_at),
+          headcount: section.headcount,
+          buffer: section.buffer,
+          confirmed: section.confirmed,
+        })),
+      })),
+      problem: null,
+    };
+  }
+  if (!isMissingFunction(error)) {
+    return { events: [], problem: `Events could not be loaded: ${error.message}` };
+  }
+  return loadEventsInRangeInSteps(supabase, from, to);
+}
+
+/**
+ * The read `office_events_in_range` replaced, kept only for the window in
+ * which this code is live and the function is not. Four reads in sequence,
+ * and its booking count is capped by the API at 1000 rows — which is why it
+ * is the fallback and not the path.
+ */
+async function loadEventsInRangeInSteps(
+  supabase: ReturnType<typeof eventsDb>,
+  from: string,
+  to: string,
+): Promise<EventsInRange> {
   const { data: eventData, error: eventError } = await supabase
     .from('events')
     .select(

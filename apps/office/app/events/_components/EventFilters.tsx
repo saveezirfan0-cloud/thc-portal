@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EVENT_STATUS_LABEL } from '@thc/domain';
 import { hrefFor, type ToolbarQuery } from './EventToolbar';
-import type { ClientOption } from '../data';
+import type { ClientFilterOption } from '../data';
 import { EVENT_STATUSES } from '../_lib/filters';
 
 /**
@@ -15,7 +15,13 @@ import { EVENT_STATUSES } from '../_lib/filters';
  * month" to a colleague. The search box submits as a form so it does not
  * navigate on every keystroke.
  */
-export function EventFilters({ query, clients }: { query: ToolbarQuery; clients: ClientOption[] }) {
+export function EventFilters({
+  query,
+  clients,
+}: {
+  query: ToolbarQuery;
+  clients: ClientFilterOption[];
+}) {
   const router = useRouter();
   const [q, setQ] = useState(query.q);
 

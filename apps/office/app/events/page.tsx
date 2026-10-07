@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Alert, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
-import { loadEventsInRange, loadReferenceData } from './data';
+import { loadClientFilterOptions, loadEventsInRange } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
@@ -39,8 +39,8 @@ export default async function Page({
   const { view, date } = query;
 
   const { from, to } = periodRange(view, date);
-  const [reference, { events, problem }, savedViews, format] = await Promise.all([
-    loadReferenceData(),
+  const [clientOptions, { events, problem }, savedViews, format] = await Promise.all([
+    loadClientFilterOptions(),
     loadEventsInRange(from, to),
     // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),
@@ -73,14 +73,14 @@ export default async function Page({
       <div className="stack">
         {/* Fill moves as staff accept and the office books: re-read every 15 s. */}
         <AutoRefresh everyMs={15_000} />
-        {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
+        {clientOptions.unavailable ? <Alert tone="coral">{clientOptions.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
-        <EventToolbar query={query} clients={reference.clients} />
+        <EventToolbar query={query} clients={clientOptions.clients} />
 
         {/* Named filter sets, kept per manager in office_saved_views. */}
-        <SavedViewsBar query={query} clients={reference.clients} initial={savedViews} />
+        <SavedViewsBar query={query} clients={clientOptions.clients} initial={savedViews} />
 
         {!problem && view === 'list' ? (
           <Panel flush className="stack" actions={null}>
