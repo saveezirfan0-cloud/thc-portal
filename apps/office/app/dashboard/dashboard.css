@@ -41,6 +41,18 @@
   white-space: nowrap;
 }
 
+/* Client and venue each keep to one line: a long client name such as
+   "Leonardo Hotel St Paul's - M&E" would otherwise wrap and make the row
+   taller than its neighbours. Past the cap it ends in an ellipsis; the full
+   name is in the title attribute. */
+.dash-upcoming .dash-clip {
+  display: block;
+  max-width: min(36ch, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The financial snapshot: three tiles inside one panel, drawn flat because
    the panel is already the card. */
 .dash-finance {

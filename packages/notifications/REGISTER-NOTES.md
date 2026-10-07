@@ -8,7 +8,7 @@ its own `trigger`: E2b (below, and 20260923170000), E10, the §9.12
 self-cancel email (see "Missing from §8"), N10d / N11b (below, ADR-0037), and
 E11, the Back Office / Client Portal account invitation (ADR-0058).
 The completion letter requirement's codes are `REQUIREMENT_CODES` (CL1–CL6), and
-the Staff App additions of docs/19 are `ADDITION_CODES` (RC1–RC4, OF1–OF6; see
+the Staff App additions of docs/19 are `ADDITION_CODES` (RC1–RC5, OF1–OF6; see
 "Additions" at the end). `src/inbox.ts` names the emails that go to THC itself —
 every one whose recipients the register pins — for `/inbox`.
 
@@ -124,6 +124,7 @@ wording is ours (docs/15 Q21): **every row below is "confirm with THC"**.
 | RC2 | 0045 | push · worker → `/profile/details` | `Profile updated` | `Your {field} has been updated.` | on approve · `RC2:request:<id>` | confirm with THC |
 | RC3 | 0045 | push · worker → `/profile/details` | `Change not made` | `We couldn't update your {field}: {reason}` — the office's reason is required on reject and is shown to the worker (the `compliance_docs.rejection_reason` precedent) | on reject · `RC3:request:<id>` | confirm with THC |
 | RC4 | 0045 | email · admin@ + thc_payroll@ (E7's recipients, the same constant) | `Name changed — {name}, Employee ID {employeeId}` | previous name, new name, approved (UK time). Issued PDFs and payroll exports are not rewritten (§1.7); no automatic right-to-work re-check (Q13) | on approving a name · `RC4:request:<id>` | confirm with THC |
+| RC5 | 0097 | push · worker → `/profile/details` | `Profile photo not accepted` | `Your profile photo was not accepted: {reason}. Please take a new one.` — the office's reason is required (≤ 300) and shown to the worker word for word; nothing is said of what the photo showed | on reject · `RC5:selfie:<staff id>:<moment>` (a retake rejected again is told again) | confirm with THC |
 | OF1 | 0046 | push · candidate → `/radar/offers/{offerId}` | `Shift up for grabs` | `{role} · {event} · {dateTime} · {rate}/h — tap to take it.` — the N5 line, base rate only, and never the offerer | hourly, `allocation_per_hour` per round, wave 1 first, never after expiry · `OF1:offer:<offer>:<staff>` | confirm with THC |
 | OF2 | 0046 | push · offerer → `/shifts` | `Shift handed over` | `{event} · {dateTime} has been taken by another worker. You're no longer booked on it.` — deep link to the list, as N10b's: the booking is now cancelled | on take · `OF2:offer:<id>` | confirm with THC |
 | OF3 | 0046 | push · offerer → `/shifts/{bookingId}` | `You're still booked` | `Nobody took your {event} shift on {date} — you're still booked. If you can't make it, contact the office.` | on lapse by expiry only (a lapse because the booking left confirmed for another cause is silent — that cause has its own push) · `OF3:offer:<id>` | confirm with THC |

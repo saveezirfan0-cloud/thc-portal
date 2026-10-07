@@ -54,7 +54,7 @@ Never chased, because the move is the office's or nobody's:
 
 **Grace.** A reminder is due half an hour early, so one queued at 17:07:02 does not miss 17:07:01 the next day and slip to the morning after.
 
-**After three reminders with no progress** (`stalled_after`) the card reads **"Stalled — no progress after N reminders (last dd Mon), still reminding daily. Phone them."** in coral. The reminders carry on. Nothing is rejected automatically: rejecting the candidate is what stops them.
+**After three reminders with no progress** (`stalled_after`) the card reads **"Stalled — N reminders, no progress (last dd Mon). Phone them."** in coral (shortened from "no progress after N reminders … still reminding daily" so a card on a 36-deep column stays short). The reminders carry on. Nothing is rejected automatically: rejecting the candidate is what stops them.
 
 ### OC2 carries a freshly minted link
 

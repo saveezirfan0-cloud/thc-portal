@@ -231,6 +231,11 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       { code: 'RC2', label: 'Profile updated', when: 'The office approves a profile change' },
       { code: 'RC3', label: 'Change not made', when: 'The office declines a profile change' },
       {
+        code: 'RC5',
+        label: 'Profile photo not accepted',
+        when: 'The office rejects a worker’s profile selfie',
+      },
+      {
         code: 'OC3',
         label: 'Finish your onboarding',
         when: 'Daily, while a candidate has a step waiting',

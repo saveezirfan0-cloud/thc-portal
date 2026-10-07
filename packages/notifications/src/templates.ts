@@ -690,6 +690,19 @@ export const TEMPLATES = {
     timing: 'on reject',
     deepLink: '/profile/details',
   },
+  // The office rejects a worker's profile selfie (ADR-0097). Not a decision on
+  // a request, so it keeps off RC3's `Not changed` wording and its
+  // `RC3:request:<id>` key: `RC5:selfie:<staff id>:<moment>`.
+  RC5: {
+    code: 'RC5',
+    channel: 'push',
+    title: 'Profile photo not accepted',
+    body: 'Your profile photo was not accepted: {reason}. Please take a new one.',
+    trigger:
+      "The office rejects a worker's profile selfie, with the reason the worker is shown (office_reject_selfie). Not in §8: an addition to scope v1.6, ADR-0097 (proposed — awaiting THC)",
+    timing: 'on reject',
+    deepLink: '/profile/details',
+  },
   RC4: {
     code: 'RC4',
     channel: 'email',
@@ -973,6 +986,7 @@ export const ADDITION_CODES = [
   'RC2',
   'RC3',
   'RC4',
+  'RC5',
   'OF1',
   'OF2',
   'OF3',
