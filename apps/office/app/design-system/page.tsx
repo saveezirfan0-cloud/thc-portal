@@ -494,7 +494,7 @@ export default function Page() {
             A table longer or wider than its card scrolls inside the card: sticky header, scrollbars
             always drawn, a faded edge where more is hidden, and focusable so the arrow keys scroll
             it. <code>&lt;TableScroll label&gt;</code> is the floor variant; add <code>flow</code>{' '}
-            when the page should do the vertical scrolling (ADR-0102).
+            when the page should do the vertical scrolling (ADR-0104).
           </p>
           <div className="grid c2">
             <div className="ds-window">

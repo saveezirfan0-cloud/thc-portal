@@ -187,8 +187,8 @@ select is((select expiry_date from compliance_docs
 select is(
   (select array_agg(template order by template) from notification_outbox
     where recipient_staff_id = :'cand' or payload->>'name' = 'Amara Journey'),
-  array['E12', 'E5'],
-  'her onboarding sent two emails: E12 when her documents were approved (ADR-0075) and E5 to payroll — no E4, no E6 (no NI given)');
+  array['E12'],
+  'her onboarding sent one email: E12 when her documents were approved (ADR-0075) — no E5 (her first bank entry is not a change, ADR-0103), no E4, no E6 (no NI given)');
 
 select employee_id as emp from staff where id = :'cand' \gset
 

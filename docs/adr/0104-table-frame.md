@@ -1,4 +1,4 @@
-# ADR-0102 · `.tbl-frame`: a wide or long table scrolls inside its card
+# ADR-0104 · `.tbl-frame`: a wide or long table scrolls inside its card
 
 **Status:** Accepted · **Wireframes:** `wireframes/assets/thc.css`, `wireframes/design-system.html` §7b, `backoffice/events.html` and `reports.html` use it · **§1.2, §1.6**
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { type CalendarView, periodLabel, shiftPeriod, todayInUk } from '../calendar';
 import { EventFilters } from './EventFilters';
-import type { ClientOption } from '../data';
+import type { ClientName } from '../data';
 import { type EventQuery, eventsHref } from '../_lib/filters';
 
 /** The screen's state — one definition, in `_lib/filters.ts`. */
@@ -18,7 +18,7 @@ export const hrefFor = eventsHref;
  * the list as well; "+ New event" is in the page header rather than here.
  * All of it is links, so every view is a URL a manager can bookmark or share.
  */
-export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients: ClientOption[] }) {
+export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients: ClientName[] }) {
   const { view, date } = query;
   const isCalendar = view !== 'list';
   const calendarView: CalendarView = isCalendar ? view : 'month';

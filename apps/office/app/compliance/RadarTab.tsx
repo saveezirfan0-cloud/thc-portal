@@ -86,9 +86,9 @@ export function RadarTab({
           description="Push reminders at 1 month · 2 weeks · 1 week · expiry day — automatic, nothing to press"
         />
         <KpiTile
-          label="Term letters · expire 31 Dec"
+          label="Term letters · expire on their last date"
           value={counts.termLetters}
-          description="Every University Term Dates Letter expires 31 December regardless of printed dates; reminders start 1 Dec"
+          description="A University Term Dates Letter expires on the last date printed on it (31 Dec only when no dates could be read); reminders start a month before, then 2 weeks and 1 week"
         />
       </TileGrid>
 
@@ -202,7 +202,7 @@ export function RadarTab({
                           ) : row.state === 'expired' ? (
                             <span className="sub">nothing re-uploaded yet</span>
                           ) : row.doc_type === 'university_term_dates_letter' ? (
-                            <span className="sub">31 Dec rule — the printed dates are ignored</span>
+                            <span className="sub">expires on the letter’s last printed date</span>
                           ) : null}
                         </td>
                         <td data-label="Reminders sent" className="sm muted">

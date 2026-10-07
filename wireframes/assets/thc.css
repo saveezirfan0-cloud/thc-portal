@@ -214,7 +214,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl tr.expand td { background: var(--panel-2); }
 .tbl tr.violation td { border-left: 3px solid var(--coral); }
 
-/* .tbl-frame — a table longer or wider than its card scrolls inside the card, both ways: sticky header, scrollbars always drawn, faded edge where more is hidden, focusable so arrow keys scroll it. Mirror of packages/ui (ADR-0102). .floor = readable column minimum + snug cells; .flow = sideways scroll only, as tall as its rows. */
+/* .tbl-frame — a table longer or wider than its card scrolls inside the card, both ways: sticky header, scrollbars always drawn, faded edge where more is hidden, focusable so arrow keys scroll it. Mirror of packages/ui (ADR-0104). .floor = readable column minimum + snug cells; .flow = sideways scroll only, as tall as its rows. */
 .tbl-frame { --frame-max: max(22rem, calc(100dvh - 16rem)); max-height: var(--frame-max); overflow: auto; overscroll-behavior-x: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--muted) transparent;
   background: linear-gradient(to right, var(--panel) 30%, transparent) left center / 2rem 100% no-repeat local, linear-gradient(to left, var(--panel) 30%, transparent) right center / 2rem 100% no-repeat local, linear-gradient(to right, var(--line), transparent) left center / .75rem 100% no-repeat scroll, linear-gradient(to left, var(--line), transparent) right center / .75rem 100% no-repeat scroll; background-color: var(--panel); }
 .tbl-frame:focus-visible { outline: 2px solid var(--cyan-ink); outline-offset: -2px; }

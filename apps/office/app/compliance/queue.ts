@@ -3,9 +3,10 @@
  * screen shows lives here, so it is tested without a database or a browser;
  * the components only lay it out.
  */
-import { type TimeFormat, clockLabel } from '@thc/domain';
+import { type TimeFormat, clockLabel, termLetterLastDay } from '@thc/domain';
 import { rtwLockedUntil } from '../_lib/rtwCheck';
 import type { RtwCheckRow, RtwLockedUntil } from '../_lib/rtwCheck';
+import { parsePeriod } from '../onboarding/view-model';
 import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
 import { rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
@@ -364,11 +365,24 @@ export function foundLine(row: QueueRow): {
     };
   }
   const found: string[] = [];
-  if (row.expiry_date) found.push(`Expiry ${ukDate(row.expiry_date)}`);
+  // A term letter's `expiry_date` is the calendar fallback the upload stamps
+  // before anything is read, not something the AI found (ADR-0103): what it
+  // read is the ranges, and the letter expires on the last of them.
+  const termLetter = row.item_type === 'university_term_dates_letter';
+  if (row.expiry_date && !termLetter) found.push(`Expiry ${ukDate(row.expiry_date)}`);
   if (row.doc_right_to_work_until)
     found.push(`Right to work until ${ukDate(row.doc_right_to_work_until)}`);
   if (row.term_dates?.length) {
     found.push(`${row.term_dates.length} holiday range${row.term_dates.length === 1 ? '' : 's'}`);
+    if (termLetter) {
+      const last = termLetterLastDay(
+        row.term_dates.flatMap((range) => {
+          const period = parsePeriod(range);
+          return period ? [period] : [];
+        }),
+      );
+      if (last) found.push(`Letter expires ${ukDate(last)}`);
+    }
   }
   const confidence =
     row.needs_manual_review || row.ai_confidence === null

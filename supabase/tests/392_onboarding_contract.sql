@@ -141,9 +141,9 @@ select throws_ok($$ select onboarding_save_bank('Chloe Nwosu', '40-47', '3192681
   'P0001', 'bad_sort_code', 'staff_save_bank()''s format rules apply');
 select lives_ok($$ select onboarding_save_bank('Chloe Nwosu', '404784', '31926819') $$, 'bank saved');
 select is((select sort_code from bank_details where staff_id = :'chloe'), '40-47-84', 'formatted');
-select isnt_empty(
+select is_empty(
   $$ select 1 from notification_outbox where template = 'E5' and payload->>'name' = 'Chloe Nwosu' $$,
-  'E5 is queued, as it is for every later change (§2.10)');
+  'a first entry is not a change: no E5 to payroll (ADR-0103)');
 
 -- =====================================================================
 -- 5. Step 10 — the contract (§2.11)

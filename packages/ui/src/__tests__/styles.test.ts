@@ -411,7 +411,7 @@ describe('phone touch targets (§1.2)', () => {
   });
 });
 
-describe('the table frame (ADR-0102)', () => {
+describe('the table frame (ADR-0104)', () => {
   const wire = stripComments(
     readFileSync(join(STYLES, '..', '..', '..', '..', 'wireframes', 'assets', 'thc.css'), 'utf8'),
   );

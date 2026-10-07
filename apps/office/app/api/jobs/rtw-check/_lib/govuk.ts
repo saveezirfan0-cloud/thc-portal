@@ -47,7 +47,20 @@ export interface GovukPage {
   locator(selector: string): GovukLocator;
   waitForLoadState(state?: 'load' | 'domcontentloaded'): Promise<void>;
   setDefaultTimeout(ms: number): void;
-  pdf(options: { format: string; printBackground: boolean }): Promise<Uint8Array>;
+  pdf(options: {
+    format: string;
+    printBackground: boolean;
+    scale?: number;
+    margin?: { top: string; right: string; bottom: string; left: string };
+  }): Promise<Uint8Array>;
+  /**
+   * Optional, like `screenshot`: used only to tidy the report (`fitReportToOnePage`),
+   * so a scripted test page need not implement them.
+   */
+  addStyleTag?(options: { content: string }): Promise<unknown>;
+  emulateMedia?(options: { media: 'print' | 'screen' }): Promise<void>;
+  setViewportSize?(size: { width: number; height: number }): Promise<void>;
+  evaluate?(expression: string): Promise<unknown>;
 }
 
 export interface GovukBrowser {
@@ -435,6 +448,73 @@ export async function driveGovuk(
   return { text, fullText, complete: done.shareCode && done.dateOfBirth };
 }
 
+// ---------------------------------------------------------------------
+// The report: gov.uk's result page, printed on ONE A4 sheet.
+// ---------------------------------------------------------------------
+
+/** A4 in CSS px (96 dpi) and the 10 mm margin the report is printed with. */
+const A4_PX = { width: 794, height: 1123 };
+const MARGIN_MM = 10;
+const MARGIN_PX = Math.round((MARGIN_MM / 25.4) * 96);
+const MARGIN = `${MARGIN_MM}mm`;
+
+/**
+ * What is printed on the page but is not the result: the cookie banner (it
+ * printed above the heading, ASSUMED class names — confirm on the live
+ * service), the skip link, back link, beta/feedback banner and footer. The
+ * GOV.UK header and everything in <main> stay. Kept in one place beside the
+ * selectors, so a restyle is a one-line change.
+ */
+const REPORT_HIDE = [
+  '#global-cookie-message',
+  '.govuk-cookie-banner',
+  '[class*="cookie-banner" i]',
+  '[id*="cookie-banner" i]',
+  '[aria-label*="cookies" i]',
+  '.govuk-skip-link',
+  '.govuk-back-link',
+  '.govuk-phase-banner',
+  '.govuk-footer',
+  'footer',
+].join(', ');
+
+/**
+ * Tidy the result page for printing and return the PDF options that put all
+ * of it on one A4 sheet: the page furniture is hidden and the rest is scaled
+ * down only as far as it needs to be (never up). Measured at the printable
+ * width, which is narrower than a screen, so the height it reads is the real
+ * one. Best effort: a page that cannot be tidied or measured prints as it was
+ * — an untidy report beats none, and the checks never depend on it.
+ */
+export async function fitReportToOnePage(
+  page: GovukPage,
+): Promise<{
+  scale?: number;
+  margin: { top: string; right: string; bottom: string; left: string };
+}> {
+  const margin = { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN };
+  try {
+    await page.emulateMedia?.({ media: 'print' });
+    await page.addStyleTag?.({ content: `${REPORT_HIDE} { display: none !important; }` });
+    const width = A4_PX.width - 2 * MARGIN_PX;
+    await page.setViewportSize?.({ width, height: A4_PX.height });
+    const measured = await page.evaluate?.(
+      'Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)',
+    );
+    if (typeof measured !== 'number' || !Number.isFinite(measured) || measured <= 0)
+      return { margin };
+    const room = A4_PX.height - 2 * MARGIN_PX;
+    // 3 % spare for rounding between the layout we measured and the one Chrome prints.
+    const scale = Math.min(1, (room / measured) * 0.97);
+    // Chrome's own floor is 0.1.
+    return scale >= 1
+      ? { margin }
+      : { scale: Math.max(0.1, Math.floor(scale * 100) / 100), margin };
+  } catch {
+    return { margin };
+  }
+}
+
 export function createGovukChecker(
   env: EnvReader,
   launch: GovukLauncher,
@@ -485,7 +565,11 @@ export function createGovukChecker(
           (result.outcome === 'error' && isResultPageRtwError(result.error))
         ) {
           photo = await govukPhoto(page);
-          const bytes = await page.pdf({ format: 'A4', printBackground: true });
+          const bytes = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            ...(await fitReportToOnePage(page)),
+          });
           report = looksLikePdf(bytes) ? bytes : null;
         }
         // No "Name" label found: look for the profile's own name on the page.

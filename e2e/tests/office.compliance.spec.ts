@@ -58,7 +58,7 @@ test('Radar shows the three counters and the expired / expiring filter (§4.2, �
   const radar = page.getByRole('region', { name: 'Radar' });
   await expect(radar.getByText('Expired · blocking')).toBeVisible();
   await expect(radar.getByText('Expiring · ≤ 30 days')).toBeVisible();
-  await expect(radar.getByText('Term letters · expire 31 Dec')).toBeVisible();
+  await expect(radar.getByText('Term letters · expire on their last date')).toBeVisible();
 
   const filter = radar.getByRole('group', { name: 'Filter the radar' });
   await expect(filter.getByRole('button', { name: /All/ })).toHaveAttribute('aria-pressed', 'true');
