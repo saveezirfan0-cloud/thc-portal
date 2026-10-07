@@ -279,6 +279,42 @@ export async function grantClientQualification(
   );
 }
 
+/**
+ * §9.6: clear the candidate at several clients for several roles at once —
+ * one entry per client + role, as the table holds them. Pairs that already
+ * exist are skipped by the caller. Run in small batches so a long list is not
+ * a long queue of round trips; the first refusal ends the run and says so.
+ */
+export async function grantClientQualifications(
+  staffId: string,
+  clientIds: string[],
+  roleIds: string[],
+): Promise<ActionResult> {
+  if (clientIds.length === 0 || roleIds.length === 0) return { ok: true };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const pairs = clientIds.flatMap((client) => roleIds.map((role) => [client, role] as const));
+  const BATCH = 8;
+  for (let at = 0; at < pairs.length; at += BATCH) {
+    const results = await Promise.all(
+      pairs.slice(at, at + BATCH).map(([client, role]) =>
+        supabase.rpc('grant_client_qualification', {
+          p_staff: staffId,
+          p_client: client,
+          p_role: role,
+        }),
+      ),
+    );
+    const failed = results.find((result) => result.error);
+    if (failed?.error) {
+      for (const path of paths(staffId)) revalidatePath(path);
+      return { ok: false, message: explain(failed.error.message) };
+    }
+  }
+  for (const path of paths(staffId)) revalidatePath(path);
+  return { ok: true };
+}
+
 export async function revokeClientQualification(
   staffId: string,
   qualificationId: string,

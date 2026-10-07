@@ -108,8 +108,12 @@ export function UpcomingTable({
                 <span className="sub">PO {event.poNumber || '—'}</span>
               </td>
               <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
-                {event.clientName}
-                <span className="sub">{event.venueName}</span>
+                <span className="dash-clip" title={event.clientName}>
+                  {event.clientName}
+                </span>
+                <span className="sub dash-clip" title={event.venueName}>
+                  {event.venueName}
+                </span>
               </td>
               <td data-label="Window (UK time)" className={cancelled ? 'mono sm muted' : 'mono sm'}>
                 {/* The event window is derived: min start → max end (RULE-18). */}

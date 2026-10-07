@@ -440,6 +440,7 @@ export function ProfileScreen({
             gender={data.gender}
             canEditGender={canEditGender}
             languages={data.languages}
+            willoReviewUrl={data.willoReviewUrl}
             canEditLanguages={canEditLanguages}
             emergencyContact={data.emergencyContact ?? null}
             emergencyContactProblem={data.emergencyContactProblem ?? null}

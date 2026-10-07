@@ -103,8 +103,12 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 ) : null}
               </td>
               <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
-                {row.clientName}
-                <span className="sub">{row.venueName}</span>
+                <span className="ev-clip" title={row.clientName}>
+                  {row.clientName}
+                </span>
+                <span className="sub ev-clip" title={row.venueName}>
+                  {row.venueName}
+                </span>
               </td>
               <td
                 data-label="Window (UK time)"
@@ -366,8 +370,12 @@ export function DayView({ rows }: { rows: EventRow[] }) {
               {row.poNumber ? <span className="sub mono">PO {row.poNumber}</span> : null}
             </span>
             <span>
-              {row.clientName}
-              <span className="sub">{row.venueName}</span>
+              <span className="ev-clip" title={row.clientName}>
+                {row.clientName}
+              </span>
+              <span className="sub ev-clip" title={row.venueName}>
+                {row.venueName}
+              </span>
             </span>
             <span className="row wrap">
               {row.roles.map((role, index) => (

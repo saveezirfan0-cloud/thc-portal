@@ -388,6 +388,7 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
       }),
     );
     expect(html).toContain('Add a client');
+    expect(html).toContain('Search 1 clients');
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Not cleared at any client yet.');
   });
@@ -411,6 +412,28 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     );
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Remove');
+    expect(html).toContain('1 client');
+  });
+
+  it('shows one line per client with its roles as chips, not one line per entry', () => {
+    const entry = (id: string, role_id: string, role_name: string) => ({
+      id,
+      client_id: 'c1',
+      client_name: 'Grand Hotel',
+      role_id,
+      role_name,
+      do_not_return: false,
+    });
+    const html = render(
+      data({
+        roles,
+        clients: [{ id: 'c1', name: 'Grand Hotel' }],
+        qualifications: [entry('q1', 'r1', 'Waiting Staff'), entry('q2', 'r2', 'Bar Staff')],
+      }),
+    );
+    expect(html.match(/class="cq-row"/g) ?? []).toHaveLength(1);
+    expect(html).toContain('1 client · 2 entries');
+    expect(html).toContain('Remove all');
   });
 
   it('asks for a role first when none is held', () => {

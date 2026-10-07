@@ -314,6 +314,12 @@ export interface ProfileData {
    */
   languages?: string[] | null;
   /**
+   * ADR-0094: the "Review interview on Willo" link, kept on the profile for
+   * good so the interview can always be referred to. Null = no interview
+   * on file, Willo not configured, or removed (§1.7); undefined = not read.
+   */
+  willoReviewUrl?: string | null;
+  /**
    * The docs/19 additions (ADR-0043/0043/0044/0046). Each is read on its
    * own and fails on its own: `undefined` = not read, and the matching
    * `…Problem` says why a card or tab has nothing to show.
