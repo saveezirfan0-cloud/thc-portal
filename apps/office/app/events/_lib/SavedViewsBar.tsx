@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { type FormEvent, useEffect, useState, useTransition } from 'react';
 import { Button, Chip } from '@thc/ui';
-import type { ClientOption } from '../data';
+import type { ClientName } from '../data';
 import { type EventQuery, applyFilterSet, eventsHref, filterSetOf } from './filters';
 import {
   MAX_VIEW_NAME,
@@ -49,7 +49,7 @@ export function SavedViewsBar({
   initial,
 }: {
   query: EventQuery;
-  clients: ClientOption[];
+  clients: ClientName[];
   initial: SavedViewsOutcome;
 }) {
   const [views, setViews] = useState<SavedView[]>(initial.ok ? initial.views : []);
