@@ -1,9 +1,29 @@
+import type * as React from 'react';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { CONTRACT_VERSION_CLAUSE_28_PENDING } from '@thc/domain';
 import type { CandidateData, CandidateDocument, CandidateRow } from '../types';
 
+// The stepper's "look back at a finished step" is client state with no static
+// way in, so a test can ask `picked` — the third null-initialised useState in
+// CandidateScreen, after `reject` and `problem` — to start on a given step.
+const lookBack = vi.hoisted(() => ({
+  picked: null as { phase: number; index: number } | null,
+  nulls: 0,
+}));
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof React>();
+  return {
+    ...actual,
+    useState: ((init: unknown) => {
+      if (init === null && lookBack.picked && ++lookBack.nulls === 3) {
+        return actual.useState(lookBack.picked);
+      }
+      return actual.useState(init as never);
+    }) as typeof actual.useState,
+  };
+});
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => (
@@ -448,5 +468,33 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     );
     expect(html).toContain('none yet');
     expect(html).toContain('Pick at least one role first, then add clients.');
+  });
+});
+
+describe('the candidate profile, roles and clients once the candidate has moved on', () => {
+  const roles = [
+    { id: 'r1', name: 'Waiting Staff' },
+    { id: 'r2', name: 'Bar Staff' },
+  ];
+  const clients = [{ id: 'c1', name: 'Grand Hotel' }];
+
+  const lookBackAtDocuments = (status: string) => {
+    lookBack.picked = { phase: 3, index: 2 };
+    lookBack.nulls = 0;
+    try {
+      return render(data({ roles, clients, candidate: { ...ROW, status } as CandidateRow }));
+    } finally {
+      lookBack.picked = null;
+    }
+  };
+
+  it('keeps roles and clients editable while looking back at Documents from the Quiz', () => {
+    const html = lookBackAtDocuments('quiz');
+    expect(html).toContain('Viewing <b>');
+    expect(html).toContain('roles and clients stay editable');
+    expect(html).toContain('Add clients');
+    // The role ticks are not disabled.
+    const ticks = html.match(/<div[^>]*>.*?Waiting Staff.*?<\/div>/s)?.[0] ?? '';
+    expect(ticks).not.toContain('disabled');
   });
 });
