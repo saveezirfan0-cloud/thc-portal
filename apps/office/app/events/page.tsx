@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Alert, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
-import { loadEventsInRange, loadReferenceData } from './data';
+import { loadClientNames, loadEventsInRange } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
@@ -40,7 +40,7 @@ export default async function Page({
 
   const { from, to } = periodRange(view, date);
   const [reference, { events, problem }, savedViews, format] = await Promise.all([
-    loadReferenceData(),
+    loadClientNames(),
     loadEventsInRange(from, to),
     // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),

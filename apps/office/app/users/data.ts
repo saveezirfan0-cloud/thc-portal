@@ -44,7 +44,9 @@ export async function loadUsers(): Promise<UsersPageData> {
   }
   const supabase = createClient(await cookies()) as unknown as SupabaseClient;
   const [{ data: auth }, accounts, clients] = await Promise.all([
-    supabase.auth.getUser(),
+    // Display only (it keeps the manager from switching themselves off); the
+    // database refuses it regardless. The token was verified by the middleware.
+    supabase.auth.getClaims(),
     supabase.rpc('admin_accounts'),
     supabase
       .from('clients')
@@ -55,7 +57,7 @@ export async function loadUsers(): Promise<UsersPageData> {
   return {
     accounts: (accounts.data ?? []) as AccountRow[],
     clients: clients.data ?? [],
-    selfId: auth?.user?.id ?? null,
+    selfId: auth?.claims?.sub ?? null,
     problem: accounts.error?.message ?? clients.error?.message ?? null,
   };
 }
