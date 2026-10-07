@@ -296,8 +296,9 @@
   align-items: center;
   gap: var(--sp-8);
 }
-.cq-bar .input {
+.cq-bar .field {
   flex: 1 1 200px;
+  min-width: 0;
 }
 .cq-pick .check {
   padding: var(--sp-8) var(--sp-10);
