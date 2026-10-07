@@ -16,6 +16,7 @@ vi.mock('../../../compliance/actions', () => ({
   confirmRtwDate: vi.fn(),
 }));
 vi.mock('../../../checkin/actions', () => ({ resolveViolation: vi.fn() }));
+vi.mock('../actions', () => ({ rejectSelfie: vi.fn() }));
 
 const { Documents } = await import('../Documents');
 const { Shifts } = await import('../Shifts');
@@ -103,7 +104,9 @@ describe('Documents tab (§9.6)', () => {
         ]}
       />,
     );
-    expect(html).toContain('Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)');
+    expect(html).toContain(
+      'Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)',
+    );
   });
 
   it('offers the gov.uk report where one is stored', () => {
@@ -148,13 +151,37 @@ describe('Documents tab (§9.6)', () => {
     const html = renderToStaticMarkup(
       <Documents
         profile={
-          { ...PROFILE, photo_path: 's1/selfie.jpg', photo_url: 'https://signed/s1' } as ProfileRow
+          {
+            ...PROFILE,
+            display_name: 'Amara Okafor',
+            photo_path: 's1/selfie.jpg',
+            photo_url: 'https://signed/s1',
+          } as ProfileRow
         }
         documents={[]}
       />,
     );
     expect(html).toContain('Profile selfie');
     expect(html).toContain('href="https://signed/s1"');
+  });
+
+  it('offers Reject on the selfie of a worker who is still with us (ADR-0097)', () => {
+    const selfie = {
+      ...PROFILE,
+      display_name: 'Amara Okafor',
+      status: 'compliant',
+      removed: false,
+      photo_path: 's1/selfie.jpg',
+    } as ProfileRow;
+    const html = renderToStaticMarkup(<Documents profile={selfie} documents={[]} />);
+    expect(html).toContain('>Reject<');
+    // …and not for one who has left, been rejected or been removed.
+    for (const gone of [{ status: 'inactive' }, { status: 'rejected' }, { removed: true }]) {
+      const out = renderToStaticMarkup(
+        <Documents profile={{ ...selfie, ...gone } as ProfileRow} documents={[]} />,
+      );
+      expect(out, JSON.stringify(gone)).not.toContain('>Reject<');
+    }
   });
 });
 

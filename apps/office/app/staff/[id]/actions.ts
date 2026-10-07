@@ -340,3 +340,45 @@ export async function saveLanguages(staffId: string, languages: string[]): Promi
     ? result
     : { ok: false, message: LANGUAGES_MESSAGES[result.message] ?? result.message };
 }
+
+// ---------------------------------------------------------------------
+// Reject the profile selfie (ADR-0097) — office_reject_selfie. §10.1 locks
+// the avatar once it is set; this is the office taking an inappropriate one
+// down. The photo goes (initials everywhere), the lock goes with it, the
+// worker is told why (RC5) and takes a new one — on wizard step 3 if they
+// are still onboarding, on Profile details if they are working. Called
+// through the manager's SESSION: the function checks the role itself and
+// the audit row names the manager.
+// ---------------------------------------------------------------------
+const REJECT_SELFIE_MESSAGES: Readonly<Record<string, string>> = {
+  reason_required: 'A reason is required — the worker reads it.',
+  reason_too_long: 'Keep the reason to 300 characters.',
+  staff_not_found: 'This worker could not be found. Refresh the page.',
+  not_active:
+    'This person has left, been rejected or been removed, so there is no photo to reject.',
+  no_photo:
+    'There is no profile selfie to reject — it may have been rejected already. Refresh the page.',
+  not_authorised: 'Only the office can do this.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function rejectSelfie(staffId: string, reason: string): Promise<ActionResult> {
+  const trimmed = reason.trim();
+  if (trimmed === '') return { ok: false, message: REJECT_SELFIE_MESSAGES['reason_required']! };
+  if (trimmed.length > 300)
+    return { ok: false, message: REJECT_SELFIE_MESSAGES['reason_too_long']! };
+  const result = await callRpc(
+    'office_reject_selfie',
+    { p_staff: staffId, p_reason: trimmed },
+    staffId,
+  );
+  if (!result.ok) {
+    // Postgres puts the code first: "no_photo", or "read_only" with a hint.
+    const code = result.message.split(/[:\s]/)[0] ?? '';
+    return { ok: false, message: REJECT_SELFIE_MESSAGES[code] ?? result.message };
+  }
+  // The same selfie shows on the candidate's profile and on the board.
+  revalidatePath('/onboarding');
+  revalidatePath(`/onboarding/${staffId}`);
+  return result;
+}
