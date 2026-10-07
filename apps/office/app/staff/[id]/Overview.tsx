@@ -52,6 +52,7 @@ export function Overview({
   canEditGender = false,
   languages,
   canEditLanguages = false,
+  willoReviewUrl,
   emergencyContact = null,
   emergencyContactProblem = null,
   referrals = null,
@@ -75,6 +76,8 @@ export function Overview({
   languages?: string[] | null;
   /** Any office login that may write (ADR-0080). */
   canEditLanguages?: boolean;
+  /** ADR-0094: the Willo interview link; null/undefined = none to show. */
+  willoReviewUrl?: string | null;
   /** ADR-0044 — null reads "Not provided". */
   emergencyContact?: EmergencyContact | null;
   emergencyContactProblem?: string | null;
@@ -163,6 +166,16 @@ export function Overview({
             {profile.rtw_branch === 'international_student' ? (
               <span className="muted xs"> — a visa condition beats the opt-out in term time</span>
             ) : null}
+          </span>
+          <span className="k">Interview</span>
+          <span>
+            {willoReviewUrl ? (
+              <a href={willoReviewUrl} target="_blank" rel="noreferrer">
+                Review interview on Willo ↗
+              </a>
+            ) : (
+              <span className="muted">No interview link on file</span>
+            )}
           </span>
           <span className="k">Joined</span>
           <span>{formatUkDate(profile.joined_at)}</span>

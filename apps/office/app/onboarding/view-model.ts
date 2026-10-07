@@ -20,6 +20,7 @@ import { STAFF_STATUSES, canTransitionStaff, clockLabel } from '@thc/domain';
 import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { capReason, employeeId } from '../staff/staff';
 import type {
+  CandidateQualification,
   CandidateReferral,
   CandidateRow,
   ChaserState,
@@ -377,7 +378,7 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
       ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
       : '';
     return {
-      text: `Stalled — no progress after ${state.rungs_sent} reminders (last ${last}${undelivered}), still reminding daily. Phone them.`,
+      text: `Stalled — ${state.rungs_sent} reminders, no progress (last ${last}${undelivered}). Phone them.`,
       tone: 'coral',
     };
   }
@@ -649,8 +650,9 @@ function appliedWithin(appliedAt: string, applied: AppliedFilter, now: Date): bo
  * The six columns for one toggle position. Rejected cards are hidden by
  * default and reachable through the toggle (§2.2); returning-applicant
  * cards belong to Interview requested and to the Active view only (§2.12).
- * Within a column the longest-waiting card comes first, because that is
- * the one the office is behind on.
+ * Within a column the newest card comes first — the one that arrived in
+ * the stage most recently, by the same instant the card's "N d" counts
+ * from. On Rejected it is the most recently rejected.
  */
 export function boardColumns(
   candidates: readonly CandidateRow[],
@@ -716,7 +718,7 @@ export function boardColumns(
       .sort((a, b) =>
         q.filter === 'rejected'
           ? (b.rejected_at ?? '').localeCompare(a.rejected_at ?? '')
-          : a.stage_entered_at.localeCompare(b.stage_entered_at),
+          : stageEnteredAt(b, column.key).localeCompare(stageEnteredAt(a, column.key)),
       );
     const back = column.key === 'interview_requested' ? cards : [];
     return {
@@ -993,4 +995,55 @@ export function referredOnBoard(
     candidates: [...new Set(rows.map((row) => row.candidate_staff_id))],
     applications: [...new Set(rows.map((row) => row.application_id))],
   };
+}
+
+// ---------------------------------------------------------------------
+// Client qualification (§9.6)
+// ---------------------------------------------------------------------
+/** One client and every role the candidate is cleared for there. */
+export interface ClientGroup {
+  client_id: string;
+  client_name: string;
+  entries: CandidateQualification[];
+}
+
+/**
+ * The table holds one row per client + role (RULE-17); the screen reads one
+ * line per client. Clients are alphabetical, a client's roles keep the order
+ * the rows came in.
+ */
+export function groupQualifications(rows: readonly CandidateQualification[]): ClientGroup[] {
+  const byClient = new Map<string, ClientGroup>();
+  for (const row of rows) {
+    const group = byClient.get(row.client_id) ?? {
+      client_id: row.client_id,
+      client_name: row.client_name,
+      entries: [],
+    };
+    group.entries.push(row);
+    byClient.set(row.client_id, group);
+  }
+  return [...byClient.values()].sort((a, b) => a.client_name.localeCompare(b.client_name));
+}
+
+/** Case-insensitive "contains" on the name; a blank query keeps everything. */
+export function matchesName(name: string, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  return needle === '' || name.toLowerCase().includes(needle);
+}
+
+/**
+ * How many entries a bulk add writes: clients x roles, minus the pairs that
+ * already exist (granting one again would only re-stamp it).
+ */
+export function newEntryCount(
+  clientIds: readonly string[],
+  roleIds: readonly string[],
+  existing: readonly Pick<CandidateQualification, 'client_id' | 'role_id'>[],
+): number {
+  const have = new Set(existing.map((row) => `${row.client_id}:${row.role_id}`));
+  let count = 0;
+  for (const clientId of clientIds)
+    for (const roleId of roleIds) if (!have.has(`${clientId}:${roleId}`)) count += 1;
+  return count;
 }

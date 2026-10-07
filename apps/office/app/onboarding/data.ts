@@ -187,7 +187,7 @@ export async function loadBoard(): Promise<BoardData> {
       .from('onboarding_candidates_v')
       .select('*')
       .in('status', ON_BOARD)
-      .order('stage_entered_at')
+      .order('stage_entered_at', { ascending: false })
       .returns<CandidateRow[]>(),
     supabase
       .from('onboarding_returning_v')
