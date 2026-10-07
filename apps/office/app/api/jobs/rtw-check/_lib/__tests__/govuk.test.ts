@@ -5,6 +5,7 @@ import { decideRtwCheck } from '@thc/domain';
 import {
   createGovukChecker,
   driveGovuk,
+  fitReportToOnePage,
   govukConfig,
   govukPhoto,
   pageHint,
@@ -659,5 +660,47 @@ describe('govukPhoto (ADR-0041)', () => {
     expect(
       await govukPhoto(pageWith({ css: 'main img[alt*="photo" i]', bytes: notPng })),
     ).toBeNull();
+  });
+});
+
+describe('fitReportToOnePage', () => {
+  const calls: string[] = [];
+  const reportPage = (height: unknown, fail = false): GovukPage =>
+    ({
+      emulateMedia: async () => void calls.push('media'),
+      addStyleTag: async ({ content }: { content: string }) => void calls.push(content),
+      setViewportSize: async () => void calls.push('viewport'),
+      evaluate: async () => {
+        if (fail) throw new Error('page closed');
+        return height;
+      },
+    }) as unknown as GovukPage;
+
+  it('hides the cookie banner and page furniture before printing', async () => {
+    calls.length = 0;
+    await fitReportToOnePage(reportPage(500));
+    const css = calls.find((c) => c.includes('display: none'));
+    expect(css).toMatch(/cookie-banner/);
+    expect(css).toMatch(/footer/);
+    expect(css).not.toMatch(/\bmain\b/);
+  });
+
+  it('leaves a page that already fits at full size', async () => {
+    const out = await fitReportToOnePage(reportPage(600));
+    expect(out.scale).toBeUndefined();
+    expect(out.margin.top).toBe('10mm');
+  });
+
+  it('scales a taller page down so it fits one A4 sheet, never below 0.1', async () => {
+    const tall = await fitReportToOnePage(reportPage(2000));
+    expect(tall.scale).toBeGreaterThan(0.1);
+    expect(tall.scale! * 2000).toBeLessThanOrEqual(1123 - 2 * 38);
+    expect((await fitReportToOnePage(reportPage(1_000_000))).scale).toBe(0.1);
+  });
+
+  it('prints unscaled when the page cannot be measured', async () => {
+    expect((await fitReportToOnePage(reportPage('x'))).scale).toBeUndefined();
+    expect((await fitReportToOnePage(reportPage(1, true))).scale).toBeUndefined();
+    expect((await fitReportToOnePage({} as GovukPage)).scale).toBeUndefined();
   });
 });
