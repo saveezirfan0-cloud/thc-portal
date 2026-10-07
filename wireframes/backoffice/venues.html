@@ -148,6 +148,11 @@
             <div class="modal wide">
               <div class="mh"><h3>New venue</h3><span class="muted sm">editing an existing one is titled with the venue's name and ends Cancel / Save changes</span></div>
               <div class="mb">
+                <div class="field">
+                  <span class="label">Find the venue <span class="muted">· by postcode or street</span></span>
+                  <div style="display:flex;gap:8px"><input class="input" style="flex:1" placeholder="e.g. W1K 4HR or 49 Brook Street, London"><button class="btn primary">Search</button></div>
+                  <span class="hint">Or click the map to drop the pin. Either way the address is read back from the pin.</span>
+                </div>
                 <div class="map" style="height:300px">
                   <span class="circle" style="left:50%;top:52%;width:36px;height:36px"></span>
                   <span class="pin" style="left:50%;top:52%"></span>
@@ -202,7 +207,7 @@
       </section>
     </div>
 
-    <div class="wf-note note"><b>Behaviour notes.</b> Directory of venues (§9.11). Toolbar row directly under the page title: "+ New venue" + the List / On map tabs together, search by name and address on the right — not in the page's top-right corner. List columns: Venue · Address · Geofence (m) · Events (how many took place there), explicit Edit and Delete per row. On map shows every venue's geofence circle at once on a single full-width map. Creating / editing is a modal over the list: an interactive map with a pin, full width at the top; Venue type pre-fills the radius from the standard table (Restaurant / bar 100 · Hotel 150 · Private residence 150 · Conference or banqueting 250 · Exhibition centre 400 · Stadium or arena 500 · Racecourse or showground 1500 · Outdoor or festival site 3000 · Other 150 — editable in Django Admin); the radius is set only with the 100–3000 m slider and the circle follows it (not typed, not dragged); the address is reverse-geocoded from the pin, read-only, with lat/lng as plain text underneath. New: "New venue" · Cancel / Create venue. Edit: titled with the venue's name, pre-filled, Cancel / Save changes. Delete: a confirmation modal ("This action cannot be undone"), stating how many upcoming events use the venue and that existing events keep their own address and radius. Venue entity: name · address · lat/lng · venue_type · geofence_radius_m (§1.5).</div>
+    <div class="wf-note note"><b>Behaviour notes.</b> Directory of venues (§9.11). Toolbar row directly under the page title: "+ New venue" + the List / On map tabs together, search by name and address on the right — not in the page's top-right corner. List columns: Venue · Address · Geofence (m) · Events (how many took place there), explicit Edit and Delete per row. On map shows every venue's geofence circle at once on a single full-width map. Creating / editing is a modal over the list: an interactive map with a pin, full width at the top; Venue type pre-fills the radius from the standard table (Restaurant / bar 100 · Hotel 150 · Private residence 150 · Conference or banqueting 250 · Exhibition centre 400 · Stadium or arena 500 · Racecourse or showground 1500 · Outdoor or festival site 3000 · Other 150 — editable in Django Admin); the radius is set only with the 100–3000 m slider and the circle follows it (not typed, not dragged); a postcode / street-address search above the map finds the site and picking a match drops the pin (ADR-0101); the address is reverse-geocoded from the pin, read-only, with lat/lng as plain text underneath. New: "New venue" · Cancel / Create venue. Edit: titled with the venue's name, pre-filled, Cancel / Save changes. Delete: a confirmation modal ("This action cannot be undone"), stating how many upcoming events use the venue and that existing events keep their own address and radius. Venue entity: name · address · lat/lng · venue_type · geofence_radius_m (§1.5).</div>
   </div>
 </div>
 </body>

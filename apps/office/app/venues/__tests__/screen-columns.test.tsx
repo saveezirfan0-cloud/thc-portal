@@ -9,6 +9,7 @@ vi.mock('../actions', () => ({
   deleteVenue: vi.fn(),
   loadUpcomingEvents: vi.fn(),
   reverseGeocode: vi.fn(),
+  searchPlaces: vi.fn(),
 }));
 vi.mock('../VenueMap', () => ({ VenueMap: () => null, markerLabel: () => '' }));
 
