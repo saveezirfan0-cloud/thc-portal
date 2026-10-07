@@ -820,8 +820,8 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
 
   it('names its ADR in every trigger — RC → ADR-0045, OF → ADR-0046', () => {
     for (const code of ADDITION_CODES) {
-      // RC5 is the office rejecting a selfie outright (ADR-0094), not deciding a request.
-      const adr = code === 'RC5' ? 'ADR-0094' : code.startsWith('RC') ? 'ADR-0045' : 'ADR-0046';
+      // RC5 is the office rejecting a selfie outright (ADR-0096), not deciding a request.
+      const adr = code === 'RC5' ? 'ADR-0096' : code.startsWith('RC') ? 'ADR-0045' : 'ADR-0046';
       expect(template(code).trigger, code).toContain(adr);
       expect(template(code).trigger, code).toMatch(/Not in §8/);
     }

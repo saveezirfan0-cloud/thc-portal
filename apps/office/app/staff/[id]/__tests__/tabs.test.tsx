@@ -165,7 +165,7 @@ describe('Documents tab (§9.6)', () => {
     expect(html).toContain('href="https://signed/s1"');
   });
 
-  it('offers Reject on the selfie of a worker who is still with us (ADR-0094)', () => {
+  it('offers Reject on the selfie of a worker who is still with us (ADR-0096)', () => {
     const selfie = {
       ...PROFILE,
       display_name: 'Amara Okafor',

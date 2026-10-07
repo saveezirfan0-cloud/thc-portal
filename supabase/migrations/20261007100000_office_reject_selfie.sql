@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261006100000 · the office can reject a profile selfie
---                            (ADR-0094; §10.1, §10.3 3/11, §2.7)
+-- Migration 20261007100000 · the office can reject a profile selfie
+--                            (ADR-0096; §10.1, §10.3 3/11, §2.7)
 --
 -- The selfie is set once and locked (staff_set_photo() refuses a second
 -- photo once staff.photo_path is set, §10.1). The office could look at it
@@ -90,7 +90,7 @@ begin
 end $$;
 
 comment on function public.office_reject_selfie(uuid, text) is
-  'ADR-0094: the office rejects a worker''s profile selfie (/onboarding/:id and /staff/:id → Documents → Profile selfie → Reject). Admin only; reason required (reason_required 22023, ≤ 300 reason_too_long). Clears staff.photo_path (which is the §10.1 lock) and onboarding_progress.selfie_at (so the wizard reopens step 3), queues RC5 to the worker with the reason, audits staff.selfie_rejected without it. The object is kept for issued PDFs (§1.7). Refuses staff_not_found (P0002), not_active (a leaver, rejected or removed) and no_photo (P0001).';
+  'ADR-0096: the office rejects a worker''s profile selfie (/onboarding/:id and /staff/:id → Documents → Profile selfie → Reject). Admin only; reason required (reason_required 22023, ≤ 300 reason_too_long). Clears staff.photo_path (which is the §10.1 lock) and onboarding_progress.selfie_at (so the wizard reopens step 3), queues RC5 to the worker with the reason, audits staff.selfie_rejected without it. The object is kept for issued PDFs (§1.7). Refuses staff_not_found (P0002), not_active (a leaver, rejected or removed) and no_photo (P0001).';
 
 revoke execute on function public.office_reject_selfie(uuid, text) from public, anon;
 grant  execute on function public.office_reject_selfie(uuid, text) to authenticated;

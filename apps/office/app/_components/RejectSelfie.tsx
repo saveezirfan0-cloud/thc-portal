@@ -6,7 +6,7 @@ import { Alert, Button, Modal, Note, Textarea } from '@thc/ui';
 import { rejectSelfie } from '../staff/[id]/actions';
 
 /**
- * Reject the profile selfie (ADR-0094) — the "Profile selfie" row's one
+ * Reject the profile selfie (ADR-0096) — the "Profile selfie" row's one
  * action, on /onboarding/:id and on /staff/:id → Documents.
  *
  * §10.1 locks the avatar once it is set, so without this an inappropriate

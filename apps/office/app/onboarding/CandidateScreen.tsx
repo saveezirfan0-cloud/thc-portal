@@ -1880,7 +1880,7 @@ function DocumentsPhase({
               row.photo_path ? (
                 <>
                   <Pill tone="green">Set</Pill>
-                  {/* ADR-0094: an inappropriate selfie comes down, with a reason the candidate reads. */}
+                  {/* ADR-0096: an inappropriate selfie comes down, with a reason the candidate reads. */}
                   {row.status !== 'rejected' ? (
                     <RejectSelfie
                       staffId={row.id}

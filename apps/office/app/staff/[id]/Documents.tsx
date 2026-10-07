@@ -347,7 +347,7 @@ export function Documents({
             actions={
               <>
                 <Pill tone="green">Set</Pill>
-                {/* ADR-0094: not for a worker who has left or been removed. */}
+                {/* ADR-0096: not for a worker who has left or been removed. */}
                 {!profile.removed &&
                 !['rejected', 'inactive', 'removed'].includes(profile.status) ? (
                   <RejectSelfie staffId={profile.id} name={profile.display_name} />

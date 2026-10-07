@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Reject the profile selfie (ADR-0094). The action goes through the
+ * Reject the profile selfie (ADR-0096). The action goes through the
  * manager's SESSION (the function checks the role and the audit row names
  * auth.uid()), asks for the reason again on the server, and turns the
  * database's refusals into words a manager can act on.

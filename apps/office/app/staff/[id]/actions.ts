@@ -342,7 +342,7 @@ export async function saveLanguages(staffId: string, languages: string[]): Promi
 }
 
 // ---------------------------------------------------------------------
-// Reject the profile selfie (ADR-0094) — office_reject_selfie. §10.1 locks
+// Reject the profile selfie (ADR-0096) — office_reject_selfie. §10.1 locks
 // the avatar once it is set; this is the office taking an inappropriate one
 // down. The photo goes (initials everywhere), the lock goes with it, the
 // worker is told why (RC5) and takes a new one — on wizard step 3 if they
