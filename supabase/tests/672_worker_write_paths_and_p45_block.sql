@@ -4,7 +4,7 @@
 --   20260930120200_worker_write_paths_and_p45_block.sql
 -- =====================================================================
 begin;
-select plan(20);
+select plan(21);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -59,8 +59,8 @@ select is(
 \set me_uid 'd6320000-0000-4000-8000-0000000000aa'
 insert into auth.users (id, email) values (:'me_uid', 'photo.me@rls.test');
 insert into profiles (id, role, full_name) values (:'me_uid', 'staff', 'Photo Me');
-insert into staff (id, user_id, first_name, last_name, email, phone, dob, status)
-values (:'me', :'me_uid', 'Photo', 'Me', 'photo.me@rls.test', '+447700906321', date '1995-01-01', 'documents');
+insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status)
+values (:'me', :'me_uid', 96320, 'Photo', 'Me', 'photo.me@rls.test', '+447700906321', date '1995-01-01', 'documents');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'me_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -87,12 +87,13 @@ select is((select photo_path from staff where id = :'me'), :'me' || '/selfie-2.j
 -- ---------------------------------------------------------------------
 -- 4. D52 · one E5 per bank save, even two in one second
 -- ---------------------------------------------------------------------
-select lives_ok($$ select staff_save_bank('P Me', '40-47-84', '12345678') $$, 'first save');
+select lives_ok($$ select staff_save_bank('P Me', '40-47-84', '12345678') $$, 'first save (a first entry: no E5, ADR-0103)');
 select lives_ok($$ select staff_save_bank('P Me', '40-47-85', '12345678') $$, 'second save, same transaction');
+select lives_ok($$ select staff_save_bank('P Me', '40-47-86', '12345678') $$, 'third save, same transaction');
 reset role;
 select is((select count(*)::int from notification_outbox
             where template = 'E5' and key like 'E5:staff:' || 'd6320000-0000-4000-8000-000000000001' || ':%'), 2,
-  '§2.10 both saves queued their own E5: the key carries microseconds, so the second is not swallowed by on conflict');
+  '§2.10 both changes to existing details queued their own E5: the key carries microseconds, so the second is not swallowed by on conflict');
 
 select * from finish();
 rollback;
