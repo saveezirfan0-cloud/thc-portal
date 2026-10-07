@@ -36,10 +36,7 @@ export function ReferralsCard({
 }) {
   const referred = referrals?.referred ?? [];
   return (
-    <Panel
-      title="Referrals"
-      actions={<span className="muted sm">recorded from /apply?ref= · no reward (Q19)</span>}
-    >
+    <Panel title="Referrals">
       {problem ? (
         <Alert tone="coral">The referrals could not be read: {problem}</Alert>
       ) : (
@@ -86,9 +83,7 @@ export function ReferralsCard({
         </div>
       )}
       {!problem && referred.length > 0 ? (
-        <Note>
-          The worker sees only the count in the app; the names are for the office (ADR-0047).
-        </Note>
+        <Note>The worker sees only the count in the app; the names are for the office.</Note>
       ) : null}
     </Panel>
   );

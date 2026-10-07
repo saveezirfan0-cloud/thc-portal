@@ -2366,9 +2366,6 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
               <Pill tone={refs.length >= 2 ? 'green' : 'amber'}>
                 {Math.min(refs.length, 2)} of 2
               </Pill>
-              <span className="muted sm">
-                step 8/11 · mandatory · no relatives · tutors / coaches accepted
-              </span>
             </>
           }
         >
@@ -2395,7 +2392,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
             </div>
           </div>
         </Panel>
-        <Panel title="National Insurance · Bank & payroll" actions={<Pill>step 9/11</Pill>}>
+        <Panel title="National Insurance · Bank & payroll">
           <div className="kv">
             <span className="k">NI number</span>
             <span className="mono">
@@ -2437,9 +2434,6 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
                   ? `Submitted ${formatUkStamp(hmrc.submitted_at).replace(' UK time', '')}`
                   : 'Not submitted'}
               </Pill>
-              <span className="muted sm">
-                step 7/11 · no P45 upload — every worker completes this form
-              </span>
             </>
           }
         >

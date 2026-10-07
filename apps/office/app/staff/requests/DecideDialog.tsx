@@ -248,7 +248,7 @@ export function DecideDialog({
             <p className="xs muted">
               The date of birth changes on the profile now and is written to the activity log with
               your name. If a share code is waiting for review, gov.uk is asked again with the new
-              date. {first} gets a push (RC2). Documents and payroll exports already issued are not
+              date. {first} gets a push. Documents and payroll exports already issued are not
               changed.
             </p>
           </>
@@ -260,9 +260,9 @@ export function DecideDialog({
               {evidenceTick('name')}
             </Checkbox>
             <p className="xs muted">
-              The name changes on the profile now. Payroll and admin@ are emailed (RC4); {first}{' '}
-              gets a push (RC2). Timesheets, allocation sheets and payroll exports already issued
-              are not changed. No new right-to-work check is started (Q13).
+              The name changes on the profile now. Payroll and admin@ are emailed; {first} gets a
+              push. Timesheets, allocation sheets and payroll exports already issued are not
+              changed. No new right-to-work check is started.
             </p>
           </>
         ) : null}
@@ -271,7 +271,7 @@ export function DecideDialog({
           <p className="xs muted">
             The new photo shows on the profile, the check-in monitor and the client line-up from
             now, and is printed on the next timesheet. Documents already issued keep the old photo,
-            and the old file is kept. {first} gets a push (RC2).
+            and the old file is kept. {first} gets a push.
           </p>
         ) : null}
 
@@ -281,7 +281,7 @@ export function DecideDialog({
             value={reason}
             maxLength={CHANGE_REASON_MAX}
             onChange={(event) => setReason(event.target.value)}
-            hint={`Required. ${first} sees it in the app as “Not changed: {reason}” (RC3).`}
+            hint={`Required. ${first} sees it in the app as “Not changed: {reason}”.`}
           />
         ) : null}
       </div>

@@ -153,14 +153,20 @@
 
 .kv {
   display: grid;
-  grid-template-columns: 170px 1fr;
+  grid-template-columns: 170px minmax(0, 1fr);
   gap: var(--sp-8) var(--sp-14);
   font-size: var(--fs-13);
   align-items: baseline;
 }
 .kv.narrow {
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 90px minmax(0, 1fr);
   margin-top: var(--sp-6);
+}
+/* A long value (a referee's email) breaks inside its own cell instead of
+   running out of the card. */
+.kv > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .kv .k {
   font-family: var(--font-label);

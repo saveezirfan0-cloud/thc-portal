@@ -98,7 +98,7 @@ export function Availability({
         Auto-assign skips {name} for any role section overlapping these — first round, hourly
         rounds, refills, escalation and offer pushes. On the event board they appear under
         Unavailable as &ldquo;Marked unavailable&rdquo;, and a manager can still invite them by hand
-        after a warning (ADR-0043, Q9). A confirmed booking is never cancelled by an entry.
+        after a warning. A confirmed booking is never cancelled by an entry.
       </Note>
     </div>
   );
