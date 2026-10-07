@@ -7,7 +7,6 @@ import {
   Checkbox,
   Chip,
   Modal,
-  Note,
   Panel,
   Select,
   Switch,
@@ -195,18 +194,7 @@ export function Qualifications({
         )}
       </Panel>
 
-      <div className="grid c2">
-        <Note>
-          <b>Add client:</b> pick a client, then one or more of this worker&rsquo;s roles; each
-          entry can carry an internal note. The same list is editable from the client card.
-        </Note>
-        <Note tone="coral">
-          <b>Removing ≠ barring.</b> Removing an automatic grant does not stop it being re-granted
-          by the next clean shift. To keep someone away from a client, switch <b>Do not return</b>{' '}
-          on: not invited in either wave, never on their Radar, cannot be invited manually — the
-          only hard gate on this tab.
-        </Note>
-      </div>
+      <div className="grid c2"></div>
 
       <Modal
         open={adding}

@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   EmptyState,
-  Note,
   Panel,
   Pill,
   SaveBar,
@@ -298,15 +297,6 @@ export function StaffScreen({
         <StudentVisaView students={students} query={query} capFilter={capFilter} />
       ) : (
         <>
-          {filter === 'inactive' ? (
-            <Alert tone="cyan">
-              Everyone who left through the app (&ldquo;Request my P45&rdquo;) — one place to work
-              through outstanding P45s and final pay. Leaving is not a punishment: show-rate, rating
-              and feedback are untouched. The only way back is <b>Reset to candidate</b> on the
-              profile.
-            </Alert>
-          ) : null}
-
           <Panel flush>
             <div className="panel-b tight">
               {shown.length === 0 ? (
@@ -437,12 +427,6 @@ export function StaffScreen({
               Compliant / Blocked / Removed.
             </span>
           </div>
-
-          <Note>
-            A removed worker stays in the list as &ldquo;Deleted account #id&rdquo;: removal
-            anonymises the person and keeps the history, so their roles and rating are still here.
-            Blocking, unblocking and Reset to candidate live on the profile.
-          </Note>
         </>
       )}
     </OfficeShell>
@@ -596,7 +580,9 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
         {row.p45_requested_at ? (
           <>
             <Pill tone="amber">Requested</Pill>
-            <span className="sub">E8 sent {formatUkStamp(row.p45_requested_at, format)}</span>
+            <span className="sub">
+              Office notified {formatUkStamp(row.p45_requested_at, format)}
+            </span>
           </>
         ) : (
           <span className="muted">—</span>

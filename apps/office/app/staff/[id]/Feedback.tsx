@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { Button, EmptyState, Note, Pill } from '@thc/ui';
 import { DeleteFeedbackModal, EditFeedbackModal } from '../../feedback/_components/FeedbackDialogs';
@@ -64,12 +63,6 @@ export function Feedback({
             events={events}
           />
         )}
-        <Note>
-          Client feedback here is read-only — it arrives from the Client Portal and &ldquo;Mark as
-          read&rdquo; lives only on the <Link href="/feedback">Feedback screen</Link>; it counts
-          toward the rating only once marked read. Office entries can be edited or deleted from here
-          or from the Feedback screen.
-        </Note>
       </div>
 
       <div className="stack" role="list" aria-label="Feedback entries">

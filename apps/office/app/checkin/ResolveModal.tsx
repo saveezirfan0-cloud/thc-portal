@@ -154,13 +154,6 @@ export function ResolveModal({
                 payment — please notify Finance to pay it.
               </Alert>
             ) : null}
-            {isNoShow ? (
-              <Note>
-                Resolving a No-show is the same action as “Get back”: it registers the worker as
-                arrived and reclassifies this entry to Late, with the minutes counted from the
-                arrival time below — or from the moment you press it, if you leave it empty.
-              </Note>
-            ) : null}
 
             {isNoShow ? (
               <UkDateTimeField

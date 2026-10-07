@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Avatar, Button, EmptyState, Note, Pill, Select, useTimeFormat } from '@thc/ui';
+import { Alert, Avatar, Button, EmptyState, Pill, Select, useTimeFormat } from '@thc/ui';
 import {
   DOCUMENT_FILTERS,
   actionsFor,
@@ -130,15 +130,6 @@ export function ReviewTab({
         </div>
       </div>
 
-      <Alert tone="cyan">
-        <b>Why this tab exists:</b> a current worker who re-uploads after an expiry or a rejection
-        never reappears on the onboarding kanban. Every profile with a document — or a Criminal
-        Record declaration answered Yes (onboarding or in-employment) — in the “under review” state
-        lands here, candidates and staff alike. So does a share code verified before the
-        right-to-work date was required — “Right-to-work date missing — re-verify” — until the date
-        off the gov.uk report is confirmed.
-      </Alert>
-
       {result ? (
         <Alert tone={result.ok ? 'green' : 'coral'}>{result.message ?? 'Done.'}</Alert>
       ) : null}
@@ -180,14 +171,6 @@ export function ReviewTab({
           )}
         </div>
       </div>
-
-      <Note>
-        <b>Dropped out automatically:</b> once someone is Rejected or Removed their outstanding
-        documents no longer need review and leave this queue. A “No” Criminal Record answer is
-        auto-verified on submission and never appears here. References are never reviewed and never
-        queue. The Official University Completion Letter is reviewed here too: approving it confirms
-        the completion date and visa expiry, and the cap follows from the completion date.
-      </Note>
 
       {dialogs}
     </section>

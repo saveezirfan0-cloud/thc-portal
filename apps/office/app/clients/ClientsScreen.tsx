@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Chip, EmptyState, Note, Panel, Select } from '@thc/ui';
+import { Alert, Button, Chip, EmptyState, Panel, Select } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
@@ -366,11 +366,6 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
           </div>
         ) : null}
       </Panel>
-
-      <Note>
-        A client record can be edited at any time but <b>never deleted</b>. Charge rates and dress
-        codes are per client, per role — set on the client card, nowhere else.
-      </Note>
 
       {editing !== null ? (
         <ClientModal

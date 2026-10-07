@@ -20,7 +20,7 @@ import {
   Textarea,
   useTimeFormat,
 } from '@thc/ui';
-import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
+import { formatLanguages, groupRolesByArea } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import { RejectSelfie } from '../_components/RejectSelfie';
 import {
@@ -260,9 +260,9 @@ export function CandidateScreen({
           <Alert tone="coral">
             <b>Rejected{row.rejected_at ? ` ${formatUkStamp(row.rejected_at)}` : ''}</b>
             {row.rejection_cause === 'willo'
-              ? ' — in Willo; the system rejected automatically and sent E2.'
+              ? ' — in Willo; the system rejected automatically and sent the rejection email.'
               : row.rejection_cause === 'quiz_failed'
-                ? ' — Health & Safety quiz failed three times; E4 and the terminal screen in the app.'
+                ? ' — Health & Safety quiz failed three times; an email was sent and the app shows the final screen.'
                 : ` — by ${row.rejected_by_name ?? 'the office'}${row.rejection_reason ? `: “${row.rejection_reason}”` : ''}.`}{' '}
             Final on this record: a new application routes here as a returning applicant.
           </Alert>
@@ -298,7 +298,7 @@ export function CandidateScreen({
               <Button
                 tone="outline"
                 disabled={busy || resent}
-                title="A fresh personal link and a new E3, for a candidate whose link has expired. Once every 10 minutes."
+                title="A fresh personal link and a new activation email, for a candidate whose link has expired. Once every 10 minutes."
                 onClick={() =>
                   run(
                     () => resendActivationLink(row.id),
@@ -439,11 +439,7 @@ export function CandidateScreen({
             onChange={(event) => setMarkReason(event.target.value)}
             hint="Kept for the office with your name, and shown on the profile."
           />
-          <Note>
-            Then pick the role(s) and <b>Accept — move to Documents</b> (E3 goes out), or Reject,
-            exactly as after a Willo interview. A later Willo response for this candidate changes
-            nothing. Owners and managers only.
-          </Note>
+
           {problem ? <Alert tone="coral">{problem}</Alert> : null}
         </div>
       </Modal>
@@ -501,8 +497,8 @@ export function CandidateScreen({
               onChange={(event) => setReason(event.target.value)}
               hint={
                 reject.kind === 'candidate'
-                  ? 'Kept for the office. The candidate receives THC’s rejection email — E2 once the interview is done, E2b before it — never this reason.'
-                  : 'Sent to the worker word for word in push N8: “Document rejected — [reason]” with a Re-upload button. The new upload returns to review.'
+                  ? 'Kept for the office. The candidate receives THC’s rejection email — never this reason.'
+                  : 'Sent to the worker word for word in a push: “Document rejected — [reason]” with a Re-upload button. The new upload returns to review.'
               }
             />
             {reject.kind === 'candidate' ? (
@@ -674,12 +670,12 @@ function Facts({
       <span key="act">
         {row.activated && row.activated_at ? (
           <>
-            Activated <b>{formatUkDate(row.activated_at)}</b> (E3)
+            Activated <b>{formatUkDate(row.activated_at)}</b>
           </>
         ) : row.activated ? (
-          'Activated (E3)'
+          'Activated'
         ) : (
-          'Not activated yet — E3 sent'
+          'Not activated yet — activation email sent'
         )}
       </span>,
     );
@@ -816,7 +812,7 @@ function InterviewRequested({
             <span className="k">Created in Willo</span>
             <span>
               {row.willo_invited_at
-                ? `${formatUkStamp(row.willo_invited_at)} — automatically on submission (E1)`
+                ? `${formatUkStamp(row.willo_invited_at)} — automatically on submission`
                 : 'Pending — the Willo integration is not connected yet (needs THC’s API key)'}
             </span>
             <span className="k">Invitation</span>
@@ -844,10 +840,6 @@ function InterviewRequested({
               </Button>
             ) : null}
           </div>
-          <Note>
-            No documents are held on this phase — the Documents panel appears only once the
-            candidate is accepted.
-          </Note>
         </div>
       </Panel>
     </div>
@@ -938,11 +930,6 @@ function InterviewCompleted({
           <div>
             <WilloButton url={row.willo_review_url} primary />
           </div>
-          <Note>
-            Rejected in Willo → the system rejects automatically and sends E2 (THC wording).
-            Accepted in Willo → the profile advances to Documents by itself and E3 (activation +
-            password + &quot;download the app&quot;) goes out. The decision is not repeated here.
-          </Note>
         </div>
       </Panel>
       {past ? (
@@ -975,7 +962,7 @@ function InterviewCompleted({
                 {busy ? 'Accepting…' : 'Accept — move to Documents'}
               </Button>
               <Button tone="danger" disabled={busy} onClick={onReject}>
-                Reject (E2)
+                Reject
               </Button>
             </div>
             {problem ? <Alert tone="coral">{problem}</Alert> : null}
@@ -1112,7 +1099,7 @@ function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
     );
   }
   if (doc.review_status === 'rejected' && doc.rejection_reason) {
-    parts.push(`Rejected: “${doc.rejection_reason}” — awaiting re-upload (N8 sent)`);
+    parts.push(`Rejected: “${doc.rejection_reason}” — awaiting re-upload`);
   }
   return parts.join(' · ');
 }
@@ -1677,10 +1664,6 @@ function RolesAndClients({
               onToggle={toggleRole}
             />
           )}
-          <Note>
-            Un-ticking a role also removes the client entries that name it. A &ldquo;Do not
-            return&rdquo; entry is kept.
-          </Note>
         </div>
       </Panel>
 
@@ -1914,11 +1897,6 @@ function ClientQualification({
             </>
           )}
         </div>
-        <Note>
-          Optional. Choose the roles, tick the clients, add them in one go — each role is its own
-          entry. A clean shift also adds entries by itself, and the list is editable later on the
-          staff profile and the client card.
-        </Note>
       </div>
     </Panel>
   );
@@ -2015,8 +1993,7 @@ function DocumentsPhase({
         <div className="stack">
           {live.length === 0 ? (
             <EmptyState>
-              Nothing uploaded yet. The candidate uploads at wizard step 4/11 after activating their
-              account.
+              Nothing uploaded yet. The candidate uploads in the app after activating their account.
             </EmptyState>
           ) : null}
           {others.map((d) => (
@@ -2050,13 +2027,6 @@ function DocumentsPhase({
           ))}
           {!doc.readOnly && canUploadCompletionLetter(row, data.documents) ? (
             <CompletionLetterUpload staffId={row.id} />
-          ) : null}
-          {row.share_code && shareCode.length === 0 ? (
-            <Note>
-              Share code <span className="mono">{row.share_code}</span> saved by the candidate, not
-              yet submitted for checking — the gov.uk check starts when they submit their documents,
-              and its report appears here. Progress is under Compliance → gov.uk checks.
-            </Note>
           ) : null}
 
           {/* §2.7: the selfie is part of the document set the wireframe lists. */}
@@ -2136,7 +2106,7 @@ function DocumentsPhase({
       >
         <div className="stack">
           {declarations.length === 0 ? (
-            <div className="muted sm">Not declared yet — it is part of wizard step 4/11.</div>
+            <div className="muted sm">Not declared yet — it is part of the app’s onboarding.</div>
           ) : null}
           {declarations.map((d) => (
             <DocRow
@@ -2185,11 +2155,6 @@ function DocumentsPhase({
               }
             />
           ))}
-          <Note>
-            Verify / Reject appear <b>only</b> when the answer is Yes. A <b>No</b> answer is
-            auto-verified on submission and never needs a manual action. Declarations are a history,
-            never overwritten.
-          </Note>
         </div>
       </Panel>
     </>
@@ -2244,7 +2209,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
                 }
                 label="Attempts"
                 value={`${row.quiz_attempts_used} / ${QUIZ_MAX_ATTEMPTS}`}
-                description="third failure → automatic rejection (E4)"
+                description="third failure → automatic rejection"
               />
               <KpiTile
                 flat
@@ -2293,11 +2258,6 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
                 );
               })}
             </div>
-            <Note>
-              Read-only for the manager: the quiz is taken in the app (wizard step 6/11 after the
-              H&amp;S induction, step 5). Multiple choice; questions and answers come from THC’s own
-              document. Passing moves the card to Additional info.
-            </Note>
           </div>
         </Panel>
       ) : (
@@ -2353,11 +2313,6 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
 
   return (
     <>
-      <Alert tone="cyan">
-        Everything from wizard steps 7–9 lands here, in one place, without hunting through tabs:
-        HMRC New Starter Checklist · Two references · Bank &amp; payroll · National Insurance. None
-        of these has a Verify / Reject action or a queue entry.
-      </Alert>
       <div className="grid c2">
         <Panel
           title="Two references"
@@ -2386,10 +2341,6 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
                 </div>
               </div>
             ))}
-            <div className="muted xs" style={{ gridColumn: '1 / -1' }}>
-              Collected and displayed only — not reviewed or verified; the office contacts a referee
-              off-system if it wants to.
-            </div>
           </div>
         </Panel>
         <Panel title="National Insurance · Bank & payroll">
@@ -2401,7 +2352,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
               <span className="muted sm">
                 {money?.ni_number_masked
                   ? 'masked once entered; corrections go through the office.'
-                  : 'Blank — payroll still runs; E6 is sent when it is later added.'}
+                  : 'Not entered yet.'}
               </span>
             </span>
             <span className="k">Account holder</span>
@@ -2413,7 +2364,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
             <span className="k">Saved</span>
             <span>
               {money?.bank_updated_at
-                ? `${formatUkStamp(money.bank_updated_at)} · E5 sent to payroll`
+                ? `${formatUkStamp(money.bank_updated_at)} · payroll notified`
                 : 'Not saved yet'}
             </span>
             <span className="k">48h opt-out (WTR)</span>
@@ -2493,10 +2444,6 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
                 ))}
               </div>
             ) : null}
-            <div className="muted xs">
-              From the verified University Term Dates Letter where there is one. Correcting a date
-              on the Documents phase changes the cap from that moment on — nothing else to update.
-            </div>
           </div>
         </Panel>
       </div>
@@ -2519,7 +2466,7 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
   const version = row.contract_version ?? contract?.version ?? null;
   return (
     <div className="grid c2">
-      <Panel title="Zero-hours agreement · T&C" actions={<Pill>step 10/11</Pill>}>
+      <Panel title="Zero-hours agreement · T&C">
         <div className="stack">
           <div className="contract-text">
             <h4>
@@ -2535,14 +2482,7 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
               <p>No published agreement could be read — see contract_versions.</p>
             )}
           </div>
-          {contract?.is_placeholder ? (
-            <Note>
-              {contractClause28Pending(contract.version)
-                ? 'Clause 28, the ongoing duty to disclose an unspent conviction, is awaiting THC’s approval.'
-                : 'Placeholder wording until THC supplies the agreement text.'}{' '}
-              Every version carries the ongoing duty to disclose an unspent conviction.
-            </Note>
-          ) : null}
+
           <label className={signed ? 'check sel' : 'check'}>
             <input
               type="checkbox"

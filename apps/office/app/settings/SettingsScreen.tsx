@@ -256,11 +256,7 @@ function WeightsBlock({ weights }: { weights: ScoringWeights }) {
           onChange={(event) => setDraft({ ...draft, [field.key]: Number(event.target.value) })}
         />
       ))}
-      <Note>
-        Client qualification is not a weight and never becomes one: it is an ORDERING. Qualified
-        workers are scored and exhausted as Wave 1, then everyone else as Wave 2 — a weighting could
-        be out-scored by proximity.
-      </Note>
+
       <Feedback note={note} error={error} />
       <SaveAction id="weights" title="Scoring weights" dirty={!sameValue(draft, weights)}>
         <Button tone="primary" disabled={pending} onClick={() => run(() => saveWeights(draft))}>
@@ -347,11 +343,7 @@ function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
         <option value="block">Block the booking (default)</option>
         <option value="warn">Allow it and warn the office</option>
       </Select>
-      <Note>
-        Never configurable: a Student visa worker over 20 hours (10 below degree level) in term, and
-        any shift past a worker’s right-to-work expiry, are always refused — by the database, on
-        every booking path.
-      </Note>
+
       <Feedback note={note} error={error} />
       <SaveAction id="rota" title="Rota guard" dirty={draft !== mode}>
         <Button
@@ -480,7 +472,7 @@ function SendersBlock({
         label="Everything else"
         type="email"
         value={draft.admin}
-        hint="Password resets, activation and invitation emails, finance reports, and the office alerts (E5–E9)."
+        hint="Password resets, activation and invitation emails, finance reports, and the office alerts."
         onChange={(event) => setDraft({ ...draft, admin: event.target.value })}
       />
       <Input
@@ -494,7 +486,8 @@ function SendersBlock({
         Replies go to a monitored THC mailbox — no-reply addresses are not used, and this form
         refuses one. If the senders are on a sending-only subdomain (e.g. updates.…), set where
         replies go so they reach the real inbox. The office and payroll notifications go to fixed
-        addresses, not a setting: E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to{' '}
+        addresses, not a setting: bank and NI-number changes go to{' '}
+        <b>{recipients.e5e6.join(', ')}</b>; contact-detail changes go to{' '}
         <b>{recipients.e7.join(', ')}</b>.
       </Note>
       <Feedback note={note} error={error} />

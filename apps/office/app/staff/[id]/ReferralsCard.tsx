@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Alert, Note, Panel, Pill } from '@thc/ui';
+import { Alert, Panel, Pill } from '@thc/ui';
 import { employeeId, statusLabel } from '../staff';
 import type { StaffStatus } from '../types';
 import type { ReferralPerson, Referrals } from './types';
@@ -82,9 +82,6 @@ export function ReferralsCard({
           </span>
         </div>
       )}
-      {!problem && referred.length > 0 ? (
-        <Note>The worker sees only the count in the app; the names are for the office.</Note>
-      ) : null}
     </Panel>
   );
 }

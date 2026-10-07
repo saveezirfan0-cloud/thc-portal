@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Select, Tabs } from '@thc/ui';
+import { Button, EmptyState, Panel, Select, Tabs } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import {
   NO_ADDED_FILTER,
@@ -305,13 +305,6 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
               {venues.length === 1 ? 'venue' : 'venues'}
             </p>
           ) : null}
-          <Note>
-            <b>Events</b> is how many events have taken place at this venue. The geofence radius
-            (100–3000 m) is what the check-in button checks against and what background tracking
-            watches for exits. <b>Date added</b> is a UK date; <b>Added by</b> reads &ldquo;—&rdquo;
-            for venues that were there before it was recorded. Editing opens the same modal titled
-            with the venue&rsquo;s name, pre-filled with its pin, address and radius.
-          </Note>
         </>
       ) : (
         <>
@@ -326,10 +319,6 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
             ariaLabel="Every venue's geofence circle, to scale"
             legend
           />
-          <Note>
-            Every venue&rsquo;s geofence circle at once on a single full-width map — where they are
-            and how big they are relative to each other. Clicking a pin opens its Edit modal.
-          </Note>
         </>
       )}
 

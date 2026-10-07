@@ -115,7 +115,7 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     expect(html).toContain('16.09.2026');
     expect(html).toContain('>2</td>');
     expect(html).toContain('Requested');
-    expect(html).toContain('E8 sent 17.09.2026 21:14 UK time');
+    expect(html).toContain('Office notified 17.09.2026 21:14 UK time');
   });
 
   it('reads "— none worked" and no pill for a leaver who never worked or asked', () => {

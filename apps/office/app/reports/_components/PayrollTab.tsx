@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Alert, KpiTile, Note, TileGrid } from '@thc/ui';
+import { Alert, KpiTile, TileGrid } from '@thc/ui';
 import type { TimeFormat } from '@thc/domain';
 import type { PayrollLine, PayrollPerson } from '../data';
 import {
@@ -120,21 +120,7 @@ export function PayrollTab({
 
       <PeopleTable people={persons} lines={lines} />
 
-      <div className="grid c2">
-        <Note>
-          <b>CSV export: one row per SHIFT, never averaged</b> — a person working waiting at £14 and
-          a senior role at more in the same week gets a line per shift with the exact rate; 5 + 4 +
-          2 shifts = 11 rows, not 3. Every row carries the Employee ID. Columns: Employee ID · Staff
-          · Event · Client · Role · Date · Scheduled start–end · Check in · Check out · Break
-          deduction · Payable hours · Rate · Base · Holiday · Total.
-        </Note>
-        <Note>
-          <b>Held out:</b> a shift with an unresolved &quot;No check-out&quot; Violation shows
-          Pending and is excluded from the export until a manager resolves it; if still unresolved
-          when Monday&apos;s run fires, it goes out with the following Monday&apos;s CSV. Everything
-          else is read-only — a timesheet is never edited by hand.
-        </Note>
-      </div>
+      <div className="grid c2"></div>
     </div>
   );
 }

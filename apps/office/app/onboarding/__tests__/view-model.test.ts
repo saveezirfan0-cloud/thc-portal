@@ -413,7 +413,7 @@ describe('card lines', () => {
     );
     expect(lines[0]!.text).toBe('Attempts 2 / 3 · best 70% (pass mark 80%)');
     expect(lines[1]).toEqual({
-      text: 'One attempt left — a third failure rejects automatically (E4)',
+      text: 'One attempt left — a third failure rejects automatically',
       tone: 'amber',
     });
   });
@@ -436,7 +436,7 @@ describe('card lines', () => {
     );
     expect(lines.map((l) => l.text)).toEqual([
       'International student · 3 of 5 verified · 1 under review',
-      '1 document rejected — awaiting re-upload (push N8 sent Mon 14 Sep)',
+      '1 document rejected — awaiting re-upload (push sent Mon 14 Sep)',
       'Criminal Record: Yes — needs manual Verify',
     ]);
   });
@@ -559,7 +559,7 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
       quiz_scores: [65, 75, 70],
     });
     expect(rejectedLines(row)[0]!.text).toBe(
-      'Attempts 65% · 75% · 70% — automatic rejection after the third failure; email E4 + terminal screen in the app.',
+      'Attempts 65% · 75% · 70% — automatic rejection after the third failure; email sent + final screen in the app.',
     );
     // A row from before quiz_scores existed keeps the best-over-N line.
     expect(rejectedLines({ ...row, quiz_scores: [] })[0]!.text).toMatch(

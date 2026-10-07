@@ -100,12 +100,6 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
             </div>
           </div>
 
-          <Alert tone="cyan">
-            <b>Rating impact:</b> a client entry feeds the worker&rsquo;s rating (25% of the
-            auto-assign score) only once a manager presses <b>Mark as read</b> — submission alone
-            does not affect the rating. &ldquo;Mark as read&rdquo; exists only on this tab.
-          </Alert>
-
           <div className="fb-list" role="list" aria-label="Client feedback">
             <div className="fbhead" aria-hidden="true">
               <span className="label">Stars</span>

@@ -389,7 +389,7 @@ function RejectModal({
             </>
           ) : (
             <>
-              Goes to the worker word for word in push N8 — “Document rejected — [reason]” — with a{' '}
+              Goes to the worker word for word in a push — “Document rejected — [reason]” — with a{' '}
               <b>Re-upload</b> button. The new upload comes back to this queue.
             </>
           )
@@ -483,11 +483,6 @@ function ApproveModal({
             : 'No right-to-work expiry is on file yet.'
         }
       />
-      <Note>
-        The weekly limit becomes 48 hours from the first whole week on or after the completion date
-        — never before it, never backdated, and never past the visa expiry. A completion date in the
-        future lifts nothing until it arrives.
-      </Note>
     </Modal>
   );
 }

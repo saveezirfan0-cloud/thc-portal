@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Alert, Button, Chip, KpiTile, Panel, TileGrid } from '@thc/ui';
+import { Button, Chip, KpiTile, Panel, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
@@ -182,12 +182,6 @@ export function ClientCard({
             </>
           }
         />
-
-        <Alert tone="cyan">
-          Changing a policy applies to events built from now on; existing events keep the policy
-          they were built with. The rate card and the qualified pool are edited on this card, not in
-          the Edit dialog.
-        </Alert>
       </div>
 
       {editing ? (

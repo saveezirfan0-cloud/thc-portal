@@ -174,8 +174,8 @@ export function PotentialPool({
         <span>
           <b>Qualified first:</b> the qualified wave is exhausted before any unqualified worker is
           invited, whatever the score. Qualification is a priority wave, not a hard gate: Invite
-          works on anyone here. Accepting an applicant sends N10; when the role fills, the remaining
-          applicants get N10c.
+          works on anyone here. Accepting an applicant notifies them; when the role fills, the
+          remaining applicants are told it filled.
         </span>
       </div>
     </div>

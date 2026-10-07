@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, EmptyState, Note, Panel, Pill } from '@thc/ui';
+import { Alert, Button, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { RoleModal } from './RoleModal';
 import { DeleteRoleModal } from './DeleteRoleModal';
@@ -147,19 +147,7 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
         </div>
       </Panel>
 
-      <div className="grid c2">
-        <Note>
-          <b>Final rate</b> = base + holiday (12.07%). All margin across the system is calculated
-          from this figure: margin/h = the client&rsquo;s charge rate − the final rate. In the app
-          the worker only ever sees the base rate — never the +12.07%.
-        </Note>
-        <Note>
-          <b>Dress code is not set here</b> — it is client-specific, not role-specific (Waiting
-          Staff at the Dorchester vs at the Mandarin Oriental). It is managed per client on that
-          client&rsquo;s rate card and pulled from there when an event is built. Charge rates
-          likewise live on the client card only.
-        </Note>
-      </div>
+      <div className="grid c2"></div>
 
       {editing !== null ? (
         <RoleModal

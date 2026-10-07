@@ -7,7 +7,6 @@ import {
   Button,
   Chip,
   Input,
-  Note,
   Panel,
   SaveBar,
   Select,
@@ -452,11 +451,6 @@ export function ShiftBuilder({
                 hint={`A role may end after midnight (e.g. ${clockLabel('17:00', format)}–${clockLabel('01:30', format)}).`}
               />
             </div>
-            <Note>
-              Every field where a manager <b>types</b> a time carries &ldquo;(UK time)&rdquo; — the
-              server reads a zoneless value as Europe/London. The saved event window is derived from
-              the roles: earliest start → latest end; the overall window above is only the pre-fill.
-            </Note>
           </div>
         </Panel>
 
@@ -474,13 +468,6 @@ export function ShiftBuilder({
           }
         >
           <div className="stack">
-            {draft.roles.length === 0 ? (
-              <Note tone="amber">
-                An event needs at least one role section. Each one is pre-filled with the overall
-                window above and then edited on its own.
-              </Note>
-            ) : null}
-
             {draft.roles.map((role, index) => (
               <RoleSection
                 key={role.key}
@@ -593,7 +580,7 @@ export function ShiftBuilder({
             <div className="stack tight sm">
               <div>
                 <span className="amber">▲</span> Start or end time of a role · date · venue address
-                · dress code → everyone booked on <b>that role</b> re-confirms (push N11).
+                · dress code → everyone booked on <b>that role</b> re-confirms (by push).
               </div>
               <div>
                 <span className="muted">○</span> Headcount · buffer ·{' '}

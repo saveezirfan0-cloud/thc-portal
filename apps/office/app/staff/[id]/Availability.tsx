@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Alert, EmptyState, Note, Panel, Pill, ScheduledWindow, useTimeFormat } from '@thc/ui';
+import { Alert, EmptyState, Panel, Pill, ScheduledWindow, useTimeFormat } from '@thc/ui';
 import { addedOn, availabilityLength, availabilityRepeats, availabilityWhen } from './additions';
 import type { AvailabilityRow } from './types';
 
@@ -94,12 +94,6 @@ export function Availability({
           )}
         </div>
       </Panel>
-      <Note>
-        Auto-assign skips {name} for any role section overlapping these — first round, hourly
-        rounds, refills, escalation and offer pushes. On the event board they appear under
-        Unavailable as &ldquo;Marked unavailable&rdquo;, and a manager can still invite them by hand
-        after a warning. A confirmed booking is never cancelled by an entry.
-      </Note>
     </div>
   );
 }

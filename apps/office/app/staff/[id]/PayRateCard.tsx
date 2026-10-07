@@ -189,12 +189,6 @@ export function PayRateCard({
               <span className="v cyan">{preview ? preview.final : '—'}</span>
             </div>
           </div>
-
-          <Note>
-            Used for every role this worker works, in place of the role or event rate. It applies to
-            every shift priced from now on — including worked shifts not yet in a payroll export.
-            Payroll already exported is never changed; the payroll report flags the difference.
-          </Note>
         </div>
       </Modal>
 

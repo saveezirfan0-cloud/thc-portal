@@ -71,7 +71,7 @@ export function ApplicationActions({
           </>
         }
       >
-        <p>Book {name} onto this shift? They are notified at once (N10).</p>
+        <p>Book {name} onto this shift? They are notified at once.</p>
       </Modal>
     </>
   );

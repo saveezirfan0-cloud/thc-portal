@@ -407,7 +407,7 @@ export function RoleSection({
                 : 'Time changed for this role only'}
             </b>{' '}
             → the {confirmed} worker{confirmed === 1 ? '' : 's'} confirmed on {roleName} move to
-            &ldquo;Awaiting&rdquo; and get push N11 (&ldquo;Time Changed&rdquo; tag + &ldquo;Confirm
+            &ldquo;Awaiting&rdquo; and get a push (&ldquo;Time Changed&rdquo; tag + &ldquo;Confirm
             new time&rdquo;). The other role sections are untouched.
           </Alert>
         ) : null}

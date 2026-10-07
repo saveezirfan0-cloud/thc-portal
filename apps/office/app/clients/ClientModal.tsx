@@ -257,11 +257,6 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           </span>
         </div>
       </div>
-
-      <div className="note">
-        Rate card (roles, charge rates, dress codes) and qualified staff are added on the client
-        card after creation. Neither switch has a &ldquo;not set&rdquo; state — both are mandatory.
-      </div>
     </Modal>
   );
 }

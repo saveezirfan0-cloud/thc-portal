@@ -291,7 +291,7 @@ export function documentLine(row: QueueRow): string {
     ].join(' · ');
   }
   if (row.kind === 'rtw_check') {
-    return 'gov.uk returned no right to work — the worker has been asked to re-enter the share code (N8)';
+    return 'gov.uk returned no right to work — the worker has been asked to re-enter the share code';
   }
   if (row.kind === 'ni_check') {
     return [row.review_reason ?? NI_CHECK_REASON, 'compare the number with the evidence'].join(
@@ -492,7 +492,7 @@ export function verifyHint(row: QueueRow): string | null {
     return 'Act on it (contact the worker, block if needed), then Mark reviewed';
   }
   if (row.kind === 'ni_check') {
-    return 'Matches → recorded as compared · Reject → the evidence is rejected and the worker asked to re-upload (N8)';
+    return 'Matches → recorded as compared · Reject → the evidence is rejected and the worker asked to re-upload';
   }
   if (row.item_type === 'share_code_report' && !verifyAllowed(row)) {
     return 'Verified by the automatic gov.uk check — run it again from here';
@@ -501,7 +501,7 @@ export function verifyHint(row: QueueRow): string | null {
     return 'Compare the gov.uk photo with the worker’s selfie → Verify confirms the date gov.uk returned';
   }
   if (rejectPrefill(row)) {
-    return 'gov.uk recommends Reject → the reason is pre-filled; edit it before it goes to the worker (N8)';
+    return 'gov.uk recommends Reject → the reason is pre-filled; edit it before it goes to the worker';
   }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
@@ -509,10 +509,10 @@ export function verifyHint(row: QueueRow): string | null {
   if (row.kind === 'document' && row.manual_review_reason === LETTER_EXPIRED) {
     // compliance_verify_document() raises term_letter_expired on this row
     // (20260928110300); the screen says so before the button does.
-    return 'Verify is refused — an already-expired letter is not accepted · Reject → N8 with Re-upload, the worker sends the current year’s letter';
+    return 'Verify is refused — an already-expired letter is not accepted · Reject → the worker is asked to re-upload, the worker sends the current year’s letter';
   }
   if (row.kind === 'declaration' && row.declaration_source === 'in_employment') {
-    return 'Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block';
+    return 'Verify → re-check → the worker is told "your shifts are open again" · Reject → converts to a manual block';
   }
   if (row.status === 'blocked') {
     return 'Verify → full compliance re-check → unblocks only if everything else is valid';
@@ -562,13 +562,13 @@ export function daysTone(state: RadarState): 'neg' | 'soon' | 'ok' {
   return state === 'expired' ? 'neg' : state === 'expiring' ? 'soon' : 'ok';
 }
 
-/** "N1 02 Aug · N2 19 Aug" — the rungs the ladder actually queued, nothing inferred. */
+/** "Reminder 1 02 Aug · Reminder 2 19 Aug" — the rungs the ladder actually queued, nothing inferred. */
 export function remindersLine(row: RadarRow): string {
   const rungs: [string, string | null][] = [
-    ['N1', row.n1_at],
-    ['N2', row.n2_at],
-    ['N3', row.n3_at],
-    ['N4', row.n4_at],
+    ['Reminder 1', row.n1_at],
+    ['Reminder 2', row.n2_at],
+    ['Final warning', row.n3_at],
+    ['Blocked', row.n4_at],
   ];
   const sent = rungs
     .filter(([, at]) => at !== null)

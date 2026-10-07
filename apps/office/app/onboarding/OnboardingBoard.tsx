@@ -12,7 +12,6 @@ import {
   KanbanCard,
   KanbanColumn,
   Modal,
-  Note,
   Pill,
   SearchInput,
   SegToggle,
@@ -329,15 +328,6 @@ export function OnboardingBoard({
           </div>
         </div>
 
-        {filter === 'active' ? (
-          <Alert tone="cyan">
-            <b>No &quot;Applied&quot; stage.</b> Submitting /apply creates the candidate straight in{' '}
-            <b>Interview requested</b> and Willo sends the interview invitation (E1) itself. Cards
-            move between the first two columns on their own from the Willo webhook; the manager
-            decides <i>inside Willo</i>.
-          </Alert>
-        ) : null}
-
         <div className="kanban six">
           {columns.map((column) => (
             <Column
@@ -403,8 +393,8 @@ export function OnboardingBoard({
               </div>
             ) : (
               <div className="note">
-                The applicant receives E2. They are never told why a previous record was blocked.
-                The existing record is not changed.
+                The applicant receives the rejection email. They are never told why a previous
+                record was blocked. The existing record is not changed.
               </div>
             )}
             <Textarea
@@ -483,12 +473,6 @@ function Column({
       )}
 
       {/* The wireframe's note under the Contract column: where a card goes when it leaves (§2.7). */}
-      {filter === 'active' && column.key === 'contract' ? (
-        <Note>
-          Signed → the card leaves the kanban, Employee ID is generated and the person appears in{' '}
-          <Link href="/staff">Staff</Link> as Compliant.
-        </Note>
-      ) : null}
     </KanbanColumn>
   );
 }
