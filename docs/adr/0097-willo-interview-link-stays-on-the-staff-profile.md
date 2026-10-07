@@ -1,4 +1,4 @@
-# ADR-0094 · The Willo interview link stays on the staff profile
+# ADR-0097 · The Willo interview link stays on the staff profile
 
 **Status:** Accepted (owner request, 06.10.2026). An addition to scope v1.6 §2.4, which puts the link on the *candidate* profile only.
 

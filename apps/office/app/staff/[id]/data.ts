@@ -200,7 +200,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
         gender: 'M' | 'F' | null;
         languages: string[] | null;
       }>(),
-    // ADR-0094: the Willo interview link stays on the profile after
+    // ADR-0097: the Willo interview link stays on the profile after
     // onboarding. The same column the candidate screen reads, built from
     // staff.willo_candidate_id + settings.willo_review_url_template; a
     // failed read shows no link, nothing more.
