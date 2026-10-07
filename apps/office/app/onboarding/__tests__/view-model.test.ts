@@ -27,6 +27,9 @@ import {
   stageAge,
   stageEnteredAt,
   ukDaysBetween,
+  groupQualifications,
+  matchesName,
+  newEntryCount,
 } from '../view-model';
 import type { CandidateRow, ReturningRow, StaffStatus } from '../types';
 
@@ -754,5 +757,34 @@ describe('the board filters', () => {
     expect(run({ stage: 'interview_requested', applied: '7d', attention: 'attention' })).toEqual([
       'app-1',
     ]);
+  });
+});
+
+describe('client qualification helpers (§9.6)', () => {
+  const q = (id: string, client_id: string, client_name: string, role_id: string) => ({
+    id,
+    client_id,
+    client_name,
+    role_id,
+    role_name: role_id,
+    do_not_return: false,
+  });
+  const rows = [q('1', 'b', 'Zeta', 'r1'), q('2', 'a', 'Alpha', 'r1'), q('3', 'b', 'Zeta', 'r2')];
+
+  it('groups the entries by client, alphabetically', () => {
+    const groups = groupQualifications(rows);
+    expect(groups.map((g) => g.client_name)).toEqual(['Alpha', 'Zeta']);
+    expect(groups[1]!.entries.map((e) => e.role_id)).toEqual(['r1', 'r2']);
+  });
+
+  it('matches a name case-insensitively, and a blank query matches all', () => {
+    expect(matchesName('Como The Halkin', 'halk')).toBe(true);
+    expect(matchesName('Como The Halkin', '  ')).toBe(true);
+    expect(matchesName('Como The Halkin', 'hackney')).toBe(false);
+  });
+
+  it('counts only the client + role pairs that do not exist yet', () => {
+    expect(newEntryCount(['a', 'b', 'c'], ['r1', 'r2'], rows)).toBe(3);
+    expect(newEntryCount([], ['r1'], rows)).toBe(0);
   });
 });
