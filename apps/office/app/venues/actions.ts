@@ -142,7 +142,7 @@ const MAX_MATCHES = 5;
  * Forward geocoding for the venue search (§9.11): a postcode or a street
  * address finds the place and the manager picks the right candidate, which
  * drops the pin there. The address on the venue is still the geocoder's, read
- * back for that point, never typed (ADR-0100) — this only saves hunting for
+ * back for that point, never typed (ADR-0101) — this only saves hunting for
  * the site on the map.
  *
  * Same provider rules and the same caller check as `reverseGeocode`: a server

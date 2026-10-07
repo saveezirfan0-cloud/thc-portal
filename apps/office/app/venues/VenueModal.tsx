@@ -42,7 +42,7 @@ interface Pin {
  *   · the address comes from the pin by reverse geocoding and is read-only,
  *     with the coordinates printed underneath as plain text.
  *
- * The search above the map (ADR-0100) is a faster way to put the pin
+ * The search above the map (ADR-0101) is a faster way to put the pin
  * somewhere: a postcode or street address finds the site and picking a
  * candidate drops the pin on it. It does not make the address typeable.
  */

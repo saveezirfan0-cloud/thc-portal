@@ -20,7 +20,7 @@ const { VenueModal } = await import('../VenueModal');
 
 const TYPES: VenueType[] = [{ key: 'hotel', label: 'Hotel', default_radius_m: 150, sort_order: 2 }];
 
-describe('New venue modal — search by postcode or street address (§9.11, ADR-0100)', () => {
+describe('New venue modal — search by postcode or street address (§9.11, ADR-0101)', () => {
   const markup = renderToStaticMarkup(
     <VenueModal
       venue={null}

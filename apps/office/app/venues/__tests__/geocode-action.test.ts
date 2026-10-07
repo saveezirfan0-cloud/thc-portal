@@ -111,7 +111,7 @@ describe('reverseGeocode (§9.11, D52)', () => {
   });
 });
 
-describe('searchPlaces (§9.11, ADR-0100)', () => {
+describe('searchPlaces (§9.11, ADR-0101)', () => {
   const withoutMapboxToken = async (run: () => Promise<void>) => {
     const before = { ...process.env };
     delete process.env['MAPBOX_TOKEN'];

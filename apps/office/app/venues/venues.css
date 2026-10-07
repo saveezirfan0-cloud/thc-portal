@@ -295,7 +295,7 @@
   }
 }
 
-/* ---- search by postcode or street address (ADR-0100) ---------------- */
+/* ---- search by postcode or street address (ADR-0101) ---------------- */
 .venue-search-row {
   display: flex;
   gap: var(--sp-8);
@@ -309,7 +309,7 @@
   margin: var(--sp-6) 0 0;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: var(--r-control);
+  border-radius: var(--r-field);
   overflow: hidden;
 }
 .venue-results li + li {
