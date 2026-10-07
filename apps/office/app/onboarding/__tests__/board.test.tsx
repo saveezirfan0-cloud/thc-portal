@@ -75,6 +75,15 @@ describe('the onboarding board', () => {
     expect(html).toContain('HK');
   });
 
+  it('folds a long role list into two chips and a "+N" with the rest as its tooltip', () => {
+    const roles = ['Bar Staff', 'Barista', 'Host', 'Runner', 'Team Leader'];
+    const html = render([candidate({ status: 'documents', role_names: roles })]);
+    expect(html).toContain('>Bar Staff<');
+    expect(html).toContain('>Barista<');
+    expect(html).not.toContain('>Host<');
+    expect(html).toContain('title="Host, Runner, Team Leader">+3<');
+  });
+
   it('shows Willo not connected as a neutral, disabled line', () => {
     const html = render([candidate()]);
     expect(html).toMatch(
