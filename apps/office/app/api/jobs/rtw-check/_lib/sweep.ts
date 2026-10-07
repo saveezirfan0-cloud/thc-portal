@@ -111,6 +111,8 @@ export interface SweepDeps {
   fallback: RightToWorkChecker | null;
   companyName: string;
   limit: number;
+  /** How many checks run at once (default 2: each is its own headless browser). */
+  concurrency?: number;
   claim(limit: number): Promise<ClaimedCheck[]>;
   uploadReport(path: string, bytes: Uint8Array): Promise<void>;
   /** Delete an uploaded report nothing will reference (best effort). */
@@ -188,11 +190,12 @@ export async function runRtwCheckSweep(
   const claimed = await deps.claim(deps.limit);
   counts.claimed = claimed.length;
 
-  for (const row of claimed) {
+  const processOne = async (row: ClaimedCheck): Promise<void> => {
     const input: CheckInput = {
       shareCode: row.share_code,
       dateOfBirth: String(row.date_of_birth).slice(0, 10),
       companyName: deps.companyName,
+      redact: [row.first_name, row.last_name],
     };
     const output = await runOrchestrated(deps.primary, deps.fallback, input);
     let decision = decideRtwCheck(
@@ -207,6 +210,16 @@ export async function runRtwCheckSweep(
       },
       { attempt: row.attempt, maxAttempts: row.max_attempts, today: ukToday(now()) },
     );
+
+    // What gov.uk's page showed, for the office, when the system could not
+    // read the end date and is handing the check over (SQL keeps 500 characters).
+    if (decision.action === 'needs_review' && output.hint) {
+      const base =
+        output.result.error === 'govuk_no_expiry'
+          ? "No end date could be read from gov.uk's page. Read it from the PDF and verify by hand, or run the check again."
+          : decision.officeReason;
+      decision = { ...decision, officeReason: `${base} Page: ${output.hint}`.slice(0, 500) };
+    }
 
     // A retry keeps nothing — the next attempt makes its own report — so a
     // report is only uploaded when this run's outcome will store it.
@@ -270,6 +283,17 @@ export async function runRtwCheckSweep(
         }
       }
     }
-  }
+  };
+
+  // A few at a time: each check is a gov.uk page load, so one slow page no
+  // longer holds up the rest of the batch. The counts are plain additions,
+  // safe across awaits.
+  const width = Math.max(1, Math.min(deps.concurrency ?? 2, claimed.length));
+  const queue = [...claimed];
+  await Promise.all(
+    Array.from({ length: width }, async () => {
+      for (let row = queue.shift(); row; row = queue.shift()) await processOne(row);
+    }),
+  );
   return counts;
 }

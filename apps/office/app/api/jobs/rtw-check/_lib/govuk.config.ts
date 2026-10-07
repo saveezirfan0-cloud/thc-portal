@@ -123,11 +123,34 @@ export const GOVUK_RESULT = {
     /^\s*(?:this person|they|the applicant)\s+(?:can|is allowed to|are allowed to)\s+work\s+in\s+the\s+UK\b/im,
     /^\s*(?:their )?right to work (?:in the UK )?(?:is )?(?:valid|confirmed)\b/im,
   ],
-  /** The end date, captured as printed ("31 March 2028"). */
+  /**
+   * The end date, captured as printed ("31 March 2028", "31st March 2028",
+   * "31/03/2028"). Read one LINE at a time (a label alone on a line takes the
+   * next line, see `captureUntil`): the lead-in must start at a word boundary
+   * and the date must follow on the same line, so a date of birth below a
+   * "Date of birth" label, or a word ending in "end", never matches. A line
+   * about the share code is skipped by the reader, and two different dates
+   * on one page are an error, not a guess. The lead-in words are a guess at
+   * gov.uk's wording (pre-settled and visa pages word it differently).
+   */
   until: [
-    /(?:until|expires on|expiry date|valid until|end date)[:\s]+(\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4})/i,
-    /(?:until|expires on|expiry date|valid until|end date)[:\s]+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
+    /\b(?:until(?:[^\S\r\n]+and[^\S\r\n]+including)?|expires?(?:[^\S\r\n]+on)?|expiry[^\S\r\n]+date|date[^\S\r\n]+of[^\S\r\n]+expiry|valid[^\S\r\n]+(?:until|to)|ends?(?:[^\S\r\n]+on)?|end[^\S\r\n]+date)[:\t ]+(?:on[^\S\r\n]+)?(\d{1,2}(?:st|nd|rd|th)?[^\S\r\n]+[A-Za-z]{3,9}\.?[^\S\r\n]+\d{4})/i,
+    /\b(?:until(?:[^\S\r\n]+and[^\S\r\n]+including)?|expires?(?:[^\S\r\n]+on)?|expiry[^\S\r\n]+date|date[^\S\r\n]+of[^\S\r\n]+expiry|valid[^\S\r\n]+(?:until|to)|ends?(?:[^\S\r\n]+on)?|end[^\S\r\n]+date)[:\t ]+(?:on[^\S\r\n]+)?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
   ],
+  /** A line that is only an end-date label: the date is on the next line. */
+  untilLabelOnly:
+    /\b(?:until|expiry\s+date|date\s+of\s+expiry|valid\s+(?:until|to)|end\s+date|expires(?:\s+on)?)\s*:?\s*$/i,
+  /**
+   * Last resort when no labelled end date is found: the ONLY date on the
+   * page that is still in the future. A result page has no other future
+   * date, so one candidate is the end date wherever gov.uk prints it and
+   * however it words it. Lines about the share code (its own validity) or
+   * the person's birth are never candidates; two candidates is an error.
+   */
+  futureDateNotContext:
+    /share\s*code|\bcode\b|birth|\bborn\b|\bage\b|nationality|checked\s+on|generated|printed|\breview\s+(?:by|on)\b/i,
+  /** Lines never read for the end date: they are about the share code, not the permission. */
+  untilNotLine: /share\s*code/i,
   /** Settled status / indefinite leave: no end date, stated, never inferred. */
   noTimeLimit: [
     /no time limit/i,
@@ -136,9 +159,16 @@ export const GOVUK_RESULT = {
     // old lookahead read pre-settled as no time limit — QA 25.09).
     /(?<!pre[-\s])settled status/i,
     /\bwithout (?:a )?time limit/i,
+    // Live wording (06.10.2026): "There is no limit on how long they can stay in the UK."
+    /\bno limit on how long (?:they|this person|the applicant) can (?:stay|remain|live)\b/i,
   ],
   /** The person's name, on a "Name" line or as the page's H1. */
-  name: [/^\s*(?:full )?name\s*[:\n]\s*(.+)$/im],
+  name: [
+    // "Name: Olu Ade", "Name\tOlu Ade" (a table row read as text), "Name  Olu Ade"
+    /^[^\S\r\n]*(?:full )?name[:\t ]+(\S.*)$/im,
+    // the label alone on its line, the name on the next
+    /^\s*(?:full )?name\s*[:\n]\s*(\S.*)$/im,
+  ],
   /** gov.uk's reference for the check. */
   reference: [/reference(?: number)?[:\s]+([A-Z0-9][A-Z0-9-]{5,})/i],
   /** The heading after which conditions are listed, one per line. */
@@ -168,4 +198,4 @@ export const GOVUK_RESULT = {
 
 /** Section headings that end a conditions list. */
 export const GOVUK_SECTION_END =
-  /^\s*(?:name|date of birth|reference|details|what (?:you|to) (?:need|do)|download|print|photo|nationality)\b/i;
+  /^\s*(?:name|date of birth|reference|details|what (?:you|to) (?:need|do)|download|print|photo|nationality|legal basis of status)\b/i;

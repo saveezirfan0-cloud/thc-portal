@@ -158,13 +158,14 @@ describe('§5.2b breaks inside the paid window (shared vectors, D49)', () => {
 describe('the pay window itself (RULE-01)', () => {
   const shift = shiftOf(480);
 
-  it('starts the paid clock at the scheduled start for an early or in-grace arrival', () => {
+  it('starts the paid clock at the scheduled start for an early or on-time arrival', () => {
     expect(effectiveStart(shift, at(-30))).toEqual(BASE);
     expect(effectiveStart(shift, at(0))).toEqual(BASE);
-    expect(effectiveStart(shift, at(29))).toEqual(BASE);
   });
 
-  it('starts it at the actual arrival once the grace has elapsed', () => {
+  it('starts it at the actual arrival for any late arrival, in the grace or past it (ADR-0095)', () => {
+    expect(effectiveStart(shift, at(1))).toEqual(at(1));
+    expect(effectiveStart(shift, at(29))).toEqual(at(29));
     expect(effectiveStart(shift, at(30))).toEqual(at(30));
     expect(effectiveStart(shift, at(45))).toEqual(at(45));
   });

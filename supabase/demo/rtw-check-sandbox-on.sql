@@ -6,7 +6,7 @@
 --   · settings.rtw_check: enabled, primary = provider, no fallback, and
 --     admin_confirms kept ON (every result waits for the office, ADR-0041)
 --   · the vault secrets office_base_url and rtw_job_secret, so a filed
---     share code nudges the runner at once and pg_cron sweeps every 10 min
+--     share code nudges the runner at once and pg_cron sweeps every minute
 --   · the rtw-check job enabled and installed
 --
 -- Before running it, on the Back Office's Vercel project (thc-portal-office),

@@ -117,7 +117,8 @@ export const SANDBOX_PERSONAS: readonly SandboxPersona[] = [
   {
     code: 'WDEMODOWN',
     outcome: 'unavailable',
-    shows: 'Provider unavailable: the check retries (30 min, 2 h, 6 h, 16 h), then Needs review',
+    shows:
+      'Provider unavailable: the check retries (2 min, 10 min, 30 min, 2 h), then Needs review',
     branches: 'any share-code branch',
   },
 ];

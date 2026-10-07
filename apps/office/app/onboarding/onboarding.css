@@ -232,6 +232,12 @@
   border-color: var(--cyan);
   background: var(--cyan-dim);
 }
+.rolegroup-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-8);
+}
 
 .cq-roles .check {
   padding: var(--sp-4) var(--sp-10);

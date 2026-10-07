@@ -1,6 +1,13 @@
-import { rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
+import {
+  isResultPageRtwError,
+  nameTokens,
+  namesMatch,
+  rtwCheckError,
+  safeErrorCode,
+  termTimeLimitFrom,
+} from '@thc/domain';
 import type { RtwCheckResult } from '@thc/domain';
-import { envNumber, envText, looksLikePdf, looksLikePng, parseUkDate } from './checker';
+import { envNumber, envText, looksLikePdf, looksLikePng, parseUkDate, ukToday } from './checker';
 import type { CheckInput, CheckOutput, EnvReader, RightToWorkChecker } from './checker';
 import {
   GOVUK_DEFAULT_START_URL,
@@ -78,6 +85,149 @@ function firstCapture(patterns: readonly RegExp[], text: string): string | null 
 
 const any = (patterns: readonly RegExp[], text: string) => patterns.some((p) => p.test(text));
 
+/**
+ * The end date as printed, or null (none found) — or 'ambiguous' when two
+ * different dates qualify. Never a guess (ADR-0018): a wrong future date
+ * would otherwise reach Verify.
+ */
+export function captureUntil(text: string): string | 'ambiguous' | null {
+  const lines = text.split('\n').map((l) => l.trim());
+  const found = new Set<string>();
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    if (!line || GOVUK_RESULT.untilNotLine.test(line)) continue;
+    const candidate = GOVUK_RESULT.untilLabelOnly.test(line)
+      ? `${line} ${lines[i + 1] ?? ''}`
+      : line;
+    for (const pattern of GOVUK_RESULT.until) {
+      const raw = pattern.exec(candidate)?.[1];
+      if (raw) found.add(parseUkDate(raw) ?? raw.trim());
+    }
+  }
+  if (found.size > 1) return 'ambiguous';
+  return found.size === 1 ? [...found][0]! : null;
+}
+
+const DATE_PATTERNS: readonly RegExp[] = [
+  /\b(\d{1,2}(?:st|nd|rd|th)?[^\S\r\n]+[A-Za-z]{3,9}\.?,?[^\S\r\n]+\d{4})\b/g,
+  /\b([A-Za-z]{3,9}\.?[^\S\r\n]+\d{1,2}(?:st|nd|rd|th)?,?[^\S\r\n]+\d{4})\b/g,
+  /\b(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b/g,
+  /\b(\d{4}-\d{2}-\d{2})\b/g,
+];
+
+/** Every date written on one line, as ISO dates (any of the usual UK/gov.uk spellings). */
+export function datesOnLine(line: string): string[] {
+  const found: string[] = [];
+  for (const pattern of DATE_PATTERNS) {
+    for (const m of line.matchAll(pattern)) {
+      let raw = m[1]!.replace(/,/g, '').trim();
+      const monthFirst = /^[A-Za-z]/.exec(raw);
+      if (monthFirst) {
+        const parts = raw.split(/\s+/);
+        if (parts.length === 3) raw = `${parts[1]} ${parts[0]} ${parts[2]}`;
+      }
+      const iso = parseUkDate(raw);
+      if (iso && !found.includes(iso)) found.push(iso);
+    }
+  }
+  return found;
+}
+
+/**
+ * The one date on the page still in the future, or 'ambiguous', or null.
+ * Only a LAST resort after the labelled patterns found nothing (see
+ * `GOVUK_RESULT.futureDateNotContext`). A date alone on its line takes the
+ * line above as its context, so "Date of birth / 5 May 2999" is never read.
+ */
+export function onlyFutureDate(text: string, today: string): string | 'ambiguous' | null {
+  const lines = text.split('\n').map((l) => l.trim());
+  const future = new Set<string>();
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    const dates = datesOnLine(line);
+    if (dates.length === 0) continue;
+    const bare =
+      line.replace(/[\d/.\-:,]|\b(?:st|nd|rd|th)\b|[A-Za-z]{3,9}\.?(?=\s+\d)/g, '').trim() === '';
+    const context = bare ? `${lines[i - 1] ?? ''} ${line}` : line;
+    if (GOVUK_RESULT.futureDateNotContext.test(context)) continue;
+    for (const d of dates) if (d > today) future.add(d);
+  }
+  if (future.size > 1) return 'ambiguous';
+  return future.size === 1 ? [...future][0]! : null;
+}
+
+/**
+ * Lines of a result page about the person's status and permission, or that
+ * carry a number or a date, for the office (see `CheckOutput.hint`). The
+ * worker's name, date of birth and share code, and any long reference, are
+ * replaced by ▢ — never dropped — so the LAYOUT of the page can be read
+ * (where the name sits, what labels it) without the person being identified.
+ * The page footer is dropped; a date alone on its line keeps the label above
+ * it. At most eight lines of 100 characters.
+ */
+const HINT_STATUS_WORDS =
+  /status|settled|permission|right to work|expir|time limit|indefinite|\bleave\b|visa|scheme|valid|until|condition|\bcan work\b|\bcannot work\b|\bname\b|birth|share code|reference/i;
+const HINT_BOILERPLATE =
+  /secure copy|open government licence|cookies?|privacy|accessibility statement|crown copyright|terms and conditions|skip to|\bmenu\b|\bfeedback\b/i;
+
+function isBareDate(line: string): boolean {
+  return (
+    /\d/.test(line) &&
+    line.replace(/[\d/.\-:,]|(?<=\d)(?:st|nd|rd|th)|[A-Za-z]{3,9}\.?(?=\s+\d)/g, '').trim() === ''
+  );
+}
+
+/**
+ * The record holder's name when the page has no recognisable "Name" label: the
+ * shortest short line that carries BOTH the profile's first and last name (the
+ * same test `decideRtwCheck` applies). A page naming someone else has no such
+ * line, so the name stays missing and the check goes to the office.
+ */
+export function recordNameFromPage(text: string, names: readonly string[]): string | null {
+  const [first, last] = names;
+  if (!first || !last) return null;
+  const found = text
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => l.length > 0 && l.length <= 80 && namesMatch(l, first, last));
+  return found.sort((a, b) => a.length - b.length)[0] ?? null;
+}
+
+export function pageHint(text: string, input: CheckInput): string | null {
+  const code = input.shareCode.replace(/\s+/g, '').toUpperCase();
+  const names = new Set(
+    (input.redact ?? []).flatMap((n) => nameTokens(n)).filter((n) => n.length > 1),
+  );
+  const dob = input.dateOfBirth.slice(0, 10);
+  const mask = (line: string): string => {
+    let out = line;
+    if (code) out = out.replace(new RegExp(code.split('').join('\\s*'), 'gi'), '▢');
+    for (const pattern of DATE_PATTERNS) {
+      out = out.replace(pattern, (m, g: string) => (datesOnLine(g).includes(dob) ? '▢' : m));
+    }
+    out = out.replace(/[\p{L}][\p{L}'’-]*/gu, (w) =>
+      nameTokens(w).some((t) => names.has(t)) ? '▢' : w,
+    );
+    return out.replace(/\b[A-Za-z0-9][A-Za-z0-9-]{7,}\b(?=\W|$)/g, (w) => (/\d/.test(w) ? '▢' : w));
+  };
+  const lines = text.split('\n').map((l) => l.replace(/\s+/g, ' ').trim());
+  const keep: string[] = [];
+  for (let i = 0; i < lines.length && keep.length < 8; i += 1) {
+    const raw = lines[i]!;
+    if (!raw) continue;
+    const masked = mask(raw);
+    if (HINT_BOILERPLATE.test(masked)) continue;
+    const bare = isBareDate(raw);
+    if (!(masked.includes('▢') || /\d/.test(masked) || HINT_STATUS_WORDS.test(masked))) continue;
+    // A label above a date alone on its line is shown with that date, once.
+    if (!bare && isBareDate(lines[i + 1] ?? '')) continue;
+    const prev = lines[i - 1] ? mask(lines[i - 1]!) : '';
+    const shown = (bare && prev ? `${prev} ${masked}` : masked).slice(0, 100);
+    if (!keep.includes(shown)) keep.push(shown);
+  }
+  return keep.length > 0 ? keep.join(' | ') : null;
+}
+
 /** The work conditions: the lines under a Conditions heading, and any line that reads as one. */
 export function govukConditions(text: string): string[] {
   const advice = (line: string) => any(GOVUK_RESULT.notCondition, line);
@@ -136,7 +286,14 @@ export function parseGovukResult(text: string, checkedAt: string): RtwCheckResul
   if (noRight) return { ...base, outcome: 'no_right_to_work', fullName };
   if (!right) return rtwCheckError('govuk', 'govuk_unrecognised_result', checkedAt);
 
-  const rawUntil = firstCapture(GOVUK_RESULT.until, t);
+  let rawUntil = captureUntil(t);
+  if (rawUntil === 'ambiguous') return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
+  if (rawUntil === null) {
+    // No labelled end date: the only future date on the page is it.
+    const only = onlyFutureDate(t, ukToday(new Date(checkedAt)));
+    if (only === 'ambiguous') return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
+    rawUntil = only;
+  }
   const until = rawUntil ? parseUkDate(rawUntil) : null;
   if (rawUntil && !until) return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
   // ADR-0018: "no time limit" only when gov.uk says so, never from a blank.
@@ -217,7 +374,7 @@ export async function driveGovuk(
   input: CheckInput,
   config: GovukConfig,
   selectors: GovukSelectors = GOVUK_SELECTORS,
-): Promise<{ text: string; complete: boolean }> {
+): Promise<{ text: string; fullText: string; complete: boolean }> {
   page.setDefaultTimeout(config.timeoutMs);
   await page.goto(config.startUrl, { waitUntil: 'domcontentloaded' });
 
@@ -264,9 +421,18 @@ export async function driveGovuk(
     await page.waitForLoadState('domcontentloaded');
   }
 
+  // A result still drawing itself reads differently a second later.
+  await page.waitForLoadState('load').catch(() => undefined);
   const root = await find(page, selectors.resultRoot);
   const text = root ? await root.innerText() : '';
-  return { text, complete: done.shareCode && done.dateOfBirth };
+  let fullText = text;
+  try {
+    const body = await find(page, [{ css: 'body' }]);
+    if (body) fullText = await body.innerText();
+  } catch {
+    // the main text stands
+  }
+  return { text, fullText, complete: done.shareCode && done.dateOfBirth };
 }
 
 export function createGovukChecker(
@@ -292,7 +458,7 @@ export function createGovukChecker(
       }
       try {
         const page = await browser.newPage();
-        const { text, complete } = await driveGovuk(page, input, config);
+        const { text, fullText, complete } = await driveGovuk(page, input, config);
         if (!complete) {
           // A page reached without ever giving gov.uk the code AND the date
           // of birth is not an answer about this person, whatever it says —
@@ -302,15 +468,37 @@ export function createGovukChecker(
             report: null,
           };
         }
-        const result = parseGovukResult(text, checkedAt);
+        let result = parseGovukResult(text, checkedAt);
+        // The end date is sometimes outside <main>: read the whole page
+        // before giving up on it. Only a pass can replace the error.
+        if (result.error === 'govuk_no_expiry' && fullText !== text) {
+          const whole = parseGovukResult(fullText, checkedAt);
+          if (whole.outcome === 'right_to_work') result = whole;
+        }
         let report: Uint8Array | null = null;
         let photo: Uint8Array | null = null;
-        if (result.outcome === 'right_to_work' || result.outcome === 'no_right_to_work') {
+        // A page gov.uk answered but we could not read goes to the office
+        // (`isResultPageRtwError`): they need gov.uk's own report to decide.
+        if (
+          result.outcome === 'right_to_work' ||
+          result.outcome === 'no_right_to_work' ||
+          (result.outcome === 'error' && isResultPageRtwError(result.error))
+        ) {
           photo = await govukPhoto(page);
           const bytes = await page.pdf({ format: 'A4', printBackground: true });
           report = looksLikePdf(bytes) ? bytes : null;
         }
-        return { result, report, photo };
+        // No "Name" label found: look for the profile's own name on the page.
+        if (result.outcome === 'right_to_work' && !result.fullName) {
+          const found = recordNameFromPage(fullText || text, input.redact ?? []);
+          if (found) result = { ...result, fullName: found };
+        }
+        const hint =
+          result.error === 'govuk_no_expiry' ||
+          (result.outcome === 'right_to_work' && !result.fullName)
+            ? pageHint(fullText || text, input)
+            : null;
+        return { result, report, photo, hint };
       } catch (cause) {
         const code =
           cause instanceof PageChanged

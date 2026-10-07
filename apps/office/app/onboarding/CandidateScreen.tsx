@@ -20,7 +20,7 @@ import {
   Textarea,
   useTimeFormat,
 } from '@thc/ui';
-import { contractClause28Pending, formatLanguages } from '@thc/domain';
+import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
   RTW_LABEL,
@@ -999,23 +999,53 @@ function RolePick({
 }) {
   if (roles.length === 0)
     return <EmptyState>No roles exist yet — add them under Roles.</EmptyState>;
+  return <RoleGroups roles={roles} picked={picked} onToggle={onToggle} />;
+}
+
+/**
+ * The role tick-boxes, grouped Front of House / Back of House (then Other for
+ * a role the grouping does not know), each A → Z. Display only — see
+ * `roleArea` in @thc/domain.
+ */
+function RoleGroups({
+  roles,
+  picked,
+  onToggle,
+  disabled = false,
+}: {
+  roles: CandidateData['roles'];
+  picked: string[];
+  onToggle: (id: string) => void;
+  disabled?: boolean;
+}) {
   return (
-    <div className="rolepick">
-      {roles.map((role) => {
-        const on = picked.includes(role.id);
-        return (
-          <label key={role.id} className={on ? 'check sel' : 'check'}>
-            <input
-              type="checkbox"
-              className="check-input"
-              checked={on}
-              onChange={() => onToggle(role.id)}
-            />
-            <span className={on ? 'box on' : 'box'} />
-            {role.name}
-          </label>
-        );
-      })}
+    <div className="stack">
+      {groupRolesByArea(roles).map((group) => (
+        <section key={group.area} aria-label={group.label} className="rolegroup">
+          <div className="rolegroup-head">
+            <b>{group.label}</b>
+            <span className="muted sm">{group.roles.length}</span>
+          </div>
+          <div className="rolepick">
+            {group.roles.map((role) => {
+              const on = picked.includes(role.id);
+              return (
+                <label key={role.id} className={on ? 'check sel' : 'check'}>
+                  <input
+                    type="checkbox"
+                    className="check-input"
+                    checked={on}
+                    disabled={disabled}
+                    onChange={() => onToggle(role.id)}
+                  />
+                  <span className={on ? 'box on' : 'box'} />
+                  {role.name}
+                </label>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
@@ -1588,24 +1618,12 @@ function RolesAndClients({
           {data.roles.length === 0 ? (
             <EmptyState>No roles exist yet — add them under Roles.</EmptyState>
           ) : (
-            <div className="rolepick">
-              {data.roles.map((role) => {
-                const on = row.role_ids.includes(role.id);
-                return (
-                  <label key={role.id} className={on ? 'check sel' : 'check'}>
-                    <input
-                      type="checkbox"
-                      className="check-input"
-                      checked={on}
-                      disabled={readOnly || busy}
-                      onChange={() => onToggleRole(role.id, !on)}
-                    />
-                    <span className={on ? 'box on' : 'box'} />
-                    {role.name}
-                  </label>
-                );
-              })}
-            </div>
+            <RoleGroups
+              roles={data.roles}
+              picked={row.role_ids}
+              disabled={readOnly || busy}
+              onToggle={(id) => onToggleRole(id, !row.role_ids.includes(id))}
+            />
           )}
           <Note>
             Un-ticking a role also removes the client entries that name it. A &ldquo;Do not

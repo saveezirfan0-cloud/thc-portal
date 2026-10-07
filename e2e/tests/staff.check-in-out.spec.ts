@@ -95,7 +95,7 @@ test.describe('on site: check in, then check out (§5.1)', () => {
     const checkIn = page.getByRole('button', { name: 'Check in — verify GPS' });
     await expect(checkIn).toBeEnabled();
     // The window line quotes the section's start, not the event's (RULE-18).
-    await expect(page.getByText(/after \d{2}:\d{2} you’re marked Late/)).toBeVisible();
+    await expect(page.getByText(/after \d{2}:\d{2} you’re marked Late/i)).toBeVisible();
 
     await checkIn.click();
 
