@@ -228,7 +228,14 @@ const base = {
     app: 'office',
     page: O + 'clients/page.tsx',
     pathname: '/clients',
-    db: { clients_directory_v: R.clientRows },
+    db: {
+      clients_directory_v: R.clientRows.map((c) => ({
+        ...c,
+        created_at: iso('2026-03-02', '10:00'),
+        created_by: 'u1',
+        created_by_name: 'Sarah Mitchell',
+      })),
+    },
   },
   'client-card': {
     app: 'office',
@@ -387,7 +394,15 @@ const base = {
     app: 'office',
     page: O + 'venues/page.tsx',
     pathname: '/venues',
-    db: { venue_directory_v: R.venueRows, venue_types: R.venueTypes },
+    db: {
+      venue_directory_v: R.venueRows.map((v) => ({
+        ...v,
+        created_at: iso('2026-03-02', '10:00'),
+        created_by: 'u1',
+        created_by_name: 'Sarah Mitchell',
+      })),
+      venue_types: R.venueTypes,
+    },
   },
   feedback: {
     app: 'office',
@@ -554,6 +569,100 @@ base['events-list'] = {
   search: { view: 'list', date: '2026-10-07' },
   layouts: [],
   db: eventsListDb,
+};
+
+const dashUpcoming = [
+  [
+    'Autumn Gala Dinner — The Savoy Ballroom',
+    'The Savoy',
+    'The Savoy, Strand',
+    'PO-2026-0412',
+    'Waiting staff (silver service)',
+    12,
+    1,
+    9,
+  ],
+  [
+    'Autumn Gala Dinner — The Savoy Ballroom',
+    'The Savoy',
+    'The Savoy, Strand',
+    'PO-2026-0412',
+    'Bartender',
+    4,
+    0,
+    4,
+  ],
+  [
+    'Corporate Awards Night',
+    'Grosvenor House Hotel & Conference Centre',
+    'Grosvenor House, Park Lane',
+    null,
+    'Waiting staff (silver service)',
+    20,
+    2,
+    11,
+  ],
+  [
+    'Summer Garden Party',
+    'Kensington Palace Events',
+    'Kensington Palace Orangery',
+    null,
+    'Cloakroom attendant',
+    3,
+    0,
+    3,
+  ],
+].map(([title, client, venue, po, role, headcount, buffer, confirmed], i) => ({
+  shift_id: 'sh' + i,
+  event_id: 'ev' + (i < 2 ? 0 : i),
+  event_title: title,
+  event_date: i < 2 ? '2026-10-07' : '2026-10-' + String(8 + i).padStart(2, '0'),
+  client_name: client,
+  venue_name: venue,
+  po_number: po,
+  cancelled_at: null,
+  role_name: role,
+  starts_at: iso(i < 2 ? '2026-10-07' : '2026-10-' + String(8 + i).padStart(2, '0'), '17:00'),
+  ends_at: iso(i < 2 ? '2026-10-07' : '2026-10-' + String(8 + i).padStart(2, '0'), '23:30'),
+  event_starts_at: iso(i < 2 ? '2026-10-07' : '2026-10-' + String(8 + i).padStart(2, '0'), '17:00'),
+  event_ends_at: iso(i < 2 ? '2026-10-07' : '2026-10-' + String(8 + i).padStart(2, '0'), '23:30'),
+  headcount,
+  buffer,
+  confirmed,
+  open_positions: Math.max(0, headcount - confirmed),
+  margin_per_hour: 4.82,
+}));
+base.dashboard = {
+  app: 'office',
+  page: O + 'dashboard/page.tsx',
+  pathname: '/dashboard',
+  db: {
+    dashboard_kpis_v: [
+      {
+        as_of: iso('2026-10-07', '09:00'),
+        open_positions: 12,
+        on_shift_now: 0,
+        staff_available: 412,
+        compliance_blocks: 3,
+      },
+    ],
+    dashboard_week_finance_v: [
+      {
+        week_start: '2026-10-05',
+        week_end: '2026-10-11',
+        events: 6,
+        forecast_hours: 624,
+        charge_total: 11544,
+        base_total: 7619.04,
+        holiday_total: 919.62,
+        pay_total: 8538.66,
+        margin_total: 3005.34,
+        margin_pct: 26.0,
+      },
+    ],
+    dashboard_upcoming_v: dashUpcoming,
+    dashboard_short_staffed_v: dashUpcoming.filter((r) => r.open_positions > 0),
+  },
 };
 
 export default { ...base, ...extra(profileTab), ...staff };

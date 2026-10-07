@@ -155,3 +155,39 @@
     grid-column: 1 / -1 !important;
   }
 }
+
+/* ---- tables scroll inside `.tbl-frame` ----------------------------------
+ * Each table is as wide as its columns need; a card narrower than that
+ * scrolls it sideways with the bar drawn, rather than clipping the last
+ * column (Remove, Status) off the card's edge at laptop widths. */
+.tbl.rate-card {
+  min-width: 50rem;
+}
+.tbl.rate-card.ro {
+  min-width: 32rem;
+}
+.tbl.qualified {
+  min-width: 56rem;
+}
+.tbl.qualified :is(th, td):nth-child(5) {
+  min-width: 11rem;
+}
+.tbl.qualified td:nth-child(6),
+.tbl.qualified td:nth-child(3) {
+  white-space: nowrap;
+}
+.tbl.client-events {
+  min-width: 58rem;
+}
+.tbl.client-events td:nth-child(2) {
+  white-space: nowrap;
+}
+.tbl.client-events :is(th, td):nth-child(3),
+.tbl.client-events :is(th, td):nth-child(5) {
+  min-width: 12rem;
+}
+@media (max-width: 760px) {
+  .tbl.client-events {
+    min-width: 0;
+  }
+}

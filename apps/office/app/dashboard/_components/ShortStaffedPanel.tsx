@@ -54,7 +54,7 @@ export function ShortStaffedPanel({
             Every role starting in the next 48 hours has its headcount confirmed.
           </EmptyState>
         ) : (
-          <TableScroll>
+          <TableScroll label="Short-staffed roles, scrolls sideways" flow>
             <table className="tbl card-rows dash-short-tbl">
               <thead>
                 <tr>

@@ -333,3 +333,24 @@
   background: var(--hover);
   color: var(--cyan-ink);
 }
+
+/* ---- the list scrolls inside `.tbl-frame` --------------------------------
+ * Eight columns: a venue name and an address keep a readable measure, and a
+ * card narrower than the table scrolls it with the bar drawn. */
+.tbl.venue-list {
+  min-width: 58rem;
+}
+.tbl.venue-list td.name {
+  min-width: 12rem;
+}
+.tbl.venue-list td[data-label='Address'] {
+  min-width: 12rem;
+}
+.tbl.venue-list td[data-label='Date added'] {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .tbl.venue-list {
+    min-width: 0;
+  }
+}

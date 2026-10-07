@@ -3,7 +3,17 @@
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Avatar, Button, EmptyState, Note, Pill, Select, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Button,
+  EmptyState,
+  Note,
+  Pill,
+  Select,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import {
   DOCUMENT_FILTERS,
   actionsFor,
@@ -154,29 +164,31 @@ export function ReviewTab({
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>Who</th>
-                  <th>Document</th>
-                  <th>Uploaded</th>
-                  <th>AI found</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row) => (
-                  <QueueLine
-                    key={row.item_id}
-                    row={row}
-                    rtwCheckEnabled={rtwCheckEnabled}
-                    busy={pendingId === row.item_id}
-                    onVerify={() => verify(row)}
-                    onReject={() => reject(row)}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <TableScroll label="Review queue, scrolls sideways and down">
+              <table className="tbl card-rows review-queue">
+                <thead>
+                  <tr>
+                    <th>Who</th>
+                    <th>Document</th>
+                    <th>Uploaded</th>
+                    <th>AI found</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((row) => (
+                    <QueueLine
+                      key={row.item_id}
+                      row={row}
+                      rtwCheckEnabled={rtwCheckEnabled}
+                      busy={pendingId === row.item_id}
+                      onVerify={() => verify(row)}
+                      onReject={() => reject(row)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Select, Tabs } from '@thc/ui';
+import { Button, EmptyState, Note, Panel, Select, Tabs, TableScroll } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import {
   NO_ADDED_FILTER,
@@ -236,66 +236,68 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                   </p>
                 </EmptyState>
               ) : (
-                <table className="tbl card-rows">
-                  <thead>
-                    <tr>
-                      <th>Venue</th>
-                      <th>Address</th>
-                      <th>Type</th>
-                      <th className="num">Geofence (m)</th>
-                      <th className="num">Events</th>
-                      <th>Date added</th>
-                      <th>Added by</th>
-                      <th className="actions">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((venue) => (
-                      <tr key={venue.id}>
-                        <td className="name cell-title">
-                          <button
-                            type="button"
-                            className="venue-name"
-                            onClick={() => setEditing(venue)}
-                          >
-                            {venue.name}
-                          </button>
-                          <span className="sub mono">{formatCoordinates(venue)}</span>
-                        </td>
-                        <td data-label="Address">{venue.address}</td>
-                        <td data-label="Type" className="vt">
-                          {venue.venue_type_label}
-                        </td>
-                        <td data-label="Geofence (m)" className="num">
-                          {venue.geofence_radius_m}
-                          {venue.geofence_radius_m !== venue.default_radius_m ? (
-                            <span className="radius-note">default {venue.default_radius_m}</span>
-                          ) : null}
-                        </td>
-                        <td data-label="Events" className="num">
-                          {venue.events_past}
-                        </td>
-                        <td data-label="Date added" className="sm">
-                          {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
-                          <time dateTime={venue.created_at}>
-                            {formatDateAdded(venue.created_at)}
-                          </time>
-                        </td>
-                        <td data-label="Added by" className="sm">
-                          {venue.created_by_name ?? <span className="muted">—</span>}
-                        </td>
-                        <td className="actions cell-actions">
-                          <Button size="sm" onClick={() => setEditing(venue)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
-                            Delete
-                          </Button>
-                        </td>
+                <TableScroll label="Venues, scrolls sideways and down">
+                  <table className="tbl card-rows venue-list">
+                    <thead>
+                      <tr>
+                        <th>Venue</th>
+                        <th>Address</th>
+                        <th>Type</th>
+                        <th className="num">Geofence (m)</th>
+                        <th className="num">Events</th>
+                        <th>Date added</th>
+                        <th>Added by</th>
+                        <th className="actions">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filtered.map((venue) => (
+                        <tr key={venue.id}>
+                          <td className="name cell-title">
+                            <button
+                              type="button"
+                              className="venue-name"
+                              onClick={() => setEditing(venue)}
+                            >
+                              {venue.name}
+                            </button>
+                            <span className="sub mono">{formatCoordinates(venue)}</span>
+                          </td>
+                          <td data-label="Address">{venue.address}</td>
+                          <td data-label="Type" className="vt">
+                            {venue.venue_type_label}
+                          </td>
+                          <td data-label="Geofence (m)" className="num">
+                            {venue.geofence_radius_m}
+                            {venue.geofence_radius_m !== venue.default_radius_m ? (
+                              <span className="radius-note">default {venue.default_radius_m}</span>
+                            ) : null}
+                          </td>
+                          <td data-label="Events" className="num">
+                            {venue.events_past}
+                          </td>
+                          <td data-label="Date added" className="sm">
+                            {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                            <time dateTime={venue.created_at}>
+                              {formatDateAdded(venue.created_at)}
+                            </time>
+                          </td>
+                          <td data-label="Added by" className="sm">
+                            {venue.created_by_name ?? <span className="muted">—</span>}
+                          </td>
+                          <td className="actions cell-actions">
+                            <Button size="sm" onClick={() => setEditing(venue)}>
+                              Edit
+                            </Button>
+                            <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
+                              Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               )}
             </div>
           </Panel>

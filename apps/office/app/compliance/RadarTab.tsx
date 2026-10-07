@@ -10,6 +10,7 @@ import {
   Pill,
   SegToggle,
   Select,
+  TableScroll,
   TileGrid,
   useTimeFormat,
 } from '@thc/ui';
@@ -155,62 +156,64 @@ export function RadarTab({
               <p>Every verified document with an expiry date on a live worker is listed here.</p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>Who</th>
-                  <th>Document</th>
-                  <th>Expiry date</th>
-                  <th>Days left</th>
-                  <th>Status</th>
-                  <th>Reminders sent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((row) => {
-                  const status = radarStatus(row, format);
-                  return (
-                    <tr key={row.doc_id}>
-                      <td className="cell-title">
-                        <div className="person">
-                          <Avatar name={row.display_name} size="sm" />
-                          <div>
-                            <div className="n">
-                              <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>
-                            </div>
-                            <div className="s">
-                              {row.rtw_branch ? (BRANCH[row.rtw_branch] ?? row.rtw_branch) : '—'}
+            <TableScroll label="Expiry radar, scrolls sideways and down">
+              <table className="tbl card-rows radar-table">
+                <thead>
+                  <tr>
+                    <th>Who</th>
+                    <th>Document</th>
+                    <th>Expiry date</th>
+                    <th>Days left</th>
+                    <th>Status</th>
+                    <th>Reminders sent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((row) => {
+                    const status = radarStatus(row, format);
+                    return (
+                      <tr key={row.doc_id}>
+                        <td className="cell-title">
+                          <div className="person">
+                            <Avatar name={row.display_name} size="sm" />
+                            <div>
+                              <div className="n">
+                                <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>
+                              </div>
+                              <div className="s">
+                                {row.rtw_branch ? (BRANCH[row.rtw_branch] ?? row.rtw_branch) : '—'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td data-label="Document">{row.doc_label}</td>
-                      <td data-label="Expiry date" className="mono">
-                        {ukDate(row.expires_on)}
-                      </td>
-                      <td data-label="Days left">
-                        <span className={`days ${daysTone(row.state)}`}>
-                          {daysLabel(row.days_left)}
-                        </span>
-                      </td>
-                      <td data-label="Status">
-                        <Pill tone={status.tone}>{status.label}</Pill>
-                        {row.replacement_in_review ? (
-                          <span className="sub">a newer one is in Needs review</span>
-                        ) : row.state === 'expired' ? (
-                          <span className="sub">nothing re-uploaded yet</span>
-                        ) : row.doc_type === 'university_term_dates_letter' ? (
-                          <span className="sub">31 Dec rule — the printed dates are ignored</span>
-                        ) : null}
-                      </td>
-                      <td data-label="Reminders sent" className="sm muted">
-                        {remindersLine(row)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td data-label="Document">{row.doc_label}</td>
+                        <td data-label="Expiry date" className="mono">
+                          {ukDate(row.expires_on)}
+                        </td>
+                        <td data-label="Days left">
+                          <span className={`days ${daysTone(row.state)}`}>
+                            {daysLabel(row.days_left)}
+                          </span>
+                        </td>
+                        <td data-label="Status">
+                          <Pill tone={status.tone}>{status.label}</Pill>
+                          {row.replacement_in_review ? (
+                            <span className="sub">a newer one is in Needs review</span>
+                          ) : row.state === 'expired' ? (
+                            <span className="sub">nothing re-uploaded yet</span>
+                          ) : row.doc_type === 'university_term_dates_letter' ? (
+                            <span className="sub">31 Dec rule — the printed dates are ignored</span>
+                          ) : null}
+                        </td>
+                        <td data-label="Reminders sent" className="sm muted">
+                          {remindersLine(row)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
         <div className="panel-h" style={{ borderBottom: 0, borderTop: '1px solid var(--line)' }}>

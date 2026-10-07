@@ -177,8 +177,8 @@ function EditableRateCard({
           </p>
         </div>
       ) : (
-        <TableScroll>
-          <table className="tbl">
+        <TableScroll label="Rate card, scrolls sideways" flow>
+          <table className="tbl rate-card">
             <thead>
               <tr>
                 <th>Role</th>
@@ -328,8 +328,8 @@ function RateCardWithoutRates({ rows }: { rows: RateCardRow[] }) {
           <p>An owner or manager adds roles, charge rates and dress codes here.</p>
         </div>
       ) : (
-        <TableScroll>
-          <table className="tbl">
+        <TableScroll label="Rate card, scrolls sideways" flow>
+          <table className="tbl rate-card ro">
             <thead>
               <tr>
                 <th>Role</th>

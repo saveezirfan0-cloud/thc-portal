@@ -10,6 +10,7 @@ import {
   Panel,
   Pill,
   SegToggle,
+  TableScroll,
   TileGrid,
   useTimeFormat,
 } from '@thc/ui';
@@ -182,52 +183,54 @@ export function ChecksTab({
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>Who</th>
-                  <th>Status</th>
-                  <th>Tries</th>
-                  <th>Filed</th>
-                  <th>Elapsed</th>
-                  <th>What happened</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map(({ check, name }) => {
-                  const line = checkLine(check, now, format);
-                  return (
-                    <tr key={check.check_id}>
-                      <td className="cell-title">
-                        <div className="person">
-                          <Avatar name={name} size="sm" />
-                          <div>
-                            <div className="n">
-                              <Link href={`/staff/${check.staff_id}`}>{name}</Link>
+            <TableScroll label="gov.uk checks, scrolls sideways and down">
+              <table className="tbl card-rows checks-table">
+                <thead>
+                  <tr>
+                    <th>Who</th>
+                    <th>Status</th>
+                    <th>Tries</th>
+                    <th>Filed</th>
+                    <th>Elapsed</th>
+                    <th>What happened</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map(({ check, name }) => {
+                    const line = checkLine(check, now, format);
+                    return (
+                      <tr key={check.check_id}>
+                        <td className="cell-title">
+                          <div className="person">
+                            <Avatar name={name} size="sm" />
+                            <div>
+                              <div className="n">
+                                <Link href={`/staff/${check.staff_id}`}>{name}</Link>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td data-label="Status">
-                        <Pill tone={line.tone}>{line.label}</Pill>
-                      </td>
-                      <td data-label="Tries" className="mono sm">
-                        {line.tries}
-                      </td>
-                      <td data-label="Filed" className="mono sm">
-                        {line.filed}
-                      </td>
-                      <td data-label="Elapsed" className="sm">
-                        {line.elapsed}
-                      </td>
-                      <td data-label="What happened" className="sm muted">
-                        {line.detail ?? '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td data-label="Status">
+                          <Pill tone={line.tone}>{line.label}</Pill>
+                        </td>
+                        <td data-label="Tries" className="mono sm">
+                          {line.tries}
+                        </td>
+                        <td data-label="Filed" className="mono sm">
+                          {line.filed}
+                        </td>
+                        <td data-label="Elapsed" className="sm">
+                          {line.elapsed}
+                        </td>
+                        <td data-label="What happened" className="sm muted">
+                          {line.detail ?? '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </div>

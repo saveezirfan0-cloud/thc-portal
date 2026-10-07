@@ -185,6 +185,12 @@
   color: var(--text);
   font-weight: 600;
 }
+/* A long crumb line gives way (wraps inside itself) instead of pushing the
+   appearance switch onto a second line: the Reports header did at 1280px. */
+.topbar .crumbs {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
 .topbar .spacer {
   flex: 1;
 }
@@ -613,6 +619,46 @@ table.tbl {
 .tbl-frame > .tbl {
   border-collapse: separate;
   border-spacing: 0;
+}
+/* A frame's table is as wide as its columns need, never squeezed to the card:
+   the floor is a default, a screen sets its own with `.tbl.<name>`. `.floor`
+   also gives every text column a readable measure (a name or an event title
+   used to wrap a word a line beside a date on one); the avatar cell stays the
+   avatar's width. */
+:where(.tbl-frame) > .tbl {
+  min-width: 44rem;
+}
+:where(.tbl-frame.floor) > .tbl :where(td, th):not(:empty) {
+  min-width: 5rem;
+}
+:where(.tbl-frame.floor) > .tbl td.cell-lead {
+  min-width: 0;
+}
+/* Snug cells: columns keep their floor but not 20px either side of every
+   one, which is what pushed the last column off a laptop-width card. */
+@media (min-width: 761px) {
+  .tbl-frame.floor > .tbl :is(th, td) {
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
+  }
+  .tbl-frame.floor > .tbl :is(th, td):first-child {
+    padding-left: var(--sp-20);
+  }
+  .tbl-frame.floor > .tbl :is(th, td):last-child {
+    padding-right: var(--sp-20);
+  }
+}
+/* Sideways scroll only: a short table that sits in a page that scrolls. */
+.tbl-frame.flow {
+  max-height: none;
+}
+/* A wide table in a card that did not ask for a frame still scrolls inside
+   the card at every width, not only below 1024px, rather than being clipped
+   by the card's rounded corners (Reports, the client card's qualified staff
+   at 1280px). */
+:is(.panel, .panel-b):has(> table.tbl),
+.table-scroll {
+  overflow-x: auto;
 }
 
 /* ---------------------------------------------------------------------
@@ -3034,7 +3080,8 @@ textarea.input {
 
   /* A card-rows table is a stack of cards here, not a scroller: its cells
      take the card's width, never the scrolling table's floor above. */
-  :is(.panel, .panel-b, .table-scroll) > table.tbl.card-rows :is(td, th):not(:empty) {
+  :is(.panel, .panel-b, .table-scroll) > table.tbl.card-rows :is(td, th):not(:empty),
+  :where(.tbl-frame.floor) > .tbl.card-rows :where(td, th):not(:empty) {
     min-width: 0;
   }
 

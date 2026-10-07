@@ -45,15 +45,15 @@
   display: none;
 }
 
-/* Tablet width (the History panels use this table too): five columns in
+/* Laptop and tablet width (the History panels use this table too): five columns in
    ~590px squeezed Details to a word a line ("23.09.202 / 6"). The table
-   takes a readable width and scrolls inside its card (.table-scroll). */
-@media (min-width: 761px) and (max-width: 1024px) {
+   takes a readable width and scrolls inside its card (.table-scroll, .tbl-frame). */
+@media (min-width: 761px) {
   .activity-table {
     min-width: 760px;
   }
   /* Past packages/ui's 6.5rem floor for a scrolling table's cells. */
-  .table-scroll > table.tbl.activity-table td.activity-details {
+  :is(.table-scroll, .tbl-frame) > table.tbl.activity-table td.activity-details {
     min-width: 14rem;
   }
 }

@@ -12,6 +12,7 @@ import {
   Pill,
   SearchInput,
   Select,
+  TableScroll,
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -141,7 +142,7 @@ export function ActivityScreen({
               : 'Nothing has been recorded in this period.'}
           </EmptyState>
         ) : (
-          <div className="table-scroll">
+          <TableScroll label="Activity log, scrolls sideways and down">
             <table className="tbl card-rows activity-table">
               <thead>
                 <tr>
@@ -196,7 +197,7 @@ export function ActivityScreen({
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
         <div className="activity-pager">
           {filters.before ? (

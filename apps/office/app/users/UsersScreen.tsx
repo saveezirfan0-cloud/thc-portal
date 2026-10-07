@@ -158,7 +158,13 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
             {query ? 'No login matches that search.' : `No ${ROLE_LABEL[tab]} logins yet.`}
           </EmptyState>
         ) : (
-          <div className="table-scroll">
+          <div
+            className="tbl-frame floor"
+            // Focusable so the arrow keys scroll it; named for screen readers.
+            tabIndex={0}
+            role="region"
+            aria-label="Logins, scrolls sideways and down"
+          >
             <table className="tbl card-rows users-table">
               <thead>
                 <tr>

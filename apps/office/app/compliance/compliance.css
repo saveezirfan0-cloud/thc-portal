@@ -75,3 +75,45 @@
     margin-top: var(--sp-8);
   }
 }
+
+/* ---- tables scroll inside `.tbl-frame` ----------------------------------
+ * The queue, the radar and the check list can run to hundreds of rows: they
+ * keep their header while they scroll, and a date or a name is never
+ * squeezed to a word a line. */
+.tbl.review-queue {
+  min-width: 56rem;
+}
+.tbl.review-queue td:nth-child(3) {
+  white-space: nowrap;
+}
+.tbl.review-queue :is(th, td):nth-child(1),
+.tbl.review-queue :is(th, td):nth-child(2) {
+  min-width: 12rem;
+}
+.tbl.review-queue :is(th, td):nth-child(5) {
+  min-width: 15rem;
+}
+.tbl.radar-table {
+  min-width: 52rem;
+}
+.tbl.radar-table :is(th, td):nth-child(1) {
+  min-width: 12rem;
+}
+.tbl.radar-table td:nth-child(3),
+.tbl.radar-table td:nth-child(4) {
+  white-space: nowrap;
+}
+.tbl.checks-table {
+  min-width: 56rem;
+}
+.tbl.checks-table :is(th, td):nth-child(1),
+.tbl.checks-table :is(th, td):nth-child(6) {
+  min-width: 12rem;
+}
+@media (max-width: 760px) {
+  .tbl.review-queue,
+  .tbl.radar-table,
+  .tbl.checks-table {
+    min-width: 0;
+  }
+}

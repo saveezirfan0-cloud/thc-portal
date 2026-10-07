@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, Pill, useTimeFormat } from '@thc/ui';
+import { Avatar, Pill, TableScroll, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
 import { statusLabel, breaksCell, statusTone } from './status';
 import type { MonitorRow } from './types';
@@ -44,54 +44,56 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   }
 
   return (
-    <table className="tbl card-rows monitor-tbl">
-      <thead>
-        <tr>
-          <th>Staff</th>
-          <th>Event</th>
-          <th>Window</th>
-          <th>Check-in</th>
-          <th>Breaks</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.bookingId}>
-            <td className="cell-title">
-              <div className="person">
-                <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
-                <div>
-                  <div className="n">{row.staffName}</div>
-                  <div className="s">{row.roleName}</div>
-                </div>
-              </div>
-            </td>
-            <td data-label="Event">
-              <b>{row.eventTitle}</b>
-            </td>
-            <td data-label="Window">
-              <span className="win2">
-                {uk(row.startsAt)} – {uk(row.endsAt)} UK time
-                {dual ? (
-                  <span className="l2">
-                    {local(row.startsAt)} – {local(row.endsAt)} your time
-                  </span>
-                ) : null}
-              </span>
-            </td>
-            <td data-label="Check-in" className="stamp">
-              {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
-            </td>
-            <td data-label="Breaks" className="mono sm">
-              {breaksCell(row, local)}
-            </td>
-            <td data-label="Status">
-              <Pill tone={statusTone(row)}>{statusLabel(row, local)}</Pill>
-            </td>
+    <TableScroll label="Live monitor, scrolls sideways and down">
+      <table className="tbl card-rows monitor-tbl">
+        <thead>
+          <tr>
+            <th>Staff</th>
+            <th>Event</th>
+            <th>Window</th>
+            <th>Check-in</th>
+            <th>Breaks</th>
+            <th>Status</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.bookingId}>
+              <td className="cell-title">
+                <div className="person">
+                  <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
+                  <div>
+                    <div className="n">{row.staffName}</div>
+                    <div className="s">{row.roleName}</div>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Event">
+                <b>{row.eventTitle}</b>
+              </td>
+              <td data-label="Window">
+                <span className="win2">
+                  {uk(row.startsAt)} – {uk(row.endsAt)} UK time
+                  {dual ? (
+                    <span className="l2">
+                      {local(row.startsAt)} – {local(row.endsAt)} your time
+                    </span>
+                  ) : null}
+                </span>
+              </td>
+              <td data-label="Check-in" className="stamp">
+                {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
+              </td>
+              <td data-label="Breaks" className="mono sm">
+                {breaksCell(row, local)}
+              </td>
+              <td data-label="Status">
+                <Pill tone={statusTone(row)}>{statusLabel(row, local)}</Pill>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }

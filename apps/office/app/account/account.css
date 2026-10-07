@@ -67,9 +67,18 @@
 }
 
 /* ---- /users ---------------------------------------------------------- */
+.tbl.users-table {
+  min-width: 56rem;
+}
+/* Several actions wrap onto a second line inside the column rather than
+   widening the table until the last button is cut off. */
 .users-table td.cell-actions {
-  white-space: nowrap;
+  white-space: normal;
   text-align: right;
+  min-width: 14rem;
+}
+.users-table td.cell-actions .btn {
+  margin-bottom: var(--sp-4);
 }
 .users-table td.cell-actions .btn + .btn {
   margin-left: var(--sp-6);
