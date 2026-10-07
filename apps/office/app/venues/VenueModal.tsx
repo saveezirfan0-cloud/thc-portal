@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
 import { Alert, Button, Input, Modal, Select } from '@thc/ui';
 import { VenueMap } from './VenueMap';
-import { createVenue, reverseGeocode, updateVenue } from './actions';
+import { createVenue, reverseGeocode, searchPlaces, updateVenue } from './actions';
+import type { PlaceMatch } from './actions';
 import {
   MAX_RADIUS_M,
   MIN_RADIUS_M,
@@ -40,6 +41,10 @@ interface Pin {
  *     is not dragged;
  *   · the address comes from the pin by reverse geocoding and is read-only,
  *     with the coordinates printed underneath as plain text.
+ *
+ * The search above the map (ADR-0100) is a faster way to put the pin
+ * somewhere: a postcode or street address finds the site and picking a
+ * candidate drops the pin on it. It does not make the address typeable.
  */
 export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalProps) {
   const editing = venue !== null;
@@ -56,6 +61,17 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
+
+  // ---- search by postcode or street address ------------------------------
+  const searchId = useId();
+  const [searchText, setSearchText] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [matches, setMatches] = useState<PlaceMatch[] | null>(null);
+  const [searchMessage, setSearchMessage] = useState<string | null>(null);
+  // Bumped on every pick so the map re-frames onto the new pin, which a
+  // constant `refitKey` would not do once the pin already exists.
+  const [framing, setFraming] = useState(0);
+  const searchTicket = useRef(0);
 
   const selectedType = venueTypes.find((type) => type.key === venueType);
 
@@ -91,6 +107,41 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
    * its address has already been cleared.
    */
   const moved = useRef(false);
+
+  /**
+   * Search runs on submit, not per keystroke: the keyless provider forbids
+   * search-as-you-type (ADR-0093) and a postcode is only meaningful whole.
+   * Every answer but the last is dropped, as with the pin lookup.
+   */
+  const runSearch = () => {
+    const ticket = (searchTicket.current += 1);
+    setSearching(true);
+    setSearchMessage(null);
+    setMatches(null);
+    void searchPlaces(searchText).then((result) => {
+      if (ticket !== searchTicket.current) return;
+      setSearching(false);
+      if (result.ok) setMatches(result.matches);
+      else setSearchMessage(result.message);
+    });
+  };
+
+  /**
+   * The candidate's own address is the venue's address: it came from the
+   * geocoder, so there is nothing to look up again. `moved` goes back to
+   * false so the pin effect below leaves it alone, and any lookup still in
+   * flight from an earlier drag is dropped.
+   */
+  const pickMatch = (match: PlaceMatch) => {
+    request.current += 1;
+    moved.current = false;
+    setLookup('idle');
+    setLookupMessage(null);
+    setPin({ point: { lat: match.lat, lng: match.lng }, address: match.address });
+    setFraming((count) => count + 1);
+    setMatches(null);
+    setSearchMessage(null);
+  };
 
   useEffect(() => {
     if (pinLat === undefined || pinLng === undefined) return;
@@ -175,6 +226,55 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
       <div className="venue-form">
         {error ? <Alert tone="coral">{error}</Alert> : null}
 
+        <div className="field venue-search">
+          <label className="label" htmlFor={searchId}>
+            Find the venue <span className="muted">· postcode or street address</span>
+          </label>
+          <div className="venue-search-row">
+            <input
+              id={searchId}
+              className="input"
+              type="search"
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                if (!searching) runSearch();
+              }}
+              placeholder="e.g. W1K 4HR or 49 Brook Street, London"
+              autoComplete="off"
+              maxLength={200}
+            />
+            <Button
+              tone="primary"
+              onClick={runSearch}
+              disabled={searching || searchText.trim().length === 0}
+            >
+              {searching ? 'Searching…' : 'Search'}
+            </Button>
+          </div>
+          <div aria-live="polite">
+            {searchMessage ? <span className="error">{searchMessage}</span> : null}
+            {matches ? (
+              <ul className="venue-results" aria-label="Matching places">
+                {matches.map((match) => (
+                  <li key={`${match.lat},${match.lng},${match.address}`}>
+                    <button type="button" onClick={() => pickMatch(match)}>
+                      {match.address}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          {!matches && !searchMessage ? (
+            <span className="hint">
+              Or click the map to drop the pin. Either way the address is read back from the pin.
+            </span>
+          ) : null}
+        </div>
+
         <VenueMap
           markers={markers}
           variant="modal"
@@ -183,7 +283,7 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
           // Frame the pin when it is first dropped. After that the map
           // stays where the manager put it: VenueMap only gives way when a
           // circle would run off the edge.
-          refitKey={pin ? 'pinned' : 'empty'}
+          refitKey={pin ? `pinned-${framing}` : 'empty'}
           ariaLabel="Venue location — click to drop the pin, drag it to move it"
           hint={
             pin

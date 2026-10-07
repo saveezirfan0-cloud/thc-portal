@@ -124,6 +124,121 @@ export async function loadUpcomingEvents(venueId: string): Promise<UpcomingEvent
 
 export type GeocodeResult = { ok: true; address: string } | { ok: false; message: string };
 
+/** One candidate for the venue search: where it is and how it reads. */
+export interface PlaceMatch {
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+export type PlaceSearchResult =
+  { ok: true; matches: PlaceMatch[] } | { ok: false; message: string };
+
+const MIN_SEARCH_LENGTH = 3;
+const MAX_SEARCH_LENGTH = 200;
+const MAX_MATCHES = 5;
+
+/**
+ * Forward geocoding for the venue search (§9.11): a postcode or a street
+ * address finds the place and the manager picks the right candidate, which
+ * drops the pin there. The address on the venue is still the geocoder's, read
+ * back for that point, never typed (ADR-0100) — this only saves hunting for
+ * the site on the map.
+ *
+ * Same provider rules and the same caller check as `reverseGeocode`: a server
+ * action is a public POST endpoint and this one spends the Mapbox token.
+ */
+export async function searchPlaces(query: string): Promise<PlaceSearchResult> {
+  const q = typeof query === 'string' ? query.trim().replace(/\s+/g, ' ') : '';
+  if (q.length < MIN_SEARCH_LENGTH) {
+    return { ok: false, message: 'Type a postcode or a street address to search.' };
+  }
+  if (q.length > MAX_SEARCH_LENGTH) {
+    return { ok: false, message: 'That search is too long — try a postcode or a street.' };
+  }
+
+  if (!(await callerIsAdmin())) {
+    return { ok: false, message: 'Only the office can look up addresses.' };
+  }
+
+  const token = process.env.MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  return token ? searchPlacesMapbox(q, token) : searchPlacesOpenStreetMap(q);
+}
+
+const NOTHING_FOUND =
+  'Nothing found for that. Check the postcode, or add the town to the street address.';
+
+async function searchPlacesMapbox(q: string, token: string): Promise<PlaceSearchResult> {
+  const url = new URL('https://api.mapbox.com/search/geocode/v6/forward');
+  url.searchParams.set('q', q);
+  url.searchParams.set('limit', String(MAX_MATCHES));
+  // THC is a UK agency: "SW1A 1AA" must not resolve to another country's
+  // address format, and a street name must not match one overseas.
+  url.searchParams.set('country', 'gb');
+  url.searchParams.set('language', 'en');
+  url.searchParams.set('access_token', token);
+
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) {
+      return { ok: false, message: `Address search failed (${response.status}). Try again.` };
+    }
+    const body = (await response.json()) as {
+      features?: {
+        geometry?: { coordinates?: [number, number] };
+        properties?: { full_address?: string; name?: string; place_formatted?: string };
+      }[];
+    };
+    const matches: PlaceMatch[] = [];
+    for (const feature of body.features ?? []) {
+      const [lng, lat] = feature.geometry?.coordinates ?? [];
+      const properties = feature.properties;
+      const address =
+        properties?.full_address ??
+        [properties?.name, properties?.place_formatted].filter(Boolean).join(', ');
+      if (typeof lat !== 'number' || typeof lng !== 'number' || !address) continue;
+      matches.push({ address, lat, lng });
+    }
+    return matches.length > 0 ? { ok: true, matches } : { ok: false, message: NOTHING_FOUND };
+  } catch {
+    return { ok: false, message: 'Address search is unreachable. Try again.' };
+  }
+}
+
+/**
+ * The keyless fallback (ADR-0093). Nominatim forbids search-as-you-type, so
+ * the modal searches on submit, not on every keystroke.
+ */
+async function searchPlacesOpenStreetMap(q: string): Promise<PlaceSearchResult> {
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format', 'jsonv2');
+  url.searchParams.set('q', q);
+  url.searchParams.set('countrycodes', 'gb');
+  url.searchParams.set('limit', String(MAX_MATCHES));
+  url.searchParams.set('accept-language', 'en');
+
+  try {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'thc-portal-back-office/1.0' },
+    });
+    if (!response.ok) {
+      return { ok: false, message: `Address search failed (${response.status}). Try again.` };
+    }
+    const body = (await response.json()) as { display_name?: string; lat?: string; lon?: string }[];
+    const matches: PlaceMatch[] = [];
+    for (const row of Array.isArray(body) ? body : []) {
+      const lat = Number(row.lat);
+      const lng = Number(row.lon);
+      if (!row.display_name || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      matches.push({ address: row.display_name, lat, lng });
+    }
+    return matches.length > 0 ? { ok: true, matches } : { ok: false, message: NOTHING_FOUND };
+  } catch {
+    return { ok: false, message: 'Address search is unreachable. Try again.' };
+  }
+}
+
 /**
  * Reverse geocoding for the pin (§9.11): the address is looked up, never
  * typed. Mapbox is the provider docs/01-architecture.md picked.
