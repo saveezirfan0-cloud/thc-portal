@@ -221,33 +221,20 @@ describe('the toolbar filters (§3.1)', () => {
     expect(filterEventRows(rows, { clientId: '', status: 'upcoming', q: '' })).toHaveLength(3);
   });
 
-  describe('Hide cancelled', () => {
+  describe('cancelled events (ADR-0099)', () => {
     const mixed = toEventRows(
       [event({ id: 'live' }), event({ id: 'gone', cancelledAt: '2026-09-16T10:00:00Z' })],
       before,
     );
 
-    it('leaves cancelled events out, and only those', () => {
-      expect(
-        filterEventRows(mixed, { clientId: '', status: '', q: '', hideCancelled: true }).map(
-          (r) => r.id,
-        ),
-      ).toEqual(['live']);
+    it('are never rows of the diary, and only those are left out', () => {
+      expect(filterEventRows(mixed, { clientId: '', status: '', q: '' }).map((r) => r.id)).toEqual([
+        'live',
+      ]);
     });
 
-    it('keeps them by default — §3.3 does not delete a cancelled event', () => {
-      expect(filterEventRows(mixed, { clientId: '', status: '', q: '' })).toHaveLength(2);
-    });
-
-    it('lets asking for Cancelled by name outrank hiding them', () => {
-      expect(
-        filterEventRows(mixed, {
-          clientId: '',
-          status: 'cancelled',
-          q: '',
-          hideCancelled: true,
-        }).map((r) => r.id),
-      ).toEqual(['gone']);
+    it('stay out even when the Cancelled status is asked for by name', () => {
+      expect(filterEventRows(mixed, { clientId: '', status: 'cancelled', q: '' })).toEqual([]);
     });
   });
 });

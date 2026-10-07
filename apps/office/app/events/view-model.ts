@@ -144,8 +144,6 @@ export interface EventFilters {
   /** `clients.id`, from the toolbar's Client select; '' for all. */
   clientId: string;
   status: string;
-  /** Drop cancelled rows unless `status` asks for them by name. */
-  hideCancelled?: boolean;
   q: string;
 }
 
@@ -153,16 +151,17 @@ export interface EventFilters {
  * The toolbar's filters (§3.1). Client matches on the id: two clients may
  * share a display name (a hotel group's properties often do), and a match
  * on the name showed both clients' events under either.
+ *
+ * A cancelled event is never a row of the Scheduling diary (ADR-0099): the
+ * rows stay in the database for the record and the finance reports (§3.3),
+ * but the screen is for events that still need staffing.
  */
 export function filterEventRows(rows: EventRow[], filters: EventFilters): EventRow[] {
   const needle = filters.q.trim().toLowerCase();
   return rows.filter((row) => {
+    if (row.status === 'cancelled') return false;
     if (filters.clientId && row.clientId !== filters.clientId) return false;
     if (filters.status && row.status !== filters.status) return false;
-    // Asking for cancelled events by name outranks hiding them.
-    if (filters.hideCancelled && filters.status !== 'cancelled' && row.status === 'cancelled') {
-      return false;
-    }
     if (!needle) return true;
     return [row.title, row.clientName, row.venueName, row.poNumber]
       .join(' ')

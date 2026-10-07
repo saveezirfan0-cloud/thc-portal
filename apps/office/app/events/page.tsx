@@ -48,12 +48,8 @@ export default async function Page({
   ]);
 
   const filters = { clientId: query.clientId, status: query.status, q: query.q };
-  const allRows = filterEventRows(toEventRows(events, new Date(), format), filters);
-  const rows = query.hideCancelled
-    ? filterEventRows(allRows, { ...filters, hideCancelled: true })
-    : allRows;
-  // Said out loud, so an emptied period is never read as "nothing booked".
-  const hiddenCancelled = allRows.length - rows.length;
+  // Cancelled events are dropped here, whatever the filters (ADR-0099).
+  const rows = filterEventRows(toEventRows(events, new Date(), format), filters);
 
   const totals = periodTotals(rows);
 
@@ -82,13 +78,6 @@ export default async function Page({
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
         <EventToolbar query={query} clients={reference.clients} />
-
-        {hiddenCancelled > 0 ? (
-          <p className="muted sm" role="status">
-            {hiddenCancelled} cancelled event{hiddenCancelled === 1 ? '' : 's'} hidden in this
-            period.
-          </p>
-        ) : null}
 
         {/* Named filter sets, kept per manager in office_saved_views. */}
         <SavedViewsBar query={query} clients={reference.clients} initial={savedViews} />
