@@ -20,5 +20,6 @@
 - No schema change: one function, one register code (RC5, `ADDITION_CODES`; switchable in /settings → Notifications), no new column.
 - A pending photo change request is left alone; approving it later is an office decision like any other.
 - **Known limit.** A candidate between *Documents* verified and *Contract* signed (quiz → contract) has no screen to retake on: the wizard no longer asks for step 3 once the documents are past, and Profile details opens only when they are working. Rejecting then takes the photo down and tells them (RC5); the new photo is asked for when they reach Profile details. Re-opening step 3 across the later stages would change the wizard's step ordering and is not done here.
+- RC5 deep-links to `/profile/details`; a candidate still in the wizard has no Profile tab, so the app lock sends them to the wizard, where step 3 is waiting.
 - **THC to confirm:** the RC5 wording (docs/15 Q21); whether the office should also be able to *replace* a photo without a request.
 - pgTAP 776; `templates.test.ts` / `switches.test.ts` hold RC5 to the register; office tests for the action, the button and both rows.

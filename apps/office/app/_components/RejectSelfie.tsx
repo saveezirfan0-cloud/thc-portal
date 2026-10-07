@@ -96,7 +96,7 @@ export function RejectSelfie({
             maxLength={300}
             placeholder="e.g. Face not visible · not a photo of you · please retake without a hat or sunglasses"
             onChange={(event) => setReason(event.target.value)}
-            hint={`${first} sees this in the app word for word: “Your profile photo was not accepted: [reason]. Please take a new one.” Don't describe what the photo showed.`}
+            hint={`${first} sees this in the app word for word: “Your profile photo was not accepted: [reason]. Please take a new one.” No full stop at the end, and don't describe what the photo showed.`}
           />
           <Note>
             The photo comes down now: {first} shows as initials across the system until they take a

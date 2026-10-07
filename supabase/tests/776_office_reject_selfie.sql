@@ -11,10 +11,12 @@
 --      confirms it, and a second rejection is a second RC5.
 --   D. Refusals: no reason, a blank one, one over 300, no photo, an unknown
 --      worker, a worker who has been removed or rejected.
---   E. Nobody but the office: a worker, a client and anon are refused.
+--   E. Nobody but the office: a worker, a client and anon are refused, and a
+--      viewer (ADR-0060) is stopped by the read-only trigger with the photo
+--      intact. A pending photo change request is left alone by a rejection.
 -- =====================================================================
 begin;
-select plan(29);
+select plan(33);
 \ir _shared/fixtures.psql
 
 \set cand     '77600000-0000-4000-8000-000000000001'
@@ -34,7 +36,7 @@ insert into onboarding_progress (staff_id, rtw_at, address_at, selfie_at, docume
 values (:'cand', now(), now(), now(), now(), now());
 update staff set photo_path = :'staffa' || '/selfie-1.jpg' where id = :'staffa';
 insert into storage.objects (bucket_id, name) values
-  ('photos', :'cand' || '/selfie-1.jpg'), ('photos', :'cand' || '/selfie-2.jpg'),
+  ('photos', :'cand' || '/selfie-1.jpg'),
   ('photos', :'staffa' || '/selfie-1.jpg');
 
 -- =====================================================================
@@ -136,6 +138,31 @@ select is((select photo_path from staff where id = :'gone'), :'gone' || '/selfie
   'D: and the refused ones keep their photo');
 select is((select count(*)::int from notification_outbox where template = 'RC5' and recipient_staff_id in (:'gone', :'rejected', :'staffb')),
   0, 'D: no RC5 for a refused rejection');
+
+-- =====================================================================
+-- D2 · A viewer is stopped by the read-only trigger; a pending request is left alone
+-- =====================================================================
+\set viewer '77600000-0000-4000-8000-0000000000a1'
+insert into auth.users (id, email) values (:'viewer', 'viewer.776@rls.test');
+insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vera Viewer');
+update staff set photo_path = :'staffb' || '/selfie-1.jpg' where id = :'staffb';
+insert into profile_change_requests (staff_id, kind, proposed_photo_path)
+values (:'staffb', 'photo', :'staffb' || '/selfie-9.jpg');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select office_reject_selfie(%L, 'x') $$, :'staffb'),
+  '42501', 'read_only', 'D2: a viewer is refused read_only — the function writes, so the ADR-0060 trigger stops it');
+reset role;
+select is((select photo_path from staff where id = :'staffb'), :'staffb' || '/selfie-1.jpg',
+  'D2: and the photo stays');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(format($$ select office_reject_selfie(%L, 'Not clear') $$, :'staffb'), 'D2: the office rejects it');
+reset role;
+select is((select status::text from profile_change_requests where staff_id = :'staffb' and kind = 'photo'), 'pending',
+  'D2: a pending photo change request is not touched — approving it later is an office decision');
 
 -- =====================================================================
 -- E · Nobody but the office
