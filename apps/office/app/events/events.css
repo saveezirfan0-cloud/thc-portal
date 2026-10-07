@@ -362,12 +362,17 @@
   width: 100%;
   font: inherit;
   font-size: var(--fs-11);
-  color: inherit;
+  /* The link chips take the global link colour; the button reads the same. */
+  color: var(--cyan-ink);
   text-align: left;
   cursor: pointer;
   border-top: 0;
   border-right: 0;
   border-bottom: 0;
+}
+.cal .day button.evchip:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
 }
 .cal .day button.evchip.cancelled {
   color: var(--muted);
