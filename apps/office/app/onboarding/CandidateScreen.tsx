@@ -223,6 +223,7 @@ export function CandidateScreen({
   const doc: DocHandlers = {
     // Looking back at a finished phase never offers its actions again.
     readOnly: readOnly || past,
+    qualificationsLocked: row.status === 'rejected',
     busy,
     staffId: row.id,
     branch: row.rtw_branch,
@@ -332,7 +333,8 @@ export function CandidateScreen({
 
         {past ? (
           <Alert tone="cyan">
-            Viewing <b>{COLUMNS[viewing]?.label}</b>, a step already completed. Read-only —{' '}
+            Viewing <b>{COLUMNS[viewing]?.label}</b>, a step already completed. Read-only
+            {shown === 'documents' ? ' (roles and clients stay editable)' : ''} —{' '}
             <button type="button" className="linkish" onClick={() => setPicked(null)}>
               back to {COLUMNS[phase]?.label}
             </button>
@@ -1065,7 +1067,15 @@ interface VerifyChoice {
 }
 
 interface DocHandlers {
+  /** The documents themselves: also true while looking back at a finished step. */
   readOnly: boolean;
+  /**
+   * Roles and clients: locked only once the candidate is rejected (final on the
+   * record, §2.3). Looking back at the Documents step, or a signed contract,
+   * does not lock them — they are not a step's output, and the office changes
+   * them at any time.
+   */
+  qualificationsLocked: boolean;
   busy: boolean;
   /** Whose documents: the office's uploads go under this worker's folder. */
   staffId: string;
@@ -1921,7 +1931,7 @@ function DocumentsPhase({
       <RolesAndClients
         row={row}
         data={data}
-        readOnly={doc.readOnly}
+        readOnly={doc.qualificationsLocked}
         busy={doc.busy}
         onToggleRole={onToggleRole}
         onGrantClients={onGrantClients}
