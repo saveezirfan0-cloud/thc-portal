@@ -168,6 +168,11 @@ real environment to prove it in.
 
 ## 3 · Closed on 27.09 (the second audit round) and 26.09
 
+**07.10** — the `/events` calendar no longer scrolls inside month cells or week
+columns (ADR-0096, superseding §3.1's "cells scroll"): three chips and a "+N more"
+popup per day, same-named events collapsed, and long week columns folded into
+day bands. `wireframes/backoffice/events.html` is redrawn to match.
+
 **27.09** — every slice of the audit that had not run, then its findings:
 
 - **Get back paid nothing** (§3.3, the round's one blocker): the office wrote

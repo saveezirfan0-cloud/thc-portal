@@ -1,6 +1,6 @@
 # ADR-0096 · Calendar density: no scroll boxes inside month cells or week columns
 
-**Status:** Accepted · **Requested:** by the repository owner, in the session that made this change (6 Oct 2026) · **Wireframe:** `backoffice/events.html` still draws the scrolling cell and columns (Fri 19 with 11 chips, "the cell scrolls", "each column scrolls on its own") and is **not yet updated**; this ADR is the deviation record until it is · **§3.1**
+**Status:** Accepted · **Requested:** by the repository owner, in the session that made this change (6 Oct 2026) · **Wireframe:** `backoffice/events.html` redrawn to match (Fri 19 shows three chips and "+8 more"; annotations and behaviour note updated) · **§3.1**
 
 ## Context
 
@@ -16,5 +16,5 @@
 ## Consequences
 
 - §3.1's "cells scroll" / "columns scroll independently" are superseded for the Back Office calendar; the List and Day views are as before.
-- **Follow-up for the owner:** redraw the Fri 19 cell ("+8 more"), the week annotation and the behaviour note in `wireframes/backoffice/events.html`, and add a pointer to this ADR in `docs/14-handover.md`; neither was changed here.
+- `wireframes/backoffice/events.html` and `docs/14-handover.md` are updated with this change.
 - `apps/office/app/events/view-model.ts` (`groupSimilarEvents`, `monthCellModel`, `bandDay`), `_components/{EventViews,MonthCellEvents,ChipStatus}.tsx`, `events.css`; tests in `view-model.test.ts` and `calendar-views.test.tsx`.
