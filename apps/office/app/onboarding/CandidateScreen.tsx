@@ -33,7 +33,7 @@ import { formatUkStamp } from '../staff/[id]/profile';
 import {
   acceptCandidate,
   addQualifiedRole,
-  grantClientQualification,
+  grantClientQualifications,
   documentLink,
   markInterviewComplete,
   rejectCandidate,
@@ -58,6 +58,9 @@ import {
   candidateActions,
   candidateCap,
   columnFor,
+  groupQualifications,
+  matchesName,
+  newEntryCount,
   orDash,
   parsePeriod,
   periodsProblem,
@@ -372,26 +375,10 @@ export function CandidateScreen({
                 on ? addQualifiedRole(row.id, roleId) : removeQualifiedRole(row.id, roleId),
               )
             }
-            onGrantClients={(clientIds, after) =>
-              run(async () => {
-                // One entry per client + role (RULE-17), every client getting
-                // every role the candidate holds. Entries already there are
-                // skipped, and the first refusal stops the run.
-                const held = row.role_ids;
-                const have = new Set(
-                  (data.qualifications ?? []).map((q) => `${q.client_id}:${q.role_id}`),
-                );
-                for (const clientId of clientIds) {
-                  for (const roleId of held) {
-                    if (have.has(`${clientId}:${roleId}`)) continue;
-                    const result = await grantClientQualification(row.id, clientId, roleId);
-                    if (!result.ok) return result;
-                  }
-                }
-                return { ok: true } as const;
-              }, after)
+            onGrantClients={(clientIds, roleIds, after) =>
+              run(() => grantClientQualifications(row.id, clientIds, roleIds), after)
             }
-            onRevokeClient={(ids) =>
+            onRevokeClients={(ids) =>
               run(async () => {
                 for (const id of ids) {
                   const result = await revokeClientQualification(row.id, id);
@@ -1595,56 +1582,18 @@ function RolesAndClients({
   busy,
   onToggleRole,
   onGrantClients,
-  onRevokeClient,
+  onRevokeClients,
 }: {
   row: CandidateRow;
   data: CandidateData;
   readOnly: boolean;
   busy: boolean;
   onToggleRole: (roleId: string, on: boolean) => void;
-  onGrantClients: (clientIds: string[], after: () => void) => void;
-  onRevokeClient: (ids: string[]) => void;
+  onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
+  onRevokeClients: (ids: string[]) => void;
 }) {
-  const [picked, setPicked] = useState<string[]>([]);
-  const [query, setQuery] = useState('');
-  const clients = data.clients ?? [];
-  const qualifications = useMemo(() => data.qualifications ?? [], [data.qualifications]);
-  // §9.6: a client entry names one of the roles the person already holds. The
-  // ticks on the left are the role list; every client added on the right is
-  // cleared for all of them, so there is no second role pick per client.
+  // §9.6: a client entry names one of the roles the person already holds.
   const held = data.roles.filter((role) => row.role_ids.includes(role.id));
-
-  // The entries, one line per client rather than one per client + role: with
-  // several roles and a handful of clients the flat list ran to a page.
-  const cleared = useMemo(() => {
-    const byClient = new Map<string, { name: string; roleIds: Set<string>; barred: number }>();
-    for (const q of qualifications) {
-      const entry = byClient.get(q.client_id) ?? {
-        name: q.client_name,
-        roleIds: new Set<string>(),
-        barred: 0,
-      };
-      entry.roleIds.add(q.role_id);
-      if (q.do_not_return) entry.barred += 1;
-      byClient.set(q.client_id, entry);
-    }
-    return [...byClient.entries()]
-      .map(([id, entry]) => ({ id, ...entry }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [qualifications]);
-
-  // A client is still worth offering until it carries every held role, so a
-  // role ticked later can be rolled out to the clients already added.
-  const covered = (clientId: string) => {
-    const have = cleared.find((c) => c.id === clientId)?.roleIds;
-    return held.every((role) => have?.has(role.id));
-  };
-  const available = clients.filter((client) => !covered(client.id));
-  const needle = query.trim().toLowerCase();
-  const shown = available.filter((client) => client.name.toLowerCase().includes(needle));
-  const chosen = picked.filter((id) => available.some((client) => client.id === id));
-  const toggleClient = (id: string) =>
-    setPicked((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
 
   return (
     <div className="grid c2">
@@ -1683,150 +1632,262 @@ function RolesAndClients({
         </div>
       </Panel>
 
-      <Panel
-        title="Client qualification"
-        actions={
-          <span className="muted sm">
-            {cleared.length > 0
-              ? `${cleared.length} ${cleared.length === 1 ? 'client' : 'clients'} · `
-              : ''}
-            auto-assign&rsquo;s first wave
-          </span>
-        }
-      >
+      <ClientQualification
+        held={held}
+        clients={data.clients ?? []}
+        qualifications={data.qualifications ?? []}
+        readOnly={readOnly}
+        busy={busy}
+        onGrant={onGrantClients}
+        onRevoke={onRevokeClients}
+      />
+    </div>
+  );
+}
+
+/**
+ * Client qualification (§9.6): who the candidate is cleared for at which
+ * client. Two halves, so the list never grows the page:
+ *
+ *   Add — search the clients, tick as many as needed, choose the roles (all
+ *   the candidate holds, unticked to narrow), one button. A client already
+ *   cleared for every chosen role is shown as done, not offered again.
+ *
+ *   Cleared at — one line per client with its roles as chips, scrolling
+ *   inside the panel and searchable once there are more than a few.
+ */
+function ClientQualification({
+  held,
+  clients,
+  qualifications,
+  readOnly,
+  busy,
+  onGrant,
+  onRevoke,
+}: {
+  held: CandidateData['roles'];
+  clients: NonNullable<CandidateData['clients']>;
+  qualifications: NonNullable<CandidateData['qualifications']>;
+  readOnly: boolean;
+  busy: boolean;
+  onGrant: (clientIds: string[], roleIds: string[], after: () => void) => void;
+  onRevoke: (ids: string[]) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [listSearch, setListSearch] = useState('');
+  const [chosen, setChosen] = useState<string[]>([]);
+  // Every held role starts ticked: the common case is "all of them".
+  const [unticked, setUnticked] = useState<string[]>([]);
+  const roleIds = held.map((role) => role.id).filter((id) => !unticked.includes(id));
+  const groups = useMemo(() => groupQualifications(qualifications), [qualifications]);
+  const cleared = useMemo(
+    () => new Set(qualifications.map((q) => `${q.client_id}:${q.role_id}`)),
+    [qualifications],
+  );
+  const doneAt = (clientId: string) =>
+    roleIds.length > 0 && roleIds.every((roleId) => cleared.has(`${clientId}:${roleId}`));
+  const shown = clients.filter((client) => matchesName(client.name, search));
+  const pickable = shown.filter((client) => !doneAt(client.id)).map((client) => client.id);
+  const toggleClient = (id: string) =>
+    setChosen((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const toggleRole = (id: string) =>
+    setUnticked((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const entries = newEntryCount(chosen, roleIds, qualifications);
+  const listed = groups.filter((group) => matchesName(group.client_name, listSearch));
+
+  return (
+    <Panel
+      title="Client qualification"
+      actions={
+        <>
+          {groups.length > 0 ? (
+            <Pill tone="green">
+              {groups.length} client{groups.length === 1 ? '' : 's'}
+            </Pill>
+          ) : null}
+          <span className="muted sm">auto-assign&rsquo;s first wave</span>
+        </>
+      }
+    >
+      <div className="stack">
+        {readOnly ? null : held.length === 0 ? (
+          <div className="sm muted">Pick at least one role first, then add clients.</div>
+        ) : clients.length === 0 ? (
+          <EmptyState>No clients exist yet — add them under Clients.</EmptyState>
+        ) : (
+          <div className="stack">
+            <div className="field">
+              <span className="label">Add a client — roles to grant</span>
+              <div className="row wrap cq-roles">
+                {held.map((role) => {
+                  const on = roleIds.includes(role.id);
+                  return (
+                    <label key={role.id} className={on ? 'check sel' : 'check'}>
+                      <input
+                        type="checkbox"
+                        className="check-input"
+                        checked={on}
+                        disabled={busy}
+                        onChange={() => toggleRole(role.id)}
+                      />
+                      <span className={on ? 'box on' : 'box'} />
+                      {role.name}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <Input
+              type="search"
+              aria-label="Search clients to add"
+              placeholder={`Search ${clients.length} clients…`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <div className="row wrap sm">
+              <button
+                type="button"
+                className="linkish"
+                disabled={busy || pickable.length === 0}
+                onClick={() => setChosen((now) => [...new Set([...now, ...pickable])])}
+              >
+                {search.trim() === '' ? 'Select all' : `Select the ${pickable.length} shown`}
+              </button>
+              <button
+                type="button"
+                className="linkish"
+                disabled={busy || chosen.length === 0}
+                onClick={() => setChosen([])}
+              >
+                Clear selection
+              </button>
+              <span className="muted">
+                {chosen.length} selected · {shown.length} shown
+              </span>
+            </div>
+            <div className="cq-pick" role="group" aria-label="Clients">
+              {shown.length === 0 ? (
+                <span className="muted sm">No client matches &ldquo;{search.trim()}&rdquo;.</span>
+              ) : (
+                shown.map((client) => {
+                  const done = doneAt(client.id);
+                  const on = chosen.includes(client.id);
+                  return (
+                    <label key={client.id} className={on ? 'check sel' : 'check'}>
+                      <input
+                        type="checkbox"
+                        className="check-input"
+                        checked={on}
+                        disabled={busy || done}
+                        onChange={() => toggleClient(client.id)}
+                      />
+                      <span className={on ? 'box on' : 'box'} />
+                      <span className="grow">{client.name}</span>
+                      {done ? <span className="muted xs">already cleared</span> : null}
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            <div>
+              <Button
+                tone="primary"
+                disabled={busy || entries === 0}
+                onClick={() =>
+                  onGrant(chosen, roleIds, () => {
+                    setChosen([]);
+                    setSearch('');
+                  })
+                }
+              >
+                {busy
+                  ? 'Adding…'
+                  : entries === 0
+                    ? 'Add clients'
+                    : `Add ${chosen.length} client${chosen.length === 1 ? '' : 's'} · ${entries} entr${entries === 1 ? 'y' : 'ies'}`}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="stack">
-          {cleared.length === 0 ? (
+          <div className="row wrap">
+            <b>Cleared at</b>
+            <span className="muted sm">
+              {groups.length === 0
+                ? ''
+                : `${groups.length} client${groups.length === 1 ? '' : 's'} · ${qualifications.length} entr${qualifications.length === 1 ? 'y' : 'ies'}`}
+            </span>
+          </div>
+          {groups.length === 0 ? (
             <span className="muted sm">Not cleared at any client yet.</span>
           ) : (
-            <div className="cq-list">
-              {cleared.map((c) => {
-                const all = held.length > 0 && held.every((role) => c.roleIds.has(role.id));
-                const removable = qualifications
-                  .filter((q) => q.client_id === c.id && !q.do_not_return)
-                  .map((q) => q.id);
-                return (
-                  <div key={c.id} className="cq-row">
-                    <b className="cq-name">{c.name}</b>
-                    <span className="cq-roles sm muted">
-                      {all
-                        ? `All ${held.length} ${held.length === 1 ? 'role' : 'roles'}`
-                        : held
-                            .filter((role) => c.roleIds.has(role.id))
-                            .map((role) => role.name)
-                            .join(', ')}
-                    </span>
-                    {c.barred > 0 ? <Pill tone="coral">Do not return</Pill> : null}
-                    {readOnly ? null : (
-                      <Button
-                        size="sm"
-                        tone="ghost"
-                        disabled={busy || removable.length === 0}
-                        title={
-                          removable.length === 0
-                            ? 'Switch Do not return off on the staff profile first'
-                            : undefined
-                        }
-                        aria-label={`Remove ${c.name}`}
-                        onClick={() => onRevokeClient(removable)}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {readOnly ? null : held.length === 0 ? (
-            <div className="sm muted">Pick at least one role first, then add clients.</div>
-          ) : clients.length === 0 ? (
-            <EmptyState>No clients exist yet — add them under Clients.</EmptyState>
-          ) : available.length === 0 ? (
-            <div className="sm muted">Cleared at every client for all of their roles.</div>
-          ) : (
-            <div className="stack">
-              <Input
-                label="Add clients"
-                type="search"
-                value={query}
-                placeholder="Search clients…"
-                disabled={busy}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              <div className="row wrap sm">
-                <button
-                  type="button"
-                  className="linklike"
-                  disabled={busy || shown.length === 0}
-                  onClick={() =>
-                    setPicked((now) => [
-                      ...now,
-                      ...shown.map((client) => client.id).filter((id) => !now.includes(id)),
-                    ])
-                  }
-                >
-                  Select {needle ? 'these' : 'all'}
-                </button>
-                <button
-                  type="button"
-                  className="linklike"
-                  disabled={busy || chosen.length === 0}
-                  onClick={() => setPicked([])}
-                >
-                  Clear
-                </button>
-                <span className="muted">{chosen.length} selected</span>
-              </div>
-              <div className="rolepick cq-pick" role="group" aria-label="Clients">
-                {shown.length === 0 ? (
-                  <span className="muted sm">No client matches &ldquo;{query.trim()}&rdquo;.</span>
+            <>
+              {groups.length > 5 ? (
+                <Input
+                  type="search"
+                  aria-label="Search the clients cleared"
+                  placeholder="Search these clients…"
+                  value={listSearch}
+                  onChange={(event) => setListSearch(event.target.value)}
+                />
+              ) : null}
+              <div className="cq-list">
+                {listed.length === 0 ? (
+                  <span className="muted sm">
+                    Nothing matches &ldquo;{listSearch.trim()}&rdquo;.
+                  </span>
                 ) : (
-                  shown.map((client) => {
-                    const on = chosen.includes(client.id);
+                  listed.map((group) => {
+                    const removable = group.entries.filter((q) => !q.do_not_return);
                     return (
-                      <label key={client.id} className={on ? 'check sel' : 'check'}>
-                        <input
-                          type="checkbox"
-                          className="check-input"
-                          checked={on}
-                          disabled={busy}
-                          onChange={() => toggleClient(client.id)}
-                        />
-                        <span className={on ? 'box on' : 'box'} />
-                        {client.name}
-                      </label>
+                      <div key={group.client_id} className="cq-row">
+                        <b className="cq-name">{group.client_name}</b>
+                        <div className="cq-chips">
+                          {group.entries.map((q) =>
+                            q.do_not_return ? (
+                              <Pill
+                                key={q.id}
+                                tone="coral"
+                                title="Do not return — switch it off on the staff profile first"
+                              >
+                                {q.role_name} · do not return
+                              </Pill>
+                            ) : (
+                              <Chip
+                                key={q.id}
+                                onRemove={readOnly || busy ? undefined : () => onRevoke([q.id])}
+                              >
+                                {q.role_name}
+                              </Chip>
+                            ),
+                          )}
+                        </div>
+                        {readOnly || removable.length < 2 ? null : (
+                          <Button
+                            size="sm"
+                            tone="ghost"
+                            disabled={busy}
+                            onClick={() => onRevoke(removable.map((q) => q.id))}
+                          >
+                            Remove all
+                          </Button>
+                        )}
+                      </div>
                     );
                   })
                 )}
               </div>
-              <div className="row wrap">
-                <Button
-                  tone="primary"
-                  disabled={busy || chosen.length === 0}
-                  onClick={() =>
-                    onGrantClients(chosen, () => {
-                      setPicked([]);
-                      setQuery('');
-                    })
-                  }
-                >
-                  {chosen.length > 1 ? `Add ${chosen.length} clients` : 'Add client'}
-                </Button>
-                <span className="sm muted">
-                  Each is cleared for all {held.length} {held.length === 1 ? 'role' : 'roles'} saved
-                  on the left.
-                </span>
-              </div>
-            </div>
+            </>
           )}
-          <Note>
-            Optional. Tick the clients this person can work for; each gets every role on the left
-            (one entry per role). A clean shift also adds entries by itself, and the list is
-            editable later on the staff profile and the client card.
-          </Note>
         </div>
-      </Panel>
-    </div>
+        <Note>
+          Optional. Choose the roles, tick the clients, add them in one go — each role is its own
+          entry. A clean shift also adds entries by itself, and the list is editable later on the
+          staff profile and the client card.
+        </Note>
+      </div>
+    </Panel>
   );
 }
 
@@ -1836,7 +1897,7 @@ function DocumentsPhase({
   doc,
   onToggleRole,
   onGrantClients,
-  onRevokeClient,
+  onRevokeClients,
   onVerifyDeclaration,
   onRejectDeclaration,
 }: {
@@ -1844,8 +1905,8 @@ function DocumentsPhase({
   data: CandidateData;
   doc: DocHandlers;
   onToggleRole: (roleId: string, on: boolean) => void;
-  onGrantClients: (clientIds: string[], after: () => void) => void;
-  onRevokeClient: (ids: string[]) => void;
+  onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
+  onRevokeClients: (ids: string[]) => void;
   onVerifyDeclaration: (d: Declaration) => void;
   onRejectDeclaration: (d: Declaration) => void;
 }) {
@@ -1882,7 +1943,7 @@ function DocumentsPhase({
         busy={doc.busy}
         onToggleRole={onToggleRole}
         onGrantClients={onGrantClients}
-        onRevokeClient={onRevokeClient}
+        onRevokeClients={onRevokeClients}
       />
 
       <Alert tone={gate.unlocked ? 'green' : 'amber'}>
