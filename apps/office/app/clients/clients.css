@@ -16,8 +16,9 @@
 .tbl .client-name:hover {
   color: var(--cyan-ink);
 }
-/* A phone number is one token: never break "0207 333 1000" across two lines. */
-.tbl td.phone {
+/* A phone number is one token: never break "0207 333 1000" across two lines.
+   Not `.phone`: that is the 390×844 device-frame mock in packages/ui. */
+.tbl td.client-phone {
   white-space: nowrap;
 }
 .tbl td.num.margin {
