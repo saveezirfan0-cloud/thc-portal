@@ -154,7 +154,7 @@ describe('grouping the ten-day list', () => {
     expect(event!.roles[0]!.marginPerHour).toBe(9.4);
   });
 
-  it('keeps a cancelled event on the list (§3.3)', () => {
+  it('still carries cancelled_at through, for the loader filter (ADR-0102)', () => {
     const [event] = groupByEvent([row({ cancelled_at: '2026-09-20T10:00:00Z' })]);
     expect(event!.cancelledAt).not.toBeNull();
   });

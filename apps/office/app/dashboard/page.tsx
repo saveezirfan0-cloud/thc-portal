@@ -189,8 +189,10 @@ export default async function Page() {
         <Panel
           title={
             <>
-              Upcoming events <span className="muted sm">· next 10 days</span>{' '}
-              <span className="muted sm">Event window = earliest role start → latest role end</span>
+              Upcoming events <span className="muted sm">· next 10 days</span>
+              <span className="muted sm dash-note">
+                Event window = earliest role start → latest role end
+              </span>
             </>
           }
           actions={
