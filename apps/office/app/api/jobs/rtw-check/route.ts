@@ -5,6 +5,7 @@ import { createGovukChecker } from './_lib/govuk';
 import { chromiumLauncher } from './_lib/govuk.launch';
 import { createProviderChecker } from './_lib/provider';
 import { createSandboxProviderFetch, rtwSandboxEnabled, sandboxEnv } from './_lib/sandbox';
+import { inFlightSince, maxPasses, passIsBusy } from './_lib/concurrency';
 import { runRtwCheckSweep } from './_lib/sweep';
 import type { ClaimedCheck, RecordInput } from './_lib/sweep';
 import type { RightToWorkChecker } from './_lib/checker';
@@ -45,6 +46,31 @@ interface RpcClient {
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
+/** How many passes of this job are in flight (started lately, not finished). */
+interface RunsRead {
+  from(table: 'job_runs'): {
+    select(
+      columns: 'id',
+      options: { count: 'exact'; head: true },
+    ): {
+      eq(
+        column: 'job',
+        value: string,
+      ): {
+        is(
+          column: 'finished_at',
+          value: null,
+        ): {
+          gte(
+            column: 'started_at',
+            value: string,
+          ): PromiseLike<{ count: number | null; error: unknown }>;
+        };
+      };
+    };
+  };
+}
+
 /** rtw_checks is newer than the generated types (docs/14 §4). */
 interface StatusRead {
   from(table: 'rtw_checks'): {
@@ -76,6 +102,19 @@ export async function POST(request: Request) {
     return json(503, { error: 'not_configured' });
   }
   const db = admin as unknown as RpcClient;
+
+  // Passes overlap whenever there is real work (the runner fires every
+  // minute); stand down, without a job_runs row, when enough are in flight.
+  // A failed read never stops the runner.
+  const running = await (admin as unknown as RunsRead)
+    .from('job_runs')
+    .select('id', { count: 'exact', head: true })
+    .eq('job', 'rtw-check')
+    .is('finished_at', null)
+    .gte('started_at', inFlightSince());
+  if (passIsBusy(running.error ? null : running.count, maxPasses(env('RTW_CHECK_MAX_PASSES')))) {
+    return json(200, { job: 'rtw-check', ok: true, skipped: 'busy' });
+  }
 
   const started = await db.rpc('job_run_start', { p_job: 'rtw-check' });
   if (started.error) return json(500, { error: `job_run_start: ${started.error.message}` });
@@ -188,6 +227,15 @@ export async function POST(request: Request) {
     });
 
     await db.rpc('job_run_finish', { p_id: runId, p_ok: true, p_counts: counts });
+    // Housekeeping once an hour (the minute-0 pass): idle passes and old runs
+    // go (job_runs_purge, 20261007100000). Best effort — never fails the pass.
+    if (new Date().getUTCMinutes() === 0) {
+      try {
+        await db.rpc('job_runs_purge');
+      } catch {
+        console.warn('rtw-check: job_runs_purge failed');
+      }
+    }
     return json(200, { job: 'rtw-check', ok: true, counts });
   } catch (cause) {
     // A database error message names functions and codes, not people.

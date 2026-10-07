@@ -273,6 +273,7 @@ Supabase secrets:
 | `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX` | Default `Authorization` / `Bearer `. An empty prefix is allowed | Defaults |
 | `RTW_GOVUK_ENABLED` | `true` to run our own gov.uk browser check — the only route (ADR-0041) | Nothing is checked; the route claims nothing |
 | `RTW_CHECK_BATCH` | Checks per run, 1–10 (default 3) | 3 |
+| `RTW_CHECK_MAX_PASSES` | Runner passes that may overlap, 1–6 (default 2); a pass finding the cap reached stands down and the next minute picks the work up (ADR-0025, 07.10.2026) | 2 |
 | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` | Already set on the Back Office | The route answers 503 |
 
 Without `RTW_GOVUK_ENABLED` (and with no provider, ADR-0041), the route claims nothing, so
