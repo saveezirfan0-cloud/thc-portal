@@ -10,6 +10,7 @@ import {
   sectionHours,
 } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
+import { ClampTitle } from '../../_components/ClampTitle';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
@@ -56,7 +57,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <StaffShell
-      title={`${invite.eventTitle} · ${invite.role}`}
+      title={<ClampTitle>{`${invite.eventTitle} · ${invite.role}`}</ClampTitle>}
       sub={<Link href="/invites">‹ Invites</Link>}
       active="/invites"
       shifts={shiftsBadge(all)}

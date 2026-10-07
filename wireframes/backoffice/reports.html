@@ -92,7 +92,7 @@
         <div class="panel">
           <div class="panel-h"><h3>Breakdown · Mon 15 – Sun 21 Sep</h3><div class="right"><div class="seg sm"><button class="on">By day</button><button>By client</button><button>By role</button></div></div></div>
           <div class="panel-b tight">
-            <table class="tbl">
+            <div class="tbl-frame floor flow" tabindex="0" role="region" aria-label="Breakdown by day, scrolls"><table class="tbl">
               <thead><tr><th>Day</th><th>Events</th><th class="money">Payable hours</th><th class="money">Base payroll</th><th class="money">Holiday +12.07%</th><th class="money">Payroll incl. holiday</th><th class="money">Invoicing</th><th class="money">Margin</th><th></th></tr></thead>
               <tbody>
                 <tr><td>Mon 15</td><td class="sm">1 · Breakfast Briefing</td><td class="money">35.0</td><td class="money">£490</td><td class="money muted">£59</td><td class="money">£549</td><td class="money">£804</td><td class="money green">£255</td><td class="sm"><span class="pill green">actual</span></td></tr>
@@ -105,7 +105,7 @@
                 <tr><td class="muted sm" colspan="2">Remaining forecast (Fri–Sun open positions filled at the same rates)</td><td class="money">773.5</td><td class="money">£11,745</td><td class="money muted">£1,416</td><td class="money">£13,161</td><td class="money">£20,716</td><td class="money green">£7,555</td><td></td></tr>
                 <tr style="background:var(--panel-2)"><td><b>Total</b></td><td></td><td class="money"><b>1,864.0</b></td><td class="money"><b>£28,024</b></td><td class="money"><b>£3,382</b></td><td class="money"><b>£31,406</b></td><td class="money"><b>£48,920</b></td><td class="money green"><b>£17,514</b></td><td></td></tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       </section>
@@ -180,15 +180,15 @@
         <div class="alert cyan sm">Only NEW workers who actually worked a shift last week — not every new starter, only those who need to be paid. Onboarded on a Friday, first shift two weeks later → they appear in that Monday's report (§9.9). Columns and data are entirely different from payroll's and are never merged. Role and a title / salutation field are explicitly excluded.</div>
         <div class="panel">
           <div class="panel-h"><h3>Preview · 3 people will be in the report</h3><span class="muted sm">HMRC Statement is the letter derived from the three routed questions (§2.8); the worker never saw it</span></div>
-          <div class="panel-b tight" style="overflow:auto">
-            <table class="tbl">
+          <div class="panel-b tight">
+            <div class="tbl-frame floor flow" tabindex="0" role="region" aria-label="New starter report preview, scrolls"><table class="tbl">
               <thead><tr><th>Staff</th><th>Employee ID</th><th>NI Number</th><th>Home address</th><th>Postcode</th><th>Country</th><th>Date of birth</th><th>Gender</th><th>First shift date</th><th>HMRC Statement</th><th>Student Loan</th></tr></thead>
               <tbody>
                 <tr><td><div class="person"><span class="avatar photo sm">CW</span><span>Chen W.</span></div></td><td class="mono sm">THC-00960</td><td class="mono sm">●●●●●●●1A <span class="sub">full number in the CSV</span></td><td class="sm">Flat 4, 12 Exhibition Rd, London</td><td class="mono sm">SW7 2HE</td><td class="sm">United Kingdom</td><td class="mono sm">21.11.2003</td><td class="mono sm">M</td><td class="mono sm">10.09.2026</td><td><span class="pill cyan">B</span></td><td class="sm">Plan 2</td></tr>
                 <tr><td><div class="person"><span class="avatar photo sm">FA</span><span>Femi A.</span></div></td><td class="mono sm">THC-00988</td><td class="mono sm">●●●●●●●7C</td><td class="sm">88 Camberwell Church St, London</td><td class="mono sm">SE5 8QZ</td><td class="sm">United Kingdom</td><td class="mono sm">02.02.1999</td><td class="mono sm">M</td><td class="mono sm">12.09.2026</td><td><span class="pill cyan">A</span></td><td class="sm">No</td></tr>
                 <tr><td><div class="person"><span class="avatar photo sm">LN</span><span>Lin N.</span></div></td><td class="mono sm">THC-00991</td><td class="mono sm muted">— <span class="sub">not yet issued — payroll runs without it; E6 when added</span></td><td class="sm">3 Laurie Grove, London</td><td class="mono sm">SE14 6NH</td><td class="sm">United Kingdom</td><td class="mono sm">15.06.2001</td><td class="mono sm">F</td><td class="mono sm">13.09.2026</td><td><span class="pill cyan">C</span></td><td class="sm">Plan 1 + Postgraduate</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
         <div class="panel">

@@ -307,21 +307,37 @@ details.sub > summary.subh::-webkit-details-marker {
   font-weight: 500;
 }
 
+/* The name keeps the avatar's line; the chips and actions wrap under it.
+   At its content width the "who" block fell below its own avatar, and
+   beside the long "Qualified — client · role" pill it was squeezed to a
+   few characters a line at 1024px, so this holds at every width. */
+.prow {
+  flex-wrap: wrap;
+}
+.prow .who {
+  flex: 1 1 12rem;
+}
+/* "Qualified — Grosvenor House Hotel & Conference Centre · Waiting staff"
+   is wider than a phone; the pill wraps inside the card, not past it. */
+.prow > .pill {
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* A role block's heading and its pills/auto-assign switch: the controls
+   keep their labels whole and drop under the heading when it is crowded. */
+.role-block > .panel-h {
+  flex-wrap: wrap;
+}
+.role-block > .panel-h .right {
+  flex-wrap: wrap;
+  white-space: nowrap;
+}
+.role-block > .panel-h .right > .row {
+  flex-wrap: wrap;
+}
+
 @media (max-width: 900px) {
-  .prow {
-    flex-wrap: wrap;
-  }
-  /* The name keeps the avatar's line; the chips and actions wrap under it.
-     At its content width the "who" block fell below its own avatar. */
-  .prow .who {
-    flex: 1 1 12rem;
-  }
-  /* "Qualified — Grosvenor House Hotel & Conference Centre · Waiting staff"
-     is wider than a phone; the pill wraps inside the card, not past it. */
-  .prow > .pill {
-    max-width: 100%;
-    white-space: normal;
-  }
   .prow .right {
     margin-left: 0;
     width: 100%;

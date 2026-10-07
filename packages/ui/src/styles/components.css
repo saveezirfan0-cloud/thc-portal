@@ -172,6 +172,13 @@
   flex-wrap: wrap;
   min-width: 0;
 }
+/* A screen's action group can nest rows (the event board's document
+   buttons); those wrap too, or "Download Allocation Timesheet" ran off the
+   right edge of a phone. */
+.topbar .row .row {
+  flex-wrap: wrap;
+  min-width: 0;
+}
 .topbar h1 {
   font-size: var(--fs-20);
 }
@@ -1719,9 +1726,9 @@ textarea.input {
   font-size: var(--fs-12);
   font-weight: 600;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Six names in a 1024px content column read "Interview reque…"; they
+     wrap to a second line instead of being cut. */
+  overflow-wrap: anywhere;
 }
 .stepper .st.done .k,
 .stepper .st.done .t {
@@ -2720,13 +2727,18 @@ textarea.input {
     align-items: center;
     min-height: 0;
   }
+  /* A long title (an event's, a client's, a worker's) takes two lines
+     before it is cut, so the screen still says what it is. */
   .topbar h1 {
     font-size: var(--fs-20);
     min-width: 0;
     flex: 1 1 auto;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow-wrap: anywhere;
   }
   .topbar .spacer {
     display: none;
@@ -3105,6 +3117,29 @@ textarea.input {
   .datenav :is(button, a),
   .menu-btn {
     min-width: var(--tap-min);
+  }
+  /* A chip's remove "×" and a button that reads as a link stay the size of
+     their text; the finger target is an invisible 44px box around them. */
+  .chip .x,
+  .linkish {
+    position: relative;
+  }
+  .chip .x::after,
+  .linkish::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, var(--tap-min));
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
+  /* The crumb back to the section ("Scheduling", "Onboarding") is the only
+     way up on a screen without a sidebar. */
+  .topbar .crumbs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
   }
 
   /* A document row: the title and its meta keep the row's width and the

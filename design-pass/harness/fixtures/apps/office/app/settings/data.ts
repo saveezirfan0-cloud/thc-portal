@@ -27,6 +27,7 @@ export async function loadSettings() {
       { key: 'other', label: 'Other', default_radius_m: 250, sort_order: 9 },
     ],
     rotaGuardMode: 'block',
+    notificationsOff: [],
     problem: null,
   };
 }

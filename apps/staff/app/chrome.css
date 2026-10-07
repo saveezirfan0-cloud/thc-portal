@@ -291,3 +291,14 @@
   gap: var(--sp-10);
   width: 100%;
 }
+
+/* A detail screen's title ("Event · Role") is two lines at most; the full
+   text is in the element's title attribute. */
+.title-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}

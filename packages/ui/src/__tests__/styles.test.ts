@@ -410,3 +410,30 @@ describe('phone touch targets (§1.2)', () => {
     expect(phone).toMatch(/min-height:\s*var\(--tap-min\)/);
   });
 });
+
+describe('the table frame (ADR-0102)', () => {
+  const wire = stripComments(
+    readFileSync(join(STYLES, '..', '..', '..', '..', 'wireframes', 'assets', 'thc.css'), 'utf8'),
+  );
+  const product = stripComments(sheets['components.css']!);
+  const selectors = [
+    '.tbl-frame {',
+    '.tbl-frame:focus-visible',
+    '.tbl-frame.flow',
+    '.tbl-frame.floor',
+    '.tbl-frame > .tbl thead th',
+  ];
+
+  it.each(selectors)('is in the product stylesheet and the wireframes: %s', (selector) => {
+    expect(product).toContain(selector);
+    expect(wire).toContain(selector);
+  });
+
+  it('sticks the header, draws the scrollbar and rings the focus in both', () => {
+    for (const css of [product, wire]) {
+      expect(css).toMatch(/\.tbl-frame > \.tbl thead th \{[^}]*position:\s*sticky/);
+      expect(css).toMatch(/\.tbl-frame \{[^}]*scrollbar-gutter:\s*stable/);
+      expect(css).toMatch(/\.tbl-frame:focus-visible \{[^}]*var\(--cyan-ink\)/);
+    }
+  });
+});

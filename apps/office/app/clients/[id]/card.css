@@ -186,6 +186,11 @@
 .tbl.client-events :is(th, td):nth-child(5) {
   min-width: 12rem;
 }
+/* The event title is the link into the board: it keeps a readable measure
+   instead of wrapping a word a line beside the date and the roles. */
+.tbl.client-events :is(th, td):first-child {
+  min-width: 11rem;
+}
 @media (max-width: 760px) {
   .tbl.client-events {
     min-width: 0;

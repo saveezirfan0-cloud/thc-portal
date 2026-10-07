@@ -21,7 +21,10 @@ export function ResetForm() {
   const ready = passwordOk(checks);
 
   return (
-    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form
+      action={formAction}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-16)' }}
+    >
       {error ? <Alert tone="coral">{error}</Alert> : null}
       <p className="sm muted">You’ll be signed in straight after.</p>
 
@@ -63,7 +66,7 @@ export function ResetForm() {
 
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
-    <div className="mrow" style={{ padding: '6px 0' }}>
+    <div className="mrow" style={{ padding: 'var(--sp-6) 0' }}>
       <span className={ok ? 'green' : 'coral'} aria-hidden="true">
         {ok ? '✓' : '✕'}
       </span>

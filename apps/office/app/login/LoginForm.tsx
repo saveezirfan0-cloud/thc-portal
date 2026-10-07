@@ -14,7 +14,10 @@ export function LoginForm({ next }: { next?: string }) {
   const [keepSignedIn, setKeepSignedIn] = useState(true);
 
   return (
-    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form
+      action={formAction}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-16)' }}
+    >
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <Input

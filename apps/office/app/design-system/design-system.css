@@ -105,3 +105,8 @@
 .ds-savebar-demo .savebar {
   position: static;
 }
+
+/* Table-frame gallery: a short frame so the vertical scroll and sticky header show. */
+.ds-frame-short {
+  --frame-max: 11rem;
+}

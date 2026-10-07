@@ -155,6 +155,7 @@ const complianceDb = {
 import * as R from './rows.mjs';
 import extra from './extra.mjs';
 import staff from './staff.mjs';
+import clientScreens from './client.mjs';
 
 const PROFILE = O + 'staff/[id]/page.tsx';
 const profileDb = {
@@ -427,25 +428,8 @@ const base = {
       profiles: [{ full_name: 'Sarah Mitchell' }],
     },
   },
-  'loading-dashboard': { app: 'office', page: O + 'dashboard/loading.tsx', pathname: '/dashboard' },
-  'loading-staff-profile': {
-    app: 'office',
-    page: O + 'staff/[id]/loading.tsx',
-    pathname: '/staff',
-  },
-  'loading-onboarding': {
-    app: 'office',
-    page: O + 'onboarding/loading.tsx',
-    pathname: '/onboarding',
-  },
-  'loading-event-new': { app: 'office', page: O + 'events/new/loading.tsx', pathname: '/events' },
-  'loading-portal': {
-    app: 'client',
-    page: C + 'client/loading.tsx',
-    layouts: [C + 'client/layout.tsx'],
-    pathname: '/client',
-    db: portalDb,
-  },
+  'loading-users': { app: 'office', page: O + 'users/loading.tsx', pathname: '/users' },
+  'loading-account': { app: 'office', page: O + 'account/loading.tsx', pathname: '/account' },
   settings: { app: 'office', page: O + 'settings/page.tsx', pathname: '/settings' },
   'settings-dirty': {
     app: 'office',
@@ -665,6 +649,38 @@ base.dashboard = {
   },
 };
 
-export default { ...base, ...extra(profileTab), ...staff };
+base['staff-inactive'] = {
+  ...base.staff,
+  patch: [
+    ['staff/StaffScreen.tsx', 'useState<Filter>(initialFilter)', "useState<Filter>('inactive')"],
+  ],
+};
+base['staff-blocked'] = {
+  ...base.staff,
+  patch: [
+    ['staff/StaffScreen.tsx', 'useState<Filter>(initialFilter)', "useState<Filter>('blocked')"],
+  ],
+};
+// Public and boundary screens (no sidebar): sign-in, password reset, error, 404.
+const WTR = new URL('../../', import.meta.url).pathname;
+const bare = (file, name, props) => async () =>
+  (await import('react')).createElement((await import(WTR + O + file))[name], props);
+base.login = { page: O + 'login/page.tsx', pathname: '/login' };
+base.forgot = { page: O + 'forgot/page.tsx', pathname: '/forgot' };
+base['forgot-sent'] = { page: O + 'forgot/sent/page.tsx', pathname: '/forgot/sent' };
+base.reset = { page: O + 'reset/page.tsx', pathname: '/reset' };
+base['reset-expired'] = { page: O + 'reset/page.tsx', pathname: '/reset', search: { error: '1' } };
+base.error = {
+  app: 'office',
+  pathname: '/events',
+  element: bare('error.tsx', 'default', { error: { digest: '3849201557' }, reset() {} }),
+};
+base['not-found'] = {
+  app: 'office',
+  pathname: '/events',
+  element: bare('not-found.tsx', 'default', {}),
+};
+
+export default { ...base, ...extra(profileTab), ...staff, ...clientScreens };
 
 export { iso, C };

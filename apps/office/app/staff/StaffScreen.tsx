@@ -240,7 +240,7 @@ export function StaffScreen({
           <div className="search">
             <input
               className="input"
-              style={{ height: 32, width: 240 }}
+              style={{ height: 32, width: 'min(100%, 22rem)' }}
               type="search"
               value={query}
               onChange={(event) => reset<string>(setQuery)(event.target.value)}

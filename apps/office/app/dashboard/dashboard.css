@@ -193,3 +193,12 @@
     white-space: nowrap;
   }
 }
+
+/* "Full report →" is the panel's only action: a finger target on a phone. */
+@media (max-width: 760px) {
+  .panel-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
+}

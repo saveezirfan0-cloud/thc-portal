@@ -439,6 +439,20 @@ export default {
     {},
     { params: { id: 'b1' } },
   ),
+  // A long event and role name: the header title must stop at two lines.
+  'staff-shift-long-title': entry(
+    'shifts/[id]/page.tsx',
+    '/shifts/b1',
+    detailDb(
+      detail({
+        ...live,
+        event_title: 'Autumn Gala Dinner and Charity Auction in aid of the Royal Marsden Hospital',
+        role: 'Senior Waiting Staff, Silver Service, Head Table Captain',
+      }),
+    ),
+    {},
+    { params: { id: 'b1' } },
+  ),
   'staff-shift-live': entry(
     'shifts/[id]/page.tsx',
     '/shifts/b1',

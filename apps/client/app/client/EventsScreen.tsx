@@ -14,6 +14,7 @@ import {
   SearchInput,
   SegToggle,
   Select,
+  TableScroll,
   useViewerZone,
 } from '@thc/ui';
 import { needsDualZone } from '@thc/domain';
@@ -244,91 +245,96 @@ export function EventsScreen({
         ) : (
           <>
             <div className="table-wrap">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Venue</th>
-                    <th>Date &amp; time</th>
-                    <th>Status</th>
-                    <th>Confirmed</th>
-                    <th>Line-up</th>
-                    <th>Document</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((e) => {
-                    const secs = sectionsFor(e.id);
-                    const fill = fillOf(secs);
-                    const faces = facesFor(e.id);
-                    const doc = documentOffer(e.status, documents[e.id] ?? []);
-                    const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
-                    const nudge = feedbackToGo(e, faces, at);
-                    const cancelled = e.status === 'cancelled';
+              {/* Scrolls inside the card with a sticky header, so the Document
+                  column is never clipped at 1024px and the title keeps a
+                  readable measure (.events-tbl floors). */}
+              <TableScroll label="Your events">
+                <table className="tbl events-tbl">
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Venue</th>
+                      <th>Date &amp; time</th>
+                      <th>Status</th>
+                      <th>Confirmed</th>
+                      <th>Line-up</th>
+                      <th>Document</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((e) => {
+                      const secs = sectionsFor(e.id);
+                      const fill = fillOf(secs);
+                      const faces = facesFor(e.id);
+                      const doc = documentOffer(e.status, documents[e.id] ?? []);
+                      const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
+                      const nudge = feedbackToGo(e, faces, at);
+                      const cancelled = e.status === 'cancelled';
 
-                    return (
-                      <tr key={e.id} className={cancelled ? 'cancelled' : undefined}>
-                        <td>
-                          <b>{cancelled ? <s>{e.title}</s> : e.title}</b>
-                          <span className="sub">{e.poNumber ? `PO ${e.poNumber}` : 'PO —'}</span>
-                        </td>
-                        <td>
-                          {e.venueName}
-                          <span className="sub">{e.venueAddress}</span>
-                        </td>
-                        <td className="win">
-                          <b>{ukDateShort(e.startsAt)}</b>
-                          <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} className="sub" />
-                        </td>
-                        <td>
-                          <div className="stack tight">
-                            <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
-                              {STATUS_LABEL[e.status]}
-                            </Pill>
-                            {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
-                          </div>
-                        </td>
-                        <td>
-                          {cancelled ? (
-                            <span className="muted sm">—</span>
-                          ) : (
-                            <div className="fill-cell">
-                              <span>
-                                <b>{fill.confirmed}</b> of {fill.headcount} confirmed
-                              </span>
-                              <Progress value={fill.percent} tone={fill.tone} />
-                              <RoleLine sections={secs} />
-                              <Arrivals
-                                counts={e.status === 'ongoing' ? arrivals[e.id] : undefined}
-                              />
+                      return (
+                        <tr key={e.id} className={cancelled ? 'cancelled' : undefined}>
+                          <td>
+                            <b>{cancelled ? <s>{e.title}</s> : e.title}</b>
+                            <span className="sub">{e.poNumber ? `PO ${e.poNumber}` : 'PO —'}</span>
+                          </td>
+                          <td>
+                            {e.venueName}
+                            <span className="sub">{e.venueAddress}</span>
+                          </td>
+                          <td className="win">
+                            <b>{ukDateShort(e.startsAt)}</b>
+                            <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} className="sub" />
+                          </td>
+                          <td>
+                            <div className="stack tight">
+                              <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
+                                {STATUS_LABEL[e.status]}
+                              </Pill>
+                              {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
                             </div>
-                          )}
-                        </td>
-                        <td>
-                          {cancelled ? (
-                            <span className="muted sm">—</span>
-                          ) : (
-                            <Faces people={faces} photos={photos} />
-                          )}
-                        </td>
-                        <td>
-                          <div className="stack tight">
-                            <DocumentButton eventId={e.id} offer={doc} />
-                            {sheet ? <TimesheetStatus status={sheet} /> : null}
-                            <Link className="sm" href={`/client/events/${e.id}`}>
-                              Details →
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                          <td>
+                            {cancelled ? (
+                              <span className="muted sm">—</span>
+                            ) : (
+                              <div className="fill-cell">
+                                <span>
+                                  <b>{fill.confirmed}</b> of {fill.headcount} confirmed
+                                </span>
+                                <Progress value={fill.percent} tone={fill.tone} />
+                                <RoleLine sections={secs} />
+                                <Arrivals
+                                  counts={e.status === 'ongoing' ? arrivals[e.id] : undefined}
+                                />
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            {cancelled ? (
+                              <span className="muted sm">—</span>
+                            ) : (
+                              <Faces people={faces} photos={photos} />
+                            )}
+                          </td>
+                          <td>
+                            <div className="stack tight">
+                              <DocumentButton eventId={e.id} offer={doc} />
+                              {sheet ? <TimesheetStatus status={sheet} /> : null}
+                              <Link className="sm" href={`/client/events/${e.id}`}>
+                                Details →
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </TableScroll>
             </div>
 
             {/* Same rows, no table. The phone drops no field (§1.2). */}
-            <div className="cards" style={{ padding: 14 }}>
+            <div className="cards" style={{ padding: 'var(--sp-14)' }}>
               {rows.map((e) => {
                 const secs = sectionsFor(e.id);
                 const fill = fillOf(secs);
@@ -500,13 +506,14 @@ function RoleLine({ sections }: { sections: RoleSection[] }) {
   if (roles.length < 2) return null;
   return (
     <span className="ev-roles">
-      {/* The separator sits outside the role's own span, so a narrow cell
-          breaks between roles and never inside "Waiting Staff 8/10". */}
+      {/* The separator is the end of the role before it, so a narrow cell
+          breaks between roles and a "·" never starts or ends a line alone. */}
       {roles.map((r, i) => (
         <Fragment key={r.role}>
-          {i > 0 ? ' · ' : ''}
+          {i > 0 ? ' ' : ''}
           <span className={r.short ? 'short' : undefined}>
             {r.role} {r.confirmed}/{r.headcount}
+            {i < roles.length - 1 ? ' ·' : ''}
           </span>
         </Fragment>
       ))}

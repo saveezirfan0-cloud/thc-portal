@@ -4,6 +4,7 @@ import { Pill } from '@thc/ui';
 import { UK_ZONE, formatDateIn, formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { LoadProblem } from '../../../_components/LoadProblem';
 import { StaffShell } from '../../../_components/StaffShell';
+import { ClampTitle } from '../../../_components/ClampTitle';
 import { ShiftTime } from '../../../_components/ShiftTime';
 import { ActionButton } from '../../../_components/ActionButton';
 import { takeOfferedShift } from '../../../actions';
@@ -63,7 +64,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <StaffShell
-      title={`${offer.eventTitle} · ${offer.role}`}
+      title={<ClampTitle>{`${offer.eventTitle} · ${offer.role}`}</ClampTitle>}
       sub={<Link href="/radar">‹ Radar</Link>}
       active="/radar"
       {...badges}
