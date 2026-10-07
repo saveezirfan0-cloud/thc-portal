@@ -159,6 +159,60 @@
 </div>
 
 <div class="wf-section">
+  <h2>7b · Table frame <code>.tbl-frame</code><small>A table longer or wider than its card scrolls inside the card: sticky header, scrollbars always drawn, faded edge where more is hidden, focusable (arrow keys scroll it, cyan focus ring). Product: <code>&lt;TableScroll label&gt;</code> (ADR-0104).</small></h2>
+  <div class="grid c2">
+    <div class="stack">
+      <span class="label">Default · sticky header (height capped; scroll the rows)</span>
+      <div class="panel"><div class="panel-b tight"><div class="tbl-frame" style="--frame-max:11rem" tabindex="0" role="region" aria-label="Default frame, scrolls">
+        <table class="tbl"><thead><tr><th>Date</th><th>Event</th><th>Client</th><th>Window (UK time)</th><th>Fill</th><th>PO</th></tr></thead><tbody>
+          <tr class="clickable"><td><b>Tue 22 Sep</b></td><td><b>Press Night</b></td><td>Mandarin Oriental</td><td class="mono sm">17:00 – 23:30</td><td><span class="pill green">12 of 12 (+2)</span></td><td class="mono sm">PO 88190</td></tr>
+          <tr class="clickable"><td><b>Wed 23 Sep</b></td><td><b>Conference Day 2</b></td><td>ExCeL London</td><td class="mono sm">08:00 – 20:00</td><td><span class="pill green">10 of 10</span></td><td class="mono sm">EX-2026-311</td></tr>
+          <tr class="clickable"><td><b>Thu 24 Sep</b></td><td><b>Afternoon Tea</b></td><td>Leonardo Hotel St Pauls</td><td class="mono sm">15:00 – 21:00</td><td><span class="pill amber">3 of 4</span></td><td class="mono sm">4470</td></tr>
+          <tr class="clickable"><td><b>Fri 25 Sep</b></td><td><b>Summer Reception</b></td><td>The Dorchester</td><td class="mono sm">18:00 – 00:00</td><td><span class="pill coral">9 of 18 (+3)</span></td><td class="mono sm">—</td></tr>
+          <tr class="clickable"><td><b>Sat 26 Sep</b></td><td><b>Race Day</b></td><td>Ascot Racecourse</td><td class="mono sm">11:00 – 19:00</td><td><span class="pill green">14 of 14</span></td><td class="mono sm">ASC-0926</td></tr>
+          <tr class="clickable"><td><b>Sun 27 Sep</b></td><td><b>Charity Dinner</b></td><td>Private client (Hurst)</td><td class="mono sm">19:00 – 01:00</td><td><span class="pill amber">6 of 8</span></td><td class="mono sm">—</td></tr>
+        </tbody></table>
+      </div></div></div>
+      <span class="label">.floor · readable column minimum, snug cells</span>
+      <div class="panel"><div class="panel-b tight"><div class="tbl-frame floor" style="--frame-max:11rem" tabindex="0" role="region" aria-label="Floor frame, scrolls">
+        <table class="tbl"><thead><tr><th>Date</th><th>Event</th><th>Client</th><th>Window (UK time)</th><th>Fill</th><th>PO</th></tr></thead><tbody>
+          <tr class="clickable"><td><b>Tue 22 Sep</b></td><td><b>Press Night</b></td><td>Mandarin Oriental</td><td class="mono sm">17:00 – 23:30</td><td><span class="pill green">12 of 12 (+2)</span></td><td class="mono sm">PO 88190</td></tr>
+          <tr class="clickable"><td><b>Wed 23 Sep</b></td><td><b>Conference Day 2</b></td><td>ExCeL London</td><td class="mono sm">08:00 – 20:00</td><td><span class="pill green">10 of 10</span></td><td class="mono sm">EX-2026-311</td></tr>
+          <tr class="clickable"><td><b>Thu 24 Sep</b></td><td><b>Afternoon Tea</b></td><td>Leonardo Hotel St Pauls</td><td class="mono sm">15:00 – 21:00</td><td><span class="pill amber">3 of 4</span></td><td class="mono sm">4470</td></tr>
+          <tr class="clickable"><td><b>Fri 25 Sep</b></td><td><b>Summer Reception</b></td><td>The Dorchester</td><td class="mono sm">18:00 – 00:00</td><td><span class="pill coral">9 of 18 (+3)</span></td><td class="mono sm">—</td></tr>
+          <tr class="clickable"><td><b>Sat 26 Sep</b></td><td><b>Race Day</b></td><td>Ascot Racecourse</td><td class="mono sm">11:00 – 19:00</td><td><span class="pill green">14 of 14</span></td><td class="mono sm">ASC-0926</td></tr>
+          <tr class="clickable"><td><b>Sun 27 Sep</b></td><td><b>Charity Dinner</b></td><td>Private client (Hurst)</td><td class="mono sm">19:00 – 01:00</td><td><span class="pill amber">6 of 8</span></td><td class="mono sm">—</td></tr>
+        </tbody></table>
+      </div></div></div>
+    </div>
+    <div class="stack">
+      <span class="label">.flow · sideways scroll only, as tall as its rows</span>
+      <div class="panel"><div class="panel-b tight"><div class="tbl-frame floor flow" tabindex="0" role="region" aria-label="Flow frame, scrolls">
+        <table class="tbl"><thead><tr><th>Date</th><th>Event</th><th>Client</th><th>Window (UK time)</th><th>Fill</th><th>PO</th></tr></thead><tbody>
+          <tr class="clickable"><td><b>Tue 22 Sep</b></td><td><b>Press Night</b></td><td>Mandarin Oriental</td><td class="mono sm">17:00 – 23:30</td><td><span class="pill green">12 of 12 (+2)</span></td><td class="mono sm">PO 88190</td></tr>
+          <tr class="clickable"><td><b>Wed 23 Sep</b></td><td><b>Conference Day 2</b></td><td>ExCeL London</td><td class="mono sm">08:00 – 20:00</td><td><span class="pill green">10 of 10</span></td><td class="mono sm">EX-2026-311</td></tr>
+          <tr class="clickable"><td><b>Thu 24 Sep</b></td><td><b>Afternoon Tea</b></td><td>Leonardo Hotel St Pauls</td><td class="mono sm">15:00 – 21:00</td><td><span class="pill amber">3 of 4</span></td><td class="mono sm">4470</td></tr>
+          <tr class="clickable"><td><b>Fri 25 Sep</b></td><td><b>Summer Reception</b></td><td>The Dorchester</td><td class="mono sm">18:00 – 00:00</td><td><span class="pill coral">9 of 18 (+3)</span></td><td class="mono sm">—</td></tr>
+          <tr class="clickable"><td><b>Sat 26 Sep</b></td><td><b>Race Day</b></td><td>Ascot Racecourse</td><td class="mono sm">11:00 – 19:00</td><td><span class="pill green">14 of 14</span></td><td class="mono sm">ASC-0926</td></tr>
+          <tr class="clickable"><td><b>Sun 27 Sep</b></td><td><b>Charity Dinner</b></td><td>Private client (Hurst)</td><td class="mono sm">19:00 – 01:00</td><td><span class="pill amber">6 of 8</span></td><td class="mono sm">—</td></tr>
+        </tbody></table>
+      </div></div></div>
+      <span class="label">Labelled and keyboard-focusable · Tab to it, then the arrow keys</span>
+      <div class="panel"><div class="panel-b tight"><div class="tbl-frame floor flow" tabindex="0" role="region" aria-label="Events this week, scrolls">
+        <table class="tbl"><thead><tr><th>Date</th><th>Event</th><th>Client</th><th>Window (UK time)</th><th>Fill</th><th>PO</th></tr></thead><tbody>
+          <tr class="clickable"><td><b>Tue 22 Sep</b></td><td><b>Press Night</b></td><td>Mandarin Oriental</td><td class="mono sm">17:00 – 23:30</td><td><span class="pill green">12 of 12 (+2)</span></td><td class="mono sm">PO 88190</td></tr>
+          <tr class="clickable"><td><b>Wed 23 Sep</b></td><td><b>Conference Day 2</b></td><td>ExCeL London</td><td class="mono sm">08:00 – 20:00</td><td><span class="pill green">10 of 10</span></td><td class="mono sm">EX-2026-311</td></tr>
+          <tr class="clickable"><td><b>Thu 24 Sep</b></td><td><b>Afternoon Tea</b></td><td>Leonardo Hotel St Pauls</td><td class="mono sm">15:00 – 21:00</td><td><span class="pill amber">3 of 4</span></td><td class="mono sm">4470</td></tr>
+          <tr class="clickable"><td><b>Fri 25 Sep</b></td><td><b>Summer Reception</b></td><td>The Dorchester</td><td class="mono sm">18:00 – 00:00</td><td><span class="pill coral">9 of 18 (+3)</span></td><td class="mono sm">—</td></tr>
+          <tr class="clickable"><td><b>Sat 26 Sep</b></td><td><b>Race Day</b></td><td>Ascot Racecourse</td><td class="mono sm">11:00 – 19:00</td><td><span class="pill green">14 of 14</span></td><td class="mono sm">ASC-0926</td></tr>
+          <tr class="clickable"><td><b>Sun 27 Sep</b></td><td><b>Charity Dinner</b></td><td>Private client (Hurst)</td><td class="mono sm">19:00 – 01:00</td><td><span class="pill amber">6 of 8</span></td><td class="mono sm">—</td></tr>
+        </tbody></table>
+      </div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wf-section">
   <h2>8 · Mobile chrome (§10.1)<small>Frosted glass top bar / bottom nav / sheet with a cyan/purple glow beneath; collapsing header keeps the logo left and the avatar right.</small></h2>
   <div class="phones">
     <div class="phone-wrap"><div class="cap">AppHeader · <b>expanded</b> + BottomNav</div><div class="phone short">

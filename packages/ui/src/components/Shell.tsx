@@ -125,9 +125,33 @@ export function UserChip({ children }: { children: ReactNode }) {
   return <span className="userchip">{children}</span>;
 }
 
-/** Wraps a wide table so it scrolls rather than squashing on a phone (§1.2). */
-export function TableScroll({ children }: { children: ReactNode }) {
-  return <div className="table-scroll">{children}</div>;
+/**
+ * Wraps a wide table so it scrolls rather than squashing on a phone (§1.2).
+ * With a `label` it is a `.tbl-frame`: scrolls inside its card at every width
+ * with the scrollbars drawn, a sticky header, and keyboard focus. `flow` keeps
+ * that sideways scroll but lets the table grow as tall as its rows (a short
+ * table in a page that scrolls, not a second scroller).
+ */
+export function TableScroll({
+  children,
+  label,
+  flow,
+}: {
+  children: ReactNode;
+  label?: string;
+  flow?: boolean;
+}) {
+  if (!label) return <div className="table-scroll">{children}</div>;
+  return (
+    <div
+      className={clsx('tbl-frame floor', flow && 'flow')}
+      tabIndex={0}
+      role="region"
+      aria-label={label}
+    >
+      {children}
+    </div>
+  );
 }
 
 export interface PageHeadProps {

@@ -155,8 +155,8 @@ export function QualifiedStaff({
                 ) : null}
               </button>
               {collapsed[group.role] ? null : (
-                <TableScroll>
-                  <table className="tbl">
+                <TableScroll label={`${group.role}: qualified staff, scrolls sideways`} flow>
+                  <table className="tbl qualified">
                     <thead>
                       <tr>
                         <th>Worker</th>

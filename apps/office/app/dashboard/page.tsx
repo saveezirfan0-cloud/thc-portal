@@ -142,7 +142,7 @@ export default async function Page() {
             }
             // The wireframe's "Full report →", to the Financial reports (§9.9).
             actions={
-              <Link className="sm" href="/reports">
+              <Link className="sm panel-link" href="/reports">
                 Full report →
               </Link>
             }

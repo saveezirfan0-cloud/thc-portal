@@ -95,8 +95,8 @@ export function ClientEvents({
           <p>Nothing has been built for this client under that filter.</p>
         </div>
       ) : (
-        <TableScroll>
-          <table className="tbl card-rows">
+        <TableScroll label="Events at this client, scrolls sideways and down">
+          <table className="tbl card-rows client-events">
             <thead>
               <tr>
                 <th>Event</th>

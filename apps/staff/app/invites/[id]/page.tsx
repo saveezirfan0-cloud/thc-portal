@@ -1,8 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
-import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
+import {
+  UK_ZONE,
+  explainLimit,
+  formatDateIn,
+  formatDistance,
+  formatHours,
+  sectionHours,
+} from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
+import { ClampTitle } from '../../_components/ClampTitle';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
@@ -49,7 +57,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <StaffShell
-      title={`${invite.eventTitle} · ${invite.role}`}
+      title={<ClampTitle>{`${invite.eventTitle} · ${invite.role}`}</ClampTitle>}
       sub={<Link href="/invites">‹ Invites</Link>}
       active="/invites"
       shifts={shiftsBadge(all)}
@@ -58,8 +66,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="card-head">
         <Pill tone="cyan">Invited</Pill>
         {invite.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
-        <Pill>{invite.venueName}</Pill>
-        <span className="right mono sm muted">{invite.eventDate}</span>
+        <Pill className="venue">{invite.venueName}</Pill>
+        <span className="right mono sm muted">
+          {formatDateIn(invite.startsAt, UK_ZONE, { weekday: 'short', month: 'short' })}
+        </span>
       </div>
 
       <div className="card-head">

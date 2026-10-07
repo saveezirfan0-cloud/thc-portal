@@ -92,8 +92,14 @@ export function NewStarterTab({
         }
         flush
       >
-        <div className="panel-b tight table-scroll">
-          <table className="tbl">
+        <div
+          className="tbl-frame floor"
+          // Focusable so the arrow keys scroll it; named for screen readers.
+          tabIndex={0}
+          role="region"
+          aria-label="New starters preview, scrolls sideways and down"
+        >
+          <table className="tbl rp-starters">
             <thead>
               <tr>
                 <th>Staff</th>

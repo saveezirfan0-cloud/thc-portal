@@ -263,7 +263,8 @@ describe('Shifts tab violation log (§9.6 = §9.5)', () => {
   it('keeps the coral bar but no window when the detail read failed', () => {
     const html = renderToStaticMarkup(<Shifts shifts={shifts} violations={[VIOLATION]} />);
     expect(html).toContain('class="violation"');
-    expect(html).not.toContain('tabindex');
+    // The row is not focusable (the table's scroll frame is, on purpose).
+    expect(html).not.toMatch(/<tr[^>]*tabindex/);
     expect(html).not.toContain('Details');
   });
 });

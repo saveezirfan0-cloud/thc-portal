@@ -172,6 +172,13 @@
   flex-wrap: wrap;
   min-width: 0;
 }
+/* A screen's action group can nest rows (the event board's document
+   buttons); those wrap too, or "Download Allocation Timesheet" ran off the
+   right edge of a phone. */
+.topbar .row .row {
+  flex-wrap: wrap;
+  min-width: 0;
+}
 .topbar h1 {
   font-size: var(--fs-20);
 }
@@ -184,6 +191,12 @@
 .topbar .crumbs b {
   color: var(--text);
   font-weight: 600;
+}
+/* A long crumb line gives way (wraps inside itself) instead of pushing the
+   appearance switch onto a second line: the Reports header did at 1280px. */
+.topbar .crumbs {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 .topbar .spacer {
   flex: 1;
@@ -556,6 +569,103 @@ table.tbl {
 /* The violation marker is one bar down the left of the row, not every cell. */
 .tbl tr.violation td:first-child {
   border-left: 3px solid var(--coral-ink);
+}
+
+/* `.tbl-frame` — a table that is longer or wider than its card scrolls inside
+   the card, in both directions, and says so: the header row stays put while
+   the rows scroll under it, the scrollbars are always drawn (a macOS overlay
+   bar hides until you scroll, so a clipped column looked like a bug), and the
+   edges fade where more is hidden. Wrap the `<table class="tbl">` in it; give
+   the table a `min-width` that suits its columns. Height: set `--frame-max`
+   (default: the viewport less the page chrome). Keyboard: it is focusable, so
+   the arrow keys scroll it. Below 760px a `.card-rows` list is a stack of
+   cards and the page scrolls instead (see section 11). */
+.tbl-frame {
+  --frame-max: max(22rem, calc(100dvh - 16rem));
+  max-height: var(--frame-max);
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+  /* Fade the hidden edge: the gradients scroll with the content (`local`) and
+     are covered by the panel colour, so only an edge with more behind it
+     shows a shadow. */
+  background:
+    linear-gradient(to right, var(--panel) 30%, transparent) left center / 2rem 100% no-repeat local,
+    linear-gradient(to left, var(--panel) 30%, transparent) right center / 2rem 100% no-repeat local,
+    linear-gradient(to right, var(--line), transparent) left center / 0.75rem 100% no-repeat scroll,
+    linear-gradient(to left, var(--line), transparent) right center / 0.75rem 100% no-repeat scroll;
+  background-color: var(--panel);
+}
+.tbl-frame:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: -2px;
+}
+.tbl-frame::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.tbl-frame::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--r-pill);
+}
+.tbl-frame::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tbl-frame > .tbl thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel-2);
+}
+/* A sticky header cell keeps its own bottom border only without collapsed
+   borders. */
+.tbl-frame > .tbl {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+/* A frame's table is as wide as its columns need, never squeezed to the card:
+   the floor is a default, a screen sets its own with `.tbl.<name>`. `.floor`
+   also gives every text column a readable measure (a name or an event title
+   used to wrap a word a line beside a date on one); the avatar cell stays the
+   avatar's width. */
+:where(.tbl-frame) > .tbl {
+  min-width: 44rem;
+}
+:where(.tbl-frame.floor) > .tbl :where(td, th):not(:empty) {
+  min-width: 5rem;
+}
+:where(.tbl-frame.floor) > .tbl td.cell-lead {
+  min-width: 0;
+}
+/* Snug cells: columns keep their floor but not 20px either side of every
+   one, which is what pushed the last column off a laptop-width card. */
+@media (min-width: 761px) {
+  .tbl-frame.floor > .tbl :is(th, td) {
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
+  }
+  .tbl-frame.floor > .tbl :is(th, td):first-child {
+    padding-left: var(--sp-20);
+  }
+  .tbl-frame.floor > .tbl :is(th, td):last-child {
+    padding-right: var(--sp-20);
+  }
+}
+/* Sideways scroll only: a short table that sits in a page that scrolls. */
+.tbl-frame.flow {
+  max-height: none;
+}
+/* A wide table in a card that did not ask for a frame still scrolls inside
+   the card at every width, not only below 1024px, rather than being clipped
+   by the card's rounded corners (Reports, the client card's qualified staff
+   at 1280px). */
+:is(.panel, .panel-b):has(> table.tbl),
+.table-scroll {
+  overflow-x: auto;
 }
 
 /* ---------------------------------------------------------------------
@@ -1616,9 +1726,9 @@ textarea.input {
   font-size: var(--fs-12);
   font-weight: 600;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Six names in a 1024px content column read "Interview reque…"; they
+     wrap to a second line instead of being cut. */
+  overflow-wrap: anywhere;
 }
 .stepper .st.done .k,
 .stepper .st.done .t {
@@ -2617,13 +2727,18 @@ textarea.input {
     align-items: center;
     min-height: 0;
   }
+  /* A long title (an event's, a client's, a worker's) takes two lines
+     before it is cut, so the screen still says what it is. */
   .topbar h1 {
     font-size: var(--fs-20);
     min-width: 0;
     flex: 1 1 auto;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow-wrap: anywhere;
   }
   .topbar .spacer {
     display: none;
@@ -2835,8 +2950,14 @@ textarea.input {
     padding: var(--sp-12);
   }
   .table-scroll .tbl.card-rows,
-  :is(.panel, .panel-b) > table.tbl.card-rows {
+  :is(.panel, .panel-b) > table.tbl.card-rows,
+  .tbl-frame > .tbl.card-rows {
     min-width: 0;
+  }
+  .tbl-frame:has(> .tbl.card-rows) {
+    max-height: none;
+    overflow: visible;
+    background: none;
   }
   .tbl.card-rows,
   .tbl.card-rows tbody,
@@ -2971,7 +3092,8 @@ textarea.input {
 
   /* A card-rows table is a stack of cards here, not a scroller: its cells
      take the card's width, never the scrolling table's floor above. */
-  :is(.panel, .panel-b, .table-scroll) > table.tbl.card-rows :is(td, th):not(:empty) {
+  :is(.panel, .panel-b, .table-scroll) > table.tbl.card-rows :is(td, th):not(:empty),
+  :where(.tbl-frame.floor) > .tbl.card-rows :where(td, th):not(:empty) {
     min-width: 0;
   }
 
@@ -2995,6 +3117,29 @@ textarea.input {
   .datenav :is(button, a),
   .menu-btn {
     min-width: var(--tap-min);
+  }
+  /* A chip's remove "×" and a button that reads as a link stay the size of
+     their text; the finger target is an invisible 44px box around them. */
+  .chip .x,
+  .linkish {
+    position: relative;
+  }
+  .chip .x::after,
+  .linkish::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, var(--tap-min));
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
+  /* The crumb back to the section ("Scheduling", "Onboarding") is the only
+     way up on a screen without a sidebar. */
+  .topbar .crumbs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
   }
 
   /* A document row: the title and its meta keep the row's width and the

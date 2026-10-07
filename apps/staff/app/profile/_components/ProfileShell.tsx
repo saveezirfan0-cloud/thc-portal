@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AppBody, AppFrame, AppHeader, Avatar, Logo } from '@thc/ui';
 import { BottomTabs } from '../../_components/BottomTabs';
+import '../../chrome.css';
 import { reachableTabs, showsBottomNav, STAFF_TABS } from '../lock';
 import type { AppLock } from '../lock';
 
@@ -64,7 +65,18 @@ export function ProfileShell({
             title
           )
         }
-        actions={<Avatar name={name} {...(photoUrl ? { src: photoUrl } : {})} size="sm" />}
+        actions={
+          // The same way into /profile as the tab screens' header (§10.1), with
+          // the same 44 px target (`.avatar-btn`). Not drawn as a link when
+          // Profile is closed to this worker or the account could not be read.
+          nav && reachable.includes('/profile') ? (
+            <Link href="/profile" className="avatar-btn" aria-label="Your profile">
+              <Avatar name={name} {...(photoUrl ? { src: photoUrl } : {})} className="photo" />
+            </Link>
+          ) : (
+            <Avatar name={name} {...(photoUrl ? { src: photoUrl } : {})} className="photo" />
+          )
+        }
       />
       <AppBody>{children}</AppBody>
       {/* BottomTabs, not BottomNav+renderLink. This file is a server

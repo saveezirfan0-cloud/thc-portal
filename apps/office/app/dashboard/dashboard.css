@@ -26,6 +26,31 @@
 .dash-roles .r > .chip {
   min-width: 108px;
 }
+/* From tablet up the five parts of a role line sit in fixed columns, so the
+   windows, allocations, fills and margins line up down the cell instead of
+   running into each other when the cell is narrow (a chip overlapped its own
+   window at laptop width, and the margin was cut off the card). */
+@media (min-width: 761px) {
+  .dash-roles .r {
+    display: grid;
+    grid-template-columns: minmax(7rem, 1fr) 6rem 4rem 4.5rem 4rem;
+    align-items: center;
+  }
+  .dash-roles .r > .chip {
+    min-width: 0;
+    justify-self: start;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .dash-roles .r > .alloc,
+  .dash-roles .r > .margin {
+    white-space: nowrap;
+    text-align: right;
+  }
+  .dash-roles .r > .pill {
+    justify-self: start;
+  }
+}
 .dash-roles .r > .mono {
   font-size: var(--fs-12);
 }
@@ -163,5 +188,54 @@
 @media (max-width: 1100px) {
   .dash-finance {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- tables scroll inside `.tbl-frame` ------------------------------------
+ * The ten-day list is as wide as its columns need: an event title is never
+ * squeezed to a word a line beside a date on one, and a card narrower than
+ * the table scrolls it with the bar drawn instead of clipping Roles. */
+@media (min-width: 761px) {
+  .tbl.dash-upcoming {
+    min-width: 66rem;
+  }
+  .tbl.dash-upcoming :is(th, td):nth-child(2) {
+    min-width: 11rem;
+  }
+  .tbl.dash-upcoming :is(th, td):nth-child(3) {
+    min-width: 9rem;
+  }
+  /* Two lines at most, then an ellipsis (as the events list does), so a long
+     client name cannot take the column past the rest. */
+  .tbl.dash-upcoming .dash-clip {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    max-width: 22ch;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tbl.dash-upcoming :is(th, td):nth-child(4) {
+    min-width: 7rem;
+    white-space: nowrap;
+  }
+  .tbl.dash-upcoming :is(th, td):nth-child(5) {
+    min-width: 26rem;
+  }
+  .tbl.dash-upcoming :is(th, td):nth-child(6) {
+    white-space: nowrap;
+  }
+  .tbl.dash-short-tbl td[data-label='Starts (UK time)'],
+  .tbl.dash-short-tbl td[data-label='Open'] {
+    white-space: nowrap;
+  }
+}
+
+/* "Full report →" is the panel's only action: a finger target on a phone. */
+@media (max-width: 760px) {
+  .panel-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
   }
 }

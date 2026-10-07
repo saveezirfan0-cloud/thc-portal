@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { MouseEvent } from 'react';
 import { EVENT_STATUS_LABEL, type EventStatus, eventStatus } from '@thc/domain';
-import { EmptyState, Pill } from '@thc/ui';
+import { EmptyState, Pill, TableScroll } from '@thc/ui';
 import {
   type UpcomingEvent,
   allocationLabel,
@@ -64,90 +64,92 @@ export function UpcomingTable({
   };
 
   return (
-    <table className="tbl card-rows dash-upcoming">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Event</th>
-          <th>Client · Venue</th>
-          {/* Scheduled times, so the column names its zone (§1.8). */}
-          <th>Window (UK time)</th>
-          <th>
-            {showMargin ? 'Roles · allocation · fill · margin/h' : 'Roles · allocation · fill'}
-          </th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {events.map((event) => {
-          const status = eventStatus(
-            { startsAt: new Date(event.startsAt), endsAt: new Date(event.endsAt) },
-            event.cancelledAt,
-          );
-          const relative = relativeDayLabel(event.eventDate, today);
+    <TableScroll label="Upcoming events, scrolls sideways and down">
+      <table className="tbl card-rows dash-upcoming">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Event</th>
+            <th>Client · Venue</th>
+            {/* Scheduled times, so the column names its zone (§1.8). */}
+            <th>Window (UK time)</th>
+            <th>
+              {showMargin ? 'Roles · allocation · fill · margin/h' : 'Roles · allocation · fill'}
+            </th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((event) => {
+            const status = eventStatus(
+              { startsAt: new Date(event.startsAt), endsAt: new Date(event.endsAt) },
+              event.cancelledAt,
+            );
+            const relative = relativeDayLabel(event.eventDate, today);
 
-          return (
-            <tr key={event.eventId} className="clickable" onClick={openEvent(event.eventId)}>
-              <td data-label="Date">
-                <b className={relative ? 'cyan' : undefined}>{formatDayLabel(event.eventDate)}</b>
-                {relative ? <span className="sub">{relative}</span> : null}
-              </td>
-              <td className="cell-title">
-                <Link href={`/events/${event.eventId}`}>
-                  <b>{event.title}</b>
-                </Link>
-                <span className="sub">PO {event.poNumber || '—'}</span>
-              </td>
-              <td data-label="Client · Venue">
-                <span className="dash-clip" title={event.clientName}>
-                  {event.clientName}
-                </span>
-                <span className="sub dash-clip" title={event.venueName}>
-                  {event.venueName}
-                </span>
-              </td>
-              <td data-label="Window (UK time)" className="mono sm">
-                {/* The event window is derived: min start → max end (RULE-18). */}
-                <ScheduledWindow startsAt={event.startsAt} endsAt={event.endsAt} />
-              </td>
-              <td data-label="Roles · allocation · fill · margin/h" className="cell-wide">
-                <div className="dash-roles">
-                  {event.roles.map((role) => {
-                    const chip = fillChip(role.confirmed, role.headcount);
-                    return (
-                      <div className="r" key={role.shiftId}>
-                        <span className="chip">{role.roleName}</span>
-                        {/* The role's OWN window, never the event's (RULE-18). */}
-                        <ScheduledWindow
-                          className="mono win"
-                          startsAt={role.startsAt}
-                          endsAt={role.endsAt}
-                        />
-                        {/* "6 (+1)": the buffer is absolute, never folded in. */}
-                        <span className="mono alloc">
-                          {allocationLabel(role.headcount, role.buffer)}
-                        </span>
-                        <Pill tone={chip.tone}>{chip.label}</Pill>
-                        {/* §9.1: charge − final pay, in green. */}
-                        {showMargin ? (
-                          <span className={`mono margin ${marginTone(role.marginPerHour)}`}>
-                            {formatMarginPerHour(role.marginPerHour)}
+            return (
+              <tr key={event.eventId} className="clickable" onClick={openEvent(event.eventId)}>
+                <td data-label="Date">
+                  <b className={relative ? 'cyan' : undefined}>{formatDayLabel(event.eventDate)}</b>
+                  {relative ? <span className="sub">{relative}</span> : null}
+                </td>
+                <td className="cell-title">
+                  <Link href={`/events/${event.eventId}`}>
+                    <b>{event.title}</b>
+                  </Link>
+                  <span className="sub">PO {event.poNumber || '—'}</span>
+                </td>
+                <td data-label="Client · Venue">
+                  <span className="dash-clip" title={event.clientName}>
+                    {event.clientName}
+                  </span>
+                  <span className="sub dash-clip" title={event.venueName}>
+                    {event.venueName}
+                  </span>
+                </td>
+                <td data-label="Window (UK time)" className="mono sm">
+                  {/* The event window is derived: min start → max end (RULE-18). */}
+                  <ScheduledWindow startsAt={event.startsAt} endsAt={event.endsAt} />
+                </td>
+                <td data-label="Roles · allocation · fill · margin/h" className="cell-wide">
+                  <div className="dash-roles">
+                    {event.roles.map((role) => {
+                      const chip = fillChip(role.confirmed, role.headcount);
+                      return (
+                        <div className="r" key={role.shiftId}>
+                          <span className="chip">{role.roleName}</span>
+                          {/* The role's OWN window, never the event's (RULE-18). */}
+                          <ScheduledWindow
+                            className="mono win"
+                            startsAt={role.startsAt}
+                            endsAt={role.endsAt}
+                          />
+                          {/* "6 (+1)": the buffer is absolute, never folded in. */}
+                          <span className="mono alloc">
+                            {allocationLabel(role.headcount, role.buffer)}
                           </span>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </td>
-              <td data-label="Status" className="dash-status">
-                <Pill tone={STATUS_TONE[status]} dot={status === 'ongoing'}>
-                  {EVENT_STATUS_LABEL[status]}
-                </Pill>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                          <Pill tone={chip.tone}>{chip.label}</Pill>
+                          {/* §9.1: charge − final pay, in green. */}
+                          {showMargin ? (
+                            <span className={`mono margin ${marginTone(role.marginPerHour)}`}>
+                              {formatMarginPerHour(role.marginPerHour)}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </td>
+                <td data-label="Status" className="dash-status">
+                  <Pill tone={STATUS_TONE[status]} dot={status === 'ongoing'}>
+                    {EVENT_STATUS_LABEL[status]}
+                  </Pill>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }

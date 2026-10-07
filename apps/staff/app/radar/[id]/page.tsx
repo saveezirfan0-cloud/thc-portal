@@ -2,14 +2,17 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import {
+  UK_ZONE,
   explainLimit,
   formatAllocationPair,
+  formatDateIn,
   formatDistance,
   formatHours,
   openSlots,
   sectionHours,
 } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
+import { ClampTitle } from '../../_components/ClampTitle';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
@@ -63,7 +66,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <StaffShell
-      title={`${shift.eventTitle} · ${shift.role}`}
+      title={<ClampTitle>{`${shift.eventTitle} · ${shift.role}`}</ClampTitle>}
       sub={<Link href="/radar">‹ Radar</Link>}
       active="/radar"
       shifts={shiftsBadge(bookings)}
@@ -72,7 +75,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="card-head">
         {shift.qualified ? <Pill tone="purple">Worked here before</Pill> : null}
         <span className="km">{formatDistance(shift.distanceKm)}</span>
-        <span className="right mono sm muted">{shift.eventDate}</span>
+        <span className="right mono sm muted">
+          {formatDateIn(shift.startsAt, UK_ZONE, { weekday: 'short', month: 'short' })}
+        </span>
       </div>
 
       <div className="card-head">

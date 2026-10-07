@@ -75,8 +75,14 @@ export function PeopleTable({ people, lines }: { people: PayrollPerson[]; lines:
       }
       flush
     >
-      <div className="panel-b tight table-scroll">
-        <table className="tbl">
+      <div
+        className="tbl-frame floor"
+        // Focusable so the arrow keys scroll it; named for screen readers.
+        tabIndex={0}
+        role="region"
+        aria-label="Payroll breakdown by person, scrolls sideways and down"
+      >
+        <table className="tbl rp-people">
           <thead>
             <tr>
               <th style={{ width: 32 }} />

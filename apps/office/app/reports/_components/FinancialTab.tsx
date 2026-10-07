@@ -141,8 +141,14 @@ export function FinancialTab({
         }
         flush
       >
-        <div className="panel-b tight table-scroll">
-          <table className="tbl">
+        <div
+          className="tbl-frame floor"
+          // Focusable so the arrow keys scroll it; named for screen readers.
+          tabIndex={0}
+          role="region"
+          aria-label="Financial breakdown, scrolls sideways and down"
+        >
+          <table className="tbl rp-fin">
             <thead>
               <tr>
                 <th>{GROUP_HEAD[view.by]}</th>

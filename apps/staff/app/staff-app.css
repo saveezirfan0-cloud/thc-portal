@@ -269,3 +269,28 @@
 .past-row .past-venue {
   color: var(--muted);
 }
+
+/* The card's title link and a phone number are the things a worker taps on
+   a card or a detail row, and a line of 15 px text is 26 px tall at best.
+   The link's box grows by the missing height and gives it back in negative
+   margin, so nothing on the screen moves (same trick as `.linkbtn`). */
+.mcard > a.t {
+  display: block;
+  padding-block: var(--sp-10);
+  margin-block: calc(-1 * var(--sp-10));
+}
+.kv .v a[href^='tel:'] {
+  display: inline-block;
+  padding-block: var(--sp-12);
+  margin-block: calc(-1 * var(--sp-12));
+}
+
+/* A venue name in a pill is the one pill whose length the worker does not
+   choose ("Freemasons' Hall (United Grand Lodge of England)"): it stops at
+   the edge of the row and ends in an ellipsis rather than running off it. */
+.pill.venue {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

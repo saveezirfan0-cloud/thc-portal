@@ -27,6 +27,17 @@
   display: none;
 }
 
+/* The logo and its name keep their width: the company line, the person and
+   the buttons give way first (at 820px the name used to be cut to "The
+   Hospit…"). */
+.ctop .brand {
+  flex: none;
+}
+
+.ctop .who {
+  flex: 0 1 auto;
+}
+
 .ctop .who,
 .ctop .menu-who {
   display: flex;
@@ -259,6 +270,36 @@
   color: var(--muted);
 }
 
+/* The desktop table is as wide as its columns need and scrolls inside its
+   card (TableScroll → .tbl-frame) rather than being clipped by it: at 1024px
+   the Document column was cut off and the title wrapped to nine lines. Each
+   column has a floor; from ~1280px the card is wide enough for all seven. */
+.tbl-frame > .tbl.events-tbl {
+  min-width: 64rem;
+}
+
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(1) {
+  min-width: 12rem;
+}
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(2) {
+  min-width: 9.5rem;
+}
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(3) {
+  min-width: 9.5rem;
+}
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(4) {
+  min-width: 7rem;
+}
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(5) {
+  min-width: 10rem;
+}
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(6) {
+  min-width: 8rem;
+}
+.tbl-frame.floor > .tbl.events-tbl :is(th, td):nth-child(7) {
+  min-width: 11.5rem;
+}
+
 /* A cancelled event keeps its row, greyed, rather than disappearing. */
 .tbl tr.cancelled td {
   color: var(--muted);
@@ -350,6 +391,11 @@
     inset 0 -1px 0 var(--line);
 }
 
+.wrow > div:not(.fb) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .wrow .n {
   font-family: var(--font-head);
   font-weight: 600;
@@ -363,6 +409,8 @@
 
 .wrow .fb {
   margin-left: auto;
+  flex: none;
+  white-space: nowrap;
 }
 
 /* The line-up of a cancelled event is not shown: the bookings were
@@ -417,6 +465,12 @@
   min-width: 0;
   justify-content: center;
   text-align: center;
+}
+
+/* "↓ Completed Timesheet" is the longest label; at 390px it ran to the
+   button's edge with the default side padding. */
+.ecard .foot > .btn {
+  padding-inline: var(--sp-8);
 }
 
 /* "13 of 17 confirmed", its bar and the role split, as on the desktop. */
@@ -483,6 +537,13 @@
   .cwrap {
     padding: var(--sp-16);
     gap: var(--sp-16);
+  }
+
+  /* The bar's gutter follows the page's, or the logo sits 10px right of the
+     heading under it. */
+  .ctop {
+    padding-left: var(--sp-16);
+    padding-right: var(--sp-16);
   }
 
   /* The table folds away and the cards take over; both are rendered from
@@ -745,6 +806,12 @@
 /* Finger targets on a phone (§1.2): the brand (home) link in the bar and
    the event page's "← Your events". */
 @media (max-width: 760px) {
+  /* "Leave feedback · 10 of 11 to go" on a card is a link to tap. */
+  .ecard .ev-nudge {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
   .ctop .brand {
     min-height: var(--tap-min);
   }
@@ -752,5 +819,14 @@
     display: inline-flex;
     align-items: center;
     min-height: var(--tap-min);
+  }
+}
+
+/* Between a phone and a laptop the bar has no room for the person's name as
+   well as the company, the appearance switch and the buttons: the avatar
+   stays (its initials name them), the name goes. */
+@media (min-width: 761px) and (max-width: 1000px) {
+  .ctop-menu .me .sm {
+    display: none;
   }
 }

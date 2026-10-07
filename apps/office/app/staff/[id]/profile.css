@@ -282,3 +282,46 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- tables scroll inside `.tbl-frame` ----------------------------------
+ * A shift's event and client keep a readable measure (they wrapped a word a
+ * line, seven lines tall, beside a date on one); a card narrower than the
+ * table scrolls it with the bar drawn. */
+.tbl.shift-history {
+  min-width: 54rem;
+}
+.tbl.shift-history :is(th, td):nth-child(2),
+.tbl.shift-history :is(th, td):nth-child(3) {
+  min-width: 11rem;
+}
+.tbl.shift-history td:nth-child(1),
+.tbl.shift-history td:nth-child(5),
+.tbl.shift-history td:nth-child(6),
+.tbl.shift-history td:nth-child(7) {
+  white-space: nowrap;
+}
+/* The role chip is a label that may take two lines here rather than widen
+   the table past the card (the Status column was off its right edge). */
+.tbl.shift-history td:nth-child(4) .chip {
+  white-space: normal;
+  max-width: 11rem;
+}
+.tbl.violation-log {
+  min-width: 46rem;
+}
+.tbl.violation-log td:nth-child(3) {
+  white-space: nowrap;
+}
+.tbl.qual-table {
+  min-width: 50rem;
+}
+.tbl.qual-table :is(th, td):nth-child(5) {
+  min-width: 12rem;
+}
+@media (max-width: 760px) {
+  .tbl.shift-history,
+  .tbl.violation-log,
+  .tbl.qual-table {
+    min-width: 0;
+  }
+}

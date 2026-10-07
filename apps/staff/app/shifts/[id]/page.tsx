@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { StaffShell } from '../../_components/StaffShell';
+import { ClampTitle } from '../../_components/ClampTitle';
 import { loadBookings, openInvites, shiftsBadge } from '../../data';
 import { readProfile } from '../../profile/data';
 import { loadShift, supabaseConfigured } from './data';
@@ -75,7 +76,7 @@ export default async function Page({
 
   return (
     <StaffShell
-      title={`${shift.eventTitle} · ${shift.roleName}`}
+      title={<ClampTitle>{`${shift.eventTitle} · ${shift.roleName}`}</ClampTitle>}
       sub={back}
       active="/shifts"
       {...(listProblem

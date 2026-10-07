@@ -95,6 +95,48 @@ const TYPE: [string, string][] = [
   ['--fs-11', 'Meta'],
 ];
 
+const FRAME_ROWS: [string, string, string, string, string, 'green' | 'amber' | 'coral'][] = [
+  ['Tue 22 Sep', 'Press Night', 'Mandarin Oriental', '17:00 – 23:30', '12 of 12 (+2)', 'green'],
+  ['Wed 23 Sep', 'Conference Day 2', 'ExCeL London', '08:00 – 20:00', '10 of 10', 'green'],
+  ['Thu 24 Sep', 'Afternoon Tea', 'Leonardo Hotel St Pauls', '15:00 – 21:00', '3 of 4', 'amber'],
+  ['Fri 25 Sep', 'Summer Reception', 'The Dorchester', '18:00 – 00:00', '9 of 18 (+3)', 'coral'],
+  ['Sat 26 Sep', 'Race Day', 'Ascot Racecourse', '11:00 – 19:00', '14 of 14', 'green'],
+  ['Sun 27 Sep', 'Charity Dinner', 'Private client (Hurst)', '19:00 – 01:00', '6 of 8', 'amber'],
+];
+
+function FrameTable() {
+  return (
+    <table className="tbl">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Event</th>
+          <th>Client</th>
+          <th>Window (UK time)</th>
+          <th>Fill</th>
+        </tr>
+      </thead>
+      <tbody>
+        {FRAME_ROWS.map(([date, event, client, window, fill, tone]) => (
+          <tr key={date}>
+            <td>
+              <b>{date}</b>
+            </td>
+            <td>
+              <b>{event}</b>
+            </td>
+            <td>{client}</td>
+            <td className="mono sm">{window}</td>
+            <td>
+              <Pill tone={tone}>{fill}</Pill>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default function Page() {
   return (
     <>
@@ -445,6 +487,56 @@ export default function Page() {
               </tbody>
             </table>
           </TableScroll>
+        </Panel>
+
+        <Panel title="Table frame">
+          <p className="sm muted">
+            A table longer or wider than its card scrolls inside the card: sticky header, scrollbars
+            always drawn, a faded edge where more is hidden, and focusable so the arrow keys scroll
+            it. <code>&lt;TableScroll label&gt;</code> is the floor variant; add <code>flow</code>{' '}
+            when the page should do the vertical scrolling (ADR-0104).
+          </p>
+          <div className="grid c2">
+            <div className="ds-window">
+              <span className="label">Default · sticky header, height capped</span>
+              <div
+                className="tbl-frame ds-frame-short"
+                tabIndex={0}
+                role="region"
+                aria-label="Default frame, scrolls"
+              >
+                <FrameTable />
+              </div>
+            </div>
+            <div className="ds-window">
+              <span className="label">.floor · readable column minimum, snug cells</span>
+              <div
+                className="tbl-frame floor ds-frame-short"
+                tabIndex={0}
+                role="region"
+                aria-label="Floor frame, scrolls"
+              >
+                <FrameTable />
+              </div>
+            </div>
+            <div className="ds-window">
+              <span className="label">.flow · sideways scroll only, as tall as its rows</span>
+              <div
+                className="tbl-frame floor flow"
+                tabIndex={0}
+                role="region"
+                aria-label="Flow frame, scrolls"
+              >
+                <FrameTable />
+              </div>
+            </div>
+            <div className="ds-window">
+              <span className="label">TableScroll label · focusable, named, Tab then arrows</span>
+              <TableScroll label="Events this week, scrolls" flow>
+                <FrameTable />
+              </TableScroll>
+            </div>
+          </div>
         </Panel>
 
         <Panel title="Scheduled window">

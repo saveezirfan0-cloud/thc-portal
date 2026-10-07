@@ -214,6 +214,22 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl tr.expand td { background: var(--panel-2); }
 .tbl tr.violation td { border-left: 3px solid var(--coral); }
 
+/* .tbl-frame — a table longer or wider than its card scrolls inside the card, both ways: sticky header, scrollbars always drawn, faded edge where more is hidden, focusable so arrow keys scroll it. Mirror of packages/ui (ADR-0104). .floor = readable column minimum + snug cells; .flow = sideways scroll only, as tall as its rows. */
+.tbl-frame { --frame-max: max(22rem, calc(100dvh - 16rem)); max-height: var(--frame-max); overflow: auto; overscroll-behavior-x: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--muted) transparent;
+  background: linear-gradient(to right, var(--panel) 30%, transparent) left center / 2rem 100% no-repeat local, linear-gradient(to left, var(--panel) 30%, transparent) right center / 2rem 100% no-repeat local, linear-gradient(to right, var(--line), transparent) left center / .75rem 100% no-repeat scroll, linear-gradient(to left, var(--line), transparent) right center / .75rem 100% no-repeat scroll; background-color: var(--panel); }
+.tbl-frame:focus-visible { outline: 2px solid var(--cyan-ink); outline-offset: -2px; }
+.tbl-frame::-webkit-scrollbar { width: 10px; height: 10px; }
+.tbl-frame::-webkit-scrollbar-thumb { background: var(--muted); border: 2px solid transparent; background-clip: padding-box; border-radius: var(--r-pill); }
+.tbl-frame::-webkit-scrollbar-track { background: transparent; }
+.tbl-frame > .tbl { border-collapse: separate; border-spacing: 0; min-width: 44rem; }
+.tbl-frame > .tbl thead th { position: sticky; top: 0; z-index: 2; background: var(--panel-2); }
+.tbl-frame.floor > .tbl :where(td, th):not(:empty) { min-width: 5rem; }
+.tbl-frame.floor > .tbl td.cell-lead { min-width: 0; }
+.tbl-frame.floor > .tbl :is(th, td) { padding-left: 12px; padding-right: 12px; }
+.tbl-frame.floor > .tbl :is(th, td):first-child { padding-left: 20px; }
+.tbl-frame.floor > .tbl :is(th, td):last-child { padding-right: 20px; }
+.tbl-frame.flow { max-height: none; }
+
 /* ---------------------------------------------------------------------
    5 · BUTTONS
    --------------------------------------------------------------------- */

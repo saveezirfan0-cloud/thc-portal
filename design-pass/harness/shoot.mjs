@@ -20,7 +20,9 @@ const screens = readdirSync(join(H, 'out'))
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const report = {};
-for (const width of [390, 820]) {
+// WIDTHS=390,820,1024,1440 to override.
+const widths = (process.env.WIDTHS ?? '390,820').split(',').map(Number);
+for (const width of widths) {
   const ctx = await browser.newContext({
     viewport: { width, height: 844 },
     deviceScaleFactor: width === 390 ? 2 : 1,
@@ -88,6 +90,9 @@ for (const width of [390, 820]) {
           const r = el.getBoundingClientRect();
           if (r.width === 0 || r.height === 0) continue;
           if (el.closest('.tbl') && el.tagName === 'A' && !el.classList.contains('btn')) continue;
+          // A 44px invisible ::after box counts as the target.
+          const after = getComputedStyle(el, '::after');
+          if (after.position === 'absolute' && parseFloat(after.height) >= 44) continue;
           if (r.height < 44 && !(el.type === 'checkbox' || el.type === 'radio'))
             small.push(`${Math.round(r.height)}px ${describe(el)}`);
         }

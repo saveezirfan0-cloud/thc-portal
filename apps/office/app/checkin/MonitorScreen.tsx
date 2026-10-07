@@ -3,7 +3,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select, useTimeFormat } from '@thc/ui';
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Panel,
+  Pill,
+  SegToggle,
+  Select,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
 import { type LogQuery, logQueryHref, logTime } from './log';
@@ -143,60 +153,62 @@ export function MonitorScreen({
             </p>
           </div>
         ) : (
-          <table className="tbl card-rows">
-            <thead>
-              <tr>
-                <th>Staff</th>
-                <th>Event</th>
-                <th>Violation</th>
-                <th>Time</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {shownViolations.map((v) => (
-                <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
-                  <td className="cell-title">
-                    <div className="person">
-                      <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
-                      <div className="n">{v.staffName}</div>
-                    </div>
-                  </td>
-                  <td data-label="Event">
-                    {v.eventTitle}
-                    <span className="sub">
-                      {v.venueName} · {v.roleName}
-                    </span>
-                  </td>
-                  <td data-label="Violation">
-                    <b>{VIOLATION_LABEL[v.type]}</b>
-                    {v.resolved ? (
-                      <>
-                        {' '}
-                        <Pill tone="green">Resolved</Pill>
-                      </>
-                    ) : null}
-                  </td>
-                  <td data-label="Time" className="mono sm">
-                    {logTime(v.detectedAt, zone, new Date(), format)}
-                  </td>
-                  <td className="right-align cell-actions">
-                    <Button
-                      size="sm"
-                      tone={v.resolved ? 'ghost' : 'default'}
-                      onClick={(event) => {
-                        // The row opens the same window; one open, not two.
-                        event.stopPropagation();
-                        setOpen(v);
-                      }}
-                    >
-                      Details
-                    </Button>
-                  </td>
+          <TableScroll label="Violation log, scrolls sideways and down">
+            <table className="tbl card-rows violation-tbl">
+              <thead>
+                <tr>
+                  <th>Staff</th>
+                  <th>Event</th>
+                  <th>Violation</th>
+                  <th>Time</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {shownViolations.map((v) => (
+                  <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
+                    <td className="cell-title">
+                      <div className="person">
+                        <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
+                        <div className="n">{v.staffName}</div>
+                      </div>
+                    </td>
+                    <td data-label="Event">
+                      {v.eventTitle}
+                      <span className="sub">
+                        {v.venueName} · {v.roleName}
+                      </span>
+                    </td>
+                    <td data-label="Violation">
+                      <b>{VIOLATION_LABEL[v.type]}</b>
+                      {v.resolved ? (
+                        <>
+                          {' '}
+                          <Pill tone="green">Resolved</Pill>
+                        </>
+                      ) : null}
+                    </td>
+                    <td data-label="Time" className="mono sm">
+                      {logTime(v.detectedAt, zone, new Date(), format)}
+                    </td>
+                    <td className="right-align cell-actions">
+                      <Button
+                        size="sm"
+                        tone={v.resolved ? 'ghost' : 'default'}
+                        onClick={(event) => {
+                          // The row opens the same window; one open, not two.
+                          event.stopPropagation();
+                          setOpen(v);
+                        }}
+                      >
+                        Details
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )}
         {log.page > 1 || hasMore ? (
           <div className="row log-pager">

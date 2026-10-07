@@ -78,3 +78,32 @@
   font-family: var(--font-body);
   font-size: var(--fs-14);
 }
+
+/* ---- the list scrolls inside `.tbl-frame` --------------------------------
+ * Nine columns do not fit a laptop-width card: the name wrapped to four
+ * lines and "Added by" was cut off the right edge with no scrollbar. Each
+ * column keeps a readable measure and the card scrolls the table. */
+.tbl.client-list {
+  min-width: 60rem;
+}
+.tbl.client-list td.name {
+  min-width: 11rem;
+}
+.tbl.client-list :is(th, td):nth-child(2) {
+  min-width: 9rem;
+}
+.tbl.client-list td.client-phone,
+.tbl.client-list td[data-label='Date added'] {
+  white-space: nowrap;
+}
+.tbl.client-list td[data-label='Rate card roles'] {
+  min-width: 11rem;
+}
+.tbl.client-list td[data-label='Policies'] {
+  min-width: 8rem;
+}
+@media (max-width: 760px) {
+  .tbl.client-list {
+    min-width: 0;
+  }
+}

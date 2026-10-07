@@ -139,3 +139,29 @@
 .tbl tr.picked td {
   background: var(--row-hover);
 }
+
+/* ---- directory: column measures ----------------------------------------
+ * The table scrolls inside `.tbl-frame`; a name, an Employee ID and a
+ * compliance line keep a readable width instead of wrapping a word (or half
+ * an ID) per line. */
+.tbl.staff-list {
+  min-width: 56rem;
+}
+.tbl.staff-list td.name {
+  min-width: 10rem;
+}
+.tbl.staff-list td[data-label='Employee ID'],
+.tbl.staff-list td[data-label='Left'],
+.tbl.staff-list td[data-label='Rating'],
+.tbl.staff-list td[data-label='Show-rate'] {
+  white-space: nowrap;
+}
+.tbl.staff-list td[data-label='Compliance status'],
+.tbl.staff-list td[data-label='Right to work'] {
+  min-width: 8rem;
+}
+@media (max-width: 760px) {
+  .tbl.staff-list {
+    min-width: 0;
+  }
+}

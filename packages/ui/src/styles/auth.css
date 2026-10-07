@@ -97,4 +97,19 @@
     align-self: flex-end;
     margin: calc(-1 * var(--sp-8)) calc(-1 * var(--sp-8)) calc(-1 * var(--sp-6)) 0;
   }
+
+  /* The sign-in card's own links and tick box are finger targets (§1.2):
+     "Forgot password?", "← Back to sign in" and "Keep me signed in" were
+     17-20px tall. Links inside a sentence (the footer's) stay inline. */
+  .auth-card a.xs {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-min);
+  }
+
+  .auth-card .check {
+    align-items: center;
+    min-height: var(--tap-min);
+  }
 }

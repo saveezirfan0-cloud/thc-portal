@@ -43,6 +43,12 @@
   flex-wrap: wrap;
   gap: var(--sp-4);
 }
+/* "Waiting staff (silver service)" is wider than a narrow column: the chip
+   wraps inside the card instead of running past its edge. */
+.kcard .chips > * {
+  max-width: 100%;
+  white-space: normal;
+}
 /* On a desktop each column scrolls on its own under a header that stays put,
    so 36 people in Interview requested do not make the whole page 10 000px
    tall. The phone keeps the page scroll: the columns there are swiped. */

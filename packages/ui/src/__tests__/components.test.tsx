@@ -662,3 +662,26 @@ describe('SignOut', () => {
     expect(html).toMatch(/<button[^>]*class="[^"]*ml-auto[^"]*"/);
   });
 });
+
+describe('TableScroll', () => {
+  it('stays the plain phone scroller without a label', () => {
+    expect(renderToStaticMarkup(<TableScroll>x</TableScroll>)).toBe(
+      '<div class="table-scroll">x</div>',
+    );
+  });
+
+  it('is a focusable, named .tbl-frame with a label (and `flow` keeps it one scroller tall)', () => {
+    const framed = renderToStaticMarkup(<TableScroll label="Staff, scrolls">x</TableScroll>);
+    expect(framed).toContain('class="tbl-frame floor"');
+    expect(framed).toContain('tabindex="0"');
+    expect(framed).toContain('role="region"');
+    expect(framed).toContain('aria-label="Staff, scrolls"');
+    expect(
+      renderToStaticMarkup(
+        <TableScroll label="x" flow>
+          x
+        </TableScroll>,
+      ),
+    ).toContain('class="tbl-frame floor flow"');
+  });
+});

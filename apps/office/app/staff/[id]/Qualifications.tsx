@@ -104,10 +104,10 @@ export function Qualifications({
             Not cleared at any client yet. A clean shift adds the first entry by itself.
           </div>
         ) : (
-          <TableScroll>
+          <TableScroll label="Client qualifications, scrolls sideways" flow>
             {/* `card-rows`: below 760px each entry is a card titled by the
                 client, every other cell naming its column. */}
-            <table className="tbl card-rows">
+            <table className="tbl card-rows qual-table">
               <thead>
                 <tr>
                   <th>Client</th>

@@ -7,7 +7,8 @@
 
 /* The body leaves room for the frosted footer the Continue button sits in. */
 .wizard .app-body {
-  padding-bottom: 150px; /* clearance for the sticky wizard footer, not a spacing step */
+  /* clearance for the sticky wizard footer, not a spacing step; plus the home bar */
+  padding-bottom: calc(150px + env(safe-area-inset-bottom));
 }
 
 /* 1/11 … 11/11 — the counter, the track, the heading (§10.3). */
@@ -59,7 +60,9 @@
   right: 0;
   bottom: 0;
   z-index: 3;
-  padding: var(--sp-12) var(--gutter-mobile) var(--sp-26);
+  /* The home bar sits under the button on an iPhone: keep 26 px, or the inset. */
+  padding: var(--sp-12) var(--gutter-mobile)
+    max(var(--sp-26), calc(var(--sp-12) + env(safe-area-inset-bottom)));
   background: var(--glass);
   backdrop-filter: blur(var(--blur)) saturate(140%);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
@@ -196,6 +199,11 @@
   bottom: var(--sp-8);
   display: flex;
   gap: var(--sp-6);
+}
+/* − and + are one glyph wide: give them a full 44 px square to press. */
+.pin-map .controls .btn {
+  min-width: var(--tap-min);
+  justify-content: center;
 }
 
 /* 3/11 — the viewfinder and the preview (square, as the avatar is). */

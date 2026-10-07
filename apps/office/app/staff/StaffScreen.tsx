@@ -240,7 +240,7 @@ export function StaffScreen({
           <div className="search">
             <input
               className="input"
-              style={{ height: 32, width: 240 }}
+              style={{ height: 32, width: 'min(100%, 22rem)' }}
               type="search"
               value={query}
               onChange={(event) => reset<string>(setQuery)(event.target.value)}
@@ -308,7 +308,17 @@ export function StaffScreen({
           ) : null}
 
           <Panel flush>
-            <div className="panel-b tight">
+            <div
+              className={shown.length === 0 ? 'panel-b tight' : 'tbl-frame floor'}
+              // The table scrolls inside its card; focusable so the arrow keys work.
+              {...(shown.length === 0
+                ? {}
+                : {
+                    tabIndex: 0,
+                    role: 'region',
+                    'aria-label': 'Staff, scrolls sideways and down',
+                  })}
+            >
               {shown.length === 0 ? (
                 <EmptyState>
                   <h3>No worker matches</h3>
@@ -322,7 +332,7 @@ export function StaffScreen({
                   works through: the last shift actually worked, the shifts
                   the leaving released (E8's list), and the P45 request.
                 */
-                <table className="tbl card-rows">
+                <table className="tbl card-rows staff-list">
                   <thead>
                     <tr>
                       {headPicker}
@@ -343,7 +353,7 @@ export function StaffScreen({
                   </tbody>
                 </table>
               ) : (
-                <table className="tbl card-rows">
+                <table className="tbl card-rows staff-list">
                   <thead>
                     <tr>
                       {headPicker}

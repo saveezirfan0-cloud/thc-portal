@@ -105,3 +105,36 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12);
 }
+
+/* ---- tables scroll inside `.tbl-frame` ----------------------------------
+ * The live monitor lists every shift on today's board: it keeps its header
+ * while the rows scroll, and a card narrower than the table scrolls it with
+ * the bar drawn. */
+.tbl.monitor-tbl {
+  min-width: 52rem;
+}
+.tbl.monitor-tbl :is(th, td):nth-child(1) {
+  min-width: 13rem;
+}
+.tbl.monitor-tbl :is(th, td):nth-child(2) {
+  min-width: 12rem;
+}
+.tbl.monitor-tbl td:nth-child(4) {
+  white-space: nowrap;
+}
+.tbl.violation-tbl {
+  min-width: 46rem;
+}
+.tbl.violation-tbl :is(th, td):nth-child(2) {
+  min-width: 14rem;
+}
+.tbl.violation-tbl td:nth-child(4),
+.tbl.violation-tbl td:last-child {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .tbl.monitor-tbl,
+  .tbl.violation-tbl {
+    min-width: 0;
+  }
+}
