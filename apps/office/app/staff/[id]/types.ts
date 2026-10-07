@@ -314,7 +314,7 @@ export interface ProfileData {
    */
   languages?: string[] | null;
   /**
-   * ADR-0094: the "Review interview on Willo" link, kept on the profile for
+   * ADR-0098: the "Review interview on Willo" link, kept on the profile for
    * good so the interview can always be referred to. Null = no interview
    * on file, Willo not configured, or removed (§1.7); undefined = not read.
    */
