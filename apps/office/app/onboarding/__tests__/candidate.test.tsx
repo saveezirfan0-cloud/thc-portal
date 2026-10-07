@@ -364,7 +364,7 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
         qualifications: [],
       }),
     );
-    expect(html).toContain('Add a client');
+    expect(html).toContain('Add clients');
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Not cleared at any client yet.');
   });
@@ -388,6 +388,54 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     );
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Remove');
+  });
+
+  it("collapses a client's entries to one line and offers no per-client role pick", () => {
+    const q = (id: string, role_id: string, role_name: string) => ({
+      id,
+      client_id: 'c1',
+      client_name: 'Grand Hotel',
+      role_id,
+      role_name,
+      do_not_return: false,
+    });
+    const html = render(
+      data({
+        roles,
+        clients: [
+          { id: 'c1', name: 'Grand Hotel' },
+          { id: 'c2', name: 'Town Hall' },
+        ],
+        qualifications: [q('q1', 'r1', 'Waiting Staff')],
+      }),
+    );
+    // One row for the client, not one per role.
+    expect(html.match(/class="cq-row"/g) ?? []).toHaveLength(1);
+    // The picker lists clients still to add, and says the roles come from the left.
+    expect(html).toContain('Town Hall');
+    expect(html).toContain('saved on the left');
+    expect(html).toContain('0 selected');
+  });
+
+  it('stops offering a client once it carries every role held', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [{ id: 'c1', name: 'Grand Hotel' }],
+        qualifications: [
+          {
+            id: 'q1',
+            client_id: 'c1',
+            client_name: 'Grand Hotel',
+            role_id: 'r1',
+            role_name: 'Waiting Staff',
+            do_not_return: false,
+          },
+        ],
+      }),
+    );
+    expect(html).toContain('Cleared at every client for all of their roles.');
+    expect(html).toContain('All 1 role');
   });
 
   it('asks for a role first when none is held', () => {

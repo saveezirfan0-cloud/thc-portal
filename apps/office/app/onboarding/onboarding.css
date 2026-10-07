@@ -414,3 +414,43 @@
   color: var(--cyan-ink);
   text-decoration: underline;
 }
+
+/* Client qualification on the Documents step: one line per client, and the
+   picker scrolls inside its own box so a long client list never lengthens the
+   page. */
+.cq-list,
+.cq-pick {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.cq-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-6) 0;
+  border-bottom: 1px solid var(--line);
+}
+.cq-row:last-child {
+  border-bottom: 0;
+}
+.cq-name {
+  flex: 0 1 auto;
+}
+.cq-roles {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.linklike {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--cyan);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+.linklike:disabled {
+  color: var(--muted);
+  cursor: default;
+}
