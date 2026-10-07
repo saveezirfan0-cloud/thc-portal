@@ -71,8 +71,8 @@ export default async function Page({
       }
     >
       <div className="stack">
-        {/* Fill moves as staff accept and the office books. */}
-        <AutoRefresh />
+        {/* Fill moves as staff accept and the office books: re-read every 15 s. */}
+        <AutoRefresh everyMs={15_000} />
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
