@@ -514,13 +514,38 @@ function CardTop({
   );
 }
 
+/** Roles a kanban card names before folding the rest into "+N". */
+export const CARD_ROLES_SHOWN = 2;
+
+/**
+ * The cut-off for a card's role chips. Someone approved for ten roles would
+ * otherwise turn a 184px card into a wall of chips, so a long list shows the
+ * first {@link CARD_ROLES_SHOWN} and a "+N" chip whose hover text names the
+ * rest (the profile has the full set). A list one over the limit shows in full:
+ * "+1" would save no room over the chip it hides.
+ */
+export function visibleRoles(roles: string[]): { shown: string[]; hidden: string[] } {
+  if (roles.length <= CARD_ROLES_SHOWN + 1) return { shown: roles, hidden: [] };
+  return { shown: roles.slice(0, CARD_ROLES_SHOWN), hidden: roles.slice(CARD_ROLES_SHOWN) };
+}
+
 function RoleChips({ roles, referred = false }: { roles: string[]; referred?: boolean }) {
   if (roles.length === 0 && !referred) return null;
+  const { shown, hidden } = visibleRoles(roles);
   return (
     <div className="chips">
-      {roles.map((role) => (
+      {shown.map((role) => (
         <Chip key={role}>{role}</Chip>
       ))}
+      {hidden.length > 0 ? (
+        <Chip
+          outline
+          title={hidden.join(', ')}
+          aria-label={`${hidden.length} more: ${hidden.join(', ')}`}
+        >
+          +{hidden.length}
+        </Chip>
+      ) : null}
       {referred ? <ReferredChip /> : null}
     </div>
   );
