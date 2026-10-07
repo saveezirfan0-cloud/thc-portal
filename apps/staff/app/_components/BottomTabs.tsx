@@ -61,7 +61,9 @@ export function BottomTabs({ tabs, active }: { tabs: Tab[]; active?: string }) {
             ) : null}
             <span className="l">
               {tab.label}
-              {tab.count ? <span className="n">{tab.count}</span> : null}
+              {/* A closed tab promises nothing behind it, so it carries no count
+                  (the badge also ran into the label: "Shifts4"). */}
+              {tab.count && !tab.locked ? <span className="n">{tab.count}</span> : null}
             </span>
           </>
         );

@@ -24,6 +24,22 @@
 }
 
 /*
+ * Checkboxes and radios: the drawn box is 18 px and the row was as tall as
+ * its text (20 px for "Yes" / "No" / "Plan 1"). The label is the target, so
+ * the row is --tap-min tall and the box sits in its middle; the transparent
+ * native input follows the box so the focus ring and the pointer agree.
+ */
+.check,
+.radio {
+  min-height: var(--tap-min);
+  align-items: center;
+}
+.check .check-input {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/*
  * Taps land first time. `manipulation` drops the browser's wait to see
  * whether a tap is the first half of a double-tap zoom (pinch-zoom stays,
  * for WCAG 1.4.4); on a touch screen the desktop hover lift and sheen are

@@ -9,6 +9,7 @@ import { BankForm } from './BankForm';
 import { EarningsCard } from './EarningsCard';
 import { formatMoney, paidShifts, paidThisMonth } from './earnings';
 import { payMonthLabel } from './pay-date';
+import '../../staff-app.css';
 import '../profile.css';
 
 export const dynamic = 'force-dynamic';

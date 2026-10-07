@@ -16,6 +16,35 @@
   display: inline-flex;
   line-height: 0;
   text-decoration: none;
+  /* The photo is drawn at 34 px and the tap is 44 (§1.2): the padding is
+     real hit area, given back in margin so the header does not grow. */
+  padding: var(--sp-6);
+  margin: calc(-1 * var(--sp-6));
+}
+/* "‹ Shifts" · "‹ Profile" under or above the title: a 14 px line of text
+   is the way out of the screen, so its box is padded to a 44 px tap and
+   the padding is given back in negative margin (as `.linkbtn` does in the
+   wizard). */
+.app-header :is(.sub, .title) a,
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-16) var(--sp-10);
+  margin: calc(-1 * var(--sp-16)) calc(-1 * var(--sp-10));
+}
+/* Documents' "‹ Profile" / "‹ Documents": its own line above the title (it
+   sat inline, so the header read "‹ ProfileDocuments"). Shared with the
+   onboarding completion-letter screen, hence here and not in documents.css. */
+.back-link,
+.app-header :is(.sub, .title) a.back-link {
+  display: flex;
+  width: fit-content;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  color: var(--cyan-ink);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  font-weight: var(--label-weight);
 }
 
 /* The install screen's numbered steps (wireframes/staff/auth.html). */
@@ -28,6 +57,13 @@
   display: flex;
   gap: var(--sp-10);
   align-items: flex-start;
+}
+.steps .step > .pill {
+  flex: 0 0 var(--sp-22);
+  width: var(--sp-22);
+  height: var(--sp-22);
+  padding: 0;
+  justify-content: center;
 }
 .steps .step .t {
   font-size: var(--fs-13);
@@ -94,6 +130,18 @@
 }
 .bottom-nav .ico svg {
   display: block;
+}
+/*
+ * The home bar (§10.1, iOS standalone): the nav keeps its 28 px below the
+ * labels, or the inset when that is larger, and the body leaves room for
+ * the bar PLUS the inset so the last item always clears it. A screen that
+ * centres its content (a lock) leaves the same room when the bar is drawn.
+ */
+.app-frame > .bottom-nav {
+  padding-bottom: max(var(--sp-28), calc(var(--sp-10) + env(safe-area-inset-bottom)));
+}
+.app-frame:has(> .bottom-nav) > .app-body {
+  padding-bottom: calc(var(--sp-56) + var(--sp-44) + env(safe-area-inset-bottom));
 }
 
 /*

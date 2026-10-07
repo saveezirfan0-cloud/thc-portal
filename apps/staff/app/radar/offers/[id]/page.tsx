@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Pill } from '@thc/ui';
-import { formatDistance, formatHours, sectionHours } from '@thc/domain';
+import { UK_ZONE, formatDateIn, formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { LoadProblem } from '../../../_components/LoadProblem';
 import { StaffShell } from '../../../_components/StaffShell';
 import { ShiftTime } from '../../../_components/ShiftTime';
@@ -71,7 +71,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="card-head">
         <Pill tone="cyan">{UP_FOR_GRABS}</Pill>
         <span className="km">{formatDistance(offer.distanceKm)}</span>
-        <span className="right mono sm muted">{offer.eventDate}</span>
+        <span className="right mono sm muted">
+          {formatDateIn(offer.startsAt, UK_ZONE, { weekday: 'short', month: 'short' })}
+        </span>
       </div>
 
       <div className="card-head">

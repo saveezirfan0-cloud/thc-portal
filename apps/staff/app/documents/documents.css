@@ -110,19 +110,7 @@
   background: var(--accent);
 }
 
-/* Sub-screens: "‹ Documents" above the title. */
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-min);
-  font-family: var(--font-label);
-  font-size: var(--fs-10);
-  color: var(--cyan-ink);
-  letter-spacing: var(--label-track);
-  text-transform: var(--label-case);
-  margin-bottom: 1px;
-  font-weight: var(--label-weight);
-}
+/* Sub-screens: "‹ Documents" above the title — `.back-link` lives in chrome.css. */
 
 .docs-form {
   display: flex;
@@ -136,6 +124,22 @@
 }
 .docs-form .file-pick input[type='file'] {
   font-size: var(--fs-12);
+}
+/* The browser's grey "Choose File" button, drawn as the app's outline button
+   (a 44 px pill, the cyan ink on the ground) so the picker reads as part of
+   the form and is a real touch target. */
+.docs-form .file-pick input[type='file']::file-selector-button {
+  min-height: var(--tap-min);
+  margin-right: var(--sp-12);
+  padding: 0 var(--sp-16);
+  border: 1px solid var(--cyan-line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--cyan-ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-13);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .optout-text {
