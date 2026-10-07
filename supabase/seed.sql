@@ -421,6 +421,13 @@ on conflict (id) do update set
   expiry_date = excluded.expiry_date, review_status = excluded.review_status,
   needs_manual_review = excluded.needs_manual_review, ai_confidence = excluded.ai_confidence;
 
+-- A verified term letter carries the ranges it was verified with (verify copies
+-- them onto the worker too), and the letter expires on the last of them
+-- (ADR-0103) — here 19.09.2027, so the Radar shows a letter that is in date.
+update compliance_docs
+   set term_dates = (select s.term_dates from staff s where s.id = compliance_docs.staff_id)
+ where id = '62000000-0000-4000-8000-000000000004';
+
 -- Criminal declarations: "No" is auto-verified at onboarding (§2.9).
 insert into criminal_declarations (id, staff_id, source, answer, review_status)
 select ('63000000-0000-4000-8000-0000000000' || lpad(row_number() over (order by s.employee_id)::text, 2, '0'))::uuid,

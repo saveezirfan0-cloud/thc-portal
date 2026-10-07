@@ -185,8 +185,8 @@ export function daysBetween(fromIso: string, toIso: string): number {
 
 /**
  * Which of §4.4's states a row is in. `expiresOn` is `doc_expires_on()`'s
- * answer, not the printed date, so a term letter reads 31 December whatever
- * it says. A verified row expires ON its expiry day — that is the day N4
+ * answer, not the date typed on the row, so a term letter reads the last
+ * day printed on it (ADR-0103). A verified row expires ON its expiry day — that is the day N4
  * fires and the block lands (§4.3), matching `compliance_blockers()`'s
  * `expires_on <= today`.
  */
@@ -238,9 +238,10 @@ export type TermLetterDatesVerdict =
  * §4.2: "The AI must verify that the dates found in the document are in the
  * future, not the past — an already-expired letter is not accepted."
  *
- * The letter is judged on ITS OWN dates, not on `doc_expires_on()`'s 31
- * December (which is about reminders and the block, ADR-0011): a letter for
- * a year that has already finished says nothing about this one. The rule is
+ * The letter is judged on ITS OWN dates. Since ADR-0103 those same dates give
+ * it its expiry (`termLetterExpiresOn`), so this is the "already past" end of
+ * one rule: a letter for a year that has already finished says nothing about
+ * this one. The rule is
  * about ALL the ranges — a letter whose Christmas holiday is past but whose
  * Easter and summer are still to come is current. Empty or absent ranges
  * are `no_dates`, not `expired`: the extractor is deferred (ADR-0014) and
@@ -269,4 +270,54 @@ export function termLetterExpired(
   ranges: readonly TermRange[] | null | undefined,
 ): boolean {
   return termLetterDatesVerdict(today, ranges) === 'expired';
+}
+
+// ---------------------------------------------------------------------
+// §4.2 · When a term letter expires (ADR-0103, superseding ADR-0011)
+// ---------------------------------------------------------------------
+
+/**
+ * The last day printed on the letter — the latest end of its date ranges,
+ * inclusive — or `null` when no dates could be read. A range typed
+ * backwards counts by its later end, as in `termLetterDatesVerdict`.
+ *
+ * Mirrors `term_letter_last_day(daterange[])`, which reads `upper(range) - 1`
+ * off the half-open ranges Postgres stores.
+ */
+export function termLetterLastDay(ranges: readonly TermRange[] | null | undefined): string | null {
+  if (!ranges || ranges.length === 0) return null;
+  let last: string | null = null;
+  for (const range of ranges) {
+    const end = range.to >= range.from ? range.to : range.from;
+    if (last === null || end > last) last = end;
+  }
+  return last;
+}
+
+/**
+ * ADR-0011's calendar rule, now only the fallback for a letter with no
+ * readable dates: 31 December of the year it was uploaded, the following
+ * one if uploaded in November or December. `uploadedOn` is the UK-local
+ * ISO date of the upload.
+ */
+export function termLetterFallbackExpiry(uploadedOn: string): string {
+  const year = Number(uploadedOn.slice(0, 4));
+  const month = Number(uploadedOn.slice(5, 7));
+  return `${month >= 11 ? year + 1 : year}-12-31`;
+}
+
+/**
+ * §4.2 / ADR-0103: a University Term Dates Letter expires on the last day
+ * printed on it, so the reminders (a month out, two weeks, one week, the
+ * day), the block and the Radar all count down to the end of what the
+ * letter actually covers. With no readable dates it falls back to the
+ * calendar rule, so there is always an expiry to enforce.
+ *
+ * Mirrors `doc_expires_on()` for `university_term_dates_letter`.
+ */
+export function termLetterExpiresOn(
+  ranges: readonly TermRange[] | null | undefined,
+  uploadedOn: string,
+): string {
+  return termLetterLastDay(ranges) ?? termLetterFallbackExpiry(uploadedOn);
 }
