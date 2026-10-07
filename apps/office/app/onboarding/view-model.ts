@@ -649,8 +649,9 @@ function appliedWithin(appliedAt: string, applied: AppliedFilter, now: Date): bo
  * The six columns for one toggle position. Rejected cards are hidden by
  * default and reachable through the toggle (§2.2); returning-applicant
  * cards belong to Interview requested and to the Active view only (§2.12).
- * Within a column the longest-waiting card comes first, because that is
- * the one the office is behind on.
+ * Within a column the newest card comes first — the one that arrived in
+ * the stage most recently, by the same instant the card's "N d" counts
+ * from. On Rejected it is the most recently rejected.
  */
 export function boardColumns(
   candidates: readonly CandidateRow[],
@@ -716,7 +717,7 @@ export function boardColumns(
       .sort((a, b) =>
         q.filter === 'rejected'
           ? (b.rejected_at ?? '').localeCompare(a.rejected_at ?? '')
-          : a.stage_entered_at.localeCompare(b.stage_entered_at),
+          : stageEnteredAt(b, column.key).localeCompare(stageEnteredAt(a, column.key)),
       );
     const back = column.key === 'interview_requested' ? cards : [];
     return {

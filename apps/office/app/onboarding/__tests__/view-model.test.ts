@@ -305,7 +305,7 @@ describe('the board', () => {
     const columns = boardColumns(rows, returning, q);
     const first = columns[0]!;
     expect(first.returning.map((r) => r.application_id)).toEqual(['app-1']);
-    expect(first.candidates.map((r) => r.id)).toEqual(['b', 'a']); // longest waiting first
+    expect(first.candidates.map((r) => r.id)).toEqual(['a', 'b']); // newest in the stage first
     expect(first.count).toBe(3);
     expect(columns.flatMap((c) => c.candidates).some((r) => r.status === 'rejected')).toBe(false);
   });
