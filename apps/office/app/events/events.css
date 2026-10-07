@@ -164,6 +164,19 @@
   color: var(--green-ink);
 }
 
+/* Client and venue each keep to one line: a long client name such as
+   "Leonardo Hotel St Paul's - M&E" would otherwise wrap and make the row
+   taller than its neighbours. Past the cap, or the width of the cell or
+   card, it ends in an ellipsis; the full name is in the title attribute. */
+.tbl .ev-clip,
+.dayrow .ev-clip {
+  display: block;
+  max-width: min(36ch, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- day: one wide row per event ------------------------------------ */
 .dayrow {
   display: grid;
