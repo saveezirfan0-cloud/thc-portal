@@ -243,7 +243,7 @@ describe('the candidate profile, Documents phase', () => {
   });
 });
 
-describe('the candidate profile · profile selfie (ADR-0096)', () => {
+describe('the candidate profile · profile selfie (ADR-0097)', () => {
   const withPhoto = (over: Partial<CandidateRow> = {}) =>
     data({
       candidate: { ...ROW, photo_path: 'c-1/selfie.jpg', ...over } as CandidateRow,

@@ -1,6 +1,6 @@
 -- =====================================================================
--- 776 · The office can reject a profile selfie
---       20261007100000 · ADR-0096 (§10.1, §10.3 3/11, §2.7)
+-- 777 · The office can reject a profile selfie
+--       20261007110000 · ADR-0097 (§10.1, §10.3 3/11, §2.7)
 --
 --   A. Shape: a definer with a pinned search_path, not for anon / PUBLIC.
 --   B. Rejecting: the photo comes down, the lock goes with it, the wizard's

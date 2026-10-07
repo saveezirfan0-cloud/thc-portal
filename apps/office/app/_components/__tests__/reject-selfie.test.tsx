@@ -6,7 +6,7 @@ vi.mock('../../staff/[id]/actions', () => ({ rejectSelfie: vi.fn() }));
 
 const { RejectSelfie } = await import('../RejectSelfie');
 
-/** ADR-0096: the "Profile selfie" row's one action. */
+/** ADR-0097: the "Profile selfie" row's one action. */
 describe('RejectSelfie', () => {
   it('is a Reject button, and nothing else until it is pressed', () => {
     const html = renderToStaticMarkup(<RejectSelfie staffId="s1" name="Amara Okafor" />);

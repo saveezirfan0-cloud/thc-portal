@@ -1,4 +1,4 @@
-# ADR-0096 · The office can reject a profile selfie
+# ADR-0097 · The office can reject a profile selfie
 
 **Status:** Proposed — awaiting THC · **Refines:** §10.1, §10.3 (3/11), §2.7 · **Builds on:** ADR-0045
 

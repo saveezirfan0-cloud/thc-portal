@@ -485,7 +485,7 @@ employment.
 
 **Where:** §8, `packages/notifications` (`ADDITION_CODES`).
 
-**Default:** RC1–RC4 (Request a change) and RC5 (the office rejects a profile selfie, ADR-0096) and OF1–OF6 (Offer up a shift) are drafts written
+**Default:** RC1–RC4 (Request a change) and RC5 (the office rejects a profile selfie, ADR-0097) and OF1–OF6 (Offer up a shift) are drafts written
 to match the §8 register's tone; the copy is in `docs/19` §3 and §4.
 
 > **Ask:** please confirm or rewrite RC1–RC5 and OF1–OF6, as you did for §8.
