@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -373,11 +373,12 @@ export function CandidateScreen({
             row={row}
             data={data}
             doc={doc}
-            onToggleRole={(roleId, on) =>
-              run(() =>
-                on ? addQualifiedRole(row.id, roleId) : removeQualifiedRole(row.id, roleId),
-              )
+            onSaveRole={(roleId, on) =>
+              on
+                ? addQualifiedRole(row.id, roleId, false)
+                : removeQualifiedRole(row.id, roleId, false)
             }
+            onRolesSaved={() => start(() => router.refresh())}
             onGrantClients={(clientIds, roleIds, after) =>
               run(() => grantClientQualifications(row.id, clientIds, roleIds), after)
             }
@@ -1591,7 +1592,8 @@ function RolesAndClients({
   data,
   readOnly,
   busy,
-  onToggleRole,
+  onSaveRole,
+  onRolesSaved,
   onGrantClients,
   onRevokeClients,
 }: {
@@ -1599,41 +1601,80 @@ function RolesAndClients({
   data: CandidateData;
   readOnly: boolean;
   busy: boolean;
-  onToggleRole: (roleId: string, on: boolean) => void;
+  onSaveRole: (roleId: string, on: boolean) => Promise<ActionResult>;
+  onRolesSaved: () => void;
   onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
   onRevokeClients: (ids: string[]) => void;
 }) {
+  // A tick shows at once and saves in the background, one at a time and in the
+  // order ticked, with a single page refresh once the last one has landed. The
+  // server's list only replaces ours when nothing is still on its way, so a
+  // refresh that started before the last tick cannot untick it.
+  const [roleIds, setRoleIds] = useState<string[]>(row.role_ids);
+  const [saving, setSaving] = useState(0);
+  const [saveProblem, setSaveProblem] = useState<string | null>(null);
+  const inflight = useRef(0);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    if (inflight.current === 0) setRoleIds(row.role_ids);
+  }, [row.role_ids]);
+
+  const toggleRole = (id: string) => {
+    const on = !roleIds.includes(id);
+    setSaveProblem(null);
+    setRoleIds((current) => (on ? [...current, id] : current.filter((r) => r !== id)));
+    inflight.current += 1;
+    setSaving(inflight.current);
+    queue.current = queue.current.then(async () => {
+      let result: ActionResult;
+      try {
+        result = await onSaveRole(id, on);
+      } catch {
+        result = { ok: false, message: 'Something went wrong on the server. Try again.' };
+      }
+      if (!result.ok) {
+        setSaveProblem(result.message);
+        setRoleIds((current) => (on ? current.filter((r) => r !== id) : [...current, id]));
+      }
+      inflight.current -= 1;
+      setSaving(inflight.current);
+      if (inflight.current === 0) onRolesSaved();
+    });
+  };
+
   // §9.6: a client entry names one of the roles the person already holds.
-  const held = data.roles.filter((role) => row.role_ids.includes(role.id));
+  const held = data.roles.filter((role) => roleIds.includes(role.id));
 
   return (
     <div className="grid c2">
       <Panel
         title="Qualified role type(s)"
         actions={
-          row.role_ids.length === 0 ? (
+          roleIds.length === 0 ? (
             <Pill tone="amber">none yet</Pill>
           ) : (
-            <Pill tone="green">{row.role_ids.length} selected</Pill>
+            <Pill tone="green">{roleIds.length} selected</Pill>
           )
         }
       >
         <div className="stack">
           <div className="sm muted">
-            {row.role_ids.length === 0
+            {roleIds.length === 0
               ? 'Pick the role(s) the candidate is qualified for — without one they receive no invitations later. '
               : ''}
             Tick as many as apply; each tick saves straight away. Editable later on the staff
             profile.
           </div>
+          {saveProblem ? <Alert tone="coral">{saveProblem}</Alert> : null}
           {data.roles.length === 0 ? (
             <EmptyState>No roles exist yet — add them under Roles.</EmptyState>
           ) : (
             <RoleGroups
               roles={data.roles}
-              picked={row.role_ids}
-              disabled={readOnly || busy}
-              onToggle={(id) => onToggleRole(id, !row.role_ids.includes(id))}
+              picked={roleIds}
+              disabled={readOnly}
+              onToggle={toggleRole}
             />
           )}
           <Note>
@@ -1648,7 +1689,7 @@ function RolesAndClients({
         clients={data.clients ?? []}
         qualifications={data.qualifications ?? []}
         readOnly={readOnly}
-        busy={busy}
+        busy={busy || saving > 0}
         onGrant={onGrantClients}
         onRevoke={onRevokeClients}
       />
@@ -1887,7 +1928,8 @@ function DocumentsPhase({
   row,
   data,
   doc,
-  onToggleRole,
+  onSaveRole,
+  onRolesSaved,
   onGrantClients,
   onRevokeClients,
   onVerifyDeclaration,
@@ -1896,7 +1938,8 @@ function DocumentsPhase({
   row: CandidateRow;
   data: CandidateData;
   doc: DocHandlers;
-  onToggleRole: (roleId: string, on: boolean) => void;
+  onSaveRole: (roleId: string, on: boolean) => Promise<ActionResult>;
+  onRolesSaved: () => void;
   onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
   onRevokeClients: (ids: string[]) => void;
   onVerifyDeclaration: (d: Declaration) => void;
@@ -1933,7 +1976,8 @@ function DocumentsPhase({
         data={data}
         readOnly={doc.qualificationsLocked}
         busy={doc.busy}
-        onToggleRole={onToggleRole}
+        onSaveRole={onSaveRole}
+        onRolesSaved={onRolesSaved}
         onGrantClients={onGrantClients}
         onRevokeClients={onRevokeClients}
       />

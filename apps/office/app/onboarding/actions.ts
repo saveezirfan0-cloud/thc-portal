@@ -257,13 +257,35 @@ export async function markInterviewComplete(
 }
 
 /** §2.4 / §9.6: a role picked after Willo accepted the candidate by itself. */
-export async function addQualifiedRole(staffId: string, roleId: string): Promise<ActionResult> {
-  return call('add_staff_role', { p_staff: staffId, p_role: roleId }, paths(staffId));
+export async function addQualifiedRole(
+  staffId: string,
+  roleId: string,
+  revalidate = true,
+): Promise<ActionResult> {
+  return call(
+    'add_staff_role',
+    { p_staff: staffId, p_role: roleId },
+    revalidate ? paths(staffId) : [],
+  );
 }
 
-/** §9.6: take a role back off a candidate (also removes the client entries that named it). */
-export async function removeQualifiedRole(staffId: string, roleId: string): Promise<ActionResult> {
-  return call('remove_staff_role', { p_staff: staffId, p_role: roleId }, paths(staffId));
+/**
+ * §9.6: take a role back off a candidate (also removes the client entries that named it).
+ *
+ * `revalidate: false` skips the server-side re-render of the page that comes back
+ * with every action that revalidates: the candidate screen ticks several roles in
+ * a row and refreshes once when the last one has saved.
+ */
+export async function removeQualifiedRole(
+  staffId: string,
+  roleId: string,
+  revalidate = true,
+): Promise<ActionResult> {
+  return call(
+    'remove_staff_role',
+    { p_staff: staffId, p_role: roleId },
+    revalidate ? paths(staffId) : [],
+  );
 }
 
 /** §9.6: clear the candidate at a client for one of the roles they hold. */
