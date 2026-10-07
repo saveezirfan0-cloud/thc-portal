@@ -263,16 +263,6 @@
   margin-bottom: var(--sp-8);
 }
 
-.cq-roles .check {
-  padding: var(--sp-4) var(--sp-10);
-  border: 1px solid var(--line);
-  background: var(--bg);
-  border-radius: var(--r-tile);
-}
-.cq-roles .check.sel {
-  border-color: var(--cyan);
-  background: var(--cyan-dim);
-}
 .cq-pick,
 .cq-list {
   max-height: 280px;
