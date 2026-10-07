@@ -136,3 +136,38 @@ export function TabLockedScreen({
     </>
   );
 }
+
+/**
+ * Lock case 6 — SpudBros Express staff, shifts on Connecteam (ADR-0103).
+ *
+ * Nothing is wrong, so this is information, not a warning: the app is for
+ * their onboarding, and the three shift tabs are not theirs. The wording is
+ * the email they were sent ("Your shifts stay on Connecteam"). The one
+ * thing they can do here — keep their documents and details up to date —
+ * is under Profile.
+ */
+export function ConnecteamLockedScreen() {
+  return (
+    <>
+      <Alert tone="cyan">
+        <b>Your shifts stay on Connecteam.</b>
+        <br />
+        <span className="xs">
+          Our Staff App is for your onboarding only. Keep using Connecteam for your shifts, shift
+          changes and messages about your work.
+        </span>
+      </Alert>
+      <div className="static-screen">
+        <h2>Shifts, Invites and Radar aren’t part of your account</h2>
+        <p>
+          You’re set up as SpudBros Express staff, so your scheduling is on Connecteam. Your
+          documents and details are under Profile — we’ll tell you here if we ever need anything
+          again.
+        </p>
+        <Link className="btn primary block" href="/profile">
+          Go to Profile
+        </Link>
+      </div>
+    </>
+  );
+}

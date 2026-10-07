@@ -4,11 +4,18 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button } from '@thc/ui';
 import { finishTutorial } from '../actions';
-import { TUTORIAL_CARDS } from '../content/tutorial';
+import { SPUDBROS_TUTORIAL_CARDS, TUTORIAL_CARDS } from '../content/tutorial';
 import { WizardFoot, WizardTop } from './Wizard';
 
 /** 11/11 How it works — §10.3, wireframes/staff/onboarding-3.html. */
-export function TutorialStep({ firstName }: { firstName: string }) {
+export function TutorialStep({
+  firstName,
+  onboardingOnly = false,
+}: {
+  firstName: string;
+  /** ADR-0103: SpudBros Express staff, shifts on Connecteam — their own three cards. */
+  onboardingOnly?: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -18,14 +25,15 @@ export function TutorialStep({ firstName }: { firstName: string }) {
     start(async () => {
       const result = await finishTutorial();
       if (!result.ok) setError(result.message);
-      else router.push('/shifts');
+      // An onboarding-only worker has no Shifts: Profile is where they land.
+      else router.push(onboardingOnly ? '/profile' : '/shifts');
     });
   }
 
   return (
     <>
       <WizardTop step={11} heading={`You’re nearly there, ${firstName}`} />
-      {TUTORIAL_CARDS.map((card, i) => (
+      {(onboardingOnly ? SPUDBROS_TUTORIAL_CARDS : TUTORIAL_CARDS).map((card, i) => (
         <div className="tut" key={card.title}>
           <span className="ic">{i + 1}</span>
           <div className="t">{card.title}</div>

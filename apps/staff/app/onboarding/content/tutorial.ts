@@ -22,3 +22,25 @@ export const TUTORIAL_CARDS = [
     body: 'Check-in only works within the venue’s radius and locks 30 min after the start. You’re paid the Friday after the week you worked.',
   },
 ] as const;
+
+/**
+ * 11/11 for SpudBros Express staff whose shifts stay on Connecteam
+ * (ADR-0103). The four cards above describe THC's invitations, the 12:00
+ * "I'm ready" and check-in — none of which this worker will ever meet, and
+ * telling them otherwise would be the one promise this app must not make.
+ * The words are the onboarding email's.
+ */
+export const SPUDBROS_TUTORIAL_CARDS = [
+  {
+    title: 'Your onboarding is almost done',
+    body: 'Once the office has verified your documents, your onboarding with us is complete. You can see each document’s status under Profile → Documents.',
+  },
+  {
+    title: 'We’ll tell you if we need anything again',
+    body: 'If a document needs another look, the app tells you why and lets you re-upload straight away. Allow notifications so you hear about it at once.',
+  },
+  {
+    title: 'Your shifts stay on Connecteam',
+    body: 'Our Staff App is for your onboarding only. You won’t be offered or scheduled SpudBros Express shifts through it — keep using Connecteam for your shifts, shift changes and messages about your work.',
+  },
+] as const;

@@ -5,8 +5,16 @@ import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
 import { DialCodePicker } from './DialCodePicker';
 import { DobInput } from './DobInput';
-import { INITIAL_STATE, REFERRAL_FIELD, ageOn, errorBanner, parseDob, validate } from './form';
-import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
+import {
+  INITIAL_STATE,
+  REFERRAL_FIELD,
+  SOURCE_FIELD,
+  ageOn,
+  errorBanner,
+  parseDob,
+  validate,
+} from './form';
+import type { ApplicationField, ApplicationValues, ApplySource, FieldErrors } from './form';
 
 /**
  * The public application form (§2.1), matching
@@ -17,8 +25,16 @@ import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
  * `referralCode` (ADR-0047, `wireframes/staff/refer.html` "/apply?ref="):
  * already shape-checked by the page, carried in a hidden field and nowhere
  * else. The form reads exactly the same with or without it.
+ *
+ * `source` (ADR-0103): `/apply/spudbros` marks the application as SpudBros
+ * Express staff's onboarding. It rides in a hidden field like the code and
+ * is the same form otherwise — only the page around it and the database's
+ * answer differ.
  */
-export function ApplyForm({ referralCode = null }: { referralCode?: string | null } = {}) {
+export function ApplyForm({
+  referralCode = null,
+  source = null,
+}: { referralCode?: string | null; source?: ApplySource | null } = {}) {
   const [state, formAction, pending] = useActionState(apply, INITIAL_STATE);
   const [values, setValues] = useState<ApplicationValues>(state.values);
   const [touched, setTouched] = useState(false);
@@ -72,6 +88,7 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
       noValidate
     >
       {referralCode ? <input type="hidden" name={REFERRAL_FIELD} value={referralCode} /> : null}
+      {source ? <input type="hidden" name={SOURCE_FIELD} value={source} /> : null}
 
       <p className="lead">
         Two minutes. Straight after you submit, you&apos;ll get an email with a link to a short

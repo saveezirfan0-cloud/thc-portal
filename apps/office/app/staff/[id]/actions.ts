@@ -318,6 +318,35 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
 }
 
 // ---------------------------------------------------------------------
+// Scheduling (ADR-0103) — set_staff_scheduling. SpudBros Express staff do
+// their onboarding with THC and nothing else (shifts stay on Connecteam);
+// the office switches THC shifts on for the few who also work ours.
+// ---------------------------------------------------------------------
+const SCHEDULING_MESSAGES: Readonly<Record<string, string>> = {
+  has_upcoming_shifts:
+    'This worker still has an upcoming invitation or booking. Cancel or move it first, then mark them as onboarding only.',
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  not_authorised: 'Only the office can do this.',
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function saveScheduling(
+  staffId: string,
+  spudbros: boolean,
+  thcShifts: boolean,
+): Promise<ActionResult> {
+  const result = await callRpc(
+    'set_staff_scheduling',
+    { p_staff: staffId, p_spudbros: spudbros, p_thc_shifts: thcShifts },
+    staffId,
+  );
+  return result.ok
+    ? result
+    : { ok: false, message: SCHEDULING_MESSAGES[result.message] ?? result.message };
+}
+
+// ---------------------------------------------------------------------
 // Languages (ADR-0080) — set_staff_languages. The worker gives them on
 // onboarding step 2; the office records them for anyone never asked, so an
 // event that needs another language can book them. English is always in.

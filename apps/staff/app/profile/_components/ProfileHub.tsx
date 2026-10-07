@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Avatar, Pill, SignOut } from '@thc/ui';
 import type { Tone } from '@thc/ui';
 import { appLock, canReachPayments, canReachProfileDetails, p45Availability } from '../lock';
-import { HELP_EMAIL } from '../types';
+import { CONNECTEAM_LABEL, HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
 import { expiryLine } from '../document-expiry';
 import type { ExpiringDocument } from '../document-expiry';
@@ -100,6 +100,11 @@ export function ProfileHub({
               ) : null}
               {profile.reliability !== null ? (
                 <Pill>Show-rate {Math.round(profile.reliability)}%</Pill>
+              ) : null}
+              {/* ADR-0103: said where they look for who they are. */}
+              {profile.onboardingOnly ? <Pill tone="cyan">{CONNECTEAM_LABEL}</Pill> : null}
+              {profile.spudbros && !profile.onboardingOnly ? (
+                <Pill tone="cyan">SpudBros Express</Pill>
               ) : null}
             </div>
           </div>

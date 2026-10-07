@@ -307,6 +307,13 @@ export interface ProfileData {
    */
   gender?: 'M' | 'F' | null;
   /**
+   * `staff.spudbros_express` / `staff.thc_shifts_enabled` (ADR-0103):
+   * SpudBros Express staff, and whether THC scheduling is switched on for
+   * them. Undefined = not read.
+   */
+  spudbros?: boolean;
+  thcShifts?: boolean;
+  /**
    * `staff.languages` — every language the worker speaks, English always in
    * it, given on onboarding step 2. ADR-0080: an event that needs another
    * language books only speakers of it. Null = never asked; undefined = not

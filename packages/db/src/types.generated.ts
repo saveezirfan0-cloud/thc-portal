@@ -4207,9 +4207,11 @@ export type Database = {
           right_to_work_until: string | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
           share_code: string | null;
+          spudbros_express: boolean;
           stage_entered_at: string;
           status: Database['public']['Enums']['staff_status'];
           term_dates: unknown[];
+          thc_shifts_enabled: boolean;
           user_id: string | null;
           visa_weekly_hour_limit: number | null;
           willo_answers_done: number | null;
@@ -4268,9 +4270,11 @@ export type Database = {
           right_to_work_until?: string | null;
           rtw_branch?: Database['public']['Enums']['rtw_branch'] | null;
           share_code?: string | null;
+          spudbros_express?: boolean;
           stage_entered_at?: string;
           status?: Database['public']['Enums']['staff_status'];
           term_dates?: unknown[];
+          thc_shifts_enabled?: boolean;
           user_id?: string | null;
           visa_weekly_hour_limit?: number | null;
           willo_answers_done?: number | null;
@@ -4329,9 +4333,11 @@ export type Database = {
           right_to_work_until?: string | null;
           rtw_branch?: Database['public']['Enums']['rtw_branch'] | null;
           share_code?: string | null;
+          spudbros_express?: boolean;
           stage_entered_at?: string;
           status?: Database['public']['Enums']['staff_status'];
           term_dates?: unknown[];
+          thc_shifts_enabled?: boolean;
           user_id?: string | null;
           visa_weekly_hour_limit?: number | null;
           willo_answers_done?: number | null;
@@ -10323,6 +10329,10 @@ export type Database = {
         Args: { p_pay_rate: number; p_staff: string };
         Returns: undefined;
       };
+      set_staff_scheduling: {
+        Args: { p_spudbros: boolean; p_staff: string; p_thc_shifts: boolean };
+        Returns: Json;
+      };
       shift_base_pay: {
         Args: { p_payable_min: number; p_rate: number };
         Returns: number;
@@ -11033,6 +11043,10 @@ export type Database = {
         }[];
       };
       staff_me: { Args: never; Returns: Json };
+      staff_onboarding_only: {
+        Args: { p_staff: string };
+        Returns: boolean;
+      };
       staff_open_offers: {
         Args: { p_offer?: string };
         Returns: {
@@ -11187,6 +11201,7 @@ export type Database = {
           p_last_name: string;
           p_phone: string;
           p_referral_code?: string;
+          p_source?: string;
         };
         Returns: undefined;
       };

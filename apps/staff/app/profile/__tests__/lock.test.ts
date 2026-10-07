@@ -12,7 +12,7 @@ import type { StaffProfile } from '../types';
 
 type LockInput = Pick<
   StaffProfile,
-  'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause'
+  'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause' | 'onboardingOnly'
 > & {
   checkedIn: boolean;
 };
@@ -23,6 +23,7 @@ const base: LockInput = {
   quizAttempts: 0,
   blockers: [],
   rejectionCause: null,
+  onboardingOnly: false,
   checkedIn: false,
 };
 
@@ -217,5 +218,46 @@ describe('appLock — which rejection (§2.9 quiz vs §2.3 manager / Willo)', ()
     expect(appLock(worker({ status: 'rejected', quizAttempts: 1, rejectionCause: null }))).toBe(
       'rejected',
     );
+  });
+});
+
+describe('appLock — SpudBros Express staff, shifts on Connecteam (ADR-0103)', () => {
+  it('closes Shifts, Invites and Radar and keeps Profile', () => {
+    const lock = appLock(worker({ onboardingOnly: true }));
+    expect(lock).toBe('connecteam');
+    expect(reachableTabs(lock)).toEqual(['/profile']);
+    // They keep the nav (Profile is lit, the other three are greyed out),
+    // their details and their payment information.
+    expect(showsBottomNav(lock)).toBe(true);
+    expect(canReachProfileDetails(lock)).toBe(true);
+    expect(canReachPayments(lock)).toBe(true);
+  });
+
+  it('is lifted when THC shifts are switched on (staff_me() says onboardingOnly: false)', () => {
+    expect(appLock(worker({ onboardingOnly: false }))).toBe('none');
+  });
+
+  it('ranks below a lapsed document: an expired passport is still theirs to fix', () => {
+    expect(appLock(worker({ onboardingOnly: true, blockers: ['document_expired:passport'] }))).toBe(
+      'documents',
+    );
+  });
+
+  it('never outranks a block, a rejection, a leaver or the wizard', () => {
+    expect(appLock(worker({ onboardingOnly: true, status: 'blocked', blockKind: 'manual' }))).toBe(
+      'hold',
+    );
+    expect(appLock(worker({ onboardingOnly: true, status: 'rejected' }))).toBe('rejected');
+    expect(appLock(worker({ onboardingOnly: true, status: 'inactive' }))).toBe('leaver');
+    expect(appLock(worker({ onboardingOnly: true, status: 'contract' }))).toBe('onboarding');
+  });
+
+  it('a profile from an older staff_me() (no onboardingOnly) is an ordinary worker', () => {
+    const { onboardingOnly: _omitted, ...older } = worker();
+    expect(appLock(older)).toBe('none');
+  });
+
+  it('can still request a P45 — nothing about the rule closes it', () => {
+    expect(p45Availability(worker({ onboardingOnly: true }))).toEqual({ available: true });
   });
 });

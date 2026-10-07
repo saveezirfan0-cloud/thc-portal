@@ -6,6 +6,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | Route | Screen | Wireframe | § | Bot |
 |---|---|---|---|---|
 | `/apply` | Application form | `public/apply.html` | 2.1, 2.12 | onboarding |
+| `/apply/spudbros` | SpudBros Express application (ADR-0103: same form, marks the candidate onboarding-only) | `public/apply.html` | 2.1, 2.12 | onboarding |
 | `/apply/submitted` | Check your inbox | `public/apply.html#state=submitted` | 2.7 | onboarding |
 | `/activate`, `/activate/:token`, `/activate/done` | Set password → Activated → Install the app | `public/activate.html` | 2.7 | onboarding, staff-pwa |
 | `/privacy` | Privacy notice (placeholder until THC's legal text) | — | 1.7 | design-system |
