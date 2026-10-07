@@ -154,6 +154,7 @@ const complianceDb = {
 
 import * as R from './rows.mjs';
 import extra from './extra.mjs';
+import staff from './staff.mjs';
 
 const PROFILE = O + 'staff/[id]/page.tsx';
 const profileDb = {
@@ -478,6 +479,83 @@ const base = {
   },
 };
 
-export default { ...base, ...extra(profileTab) };
+// /events list — mirrors the manager's real October 2026 screenshot (long names, 4-role events).
+const evRoles = [
+  ['r1', 'Day Waiting Staff M&E'],
+  ['r2', 'Breakdown/Set Up Staff'],
+  ['r3', 'Cloakroom Staff'],
+  ['r4', 'Waiting Staff (UGLE)'],
+  ['r5', 'Waiting Staff'],
+];
+const evClients = [
+  ['c1', "Leonardo Hotel St Paul's - M&E"],
+  ['c2', 'United Grand Lodge'],
+  ['c3', 'Hackney Town Council-The Tomlinson Centre'],
+];
+const sec = (id, event, role, day, from, to, headcount) => ({
+  id,
+  event_id: event,
+  role_id: role,
+  starts_at: new Date(`2026-10-${day}T${from}:00+01:00`).toISOString(),
+  ends_at: new Date(`2026-10-${day}T${to}:00+01:00`).toISOString(),
+  headcount,
+  buffer: 0,
+});
+const eventsListDb = {
+  events: [
+    ['e1', 'Leonardo Hotel St Pauls M&E', '2026-10-12', 'c1', "Leonardo Hotel St Paul's", ''],
+    [
+      'e2',
+      'Waiting Staff at United Grand Lodge',
+      '2026-10-12',
+      'c2',
+      "Freemasons' Hall (United Grand Lodge of England)",
+      'PO-4471',
+    ],
+    ['e3', 'Leonardo Hotel St Pauls M&E', '2026-10-13', 'c1', "Leonardo Hotel St Paul's", ''],
+    [
+      'e4',
+      'Waiting staff at The Tomlinson Centre',
+      '2026-10-13',
+      'c3',
+      'The Tomlinson Centre',
+      'PO-9920',
+    ],
+  ].map(([id, title, event_date, client_id, venue_name, po_number]) => ({
+    id,
+    title,
+    event_date,
+    client_id,
+    venue_name,
+    venue_address: '',
+    po_number: po_number || null,
+    cancelled_at: null,
+    cancel_reason: null,
+  })),
+  shift_requirements: [
+    sec('s1', 'e1', 'r1', 12, '07:00', '16:00', 2),
+    sec('s2', 'e1', 'r2', 12, '15:00', '23:00', 2),
+    sec('s3', 'e2', 'r4', 12, '15:30', '20:30', 2),
+    sec('s4', 'e3', 'r1', 13, '07:00', '16:00', 1),
+    sec('s5', 'e3', 'r1', 13, '07:00', '16:00', 5),
+    sec('s6', 'e3', 'r3', 13, '08:00', '18:00', 1),
+    sec('s7', 'e3', 'r2', 13, '17:00', '22:00', 6),
+    sec('s8', 'e4', 'r5', 13, '08:00', '15:00', 1),
+  ],
+  clients: evClients.map(([id, name]) => ({ id, name })),
+  roles: evRoles.map(([id, name]) => ({ id, name })),
+  bookings: [],
+  office_saved_views: [],
+};
+base['events-list'] = {
+  app: 'office',
+  page: O + 'events/page.tsx',
+  pathname: '/events',
+  search: { view: 'list', date: '2026-10-07' },
+  layouts: [],
+  db: eventsListDb,
+};
+
+export default { ...base, ...extra(profileTab), ...staff };
 
 export { iso, C };

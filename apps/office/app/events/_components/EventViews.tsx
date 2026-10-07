@@ -54,115 +54,123 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
   // `card-rows`: below 760px each event is a card, titled by the event, with
   // every other column printed against its `data-label`.
   return (
-    <table className="tbl card-rows">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Event</th>
-          <th>Client · Venue</th>
-          {/* Scheduled times, so the column says which zone it is in (§1.8). */}
-          <th>Window (UK time)</th>
-          <th>Roles · headcount (+buffer)</th>
-          <th>Fill</th>
-          <th>Status</th>
-          <th>PO</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const cancelled = row.status === 'cancelled';
-          const open = formatOpen(row.fill);
-          return (
-            <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
-              <td data-label="Date">
-                <b className={row.date === today ? 'cyan' : undefined}>
-                  {formatDayShort(row.date)}
-                </b>
-                {row.date === today ? <span className="sub">today</span> : null}
-              </td>
-              <td className={classes('cell-title', cancelled && 'muted')}>
-                {cancelled ? (
-                  <s>{row.title}</s>
-                ) : (
-                  <Link href={`/events/${row.id}`}>
-                    <b>{row.title}</b>
-                  </Link>
-                )}
-                {cancelled && row.cancelReason ? (
-                  <span className="sub">{row.cancelReason}</span>
-                ) : null}
-              </td>
-              <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
-                <span className="ev-clip" title={row.clientName}>
-                  {row.clientName}
-                </span>
-                <span className="sub ev-clip" title={row.venueName}>
-                  {row.venueName}
-                </span>
-              </td>
-              <td
-                data-label="Window (UK time)"
-                className={classes('mono', 'sm', cancelled && 'muted')}
-              >
-                {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
-                {row.windowIso ? (
-                  <ScheduledWindow
-                    startsAt={row.windowIso.startsAt}
-                    endsAt={row.windowIso.endsAt}
-                  />
-                ) : (
-                  row.windowLabel
-                )}
-                {row.endsNextDay ? <span className="sub">ends next day</span> : null}
-              </td>
-              <td data-label="Roles · headcount (+buffer)" className="cell-wide">
-                <div className="roles">
-                  {row.roles.map((role, index) => (
-                    <div className="r" key={`${row.id}-${index}`}>
-                      <span className="chip">{role.roleName}</span>
-                      <ScheduledWindow
-                        className="mono win"
-                        startsAt={role.startsAt}
-                        endsAt={role.endsAt}
-                      />
-                      <span className="mono alloc">
-                        {formatAllocation(role.headcount, role.buffer)}
-                      </span>
-                    </div>
-                  ))}
-                  {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
-                </div>
-              </td>
-              <td data-label="Fill">
-                {cancelled ? (
-                  // §3.3: only a cancellation BEFORE the day is excluded; on
-                  // the day the scheduled hours are billed and paid in full.
-                  <span className="muted sm">
-                    {row.cancelledNote ?? 'excluded from financials'}
+    <div
+      className="tbl-frame ev-frame"
+      // Focusable so the arrow keys scroll it; named for screen readers.
+      tabIndex={0}
+      role="region"
+      aria-label="Events list, scrolls sideways and down"
+    >
+      <table className="tbl card-rows ev-list">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Event</th>
+            <th>Client · Venue</th>
+            {/* Scheduled times, so the column says which zone it is in (§1.8). */}
+            <th>Window (UK time)</th>
+            <th>Roles · headcount (+buffer)</th>
+            <th>Fill</th>
+            <th>Status</th>
+            <th>PO</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const cancelled = row.status === 'cancelled';
+            const open = formatOpen(row.fill);
+            return (
+              <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
+                <td data-label="Date">
+                  <b className={row.date === today ? 'cyan' : undefined}>
+                    {formatDayShort(row.date)}
+                  </b>
+                  {row.date === today ? <span className="sub">today</span> : null}
+                </td>
+                <td className={classes('cell-title', cancelled && 'muted')}>
+                  {cancelled ? (
+                    <s>{row.title}</s>
+                  ) : (
+                    <Link href={`/events/${row.id}`}>
+                      <b>{row.title}</b>
+                    </Link>
+                  )}
+                  {cancelled && row.cancelReason ? (
+                    <span className="sub">{row.cancelReason}</span>
+                  ) : null}
+                </td>
+                <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
+                  <span className="ev-clip" title={row.clientName}>
+                    {row.clientName}
                   </span>
-                ) : (
-                  <>
-                    <Pill tone={fillTone(row) === 'green' ? 'green' : 'amber'}>
-                      {formatEventFill(row.fill)}
-                    </Pill>
-                    {open ? <span className="sub">{open}</span> : null}
-                    {row.fill.bufferConfirmed > 0 ? (
-                      <span className="sub">+{row.fill.bufferConfirmed} buffer confirmed</span>
-                    ) : null}
-                  </>
-                )}
-              </td>
-              <td data-label="Status">
-                <StatusPill status={row.status} />
-              </td>
-              <td data-label="PO" className={classes('mono', 'sm', !row.poNumber && 'muted')}>
-                {row.poNumber || '—'}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                  <span className="sub ev-clip" title={row.venueName}>
+                    {row.venueName}
+                  </span>
+                </td>
+                <td
+                  data-label="Window (UK time)"
+                  className={classes('mono', 'sm', cancelled && 'muted')}
+                >
+                  {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
+                  {row.windowIso ? (
+                    <ScheduledWindow
+                      startsAt={row.windowIso.startsAt}
+                      endsAt={row.windowIso.endsAt}
+                    />
+                  ) : (
+                    row.windowLabel
+                  )}
+                  {row.endsNextDay ? <span className="sub">ends next day</span> : null}
+                </td>
+                <td data-label="Roles · headcount (+buffer)" className="cell-wide">
+                  <div className="roles">
+                    {row.roles.map((role, index) => (
+                      <div className="r" key={`${row.id}-${index}`}>
+                        <span className="chip">{role.roleName}</span>
+                        <ScheduledWindow
+                          className="mono win"
+                          startsAt={role.startsAt}
+                          endsAt={role.endsAt}
+                        />
+                        <span className="mono alloc">
+                          {formatAllocation(role.headcount, role.buffer)}
+                        </span>
+                      </div>
+                    ))}
+                    {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
+                  </div>
+                </td>
+                <td data-label="Fill">
+                  {cancelled ? (
+                    // §3.3: only a cancellation BEFORE the day is excluded; on
+                    // the day the scheduled hours are billed and paid in full.
+                    <span className="muted sm">
+                      {row.cancelledNote ?? 'excluded from financials'}
+                    </span>
+                  ) : (
+                    <>
+                      <Pill tone={fillTone(row) === 'green' ? 'green' : 'amber'}>
+                        {formatEventFill(row.fill)}
+                      </Pill>
+                      {open ? <span className="sub">{open}</span> : null}
+                      {row.fill.bufferConfirmed > 0 ? (
+                        <span className="sub">+{row.fill.bufferConfirmed} buffer confirmed</span>
+                      ) : null}
+                    </>
+                  )}
+                </td>
+                <td data-label="Status">
+                  <StatusPill status={row.status} />
+                </td>
+                <td data-label="PO" className={classes('mono', 'sm', !row.poNumber && 'muted')}>
+                  {row.poNumber || '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

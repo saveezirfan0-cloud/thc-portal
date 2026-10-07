@@ -255,6 +255,82 @@
   color: var(--muted);
 }
 
+/* ---- list: column measures ------------------------------------------ *
+ * The table scrolls inside `.tbl-frame` (sticky header, always-drawn bars),
+ * so every column gets a readable floor instead of being squeezed to fit —
+ * an event title used to wrap to four lines beside a date on one, and the
+ * Status and PO columns were cut off the card's right edge. */
+.tbl.ev-list {
+  min-width: 1040px;
+}
+@media (max-width: 760px) {
+  .tbl.ev-list {
+    min-width: 0;
+  }
+}
+@media (min-width: 761px) {
+  .tbl.ev-list th,
+  .tbl.ev-list td {
+    vertical-align: top;
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
+  }
+  .tbl.ev-list th:first-child,
+  .tbl.ev-list td:first-child {
+    padding-left: var(--sp-20);
+  }
+  .tbl.ev-list td {
+    padding-top: var(--sp-16);
+    padding-bottom: var(--sp-16);
+  }
+}
+@media (min-width: 761px) {
+  .tbl.ev-list :is(th, td):nth-child(1) {
+    width: 5.5rem;
+    white-space: nowrap;
+  }
+  .tbl.ev-list :is(th, td):nth-child(2) {
+    min-width: 10rem;
+  }
+  .tbl.ev-list :is(th, td):nth-child(3) {
+    min-width: 11rem;
+  }
+  .tbl.ev-list :is(th, td):nth-child(4) {
+    width: 7.5rem;
+    white-space: nowrap;
+  }
+  .tbl.ev-list :is(th, td):nth-child(5) {
+    min-width: 18rem;
+  }
+  .tbl.ev-list :is(th, td):nth-child(6) {
+    width: 6rem;
+    white-space: nowrap;
+  }
+  .tbl.ev-list :is(th, td):nth-child(7) {
+    width: 6rem;
+    white-space: nowrap;
+  }
+  .tbl.ev-list :is(th, td):nth-child(8) {
+    width: 5.5rem;
+    white-space: nowrap;
+  }
+}
+/* Client and venue wrap to two lines at most, then end in an ellipsis, so a
+   long venue cannot widen the column past the rest (the full name is in the
+   title attribute). */
+.tbl.ev-list .ev-clip {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* The role chip is a label, not a paragraph. */
+.tbl.ev-list .roles .chip {
+  white-space: nowrap;
+}
+
 /* ---- list: the roles cell stacks one line per role section ---------- */
 /* The role sections share three columns — role, window, allocation — so
    the windows line up under each other however long the role name is. A
@@ -293,6 +369,8 @@
     display: flex;
     flex-direction: column;
     gap: 0;
+    /* the desktop grid centres its items; in a column that centred each line */
+    align-items: stretch;
   }
   .tbl.card-rows .roles .r {
     display: grid;
