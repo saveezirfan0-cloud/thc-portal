@@ -40,19 +40,20 @@ export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients:
         </Link>
       </div>
 
-      {isCalendar ? (
-        <div className="seg sm">
-          {(['month', 'week', 'day'] as const).map((option) => (
-            <Link
-              key={option}
-              className={view === option ? 'on' : undefined}
-              href={hrefFor({ ...query, view: option })}
-            >
-              {option[0]!.toUpperCase() + option.slice(1)}
-            </Link>
-          ))}
-        </div>
-      ) : null}
+      {/* Shown in List too (ADR-0100), with none selected, so Day is one click
+          from where a manager already is. In List the links open the calendar
+          at that grain on the period being read. */}
+      <div className="seg sm" role="group" aria-label="Calendar grain">
+        {(['month', 'week', 'day'] as const).map((option) => (
+          <Link
+            key={option}
+            className={view === option ? 'on' : undefined}
+            href={hrefFor({ ...query, view: option })}
+          >
+            {option[0]!.toUpperCase() + option.slice(1)}
+          </Link>
+        ))}
+      </div>
 
       <div className="datenav">
         <Link

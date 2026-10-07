@@ -29,14 +29,28 @@ test('one toggle serves List and Calendar, and works both ways (§3.1)', async (
   await expect(page).toHaveURL(/view=list/);
 });
 
-test('the Month / Week / Day switch appears only inside Calendar (§3.1)', async ({ page }) => {
+test('the Month / Week / Day switch shows in List too, so Day is one click away (ADR-0100)', async ({
+  page,
+}) => {
   await openAsAdmin(page, AT('list'));
-  await expect(page.getByRole('link', { name: 'Week', exact: true })).toHaveCount(0);
-
-  await openAsAdmin(page, AT('month'));
+  const grain = page.getByRole('group', { name: 'Calendar grain' });
   for (const view of ['Month', 'Week', 'Day']) {
-    await expect(page.getByRole('link', { name: view, exact: true })).toBeVisible();
+    await expect(grain.getByRole('link', { name: view, exact: true })).toBeVisible();
+    // None is selected in List: it is a way into the calendar, not a List mode.
+    await expect(grain.getByRole('link', { name: view, exact: true })).not.toHaveClass(/on/);
   }
+
+  await grain.getByRole('link', { name: 'Day', exact: true }).click();
+  await expect(page).toHaveURL(/view=day/);
+  await expect(page).toHaveURL(/date=2026-09-18/);
+  await expect(page.locator('.datenav .lbl')).toHaveText('Fri 18 Sep 2026');
+
+  await openAsAdmin(page, AT('week'));
+  await expect(
+    page
+      .getByRole('group', { name: 'Calendar grain' })
+      .getByRole('link', { name: 'Week', exact: true }),
+  ).toHaveClass(/on/);
 });
 
 test('the arrows step a month, a week or a day, per view (§3.1)', async ({ page }) => {
