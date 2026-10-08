@@ -22,6 +22,14 @@ function dobForAge(age: number): string {
 
 const unique = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 const tag = unique.slice(-9);
+/**
+ * Six digits after Ofcom's reserved 07010 range. The leading digit is the
+ * applicant's own, so no two of them can ever share a number: the §2.12 match
+ * is on date of birth plus email OR mobile, and every applicant here has the
+ * same date of birth, so a shared number would make the second a returning
+ * applicant with no new row.
+ */
+const mobile = (n: number) => `${n}${unique.slice(-5)}`;
 /** The addresses and Payroll IDs this run made up, so cleanup touches nothing else. */
 const person = (key: string) => ({
   email: `e2e.sb.${key}.${unique}@example.test`,
@@ -105,7 +113,7 @@ test.describe('applying', () => {
   test('a listed SpudBros person on the ORDINARY link is marked, with their Payroll ID', async ({
     page,
   }) => {
-    await apply(page, '/apply', spudListed, 'Sidney', 'Spudbros', unique.slice(-6));
+    await apply(page, '/apply', spudListed, 'Sidney', 'Spudbros', mobile(1));
     expect(group(spudListed.email)).toBe(`true:${spudListed.payroll}`);
     // The row is consumed: the table is "invited, not applied yet".
     expect(sql(`select count(*) from invite_roster where email = ${lit(spudListed.email)}`)).toBe(
@@ -114,19 +122,19 @@ test.describe('applying', () => {
   });
 
   test('a listed THC person on the SPUDBROS link stays THC — the list wins', async ({ page }) => {
-    await apply(page, '/apply/spudbros', thcListed, 'Thea', 'Normalton', `1${unique.slice(-5)}`);
+    await apply(page, '/apply/spudbros', thcListed, 'Thea', 'Normalton', mobile(2));
     expect(group(thcListed.email)).toBe(`false:${thcListed.payroll}`);
   });
 
   test('an unlisted person on the SpudBros link is marked, with no Payroll ID', async ({
     page,
   }) => {
-    await apply(page, '/apply/spudbros', unlisted, 'Una', 'Unlisted', `2${unique.slice(-5)}`);
+    await apply(page, '/apply/spudbros', unlisted, 'Una', 'Unlisted', mobile(3));
     expect(group(unlisted.email)).toBe('true:-');
   });
 
   test('an unlisted person on the ordinary link is an ordinary candidate', async ({ page }) => {
-    await apply(page, '/apply', ordinary, 'Olive', 'Ordinary', `3${unique.slice(-5)}`);
+    await apply(page, '/apply', ordinary, 'Olive', 'Ordinary', mobile(4));
     expect(group(ordinary.email)).toBe('false:-');
   });
 });
