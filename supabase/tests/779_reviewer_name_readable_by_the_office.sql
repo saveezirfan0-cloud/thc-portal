@@ -4,7 +4,7 @@
 --   20261008100000_reviewer_name_readable_by_the_office.sql
 -- =====================================================================
 begin;
-select plan(11);
+select plan(17);
 \ir _shared/fixtures.psql
 
 \set admin2_uid 'c7790000-0000-4000-8000-000000000001'
@@ -44,10 +44,18 @@ select is((select count(*)::int from pg_attribute where attrelid = 'public.staff
   'the reviewer''s uuid is never exposed, only the name');
 select is((select count(*)::int from profiles where id = :'admin2_uid'), 0,
   'and profiles stays closed: the admin still cannot read another account''s row');
-select is(reviewer_name(:'staffa_uid'), 'Staff A worker', 'the lookup returns the one column to an admin session');
+select is(reviewer_name(:'admin2_uid'), 'Second Reviewer', 'the lookup returns the one column, for a Back Office account, to an admin session');
+select is(reviewer_name(:'staffa_uid'), null, 'but not a worker''s name, even to an admin');
+select is(reviewer_name(:'clienta_uid'), null, 'nor a client login''s');
+select ok(has_table_privilege('authenticated', 'public.staff_declarations_v', 'select'), 'the declarations view is readable');
+select ok(not has_table_privilege('authenticated', 'public.staff_declarations_v', 'insert')
+      and not has_table_privilege('authenticated', 'public.staff_declarations_v', 'update')
+      and not has_table_privilege('authenticated', 'public.staff_declarations_v', 'delete'), 'and read-only');
+select ok(not has_table_privilege('anon', 'public.staff_declarations_v', 'select'), 'and closed to anon');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 select is(reviewer_name(:'admin2_uid'), null, 'a worker session gets nothing from it');
+select is((select count(*)::int from staff_declarations_v), 0, 'and no declaration rows from the view (admin_all is the only policy)');
 
 reset role;
 set local role anon;

@@ -355,6 +355,14 @@ export function reviewStamp(
   return `${verb}${by ? ` by ${by}` : ''} · ${formatUkStamp(at, format)}`;
 }
 
+/** Why a document was turned back, as both screens word it (candidate.html). */
+export function rejectionLine(
+  reason: string,
+  status: 'pending' | 'verified' | 'rejected' | 'superseded',
+): string {
+  return `Reason: “${reason}”${status === 'rejected' ? ' — awaiting re-upload (N8 sent)' : ''}`;
+}
+
 /**
  * A Criminal Record declaration as a row of the Documents tab (§9.6): when,
  * where it came from, and what happened to it. The stamps are audit

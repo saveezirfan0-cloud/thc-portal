@@ -9,6 +9,7 @@ import {
   complianceSummary,
   declarationActionable,
   declarationMeta,
+  rejectionLine,
   reviewStamp,
   documentOrder,
   formatUkStamp,
@@ -96,12 +97,11 @@ function meta(row: DocumentRow, format: TimeFormat): string {
   if (row.expires_on) parts.push(`Expires ${formatUkDate(row.expires_on)}`);
   else if (row.rtw_no_time_limit) parts.push(SETTLED_NO_TIME_LIMIT);
   if (row.ai_confidence !== null) parts.push(`AI ${Math.round(row.ai_confidence * 100)}%`);
+  parts.push(`Uploaded ${formatUkStamp(row.uploaded_at, format)}`);
   if (row.reviewed_at) {
     parts.push(reviewStamp(row.review_status, row.reviewed_by_name, row.reviewed_at, format));
-  } else {
-    parts.push(`Uploaded ${formatUkStamp(row.uploaded_at, format)}`);
   }
-  if (row.rejection_reason) parts.push(`Reason: ${row.rejection_reason}`);
+  if (row.rejection_reason) parts.push(rejectionLine(row.rejection_reason, row.review_status));
   if (row.share_code) parts.push(`share code ${row.share_code}`);
   if (row.awarding_institution) parts.push(row.awarding_institution);
   return parts.join(' · ');

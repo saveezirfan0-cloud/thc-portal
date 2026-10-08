@@ -244,7 +244,8 @@ describe('declaration rows', () => {
     );
     expect(verified).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
     expect(verified).toContain('Rejected by Sam R. · 08.10.2026 11:06 UK time');
-    expect(verified).toContain('Reason: Blurred');
+    expect(verified).toContain('Reason: “Blurred” — awaiting re-upload (N8 sent)');
+    expect(verified).toContain('Uploaded');
   });
 });
 

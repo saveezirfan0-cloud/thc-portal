@@ -12,7 +12,9 @@
 -- Widening profiles for admin would hand every office user every account's
 -- name, role and client link. Instead one narrow security-definer lookup
 -- returns ONE column — full_name — for ONE id, and only to a signed-in
--- Back Office session. The view calls it; profiles keeps its policy.
+-- Back Office session, and only for a Back Office account (a reviewer is
+-- always one): a worker's or client login's name stays out of reach. The
+-- views call it; profiles keeps its policy.
 --
 -- A share code the automated gov.uk check verified (ADR-0025) has no
 -- reviewer; it now reads "Automatic gov.uk check" instead of nothing.
@@ -36,15 +38,16 @@ set search_path = public
 as $$
   select p.full_name
     from profiles p
-   where p.id = p_profile
-     and public.current_app_role() = 'admin'
+   where (select public.current_app_role()) = 'admin'
+     and p.id = p_profile
+     and p.role = 'admin'
 $$;
 
 comment on function public.reviewer_name(uuid) is
-  'The display name of the person who reviewed a document, for the Back Office audit line "Verified by <name>". One column, one id, admin sessions only (NULL for anyone else): profiles_self stays the only policy on profiles. 20261008100000.';
+  'The display name of the person who reviewed a document, for the Back Office audit line "Verified by <name>". One column, one id, admin sessions only and admin accounts only (NULL for anyone else, so a worker or client login cannot be looked up by uuid): profiles_self stays the only policy on profiles. 20261008100000.';
 
 revoke execute on function public.reviewer_name(uuid) from public, anon;
-grant  execute on function public.reviewer_name(uuid) to authenticated, service_role;
+grant  execute on function public.reviewer_name(uuid) to authenticated;
 
 create or replace view staff_documents_v with (security_invoker = true) as
 select
@@ -112,5 +115,7 @@ from criminal_declarations c;
 comment on view staff_declarations_v is
   'criminal_declarations for the Back Office Documents tab and /onboarding/:id, with the reviewer''s name for "Verified by <name> · <stamp>" (20261008100000). security_invoker: the admin_all and staff_self_decl policies still decide the rows. No reviewed_by uuid is exposed.';
 
-revoke all on staff_declarations_v from public, anon;
+-- Read-only: a single-table view is auto-updatable, and Supabase's default
+-- privileges grant authenticated every right on a new view by name.
+revoke all on staff_declarations_v from public, anon, authenticated;
 grant select on staff_declarations_v to authenticated, service_role;
