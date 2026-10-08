@@ -318,6 +318,62 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
 }
 
 // ---------------------------------------------------------------------
+// Scheduling (ADR-0106) — set_staff_scheduling. SpudBros Express staff do
+// their onboarding with THC and nothing else (shifts stay on Connecteam);
+// the office switches THC shifts on for the few who also work ours.
+// ---------------------------------------------------------------------
+const SCHEDULING_MESSAGES: Readonly<Record<string, string>> = {
+  has_upcoming_shifts:
+    'This worker still has an upcoming invitation or booking. Cancel or move it first, then mark them as onboarding only.',
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  not_authorised: 'Only the office can do this.',
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function saveScheduling(
+  staffId: string,
+  spudbros: boolean,
+  thcShifts: boolean,
+): Promise<ActionResult> {
+  const result = await callRpc(
+    'set_staff_scheduling',
+    { p_staff: staffId, p_spudbros: spudbros, p_thc_shifts: thcShifts },
+    staffId,
+  );
+  return result.ok
+    ? result
+    : { ok: false, message: SCHEDULING_MESSAGES[result.message] ?? result.message };
+}
+
+// ---------------------------------------------------------------------
+// Payroll ID (ADR-0107) — set_staff_payroll_id. The ID the payroll sheet
+// knows the person by; it normally arrives from the invite list.
+// ---------------------------------------------------------------------
+const PAYROLL_ID_MESSAGES: Readonly<Record<string, string>> = {
+  payroll_id_shape: 'Use letters, digits or a hyphen only, up to 20 characters.',
+  payroll_id_taken: 'Another worker already has this Payroll ID.',
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  not_authorised: 'Only the office can do this.',
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function savePayrollId(
+  staffId: string,
+  payrollId: string | null,
+): Promise<ActionResult> {
+  const result = await callRpc(
+    'set_staff_payroll_id',
+    { p_staff: staffId, p_payroll_id: payrollId },
+    staffId,
+  );
+  return result.ok
+    ? result
+    : { ok: false, message: PAYROLL_ID_MESSAGES[result.message] ?? result.message };
+}
+
+// ---------------------------------------------------------------------
 // Languages (ADR-0080) — set_staff_languages. The worker gives them on
 // onboarding step 2; the office records them for anyone never asked, so an
 // event that needs another language can book them. English is always in.

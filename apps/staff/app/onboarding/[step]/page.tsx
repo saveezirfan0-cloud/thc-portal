@@ -18,6 +18,7 @@ import { WizardFrame, WizardTop, workerFor } from '../_components/Wizard';
 import {
   loadHmrcGender,
   loadLanguages,
+  loadOnboardingOnly,
   loadOnboarding,
   loadQuizQuestions,
   supabaseConfigured,
@@ -176,7 +177,12 @@ async function render(n: number, s: OnboardingState, photoUrl: string | null) {
         />
       );
     default:
-      return <TutorialStep firstName={s.firstName} />;
+      return (
+        <TutorialStep
+          firstName={s.firstName}
+          onboardingOnly={await loadOnboardingOnly(s.staffId)}
+        />
+      );
   }
 }
 

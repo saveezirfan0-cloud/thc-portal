@@ -24,6 +24,13 @@ import type { StaffProfile } from './types';
  *   leaver      (4) They left through Request my P45 (§10.6). Everything
  *               closed except Payment information, so their earnings
  *               history stays available to them.
+ *   connecteam  (6) SpudBros Express staff whose THC shifts are not switched
+ *               on (ADR-0106). They onboard with THC and nothing else — their
+ *               shifts, rota and messages stay on Connecteam — so Shifts,
+ *               Invites and Radar are closed and Profile (Documents inside
+ *               it) stays open, like lock case 1 but with nothing wrong. It
+ *               ranks BELOW `documents`: an expired passport still sends
+ *               them to fix it. `staff.thc_shifts_enabled` lifts it.
  *   removed     GDPR removal (§1.7) — "cannot log in at all, so no screen
  *               applies". It is here so that a session that somehow
  *               survives the removal lands somewhere terminal rather than
@@ -34,7 +41,15 @@ import type { StaffProfile } from './types';
  * the Documents tab would offer an action that changes nothing.
  */
 export type AppLock =
-  'none' | 'onboarding' | 'documents' | 'hold' | 'quiz_failed' | 'rejected' | 'leaver' | 'removed';
+  | 'none'
+  | 'onboarding'
+  | 'documents'
+  | 'connecteam'
+  | 'hold'
+  | 'quiz_failed'
+  | 'rejected'
+  | 'leaver'
+  | 'removed';
 
 /** §2.9 — three attempts is the maximum permitted at this stage. */
 export const QUIZ_MAX_ATTEMPTS = 3;
@@ -52,7 +67,7 @@ const ONBOARDING: ReadonlySet<string> = new Set([
 export function appLock(
   profile: Pick<
     StaffProfile,
-    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause'
+    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause' | 'onboardingOnly'
   >,
 ): AppLock {
   if (profile.status === 'removed') return 'removed';
@@ -89,7 +104,11 @@ export function appLock(
   // and the wireframe says it in words — "You stay compliant while a
   // replacement is in review before the old one expires". Locking them here
   // would close Shifts on a worker the database is still rostering.
-  return profile.blockers.some(locksCompliantWorker) ? 'documents' : 'none';
+  if (profile.blockers.some(locksCompliantWorker)) return 'documents';
+
+  // ADR-0106: SpudBros Express staff, shifts on Connecteam. After the
+  // documents check on purpose — a lapsed document is still theirs to fix.
+  return profile.onboardingOnly ? 'connecteam' : 'none';
 }
 
 /** The blockers that lock a worker whose status is still `compliant` (§10.1 case 1). */
@@ -132,6 +151,7 @@ export function reachableTabs(lock: AppLock): readonly StaffTab[] {
     case 'none':
       return STAFF_TABS.map((tab) => tab.href);
     case 'documents':
+    case 'connecteam':
       return ['/profile'];
     default:
       // hold · quiz_failed · rejected · leaver · removed · onboarding:
@@ -151,7 +171,7 @@ export function reachableTabs(lock: AppLock): readonly StaffTab[] {
  * a row of dead tabs would read as one.
  */
 export function showsBottomNav(lock: AppLock): boolean {
-  return lock === 'none' || lock === 'documents' || lock === 'leaver';
+  return lock === 'none' || lock === 'documents' || lock === 'connecteam' || lock === 'leaver';
 }
 
 /**
@@ -160,12 +180,12 @@ export function showsBottomNav(lock: AppLock): boolean {
  * earnings history stays available to them after they leave."
  */
 export function canReachPayments(lock: AppLock): boolean {
-  return lock === 'none' || lock === 'documents' || lock === 'leaver';
+  return lock === 'none' || lock === 'documents' || lock === 'connecteam' || lock === 'leaver';
 }
 
 /** The everyday profile screens. A leaver's details are frozen. */
 export function canReachProfileDetails(lock: AppLock): boolean {
-  return lock === 'none' || lock === 'documents';
+  return lock === 'none' || lock === 'documents' || lock === 'connecteam';
 }
 
 export type P45Availability =

@@ -8,6 +8,8 @@ import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
 import { GenderField } from './GenderField';
+import { PayrollIdField } from './PayrollIdField';
+import { SchedulingField } from './SchedulingField';
 import { LanguagesField } from './LanguagesField';
 import type {
   DeclarationRow,
@@ -52,6 +54,11 @@ export function Overview({
   canEditGender = false,
   languages,
   canEditLanguages = false,
+  spudbros,
+  thcShifts,
+  canEditScheduling = false,
+  payrollId,
+  canEditPayrollId = false,
   willoReviewUrl,
   emergencyContact = null,
   emergencyContactProblem = null,
@@ -76,6 +83,14 @@ export function Overview({
   languages?: string[] | null;
   /** Any office login that may write (ADR-0080). */
   canEditLanguages?: boolean;
+  /** ADR-0106: SpudBros Express staff, and THC scheduling switched on for them. */
+  spudbros?: boolean;
+  thcShifts?: boolean;
+  /** Any office login that may write (ADR-0106). */
+  canEditScheduling?: boolean;
+  /** ADR-0107: `staff.payroll_id`; null = none, undefined = not read. */
+  payrollId?: string | null;
+  canEditPayrollId?: boolean;
   /** ADR-0098: the Willo interview link; null/undefined = none to show. */
   willoReviewUrl?: string | null;
   /** ADR-0044 — null reads "Not provided". */
@@ -127,6 +142,21 @@ export function Overview({
             staffId={profile.id}
             languages={languages}
             editable={canEditLanguages && !profile.removed}
+            removed={profile.removed}
+          />
+          <span className="k">Payroll ID</span>
+          <PayrollIdField
+            staffId={profile.id}
+            payrollId={payrollId}
+            editable={canEditPayrollId && !profile.removed}
+            removed={profile.removed}
+          />
+          <span className="k">Scheduling</span>
+          <SchedulingField
+            staffId={profile.id}
+            spudbros={spudbros}
+            thcShifts={thcShifts}
+            editable={canEditScheduling && !profile.removed}
             removed={profile.removed}
           />
           <span className="k">Home address</span>

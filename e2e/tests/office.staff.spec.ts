@@ -30,7 +30,8 @@ const AMARA_ID = '20000000-0000-4000-8000-000000000001';
 
 const rows = (page: Page) => page.locator('table.tbl tbody tr');
 const search = (page: Page) =>
-  page.getByRole('searchbox', { name: 'Search name, Employee ID, role' });
+  // ADR-0107: the Payroll ID is searchable too, and the box says so.
+  page.getByRole('searchbox', { name: 'Search name, Employee ID, Payroll ID, role' });
 
 test.beforeEach(async ({ page }) => {
   await openAsAdmin(page, '/staff');
@@ -137,7 +138,7 @@ test('the Inactive tab is its own table: left, reason, P45 requested, newest fir
   expect(names.indexOf('Marek Nowak')).toBeLessThan(names.indexOf('Sofia Almeida'));
 });
 
-test('search runs over name, Employee ID and role; the role filter narrows too (§9.6)', async ({
+test('search runs over name, Employee ID, Payroll ID and role; the role filter narrows too (§9.6)', async ({
   page,
 }) => {
   await search(page).fill(TOM.name);
