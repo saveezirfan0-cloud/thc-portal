@@ -6156,6 +6156,8 @@ export type Database = {
           n4_at: string | null;
           photo_path: string | null;
           replacement_in_review: boolean | null;
+          reviewed_at: string | null;
+          reviewed_by_name: string | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
           staff_id: string | null;
           state: string | null;
