@@ -2323,7 +2323,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
               icon={ICON[d.doc_type] ?? 'DOC'}
               state="verified"
               title={DOC_LABEL[d.doc_type] ?? d.doc_label}
-              meta={`Verified ${d.reviewed_at ? formatUkStamp(d.reviewed_at) : ''}${d.doc_type === 'university_term_dates_letter' ? ` · ${(d.term_dates ?? []).length} periods confirmed` : ''}`}
+              meta={`Verified${d.reviewed_by_name ? ` by ${d.reviewed_by_name}` : ''} ${d.reviewed_at ? formatUkStamp(d.reviewed_at) : ''}${d.doc_type === 'university_term_dates_letter' ? ` · ${(d.term_dates ?? []).length} periods confirmed` : ''}`}
               actions={<Pill tone="green">Verified</Pill>}
             />
           ))}
