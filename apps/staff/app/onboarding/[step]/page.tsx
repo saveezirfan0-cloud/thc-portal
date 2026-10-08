@@ -65,10 +65,21 @@ export default async function Page({ params }: { params: Promise<{ step: string 
   // system") and step 3's preview read the same URL.
   const photoUrl = await signOwnPhoto(state.photoPath);
   const worker = workerFor(state.firstName, state.lastName, photoUrl);
-  return <WizardFrame worker={worker}>{await render(n, state, photoUrl)}</WizardFrame>;
+  // ADR-0106: read once, for the banner at the top of every step and for step 11.
+  const onboardingOnly = await loadOnboardingOnly(state.staffId);
+  return (
+    <WizardFrame worker={worker} onboardingOnly={onboardingOnly}>
+      {await render(n, state, photoUrl, onboardingOnly)}
+    </WizardFrame>
+  );
 }
 
-async function render(n: number, s: OnboardingState, photoUrl: string | null) {
+async function render(
+  n: number,
+  s: OnboardingState,
+  photoUrl: string | null,
+  onboardingOnly: boolean,
+) {
   const today = ukToday();
   switch (n) {
     case 1:
@@ -177,12 +188,7 @@ async function render(n: number, s: OnboardingState, photoUrl: string | null) {
         />
       );
     default:
-      return (
-        <TutorialStep
-          firstName={s.firstName}
-          onboardingOnly={await loadOnboardingOnly(s.staffId)}
-        />
-      );
+      return <TutorialStep firstName={s.firstName} onboardingOnly={onboardingOnly} />;
   }
 }
 

@@ -27,18 +27,21 @@ export function WizardFrame({
   worker,
   title = 'Onboarding',
   center,
+  onboardingOnly = false,
   children,
 }: {
   worker: ChromeWorker | null;
   title?: string;
   center?: boolean;
+  /** ADR-0106: SpudBros Express — the banner speaks of documents, not shifts. */
+  onboardingOnly?: boolean;
   children: ReactNode;
 }) {
   return (
     <AppFrame className="wizard">
       <AppChrome title={title} worker={worker} />
       <AppBody {...(center ? { className: 'center' } : {})}>
-        {worker && !center ? <PushStatus /> : null}
+        {worker && !center ? <PushStatus onboardingOnly={onboardingOnly} /> : null}
         {children}
       </AppBody>
     </AppFrame>

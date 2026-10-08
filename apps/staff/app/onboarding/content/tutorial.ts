@@ -32,8 +32,8 @@ export const TUTORIAL_CARDS = [
  */
 export const SPUDBROS_TUTORIAL_CARDS = [
   {
-    title: 'Your onboarding is almost done',
-    body: 'Once the office has verified your documents, your onboarding with us is complete. You can see each document’s status under Profile → Documents.',
+    title: 'Your onboarding with us is complete',
+    body: 'The office has verified your documents. You can see each document’s status under Profile → Documents.',
   },
   {
     title: 'We’ll tell you if we need anything again',

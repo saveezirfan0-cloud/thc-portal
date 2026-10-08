@@ -254,6 +254,15 @@
   margin-top: var(--sp-4);
   flex-wrap: wrap;
 }
+/* A long tag ("SpudBros Express Staff Only – scheduling on Connecteam", ADR-0106)
+   wraps inside the card rather than running off the phone. */
+.sheet-id > div {
+  min-width: 0;
+}
+.sheet-id .chips .pill {
+  white-space: normal;
+  text-align: left;
+}
 
 /* A sub-line that needs the worker soon — "Passport expires in 12 days". */
 .hub-row .s.amber {
