@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { CONTRACT_VERSION_CLAUSE_28_PENDING } from '@thc/domain';
-import type { CandidateData, CandidateDocument, CandidateRow } from '../types';
+import type { CandidateData, CandidateDocument, CandidateRow, Declaration } from '../types';
 
 // The stepper's "look back at a finished step" is client state with no static
 // way in, so a test can ask `picked` — the third null-initialised useState in
@@ -515,6 +515,58 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     );
     expect(html).toContain('none yet');
     expect(html).toContain('Pick at least one role first, then add clients.');
+  });
+});
+
+describe('the candidate profile, who decided and when', () => {
+  const stamped = {
+    reviewed_at: '2026-10-08T10:05:00Z',
+    reviewed_by_name: 'Gisela M.',
+  };
+  const decl = (over: Partial<Declaration>): Declaration => ({
+    id: 'dc1',
+    source: 'onboarding',
+    answer: true,
+    details: 'Minor motoring offence',
+    conviction_date: null,
+    review_status: 'verified',
+    declared_at: '2026-10-07T09:00:00Z',
+    reviewed_at: null,
+    reviewed_by_name: null,
+    review_note: null,
+    superseded: false,
+    ...over,
+  });
+
+  it('a Yes declaration names its verifier and the time', () => {
+    const html = render(data({ declarations: [decl({ ...stamped })] }));
+    expect(html).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+  });
+
+  it('a rejected Yes names who rejected it', () => {
+    const html = render(data({ declarations: [decl({ review_status: 'rejected', ...stamped })] }));
+    expect(html).toContain('Rejected by Gisela M. · 08.10.2026 11:05 UK time');
+  });
+
+  it('the quiz gate panel keeps its separator: name, then " · ", then the stamp', () => {
+    const html = render(
+      data({
+        candidate: { ...ROW, status: 'quiz', quiz_blockers: [] } as CandidateRow,
+        documents: [
+          doc({
+            id: 'p',
+            doc_type: 'passport',
+            doc_label: 'Passport',
+            review_status: 'verified',
+            ...stamped,
+          }),
+        ],
+        declarations: [decl({ ...stamped, review_note: 'disclosed' })],
+      }),
+    );
+    expect(html).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+    expect(html).toContain('note: “disclosed”');
+    expect(html).not.toContain('Gisela M. 08.10.2026');
   });
 });
 
