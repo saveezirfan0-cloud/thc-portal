@@ -9028,16 +9028,28 @@ export type Database = {
         Args: { p_current: string; p_dob: string; p_today?: string };
         Returns: string;
       };
-      doc_expires_on: {
-        Args: {
-          p_doc_rtw: string;
-          p_doc_type: Database['public']['Enums']['doc_type'];
-          p_expiry: string;
-          p_staff_rtw: string;
-          p_uploaded_at: string;
-        };
-        Returns: string;
-      };
+      doc_expires_on:
+        | {
+            Args: {
+              p_doc_rtw: string;
+              p_doc_type: Database['public']['Enums']['doc_type'];
+              p_expiry: string;
+              p_staff_rtw: string;
+              p_uploaded_at: string;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              p_doc_rtw: string;
+              p_doc_type: Database['public']['Enums']['doc_type'];
+              p_expiry: string;
+              p_staff_rtw: string;
+              p_term_dates: unknown[];
+              p_uploaded_at: string;
+            };
+            Returns: string;
+          };
       doc_label: {
         Args: { p_doc_type: Database['public']['Enums']['doc_type'] };
         Returns: string;
@@ -11326,6 +11338,7 @@ export type Database = {
         Args: { p_ranges: unknown[]; p_today: string };
         Returns: boolean;
       };
+      term_letter_last_day: { Args: { p_ranges: unknown[] }; Returns: string };
       turned_away_minutes: {
         Args: { p_attempt_at: string; p_starts_at: string };
         Returns: number;

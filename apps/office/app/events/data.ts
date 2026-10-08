@@ -183,6 +183,29 @@ export async function loadReferenceData(): Promise<ReferenceData> {
   };
 }
 
+/** What the Scheduling filter and the saved-views bar need of a client: no rate card. */
+export type ClientName = Pick<ClientOption, 'id' | 'name'>;
+
+/**
+ * The clients for /events' filter and saved views — id and name, one query.
+ *
+ * `loadReferenceData` is the Shift Builder's: seven reads (rate cards, venues,
+ * the two rate views…). The list page only ever drew the client names from it,
+ * and re-ran all seven every 15 s with the auto-refresh.
+ */
+export async function loadClientNames(): Promise<{ clients: ClientName[]; unavailable?: string }> {
+  if (!supabaseConfigured()) return { clients: [], unavailable: NO_SUPABASE };
+  const supabase = eventsDb(await cookies());
+  const { data, error } = await supabase.from('clients').select('id, name').order('name');
+  if (error) {
+    return {
+      clients: [],
+      unavailable: `Clients could not be loaded: ${error.message}`,
+    };
+  }
+  return { clients: (data ?? []) as ClientName[] };
+}
+
 export interface SavedRoleSection {
   id: string;
   roleId: string;
@@ -422,14 +445,20 @@ export async function loadEventsInRange(from: string, to: string): Promise<Event
 
   const supabase = eventsDb(await cookies());
 
-  const { data: eventData, error: eventError } = await supabase
-    .from('events')
-    .select(
-      'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
-    )
-    .gte('event_date', from)
-    .lte('event_date', to)
-    .order('event_date');
+  // The client and role names do not depend on which events fall in the
+  // period, so they are read alongside it, not after it.
+  const [{ data: eventData, error: eventError }, clientRes, roleRes] = await Promise.all([
+    supabase
+      .from('events')
+      .select(
+        'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
+      )
+      .gte('event_date', from)
+      .lte('event_date', to)
+      .order('event_date'),
+    supabase.from('clients').select('id, name'),
+    supabase.from('roles').select('id, name'),
+  ]);
   if (eventError) {
     return { events: [], problem: `Events could not be loaded: ${eventError.message}` };
   }
@@ -437,15 +466,11 @@ export async function loadEventsInRange(from: string, to: string): Promise<Event
   if (events.length === 0) return { events: [], problem: null };
 
   const eventIds = events.map((e) => e.id);
-  const [sectionRes, clientRes, roleRes] = await Promise.all([
-    supabase
-      .from('shift_requirements')
-      .select('id, event_id, role_id, starts_at, ends_at, headcount, buffer')
-      .in('event_id', eventIds)
-      .order('starts_at'),
-    supabase.from('clients').select('id, name'),
-    supabase.from('roles').select('id, name'),
-  ]);
+  const sectionRes = await supabase
+    .from('shift_requirements')
+    .select('id, event_id, role_id, starts_at, ends_at, headcount, buffer')
+    .in('event_id', eventIds)
+    .order('starts_at');
   const listError = sectionRes.error ?? clientRes.error ?? roleRes.error;
   if (listError) {
     return { events: [], problem: `Events could not be loaded: ${listError.message}` };

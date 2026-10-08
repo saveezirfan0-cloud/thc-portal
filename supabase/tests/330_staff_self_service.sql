@@ -30,7 +30,7 @@
 -- same 9xxxx convention; keep to it.
 -- =====================================================================
 begin;
-select plan(47);
+select plan(51);
 
 \set cl       'b1b1b1b1-0000-4000-8000-000000000001'
 \set ro       'b2b2b2b2-0000-4000-8000-000000000001'
@@ -210,9 +210,19 @@ select lives_ok($$ select staff_save_bank('Amara Kalu', '40-47-84', '31926819') 
   'a worker may change their own bank details from the app (§10.1)');
 select is((select sort_code from bank_details where staff_id = :'me'), '40-47-84',
   'stored in the form payroll reads');
+select is_empty($$ select 1 from notification_outbox
+      where template = 'E5' and payload->>'employeeId' = '93301' $$,
+  'a first entry is not a change: no E5 (ADR-0103)');
+select lives_ok($$ select staff_save_bank('Amara Kalu', '40-47-84', '31926820') $$,
+  'she then changes her account number');
 select isnt_empty($$ select 1 from notification_outbox
       where template = 'E5' and payload->>'employeeId' = '93301' $$,
-  'and E5 is queued in the same transaction — §2.10''s "same notification as at onboarding"');
+  'and E5 is queued in the same transaction — §2.10''s notification of a change to existing details');
+select lives_ok($$ select staff_save_bank('Amara Kalu', '40-47-84', '31926820') $$,
+  'saving the same details again');
+select is((select count(*)::int from notification_outbox
+      where template = 'E5' and payload->>'employeeId' = '93301'), 1,
+  'is not an update: still one E5 (ADR-0103)');
 
 -- =====================================================================
 -- 6. Earnings history — base pay only, and a derived pay date

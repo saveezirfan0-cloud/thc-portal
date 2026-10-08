@@ -54,8 +54,9 @@ select plan(50);
 -- statement here is inside the test transaction and is rolled back.
 --
 --   expiry_date / right_to_work_until  null  → never due
---   uploaded_at                        now   → a seeded term letter dies
---                                              on 31 December, months out
+--   uploaded_at                        now   → a seeded term letter with no
+--                                              dates dies on 31 December,
+--                                              months out
 --   term_dates                         empty → no seeded student's cap
 --                                              band moves under the N14
 --                                              assertions
@@ -102,10 +103,10 @@ insert into compliance_docs (id, staff_id, doc_type, review_status, expiry_date,
   ('e0000000-0000-4000-8000-000000000002', :'s2','passport','verified', date '2026-10-01', null, null, '2026-01-01'),
   ('e0000000-0000-4000-8000-000000000003', :'s3','passport','verified', date '2026-09-24', null, null, '2026-01-01'),
   ('e0000000-0000-4000-8000-000000000004', :'s4','passport','verified', date '2026-09-20', null, null, '2026-01-01'),
-  -- A term letter whose printed dates run to June 2027 AND whose own
-  -- Christmas range crosses into January — the shape almost every real
-  -- letter has. §4.2 says none of that is the expiry: the letter dies on
-  -- 31 December, and the ladder has not opened yet.
+  -- A term letter whose own Christmas range crosses into January and whose
+  -- printed course end is June 2027. The letter expires on the last day of
+  -- its last range (ADR-0103) — the course end is not the expiry — so the
+  -- ladder opens a month before 10 January, and has not opened yet.
   ('e0000000-0000-4000-8000-000000000005', :'s5','university_term_dates_letter','verified',
    date '2027-06-30', null, '{"[2026-06-15,2026-09-20)","[2026-12-12,2027-01-11)"}', '2026-02-01'),
   -- The share code report reminds off right_to_work_until, not its own
@@ -172,15 +173,15 @@ select ok(
 -- ---------------------------------------------------------------------
 select is(
   (select expires_on from current_verified_docs(:'s5') where doc_type = 'university_term_dates_letter'),
-  date '2026-12-31',
-  'a term letter expires on 31 December whatever it prints — not the graduation date, and not the January its own Christmas range runs into');
+  date '2027-01-10',
+  'a term letter expires on the last day printed on it (ADR-0103) — not the course end date, and not 31 December');
 select is(
   doc_expires_on('university_term_dates_letter', null, null, null, '2026-12-05'::timestamptz),
   date '2027-12-31',
-  'the one exception (ADR-0011): a letter uploaded inside the ladder window runs to the FOLLOWING 31 December, because the ladder opens on 1 December precisely to make the student upload it');
+  'a letter with no readable dates keeps ADR-0011''s calendar rule as the fallback, so there is always an expiry — the following 31 December when uploaded in the ladder window');
 select is(
   (select count(*)::int from notification_outbox where recipient_staff_id = :'s5'), 0,
-  'and its ladder opens in December, not a month before the last printed vacation date, which §4.2 rejects by name');
+  'and its ladder has not opened: it runs to 10 January, months out (the reminders on it are tested in 778)');
 
 -- ---------------------------------------------------------------------
 -- Three ways the ladder silently picks the wrong worker, or no worker.

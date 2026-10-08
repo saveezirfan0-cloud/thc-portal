@@ -47,11 +47,16 @@ export default async function Page() {
   // ADR-0056: a scheduler sees no money — no weekly snapshot, no margin
   // on the ten-day list. The views withhold it too; this drops the panel
   // rather than drawing it empty.
+  //
+  // The short-staffed read and the clock do not depend on the role, so they
+  // start now rather than after it resolves.
+  const shortStaffedRead = loadShortStaffed();
+  const formatRead = currentTimeFormat();
   const showMoney = officeCan(await currentOfficeRole(), 'finance');
   const [{ kpis, finance, upcoming, problem }, shortStaffed, format] = await Promise.all([
     loadDashboard({ finance: showMoney }),
-    loadShortStaffed(),
-    currentTimeFormat(),
+    shortStaffedRead,
+    formatRead,
   ]);
   const asOf = kpis ? formatAsOf(new Date(kpis.asOf), format) : null;
   const today = todayInUk();

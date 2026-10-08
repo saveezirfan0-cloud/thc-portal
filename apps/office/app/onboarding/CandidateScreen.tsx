@@ -1103,7 +1103,13 @@ function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
   if (doc.doc_type === 'university_term_dates_letter') {
     parts.push(`${(doc.term_dates ?? []).length} holiday range(s) found`);
     if (doc.expires_on)
-      parts.push(`Letter expires ${formatUkDate(doc.expires_on)} (calendar-year rule)`);
+      parts.push(
+        `Letter expires ${formatUkDate(doc.expires_on)} (${
+          (doc.term_dates ?? []).length > 0
+            ? 'last date on the letter'
+            : 'no dates read — calendar-year fallback'
+        })`,
+      );
   } else if (doc.doc_type === 'university_completion_letter') {
     if (doc.completion_date) parts.push(`Course completion ${formatUkDate(doc.completion_date)}`);
   } else if (doc.expiry_date) {
