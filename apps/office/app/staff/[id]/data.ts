@@ -174,9 +174,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // this is oldest first — the onboarding answer, then anything
     // declared later from the app (§10.7).
     supabase
-      .from('criminal_declarations')
+      .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name',
       )
       .eq('staff_id', id)
       .order('declared_at')

@@ -16,6 +16,11 @@
 --
 -- A share code the automated gov.uk check verified (ADR-0025) has no
 -- reviewer; it now reads "Automatic gov.uk check" instead of nothing.
+--
+-- The Criminal Record declaration is reviewed like a document and had the
+-- same gap (the screens read criminal_declarations directly and never had a
+-- name to show at all), so staff_declarations_v carries it too: the same
+-- columns the two screens already select, plus reviewed_by_name.
 -- GDPR removal already rewrites profiles.full_name to "Deleted account #id".
 --
 -- staff_documents_v is restated from 20261007130000, every column in
@@ -84,3 +89,28 @@ select
   end                                                        as ai_term_letter
 from compliance_docs c
 join staff s on s.id = c.staff_id;
+
+comment on view staff_documents_v is
+  'The Documents tab of /staff/:id and /onboarding/:id: every document on a worker with its status, expiry, AI confidence and the reviewer''s name (reviewer_name(), 20261008100000) for the UK-time audit stamp "Verified by <name> · <stamp>". Superseded rows are flagged rather than filtered (kept read-only as the record of the previous period). rtw_no_time_limit is the settled-status confirmation on a share code report; ni_recheck marks NI evidence verified before the NI number was entered (20260930130500). ai_term_letter is what the AI read off a term letter besides its holidays, for the reviewer only: it never feeds the weekly cap (20261002103000).';
+
+create or replace view staff_declarations_v with (security_invoker = true) as
+select
+  c.id,
+  c.staff_id,
+  c.source,
+  c.answer,
+  c.details,
+  c.conviction_date,
+  c.review_status,
+  c.declared_at,
+  c.reviewed_at,
+  c.review_note,
+  c.superseded,
+  public.reviewer_name(c.reviewed_by)                        as reviewed_by_name
+from criminal_declarations c;
+
+comment on view staff_declarations_v is
+  'criminal_declarations for the Back Office Documents tab and /onboarding/:id, with the reviewer''s name for "Verified by <name> · <stamp>" (20261008100000). security_invoker: the admin_all and staff_self_decl policies still decide the rows. No reviewed_by uuid is exposed.';
+
+revoke all on staff_declarations_v from public, anon;
+grant select on staff_declarations_v to authenticated, service_role;

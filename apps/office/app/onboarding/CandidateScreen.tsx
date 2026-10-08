@@ -1117,8 +1117,13 @@ function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
       `Verified${doc.reviewed_by_name ? ` by ${doc.reviewed_by_name}` : ''} · ${formatUkStamp(doc.reviewed_at)}`,
     );
   }
+  if (doc.review_status === 'rejected' && doc.reviewed_at) {
+    parts.push(
+      `Rejected${doc.reviewed_by_name ? ` by ${doc.reviewed_by_name}` : ''} · ${formatUkStamp(doc.reviewed_at)}`,
+    );
+  }
   if (doc.review_status === 'rejected' && doc.rejection_reason) {
-    parts.push(`Rejected: “${doc.rejection_reason}” — awaiting re-upload (N8 sent)`);
+    parts.push(`Reason: “${doc.rejection_reason}” — awaiting re-upload (N8 sent)`);
   }
   return parts.join(' · ');
 }
@@ -2332,7 +2337,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
               icon="DECL"
               state="verified"
               title="Criminal Record declaration · Yes"
-              meta={`Verified ${yes.reviewed_at ? formatUkStamp(yes.reviewed_at) : ''}${yes.review_note ? ` · note: “${yes.review_note}”` : ''}`}
+              meta={`Verified${yes.reviewed_by_name ? ` by ${yes.reviewed_by_name}` : ''} ${yes.reviewed_at ? formatUkStamp(yes.reviewed_at) : ''}${yes.review_note ? ` · note: “${yes.review_note}”` : ''}`}
               actions={<Pill tone="green">Verified</Pill>}
             />
           ) : null}
