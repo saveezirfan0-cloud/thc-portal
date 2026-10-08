@@ -1,7 +1,7 @@
 -- =====================================================================
--- 779 · "Verified by <name>" reaches every office reader, not only the
+-- 781 · "Verified by <name>" reaches every office reader, not only the
 --       reviewer themselves; profiles stays closed
---   20261008100000_reviewer_name_readable_by_the_office.sql
+--   20261008110000_reviewer_name_readable_by_the_office.sql
 -- =====================================================================
 begin;
 select plan(17);

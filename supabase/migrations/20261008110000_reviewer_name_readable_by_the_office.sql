@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261008100000 · who verified a document (§2.6, §4.1)
+-- Migration 20261008110000 · who verified a document (§2.6, §4.1)
 --
 -- /staff/:id and /onboarding/:id both print "Verified by <name> · <UK stamp>"
 -- under a document, but the name was blank for every document the READING
@@ -44,7 +44,7 @@ as $$
 $$;
 
 comment on function public.reviewer_name(uuid) is
-  'The display name of the person who reviewed a document, for the Back Office audit line "Verified by <name>". One column, one id, admin sessions only and admin accounts only (NULL for anyone else, so a worker or client login cannot be looked up by uuid): profiles_self stays the only policy on profiles. 20261008100000.';
+  'The display name of the person who reviewed a document, for the Back Office audit line "Verified by <name>". One column, one id, admin sessions only and admin accounts only (NULL for anyone else, so a worker or client login cannot be looked up by uuid): profiles_self stays the only policy on profiles. 20261008110000.';
 
 revoke execute on function public.reviewer_name(uuid) from public, anon;
 grant  execute on function public.reviewer_name(uuid) to authenticated;
@@ -94,7 +94,7 @@ from compliance_docs c
 join staff s on s.id = c.staff_id;
 
 comment on view staff_documents_v is
-  'The Documents tab of /staff/:id and /onboarding/:id: every document on a worker with its status, expiry, AI confidence and the reviewer''s name (reviewer_name(), 20261008100000) for the UK-time audit stamp "Verified by <name> · <stamp>". Superseded rows are flagged rather than filtered (kept read-only as the record of the previous period). rtw_no_time_limit is the settled-status confirmation on a share code report; ni_recheck marks NI evidence verified before the NI number was entered (20260930130500). ai_term_letter is what the AI read off a term letter besides its holidays, for the reviewer only: it never feeds the weekly cap (20261002103000).';
+  'The Documents tab of /staff/:id and /onboarding/:id: every document on a worker with its status, expiry, AI confidence and the reviewer''s name (reviewer_name(), 20261008110000) for the UK-time audit stamp "Verified by <name> · <stamp>". Superseded rows are flagged rather than filtered (kept read-only as the record of the previous period). rtw_no_time_limit is the settled-status confirmation on a share code report; ni_recheck marks NI evidence verified before the NI number was entered (20260930130500). ai_term_letter is what the AI read off a term letter besides its holidays, for the reviewer only: it never feeds the weekly cap (20261002103000).';
 
 create or replace view staff_declarations_v with (security_invoker = true) as
 select
@@ -113,7 +113,7 @@ select
 from criminal_declarations c;
 
 comment on view staff_declarations_v is
-  'criminal_declarations for the Back Office Documents tab and /onboarding/:id, with the reviewer''s name for "Verified by <name> · <stamp>" (20261008100000). security_invoker: the admin_all policy still decides the rows (a worker or client reads none). No reviewed_by uuid is exposed.';
+  'criminal_declarations for the Back Office Documents tab and /onboarding/:id, with the reviewer''s name for "Verified by <name> · <stamp>" (20261008110000). security_invoker: the admin_all policy still decides the rows (a worker or client reads none). No reviewed_by uuid is exposed.';
 
 -- Read-only: a single-table view is auto-updatable, and Supabase's default
 -- privileges grant authenticated every right on a new view by name.
