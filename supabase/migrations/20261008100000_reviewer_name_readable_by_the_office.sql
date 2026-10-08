@@ -113,7 +113,7 @@ select
 from criminal_declarations c;
 
 comment on view staff_declarations_v is
-  'criminal_declarations for the Back Office Documents tab and /onboarding/:id, with the reviewer''s name for "Verified by <name> · <stamp>" (20261008100000). security_invoker: the admin_all and staff_self_decl policies still decide the rows. No reviewed_by uuid is exposed.';
+  'criminal_declarations for the Back Office Documents tab and /onboarding/:id, with the reviewer''s name for "Verified by <name> · <stamp>" (20261008100000). security_invoker: the admin_all policy still decides the rows (a worker or client reads none). No reviewed_by uuid is exposed.';
 
 -- Read-only: a single-table view is auto-updatable, and Supabase's default
 -- privileges grant authenticated every right on a new view by name.
