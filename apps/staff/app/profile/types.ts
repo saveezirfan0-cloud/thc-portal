@@ -51,7 +51,7 @@ export interface StaffProfile {
   checkedIn: boolean;
   bank: BankDetails | null;
   /**
-   * SpudBros Express staff (ADR-0106, `staff_me()` since 20261008090000).
+   * SpudBros Express staff (ADR-0106, `staff_me()` since 20261008120000).
    * `spudbros` labels the profile; `onboardingOnly` — SpudBros staff whose
    * THC shifts are not switched on — is the app lock `connecteam`. Both
    * optional so a profile built from an older `staff_me()` reads as neither.

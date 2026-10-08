@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261008100000 · the invite list: who is SpudBros Express,
+-- Migration 20261008130000 · the invite list: who is SpudBros Express,
 --                            and each person's Payroll ID (ADR-0107;
 --                            owner request, 08.10.2026)
 --
@@ -16,7 +16,7 @@
 --      applied". Rows older than 180 days are dropped on every load: a
 --      list of people who never applied is not kept for ever (§1.7).
 --
---   2. record_application_source() (20261008090000) now decides the group
+--   2. record_application_source() (20261008120000) now decides the group
 --      for EVERY new application, not only /apply/spudbros:
 --        · on the list → the list's group wins (a SpudBros person who
 --          clicks the ordinary link is still SpudBros; a THC person who
@@ -65,7 +65,7 @@ create unique index if not exists staff_payroll_id_key on public.staff (payroll_
   where payroll_id is not null;
 
 comment on column public.staff.payroll_id is
-  '20261008100000: the ID the payroll sheet knows this person by — text, upper case, so 1641A fits. From the invite list or the office. A numeric one below 10001 also becomes the Employee ID at contract signature (issue_employee_id). Unique.';
+  '20261008130000: the ID the payroll sheet knows this person by — text, upper case, so 1641A fits. From the invite list or the office. A numeric one below 10001 also becomes the Employee ID at contract signature (issue_employee_id). Unique.';
 
 -- 20260923220000 replaced SELECT on staff with SELECT on a named column
 -- list; a column added since needs its own grant. RLS decides the rows.
@@ -505,7 +505,7 @@ begin
 end $$;
 
 comment on function public.record_application_source(text, text) is
-  '20261008100000 (ADR-0107): decides the group of the NEW candidate the current application created — the invite list''s group if their email is on it, otherwise SpudBros when the application came through /apply/spudbros — and moves the list''s Payroll ID onto them, consuming the list row. A returning-applicant match is never touched. Never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
+  '20261008130000 (ADR-0107): decides the group of the NEW candidate the current application created — the invite list''s group if their email is on it, otherwise SpudBros when the application came through /apply/spudbros — and moves the list''s Payroll ID onto them, consuming the list row. A returning-applicant match is never touched. Never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
 
 revoke execute on function public.record_application_source(text, text)
   from public, anon, authenticated, service_role;
@@ -538,7 +538,7 @@ create trigger staff_clear_roster_fields_on_removal
   for each row execute function public.staff_clear_roster_fields_on_removal();
 
 -- ---------------------------------------------------------------------
--- 6 · submit_application_as_caller — 20261008090000's body, the one clause
+-- 6 · submit_application_as_caller — 20261008120000's body, the one clause
 --     now unconditional
 -- ---------------------------------------------------------------------
 create or replace function public.submit_application_as_caller(
@@ -552,7 +552,7 @@ create or replace function public.submit_application_as_caller(
   -- ADR-0047: /apply?ref=. Recorded after the application is written,
   -- never a reason to refuse it.
   p_referral_code text default null,
-  -- 20261008090000: /apply/spudbros. 'spudbros' marks a NEW candidate as
+  -- 20261008120000: /apply/spudbros. 'spudbros' marks a NEW candidate as
   -- SpudBros Express staff; anything else is ignored.
   p_source text default null
 ) returns void
@@ -612,9 +612,9 @@ begin
     perform public.record_application_referral(p_email, p_referral_code);
   end if;
 
-  -- 20261008090000: SpudBros Express / the invite list. Never raises, and
+  -- 20261008120000: SpudBros Express / the invite list. Never raises, and
   -- only ever touches the candidate this call created.
-  -- 20261008100000 (ADR-0107): always, because the invite list can decide a
+  -- 20261008130000 (ADR-0107): always, because the invite list can decide a
   -- group (and a Payroll ID) for an application that came through /apply.
   perform public.record_application_source(p_email, p_source);
 
@@ -787,7 +787,7 @@ select
   coalesce((select array_agg(round(q.score)::int order by q.attempt_no) from quiz_attempts q
              where q.staff_id = s.id and q.taken_at >= s.onboarding_started_at),
            '{}'::int[])                                                             as quiz_scores,
-  -- ---- appended 20261008100000 (ADR-0107) ------------------------------
+  -- ---- appended 20261008130000 (ADR-0107) ------------------------------
   s.spudbros_express,
   s.thc_shifts_enabled,
   s.payroll_id
@@ -877,7 +877,7 @@ select
           between cap_week_start((now() at time zone 'Europe/London')::date)
               and cap_week_start((now() at time zone 'Europe/London')::date) + 6)
                                                              as weekly_worked_hours,
-  -- ---- appended 20261008100000 (ADR-0107) ------------------------------
+  -- ---- appended 20261008130000 (ADR-0107) ------------------------------
   s.spudbros_express,
   s.thc_shifts_enabled,
   s.payroll_id

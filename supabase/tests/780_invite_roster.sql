@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 780 · The invite list: SpudBros Express or THC, and the Payroll ID
---       (20261008100000, ADR-0107)
+--       (20261008130000, ADR-0107)
 --
 --   1. shape: invite_roster has RLS, one policy (admin_read), the viewer's
 --      write guard; the loader is the office's, the matcher is nobody's;
