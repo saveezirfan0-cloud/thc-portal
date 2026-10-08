@@ -23,15 +23,19 @@ export interface RosterPageData {
   problem: string | null;
 }
 
+/** PostgREST returns at most `max_rows` (1000) per request, so the list is read in pages. */
+const PAGE = 1000;
+
+interface PageQuery extends PromiseLike<{
+  data: RosterEntry[] | null;
+  error: { message: string } | null;
+}> {
+  order(column: string, options: { ascending: boolean }): PageQuery;
+  range(from: number, to: number): PageQuery;
+}
+
 interface ReadClient {
-  from(table: 'invite_roster'): {
-    select(columns: string): {
-      order(
-        column: string,
-        options: { ascending: boolean },
-      ): PromiseLike<{ data: RosterEntry[] | null; error: { message: string } | null }>;
-    };
-  };
+  from(table: 'invite_roster'): { select(columns: string): PageQuery };
 }
 
 export async function loadRosterPage(): Promise<RosterPageData> {
@@ -43,10 +47,17 @@ export async function loadRosterPage(): Promise<RosterPageData> {
     };
   }
   const supabase = createClient(await cookies()) as unknown as ReadClient;
-  const { data, error } = await supabase
-    .from('invite_roster')
-    .select('id, email, first_name, last_name, payroll_id, grp, loaded_at')
-    .order('loaded_at', { ascending: false });
-  if (error) return { waiting: [], problem: error.message };
-  return { waiting: data ?? [], problem: null };
+  const waiting: RosterEntry[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('invite_roster')
+      .select('id, email, first_name, last_name, payroll_id, grp, loaded_at')
+      .order('loaded_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { waiting: [], problem: error.message };
+    waiting.push(...(data ?? []));
+    if ((data?.length ?? 0) < PAGE) break;
+  }
+  return { waiting, problem: null };
 }
