@@ -82,6 +82,7 @@ returns text
 language sql
 immutable
 parallel safe
+set search_path = public
 as $$
   select case when v ~ '^[0-9]+$' then coalesce(nullif(ltrim(v, '0'), ''), '0') else v end
     from (select nullif(upper(btrim(coalesce(p, ''))), '') as v) q
@@ -99,6 +100,7 @@ create or replace function public.payroll_names_compatible(
 language sql
 immutable
 parallel safe
+set search_path = public
 as $$
   select case
     when payroll_name_key(b_first, b_last) is null or payroll_name_key(a_first, a_last) is null then true
@@ -151,6 +153,7 @@ returns text
 language sql
 immutable
 parallel safe
+set search_path = public
 as $$
   select case regexp_replace(lower(btrim(coalesce(p_group, ''))), '[^a-z]', '', 'g')
     when 'spudbros'        then 'spudbros'
@@ -509,6 +512,7 @@ revoke execute on function public.record_application_source(text, text)
 create or replace function public.staff_clear_roster_fields_on_removal()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.removed_at is not null and old.removed_at is null then
