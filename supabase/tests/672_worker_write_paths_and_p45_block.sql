@@ -87,7 +87,7 @@ select is((select photo_path from staff where id = :'me'), :'me' || '/selfie-2.j
 -- ---------------------------------------------------------------------
 -- 4. D52 · one E5 per bank save, even two in one second
 -- ---------------------------------------------------------------------
-select lives_ok($$ select staff_save_bank('P Me', '40-47-84', '12345678') $$, 'first save (a first entry: no E5, ADR-0103)');
+select lives_ok($$ select staff_save_bank('P Me', '40-47-84', '12345678') $$, 'first save (a first entry: no E5, ADR-0105)');
 select lives_ok($$ select staff_save_bank('P Me', '40-47-85', '12345678') $$, 'second save, same transaction');
 select lives_ok($$ select staff_save_bank('P Me', '40-47-86', '12345678') $$, 'third save, same transaction');
 reset role;
