@@ -96,7 +96,9 @@ jobs:
       # supabase/tests/_shared/fixtures.psql is included by the tests and is
       # never picked up as a test of its own.
       - run: supabase test db
-      - run: pnpm dlx playwright install --with-deps chromium
+      # The pinned Playwright, not `pnpm dlx playwright`: dlx fetches the newest release,
+      # whose browser build is not the one the tests launch ("Executable doesn't exist").
+      - run: pnpm --filter @thc/e2e exec playwright install --with-deps chromium
       # The apps query Supabase server-side and gate every route behind a
       # session, so the browser suite needs the local stack `supabase start`
       # brought up above. Without these the servers boot and then throw on the
