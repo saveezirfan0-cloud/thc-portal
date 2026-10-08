@@ -45,7 +45,7 @@ import '../chrome.css';
  * /notifications, whose whole body is this message, leaves it out
  * (`StaffShell pushStatus={false}`).
  */
-export function PushStatus() {
+export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolean } = {}) {
   const [input, setInput] = useState<BannerInput | null>(null);
   const [record, setRecord] = useState<{ value: string | null; now: number } | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -61,6 +61,7 @@ export function PushStatus() {
         wasOn: readStored(WAS_ON_KEY) === '1',
         browser: detectBrowser(navigator.userAgent, navigator.maxTouchPoints),
         standalone: env.standalone,
+        ...(onboardingOnly ? { onboardingOnly } : {}),
       };
       if (!cancelled) {
         setRecord({ value: readStored(DISMISS_KEY), now: Date.now() });
@@ -127,7 +128,7 @@ export function PushStatus() {
       window.removeEventListener('focus', onVisible);
       navigator.serviceWorker?.removeEventListener('message', onMessage);
     };
-  }, []);
+  }, [onboardingOnly]);
 
   if (!input || !record || hidden) return null;
   const banner = visibleBanner(input, record.value, record.now);

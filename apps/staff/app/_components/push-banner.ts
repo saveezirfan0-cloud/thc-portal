@@ -51,6 +51,11 @@ export interface BannerInput {
   browser: Browser;
   /** Running from the home screen. */
   standalone: boolean;
+  /**
+   * ADR-0106: SpudBros Express staff are not offered shifts here, so the
+   * banner talks about document requests, not shift alerts.
+   */
+  onboardingOnly?: boolean;
 }
 
 export type BannerTone = 'coral' | 'amber' | 'cyan';
@@ -77,6 +82,18 @@ const STOPPED: Message = {
   link: { href: '/notifications', label: 'Turn on' },
 };
 
+/** The same banners for a worker whose shifts are elsewhere (ADR-0106). */
+const ONBOARDING_ONLY_TEXT: Readonly<Record<string, string>> = {
+  'install:ios-safari': 'Add THC to your Home Screen to get alerts.',
+  'install:ios-other': 'Open in Safari, then add THC to your Home Screen.',
+  'unsupported:ios-old': 'Alerts need iOS 16.4 or later.',
+  'unsupported:android': 'Open THC in Chrome to get alerts.',
+  'unsupported:other': 'Alerts work on your phone, not in this browser.',
+  unconfigured: 'Alerts aren’t set up yet — we’ll email you if a document needs another look.',
+  denied: 'Notifications are off — you may miss a request to re-upload a document.',
+  default: 'Turn on notifications so we can tell you if a document needs another look.',
+};
+
 /** What the banner says, or null when there is nothing to say. */
 export function pushBanner(input: BannerInput): PushBanner | null {
   const { state, lapsed, wasOn, browser, standalone } = input;
@@ -86,8 +103,10 @@ export function pushBanner(input: BannerInput): PushBanner | null {
   const message =
     lapsed || (fault && state === 'default') ? STOPPED : messageFor(state, browser, standalone);
   if (!message) return null;
+  const text = (input.onboardingOnly && ONBOARDING_ONLY_TEXT[message.variant]) || message.text;
   return {
     ...message,
+    text,
     variant: fault ? `fault:${message.variant}` : message.variant,
     dismissible: !fault,
   };

@@ -186,7 +186,11 @@ export function ProfileHub({
         <HubRow
           href="/notifications"
           title="Notifications"
-          sub="Invites, shift changes and reminders on this phone"
+          sub={
+            profile.onboardingOnly
+              ? 'If a document needs another look, on this phone'
+              : 'Invites, shift changes and reminders on this phone'
+          }
         />
       </nav>
 
