@@ -13,7 +13,7 @@ export function TutorialStep({
   onboardingOnly = false,
 }: {
   firstName: string;
-  /** ADR-0103: SpudBros Express staff, shifts on Connecteam — their own three cards. */
+  /** ADR-0104: SpudBros Express staff, shifts on Connecteam — their own three cards. */
   onboardingOnly?: boolean;
 }) {
   const router = useRouter();

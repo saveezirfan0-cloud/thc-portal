@@ -1,6 +1,6 @@
 -- =====================================================================
--- 778 · SpudBros Express staff: onboarding only (ADR-0103)
---   20261007130000_spudbros_express_staff.sql
+-- 779 · SpudBros Express staff: onboarding only (ADR-0104)
+--   20261008090000_spudbros_express_staff.sql
 --
 -- Held here:
 --   1. the two columns: off by default, and staff_onboarding_only() is

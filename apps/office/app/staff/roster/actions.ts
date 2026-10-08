@@ -7,7 +7,7 @@ import { supabaseConfigured } from '../data';
 import { parseRoster } from './parse';
 
 /**
- * The invite list (ADR-0104) — the office's, through its own session, so
+ * The invite list (ADR-0105) — the office's, through its own session, so
  * `load_invite_roster()` and `remove_invite_roster_entries()` ask the
  * database who is calling (a viewer and a worker are refused there).
  */

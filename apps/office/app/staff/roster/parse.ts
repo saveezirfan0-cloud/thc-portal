@@ -1,5 +1,5 @@
 /**
- * Reading the invite list (ADR-0104). Pure, so the sheet's messy edges can be
+ * Reading the invite list (ADR-0105). Pure, so the sheet's messy edges can be
  * driven directly.
  *
  * The office pastes (or opens) a sheet: tab-separated when copied out of a

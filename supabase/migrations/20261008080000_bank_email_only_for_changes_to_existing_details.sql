@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261007130000 · E5 is for a change to EXISTING bank details
---                            (§2.10, §8 E5; ADR-0103, THC 07.10.2026)
+-- Migration 20261008080000 · E5 is for a change to EXISTING bank details
+--                            (§2.10, §8 E5; ADR-0106, THC 07.10.2026)
 --
 -- THC: the "Bank & payroll details updated" email should only be sent when a
 -- staff member updates their existing bank details.
@@ -81,7 +81,7 @@ begin
   -- transaction is somebody else's and must be emailed.
   perform set_config('thc.bank_write', '', true);
 
-  -- ADR-0103: E5 only for a real change to existing details, by someone who
+  -- ADR-0106: E5 only for a real change to existing details, by someone who
   -- is already Staff. One E5 per such save (§2.10); clock_timestamp()
   -- advances inside a transaction and the key carries microseconds, so two
   -- saves — even in one second, or one transaction — are two emails.
@@ -101,7 +101,7 @@ begin
 end $$;
 
 comment on function public.staff_save_bank(text, text, text) is
-  '§2.10/§10.1: the ONLY worker write path to bank_details. Validates sort code and account number. Queues E5 to Gisela and Payroll only when existing details actually changed and the worker already has an Employee ID (ADR-0103): a first entry at onboarding, or a re-save of the same details, sends nothing. One E5 per changing save (microsecond key). Tells bank_details_notify_change() (ADR-0092) it owns the decision, so no write is emailed twice.';
+  '§2.10/§10.1: the ONLY worker write path to bank_details. Validates sort code and account number. Queues E5 to Gisela and Payroll only when existing details actually changed and the worker already has an Employee ID (ADR-0106): a first entry at onboarding, or a re-save of the same details, sends nothing. One E5 per changing save (microsecond key). Tells bank_details_notify_change() (ADR-0092) it owns the decision, so no write is emailed twice.';
 
 revoke execute on function public.staff_save_bank(text, text, text) from public, anon;
 grant  execute on function public.staff_save_bank(text, text, text) to authenticated;

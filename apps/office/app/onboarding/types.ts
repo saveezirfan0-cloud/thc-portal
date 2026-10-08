@@ -40,7 +40,7 @@ export interface CandidateRow {
   share_code: string | null;
   activated: boolean;
   /**
-   * ADR-0104: SpudBros Express staff, whether THC shifts are switched on for
+   * ADR-0105: SpudBros Express staff, whether THC shifts are switched on for
    * them, and the Payroll ID — from `onboarding_candidates_v` since
    * 20261008100000. Optional so a row from an older view reads as none.
    */

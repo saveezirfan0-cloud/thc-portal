@@ -212,7 +212,7 @@ select is((select sort_code from bank_details where staff_id = :'me'), '40-47-84
   'stored in the form payroll reads');
 select is_empty($$ select 1 from notification_outbox
       where template = 'E5' and payload->>'employeeId' = '93301' $$,
-  'a first entry is not a change: no E5 (ADR-0103)');
+  'a first entry is not a change: no E5 (ADR-0106)');
 select lives_ok($$ select staff_save_bank('Amara Kalu', '40-47-84', '31926820') $$,
   'she then changes her account number');
 select isnt_empty($$ select 1 from notification_outbox
@@ -222,7 +222,7 @@ select lives_ok($$ select staff_save_bank('Amara Kalu', '40-47-84', '31926820') 
   'saving the same details again');
 select is((select count(*)::int from notification_outbox
       where template = 'E5' and payload->>'employeeId' = '93301'), 1,
-  'is not an update: still one E5 (ADR-0103)');
+  'is not an update: still one E5 (ADR-0106)');
 
 -- =====================================================================
 -- 6. Earnings history — base pay only, and a derived pay date

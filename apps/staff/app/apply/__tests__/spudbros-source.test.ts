@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * apply() from `/apply/spudbros` (ADR-0103).
+ * apply() from `/apply/spudbros` (ADR-0104).
  *
  *   - the marker travels as the 9th argument, p_source, and only the value
  *     'spudbros' is ever sent — anything else is the ordinary application;

@@ -208,7 +208,7 @@ export function StaffScreen({
         >
           Change requests ({pendingRequests ?? '?'})
         </Link>
-        {/* ADR-0104: who is SpudBros Express, and each person's Payroll ID. */}
+        {/* ADR-0105: who is SpudBros Express, and each person's Payroll ID. */}
         <Link href="/staff/roster" className="btn sm ghost">
           Invite list
         </Link>
@@ -270,7 +270,7 @@ export function StaffScreen({
                   </option>
                 ))}
               </Select>
-              {/* ADR-0104: SpudBros Express staff are onboarding-only. */}
+              {/* ADR-0105: SpudBros Express staff are onboarding-only. */}
               <Select
                 value={group}
                 onChange={(event) =>

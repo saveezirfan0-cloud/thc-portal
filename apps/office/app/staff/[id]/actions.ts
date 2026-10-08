@@ -318,7 +318,7 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
 }
 
 // ---------------------------------------------------------------------
-// Scheduling (ADR-0103) — set_staff_scheduling. SpudBros Express staff do
+// Scheduling (ADR-0104) — set_staff_scheduling. SpudBros Express staff do
 // their onboarding with THC and nothing else (shifts stay on Connecteam);
 // the office switches THC shifts on for the few who also work ours.
 // ---------------------------------------------------------------------
@@ -347,7 +347,7 @@ export async function saveScheduling(
 }
 
 // ---------------------------------------------------------------------
-// Payroll ID (ADR-0104) — set_staff_payroll_id. The ID the payroll sheet
+// Payroll ID (ADR-0105) — set_staff_payroll_id. The ID the payroll sheet
 // knows the person by; it normally arrives from the invite list.
 // ---------------------------------------------------------------------
 const PAYROLL_ID_MESSAGES: Readonly<Record<string, string>> = {

@@ -221,7 +221,7 @@ describe('appLock — which rejection (§2.9 quiz vs §2.3 manager / Willo)', ()
   });
 });
 
-describe('appLock — SpudBros Express staff, shifts on Connecteam (ADR-0103)', () => {
+describe('appLock — SpudBros Express staff, shifts on Connecteam (ADR-0104)', () => {
   it('closes Shifts, Invites and Radar and keeps Profile', () => {
     const lock = appLock(worker({ onboardingOnly: true }));
     expect(lock).toBe('connecteam');

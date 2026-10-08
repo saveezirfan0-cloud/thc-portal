@@ -52,7 +52,7 @@ select is(
   (select pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'submit_application_as_caller'),
   'p_first_name text, p_last_name text, p_email text, p_phone text, p_dob date, p_consent boolean, p_caller_hash text, p_referral_code text, p_source text',
-  'A: the referral code is the 8th argument and the source the 9th (20261007130000)');
+  'A: the referral code is the 8th argument and the source the 9th (20261008090000)');
 select is(
   (select pg_get_function_result('public.submit_application_as_caller(text,text,text,text,date,boolean,text,text,text)'::regprocedure)),
   'void', 'A: still returns void — nothing for a caller to learn from');

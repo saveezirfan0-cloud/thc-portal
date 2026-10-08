@@ -64,7 +64,7 @@ select is((select count(*)::int from notification_outbox where template = 'E5b' 
   'and E5b is not: the trigger stands down for staff_save_bank, so no change is emailed twice');
 select lives_ok($$ select staff_save_bank('Staff Alpha', '20-00-00', '55779911') $$ , 'saving again as a worker');
 select is((select count(*)::int from notification_outbox where template = 'E5' and key like 'E5:staff:' || :'staffa' || ':%'), 1,
-  'saving the same details again is not an update: still one E5 (ADR-0103)');
+  'saving the same details again is not an update: still one E5 (ADR-0106)');
 
 -- =====================================================================
 -- 4 · The service role, with no login behind it

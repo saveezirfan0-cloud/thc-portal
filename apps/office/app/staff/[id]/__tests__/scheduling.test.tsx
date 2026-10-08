@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * ADR-0103 · the Scheduling row on /staff/:id, and the action behind it.
+ * ADR-0104 · the Scheduling row on /staff/:id, and the action behind it.
  *
  *   · an ordinary worker: "THC shifts" and a button to mark them SpudBros
  *     Express staff;
@@ -39,7 +39,7 @@ const render = (props: Partial<Parameters<typeof SchedulingField>[0]>) =>
     <SchedulingField staffId="st-1" spudbros={false} thcShifts={false} editable {...props} />,
   );
 
-describe('the Scheduling row (ADR-0103)', () => {
+describe('the Scheduling row (ADR-0104)', () => {
   it('the label is the one the onboarding email promised', () => {
     expect(SPUDBROS_LABEL).toBe('SpudBros Express Staff Only – scheduling on Connecteam');
   });

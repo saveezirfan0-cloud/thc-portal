@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseRoster, splitLine } from '../parse';
 
-/** ADR-0104 · reading the invite list the office pastes. */
+/** ADR-0105 · reading the invite list the office pastes. */
 describe('parseRoster', () => {
   it('reads a sheet copied out of a spreadsheet (tab-separated)', () => {
     const { rows, problems } = parseRoster(

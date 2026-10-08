@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * ADR-0104 · the Payroll ID row on /staff/:id, and the action behind it.
+ * ADR-0105 · the Payroll ID row on /staff/:id, and the action behind it.
  *
  *   · set: the ID in mono, and Edit;
  *   · none: "not set" and Set;
@@ -33,7 +33,7 @@ beforeEach(() => {
 const render = (props: Partial<Parameters<typeof PayrollIdField>[0]>) =>
   renderToStaticMarkup(<PayrollIdField staffId="st-1" payrollId="1641A" editable {...props} />);
 
-describe('the Payroll ID row (ADR-0104)', () => {
+describe('the Payroll ID row (ADR-0105)', () => {
   it('shows the ID and offers Edit', () => {
     const html = render({});
     expect(html).toContain('1641A');

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261008100000 · the invite list: who is SpudBros Express,
---                            and each person's Payroll ID (ADR-0104;
+--                            and each person's Payroll ID (ADR-0105;
 --                            owner request, 08.10.2026)
 --
 -- The app cannot see which mailbox an invitation came from, and both
@@ -16,7 +16,7 @@
 --      applied". Rows older than 180 days are dropped on every load: a
 --      list of people who never applied is not kept for ever (§1.7).
 --
---   2. record_application_source() (20261007130000) now decides the group
+--   2. record_application_source() (20261008090000) now decides the group
 --      for EVERY new application, not only /apply/spudbros:
 --        · on the list → the list's group wins (a SpudBros person who
 --          clicks the ordinary link is still SpudBros; a THC person who
@@ -88,7 +88,7 @@ create table public.invite_roster (
 create unique index invite_roster_email_key on public.invite_roster (email);
 
 comment on table public.invite_roster is
-  'ADR-0104: people the office has invited, with the group each belongs to (spudbros / thc) and their Payroll ID. Matched on email when somebody applies; the row is deleted when it is used, so the table is "invited, not yet applied". Loaded by load_invite_roster(); read by the office (admin_read); no write path for any session.';
+  'ADR-0105: people the office has invited, with the group each belongs to (spudbros / thc) and their Payroll ID. Matched on email when somebody applies; the row is deleted when it is used, so the table is "invited, not yet applied". Loaded by load_invite_roster(); read by the office (admin_read); no write path for any session.';
 
 alter table public.invite_roster enable row level security;
 
@@ -263,7 +263,7 @@ begin
 end $$;
 
 comment on function public.load_invite_roster(jsonb) is
-  'ADR-0104: the office loads the invite list — email, name, Payroll ID, group (spudbros / thc). Someone not yet here is added to invite_roster; someone already here (same email) gets the list applied now (Payroll ID, numeric ID as Employee ID if system-issued, SpudBros marking unless it would strand an upcoming shift). Returns {loaded, updated, held, skipped} with the reason on every row it did not take. Office logins that are not read-only.';
+  'ADR-0105: the office loads the invite list — email, name, Payroll ID, group (spudbros / thc). Someone not yet here is added to invite_roster; someone already here (same email) gets the list applied now (Payroll ID, numeric ID as Employee ID if system-issued, SpudBros marking unless it would strand an upcoming shift). Returns {loaded, updated, held, skipped} with the reason on every row it did not take. Office logins that are not read-only.';
 
 revoke all on function public.load_invite_roster(jsonb) from public, anon;
 grant execute on function public.load_invite_roster(jsonb) to authenticated, service_role;
@@ -286,7 +286,7 @@ begin
 end $$;
 
 comment on function public.remove_invite_roster_entries(uuid[]) is
-  'ADR-0104: the office removes entries from the invite list (null = all still waiting).';
+  'ADR-0105: the office removes entries from the invite list (null = all still waiting).';
 
 revoke all on function public.remove_invite_roster_entries(uuid[]) from public, anon;
 grant execute on function public.remove_invite_roster_entries(uuid[]) to authenticated, service_role;
@@ -332,7 +332,7 @@ begin
 end $$;
 
 comment on function public.set_staff_payroll_id(uuid, text) is
-  'ADR-0104: the office sets or clears a worker''s Payroll ID (letters, digits, hyphen; unique). Does not change the Employee ID. Office logins that are not read-only; refused on a removed worker; audited.';
+  'ADR-0105: the office sets or clears a worker''s Payroll ID (letters, digits, hyphen; unique). Does not change the Employee ID. Office logins that are not read-only; refused on a removed worker; audited.';
 
 revoke all on function public.set_staff_payroll_id(uuid, text) from public, anon;
 grant execute on function public.set_staff_payroll_id(uuid, text) to authenticated, service_role;
@@ -422,13 +422,13 @@ begin
 end $$;
 
 comment on function public.record_application_source(text, text) is
-  '20261008100000 (ADR-0104): decides the group of the NEW candidate the current application created — the invite list''s group if their email is on it, otherwise SpudBros when the application came through /apply/spudbros — and moves the list''s Payroll ID onto them, consuming the list row. A returning-applicant match is never touched. Never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
+  '20261008100000 (ADR-0105): decides the group of the NEW candidate the current application created — the invite list''s group if their email is on it, otherwise SpudBros when the application came through /apply/spudbros — and moves the list''s Payroll ID onto them, consuming the list row. A returning-applicant match is never touched. Never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
 
 revoke execute on function public.record_application_source(text, text)
   from public, anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------
--- 6 · submit_application_as_caller — 20261007130000's body, the one clause
+-- 6 · submit_application_as_caller — 20261008090000's body, the one clause
 --     now unconditional
 -- ---------------------------------------------------------------------
 create or replace function public.submit_application_as_caller(
@@ -442,7 +442,7 @@ create or replace function public.submit_application_as_caller(
   -- ADR-0047: /apply?ref=. Recorded after the application is written,
   -- never a reason to refuse it.
   p_referral_code text default null,
-  -- 20261007130000: /apply/spudbros. 'spudbros' marks a NEW candidate as
+  -- 20261008090000: /apply/spudbros. 'spudbros' marks a NEW candidate as
   -- SpudBros Express staff; anything else is ignored.
   p_source text default null
 ) returns void
@@ -502,9 +502,9 @@ begin
     perform public.record_application_referral(p_email, p_referral_code);
   end if;
 
-  -- 20261007130000: SpudBros Express / the invite list. Never raises, and
+  -- 20261008090000: SpudBros Express / the invite list. Never raises, and
   -- only ever touches the candidate this call created.
-  -- 20261008100000 (ADR-0104): always, because the invite list can decide a
+  -- 20261008100000 (ADR-0105): always, because the invite list can decide a
   -- group (and a Payroll ID) for an application that came through /apply.
   perform public.record_application_source(p_email, p_source);
 
@@ -528,7 +528,7 @@ declare
   v_code int;
   v_pay  text;
 begin
-  -- ADR-0104: a numeric Payroll ID already on the person (from the invite
+  -- ADR-0105: a numeric Payroll ID already on the person (from the invite
   -- list, matched by email) is their code — no name match needed, and no
   -- chance of two spellings disagreeing.
   select s.payroll_id into v_pay from staff s where s.id = p_staff;
@@ -569,7 +569,7 @@ begin
 end $$;
 
 comment on function public.issue_employee_id(uuid, text, text) is
-  'ADR-0076 / ADR-0104: the Employee ID for a person at contract signature (§2.7). A numeric Payroll ID on the person (invite list) is their code; otherwise their payroll code when their name matches exactly one row of payroll_codes and no other live worker shares it; otherwise the next employee_id_seq value. Consumed payroll_codes rows are deleted; audit_log records the match.';
+  'ADR-0076 / ADR-0105: the Employee ID for a person at contract signature (§2.7). A numeric Payroll ID on the person (invite list) is their code; otherwise their payroll code when their name matches exactly one row of payroll_codes and no other live worker shares it; otherwise the next employee_id_seq value. Consumed payroll_codes rows are deleted; audit_log records the match.';
 
 -- ---------------------------------------------------------------------
 -- 8 · The office's two lists carry the group and the Payroll ID
@@ -675,7 +675,7 @@ select
   coalesce((select array_agg(round(q.score)::int order by q.attempt_no) from quiz_attempts q
              where q.staff_id = s.id and q.taken_at >= s.onboarding_started_at),
            '{}'::int[])                                                             as quiz_scores,
-  -- ---- appended 20261008100000 (ADR-0104) ------------------------------
+  -- ---- appended 20261008100000 (ADR-0105) ------------------------------
   s.spudbros_express,
   s.thc_shifts_enabled,
   s.payroll_id
@@ -765,7 +765,7 @@ select
           between cap_week_start((now() at time zone 'Europe/London')::date)
               and cap_week_start((now() at time zone 'Europe/London')::date) + 6)
                                                              as weekly_worked_hours,
-  -- ---- appended 20261008100000 (ADR-0104) ------------------------------
+  -- ---- appended 20261008100000 (ADR-0105) ------------------------------
   s.spudbros_express,
   s.thc_shifts_enabled,
   s.payroll_id

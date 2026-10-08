@@ -1,6 +1,6 @@
-# ADR-0103 · SpudBros Express staff are onboarding-only; THC shifts are a switch
+# ADR-0104 · SpudBros Express staff are onboarding-only; THC shifts are a switch
 
-**Status:** Accepted · **Refines:** Scope §2.1, §2.12, §3.3, §3.4, §10.1 · **Follows:** ADR-0076, ADR-0042 · **Owner request:** 07.10.2026 · **Refined by:** ADR-0104 (the invite list decides the group; `/apply/spudbros` is the fallback)
+**Status:** Accepted · **Refines:** Scope §2.1, §2.12, §3.3, §3.4, §10.1 · **Follows:** ADR-0076, ADR-0042 · **Owner request:** 07.10.2026 · **Refined by:** ADR-0105 (the invite list decides the group; `/apply/spudbros` is the fallback)
 
 ## Context
 SpudBros Express staff are brought onto the platform for their Right to Work check and onboarding only. Their shifts, rota and messages stay on Connecteam. A few of them also work THC's own shifts. The onboarding email already tells them so ("Our Staff App is for your onboarding only… Your profile with us will be marked: SpudBros Express Staff Only – scheduling on Connecteam"). Until now every compliant worker was in the auto-assign pool and could be invited.
@@ -24,4 +24,4 @@ SpudBros staff are emailed separately from a list, and their application and onb
 - Nothing is withdrawn when the switch is flipped: that is why it refuses while shifts are upcoming.
 - The Radar RPCs still answer if called directly; the app lock is what hides them and the table trigger is what stops a booking.
 - Not covered yet: a filter or badge for SpudBros staff in the Staff directory and on the onboarding board, and a different set of onboarding steps. Both read from the same marker when asked.
-- pgTAP `778_spudbros_express_staff.sql`; `522` and `731` are updated to the 9-argument signature.
+- pgTAP `779_spudbros_express_staff.sql`; `522` and `731` are updated to the 9-argument signature.

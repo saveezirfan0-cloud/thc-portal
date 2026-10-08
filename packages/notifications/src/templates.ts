@@ -446,7 +446,7 @@ export const TEMPLATES = {
     title: 'Bank & payroll details updated — {name}, Employee ID {employeeId}',
     body: 'A worker has updated their bank & payroll details.\n\nName: {name}\nEmployee ID: {employeeId}\nChanged: {changedAt}',
     trigger:
-      'Worker changes their existing bank & payroll details (§2.10, §10.1; ADR-0103): not a first entry at onboarding, not a re-save of the same details',
+      'Worker changes their existing bank & payroll details (§2.10, §10.1; ADR-0106): not a first entry at onboarding, not a re-save of the same details',
     timing: 'on save',
     mandatory: true,
   },

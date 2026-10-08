@@ -83,12 +83,12 @@ export function Overview({
   languages?: string[] | null;
   /** Any office login that may write (ADR-0080). */
   canEditLanguages?: boolean;
-  /** ADR-0103: SpudBros Express staff, and THC scheduling switched on for them. */
+  /** ADR-0104: SpudBros Express staff, and THC scheduling switched on for them. */
   spudbros?: boolean;
   thcShifts?: boolean;
-  /** Any office login that may write (ADR-0103). */
+  /** Any office login that may write (ADR-0104). */
   canEditScheduling?: boolean;
-  /** ADR-0104: `staff.payroll_id`; null = none, undefined = not read. */
+  /** ADR-0105: `staff.payroll_id`; null = none, undefined = not read. */
   payrollId?: string | null;
   canEditPayrollId?: boolean;
   /** ADR-0098: the Willo interview link; null/undefined = none to show. */

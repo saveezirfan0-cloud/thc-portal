@@ -275,7 +275,7 @@ export function CandidateScreen({
             <div className="row wrap">
               <h2>{row.display_name}</h2>
               <Pill>{row.status === 'compliant' ? 'Staff' : 'Candidate'}</Pill>
-              {/* ADR-0104: said where the office looks first. */}
+              {/* ADR-0105: said where the office looks first. */}
               {row.spudbros_express ? (
                 <Pill tone="cyan">
                   {row.thc_shifts_enabled

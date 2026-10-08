@@ -52,7 +52,7 @@ export async function loadLanguages(staffId: string): Promise<string[] | null> {
 
 /**
  * Whether the caller is SpudBros Express staff whose THC shifts are not
- * switched on (ADR-0103), through the worker's own-row read. False when
+ * switched on (ADR-0104), through the worker's own-row read. False when
  * unreadable: the ordinary last step then shows, which is the wording that
  * is wrong for them but never one that withholds anything.
  */

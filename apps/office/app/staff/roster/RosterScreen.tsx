@@ -11,7 +11,7 @@ import type { RosterEntry } from './data';
 const GROUP_LABEL = { spudbros: 'SpudBros Express', thc: 'THC' } as const;
 
 /**
- * /staff/roster — the invite list (ADR-0104).
+ * /staff/roster — the invite list (ADR-0105).
  *
  * Paste the sheet (copied straight from a spreadsheet, or saved as CSV) with
  * a header row: Email, First name, Last name, Payroll ID, Group. Group says

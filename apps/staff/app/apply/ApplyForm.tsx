@@ -26,7 +26,7 @@ import type { ApplicationField, ApplicationValues, ApplySource, FieldErrors } fr
  * already shape-checked by the page, carried in a hidden field and nowhere
  * else. The form reads exactly the same with or without it.
  *
- * `source` (ADR-0103): `/apply/spudbros` marks the application as SpudBros
+ * `source` (ADR-0104): `/apply/spudbros` marks the application as SpudBros
  * Express staff's onboarding. It rides in a hidden field like the code and
  * is the same form otherwise — only the page around it and the database's
  * answer differ.

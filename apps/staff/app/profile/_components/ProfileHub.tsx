@@ -101,7 +101,7 @@ export function ProfileHub({
               {profile.reliability !== null ? (
                 <Pill>Show-rate {Math.round(profile.reliability)}%</Pill>
               ) : null}
-              {/* ADR-0103: said where they look for who they are. */}
+              {/* ADR-0104: said where they look for who they are. */}
               {profile.onboardingOnly ? <Pill tone="cyan">{CONNECTEAM_LABEL}</Pill> : null}
               {profile.spudbros && !profile.onboardingOnly ? (
                 <Pill tone="cyan">SpudBros Express</Pill>

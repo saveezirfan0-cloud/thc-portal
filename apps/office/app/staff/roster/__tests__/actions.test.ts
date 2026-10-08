@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * ADR-0104 · loading and clearing the invite list.
+ * ADR-0105 · loading and clearing the invite list.
  *
  *   · the pasted sheet is parsed on the server and the ROWS go to
  *     load_invite_roster() through the manager's own session;

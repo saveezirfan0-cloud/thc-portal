@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { matchesGroup, matchesQuery } from '../staff';
 import type { StaffRow } from '../types';
 
-/** ADR-0104 · the Staff directory's group filter and the Payroll ID search. */
+/** ADR-0105 · the Staff directory's group filter and the Payroll ID search. */
 const base = {
   id: 's-1',
   employee_id: 2200,

@@ -47,7 +47,7 @@ type RpcAnswer = { error: { message: string; code?: string } | null };
 /**
  * `p_referral_code` is 20260930204000's 8th argument (ADR-0047). Typed by
  * hand here, like the rest of this call, until the Phase 2 type regen.
- * `p_source` is 20261007130000's 9th (ADR-0103, /apply/spudbros).
+ * `p_source` is 20261008090000's 9th (ADR-0104, /apply/spudbros).
  */
 interface AdminRpcClient {
   rpc(
@@ -94,7 +94,7 @@ async function submit(
   const base = { ...args, p_caller_hash: callerKey(await headers()) };
   const extras = {
     ...(referralCode ? { p_referral_code: referralCode } : {}),
-    // ADR-0103: SpudBros Express staff's own application.
+    // ADR-0104: SpudBros Express staff's own application.
     ...(source ? { p_source: source } : {}),
   };
   if (Object.keys(extras).length === 0) return admin.rpc('submit_application_as_caller', base);
