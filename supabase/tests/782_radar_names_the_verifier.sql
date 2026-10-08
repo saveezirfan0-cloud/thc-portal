@@ -30,8 +30,9 @@ select is((select reviewed_by_name from compliance_radar_v where doc_id = :'doc_
   'a share code the automated check verified says so');
 select is((select count(*)::int from compliance_radar_v where doc_id in (:'doc_hand', :'doc_auto')), 2,
   'both documents are still on the Radar, once each (the join adds and drops no rows)');
-select is((select count(*)::int from compliance_radar_v where reviewed_at is null), 0,
-  'every Radar row carries the time it was verified');
+select is((select count(*)::int from compliance_radar_v
+            where doc_id in (:'doc_hand', :'doc_auto') and reviewed_at is null), 0,
+  'both carry the time they were verified (older seed documents verified with no time simply show no stamp)');
 
 set local role anon;
 select throws_ok($$ select * from compliance_radar_v $$, '42501', null, 'anon still cannot read the Radar');
