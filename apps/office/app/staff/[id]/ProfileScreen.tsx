@@ -88,6 +88,7 @@ export function ProfileScreen({
   canEditGender = false,
   canEditLanguages = false,
   canEditScheduling = false,
+  canEditPayrollId = false,
   showPayRate = false,
   canEditPayRate = false,
   canMessage = false,
@@ -104,6 +105,8 @@ export function ProfileScreen({
   canEditLanguages?: boolean;
   /** ADR-0106: any office login that may write marks SpudBros staff and switches THC shifts on. */
   canEditScheduling?: boolean;
+  /** Payroll ID is the pay key: owner and manager only (finance), like the payroll codes. */
+  canEditPayrollId?: boolean;
   /** ADR-0072: `officeCan(role, 'finance')` — the Pay rate card is drawn. */
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
@@ -456,7 +459,7 @@ export function ProfileScreen({
             thcShifts={data.thcShifts}
             canEditScheduling={canEditScheduling}
             payrollId={data.payrollId}
-            canEditPayrollId={canEditScheduling}
+            canEditPayrollId={canEditPayrollId}
             emergencyContact={data.emergencyContact ?? null}
             emergencyContactProblem={data.emergencyContactProblem ?? null}
             referrals={data.referrals ?? null}
