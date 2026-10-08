@@ -16,6 +16,10 @@ SpudBros Express staff and THC's own staff are invited by email, from different 
 - **Seeing the groups.** The Staff directory and the onboarding board gain a *Group* filter (All · SpudBros Express · THC only), a SpudBros chip on the row/card, and the Payroll ID in search; the candidate and staff headers carry the label. `staff_directory_v` and `onboarding_candidates_v` gain `spudbros_express`, `thc_shifts_enabled` and `payroll_id` (appended).
 - **Retention.** Entries older than 180 days are dropped on every load; the office can remove entries or clear the list. A list of people who never applied is not kept for ever (§1.7).
 
+- **Names must agree.** The sheet has First name and Surname only, so a match needs the same first name and the same last word of the surname (`payroll_names_compatible`) — a middle name in the app is fine. For a *new applicant* a mismatch leaves the list row untouched and applies nothing from it (the link, if any, still decides; `roster.name_mismatch` is audited): someone who knows an invited email but not the invitee's name gets neither their group nor their Payroll ID. For a person *already here* a mismatch is held (`name_mismatch`) and changes nothing — a mistyped email can never move another worker's Payroll ID, Employee ID or group.
+- **One spelling per ID.** Payroll IDs are upper-cased and all-digit IDs lose leading zeros (`0183` = `183`), here and in `set_staff_payroll_id`, matching the int Employee ID. `invite_roster.payroll_id` is unique too. A failure while matching is audited (`roster.match_failed`) and a SpudBros applicant is still marked.
+- **Removal.** GDPR removal clears `payroll_id`, `spudbros_express` and `thc_shifts_enabled` (a trigger): they are not history, and a removed row must not hold an ID that blocks its re-use. The Employee ID survives, as before.
+
 ## Operating it
 1. Load the list on `/staff/roster` **before** the emails go out (and again for any later batch — an email already on the list is updated).
 2. Send the SpudBros email (link `/apply/spudbros`) and the ordinary email (link `/apply`). The list is the safety net if anyone uses the wrong one.

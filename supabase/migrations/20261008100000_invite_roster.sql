@@ -72,7 +72,44 @@ comment on column public.staff.payroll_id is
 grant select (payroll_id) on table public.staff to anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- 2 · The list
+-- 2 · Helpers
+-- ---------------------------------------------------------------------
+-- One Payroll ID, one spelling: upper case, and an all-digit ID without
+-- leading zeros, so 0183 and 183 are the same ID — as they are the same
+-- Employee ID, which is an int.
+create or replace function public.canonical_payroll_id(p text)
+returns text
+language sql
+immutable
+parallel safe
+as $$
+  select case when v ~ '^[0-9]+$' then coalesce(nullif(ltrim(v, '0'), ''), '0') else v end
+    from (select nullif(upper(btrim(coalesce(p, ''))), '') as v) q
+$$;
+
+-- Is the person on the sheet plausibly the person in the app? Same first
+-- name and same last word of the surname. The sheet carries "First" and
+-- "Surname" only, so a middle name in the app ("Aadithya Nalannadiyil
+-- Sukumar" against Aadithya / Sukumar) is fine; a different person who
+-- shares a mistyped email is not. A row with no name on the sheet has
+-- nothing to compare, so it is compatible.
+create or replace function public.payroll_names_compatible(
+  a_first text, a_last text, b_first text, b_last text
+) returns boolean
+language sql
+immutable
+parallel safe
+as $$
+  select case
+    when payroll_name_key(b_first, b_last) is null or payroll_name_key(a_first, a_last) is null then true
+    else split_part(payroll_name_key(a_first, a_last), ' ', 1) = split_part(payroll_name_key(b_first, b_last), ' ', 1)
+     and regexp_replace(payroll_name_key(a_first, a_last), '^.* ', '')
+       = regexp_replace(payroll_name_key(b_first, b_last), '^.* ', '')
+  end
+$$;
+
+-- ---------------------------------------------------------------------
+-- 3 · The list
 -- ---------------------------------------------------------------------
 create table public.invite_roster (
   id         uuid primary key default gen_random_uuid(),
@@ -86,6 +123,8 @@ create table public.invite_roster (
 );
 
 create unique index invite_roster_email_key on public.invite_roster (email);
+create unique index invite_roster_payroll_id_key on public.invite_roster (payroll_id)
+  where payroll_id is not null;
 
 comment on table public.invite_roster is
   'ADR-0105: people the office has invited, with the group each belongs to (spudbros / thc) and their Payroll ID. Matched on email when somebody applies; the row is deleted when it is used, so the table is "invited, not yet applied". Loaded by load_invite_roster(); read by the office (admin_read); no write path for any session.';
@@ -172,7 +211,7 @@ begin
   for e in select * from jsonb_array_elements(p_rows) loop
     v_email := nullif(lower(btrim(coalesce(e ->> 'email', ''))), '');
     v_group := invite_roster_group(e ->> 'group');
-    v_pay   := nullif(upper(btrim(coalesce(e ->> 'payroll_id', ''))), '');
+    v_pay   := canonical_payroll_id(e ->> 'payroll_id');
     v_first := nullif(btrim(regexp_replace(coalesce(e ->> 'first_name', ''), '\s+', ' ', 'g')), '');
     v_last  := nullif(btrim(regexp_replace(coalesce(e ->> 'last_name', ''), '\s+', ' ', 'g')), '');
 
@@ -192,11 +231,15 @@ begin
 
       select * into s from staff
        where lower(btrim(email)) = v_email and removed_at is null
-       order by created_at desc limit 1;
+       order by created_at asc limit 1;
 
       if found then
-        -- Already here: apply the list to the person, now.
-        if v_pay is not null
+        -- Already here: apply the list to the person, now — but only if the
+        -- sheet's name is their name. A mistyped email that happens to be
+        -- another live worker's must change nothing.
+        if not payroll_names_compatible(s.first_name, s.last_name, v_first, v_last) then
+          v_held := v_held || jsonb_build_array(e || jsonb_build_object('reason', 'name_mismatch'));
+        elsif v_pay is not null
            and exists (select 1 from staff o where o.payroll_id = v_pay and o.id <> s.id) then
           v_skip := v_skip || jsonb_build_array(e || jsonb_build_object('reason', 'payroll_id_taken'));
         else
@@ -240,11 +283,14 @@ begin
             v_updated := v_updated + 1;
             insert into audit_log (actor, action, entity, entity_id, data)
             values (auth.uid(), 'roster.applied_existing', 'staff', s.id,
-                    jsonb_build_object('staffId', s.id::text, 'group', v_group, 'payrollId', v_pay));
+                    jsonb_build_object('staffId', s.id::text, 'group', v_group, 'payrollId', v_pay,
+                                       'previousPayrollId', s.payroll_id,
+                                       'previousSpudbros', s.spudbros_express));
           end if;
         end if;
       elsif v_pay is not null
-            and exists (select 1 from staff o where o.payroll_id = v_pay) then
+            and (exists (select 1 from staff o where o.payroll_id = v_pay)
+                 or exists (select 1 from invite_roster ir where ir.payroll_id = v_pay and ir.email <> v_email)) then
         v_skip := v_skip || jsonb_build_array(e || jsonb_build_object('reason', 'payroll_id_taken'));
       else
         insert into invite_roster (email, first_name, last_name, payroll_id, grp, loaded_by)
@@ -301,7 +347,7 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  v_pay     text := nullif(upper(btrim(coalesce(p_payroll_id, ''))), '');
+  v_pay     text := canonical_payroll_id(p_payroll_id);
   v_removed timestamptz;
 begin
   perform assert_office_caller();
@@ -352,6 +398,8 @@ declare
   -- submit_application()'s normalisation, so the lookups find what it wrote.
   v_email     text := nullif(lower(btrim(coalesce(p_email, ''))), '');
   v_candidate uuid;
+  v_first     text;
+  v_last      text;
   r           invite_roster;
   v_listed    boolean;
   v_group     text;
@@ -383,6 +431,19 @@ begin
 
     select * into r from invite_roster where email = v_email;
     v_listed := found;
+
+    -- Somebody who knows an invited email but not the invitee's name is not
+    -- the invitee: the row is left where it is and nothing is applied from
+    -- it (the link, if any, still decides). The office sees the miss.
+    if v_listed then
+      select s.first_name, s.last_name into v_first, v_last from staff s where s.id = v_candidate;
+      if not payroll_names_compatible(v_first, v_last, r.first_name, r.last_name) then
+        insert into audit_log (actor, action, entity, entity_id, data)
+        values (null, 'roster.name_mismatch', 'staff', v_candidate,
+                jsonb_build_object('staffId', v_candidate::text));
+        v_listed := false;
+      end if;
+    end if;
 
     if v_listed then
       -- The list is the office's own word and wins over the link.
@@ -416,7 +477,20 @@ begin
             jsonb_build_object('staffId', v_candidate::text, 'group', v_group, 'via', v_via,
                                'payrollId', v_pay, 'payrollIdTaken', v_taken));
   exception when others then
-    -- Never raises: the application the caller just wrote stands.
+    -- Never raises: the application the caller just wrote stands. But a
+    -- failure is not silent: it is recorded, and a SpudBros applicant is
+    -- still marked (unless the list says THC) so a failed Payroll ID step
+    -- can never leave them open to THC shifts.
+    begin
+      insert into audit_log (actor, action, entity, entity_id, data)
+      values (null, 'roster.match_failed', 'staff', v_candidate,
+              jsonb_build_object('staffId', v_candidate::text, 'source', p_source));
+      if v_candidate is not null and p_source = 'spudbros' and coalesce(v_group, 'spudbros') = 'spudbros' then
+        update staff set spudbros_express = true where id = v_candidate;
+      end if;
+    exception when others then
+      null;
+    end;
     return;
   end;
 end $$;
@@ -426,6 +500,29 @@ comment on function public.record_application_source(text, text) is
 
 revoke execute on function public.record_application_source(text, text)
   from public, anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------
+-- 5b · §1.7: removal clears the Payroll ID and the SpudBros markers. They are
+--      not history, and a removed row must not keep an ID that blocks its
+--      re-use. (The Employee ID survives, as before.)
+-- ---------------------------------------------------------------------
+create or replace function public.staff_clear_roster_fields_on_removal()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.removed_at is not null and old.removed_at is null then
+    new.payroll_id         := null;
+    new.spudbros_express   := false;
+    new.thc_shifts_enabled := false;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_clear_roster_fields_on_removal on public.staff;
+create trigger staff_clear_roster_fields_on_removal
+  before update of removed_at on public.staff
+  for each row execute function public.staff_clear_roster_fields_on_removal();
 
 -- ---------------------------------------------------------------------
 -- 6 · submit_application_as_caller — 20261008090000's body, the one clause
@@ -527,15 +624,17 @@ declare
   v_key  text := payroll_name_key(p_first, p_last);
   v_code int;
   v_pay  text;
+  v_num  int;
 begin
   -- ADR-0105: a numeric Payroll ID already on the person (from the invite
   -- list, matched by email) is their code — no name match needed, and no
   -- chance of two spellings disagreeing.
   select s.payroll_id into v_pay from staff s where s.id = p_staff;
-  if v_pay ~ '^[0-9]{1,5}$'
-     and v_pay::int between 1 and 10000
-     and not exists (select 1 from staff s where s.employee_id = v_pay::int and s.id <> p_staff) then
-    v_code := v_pay::int;
+  -- A case, not an AND: the cast must never be evaluated for 1641A.
+  v_num := case when v_pay ~ '^[0-9]{1,5}$' then v_pay::int end;
+  if v_num between 1 and 10000
+     and not exists (select 1 from staff s where s.employee_id = v_num and s.id <> p_staff) then
+    v_code := v_num;
     delete from payroll_codes where code = v_code;
     insert into audit_log (actor, action, entity, entity_id, data)
     values (auth.uid(), 'employee_id_from_payroll', 'staff', p_staff,

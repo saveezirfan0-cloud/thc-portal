@@ -19,7 +19,7 @@
 --   8. entries older than 180 days are dropped on the next load.
 -- =====================================================================
 begin;
-select plan(62);
+select plan(72);
 \ir _shared/fixtures.psql
 
 \set here    '77900000-0000-4000-8000-000000000001'
@@ -29,6 +29,7 @@ select plan(62);
 \set signer  '77900000-0000-4000-8000-000000000005'
 \set signer2 '77900000-0000-4000-8000-000000000006'
 \set viewer  '77900000-0000-4000-8000-000000000007'
+\set other   '77900000-0000-4000-8000-000000000008'
 \set evt     '77900000-0000-4000-8000-00000000000e'
 \set sec     '77900000-0000-4000-8000-0000000000a1'
 
@@ -78,6 +79,9 @@ insert into staff (id, first_name, last_name, email, phone, dob, status, employe
   (:'sp',    'Sid',   'Spud',  'sp@t779.test',    '+447700979003', date '1990-01-01', 'compliant', 19003, true,  null),
   (:'owner', 'Olga',  'Owner', 'owner@t779.test', '+447700979004', date '1990-01-01', 'compliant', 19004, false, 'T1');
 
+insert into staff (id, first_name, last_name, email, phone, dob, status, employee_id) values
+  (:'other', 'Zed', 'Zebra', 'other@t779.test', '+447700979005', date '1990-01-01', 'compliant', 19005);
+
 insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location,
                     geofence_radius_m, title, event_date, pays_breaks, pays_buffer, auto_assign) values
   (:'evt', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
@@ -105,14 +109,15 @@ select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', '
 set local role authenticated;
 create temp table first_load as
 select load_invite_roster($$[
-  {"email": " Spud1@t779.test ", "first_name": "Sid",  "last_name": "Spud", "payroll_id": "1641a", "group": "Spud Bros Express"},
-  {"email": "norm@t779.test",    "first_name": "Nora", "last_name": "Norm", "payroll_id": "1500",  "group": "normal"},
+  {"email": " Spud1@t779.test ", "first_name": "Sidney", "last_name": "Spudson", "payroll_id": "1641a", "group": "Spud Bros Express"},
+  {"email": "norm@t779.test",    "first_name": "Noreen", "last_name": "Normanton", "payroll_id": "1500",  "group": "normal"},
   {"email": "spud2@t779.test",   "first_name": "Sam",  "last_name": "Spud", "group": "spudbros"},
   {"email": "bad",               "group": "thc"},
   {"email": "x@t779.test",       "group": "huh"},
   {"email": "norm@t779.test",    "group": "thc"},
   {"email": "y@t779.test",       "payroll_id": "1500", "group": "thc"},
-  {"email": "z@t779.test",       "payroll_id": "12 34", "group": "thc"}
+  {"email": "z@t779.test",       "payroll_id": "12 34", "group": "thc"},
+  {"email": "zero@t779.test",    "first_name": "Zoe", "last_name": "Zero", "payroll_id": "0183", "group": "thc"}
 ]$$::jsonb) as r;
 
 create temp table second_load as
@@ -120,11 +125,14 @@ select load_invite_roster($$[
   {"email": "HERE@t779.test",  "payroll_id": "2200", "group": "spudbros"},
   {"email": "busy@t779.test",  "payroll_id": "2201", "group": "spudbros"},
   {"email": "sp@t779.test",    "payroll_id": "2202", "group": "thc"},
-  {"email": "new@t779.test",   "payroll_id": "T1",   "group": "thc"}
+  {"email": "new@t779.test",   "payroll_id": "T1",   "group": "thc"},
+  {"email": "other@t779.test", "first_name": "Yan", "last_name": "Yellow", "payroll_id": "2300", "group": "spudbros"}
 ]$$::jsonb) as r;
 reset role;
 
-select is((select (r->>'loaded')::int from first_load), 3, 'three people added to the list');
+select is((select (r->>'loaded')::int from first_load), 4, 'four people added to the list');
+select is((select payroll_id from invite_roster where email = 'zero@t779.test'), '183',
+  'a leading zero is not a different Payroll ID: 0183 is 183, as it is one Employee ID');
 select is((select jsonb_array_length(r->'skipped') from first_load), 5, 'five rows handed back');
 select is(
   (select array_agg(s->>'reason' order by s->>'reason') from first_load, jsonb_array_elements(r->'skipped') s),
@@ -151,19 +159,30 @@ select is((select r->'held'->1->>'reason' from second_load), 'already_marked_spu
 select is((select spudbros_express from staff where id = :'sp'), true, 'who stays marked');
 select is((select r->'skipped'->0->>'reason' from second_load), 'payroll_id_taken',
   'a Payroll ID somebody already holds is not given again');
+select is((select r->'held'->2->>'reason' from second_load), 'name_mismatch',
+  'a sheet email that belongs to a DIFFERENTLY NAMED live worker is held, not applied');
+select is((select payroll_id || ':' || spudbros_express::text || ':' || employee_id::text from staff where id = :'other'), null,
+  'and changes nothing on them — no Payroll ID');
+select is((select spudbros_express::text || ':' || employee_id::text from staff where id = :'other'), 'false:19005',
+  'not marked SpudBros, Employee ID untouched');
 
 -- =====================================================================
 -- 4 · An application is matched to the list
 -- =====================================================================
 insert into invite_roster (email, grp, payroll_id) values ('staffb@rls.test', 'spudbros', 'ZZ9');
+insert into invite_roster (email, first_name, last_name, grp, payroll_id)
+  values ('victim@t779.test', 'Vera', 'Victim', 'spudbros', 'V7');
 
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
+-- Somebody who knows an invited email, but not the invitee's name.
+select lives_ok($$ select submit_application_as_caller('Mallory', 'Attacker', 'victim@t779.test', '+447700979199',
+  date '1999-01-09', true, null, null, null) $$, 'someone applies with an invited email and the wrong name');
 -- On the list as SpudBros, through the ORDINARY link.
 select lives_ok($$ select submit_application_as_caller('Sidney', 'Spudson', 'spud1@t779.test', '+447700979101',
   date '1999-01-01', true, null, null, null) $$, 'a listed SpudBros person applies through /apply');
 -- On the list as THC, through the SpudBros link.
-select lives_ok($$ select submit_application_as_caller('Noreen', 'Normanton', 'norm@t779.test', '+447700979102',
+select lives_ok($$ select submit_application_as_caller('Noreen Anne', 'Normanton', 'norm@t779.test', '+447700979102',
   date '1999-01-02', true, null, null, 'spudbros') $$, 'a listed THC person applies through /apply/spudbros');
 -- Not on the list: the link decides.
 select lives_ok($$ select submit_application_as_caller('Una', 'Unlisted', 'unlisted@t779.test', '+447700979103',
@@ -185,7 +204,14 @@ select is((select payroll_id from staff where email = 'unlisted@t779.test'), nul
 select is((select spudbros_express from staff where email = 'ordinary@t779.test'), false,
   'not listed, ordinary link: an ordinary worker');
 select is((select count(*)::int from invite_roster where email in ('spud1@t779.test', 'norm@t779.test')), 0,
-  'the matched rows are consumed');
+  'the matched rows are consumed — a middle name in the app does not stop the match');
+select is((select count(*)::int from invite_roster where email = 'victim@t779.test'), 1,
+  'a wrong-name application leaves the invitee''s row exactly where it was');
+select is((select coalesce(payroll_id, '-') || ':' || spudbros_express::text from staff where email = 'victim@t779.test'), '-:false',
+  'and gets neither their Payroll ID nor their group');
+select is((select count(*)::int from audit_log where action = 'roster.name_mismatch'
+             and entity_id = (select id from staff where email = 'victim@t779.test')), 1,
+  'the miss is recorded for the office');
 select is(
   (select array_agg(data->>'via' order by data->>'via') from audit_log
     where action = 'roster.matched'
@@ -266,6 +292,10 @@ reset role;
 -- =====================================================================
 -- 8 · Retention, and clearing
 -- =====================================================================
+update staff set removed_at = now() where id in (:'owner', :'sp');
+select is((select coalesce(payroll_id, '-') || ':' || spudbros_express::text from staff where id = :'owner'), '-:false',
+  'GDPR removal clears the Payroll ID — the ID of a removed person is not kept (or in the way)');
+select is((select spudbros_express::text from staff where id = :'sp'), 'false', 'and the SpudBros marking');
 insert into invite_roster (email, grp, loaded_at) values ('stale@t779.test', 'thc', now() - interval '200 days');
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;

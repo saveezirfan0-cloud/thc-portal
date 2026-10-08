@@ -50,6 +50,8 @@ export const REASON_TEXT: Readonly<Record<string, string>> = {
   payroll_id_taken: 'Another person already has this Payroll ID',
   has_upcoming_shifts:
     'Already here with an upcoming shift — not switched to SpudBros; move the shift first',
+  name_mismatch:
+    'The name on the sheet is not the name of the worker who has this email — nothing was changed. Check the email',
   already_marked_spudbros: 'Already marked SpudBros Express — a list never switches them back',
 };
 

@@ -82,8 +82,11 @@ $$;
 comment on function public.staff_onboarding_only(uuid) is
   '20261008090000: true for SpudBros Express staff whose THC shifts have not been switched on. The one definition: the pool, the booking trigger and staff_me() all say the same thing.';
 
-revoke execute on function public.staff_onboarding_only(uuid) from public, anon;
-grant  execute on function public.staff_onboarding_only(uuid) to authenticated, service_role;
+-- Not for any signed-in session: it would tell a worker or client whether
+-- anyone they can name the id of is SpudBros staff. The trigger below runs as
+-- the owner and staff_me() reads the columns inline, so nothing needs it.
+revoke execute on function public.staff_onboarding_only(uuid) from public, anon, authenticated;
+grant  execute on function public.staff_onboarding_only(uuid) to service_role;
 
 -- ---------------------------------------------------------------------
 -- 2 · The office toggle
@@ -160,6 +163,17 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Every write that would put them on a shift: an insert, a move to another
+  -- worker or shift, or a status change INTO invited / applied / confirmed
+  -- (the RPCs revive a cancelled row in place). Cancel, close and worked
+  -- updates on existing rows stay allowed — history is not a booking.
+  if tg_op = 'UPDATE'
+     and new.staff_id = old.staff_id
+     and new.shift_id = old.shift_id
+     and (new.status is not distinct from old.status
+          or new.status not in ('invited', 'applied', 'confirmed')) then
+    return new;
+  end if;
   if public.staff_onboarding_only(new.staff_id) then
     raise exception 'onboarding_only_worker'
       using errcode = 'P0001',
@@ -172,7 +186,7 @@ revoke execute on function public.bookings_onboarding_only_guard() from public, 
 
 drop trigger if exists bookings_onboarding_only on public.bookings;
 create trigger bookings_onboarding_only
-  before insert or update of staff_id, shift_id on public.bookings
+  before insert or update on public.bookings
   for each row execute function public.bookings_onboarding_only_guard();
 
 -- ---------------------------------------------------------------------

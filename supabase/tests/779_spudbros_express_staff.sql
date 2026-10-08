@@ -18,7 +18,7 @@
 --      existing worker (§2.12 returning applicant).
 -- =====================================================================
 begin;
-select plan(31);
+select plan(34);
 \ir _shared/fixtures.psql
 
 \set evt      '77800000-0000-4000-8000-00000000000e'
@@ -66,6 +66,9 @@ select is(
   array[false, true, false]::boolean[],   -- Pat, Sid, Sue
   'onboarding only = SpudBros staff without THC shifts switched on');
 select is(staff_onboarding_only(null), false, 'no worker, not onboarding-only');
+select ok(not has_function_privilege('authenticated', 'public.staff_onboarding_only(uuid)', 'execute')
+      and not has_function_privilege('anon', 'public.staff_onboarding_only(uuid)', 'execute'),
+  'no signed-in session can ask whether somebody else is SpudBros staff');
 
 -- ---------------------------------------------------------------------
 -- 2. The pool
@@ -96,6 +99,11 @@ select lives_ok(
          :'sec', :'busy'),
   'an ordinary worker can be invited');
 
+-- Pat declined an invitation to this section earlier: a closed row, which
+-- "apply again on Radar" (closed → applied) revives IN PLACE.
+insert into bookings (shift_id, staff_id, status, source, cancel_cause)
+values (:'sec', :'plain', 'closed', 'manual', 'declined');
+
 -- ---------------------------------------------------------------------
 -- 4. set_staff_scheduling
 -- ---------------------------------------------------------------------
@@ -104,7 +112,13 @@ select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', '
 
 select is(set_staff_scheduling(:'plain', true, false)->>'spudbrosExpress', 'true',
   'the office marks a worker as SpudBros Express staff');
-select is(staff_onboarding_only(:'plain'), true, 'and they are onboarding only from then on');
+select is((select spudbros_express and not thc_shifts_enabled from staff where id = :'plain'), true,
+  'and they are onboarding only from then on');
+select throws_ok(format($$ update bookings set status = 'applied', cancel_cause = null where shift_id = %L and staff_id = %L $$, :'sec', :'plain'),
+  'P0001', 'onboarding_only_worker',
+  'a closed booking cannot be revived onto the shift — the RPCs update such rows in place');
+select lives_ok(format($$ update bookings set cancel_cause = cancel_cause where shift_id = %L and staff_id = %L $$, :'sec', :'plain'),
+  'but an update that does not move them onto a shift is not refused: history is not a booking');
 select is(
   (select data from audit_log where action = 'staff.scheduling_set' and entity_id = :'plain'),
   jsonb_build_object('staffId', :'plain', 'spudbrosExpress', true, 'thcShiftsEnabled', false),
@@ -114,7 +128,8 @@ select throws_ok(format($$ select set_staff_scheduling(%L, true, false) $$, :'bu
   'P0001', 'has_upcoming_shifts', 'it will not close the app on someone with an upcoming invitation');
 select is(set_staff_scheduling(:'busy', true, true)->>'thcShiftsEnabled', 'true',
   'marked SpudBros with THC shifts on, the same worker is accepted');
-select is(staff_onboarding_only(:'busy'), false, 'and they are not onboarding only');
+select is((select spudbros_express and not thc_shifts_enabled from staff where id = :'busy'), false,
+  'and they are not onboarding only');
 select is(set_staff_scheduling(:'plain', false, true)->>'thcShiftsEnabled', 'false',
   'THC shifts "on" means nothing for a worker who is not SpudBros staff');
 

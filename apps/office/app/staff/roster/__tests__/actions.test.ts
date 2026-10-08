@@ -96,6 +96,7 @@ describe('loadRoster', () => {
       'payroll_id_taken',
       'has_upcoming_shifts',
       'already_marked_spudbros',
+      'name_mismatch',
     ]) {
       expect(REASON_TEXT[reason], reason).toBeTruthy();
     }
