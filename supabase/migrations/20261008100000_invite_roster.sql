@@ -529,6 +529,9 @@ begin
   return new;
 end $$;
 
+-- 190: a trigger needs no EXECUTE grant, and one that has it is a definer published as an RPC.
+revoke execute on function public.staff_clear_roster_fields_on_removal() from public, anon, authenticated;
+
 drop trigger if exists staff_clear_roster_fields_on_removal on public.staff;
 create trigger staff_clear_roster_fields_on_removal
   before update of removed_at on public.staff
