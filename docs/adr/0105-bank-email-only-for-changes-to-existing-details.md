@@ -1,4 +1,4 @@
-# ADR-0103 · The bank-details email is for a change to existing details
+# ADR-0105 · The bank-details email is for a change to existing details
 
 **Status:** Accepted (THC, 07.10.2026) · **Departs from:** Scope §2.10 ("the same E5 notification as at onboarding") · **Refines:** §8 E5, ADR-0092
 
@@ -20,7 +20,7 @@ E5b (ADR-0092, a change made by an office login or the service role) is untouche
 
 ## Consequences
 
-- `20261007130000_bank_email_only_for_changes_to_existing_details.sql` (`staff_save_bank` restated).
+- `20261007140000_bank_email_only_for_changes_to_existing_details.sql` (`staff_save_bank` restated).
 - pgTAP 330, 392, 393, 672 and 775 now expect no E5 on a first entry or an unchanged save, and one E5 per real change by a worker with an Employee ID.
 - Payroll learns a new starter's bank details from the Payroll / New Starter exports (§11), not from an email.
 - The E5 template and its recipients are unchanged.

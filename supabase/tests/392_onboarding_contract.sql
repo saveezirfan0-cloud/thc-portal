@@ -143,7 +143,7 @@ select lives_ok($$ select onboarding_save_bank('Chloe Nwosu', '404784', '3192681
 select is((select sort_code from bank_details where staff_id = :'chloe'), '40-47-84', 'formatted');
 select is_empty(
   $$ select 1 from notification_outbox where template = 'E5' and payload->>'name' = 'Chloe Nwosu' $$,
-  'a first entry is not a change: no E5 to payroll (ADR-0103)');
+  'a first entry is not a change: no E5 to payroll (ADR-0105)');
 
 -- =====================================================================
 -- 5. Step 10 — the contract (§2.11)
