@@ -140,13 +140,12 @@ test.describe('a SpudBros Express worker in the Staff App', () => {
 
     // Documents is where they renew a document: it must not bounce them back.
     await page.goto('/documents');
-    await expect(page.getByText('Documents and details are under Profile')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/documents/);
+    await expect(page.getByText('Your shifts stay on Connecteam.')).toHaveCount(0);
   });
 
   test('has no shifts: the Shifts tab is the lock screen', async ({ page }) => {
     await openAs(page, '/shifts', spudWorker!.email, PASSWORD);
-    await expect(
-      page.getByText('SpudBros Express Staff Only – scheduling on Connecteam').first(),
-    ).toBeVisible();
+    await expect(page.getByText('Your shifts stay on Connecteam.')).toBeVisible();
   });
 });
