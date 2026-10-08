@@ -25,6 +25,7 @@ import {
   ukDate,
   ukStamp,
 } from './queue';
+import { reviewStamp } from '../staff/[id]/profile';
 import type { RadarFilter } from './queue';
 import type { RadarRow, WarningRow } from './types';
 
@@ -184,7 +185,14 @@ export function RadarTab({
                           </div>
                         </div>
                       </td>
-                      <td data-label="Document">{row.doc_label}</td>
+                      <td data-label="Document">
+                        {row.doc_label}
+                        {row.reviewed_at ? (
+                          <span className="sub">
+                            {reviewStamp('verified', row.reviewed_by_name, row.reviewed_at, format)}
+                          </span>
+                        ) : null}
+                      </td>
                       <td data-label="Expiry date" className="mono">
                         {ukDate(row.expires_on)}
                       </td>

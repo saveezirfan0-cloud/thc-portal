@@ -143,6 +143,9 @@ export interface RadarRow {
   n3_at: string | null;
   n4_at: string | null;
   replacement_in_review: boolean;
+  /** Who verified the document and when (20261008160000); the name is null with no reviewer on file. */
+  reviewed_at: string | null;
+  reviewed_by_name: string | null;
 }
 
 /** A Working Time 48 breach let through because the rota guard is in warn mode. */
