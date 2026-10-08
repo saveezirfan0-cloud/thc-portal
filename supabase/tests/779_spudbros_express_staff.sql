@@ -39,10 +39,10 @@ insert into events (id, client_id, venue_id, venue_name, venue_address, venue_lo
                     geofence_radius_m, title, event_date, pays_breaks, pays_buffer, auto_assign) values
   (:'evt', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
    st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150,
-   'Onboarding-only Gala', date '2027-03-10', true, true, true);
+   'Onboarding-only Gala', (current_date + 30), true, true, true);
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour, auto_assign) values
-  (:'sec', :'evt', :'role_id', '2027-03-10 17:00+00', '2027-03-10 23:00+00', 6, 0, 30, 15, 6, true);
+  (:'sec', :'evt', :'role_id', ((current_date + 30)::timestamp + interval '17 hours'), ((current_date + 30)::timestamp + interval '23 hours'), 6, 0, 30, 15, 6, true);
 
 insert into staff (id, user_id, first_name, last_name, email, phone, dob, status, rtw_branch,
                    spudbros_express, thc_shifts_enabled) values

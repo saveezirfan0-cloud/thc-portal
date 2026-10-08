@@ -285,7 +285,7 @@ export interface DocumentsStatus {
 export function documentsStatus(
   profile: Pick<
     StaffProfile,
-    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause'
+    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause' | 'onboardingOnly'
   >,
 ): DocumentsStatus | null {
   const lock = appLock(profile);
@@ -297,7 +297,9 @@ export function documentsStatus(
       ? { tone: 'amber', text: 'In review' }
       : { tone: 'coral', text: 'Action needed' };
   }
-  if (lock !== 'none') return null;
+  // ADR-0104: documents are the one thing an onboarding-only worker's
+  // account is for, so their row says where they stand like anyone's.
+  if (lock !== 'none' && lock !== 'connecteam') return null;
   if (profile.blockers.some((b) => b.startsWith('document_unverified:'))) {
     return { tone: 'amber', text: 'In review' };
   }

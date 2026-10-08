@@ -21,7 +21,8 @@ vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 vi.mock('../../data', () => ({ supabaseConfigured: () => true }));
 
-const { loadRoster, removeRosterEntries, REASON_TEXT } = await import('../actions');
+const { loadRoster, removeRosterEntries } = await import('../actions');
+const { REASON_TEXT } = await import('../reasons');
 
 beforeEach(() => {
   rpc.mockReset();

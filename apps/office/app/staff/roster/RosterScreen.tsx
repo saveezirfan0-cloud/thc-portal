@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Alert, Button, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
-import { REASON_TEXT, loadRoster, removeRosterEntries } from './actions';
+import { loadRoster, removeRosterEntries } from './actions';
+import { REASON_TEXT } from './reasons';
 import type { RosterReport } from './actions';
 import type { RosterEntry } from './data';
 

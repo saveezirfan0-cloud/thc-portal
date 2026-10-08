@@ -154,6 +154,18 @@ describe('the Profile tab (ADR-0042)', () => {
   });
 });
 
+describe('documentsStatus — SpudBros Express staff (ADR-0104)', () => {
+  it('an onboarding-only worker still sees where their documents stand', () => {
+    expect(documentsStatus(worker({ onboardingOnly: true }))).toEqual({
+      tone: 'green',
+      text: 'Up to date',
+    });
+    expect(
+      documentsStatus(worker({ onboardingOnly: true, blockers: ['document_unverified:passport'] })),
+    ).toEqual({ tone: 'amber', text: 'In review' });
+  });
+});
+
 describe('documentsStatus — the badge on the Documents row', () => {
   it('is Up to date for a compliant worker with nothing outstanding', () => {
     expect(documentsStatus(worker())).toEqual({ tone: 'green', text: 'Up to date' });

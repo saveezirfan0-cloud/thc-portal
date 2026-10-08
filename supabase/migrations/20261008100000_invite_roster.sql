@@ -471,7 +471,11 @@ begin
            payroll_id       = coalesce(v_pay, payroll_id)
      where id = v_candidate;
 
-    if v_listed then
+    -- The row is consumed when it has done its job. If the Payroll ID could
+    -- not be given (somebody else holds it) the row STAYS, still carrying the
+    -- ID, so the office sees on /staff/roster that this person came in
+    -- without theirs and can sort out who holds it.
+    if v_listed and not v_taken then
       delete from invite_roster where id = r.id;
     end if;
 
@@ -488,7 +492,9 @@ begin
       insert into audit_log (actor, action, entity, entity_id, data)
       values (null, 'roster.match_failed', 'staff', v_candidate,
               jsonb_build_object('staffId', v_candidate::text, 'source', p_source));
-      if v_candidate is not null and p_source = 'spudbros' and coalesce(v_group, 'spudbros') = 'spudbros' then
+      if v_candidate is not null
+         and ((p_source = 'spudbros' and coalesce(v_group, 'spudbros') = 'spudbros')
+              or exists (select 1 from invite_roster ir where ir.email = v_email and ir.grp = 'spudbros')) then
         update staff set spudbros_express = true where id = v_candidate;
       end if;
     exception when others then

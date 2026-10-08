@@ -19,7 +19,7 @@
 --   8. entries older than 180 days are dropped on the next load.
 -- =====================================================================
 begin;
-select plan(72);
+select plan(76);
 \ir _shared/fixtures.psql
 
 \set here    '77900000-0000-4000-8000-000000000001'
@@ -86,10 +86,10 @@ insert into events (id, client_id, venue_id, venue_name, venue_address, venue_lo
                     geofence_radius_m, title, event_date, pays_breaks, pays_buffer, auto_assign) values
   (:'evt', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
    st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150,
-   'Roster Gala', date '2027-03-10', true, true, true);
+   'Roster Gala', (current_date + 30), true, true, true);
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour, auto_assign) values
-  (:'sec', :'evt', :'role_id', '2027-03-10 17:00+00', '2027-03-10 23:00+00', 6, 0, 30, 15, 6, true);
+  (:'sec', :'evt', :'role_id', ((current_date + 30)::timestamp + interval '17 hours'), ((current_date + 30)::timestamp + interval '23 hours'), 6, 0, 30, 15, 6, true);
 insert into bookings (shift_id, staff_id, status, source) values (:'sec', :'busy', 'invited', 'manual');
 
 -- A viewer cannot load. (Checked before the real load so nothing is half-done.)
@@ -172,12 +172,17 @@ select is((select spudbros_express::text || ':' || employee_id::text from staff 
 insert into invite_roster (email, grp, payroll_id) values ('staffb@rls.test', 'spudbros', 'ZZ9');
 insert into invite_roster (email, first_name, last_name, grp, payroll_id)
   values ('victim@t779.test', 'Vera', 'Victim', 'spudbros', 'V7');
+-- A listed person whose Payroll ID somebody else now holds (T1 is Olga's).
+insert into invite_roster (email, first_name, last_name, grp, payroll_id)
+  values ('clash@t779.test', 'Cleo', 'Clash', 'thc', 'T1');
 
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
 -- Somebody who knows an invited email, but not the invitee's name.
 select lives_ok($$ select submit_application_as_caller('Mallory', 'Attacker', 'victim@t779.test', '+447700979199',
   date '1999-01-09', true, null, null, null) $$, 'someone applies with an invited email and the wrong name');
+select lives_ok($$ select submit_application_as_caller('Cleo', 'Clash', 'clash@t779.test', '+447700979198',
+  date '1999-01-08', true, null, null, null) $$, 'a listed person whose Payroll ID is now held by somebody else applies');
 -- On the list as SpudBros, through the ORDINARY link.
 select lives_ok($$ select submit_application_as_caller('Sidney', 'Spudson', 'spud1@t779.test', '+447700979101',
   date '1999-01-01', true, null, null, null) $$, 'a listed SpudBros person applies through /apply');
@@ -209,6 +214,13 @@ select is((select count(*)::int from invite_roster where email = 'victim@t779.te
   'a wrong-name application leaves the invitee''s row exactly where it was');
 select is((select coalesce(payroll_id, '-') || ':' || spudbros_express::text from staff where email = 'victim@t779.test'), '-:false',
   'and gets neither their Payroll ID nor their group');
+select is((select coalesce(payroll_id, '-') from staff where email = 'clash@t779.test'), '-',
+  'a Payroll ID somebody else holds is never given twice');
+select is((select count(*)::int from invite_roster where email = 'clash@t779.test'), 1,
+  'and the list row is KEPT, so the office can see who came in without their ID');
+select is((select data->>'payrollIdTaken' from audit_log where action = 'roster.matched'
+             and entity_id = (select id from staff where email = 'clash@t779.test')), 'true',
+  'audited as such');
 select is((select count(*)::int from audit_log where action = 'roster.name_mismatch'
              and entity_id = (select id from staff where email = 'victim@t779.test')), 1,
   'the miss is recorded for the office');
