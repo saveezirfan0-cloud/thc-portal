@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261007140000 · E5 is for a change to EXISTING bank details
+-- Migration 20261008110000 · E5 is for a change to EXISTING bank details
 --                            (§2.10, §8 E5; ADR-0105, THC 07.10.2026)
 --
 -- THC: the "Bank & payroll details updated" email should only be sent when a
