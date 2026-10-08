@@ -789,7 +789,7 @@ describe('client qualification helpers (§9.6)', () => {
   });
 });
 
-describe('the group filter (ADR-0105)', () => {
+describe('the group filter (ADR-0107)', () => {
   const spud = candidate({
     id: 'c-spud',
     display_name: 'Sid Spud',

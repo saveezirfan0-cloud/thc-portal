@@ -101,7 +101,7 @@ export function ProfileHub({
               {profile.reliability !== null ? (
                 <Pill>Show-rate {Math.round(profile.reliability)}%</Pill>
               ) : null}
-              {/* ADR-0104: said where they look for who they are. */}
+              {/* ADR-0106: said where they look for who they are. */}
               {profile.onboardingOnly ? <Pill tone="cyan">{CONNECTEAM_LABEL}</Pill> : null}
               {profile.spudbros && !profile.onboardingOnly ? (
                 <Pill tone="cyan">SpudBros Express</Pill>
@@ -297,7 +297,7 @@ export function documentsStatus(
       ? { tone: 'amber', text: 'In review' }
       : { tone: 'coral', text: 'Action needed' };
   }
-  // ADR-0104: documents are the one thing an onboarding-only worker's
+  // ADR-0106: documents are the one thing an onboarding-only worker's
   // account is for, so their row says where they stand like anyone's.
   if (lock !== 'none' && lock !== 'connecteam') return null;
   if (profile.blockers.some((b) => b.startsWith('document_unverified:'))) {

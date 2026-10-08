@@ -5,7 +5,7 @@ import { Button } from '@thc/ui';
 import { savePayrollId } from './actions';
 
 /**
- * The Payroll ID on the Overview card "Contacts & identity" (ADR-0105).
+ * The Payroll ID on the Overview card "Contacts & identity" (ADR-0107).
  *
  * The ID the payroll sheet knows this person by. It arrives from the invite
  * list when they apply (or are already here when the list is loaded); this

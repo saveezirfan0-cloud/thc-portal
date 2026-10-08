@@ -51,7 +51,7 @@ export interface StaffProfile {
   checkedIn: boolean;
   bank: BankDetails | null;
   /**
-   * SpudBros Express staff (ADR-0104, `staff_me()` since 20261008090000).
+   * SpudBros Express staff (ADR-0106, `staff_me()` since 20261008090000).
    * `spudbros` labels the profile; `onboardingOnly` — SpudBros staff whose
    * THC shifts are not switched on — is the app lock `connecteam`. Both
    * optional so a profile built from an older `staff_me()` reads as neither.
@@ -103,5 +103,5 @@ export type ActionResult = { ok: true; note?: string } | { ok: false; message: s
 
 export const HELP_EMAIL = 'admin@thehospitalitycompany.co.uk';
 
-/** ADR-0104: the label on a SpudBros Express profile, in the words the onboarding email promised. */
+/** ADR-0106: the label on a SpudBros Express profile, in the words the onboarding email promised. */
 export const CONNECTEAM_LABEL = 'SpudBros Express Staff Only – scheduling on Connecteam';

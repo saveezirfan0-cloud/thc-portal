@@ -102,7 +102,7 @@ export function ProfileScreen({
   canEditGender?: boolean;
   /** ADR-0080: any office login that may write records the languages. */
   canEditLanguages?: boolean;
-  /** ADR-0104: any office login that may write marks SpudBros staff and switches THC shifts on. */
+  /** ADR-0106: any office login that may write marks SpudBros staff and switches THC shifts on. */
   canEditScheduling?: boolean;
   /** ADR-0072: `officeCan(role, 'finance')` — the Pay rate card is drawn. */
   showPayRate?: boolean;
@@ -204,7 +204,7 @@ export function ProfileScreen({
               <Pill tone={statusLabel(profile).tone} large>
                 {statusLabel(profile).label}
               </Pill>
-              {/* ADR-0104: said where the office looks first. */}
+              {/* ADR-0106: said where the office looks first. */}
               {data.spudbros && !profile.removed ? (
                 <Pill tone="cyan" large>
                   {data.thcShifts ? 'SpudBros Express · also works THC shifts' : SPUDBROS_LABEL}

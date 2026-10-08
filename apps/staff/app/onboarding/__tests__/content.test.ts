@@ -129,7 +129,7 @@ describe('refusals read as sentences', () => {
   });
 });
 
-describe('11/11 for SpudBros Express staff (ADR-0104)', () => {
+describe('11/11 for SpudBros Express staff (ADR-0106)', () => {
   const words = SPUDBROS_TUTORIAL_CARDS.map((c) => `${c.title} ${c.body}`).join(' ');
 
   it('says their shifts stay on Connecteam, in the email’s words', () => {

@@ -1,6 +1,6 @@
-# ADR-0104 · SpudBros Express staff are onboarding-only; THC shifts are a switch
+# ADR-0106 · SpudBros Express staff are onboarding-only; THC shifts are a switch
 
-**Status:** Accepted · **Refines:** Scope §2.1, §2.12, §3.3, §3.4, §10.1 · **Follows:** ADR-0076, ADR-0042 · **Owner request:** 07.10.2026 · **Refined by:** ADR-0105 (the invite list decides the group; `/apply/spudbros` is the fallback)
+**Status:** Accepted · **Refines:** Scope §2.1, §2.12, §3.3, §3.4, §10.1 · **Follows:** ADR-0076, ADR-0042 · **Owner request:** 07.10.2026 · **Refined by:** ADR-0107 (the invite list decides the group; `/apply/spudbros` is the fallback)
 
 ## Context
 SpudBros Express staff are brought onto the platform for their Right to Work check and onboarding only. Their shifts, rota and messages stay on Connecteam. A few of them also work THC's own shifts. The onboarding email already tells them so ("Our Staff App is for your onboarding only… Your profile with us will be marked: SpudBros Express Staff Only – scheduling on Connecteam"). Until now every compliant worker was in the auto-assign pool and could be invited.

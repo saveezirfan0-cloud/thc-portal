@@ -42,7 +42,7 @@ export interface StaffRow {
   status: StaffStatus;
   removed: boolean;
   /**
-   * ADR-0105 (`staff_directory_v` since 20261008100000): SpudBros Express
+   * ADR-0107 (`staff_directory_v` since 20261008100000): SpudBros Express
    * staff, whether THC shifts are switched on for them, and the Payroll ID.
    * Optional so a row from an older view reads as none.
    */

@@ -1,6 +1,6 @@
 /**
  * Why the database did not take (or held) a row of the invite list, in a
- * sentence the office can act on (ADR-0105).
+ * sentence the office can act on (ADR-0107).
  *
  * Its own module on purpose: `actions.ts` is a `'use server'` file, which may
  * export only async functions — anything else a client component imports from

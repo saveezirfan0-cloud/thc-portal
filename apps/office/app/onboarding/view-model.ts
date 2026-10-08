@@ -577,7 +577,7 @@ export type StageFilter = 'any' | ColumnKey;
 /** "Needs attention" is what the card already colours amber or coral. */
 export type AttentionFilter = 'any' | 'attention' | 'stalled' | 'referred' | 'not_activated';
 
-/** ADR-0105: SpudBros Express staff or THC's own. */
+/** ADR-0107: SpudBros Express staff or THC's own. */
 export type GroupFilter = 'any' | 'spudbros' | 'thc';
 
 /** How long ago they applied, in UK calendar days. */
@@ -709,7 +709,7 @@ export function boardColumns(
   // the filters that can describe it and drops out of the ones that cannot.
   const cards =
     active &&
-    // A returning applicant has no group of their own (ADR-0105).
+    // A returning applicant has no group of their own (ADR-0107).
     group === 'any' &&
     !q.roleName &&
     (stage === 'any' || stage === 'interview_requested') &&

@@ -25,7 +25,7 @@ import type { StaffProfile } from './types';
  *               closed except Payment information, so their earnings
  *               history stays available to them.
  *   connecteam  (6) SpudBros Express staff whose THC shifts are not switched
- *               on (ADR-0104). They onboard with THC and nothing else — their
+ *               on (ADR-0106). They onboard with THC and nothing else — their
  *               shifts, rota and messages stay on Connecteam — so Shifts,
  *               Invites and Radar are closed and Profile (Documents inside
  *               it) stays open, like lock case 1 but with nothing wrong. It
@@ -106,7 +106,7 @@ export function appLock(
   // would close Shifts on a worker the database is still rostering.
   if (profile.blockers.some(locksCompliantWorker)) return 'documents';
 
-  // ADR-0104: SpudBros Express staff, shifts on Connecteam. After the
+  // ADR-0106: SpudBros Express staff, shifts on Connecteam. After the
   // documents check on purpose — a lapsed document is still theirs to fix.
   return profile.onboardingOnly ? 'connecteam' : 'none';
 }

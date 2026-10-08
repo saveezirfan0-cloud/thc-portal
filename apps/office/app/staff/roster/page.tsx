@@ -9,7 +9,7 @@ export const metadata = { title: 'Invite list · Staff · THC Back Office' };
 export const dynamic = 'force-dynamic';
 
 /**
- * /staff/roster — the invite list (ADR-0105).
+ * /staff/roster — the invite list (ADR-0107).
  *
  * Who is SpudBros Express and who is THC, and each person's Payroll ID,
  * loaded before the invitations go out. A static segment, so Next.js serves

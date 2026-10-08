@@ -241,26 +241,40 @@
   text-decoration: underline;
 }
 
+/* Compact toggle chips: names flow and wrap at their own width, so ~30 roles
+   take a few lines, not a grid of tiles. The tick circle gives way to a check
+   mark on the chosen ones (ADR-0104). */
 .rolepick {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--sp-8);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
 }
 .rolepick .check {
-  padding: var(--sp-8) var(--sp-10);
+  padding: var(--sp-4) var(--sp-10);
   border: 1px solid var(--line);
   background: var(--bg);
-  border-radius: var(--r-tile);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-12);
+  line-height: 1.4;
+}
+.rolepick .check .box {
+  display: none;
 }
 .rolepick .check.sel {
   border-color: var(--cyan);
   background: var(--cyan-dim);
 }
+.rolepick .check.sel::before {
+  content: '\2713';
+  margin-right: var(--sp-4);
+  font-weight: 700;
+}
 .rolegroup-head {
   display: flex;
   align-items: baseline;
   gap: var(--sp-8);
-  margin-bottom: var(--sp-8);
+  margin-bottom: var(--sp-6);
+  font-size: var(--fs-12);
 }
 
 .cq-pick,
@@ -274,6 +288,17 @@
 .cq-pick {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  max-height: 220px;
+}
+.cq-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.cq-bar .field {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 .cq-pick .check {
   padding: var(--sp-8) var(--sp-10);

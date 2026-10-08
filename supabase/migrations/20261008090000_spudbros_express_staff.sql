@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261008090000 · SpudBros Express staff: onboarding only
---                            (ADR-0104; owner request, 07.10.2026)
+--                            (ADR-0106; owner request, 07.10.2026)
 --
 -- SpudBros Express staff do their Right to Work check and onboarding with
 -- THC and nothing else: their shifts, rota and messages stay on

@@ -137,7 +137,7 @@ export function matchesFilter(row: StaffRow, filter: Filter): boolean {
   }
 }
 
-/** ADR-0105: SpudBros Express staff or THC's own. */
+/** ADR-0107: SpudBros Express staff or THC's own. */
 export type GroupFilter = 'all' | 'spudbros' | 'thc';
 
 export function matchesGroup(row: StaffRow, group: GroupFilter): boolean {
@@ -158,7 +158,7 @@ export function matchesQuery(row: StaffRow, query: string): boolean {
   if (row.employee_id !== null && employeeId(row.employee_id).toLowerCase().includes(needle)) {
     return true;
   }
-  // ADR-0105: the payroll sheet's own ID.
+  // ADR-0107: the payroll sheet's own ID.
   if (row.payroll_id && row.payroll_id.toLowerCase().includes(needle)) return true;
   return row.role_names.some((role) => role.toLowerCase().includes(needle));
 }

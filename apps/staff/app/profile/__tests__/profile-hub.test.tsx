@@ -154,7 +154,7 @@ describe('the Profile tab (ADR-0042)', () => {
   });
 });
 
-describe('documentsStatus — SpudBros Express staff (ADR-0104)', () => {
+describe('documentsStatus — SpudBros Express staff (ADR-0106)', () => {
   it('an onboarding-only worker still sees where their documents stand', () => {
     expect(documentsStatus(worker({ onboardingOnly: true }))).toEqual({
       tone: 'green',

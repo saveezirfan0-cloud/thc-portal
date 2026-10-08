@@ -1,15 +1,15 @@
-# ADR-0105 · An invite list decides who is SpudBros Express, and carries each Payroll ID
+# ADR-0107 · An invite list decides who is SpudBros Express, and carries each Payroll ID
 
-**Status:** Accepted · **Refines:** ADR-0104, ADR-0076 · Scope §2.1, §2.7, §2.12 · **Owner request:** 08.10.2026
+**Status:** Accepted · **Refines:** ADR-0106, ADR-0076 · Scope §2.1, §2.7, §2.12 · **Owner request:** 08.10.2026
 
 ## Context
-SpudBros Express staff and THC's own staff are invited by email, from different mailboxes, with the same kind of link. The app cannot see which mailbox a message came from or which message someone clicked — only the address they apply with, and (since ADR-0104) which public page they applied on. The office also holds each person's Payroll ID on a sheet, some with a letter (`1641A`), which `employee_id` (an int) cannot hold.
+SpudBros Express staff and THC's own staff are invited by email, from different mailboxes, with the same kind of link. The app cannot see which mailbox a message came from or which message someone clicked — only the address they apply with, and (since ADR-0106) which public page they applied on. The office also holds each person's Payroll ID on a sheet, some with a letter (`1641A`), which `employee_id` (an int) cannot hold.
 
 ## Decision
 - **An invite list** (`invite_roster`): email, name, Payroll ID, group (`spudbros` / `thc`). Loaded by the office from `/staff/roster` (paste the sheet, header row: Email · First name · Last name · Payroll ID · Group) through `load_invite_roster()`. One row per email.
 - **An application is matched on the email it is made with**, for the *new candidate that application created* only (never a returning applicant, §2.12):
   - on the list → the list's group wins, and the Payroll ID moves onto the person. A SpudBros person who clicks the ordinary link is still SpudBros; a THC person who clicks the SpudBros link is not;
-  - not on the list → `/apply/spudbros` marks them SpudBros Express, `/apply` does not (ADR-0104);
+  - not on the list → `/apply/spudbros` marks them SpudBros Express, `/apply` does not (ADR-0106);
   - the row is **consumed**, so `invite_roster` is exactly "invited, not applied yet" — a chase list — and an audit row (`roster.matched`, with `via` = `list` / `list_over_link` / `link`) says how each person was decided.
   - **Exception — the Payroll ID is already held.** If somebody else already holds the list's Payroll ID, the person still gets their group, but not the ID, and their list row is **kept** (still carrying the ID) so `/staff/roster` shows who came in without theirs; the audit row says `payrollIdTaken`. An ID is never given to two people.
 - **People already in the system** (same email) have the list applied when it is loaded: Payroll ID, a numeric Payroll ID as the Employee ID where the system had issued one (ADR-0076's backfill rule), and SpudBros marking — except where marking would strand an upcoming invitation or shift, which is reported (`held`) and left to the office. A list never switches a SpudBros person back to THC (it may be a deliberate exception); that too is reported.

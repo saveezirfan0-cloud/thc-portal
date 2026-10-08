@@ -25,7 +25,7 @@ export const TUTORIAL_CARDS = [
 
 /**
  * 11/11 for SpudBros Express staff whose shifts stay on Connecteam
- * (ADR-0104). The four cards above describe THC's invitations, the 12:00
+ * (ADR-0106). The four cards above describe THC's invitations, the 12:00
  * "I'm ready" and check-in — none of which this worker will ever meet, and
  * telling them otherwise would be the one promise this app must not make.
  * The words are the onboarding email's.

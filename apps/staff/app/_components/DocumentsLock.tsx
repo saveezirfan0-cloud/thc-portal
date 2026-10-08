@@ -138,7 +138,7 @@ export function TabLockedScreen({
 }
 
 /**
- * Lock case 6 — SpudBros Express staff, shifts on Connecteam (ADR-0104).
+ * Lock case 6 — SpudBros Express staff, shifts on Connecteam (ADR-0106).
  *
  * Nothing is wrong, so this is information, not a warning: the app is for
  * their onboarding, and the three shift tabs are not theirs. The wording is

@@ -307,13 +307,13 @@ export interface ProfileData {
    */
   gender?: 'M' | 'F' | null;
   /**
-   * `staff.spudbros_express` / `staff.thc_shifts_enabled` (ADR-0104):
+   * `staff.spudbros_express` / `staff.thc_shifts_enabled` (ADR-0106):
    * SpudBros Express staff, and whether THC scheduling is switched on for
    * them. Undefined = not read.
    */
   spudbros?: boolean;
   thcShifts?: boolean;
-  /** `staff.payroll_id` (ADR-0105). Null = none on file; undefined = not read. */
+  /** `staff.payroll_id` (ADR-0107). Null = none on file; undefined = not read. */
   payrollId?: string | null;
   /**
    * `staff.languages` — every language the worker speaks, English always in

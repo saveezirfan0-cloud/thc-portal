@@ -302,7 +302,7 @@ export function OnboardingBoard({
                   <option value="referred">From a referral link</option>
                   <option value="not_activated">Not activated</option>
                 </Select>
-                {/* ADR-0105: SpudBros Express staff are onboarding-only. */}
+                {/* ADR-0107: SpudBros Express staff are onboarding-only. */}
                 <Select
                   aria-label="Group"
                   value={group}
@@ -540,7 +540,7 @@ function RoleChips({
 }: {
   roles: string[];
   referred?: boolean;
-  /** ADR-0105: SpudBros Express staff (onboarding only). */
+  /** ADR-0107: SpudBros Express staff (onboarding only). */
   spudbros?: boolean;
 }) {
   if (roles.length === 0 && !referred && !spudbros) return null;

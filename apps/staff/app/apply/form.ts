@@ -415,7 +415,7 @@ export function referralCodeFrom(value: unknown): string | null {
 export const REFERRAL_FIELD = 'ref';
 
 /**
- * Where an application came from (ADR-0104). Only `/apply/spudbros` sends
+ * Where an application came from (ADR-0106). Only `/apply/spudbros` sends
  * one, in a hidden field; the database marks the NEW candidate it created as
  * SpudBros Express staff. Anything else is dropped — an unknown source is
  * the ordinary application.

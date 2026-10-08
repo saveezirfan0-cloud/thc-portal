@@ -3,7 +3,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
 
 /**
- * Reads for /staff/roster (ADR-0105): the people on the invite list who have
+ * Reads for /staff/roster (ADR-0107): the people on the invite list who have
  * not applied yet. A row is consumed when its person applies, so the table
  * IS that list. `invite_roster` has one policy — admin_read — so a session
  * that is not the office reads nothing.

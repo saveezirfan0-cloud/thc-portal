@@ -4,11 +4,11 @@ import { useState, useTransition } from 'react';
 import { Button, Pill } from '@thc/ui';
 import { saveScheduling } from './actions';
 
-/** The words on the profile, and in the email the worker was sent (ADR-0104). */
+/** The words on the profile, and in the email the worker was sent (ADR-0106). */
 export const SPUDBROS_LABEL = 'SpudBros Express Staff Only – scheduling on Connecteam';
 
 /**
- * Scheduling on the Overview card "Contacts & identity" (ADR-0104).
+ * Scheduling on the Overview card "Contacts & identity" (ADR-0106).
  *
  * SpudBros Express staff do their Right to Work check and onboarding with
  * us and nothing else: their shifts stay on Connecteam. A few also work THC
