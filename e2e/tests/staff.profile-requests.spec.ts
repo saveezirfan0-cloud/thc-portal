@@ -97,9 +97,16 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
   await expect
     .poll(
       async () => {
-        if (await left.isVisible()) return 'left';
-        const refusal = (await flow.getByRole('status').allTextContents()).join(' ').trim();
-        return refusal ? `refused: ${refusal}` : 'waiting';
+        // The full load of /profile can land between these two reads and destroy the
+        // page's context mid-call; that is the navigation this poll is waiting for,
+        // not a failure, so the next tick reads the new page.
+        try {
+          if (await left.isVisible()) return 'left';
+          const refusal = (await flow.getByRole('status').allTextContents()).join(' ').trim();
+          return refusal ? `refused: ${refusal}` : 'waiting';
+        } catch {
+          return 'waiting';
+        }
       },
       { timeout: 45_000 },
     )
