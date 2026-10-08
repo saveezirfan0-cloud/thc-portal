@@ -313,6 +313,8 @@ export interface ProfileData {
    */
   spudbros?: boolean;
   thcShifts?: boolean;
+  /** `staff.payroll_id` (ADR-0104). Null = none on file; undefined = not read. */
+  payrollId?: string | null;
   /**
    * `staff.languages` — every language the worker speaks, English always in
    * it, given on onboarding step 2. ADR-0080: an event that needs another

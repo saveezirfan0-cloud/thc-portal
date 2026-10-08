@@ -137,10 +137,19 @@ export function matchesFilter(row: StaffRow, filter: Filter): boolean {
   }
 }
 
+/** ADR-0104: SpudBros Express staff or THC's own. */
+export type GroupFilter = 'all' | 'spudbros' | 'thc';
+
+export function matchesGroup(row: StaffRow, group: GroupFilter): boolean {
+  if (group === 'spudbros') return row.spudbros_express === true;
+  if (group === 'thc') return row.spudbros_express !== true;
+  return true;
+}
+
 /**
- * Search runs over the name, the Employee ID and the phone (§9.6). The
- * phone is not on the directory row — it is personal data the list does
- * not print — so what is searchable here is the name and the ID.
+ * Search runs over the name, the Employee ID, the Payroll ID and the role
+ * (§9.6). The phone is not on the directory row — it is personal data the
+ * list does not print — so what is searchable here is the name and the IDs.
  */
 export function matchesQuery(row: StaffRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
@@ -149,6 +158,8 @@ export function matchesQuery(row: StaffRow, query: string): boolean {
   if (row.employee_id !== null && employeeId(row.employee_id).toLowerCase().includes(needle)) {
     return true;
   }
+  // ADR-0104: the payroll sheet's own ID.
+  if (row.payroll_id && row.payroll_id.toLowerCase().includes(needle)) return true;
   return row.role_names.some((role) => role.toLowerCase().includes(needle));
 }
 

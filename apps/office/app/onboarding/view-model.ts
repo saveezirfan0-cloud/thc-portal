@@ -577,6 +577,9 @@ export type StageFilter = 'any' | ColumnKey;
 /** "Needs attention" is what the card already colours amber or coral. */
 export type AttentionFilter = 'any' | 'attention' | 'stalled' | 'referred' | 'not_activated';
 
+/** ADR-0104: SpudBros Express staff or THC's own. */
+export type GroupFilter = 'any' | 'spudbros' | 'thc';
+
 /** How long ago they applied, in UK calendar days. */
 export type AppliedFilter = 'any' | 'today' | '7d' | '30d';
 
@@ -595,6 +598,7 @@ export interface BoardQuery {
   stage?: StageFilter;
   attention?: AttentionFilter;
   applied?: AppliedFilter;
+  group?: GroupFilter;
 }
 
 /** What the filters need that is not on the candidate row. */
@@ -663,11 +667,16 @@ export function boardColumns(
   const stage = q.stage ?? 'any';
   const attention = q.attention ?? 'any';
   const applied = q.applied ?? 'any';
+  const group = q.group ?? 'any';
   const active = q.filter === 'active';
 
   const wanted = candidates.filter((row) => {
     if (active ? !ON_BOARD.has(row.status) : row.status !== 'rejected') return false;
-    if (!matchesQuery(row.display_name, [row.email, row.phone], q.query)) return false;
+    if (!matchesQuery(row.display_name, [row.email, row.phone, row.payroll_id ?? ''], q.query)) {
+      return false;
+    }
+    if (group === 'spudbros' && !row.spudbros_express) return false;
+    if (group === 'thc' && row.spudbros_express) return false;
     if (q.roleName && !row.role_names.includes(q.roleName)) return false;
     if (!active && q.reason !== 'any' && row.rejection_cause !== q.reason) return false;
     const column = columnFor(row);
@@ -700,6 +709,8 @@ export function boardColumns(
   // the filters that can describe it and drops out of the ones that cannot.
   const cards =
     active &&
+    // A returning applicant has no group of their own (ADR-0104).
+    group === 'any' &&
     !q.roleName &&
     (stage === 'any' || stage === 'interview_requested') &&
     attention !== 'stalled' &&

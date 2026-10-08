@@ -788,3 +788,55 @@ describe('client qualification helpers (§9.6)', () => {
     expect(newEntryCount([], ['r1'], rows)).toBe(0);
   });
 });
+
+describe('the group filter (ADR-0104)', () => {
+  const spud = candidate({
+    id: 'c-spud',
+    display_name: 'Sid Spud',
+    status: 'documents',
+    spudbros_express: true,
+    payroll_id: '1641A',
+  });
+  const own = candidate({ id: 'c-own', display_name: 'Tia Own', status: 'documents' });
+  const query = { filter: 'active', query: '', roleName: '', reason: 'any' } as const;
+  const ids = (group: 'any' | 'spudbros' | 'thc') =>
+    boardColumns([spud, own], [], { ...query, group }, { now: NOW })
+      .flatMap((c) => c.candidates)
+      .map((c) => c.id)
+      .sort();
+
+  it('shows everyone by default', () => {
+    expect(ids('any')).toEqual(['c-own', 'c-spud']);
+  });
+
+  it('SpudBros Express shows only SpudBros Express staff', () => {
+    expect(ids('spudbros')).toEqual(['c-spud']);
+  });
+
+  it('THC only shows everyone else — a row from an older view counts as THC', () => {
+    expect(ids('thc')).toEqual(['c-own']);
+  });
+
+  it('search finds a candidate by Payroll ID', () => {
+    const found = boardColumns([spud, own], [], { ...query, query: '1641a' }, { now: NOW })
+      .flatMap((c) => c.candidates)
+      .map((c) => c.id);
+    expect(found).toEqual(['c-spud']);
+  });
+
+  it('a returning-applicant card has no group, so a group filter drops it', () => {
+    const back = {
+      application_id: 'a-1',
+      applicant_name: 'Ret Urner',
+      existing_name: 'Ret Urner',
+      applied_at: '2026-09-22T10:00:00Z',
+    } as unknown as ReturningRow;
+    const all = (group: 'any' | 'spudbros') =>
+      boardColumns([], [back], { ...query, group }, { now: NOW }).reduce(
+        (n, c) => n + c.returning.length,
+        0,
+      );
+    expect(all('any')).toBe(1);
+    expect(all('spudbros')).toBe(0);
+  });
+});

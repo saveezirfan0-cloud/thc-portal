@@ -40,6 +40,7 @@ import {
 import type {
   AppliedFilter,
   AttentionFilter,
+  GroupFilter,
   BoardColumn,
   BoardFilter,
   Line,
@@ -143,6 +144,7 @@ export function OnboardingBoard({
   const [stage, setStage] = useState<StageFilter>('any');
   const [attention, setAttention] = useState<AttentionFilter>('any');
   const [applied, setApplied] = useState<AppliedFilter>('any');
+  const [group, setGroup] = useState<GroupFilter>('any');
   const [pending, setPending] = useState<Pending>(null);
   const [note, setNote] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -162,7 +164,7 @@ export function OnboardingBoard({
   const columns = boardColumns(
     data.candidates,
     data.returning,
-    { filter, query, roleName, reason, stage, attention, applied },
+    { filter, query, roleName, reason, stage, attention, applied, group },
     {
       now: at,
       referredCandidates: referred.candidates,
@@ -176,6 +178,7 @@ export function OnboardingBoard({
     query.trim() !== '' ||
     stage !== 'any' ||
     applied !== 'any' ||
+    group !== 'any' ||
     (filter === 'active' ? roleName !== '' || attention !== 'any' : reason !== 'any');
   const clearFilters = () => {
     setQuery('');
@@ -184,6 +187,7 @@ export function OnboardingBoard({
     setStage('any');
     setAttention('any');
     setApplied('any');
+    setGroup('any');
   };
 
   const open = (row: CandidateRow) => router.push(`/onboarding/${row.id}`);
@@ -297,6 +301,16 @@ export function OnboardingBoard({
                   <option value="stalled">Reminders stalled or undelivered</option>
                   <option value="referred">From a referral link</option>
                   <option value="not_activated">Not activated</option>
+                </Select>
+                {/* ADR-0104: SpudBros Express staff are onboarding-only. */}
+                <Select
+                  aria-label="Group"
+                  value={group}
+                  onChange={(event) => setGroup(event.target.value as GroupFilter)}
+                >
+                  <option value="any">All groups</option>
+                  <option value="spudbros">SpudBros Express</option>
+                  <option value="thc">THC only</option>
                 </Select>
               </>
             ) : (
@@ -519,14 +533,26 @@ function CardTop({
 /** A card shows this many role chips; the rest fold into one "+N" chip. */
 const ROLE_CHIPS_SHOWN = 2;
 
-function RoleChips({ roles, referred = false }: { roles: string[]; referred?: boolean }) {
-  if (roles.length === 0 && !referred) return null;
+function RoleChips({
+  roles,
+  referred = false,
+  spudbros = false,
+}: {
+  roles: string[];
+  referred?: boolean;
+  /** ADR-0104: SpudBros Express staff (onboarding only). */
+  spudbros?: boolean;
+}) {
+  if (roles.length === 0 && !referred && !spudbros) return null;
   // Someone can pick every role THC runs (nine chips was a card taller than
   // the screen). The profile has the full list; the "+N" chip's tooltip too.
   const shown = roles.slice(0, ROLE_CHIPS_SHOWN);
   const hidden = roles.slice(ROLE_CHIPS_SHOWN);
   return (
     <div className="chips">
+      {spudbros ? (
+        <Chip title="SpudBros Express — onboarding only; shifts stay on Connecteam">SpudBros</Chip>
+      ) : null}
       {shown.map((role) => (
         <Chip key={role}>{role}</Chip>
       ))}
@@ -562,7 +588,11 @@ function CandidateCard({
       <CardTop name={row.display_name} age={age.label} tone={age.tone} photo={row.photo_url} />
       {/* Role chips from Documents onwards: picked right after the Willo
           acceptance (§2.4). "Referred" (ADR-0047) from the first column. */}
-      <RoleChips roles={interview ? [] : row.role_names} referred={referred} />
+      <RoleChips
+        roles={interview ? [] : row.role_names}
+        referred={referred}
+        spudbros={row.spudbros_express === true}
+      />
       {lines.slice(0, 1).map((line) => (
         <Meta key={line.text} line={line} />
       ))}
@@ -590,7 +620,11 @@ function RejectedCard({
         age={row.rejected_at ? shortDay(row.rejected_at) : '—'}
         photo={row.photo_url}
       />
-      <RoleChips roles={row.role_names} referred={referred} />
+      <RoleChips
+        roles={row.role_names}
+        referred={referred}
+        spudbros={row.spudbros_express === true}
+      />
       <span>
         <Pill tone="coral">{rejectedPill(row)}</Pill>
       </span>

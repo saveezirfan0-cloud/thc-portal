@@ -455,6 +455,8 @@ export function ProfileScreen({
             spudbros={data.spudbros}
             thcShifts={data.thcShifts}
             canEditScheduling={canEditScheduling}
+            payrollId={data.payrollId}
+            canEditPayrollId={canEditScheduling}
             emergencyContact={data.emergencyContact ?? null}
             emergencyContactProblem={data.emergencyContactProblem ?? null}
             referrals={data.referrals ?? null}

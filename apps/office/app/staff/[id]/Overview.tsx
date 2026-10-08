@@ -8,6 +8,7 @@ import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
 import { GenderField } from './GenderField';
+import { PayrollIdField } from './PayrollIdField';
 import { SchedulingField } from './SchedulingField';
 import { LanguagesField } from './LanguagesField';
 import type {
@@ -56,6 +57,8 @@ export function Overview({
   spudbros,
   thcShifts,
   canEditScheduling = false,
+  payrollId,
+  canEditPayrollId = false,
   willoReviewUrl,
   emergencyContact = null,
   emergencyContactProblem = null,
@@ -85,6 +88,9 @@ export function Overview({
   thcShifts?: boolean;
   /** Any office login that may write (ADR-0103). */
   canEditScheduling?: boolean;
+  /** ADR-0104: `staff.payroll_id`; null = none, undefined = not read. */
+  payrollId?: string | null;
+  canEditPayrollId?: boolean;
   /** ADR-0098: the Willo interview link; null/undefined = none to show. */
   willoReviewUrl?: string | null;
   /** ADR-0044 — null reads "Not provided". */
@@ -136,6 +142,13 @@ export function Overview({
             staffId={profile.id}
             languages={languages}
             editable={canEditLanguages && !profile.removed}
+            removed={profile.removed}
+          />
+          <span className="k">Payroll ID</span>
+          <PayrollIdField
+            staffId={profile.id}
+            payrollId={payrollId}
+            editable={canEditPayrollId && !profile.removed}
             removed={profile.removed}
           />
           <span className="k">Scheduling</span>

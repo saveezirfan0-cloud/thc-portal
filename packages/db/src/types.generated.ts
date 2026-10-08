@@ -2233,6 +2233,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      invite_roster: {
+        Row: {
+          email: string;
+          first_name: string | null;
+          grp: string;
+          id: string;
+          last_name: string | null;
+          loaded_at: string;
+          loaded_by: string | null;
+          payroll_id: string | null;
+        };
+        Insert: {
+          email: string;
+          first_name?: string | null;
+          grp: string;
+          id?: string;
+          last_name?: string | null;
+          loaded_at?: string;
+          loaded_by?: string | null;
+          payroll_id?: string | null;
+        };
+        Update: {
+          email?: string;
+          first_name?: string | null;
+          grp?: string;
+          id?: string;
+          last_name?: string | null;
+          loaded_at?: string;
+          loaded_by?: string | null;
+          payroll_id?: string | null;
+        };
+        Relationships: [];
+      };
       location_pings: {
         Row: {
           at: string;
@@ -4193,6 +4226,7 @@ export type Database = {
           left_at: string | null;
           ni_number: string | null;
           onboarding_started_at: string;
+          payroll_id: string | null;
           phone: string;
           photo_path: string | null;
           quiz_attempts: number;
@@ -4256,6 +4290,7 @@ export type Database = {
           left_at?: string | null;
           ni_number?: string | null;
           onboarding_started_at?: string;
+          payroll_id?: string | null;
           phone: string;
           photo_path?: string | null;
           quiz_attempts?: number;
@@ -4319,6 +4354,7 @@ export type Database = {
           left_at?: string | null;
           ni_number?: string | null;
           onboarding_started_at?: string;
+          payroll_id?: string | null;
           phone?: string;
           photo_path?: string | null;
           quiz_attempts?: number;
@@ -6791,6 +6827,7 @@ export type Database = {
           last_name: string | null;
           ni_entered: boolean | null;
           onboarding_started_at: string | null;
+          payroll_id: string | null;
           phone: string | null;
           photo_path: string | null;
           quiz_attempts_used: number | null;
@@ -6809,8 +6846,10 @@ export type Database = {
           role_names: string[] | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
           share_code: string | null;
+          spudbros_express: boolean | null;
           stage_entered_at: string | null;
           status: Database['public']['Enums']['staff_status'] | null;
+          thc_shifts_enabled: boolean | null;
           willo_answers_done: number | null;
           willo_answers_total: number | null;
           willo_completed_at: string | null;
@@ -7631,6 +7670,7 @@ export type Database = {
           leave_reason: string | null;
           left_at: string | null;
           p45_requested_at: string | null;
+          payroll_id: string | null;
           photo_path: string | null;
           rating: number | null;
           released_shift_count: number | null;
@@ -7639,7 +7679,9 @@ export type Database = {
           right_to_work_until: string | null;
           role_names: string[] | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
+          spudbros_express: boolean | null;
           status: Database['public']['Enums']['staff_status'] | null;
+          thc_shifts_enabled: boolean | null;
           unresolved_violations: number | null;
           weekly_booked_hours: number | null;
           weekly_cap_band: Database['public']['Enums']['cap_band'] | null;
@@ -9304,6 +9346,10 @@ export type Database = {
         Returns: Database['public']['Enums']['hmrc_statement'];
       };
       install_job_schedules: { Args: never; Returns: number };
+      invite_roster_group: {
+        Args: { p_group: string };
+        Returns: string;
+      };
       invite_worker: {
         Args: {
           p_ignore_target?: boolean;
@@ -9341,6 +9387,10 @@ export type Database = {
       mark_feedback_read: { Args: { p_id: string }; Returns: Json };
       mark_ready: { Args: { p_booking: string }; Returns: Json };
       my_emergency_contact: { Args: never; Returns: Json };
+      load_invite_roster: {
+        Args: { p_rows: Json };
+        Returns: Json;
+      };
       my_profile_change_requests: {
         Args: never;
         Returns: {
@@ -10111,6 +10161,10 @@ export type Database = {
         Returns: string;
       };
       remove_client_role: { Args: { p_id: string }; Returns: Json };
+      remove_invite_roster_entries: {
+        Args: { p_ids?: string[] };
+        Returns: number;
+      };
       remove_my_unavailability: {
         Args: { p_id: string; p_whole_series?: boolean };
         Returns: Json;
@@ -10328,6 +10382,10 @@ export type Database = {
       set_staff_pay_rate: {
         Args: { p_pay_rate: number; p_staff: string };
         Returns: undefined;
+      };
+      set_staff_payroll_id: {
+        Args: { p_payroll_id: string; p_staff: string };
+        Returns: Json;
       };
       set_staff_scheduling: {
         Args: { p_spudbros: boolean; p_staff: string; p_thc_shifts: boolean };

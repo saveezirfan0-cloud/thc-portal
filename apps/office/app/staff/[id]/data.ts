@@ -193,7 +193,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // admin_all; a failed read shows nothing.
     supabase
       .from('staff')
-      .select('home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled')
+      .select(
+        'home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled, payroll_id',
+      )
       .eq('id', id)
       .maybeSingle<{
         home_location_stale: boolean;
@@ -201,6 +203,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
         languages: string[] | null;
         spudbros_express: boolean;
         thc_shifts_enabled: boolean;
+        payroll_id: string | null;
       }>(),
     // ADR-0098: the Willo interview link stays on the profile after
     // onboarding. The same column the candidate screen reads, built from
@@ -288,6 +291,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
             ? {
                 spudbros: location.data.spudbros_express,
                 thcShifts: location.data.thc_shifts_enabled,
+                payrollId: location.data.payroll_id,
               }
             : {}),
         }),

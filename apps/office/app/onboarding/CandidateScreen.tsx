@@ -275,6 +275,15 @@ export function CandidateScreen({
             <div className="row wrap">
               <h2>{row.display_name}</h2>
               <Pill>{row.status === 'compliant' ? 'Staff' : 'Candidate'}</Pill>
+              {/* ADR-0104: said where the office looks first. */}
+              {row.spudbros_express ? (
+                <Pill tone="cyan">
+                  {row.thc_shifts_enabled
+                    ? 'SpudBros Express · also works THC shifts'
+                    : 'SpudBros Express Staff Only – scheduling on Connecteam'}
+                </Pill>
+              ) : null}
+              {row.payroll_id ? <Pill>Payroll ID {row.payroll_id}</Pill> : null}
               <Pill
                 tone={
                   row.status === 'rejected'
