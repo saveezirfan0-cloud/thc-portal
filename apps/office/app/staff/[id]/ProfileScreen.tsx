@@ -33,6 +33,7 @@ import { Documents } from './Documents';
 import { Feedback } from './Feedback';
 import { SendPush } from '../SendPush';
 import { Overview } from './Overview';
+import { SPUDBROS_LABEL } from './SchedulingField';
 import { Qualifications } from './Qualifications';
 import { Shifts } from './Shifts';
 import {
@@ -86,6 +87,7 @@ export function ProfileScreen({
   canCorrectDob = false,
   canEditGender = false,
   canEditLanguages = false,
+  canEditScheduling = false,
   showPayRate = false,
   canEditPayRate = false,
   canMessage = false,
@@ -100,6 +102,8 @@ export function ProfileScreen({
   canEditGender?: boolean;
   /** ADR-0080: any office login that may write records the languages. */
   canEditLanguages?: boolean;
+  /** ADR-0106: any office login that may write marks SpudBros staff and switches THC shifts on. */
+  canEditScheduling?: boolean;
   /** ADR-0072: `officeCan(role, 'finance')` — the Pay rate card is drawn. */
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
@@ -200,6 +204,12 @@ export function ProfileScreen({
               <Pill tone={statusLabel(profile).tone} large>
                 {statusLabel(profile).label}
               </Pill>
+              {/* ADR-0106: said where the office looks first. */}
+              {data.spudbros && !profile.removed ? (
+                <Pill tone="cyan" large>
+                  {data.thcShifts ? 'SpudBros Express · also works THC shifts' : SPUDBROS_LABEL}
+                </Pill>
+              ) : null}
               <span className="mono sm muted">
                 Employee ID <b className="cyan">{employeeId(profile.employee_id)}</b>
               </span>
@@ -442,6 +452,11 @@ export function ProfileScreen({
             languages={data.languages}
             willoReviewUrl={data.willoReviewUrl}
             canEditLanguages={canEditLanguages}
+            spudbros={data.spudbros}
+            thcShifts={data.thcShifts}
+            canEditScheduling={canEditScheduling}
+            payrollId={data.payrollId}
+            canEditPayrollId={canEditScheduling}
             emergencyContact={data.emergencyContact ?? null}
             emergencyContactProblem={data.emergencyContactProblem ?? null}
             referrals={data.referrals ?? null}

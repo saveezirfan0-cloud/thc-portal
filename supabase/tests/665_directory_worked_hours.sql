@@ -55,11 +55,12 @@ insert into bookings (shift_id, staff_id, status, source, confirmed_at) values
 
 -- ---- shape -----------------------------------------------------------------
 select is(
-  (select column_name::text from information_schema.columns
-    where table_schema = 'public' and table_name = 'staff_directory_v'
-    order by ordinal_position desc limit 1),
-  'weekly_worked_hours',
-  'weekly_worked_hours is appended after main''s last directory column, so nothing that names columns moves');
+  (select array_agg(column_name::text order by ordinal_position) from (
+     select column_name, ordinal_position from information_schema.columns
+      where table_schema = 'public' and table_name = 'staff_directory_v'
+      order by ordinal_position desc limit 4) t),
+  array['weekly_worked_hours', 'spudbros_express', 'thc_shifts_enabled', 'payroll_id']::text[],
+  'weekly_worked_hours is appended after main''s last directory column, and 20261008100000 appends its three after it, so nothing that names columns moves');
 select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'staff_directory_v'),
   'staff_directory_v keeps security_invoker');
 select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'staff_profile_v'),

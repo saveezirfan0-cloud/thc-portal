@@ -41,6 +41,14 @@ export interface StaffRow {
   employee_id: number | null;
   status: StaffStatus;
   removed: boolean;
+  /**
+   * ADR-0107 (`staff_directory_v` since 20261008100000): SpudBros Express
+   * staff, whether THC shifts are switched on for them, and the Payroll ID.
+   * Optional so a row from an older view reads as none.
+   */
+  spudbros_express?: boolean;
+  thc_shifts_enabled?: boolean;
+  payroll_id?: string | null;
   display_name: string;
   photo_path: string | null;
   /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */

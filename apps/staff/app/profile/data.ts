@@ -86,6 +86,8 @@ export function toProfile(row: Record<string, unknown>): StaffProfile {
     roles: (row['roles'] as string[]) ?? [],
     blockers: (row['blockers'] as string[]) ?? [],
     checkedIn: Boolean(row['checkedIn']),
+    spudbros: Boolean(row['spudbros']),
+    onboardingOnly: Boolean(row['onboardingOnly']),
     bank: row['bank']
       ? {
           accountHolder: (row['bank'] as Record<string, string>)['accountHolder'] ?? '',

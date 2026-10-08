@@ -454,10 +454,8 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
         qualifications: [],
       }),
     );
-    expect(html).toContain('Add clients');
     // No second role pick: the roles come from the ticks on the left.
-    expect(html).toContain('saved on the left');
-    expect(html).toContain('Search 1 clients');
+    expect(html).toContain('Search 1 clients to add');
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Not cleared at any client yet.');
   });
@@ -484,6 +482,33 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     expect(html).toContain('1 client');
   });
 
+  it('does not offer a client the candidate is already cleared at for every role', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [
+          { id: 'c1', name: 'Grand Hotel' },
+          { id: 'c2', name: 'Plaza Bar' },
+        ],
+        qualifications: [
+          {
+            id: 'q1',
+            client_id: 'c1',
+            client_name: 'Grand Hotel',
+            role_id: 'r1',
+            role_name: 'Waiting Staff',
+            do_not_return: false,
+          },
+        ],
+      }),
+    );
+    expect(html).toContain('Search 1 clients to add');
+    expect(html).not.toContain('already cleared');
+    // Grand Hotel appears once (under Cleared at), Plaza Bar is still on offer.
+    expect(html.match(/Grand Hotel/g) ?? []).toHaveLength(1);
+    expect(html).toContain('Plaza Bar');
+  });
+
   it('shows one line per client with its roles as chips, not one line per entry', () => {
     const entry = (id: string, role_id: string, role_name: string) => ({
       id,
@@ -501,7 +526,6 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
       }),
     );
     expect(html.match(/class="cq-row"/g) ?? []).toHaveLength(1);
-    expect(html).toContain('1 client · 2 entries');
     expect(html).toContain('Remove all');
   });
 
@@ -596,14 +620,14 @@ describe('the candidate profile, roles and clients once the candidate has moved 
     const html = lookBackAtDocuments('quiz');
     expect(html).toContain('Viewing <b>');
     expect(html).toContain('roles and clients stay editable');
-    expect(html).toContain('Add clients');
+    expect(html).toContain('Search 1 clients to add');
     // The role ticks are not disabled.
     const ticks = html.match(/<div[^>]*>.*?Waiting Staff.*?<\/div>/s)?.[0] ?? '';
     expect(ticks).not.toContain('disabled');
   });
 
   it('and after the contract is signed, but not on a rejected candidate', () => {
-    expect(lookBackAtDocuments('compliant')).toContain('Add clients');
-    expect(lookBackAtDocuments('rejected')).not.toContain('Add clients');
+    expect(lookBackAtDocuments('compliant')).toContain('clients to add');
+    expect(lookBackAtDocuments('rejected')).not.toContain('clients to add');
   });
 });
