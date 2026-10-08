@@ -303,6 +303,7 @@ describe('every click lands in /compliance’s own actions', () => {
       review_status: 'pending',
       declared_at: '2026-09-20T10:00:00Z',
       reviewed_at: null,
+      reviewed_by_name: null,
     };
     const row = queued({
       kind: 'declaration',

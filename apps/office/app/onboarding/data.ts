@@ -332,9 +332,9 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .returns<CandidateDocument[]>(),
     // §1.5: declarations are a history, never overwritten — oldest first.
     supabase
-      .from('criminal_declarations')
+      .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, review_note, superseded',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name, review_note, superseded',
       )
       .eq('staff_id', id)
       .order('declared_at')

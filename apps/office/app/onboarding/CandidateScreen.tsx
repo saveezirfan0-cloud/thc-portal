@@ -21,6 +21,7 @@ import {
   useTimeFormat,
 } from '@thc/ui';
 import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import { RejectSelfie } from '../_components/RejectSelfie';
 import {
@@ -30,7 +31,7 @@ import {
   formatUkDate,
   rtwUntilLabel,
 } from '../staff/staff';
-import { formatUkStamp } from '../staff/[id]/profile';
+import { formatUkStamp, rejectionLine, reviewStamp } from '../staff/[id]/profile';
 import {
   acceptCandidate,
   addQualifiedRole,
@@ -1096,8 +1097,8 @@ interface DocHandlers {
   onOpen: (docId: string, which: 'file' | 'report') => void;
 }
 
-function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
-  const parts: string[] = [`Uploaded ${formatUkStamp(doc.uploaded_at)}`];
+function docMeta(doc: CandidateDocument, niNumber: string | null, format?: TimeFormat): ReactNode {
+  const parts: string[] = [`Uploaded ${formatUkStamp(doc.uploaded_at, format)}`];
   if (doc.awarding_institution) parts.push(doc.awarding_institution);
   if (doc.doc_type === 'university_term_dates_letter') {
     parts.push(`${(doc.term_dates ?? []).length} holiday range(s) found`);
@@ -1120,13 +1121,11 @@ function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
     parts.push(niEvidenceLine(niNumber));
     if (doc.ni_recheck && niNumber) parts.push('waiting in Needs review to be compared');
   }
-  if (doc.review_status === 'verified' && doc.reviewed_at) {
-    parts.push(
-      `Verified${doc.reviewed_by_name ? ` by ${doc.reviewed_by_name}` : ''} · ${formatUkStamp(doc.reviewed_at)}`,
-    );
+  if (doc.reviewed_at) {
+    parts.push(reviewStamp(doc.review_status, doc.reviewed_by_name, doc.reviewed_at, format));
   }
   if (doc.review_status === 'rejected' && doc.rejection_reason) {
-    parts.push(`Rejected: “${doc.rejection_reason}” — awaiting re-upload (N8 sent)`);
+    parts.push(rejectionLine(doc.rejection_reason, doc.review_status));
   }
   return parts.join(' · ');
 }
@@ -1144,6 +1143,7 @@ function DocumentLine({
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const pill = REVIEW_PILL[doc.review_status];
+  const format = useTimeFormat();
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
   // A visa or status document is verified on its expiry: the one the
   // candidate typed at step 1 (or the AI read) is pre-filled to confirm.
@@ -1160,7 +1160,7 @@ function DocumentLine({
           {badge ? <span className={`ai ${badge.tone}`}>{badge.label}</span> : null}
         </>
       }
-      meta={docMeta(doc, niNumber)}
+      meta={docMeta(doc, niNumber, format)}
       actions={
         <>
           <Pill tone={pill.tone}>{pill.label}</Pill>
@@ -1967,6 +1967,7 @@ function DocumentsPhase({
   onVerifyDeclaration: (d: Declaration) => void;
   onRejectDeclaration: (d: Declaration) => void;
 }) {
+  const format = useTimeFormat();
   const live = data.documents.filter((d) => !d.superseded);
   const superseded = data.documents.filter((d) => d.superseded);
   const termLetter = live.find((d) => d.doc_type === 'university_term_dates_letter');
@@ -2117,7 +2118,7 @@ function DocumentsPhase({
                 <DocRow
                   key={d.id}
                   title={d.doc_label}
-                  meta={docMeta(d, null)}
+                  meta={docMeta(d, null, format)}
                   state="pending"
                   actions={<Pill>Superseded</Pill>}
                 />
@@ -2175,7 +2176,7 @@ function DocumentsPhase({
               }
               meta={
                 d.answer
-                  ? `Details: “${orDash(d.details)}”${d.conviction_date ? ` · Conviction date: ${formatUkDate(d.conviction_date)}` : ''} · No file — text only${d.review_note ? ` · Note: ${d.review_note}` : ''}`
+                  ? `Details: “${orDash(d.details)}”${d.conviction_date ? ` · Conviction date: ${formatUkDate(d.conviction_date)}` : ''} · No file — text only${d.reviewed_at && d.review_status !== 'pending' ? ` · ${reviewStamp(d.review_status, d.reviewed_by_name, d.reviewed_at, format)}` : ''}${d.review_note ? ` · Note: ${d.review_note}` : ''}`
                   : `No · auto-verified ${d.reviewed_at ? formatUkDate(d.reviewed_at) : formatUkDate(d.declared_at)}`
               }
               actions={
@@ -2222,6 +2223,7 @@ function DocumentsPhase({
 // 4 · Quiz (read-only: taken in the app)
 // ---------------------------------------------------------------------
 function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData; past: boolean }) {
+  const format = useTimeFormat();
   const gate = quizGate(row);
   const best = row.quiz_best_score;
   const bestAttempt = data.attempts.find((a) => a.score === best);
@@ -2339,7 +2341,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
               icon={ICON[d.doc_type] ?? 'DOC'}
               state="verified"
               title={DOC_LABEL[d.doc_type] ?? d.doc_label}
-              meta={`Verified ${d.reviewed_at ? formatUkStamp(d.reviewed_at) : ''}${d.doc_type === 'university_term_dates_letter' ? ` · ${(d.term_dates ?? []).length} periods confirmed` : ''}`}
+              meta={`${d.reviewed_at ? reviewStamp('verified', d.reviewed_by_name, d.reviewed_at, format) : 'Verified'}${d.doc_type === 'university_term_dates_letter' ? ` · ${(d.term_dates ?? []).length} periods confirmed` : ''}`}
               actions={<Pill tone="green">Verified</Pill>}
             />
           ))}
@@ -2348,7 +2350,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
               icon="DECL"
               state="verified"
               title="Criminal Record declaration · Yes"
-              meta={`Verified ${yes.reviewed_at ? formatUkStamp(yes.reviewed_at) : ''}${yes.review_note ? ` · note: “${yes.review_note}”` : ''}`}
+              meta={`${yes.reviewed_at ? reviewStamp('verified', yes.reviewed_by_name, yes.reviewed_at, format) : 'Verified'}${yes.review_note ? ` · note: “${yes.review_note}”` : ''}`}
               actions={<Pill tone="green">Verified</Pill>}
             />
           ) : null}

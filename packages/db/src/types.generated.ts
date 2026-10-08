@@ -7657,6 +7657,23 @@ export type Database = {
           },
         ];
       };
+      staff_declarations_v: {
+        Row: {
+          answer: boolean | null;
+          conviction_date: string | null;
+          declared_at: string | null;
+          details: string | null;
+          id: string | null;
+          review_note: string | null;
+          review_status: Database['public']['Enums']['review_status'] | null;
+          reviewed_at: string | null;
+          reviewed_by_name: string | null;
+          source: Database['public']['Enums']['declaration_source'] | null;
+          staff_id: string | null;
+          superseded: boolean | null;
+        };
+        Relationships: [];
+      };
       staff_directory_v: {
         Row: {
           block_kind: Database['public']['Enums']['block_kind'] | null;
@@ -10234,6 +10251,7 @@ export type Database = {
       };
       retained_storage_paths: { Args: { p_staff: string }; Returns: string[] };
       retry_finance_report: { Args: { p_send: number }; Returns: Json };
+      reviewer_name: { Args: { p_profile: string }; Returns: string };
       revoke_client_qualification: { Args: { p_id: string }; Returns: Json };
       rota_guard_decide: {
         Args: {

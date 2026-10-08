@@ -254,6 +254,7 @@ export interface Declaration {
   review_status: ReviewStatus;
   declared_at: string;
   reviewed_at: string | null;
+  reviewed_by_name: string | null;
   review_note: string | null;
   superseded: boolean;
 }

@@ -2,7 +2,7 @@
 
 import { Note, Panel, Pill, useTimeFormat } from '@thc/ui';
 import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
-import { formatUkStamp, reviewLabel } from './profile';
+import { formatUkStamp, reviewLabel, reviewStamp } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
@@ -287,6 +287,17 @@ export function Overview({
                     >
                       {reviewLabel(row.review_status)}
                     </Pill>
+                    {row.answer && row.reviewed_at && row.review_status !== 'pending' ? (
+                      <span className="muted xs">
+                        {' '}
+                        {reviewStamp(
+                          row.review_status,
+                          row.reviewed_by_name,
+                          row.reviewed_at,
+                          format,
+                        )}
+                      </span>
+                    ) : null}
                   </div>
                 </span>
               </div>

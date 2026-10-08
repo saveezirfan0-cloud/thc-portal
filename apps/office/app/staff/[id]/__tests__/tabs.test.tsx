@@ -63,6 +63,7 @@ const decl = (over: Partial<DeclarationRow>): DeclarationRow => ({
   review_status: 'verified',
   declared_at: '2026-07-09T17:12:00Z',
   reviewed_at: null,
+  reviewed_by_name: null,
   ...over,
 });
 
@@ -198,6 +199,53 @@ describe('declaration rows', () => {
     expect(line).toContain('Onboarding · declared 09.07.2026 18:12 UK time');
     expect(line).toContain('auto-verified on submission');
     expect(line).toContain('no file to download');
+  });
+
+  it('names who decided a Yes, and when, in UK time', () => {
+    const verified = declarationMeta(
+      decl({
+        answer: true,
+        reviewed_at: '2026-10-08T10:05:00Z',
+        reviewed_by_name: 'Gisela M.',
+      }),
+    );
+    expect(verified).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+    const rejected = declarationMeta(
+      decl({
+        answer: true,
+        review_status: 'rejected',
+        reviewed_at: '2026-10-08T10:05:00Z',
+        reviewed_by_name: 'Gisela M.',
+      }),
+    );
+    expect(rejected).toContain('Rejected by Gisela M. · 08.10.2026 11:05 UK time');
+  });
+
+  it('a document line says who verified or rejected it, and when', () => {
+    const verified = renderToStaticMarkup(
+      <Documents
+        profile={PROFILE}
+        documents={[
+          doc({
+            review_status: 'verified',
+            reviewed_at: '2026-10-08T10:05:00Z',
+            reviewed_by_name: 'Gisela M.',
+          }),
+          doc({
+            id: 'd2',
+            doc_label: 'Selfie',
+            review_status: 'rejected',
+            rejection_reason: 'Blurred',
+            reviewed_at: '2026-10-08T10:06:00Z',
+            reviewed_by_name: 'Sam R.',
+          }),
+        ]}
+      />,
+    );
+    expect(verified).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+    expect(verified).toContain('Rejected by Sam R. · 08.10.2026 11:06 UK time');
+    expect(verified).toContain('Reason: “Blurred” — awaiting re-upload (N8 sent)');
+    expect(verified).toContain('Uploaded');
   });
 });
 
