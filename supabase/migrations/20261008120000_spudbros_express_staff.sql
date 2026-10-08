@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261008090000 · SpudBros Express staff: onboarding only
+-- Migration 20261008120000 · SpudBros Express staff: onboarding only
 --                            (ADR-0106; owner request, 07.10.2026)
 --
 -- SpudBros Express staff do their Right to Work check and onboarding with
@@ -56,9 +56,9 @@ alter table public.staff
   add column if not exists thc_shifts_enabled boolean not null default false;
 
 comment on column public.staff.spudbros_express is
-  '20261008090000: SpudBros Express staff. Onboarding with THC only — shifts and scheduling stay on Connecteam — unless thc_shifts_enabled.';
+  '20261008120000: SpudBros Express staff. Onboarding with THC only — shifts and scheduling stay on Connecteam — unless thc_shifts_enabled.';
 comment on column public.staff.thc_shifts_enabled is
-  '20261008090000: the exception for a SpudBros Express worker who also works THC shifts. Meaningless while spudbros_express is false.';
+  '20261008120000: the exception for a SpudBros Express worker who also works THC shifts. Meaningless while spudbros_express is false.';
 
 -- 20260923220000 replaced SELECT on staff with SELECT on a named column
 -- list; a column added since needs its own grant (as languages did). RLS
@@ -80,7 +80,7 @@ as $$
 $$;
 
 comment on function public.staff_onboarding_only(uuid) is
-  '20261008090000: true for SpudBros Express staff whose THC shifts have not been switched on. The one definition: the pool, the booking trigger and staff_me() all say the same thing.';
+  '20261008120000: true for SpudBros Express staff whose THC shifts have not been switched on. The one definition: the pool, the booking trigger and staff_me() all say the same thing.';
 
 -- Not for any signed-in session: it would tell a worker or client whether
 -- anyone they can name the id of is SpudBros staff. The trigger below runs as
@@ -148,7 +148,7 @@ begin
 end $$;
 
 comment on function public.set_staff_scheduling(uuid, boolean, boolean) is
-  '20261008090000: the office marks a worker as SpudBros Express staff (onboarding only; shifts stay on Connecteam) and, for the few who also work THC shifts, switches THC scheduling on. Office logins that are not read-only; refused on a removed worker; refused while an onboarding-only result would strand an upcoming invitation, application or confirmed shift (has_upcoming_shifts); audited.';
+  '20261008120000: the office marks a worker as SpudBros Express staff (onboarding only; shifts stay on Connecteam) and, for the few who also work THC shifts, switches THC scheduling on. Office logins that are not read-only; refused on a removed worker; refused while an onboarding-only result would strand an upcoming invitation, application or confirmed shift (has_upcoming_shifts); audited.';
 
 revoke all on function public.set_staff_scheduling(uuid, boolean, boolean) from public, anon;
 grant execute on function public.set_staff_scheduling(uuid, boolean, boolean) to authenticated, service_role;
@@ -307,7 +307,7 @@ as $$
     -- candidate mid-onboarding or a rejected applicant is in no pool and
     -- produces no row — not an Unavailable "Blocked — compliance" row.
     and s.status in ('compliant', 'blocked')
-    -- SpudBros Express staff (20261008090000): onboarding only, unless the
+    -- SpudBros Express staff (20261008120000): onboarding only, unless the
     -- office has switched THC shifts on for them. No row at all — like a
     -- candidate — so they never show on the board, never get an invitation
     -- and never see an offer.
@@ -315,7 +315,7 @@ as $$
 $$;
 
 comment on function public.auto_assign_candidates(uuid, boolean) is
-  'SpudBros Express staff who have not been switched on for THC shifts (staff.spudbros_express and not staff.thc_shifts_enabled) have no row at all (20261008090000). The §3.3/§3.4 pool for one role section, computed fresh: gate, wave, the five §6 factor inputs — reliability is staff_show_rate() (20260928110100), never the stored column — and this section''s own booking (status and, since 20260930110000, cause). Workers only: candidates, rejected applicants, leavers and removed workers have no row (20260930110000). Gates: wrong_role, male_only / female_only / gender_not_recorded (a section with a required_gender, ADR-0079), languages_not_recorded / language_not_spoken (an event whose required_languages name one besides English, ADR-0080), do_not_return, blocked, self_cancelled, booked_elsewhere (confirmed or worked, 2 h different-venue gap — 20260930110000), rtw_expired (20260924130100), hours_limit (RULE-20), and — only with p_escalation — outside_radius (§3.4 same-day escalation, 20260927140100). Scoring itself is packages/domain/scoring.ts.';
+  'SpudBros Express staff who have not been switched on for THC shifts (staff.spudbros_express and not staff.thc_shifts_enabled) have no row at all (20261008120000). The §3.3/§3.4 pool for one role section, computed fresh: gate, wave, the five §6 factor inputs — reliability is staff_show_rate() (20260928110100), never the stored column — and this section''s own booking (status and, since 20260930110000, cause). Workers only: candidates, rejected applicants, leavers and removed workers have no row (20260930110000). Gates: wrong_role, male_only / female_only / gender_not_recorded (a section with a required_gender, ADR-0079), languages_not_recorded / language_not_spoken (an event whose required_languages name one besides English, ADR-0080), do_not_return, blocked, self_cancelled, booked_elsewhere (confirmed or worked, 2 h different-venue gap — 20260930110000), rtw_expired (20260924130100), hours_limit (RULE-20), and — only with p_escalation — outside_radius (§3.4 same-day escalation, 20260927140100). Scoring itself is packages/domain/scoring.ts.';
 
 
 -- ---------------------------------------------------------------------
@@ -407,7 +407,7 @@ begin
     'blockers',       to_jsonb(v_blockers),
     'checkedIn',      v_checked_in,
     'bank',           v_bank,
-    -- 20261008090000: SpudBros Express staff. onboardingOnly closes Shifts,
+    -- 20261008120000: SpudBros Express staff. onboardingOnly closes Shifts,
     -- Invites and Radar (the app lock); spudbros alone only labels the
     -- profile for someone who also works THC shifts.
     'spudbros',       s.spudbros_express,
@@ -415,7 +415,7 @@ begin
 end $$;
 
 comment on function public.staff_me() is
-  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history. dob since 20261001210000: Profile details shows it locked (ADR-0070). spudbros / onboardingOnly since 20261008090000: SpudBros Express staff, whose shifts stay on Connecteam unless the office switches THC shifts on.';
+  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history. dob since 20261001210000: Profile details shows it locked (ADR-0070). spudbros / onboardingOnly since 20261008120000: SpudBros Express staff, whose shifts stay on Connecteam unless the office switches THC shifts on.';
 
 -- ---------------------------------------------------------------------
 -- 6 · /apply/spudbros marks the NEW candidate it created
@@ -461,7 +461,7 @@ begin
 end $$;
 
 comment on function public.record_application_source(text, text) is
-  '20261008090000: marks the candidate the current /apply/spudbros application created as SpudBros Express staff. Only a new candidate (outcome candidate_created); a returning-applicant match is never marked. Never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
+  '20261008120000: marks the candidate the current /apply/spudbros application created as SpudBros Express staff. Only a new candidate (outcome candidate_created); a returning-applicant match is never marked. Never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
 
 revoke execute on function public.record_application_source(text, text)
   from public, anon, authenticated, service_role;
@@ -482,7 +482,7 @@ create or replace function public.submit_application_as_caller(
   -- ADR-0047: /apply?ref=. Recorded after the application is written,
   -- never a reason to refuse it.
   p_referral_code text default null,
-  -- 20261008090000: /apply/spudbros. 'spudbros' marks a NEW candidate as
+  -- 20261008120000: /apply/spudbros. 'spudbros' marks a NEW candidate as
   -- SpudBros Express staff; anything else is ignored.
   p_source text default null
 ) returns void
@@ -542,7 +542,7 @@ begin
     perform public.record_application_referral(p_email, p_referral_code);
   end if;
 
-  -- 20261008090000: the SpudBros Express application. Never raises, and
+  -- 20261008120000: the SpudBros Express application. Never raises, and
   -- only ever touches the candidate this call created.
   if p_source = 'spudbros' then
     perform public.record_application_source(p_email, p_source);
@@ -554,7 +554,7 @@ begin
 end $$;
 
 comment on function public.submit_application_as_caller(text, text, text, text, date, boolean, text, text, text) is
-  '§2.1 /apply through the Staff App server action: submit_application() plus a per-caller limit (settings.apply_caller_throttle: 5/hour, 20/day) keyed by an HMAC of the caller''s IP, never the IP. Null hash = no per-caller check. An optional source (/apply/spudbros marks a new candidate SpudBros Express staff, 20261008090000) and an optional referral code (/apply?ref=, ADR-0047) is recorded by record_application_referral() after the application is written and never refuses it. Service role only (ADR-0024).';
+  '§2.1 /apply through the Staff App server action: submit_application() plus a per-caller limit (settings.apply_caller_throttle: 5/hour, 20/day) keyed by an HMAC of the caller''s IP, never the IP. Null hash = no per-caller check. An optional source (/apply/spudbros marks a new candidate SpudBros Express staff, 20261008120000) and an optional referral code (/apply?ref=, ADR-0047) is recorded by record_application_referral() after the application is written and never refuses it. Service role only (ADR-0024).';
 
 revoke execute on function public.submit_application_as_caller(text, text, text, text, date, boolean, text, text, text)
   from public, anon, authenticated;

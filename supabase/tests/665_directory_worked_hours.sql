@@ -60,7 +60,7 @@ select is(
       where table_schema = 'public' and table_name = 'staff_directory_v'
       order by ordinal_position desc limit 4) t),
   array['weekly_worked_hours', 'spudbros_express', 'thc_shifts_enabled', 'payroll_id']::text[],
-  'weekly_worked_hours is appended after main''s last directory column, and 20261008100000 appends its three after it, so nothing that names columns moves');
+  'weekly_worked_hours is appended after main''s last directory column, and 20261008130000 appends its three after it, so nothing that names columns moves');
 select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'staff_directory_v'),
   'staff_directory_v keeps security_invoker');
 select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'staff_profile_v'),

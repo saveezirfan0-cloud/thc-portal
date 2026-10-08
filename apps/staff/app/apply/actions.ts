@@ -47,7 +47,7 @@ type RpcAnswer = { error: { message: string; code?: string } | null };
 /**
  * `p_referral_code` is 20260930204000's 8th argument (ADR-0047). Typed by
  * hand here, like the rest of this call, until the Phase 2 type regen.
- * `p_source` is 20261008090000's 9th (ADR-0106, /apply/spudbros).
+ * `p_source` is 20261008120000's 9th (ADR-0106, /apply/spudbros).
  */
 interface AdminRpcClient {
   rpc(

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 780 · The invite list: SpudBros Express or THC, and the Payroll ID
---       (20261008100000, ADR-0107)
+--       (20261008130000, ADR-0107)
 --
 --   1. shape: invite_roster has RLS, one policy (admin_read), the viewer's
 --      write guard; the loader is the office's, the matcher is nobody's;
@@ -19,7 +19,7 @@
 --   8. entries older than 180 days are dropped on the next load.
 -- =====================================================================
 begin;
-select plan(76);
+select plan(80);
 \ir _shared/fixtures.psql
 
 \set here    '77900000-0000-4000-8000-000000000001'
@@ -30,11 +30,14 @@ select plan(76);
 \set signer2 '77900000-0000-4000-8000-000000000006'
 \set viewer  '77900000-0000-4000-8000-000000000007'
 \set other   '77900000-0000-4000-8000-000000000008'
+\set sched   '77900000-0000-4000-8000-000000000009'
 \set evt     '77900000-0000-4000-8000-00000000000e'
 \set sec     '77900000-0000-4000-8000-0000000000a1'
 
 insert into auth.users (id, email) values (:'viewer', 'viewer.779@rls.test');
 insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vic Viewer');
+insert into auth.users (id, email) values (:'sched', 'sched.779@rls.test');
+insert into profiles (id, role, office_role, full_name) values (:'sched', 'admin', 'scheduler', 'Sid Scheduler');
 
 -- =====================================================================
 -- 1 · Shape
@@ -97,6 +100,18 @@ select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'rol
 set local role authenticated;
 select throws_ok($$ select load_invite_roster('[{"email":"v@t779.test","group":"thc"}]'::jsonb) $$,
   '42501', 'read_only', 'a viewer cannot load the list');
+reset role;
+
+-- A scheduler may write elsewhere, but a Payroll ID is the key the pay is filed
+-- under: owner and manager only, in the database as well as on the screen.
+select set_config('request.jwt.claims', json_build_object('sub', :'sched', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok($$ select load_invite_roster('[{"email":"v@t779.test","group":"thc"}]'::jsonb) $$,
+  '42501', 'not_permitted', 'a scheduler cannot load the list');
+select throws_ok($$ select remove_invite_roster_entries(null) $$,
+  '42501', 'not_permitted', 'a scheduler cannot clear the list');
+select throws_ok(format($$ select set_staff_payroll_id(%L, 'Q1') $$, :'signer2'),
+  '42501', 'not_permitted', 'a scheduler cannot set a Payroll ID');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
@@ -212,8 +227,11 @@ select is((select count(*)::int from invite_roster where email in ('spud1@t779.t
   'the matched rows are consumed — a middle name in the app does not stop the match');
 select is((select count(*)::int from invite_roster where email = 'victim@t779.test'), 1,
   'a wrong-name application leaves the invitee''s row exactly where it was');
-select is((select coalesce(payroll_id, '-') || ':' || spudbros_express::text from staff where email = 'victim@t779.test'), '-:false',
-  'and gets neither their Payroll ID nor their group');
+select is((select coalesce(payroll_id, '-') || ':' || spudbros_express::text from staff where email = 'victim@t779.test'), '-:true',
+  'and gets NO Payroll ID — but a row that says SpudBros still marks them SpudBros, the restrictive direction');
+select is((select data->>'via' from audit_log where action = 'roster.matched'
+             and entity_id = (select id from staff where email = 'victim@t779.test')), 'list_name_mismatch',
+  'audited as a name mismatch');
 select is((select coalesce(payroll_id, '-') from staff where email = 'clash@t779.test'), '-',
   'a Payroll ID somebody else holds is never given twice');
 select is((select count(*)::int from invite_roster where email = 'clash@t779.test'), 1,
