@@ -16,7 +16,7 @@ export const metadata = { title: 'Quiz · THC Staff' };
 
 /**
  * `/quiz/:id` — a client's quiz before the worker's first shift on one of
- * its roles (ADR-0109). Reached from the /shifts card, the shift screen,
+ * its roles (ADR-0110). Reached from the /shifts card, the shift screen,
  * and the CR1 push.
  *
  * Rendered through `StaffShell`, so the §10.1 app lock stands in front of

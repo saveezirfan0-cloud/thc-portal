@@ -9,7 +9,7 @@ import type { ClientQuizResult } from './actions';
 import type { ClientQuiz as Quiz, QuizSlide } from './data';
 
 /**
- * A client's quiz (ADR-0109), in the shape of the onboarding quiz the
+ * A client's quiz (ADR-0110), in the shape of the onboarding quiz the
  * worker has already sat (§10.3 steps 5–6): the material slide by slide,
  * the questions one at a time, the answers checked at the end.
  *

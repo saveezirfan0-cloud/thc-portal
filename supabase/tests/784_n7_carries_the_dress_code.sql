@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 784 · N7 carries the role section's dress code (§3.2, §3.5, §8 N7;
---       ADR-0110, 20261009100000_n7_carries_the_dress_code.sql)
+--       ADR-0111, 20261009100000_n7_carries_the_dress_code.sql)
 --
 -- Owner request 09.10.2026: anyone booked on a United Grand Lodge shift
 -- is told, in the morning-of push that asks them to confirm, not to
@@ -74,7 +74,7 @@ select is(
   (select array[payload->>'variant', payload->>'dressCode']
      from notification_outbox where key like 'N7:booking:' || :'b_ugl' || ':%'),
   array['dress-code', 'Plain black waistcoat and plain black tie'],
-  'a section with a dress code: N7 carries variant dress-code and the section''s own dress code (ADR-0110)');
+  'a section with a dress code: N7 carries variant dress-code and the section''s own dress code (ADR-0111)');
 select is(
   (select array[template, payload->>'bookingId', payload->>'event', payload->>'window']
      from notification_outbox where key like 'N7:booking:' || :'b_ugl' || ':%'),

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261009100000 · N7 carries the role section's dress code
---                            (§3.2, §3.5 stage 3, §8 N7, §9.7; ADR-0110)
+--                            (§3.2, §3.5 stage 3, §8 N7, §9.7; ADR-0111)
 --
 -- Owner request, 09.10.2026: staff booked on a United Grand Lodge shift
 -- are to be reminded on the morning of the shift — in the same push that
@@ -269,7 +269,7 @@ begin
   --   whose worker has not pressed the on-the-day confirmation. A
   --   reminder: nothing is released for ignoring it.
   --   The push also carries the role section's dress code, when it has
-  --   one (ADR-0110, 20261009100000): `variant: 'dress-code'` and
+  --   one (ADR-0111, 20261009100000): `variant: 'dress-code'` and
   --   `dressCode`, which the register renders as "— and don't forget to
   --   arrive in your <dress code>". A section with no dress code names
   --   no variant and gets §8's plain line.
@@ -312,5 +312,5 @@ end;
 $$;
 
 comment on function public.booking_tick(timestamptz) is
-  'BG-01/02/02b/03/09/10 (§7) and the N6/N7 confirmation reminders (§3.5). N13 runs until the check-out lock (end + 4 h) unless No check-out is raised; a booking confirmed after its start is marked No-show at the end if it never checked in; N6/N7 are keyed on booking + start (20260929100000); N7 carries the section''s dress code when it has one (ADR-0110, 20261009100000). Idempotent: notifications via the outbox key, violations via not-exists. Called every minute by the booking-tick Edge Function.';
+  'BG-01/02/02b/03/09/10 (§7) and the N6/N7 confirmation reminders (§3.5). N13 runs until the check-out lock (end + 4 h) unless No check-out is raised; a booking confirmed after its start is marked No-show at the end if it never checked in; N6/N7 are keyed on booking + start (20260929100000); N7 carries the section''s dress code when it has one (ADR-0111, 20261009100000). Idempotent: notifications via the outbox key, violations via not-exists. Called every minute by the booking-tick Edge Function.';
 

@@ -7,7 +7,7 @@ import { resetQuizAttempts } from './actions';
 import type { QuizResultRow, ShiftRequirementRow } from './types';
 
 /**
- * Shift requirements (ADR-0109) — what this client asks of a worker beyond
+ * Shift requirements (ADR-0110) — what this client asks of a worker beyond
  * turning up, per role: a quiz to pass before their first shift, and a
  * message to confirm on the morning of every shift. Under it, everyone
  * who has sat the quiz and where they stand, with Reset for a worker who

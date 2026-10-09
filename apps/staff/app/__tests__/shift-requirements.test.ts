@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { quizzesOutstanding, requirementsByBooking, toShiftRequirements } from '../data';
 
 /**
- * ADR-0109 · what `staff_shift_requirements()` hands the screens, and which
+ * ADR-0110 · what `staff_shift_requirements()` hands the screens, and which
  * quizzes the /shifts tab asks for.
  */
 const row = (over: Record<string, unknown> = {}) => ({

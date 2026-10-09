@@ -1,4 +1,4 @@
-# ADR-0110 · The morning-of push carries the role's dress code
+# ADR-0111 · The morning-of push carries the role's dress code
 
 **Status:** Accepted · Scope §3.2, §3.5 stage 3, §8 N7, §9.7 · **Owner request:** 09.10.2026 · `20261009100000_n7_carries_the_dress_code.sql`
 

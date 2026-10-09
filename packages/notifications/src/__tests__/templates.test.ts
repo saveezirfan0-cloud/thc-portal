@@ -67,7 +67,7 @@ const MESSAGE_PUSH_CODES = ['OM1', 'OM2'];
 const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
 const CHASER_PUSH_CODES = ['OC3'];
 
-/** Client shift requirements (ADR-0109): a quiz first, a kit message on the day, the office told of a failure. */
+/** Client shift requirements (ADR-0110): a quiz first, a kit message on the day, the office told of a failure. */
 const CLIENT_REQUIREMENT_PUSH_CODES = ['CR1', 'CR2'];
 const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
 
@@ -466,7 +466,7 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
-  it("keeps §8's line as N7's body and adds the dress code as a variant (ADR-0110)", () => {
+  it("keeps §8's line as N7's body and adds the dress code as a variant (ADR-0111)", () => {
     // The owner's request of 09.10.2026: United Grand Lodge staff are told
     // in the morning-of push not to forget their plain black waistcoat and
     // plain black tie. The dress code is the role section's own, so the
@@ -691,7 +691,7 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
   });
 
-  it('N7 names the dress code when booking_tick writes one (ADR-0110)', () => {
+  it('N7 names the dress code when booking_tick writes one (ADR-0111)', () => {
     const dressed = {
       ...payload,
       variant: 'dress-code',

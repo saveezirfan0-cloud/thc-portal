@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { staffDb, supabaseConfigured } from '../../db';
 
 /**
- * One client quiz for the worker (ADR-0109) — `staff_client_quiz()`.
+ * One client quiz for the worker (ADR-0110) — `staff_client_quiz()`.
  *
  * The slides are the material (a menu, section by section, as small
  * tables), the questions come WITHOUT their key, and the worker's standing

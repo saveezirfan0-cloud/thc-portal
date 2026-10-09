@@ -145,7 +145,7 @@ describe('push rows', () => {
     expect(() => messageFor(push({ template: 'N9' }))).toThrow(/needs a variant/);
   });
 
-  it('sends N7 plain when the row names no variant, and with the dress code when it does (ADR-0110)', () => {
+  it('sends N7 plain when the row names no variant, and with the dress code when it does (ADR-0111)', () => {
     const plain = messageFor(push({ template: 'N7', payload: { bookingId: 'b1' } }));
     expect(plain.kind === 'push' && plain.body).toBe("Confirm today's shift");
     expect(plain.kind === 'push' && plain.url).toBe('/shifts');
