@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
     auth: {
+      getClaims: async () => ({ data: null, error: null }),
       getUser: async () => ({ data: { user: null } }),
       getSession: async () => ({ data: { session: null } }),
     },

@@ -28,7 +28,12 @@ vi.mock('next/navigation', () => ({
 vi.mock('@thc/db/server', () => ({ createClient }));
 // The middleware's own client: nobody is signed in when an invitee opens the link.
 vi.mock('@supabase/ssr', () => ({
-  createServerClient: () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
+  createServerClient: () => ({
+    auth: {
+      getClaims: async () => ({ data: null, error: null }),
+      getUser: async () => ({ data: { user: null } }),
+    },
+  }),
 }));
 
 const { acceptInvite } = await import('../actions');
