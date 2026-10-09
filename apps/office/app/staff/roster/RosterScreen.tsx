@@ -4,12 +4,21 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Alert, Button, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { formatUkDate, statusLabel } from '../staff';
+import type { StaffStatus } from '../types';
 import { loadRoster, removeRosterEntries } from './actions';
 import { REASON_TEXT } from './reasons';
 import type { RosterReport } from './actions';
-import type { RosterEntry } from './data';
+import type { AppliedEntry, RosterEntry } from './data';
 
 const GROUP_LABEL = { spudbros: 'SpudBros Express', thc: 'THC' } as const;
+
+/** How the application met the list (invite_list_applied_v.how). */
+const HOW_LABEL: Record<AppliedEntry['how'], string> = {
+  applied: 'Applied',
+  name_mismatch: 'Applied — name differs from the list',
+  already_here: 'Already in the system',
+};
 
 /**
  * /staff/roster — the invite list (ADR-0107).
@@ -19,14 +28,17 @@ const GROUP_LABEL = { spudbros: 'SpudBros Express', thc: 'THC' } as const;
  * which people are SpudBros Express and which are THC. When someone applies
  * with an email on the list they get that group and Payroll ID, whichever
  * link they used; anyone already in the system gets it applied now. What
- * remains below is "invited, not applied yet".
+ * remains below is "invited, not applied yet"; above it, "Applied" says who
+ * has, and when, and where they are now.
  */
 export function RosterScreen({
   waiting,
+  applied,
   problem,
   canEdit,
 }: {
   waiting: RosterEntry[];
+  applied: AppliedEntry[];
   problem: string | null;
   canEdit: boolean;
 }) {
@@ -63,8 +75,8 @@ export function RosterScreen({
       title="Invite list"
       crumbs={
         <>
-          <Link href="/staff">Staff</Link> / <b>Invite list</b> · {waiting.length} waiting · {spud}{' '}
-          SpudBros Express · {waiting.length - spud} THC
+          <Link href="/staff">Staff</Link> / <b>Invite list</b> · {applied.length} applied ·{' '}
+          {waiting.length} waiting · {spud} SpudBros Express · {waiting.length - spud} THC
         </>
       }
     >
@@ -101,6 +113,66 @@ export function RosterScreen({
         </div>
         {failure ? <Alert tone="coral">{failure}</Alert> : null}
         {report ? <ReportView report={report} /> : null}
+      </Panel>
+
+      <Panel title={`Applied (${applied.length})`}>
+        {applied.length === 0 ? (
+          <EmptyState>
+            <h3>Nobody on the list has applied yet</h3>
+            <p>
+              People appear here, newest first, as soon as they apply with an email on the list.
+            </p>
+          </EmptyState>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Applied</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Payroll ID</th>
+                <th>Group</th>
+                <th>Now</th>
+              </tr>
+            </thead>
+            <tbody>
+              {applied.map((row) => {
+                const { label, tone } = statusLabel({
+                  status: row.status as StaffStatus,
+                  removed: row.removed,
+                });
+                return (
+                  <tr key={row.staff_id}>
+                    <td className="sm">
+                      {formatUkDate(row.applied_at)}
+                      {row.how !== 'applied' ? (
+                        <div className="xs muted">{HOW_LABEL[row.how]}</div>
+                      ) : null}
+                    </td>
+                    <td>
+                      <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>
+                    </td>
+                    <td>{row.email ?? '—'}</td>
+                    <td className="mono">
+                      {row.payroll_id ?? '—'}
+                      {row.payroll_id_taken ? (
+                        <div className="xs muted">ID already held by someone else</div>
+                      ) : null}
+                    </td>
+                    <td>
+                      <Pill tone={row.grp === 'spudbros' ? 'cyan' : undefined}>
+                        {GROUP_LABEL[row.grp]}
+                      </Pill>
+                    </td>
+                    <td>
+                      <Pill tone={tone}>{label}</Pill>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </Panel>
 
       <Panel title={`Invited, not applied yet (${waiting.length})`}>
@@ -140,7 +212,7 @@ export function RosterScreen({
                         {GROUP_LABEL[row.grp]}
                       </Pill>
                     </td>
-                    <td className="sm muted">{row.loaded_at.slice(0, 10)}</td>
+                    <td className="sm muted">{formatUkDate(row.loaded_at)}</td>
                     {canEdit ? (
                       <td>
                         <Button

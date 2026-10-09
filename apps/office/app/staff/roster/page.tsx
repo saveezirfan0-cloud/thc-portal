@@ -20,6 +20,7 @@ export default async function Page() {
   return (
     <RosterScreen
       waiting={data.waiting}
+      applied={data.applied}
       problem={data.problem}
       canEdit={officeCan(role, 'finance') && officeCan(role, 'write')}
     />

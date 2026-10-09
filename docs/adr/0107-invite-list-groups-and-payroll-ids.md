@@ -45,3 +45,14 @@ Changes, made in `20261008140000_spudbros_review_fixes.sql` (it restates the fiv
 - Documents stays open for an onboarding-only worker (`gateFor('connecteam')`), as this ADR and ADR-0106 always said.
 
 Known and not done: an applicant who uses a different email from the one on the list, or a name the key does not match, on the ordinary link, is not matched at all (the office sets the group and Payroll ID on the profile); a roster row with no name is claimable by email alone, so the sheet should always carry names; the roster page does not yet flag rows that were kept or mismatched (see `/activity`).
+
+## Update 09.10 · "Who has applied" on the invite list
+
+**Problem.** `/staff/roster` showed only the people still waiting. A row is deleted when its person applies, so once the invitations went out the page could not answer "who has applied?" — the people had simply vanished from it.
+
+**Decision.** The rows stay deleted (the list holds the names and emails of people who never applied, §1.7, and the 180-day rule above is unchanged). The answer comes from what the matcher already writes: `invite_list_applied_v` (`20261008190000`) reads the `roster.matched`, `roster.name_mismatch` and `roster.applied_existing` audit rows, joins the person, and gives one row per person, newest first. `/staff/roster` shows it above the waiting table as **Applied (N)**: date, name (linked to the profile), email, Payroll ID, group, and where they are now (Onboarding / Compliant / …). A second line says when someone applied under a name that differs from the list's, was already in the system when the list was loaded, or came in without their Payroll ID because someone else holds it.
+
+- Not shown: someone who used `/apply/spudbros` but was not on the list (`via = link`) — this page is about the list. They are on the Onboarding board with the SpudBros chip.
+- Someone who applied with an email that is *not* on the list is a miss by design (see Consequences) and cannot appear here; they stay in "waiting" and the office finds them on Onboarding.
+- A removed person reads `deleted_account_label()` with no email or Payroll ID (§1.7).
+- `security_invoker`: the office reads it through `audit_log`'s and `staff`'s own policies; a worker reads nothing; the public has no grant. pgTAP `784_invite_list_applied.sql`.

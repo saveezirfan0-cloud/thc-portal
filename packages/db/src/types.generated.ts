@@ -6799,6 +6799,21 @@ export type Database = {
         };
         Relationships: [];
       };
+      invite_list_applied_v: {
+        Row: {
+          applied_at: string | null;
+          display_name: string | null;
+          email: string | null;
+          grp: string | null;
+          how: string | null;
+          payroll_id: string | null;
+          payroll_id_taken: boolean | null;
+          removed: boolean | null;
+          staff_id: string | null;
+          status: Database['public']['Enums']['staff_status'] | null;
+        };
+        Relationships: [];
+      };
       onboarding_candidates_v: {
         Row: {
           activated: boolean | null;
