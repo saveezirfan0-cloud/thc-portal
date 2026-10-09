@@ -145,6 +145,31 @@ describe('push rows', () => {
     expect(() => messageFor(push({ template: 'N9' }))).toThrow(/needs a variant/);
   });
 
+  it('sends N7 plain when the row names no variant, and with the dress code when it does (ADR-0108)', () => {
+    const plain = messageFor(push({ template: 'N7', payload: { bookingId: 'b1' } }));
+    expect(plain.kind === 'push' && plain.body).toBe("Confirm today's shift");
+    expect(plain.kind === 'push' && plain.url).toBe('/shifts');
+
+    const dressed = messageFor(
+      push({
+        template: 'N7',
+        payload: {
+          bookingId: 'b1',
+          variant: 'dress-code',
+          dressCode: 'plain black waistcoat and plain black tie',
+        },
+      }),
+    );
+    expect(dressed.kind === 'push' && dressed.title).toBe("Confirm today's shift");
+    expect(dressed.kind === 'push' && dressed.body).toBe(
+      "Confirm today's shift — and don't forget to arrive in your plain black waistcoat and plain black tie",
+    );
+    // An unknown variant is a fault in the row, not something to guess at.
+    expect(() =>
+      messageFor(push({ template: 'N7', payload: { bookingId: 'b1', variant: 'nope' } })),
+    ).toThrow(UnsendableRow);
+  });
+
   it('refuses a push with no recipient', () => {
     expect(() => messageFor(push({ recipient_staff_id: null }))).toThrow(/no recipient_staff_id/);
   });

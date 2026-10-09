@@ -449,6 +449,20 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
+  it("keeps §8's line as N7's body and adds the dress code as a variant (ADR-0108)", () => {
+    // The owner's request of 09.10.2026: United Grand Lodge staff are told
+    // in the morning-of push not to forget their plain black waistcoat and
+    // plain black tie. The dress code is the role section's own, so the
+    // register names no client; a row naming no variant still sends §8's
+    // line, so a row queued before the variant existed goes out unchanged.
+    expect(body('N7')).toBe("Confirm today's shift");
+    expect(body('N7', 'dress-code')).toBe(
+      "Confirm today's shift — and don't forget to arrive in your {dressCode}",
+    );
+    expect(() => body('N7', 'nope')).toThrow(/no variant/);
+    expect(title('N7', 'dress-code')).toBe("Confirm today's shift");
+  });
+
   it('are the only codes without a body, with CL2 for the same reason and the OC chasers, one body per rung', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
     expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3']);
@@ -658,6 +672,17 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     // The "I'm ready" / "Confirm today" buttons live on the /shifts card,
     // so the push opens there, not on the shift detail screen.
     expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
+  });
+
+  it('N7 names the dress code when booking_tick writes one (ADR-0108)', () => {
+    const dressed = {
+      ...payload,
+      variant: 'dress-code',
+      dressCode: 'plain black waistcoat and plain black tie',
+    };
+    expect(render(body('N7', dressed.variant), dressed)).toBe(
+      "Confirm today's shift — and don't forget to arrive in your plain black waistcoat and plain black tie",
+    );
   });
 });
 

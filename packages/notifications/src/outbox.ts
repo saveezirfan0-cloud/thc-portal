@@ -121,9 +121,10 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
   const values = row.payload ?? {};
 
   // A code with variants (N9, N14, CL2, the OC chasers) has no single
-  // body: the row names the half — or the rung — in `variant`.
-  const variant = entry.variants ? values.variant : undefined;
-  if (entry.variants && !variant) {
+  // body: the row names the half — or the rung — in `variant`. A code
+  // with a body as well (N7) sends the body when the row names none.
+  const variant = entry.variants ? values.variant || undefined : undefined;
+  if (entry.variants && !variant && entry.body === undefined) {
     throw new UnsendableRow(
       `${row.template} needs a variant in its payload: ${Object.keys(entry.variants).join(' | ')}`,
     );

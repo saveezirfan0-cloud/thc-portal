@@ -93,6 +93,10 @@ export interface Template {
   /**
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
+   *
+   * With a `body` as well (N7), the body is the plain send and a variant is
+   * the same push with something added — a row naming no variant sends the
+   * body, so a row written before the variant existed still goes out.
    */
   variants?: Readonly<Record<string, { body: string; title?: string }>>;
 }
@@ -191,6 +195,19 @@ export const TEMPLATES = {
     timing: 'on the day of the shift',
     // As N6: "Confirm today" is on the /shifts card.
     deepLink: '/shifts',
+    // The same push also carries the role section's dress code when the
+    // event has one (ADR-0108, owner request 09.10.2026: United Grand Lodge
+    // staff reminded on the morning of the shift to arrive in their plain
+    // black waistcoat and plain black tie). The dress code is the section's
+    // own — set per client + role on the rate card and copied on to the
+    // event (§3.2, §9.7) — so nothing here names a client. booking_tick()
+    // writes `variant: 'dress-code'` and `dressCode` only when the section
+    // has one; a row naming no variant sends §8's line above as it is.
+    variants: {
+      'dress-code': {
+        body: "Confirm today's shift — and don't forget to arrive in your {dressCode}",
+      },
+    },
   },
 
   // Review outcomes.
@@ -1026,8 +1043,9 @@ export function title(code: TemplateCode, variant?: string): string {
 }
 
 /**
- * The body to send. A code with `variants` (N9, N14, CL2, the OC chasers) has no single body: the
- * caller names the half, and the combined §8 copy is never sent as-is.
+ * The body to send. A code with `variants` and no body (N9, N14, CL2, the OC chasers) has no
+ * single body: the caller names the half, and the combined §8 copy is never sent as-is. A code
+ * with both (N7) sends its body when no variant is named.
  */
 export function body(code: TemplateCode, variant?: string): string {
   const entry: Template = TEMPLATES[code];
@@ -1036,8 +1054,10 @@ export function body(code: TemplateCode, variant?: string): string {
     if (entry.body === undefined) throw new Error(`${code} has no body`);
     return entry.body;
   }
-  if (variant === undefined)
+  if (variant === undefined) {
+    if (entry.body !== undefined) return entry.body;
     throw new Error(`${code} needs a variant: ${Object.keys(entry.variants).join(' | ')}`);
+  }
   const half = entry.variants[variant];
   if (!half) throw new Error(`${code} has no variant "${variant}"`);
   return half.body;
