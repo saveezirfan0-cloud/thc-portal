@@ -56,6 +56,8 @@ export const EMAIL_PRESENTATION = {
   RC1: { eyebrow: 'Change request' },
   RC4: { eyebrow: 'Name change' },
   OF5: { eyebrow: 'Cover request' },
+  // ADR-0108: a worker used every attempt at a client's quiz.
+  CR3: { eyebrow: 'Client quiz' },
 } as const satisfies Partial<Record<TemplateCode, EmailPresentation>>;
 
 /** Used only if a new email code is added without an entry above (the test catches that). */

@@ -8,8 +8,10 @@ import type {
   ClientCardData,
   ClientEventRow,
   QualifiedStaffRow,
+  QuizResultRow,
   RateCardRow,
   RoleOption,
+  ShiftRequirementRow,
   StaffOption,
 } from './types';
 
@@ -36,10 +38,31 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
   rateCard: [],
   dressCodeLibrary: [],
   qualified: [],
+  requirements: [],
+  quizResults: [],
   events: [],
   roles: [],
   staff: [],
 };
+
+/**
+ * The two ADR-0108 views are newer than the generated types; the loader
+ * declares the shape it reads, as /staff/roster does (the migration's
+ * pgTAP, 782, holds the columns).
+ */
+interface RequirementQuery<T> extends PromiseLike<{
+  data: T[] | null;
+  error: { message: string } | null;
+}> {
+  eq(column: string, value: string): RequirementQuery<T>;
+  order(column: string): RequirementQuery<T>;
+}
+interface RequirementsClient {
+  from(view: 'clients_shift_requirements_v'): {
+    select(columns: '*'): RequirementQuery<ShiftRequirementRow>;
+  };
+  from(view: 'clients_quiz_results_v'): { select(columns: '*'): RequirementQuery<QuizResultRow> };
+}
 
 const CLIENT_COLUMNS =
   'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, ' +
@@ -87,59 +110,78 @@ export async function loadClientCard(
   if (!supabaseConfigured()) return { ...EMPTY, problem: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies());
+  const requirementsDb = supabase as unknown as RequirementsClient;
 
-  const [client, badges, rateCard, library, qualified, events, roles, payRates, staff] =
-    await Promise.all([
-      supabase
-        .from('clients_directory_v')
-        .select(CLIENT_COLUMNS)
-        .eq('id', id)
-        .maybeSingle<Client>(),
-      // ADR-0081: one switch, read from the table rather than restating the view.
-      supabase
-        .from('clients')
-        .select('name_badges')
-        .eq('id', id)
-        .maybeSingle<{ name_badges: boolean | null }>(),
-      ratesVisible
-        ? supabase
-            .from('clients_rate_card_v')
-            .select('*')
-            .eq('client_id', id)
-            .order('role_name')
-            .returns<RateCardRow[]>()
-        : rateCardWithoutRates(supabase, id),
-      // Dress codes only, from every client: what the add-a-code box offers so a
-      // code already stored is picked, not retyped. No rate or worker data.
-      supabase.from('client_rate_cards').select('dress_codes'),
-      supabase
-        .from('clients_qualified_staff_v')
-        .select('*')
-        .eq('client_id', id)
-        .order('display_name')
-        .returns<QualifiedStaffRow[]>(),
-      supabase
-        .from('clients_event_list_v')
-        .select('*')
-        .eq('client_id', id)
-        .order('event_date', { ascending: false })
-        .returns<ClientEventRow[]>(),
-      supabase
-        .from('roles')
-        .select('id, name')
-        .order('name')
-        .returns<{ id: string; name: string }[]>(),
-      // ADR-0061: the catalogue base pay beside each role in the "+ Add" picker.
-      ratesVisible
-        ? supabase.from('role_rates_v').select('role_id, pay_rate')
-        : Promise.resolve({ data: [], error: null }),
-      supabase
-        .from('staff_directory_v')
-        .select('id, display_name, employee_id, role_names')
-        .eq('status', 'compliant')
-        .order('display_name')
-        .returns<StaffOption[]>(),
-    ]);
+  const [
+    client,
+    badges,
+    rateCard,
+    library,
+    qualified,
+    events,
+    roles,
+    payRates,
+    staff,
+    requirements,
+    quizResults,
+  ] = await Promise.all([
+    supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
+    // ADR-0081: one switch, read from the table rather than restating the view.
+    supabase
+      .from('clients')
+      .select('name_badges')
+      .eq('id', id)
+      .maybeSingle<{ name_badges: boolean | null }>(),
+    ratesVisible
+      ? supabase
+          .from('clients_rate_card_v')
+          .select('*')
+          .eq('client_id', id)
+          .order('role_name')
+          .returns<RateCardRow[]>()
+      : rateCardWithoutRates(supabase, id),
+    // Dress codes only, from every client: what the add-a-code box offers so a
+    // code already stored is picked, not retyped. No rate or worker data.
+    supabase.from('client_rate_cards').select('dress_codes'),
+    supabase
+      .from('clients_qualified_staff_v')
+      .select('*')
+      .eq('client_id', id)
+      .order('display_name')
+      .returns<QualifiedStaffRow[]>(),
+    supabase
+      .from('clients_event_list_v')
+      .select('*')
+      .eq('client_id', id)
+      .order('event_date', { ascending: false })
+      .returns<ClientEventRow[]>(),
+    supabase
+      .from('roles')
+      .select('id, name')
+      .order('name')
+      .returns<{ id: string; name: string }[]>(),
+    // ADR-0061: the catalogue base pay beside each role in the "+ Add" picker.
+    ratesVisible
+      ? supabase.from('role_rates_v').select('role_id, pay_rate')
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from('staff_directory_v')
+      .select('id, display_name, employee_id, role_names')
+      .eq('status', 'compliant')
+      .order('display_name')
+      .returns<StaffOption[]>(),
+    // ADR-0108: what each role asks, and who has sat the quiz.
+    requirementsDb
+      .from('clients_shift_requirements_v')
+      .select('*')
+      .eq('client_id', id)
+      .order('role_name'),
+    requirementsDb
+      .from('clients_quiz_results_v')
+      .select('*')
+      .eq('client_id', id)
+      .order('display_name'),
+  ]);
 
   const error =
     client.error ??
@@ -150,7 +192,9 @@ export async function loadClientCard(
     events.error ??
     roles.error ??
     payRates.error ??
-    staff.error;
+    staff.error ??
+    requirements.error ??
+    quizResults.error;
   if (error) return { ...EMPTY, problem: error.message };
 
   const payOf = new Map(
@@ -174,6 +218,8 @@ export async function loadClientCard(
     ),
     // The selfie is a private-bucket key; signed here, initials if not.
     qualified: await withPhotoUrls(qualified.data ?? []),
+    requirements: requirements.data ?? [],
+    quizResults: quizResults.data ?? [],
     events: events.data ?? [],
     roles: roleOptions,
     staff: staff.data ?? [],

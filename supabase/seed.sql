@@ -249,6 +249,13 @@ join roles r on r.name = q.role_name
 on conflict (staff_id, role_id) do nothing;
 
 -- ---------------------------------------------------------------------
+-- CLIENT SHIFT REQUIREMENTS (ADR-0108)
+-- The sample Leonardo card gets the bar menu quiz and the kit message for
+-- Bar Staff and Wine Waiting Service, as the live card does.
+-- ---------------------------------------------------------------------
+select install_bar_menu_quiz('40000000-0000-4000-8000-000000000001');
+
+-- ---------------------------------------------------------------------
 -- CLIENT QUALIFICATIONS (per client AND role — RULE-17, §9.6)
 -- Mirrors the "Qualified staff" block on backoffice/client-card.html.
 -- ---------------------------------------------------------------------

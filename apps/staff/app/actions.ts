@@ -129,6 +129,20 @@ export async function confirmToday(bookingId: string): Promise<ActionResult> {
   return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
 }
 
+/**
+ * "I've read this" on a client's kit message for one shift (ADR-0108).
+ * Idempotent in the database; nothing is released for not pressing it.
+ */
+export async function acknowledgeKit(bookingId: string): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { refusal: NO_SUPABASE };
+  const supabase = await db();
+  const { data, error } = await supabase.rpc('acknowledge_shift_kit', { p_booking: bookingId });
+  if (error) return { refusal: UNKNOWN };
+  refresh();
+  revalidatePath(`/shifts/${bookingId}`);
+  return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
+}
+
 /** "Confirm new time" after N11 (§3.5). */
 export async function reconfirm(bookingId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { refusal: NO_SUPABASE };

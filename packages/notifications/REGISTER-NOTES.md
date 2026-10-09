@@ -210,3 +210,20 @@ rule: **email until the account exists, push in the app after.**
   a document-rejected notification on the phone.
 - **No Willo link in OC1.** Willo sends the interview invitation (E1) and
   nothing stores its URL, so OC1 points the candidate at that email.
+
+## Client shift requirements (ADR-0108)
+
+The owner's request of 08.10.2026: Leonardo Hotel St Paul's M&E asks a bar
+menu quiz of anyone first booked on Bar Staff or Wine Waiting Service, and a
+"bring your bottle opener, notepad and pen" message, confirmed, on the morning
+of every such shift. Carried as data per (client, role) —
+`client_role_requirements` — so the codes are generic. They sit in
+`CLIENT_REQUIREMENT_CODES`; each `trigger` names ADR-0108 and says "Not in §8".
+None is `mandatory`.
+
+| Code | Channel · to | Title / subject | Body | When · key |
+| --- | --- | --- | --- | --- |
+| CR1 | push · worker → `/quiz/{quizId}` | `Quiz before your first shift` | `{client} asks everyone on {roles} shifts to pass a short quiz first: {quiz}. You have three attempts — tap to take it before your shift.` | the moment a booking is confirmed on a role that names a quiz the worker has not passed (trigger on `bookings`) · `CR1:quiz:<quiz>:<staff>`, once per worker per quiz ever |
+| CR2 | push · worker → `/shifts/{bookingId}` | `For your shift today` | `{message}` — the client's words, as the office wrote them on the role | 07:00 UK on the day, or three hours before an early start, never before the UK day begins, until acknowledged (`client_kit_reminder_tick`, every minute with booking-tick) · `booking_reminder_key('CR2', …)` as N6/N7 |
+| CR3 | email · admin@ only (from admin@) | `Client quiz not passed — {name}, Employee ID {employeeId}` | who, which client and quiz, the attempts, their best, the roles it covers, and "They stay booked" with where to reset | on the failed last attempt, once · `CR3:quiz:<quiz>:<staff>:<attempt>` |
+

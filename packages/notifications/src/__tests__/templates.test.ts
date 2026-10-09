@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ADDITION_CODES,
   CHASER_CODES,
+  CLIENT_REQUIREMENT_CODES,
   MESSAGE_CODES,
   EXTENSION_CODES,
   REQUIREMENT_CODES,
@@ -66,6 +67,10 @@ const MESSAGE_PUSH_CODES = ['OM1', 'OM2'];
 const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
 const CHASER_PUSH_CODES = ['OC3'];
 
+/** Client shift requirements (ADR-0108): a quiz first, a kit message on the day, the office told of a failure. */
+const CLIENT_REQUIREMENT_PUSH_CODES = ['CR1', 'CR2'];
+const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -88,6 +93,8 @@ describe('notification register (§8)', () => {
         ...MESSAGE_PUSH_CODES,
         ...CHASER_EMAIL_CODES,
         ...CHASER_PUSH_CODES,
+        ...CLIENT_REQUIREMENT_PUSH_CODES,
+        ...CLIENT_REQUIREMENT_EMAIL_CODES,
       ].sort(),
     );
   });
@@ -113,6 +120,10 @@ describe('notification register (§8)', () => {
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
     for (const code of CHASER_PUSH_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
+    for (const code of CLIENT_REQUIREMENT_PUSH_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
+    for (const code of CLIENT_REQUIREMENT_EMAIL_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
   });
 
   it('exports SCOPE_CODES, REQUIREMENT_CODES, EXTENSION_CODES and ADDITION_CODES as exactly the register, between them', () => {
@@ -135,6 +146,10 @@ describe('notification register (§8)', () => {
     ]);
     expect([...MESSAGE_CODES]).toEqual(MESSAGE_PUSH_CODES);
     expect([...CHASER_CODES]).toEqual([...CHASER_EMAIL_CODES, ...CHASER_PUSH_CODES]);
+    expect([...CLIENT_REQUIREMENT_CODES]).toEqual([
+      ...CLIENT_REQUIREMENT_PUSH_CODES,
+      ...CLIENT_REQUIREMENT_EMAIL_CODES,
+    ]);
     const union = [
       ...SCOPE_CODES,
       ...REQUIREMENT_CODES,
@@ -142,6 +157,7 @@ describe('notification register (§8)', () => {
       ...ADDITION_CODES,
       ...MESSAGE_CODES,
       ...CHASER_CODES,
+      ...CLIENT_REQUIREMENT_CODES,
     ];
     // Disjoint: no code is counted in two lists.
     expect(new Set(union).size).toBe(union.length);
@@ -357,6 +373,7 @@ describe('§8 copy is verbatim', () => {
       ...ADDITION_CODES,
       ...MESSAGE_CODES,
       ...CHASER_CODES,
+      ...CLIENT_REQUIREMENT_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),

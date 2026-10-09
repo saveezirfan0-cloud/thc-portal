@@ -22,8 +22,17 @@ import { CancelShift } from '../_components/CancelShift';
 import { LoadProblem } from '../_components/LoadProblem';
 import { UkTime } from '../_components/UkTime';
 import { applyForShift, confirmToday, markReady, reconfirm } from '../actions';
-import { loadBookings, loadOpenShifts, loadWeekMeter, openInvites } from '../data';
-import type { BookingRow } from '../data';
+import {
+  loadBookings,
+  loadOpenShifts,
+  loadShiftRequirements,
+  loadWeekMeter,
+  openInvites,
+  quizzesOutstanding,
+  requirementsByBooking,
+} from '../data';
+import type { BookingRow, ShiftRequirementRow } from '../data';
+import { KitMessage, QuizPrompt } from '../_components/ShiftRequirements';
 import { getTimeFormat } from '../_lib/timeFormat';
 import { WeekMeter } from '../radar/WeekMeter';
 import { weekLabel } from '../radar/model';
@@ -70,14 +79,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     { rows: openShifts, problem: openProblem },
     { row: meter },
     { rows: offerRows, problem: offersProblem },
+    { rows: requirementRows, problem: requirementsProblem },
   ] = await Promise.all([
     loadBookings(),
     loadOpenShifts(),
     loadWeekMeter(),
     // ADR-0046: the open offer on each confirmed booking, for the chip.
     loadBookingOffers(),
+    // ADR-0108: a client's quiz to pass, a kit message to confirm.
+    loadShiftRequirements(),
   ]);
   const offers = offersByBooking(offerRows);
+  const requirements = requirementsByBooking(requirementRows);
+  const quizzes = quizzesOutstanding(requirementRows);
   const now = new Date();
   // §10.4 names them — "Shifts for your roles: Waiting Staff · Bar Staff" —
   // because "your roles" is otherwise a claim the worker cannot check.
@@ -87,10 +101,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const list = myShifts(bookings, now);
   const current = list.upcoming.flatMap((g) => g.bookings);
   const invites = openInvites(bookings, now).length;
-  const needsAction = current.filter((b) => {
-    const card = myShiftCard(b, now);
-    return card === 'needs_ready' || card === 'reconfirm';
-  }).length;
+  const needsAction =
+    current.filter((b) => {
+      const card = myShiftCard(b, now);
+      return card === 'needs_ready' || card === 'reconfirm';
+    }).length + quizzes.length;
 
   return (
     <StaffShell
@@ -202,6 +217,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
             // chip would be missing from a shift that is out there.
             <LoadProblem what="your shift offers" />
           ) : null}
+          {requirementsProblem && current.length > 0 ? (
+            // Likewise a quiz or a kit message that could not be read is
+            // not "nothing to do".
+            <LoadProblem what="what your shifts ask of you" />
+          ) : null}
+          {/* ADR-0108: a client's quiz, once per quiz, above the cards it is for. */}
+          {quizzes.map((requirement) => (
+            <QuizPrompt key={requirement.quizId} requirement={requirement} />
+          ))}
           {current.length === 0 ? (
             <EmptyState>
               <h3>No shifts booked</h3>
@@ -218,6 +242,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                     group={group}
                     now={now}
                     offer={offers.get(booking.bookingId) ?? null}
+                    requirement={requirements.get(booking.bookingId) ?? null}
                     format={format}
                   />
                 ))}
@@ -249,6 +274,7 @@ function ShiftCardView({
   group,
   now,
   offer,
+  requirement,
   format,
 }: {
   booking: BookingRow;
@@ -256,6 +282,8 @@ function ShiftCardView({
   now: Date;
   /** ADR-0046: the open offer on this booking, if any. */
   offer: BookingOffer | null;
+  /** ADR-0108: what the client asks of the worker on this shift, if anything. */
+  requirement: ShiftRequirementRow | null;
   /** The worker's clock (ADR-0085), for the times this card writes itself. */
   format: TimeFormat;
 }) {
@@ -316,6 +344,16 @@ function ShiftCardView({
           {offeredCardLine(offered.expiresAt, format)}
           <YourTimeAt at={offered.expiresAt} />
         </p>
+      ) : null}
+
+      {/* ADR-0108: the client's kit message — read on the day, from when the
+          reminder is due; as a note before that on the nearest cards. */}
+      {requirement?.kitMessage &&
+      booking.status === 'confirmed' &&
+      (group === 'today' ||
+        group === 'tomorrow' ||
+        (requirement.kitDueAt !== null && now >= requirement.kitDueAt)) ? (
+        <KitMessage requirement={requirement} now={now} />
       ) : null}
 
       {card === 'no_checkout' ? <p className="m">{STATIC_SCREEN_COPY.no_checkout.title}</p> : null}
