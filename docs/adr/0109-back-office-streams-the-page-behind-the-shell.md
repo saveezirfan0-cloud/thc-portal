@@ -1,6 +1,6 @@
 # ADR-0109 · The Back Office paints its chrome first and streams the page in behind it
 
-**Status:** Accepted · **Builds on** ADR-0108 · **Touches** the root layout, `OfficeShell`, `/dashboard`, `/events`, `/compliance`, `/checkin`, `apps/office/vercel.json`
+**Status:** Accepted · **Builds on** ADR-0108 · **Touches** the root layout, `OfficeShell`, `/dashboard`, `/compliance`, `apps/office/vercel.json`
 
 ## Context
 
@@ -17,16 +17,18 @@ Measured on the live database (read-only `EXPLAIN ANALYZE`): the two menu counte
 
 1. **The layout returns at once.** `officeUser()` and `officeNavCounts()` are started, not awaited, and handed to the two context providers as promises. `useOfficeUser()` and the counters read them with `use()`; plain values still work (the component tests, anything outside the layout). The clock is a cookie read and is still awaited. A failed lookup is no name / no counters, never a broken page.
 2. **The shell owns the Suspense for those promises.** `OfficeShell` wraps the sidebar (fallback: the brand alone) and the read-only banner (fallback: nothing) in their own boundaries. The page body is not inside either, so it is never held back by them.
-3. **Pages that read a lot stream.** `/dashboard`, `/events`, `/compliance` and `/checkin` become a thin `page.tsx` (URL parsing, one `OfficeShell`) plus an async body component behind a `<Suspense>` with a skeleton. Data that the topbar also needs (the dashboard's "as of", the compliance and check-in counts) is read once through a `cache()`d loader and streamed into the topbar by its own small boundary.
+3. **`/dashboard` and `/compliance` stream.** Each becomes a thin `page.tsx` (URL parsing, one `OfficeShell`) plus an async body component behind a `<Suspense>` with a skeleton. Data that the topbar also needs (the dashboard's "as of", the compliance counts) is read once through a `cache()`d loader and streamed into the topbar by its own small boundary.
    - **One `OfficeShell`, outside the Suspense.** A skeleton that drew its own shell is what put two topbars in the document under `loading.tsx`.
-   - **No `key` on the Suspense.** Stepping `/events` by period keeps the old period on screen until the new one is ready, exactly as before; it never shows the skeleton over content already there.
    - The `AutoRefresh` stays in the shell, so a screen keeps refreshing while its body is suspended.
-4. **Not converted:** `/staff`, `/clients`, `/onboarding`, `/reports` and the other screens whose shell is drawn by a client component that takes the data as props. They would need their shell lifted out of the client screen first; that is a separate change.
+   - These two have no same-page query navigation (`/compliance?tab=` only chooses the first tab; tab clicks are client state), which is the condition below.
+4. **Tried and taken back: `/events` and `/checkin`.** Both navigate by query alone (`?view=`, `?date=`, filters; `?resolved=`, `?page=`). Streaming their body behind an in-page Suspense froze that navigation exactly as `loading.tsx` did (`boundaries.test.tsx`): in CI, clicking "Today" or "Next period" on `/events` left the date label on the old period for the full 5 s timeout (`office.events.spec`, three tests). It is the same Next 15.5 behaviour, so the rule in that test is wider than `loading.tsx`: **a page whose controls navigate by query alone must not stream its body behind any Suspense.** They keep their previous structure; `boundaries.test.tsx` now guards it.
+   Also not converted: `/staff`, `/clients`, `/onboarding`, `/reports` and the other screens whose shell is drawn by a client component that takes the data as props. They would need their shell lifted out of the client screen first.
 5. **Functions run in London.** `apps/office/vercel.json` pins `regions` to `["lhr1"]`, next to the database. If the project already ran there this is a no-op; if it did not, every sequential query gets cheaper. The Staff App and Client Portal share the database and have the same question; they are not changed here.
 
 ## Consequences
 
-- The unit tests for these pages render the body component (`DashboardBody`, `ComplianceBody`…); the shell is a plain synchronous tree.
+- The unit tests for these pages render the body component (`DashboardBody`, `ComplianceBody`); the shell is a plain synchronous tree.
+- The sidebar's placeholder is a `div.sidebar`, not an `aside.sidebar`: with the same element in the fallback and in the streamed menu, a strict locator found two (`office.phone.spec`).
 - The menu paints a moment after the page on a fresh load (the brand first, then the items, counters and name), and the items a role cannot use are never drawn at all, as before.
 - `boundaries.test.tsx` is unchanged and still holds: no `loading.tsx` anywhere it forbids one.
 - To undo the region pin, delete `apps/office/vercel.json`; the dashboard's Function Region setting then applies again.

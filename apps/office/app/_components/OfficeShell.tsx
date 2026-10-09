@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Content, Logo, ModeSwitch, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
+import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { NAV_ICONS } from './navIcons';
 import { OfficeSidebar } from './OfficeSidebar';
@@ -111,8 +111,17 @@ export function OfficeShell({
       sidebar={
         // The menu depends on who is signed in (which items, which counters),
         // and the root layout no longer waits for that. Until it arrives the
-        // sidebar is the brand alone, so the page beside it is not held back.
-        <Suspense fallback={<Sidebar items={[]} activeHref={activeHref} brand={BRAND} />}>
+        // column holds the brand alone, in a `div` that is deliberately NOT an
+        // `aside.sidebar`: the streamed menu is the one sidebar in the
+        // document, and a second `aside` during the swap failed a strict
+        // locator in CI (office.phone.spec).
+        <Suspense
+          fallback={
+            <div className="sidebar" aria-hidden="true">
+              <div className="brand">{BRAND}</div>
+            </div>
+          }
+        >
           <OfficeSidebar
             items={NAV}
             activeHref={activeHref}
