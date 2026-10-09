@@ -546,8 +546,11 @@ function RoleChips({
   if (roles.length === 0 && !referred && !spudbros) return null;
   // Someone can pick every role THC runs (nine chips was a card taller than
   // the screen). The profile has the full list; the "+N" chip's tooltip too.
-  const shown = roles.slice(0, ROLE_CHIPS_SHOWN);
-  const hidden = roles.slice(ROLE_CHIPS_SHOWN);
+  // A list one over the limit shows in full: "+1" saves no room over the
+  // chip it hides.
+  const fold = roles.length > ROLE_CHIPS_SHOWN + 1;
+  const shown = fold ? roles.slice(0, ROLE_CHIPS_SHOWN) : roles;
+  const hidden = fold ? roles.slice(ROLE_CHIPS_SHOWN) : [];
   return (
     <div className="chips">
       {spudbros ? (
@@ -556,7 +559,15 @@ function RoleChips({
       {shown.map((role) => (
         <Chip key={role}>{role}</Chip>
       ))}
-      {hidden.length > 0 ? <Chip title={hidden.join(', ')}>+{hidden.length}</Chip> : null}
+      {hidden.length > 0 ? (
+        <Chip
+          outline
+          title={hidden.join(', ')}
+          aria-label={`${hidden.length} more: ${hidden.join(', ')}`}
+        >
+          +{hidden.length}
+        </Chip>
+      ) : null}
       {referred ? <ReferredChip /> : null}
     </div>
   );
