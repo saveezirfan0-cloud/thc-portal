@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { createContext, useContext } from 'react';
+import { createContext, use, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { PhoneNav, Sidebar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { visibleNav } from '../_lib/permissions';
-import { useOfficeUser } from './SignedInAs';
+import { isThenable, useOfficeUser } from './SignedInAs';
 
 /**
  * The menu counters (§4.1: "A counter in the menu — so the manager can see
@@ -20,13 +20,16 @@ import { useOfficeUser } from './SignedInAs';
  */
 export type NavCounts = Readonly<Record<string, number>>;
 
-const NavCountsContext = createContext<NavCounts>({});
+/** The numbers, or a promise of them (see `OfficeUserSource`: the layout does not wait). */
+export type NavCountsSource = NavCounts | Promise<NavCounts>;
+
+const NavCountsContext = createContext<NavCountsSource>({});
 
 export function NavCountsProvider({
   counts,
   children,
 }: {
-  counts: NavCounts;
+  counts: NavCountsSource;
   children: ReactNode;
 }) {
   return <NavCountsContext.Provider value={counts}>{children}</NavCountsContext.Provider>;
@@ -69,7 +72,8 @@ export function OfficeSidebar({
   /** The More sheet's foot: identity, sign out and the appearance switch. */
   phoneFooter?: ReactNode;
 }) {
-  const counts = useContext(NavCountsContext);
+  const countsSource = useContext(NavCountsContext);
+  const counts = isThenable(countsSource) ? use(countsSource) : countsSource;
   const user = useOfficeUser();
   const counted = withCounts(visibleNav(items, user?.officeRole), counts);
   return (

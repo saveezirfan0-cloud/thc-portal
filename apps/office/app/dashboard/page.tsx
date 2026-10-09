@@ -1,23 +1,12 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
-import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
+import { SkeletonKpis, SkeletonPanel, SkeletonScreen } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { AutoRefresh } from '../_components/AutoRefresh';
-import { ShortStaffedPanel } from './_components/ShortStaffedPanel';
-import { currentOfficeRole } from '../_components/officeUser';
-import { officeCan } from '../_lib/permissions';
-import { currentTimeFormat } from '../_lib/timeFormat';
-import { UpcomingTable } from './_components/UpcomingTable';
+import { DashboardBody } from './DashboardBody';
 import { ViewerZone } from './_components/ViewerZone';
-import { loadDashboard } from './data';
-import { loadShortStaffed } from './short-staffed-data';
-import {
-  formatAsOf,
-  formatHours,
-  formatPercent,
-  formatPounds,
-  formatWeekRange,
-  todayInUk,
-} from './view-model';
+import { dashboardView } from './view';
+import { formatAsOf } from './view-model';
 import './dashboard.css';
 
 export const metadata = { title: 'Dashboard · THC Back Office' };
@@ -28,6 +17,18 @@ export const metadata = { title: 'Dashboard · THC Back Office' };
  * now", which is the only question the screen asks.
  */
 export const dynamic = 'force-dynamic';
+
+/** The topbar's "as of" line: it needs the figures' timestamp, so it streams too. */
+async function AsOf() {
+  const { kpis, format } = await dashboardView();
+  if (!kpis) return null;
+  const asOf = formatAsOf(new Date(kpis.asOf), format);
+  return (
+    <>
+      as of <b>{asOf.time} UK time</b> · {asOf.date}
+    </>
+  );
+}
 
 /**
  * /dashboard — Scope §9.1, `wireframes/backoffice/dashboard.html`, and the
@@ -42,35 +43,21 @@ export const dynamic = 'force-dynamic';
  * 12.07% holiday element and the Europe/London week each have exactly one
  * definition in this platform, and a screen that re-derived any of them
  * would be the second.
+ *
+ * The page itself reads nothing: the topbar and chrome paint at once and the
+ * figures stream in behind a skeleton. There is ONE `OfficeShell`, outside
+ * the Suspense — a skeleton that drew its own shell put two topbars in the
+ * document during the swap (`app/__tests__/boundaries.test.tsx`).
  */
-export default async function Page() {
-  // ADR-0056: a scheduler sees no money — no weekly snapshot, no margin
-  // on the ten-day list. The views withhold it too; this drops the panel
-  // rather than drawing it empty.
-  //
-  // The short-staffed read and the clock do not depend on the role, so they
-  // start now rather than after it resolves.
-  const shortStaffedRead = loadShortStaffed();
-  const formatRead = currentTimeFormat();
-  const showMoney = officeCan(await currentOfficeRole(), 'finance');
-  const [{ kpis, finance, upcoming, problem }, shortStaffed, format] = await Promise.all([
-    loadDashboard({ finance: showMoney }),
-    shortStaffedRead,
-    formatRead,
-  ]);
-  const asOf = kpis ? formatAsOf(new Date(kpis.asOf), format) : null;
-  const today = todayInUk();
-
+export default function Page() {
   return (
     <OfficeShell
       activeHref="/dashboard"
       title="Dashboard"
       crumbs={
-        asOf ? (
-          <>
-            as of <b>{asOf.time} UK time</b> · {asOf.date}
-          </>
-        ) : null
+        <Suspense fallback={null}>
+          <AsOf />
+        </Suspense>
       }
       // The windows below are scheduled times, so the topbar names the
       // reader's own zone and the rows carry both (§1.8).
@@ -81,140 +68,19 @@ export default async function Page() {
         </Link>
       }
     >
-      <div className="stack">
-        {/* "As of this minute": the figures move on their own (§9.1). */}
-        <AutoRefresh />
-        {problem ? <Alert tone="coral">{problem}</Alert> : null}
-
-        {/* ---- the four operational KPIs, on one row (§9.1) ---------- */}
-        <TileGrid columns={4}>
-          <KpiTile
-            label="Open positions"
-            // Accent, as the wireframe draws it: §9.1's "headline number of
-            // the business", not a warning.
-            tone="accent"
-            value={kpis?.openPositions ?? '—'}
-            description="Sold but not staffed — all events, any date"
-          />
-          <KpiTile
-            label="On shift now"
-            tone="ok"
-            value={kpis?.onShiftNow ?? '—'}
-            description="Checked in and on site this minute"
-          />
-          <KpiTile
-            label="Staff available"
-            value={kpis?.staffAvailable ?? '—'}
-            description="Compliant workers, not booked or blocked"
-          />
-          <KpiTile
-            label="Compliance blocks"
-            tone="danger"
-            value={kpis?.complianceBlocks ?? '—'}
-            // The wireframe hangs "view radar →" here and §9.1 wants it.
-            // A query, not the wireframe's #fragment: the page is rendered
-            // on the server, which never sees a fragment.
-            description={
-              <>
-                Blocked over documents <Link href="/compliance?tab=radar">view radar →</Link>
-              </>
-            }
-          />
-        </TileGrid>
-
-        {/* ---- role sections starting in 48 h below headcount -------- */}
-        <ShortStaffedPanel roles={shortStaffed.roles} problem={shortStaffed.problem} />
-
-        {/* ---- the current week, Mon–Sun (§9.1) ---------------------- */}
-        {showMoney ? (
-          <Panel
-            title={
-              <>
-                This week · financial snapshot{' '}
-                {finance ? (
-                  <Pill>{formatWeekRange(finance.weekStart, finance.weekEnd)}</Pill>
-                ) : null}{' '}
-                {/* §9.9 calls this out on the Financial tab too: what is
-                  shown for a week still running is a forecast, not
-                  payroll. Saying so is part of the number. */}
-                <Pill tone="amber">Forecast for the period</Pill>
-              </>
-            }
-            // The wireframe's "Full report →", to the Financial reports (§9.9).
-            actions={
-              <Link className="sm" href="/reports">
-                Full report →
-              </Link>
-            }
-          >
-            {finance ? (
-              <div className="dash-finance">
-                <KpiTile
-                  flat
-                  small
-                  label="Chargeable (client invoicing)"
-                  value={formatPounds(finance.chargeTotal)}
-                  description={`${formatHours(finance.forecastHours)} forecast hours at charge rate · ${finance.events} ${
-                    finance.events === 1 ? 'event' : 'events'
-                  }`}
-                />
-                <KpiTile
-                  flat
-                  small
-                  label="Payable (incl. holiday +12.07%)"
-                  value={formatPounds(finance.payTotal)}
-                  description={
-                    // §1.5: broken out, never blended. Two figures side by
-                    // side, not one total with an asterisk.
-                    <span className="dash-split">
-                      <span>
-                        <span>Base {formatPounds(finance.baseTotal)}</span> ·{' '}
-                        <span>Holiday {formatPounds(finance.holidayTotal)}</span>
-                      </span>
-                      <span className="muted">never blended</span>
-                    </span>
-                  }
-                />
-                <KpiTile
-                  flat
-                  small
-                  tone="ok"
-                  label="Gross margin"
-                  value={formatPounds(finance.marginTotal)}
-                  description={`${formatPercent(finance.marginPct)} · after holiday pay`}
-                />
-              </div>
-            ) : (
-              <p className="muted sm">No figures for this week.</p>
-            )}
-          </Panel>
-        ) : null}
-
-        {/* ---- the next ten days, by date (§9.1) --------------------- */}
-        <Panel
-          title={
-            <>
-              Upcoming events <span className="muted sm">· next 10 days</span>
-              <span className="muted sm dash-note">
-                Event window = earliest role start → latest role end
-              </span>
-            </>
-          }
-          actions={
-            <Link className="btn sm" href="/events">
-              Open scheduling
-            </Link>
-          }
-          flush
-        >
-          <div className="panel-b tight">
-            {/* docs/07: tables scroll horizontally under 820px. */}
-            <TableScroll>
-              <UpcomingTable events={upcoming} today={today} showMargin={showMoney} />
-            </TableScroll>
-          </div>
-        </Panel>
-      </div>
+      {/* "As of this minute": the figures move on their own (§9.1). */}
+      <AutoRefresh />
+      <Suspense
+        fallback={
+          <SkeletonScreen label="Loading the dashboard">
+            <SkeletonKpis count={4} />
+            <SkeletonPanel rows={4} lines={2} />
+            <SkeletonPanel rows={6} />
+          </SkeletonScreen>
+        }
+      >
+        <DashboardBody />
+      </Suspense>
     </OfficeShell>
   );
 }

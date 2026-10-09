@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { createContext, useContext } from 'react';
+import { createContext, use, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { Avatar } from '@thc/ui';
 import type { OfficeUser } from './officeUser';
@@ -21,13 +21,35 @@ import type { OfficeUser } from './officeUser';
  * component tests do exactly this — shows the foot without a name rather
  * than throwing.
  */
-const SignedInAsContext = createContext<OfficeUser | null>(null);
+/**
+ * The root layout hands over a PROMISE, not a value, so it can return at
+ * once and the page below it can start its own reads in parallel rather
+ * than after the profile lookup. Whoever reads the context resolves it with
+ * `use()` inside a `<Suspense>` of its own (`OfficeShell` puts one around
+ * the sidebar and the read-only banner). A plain value still works — the
+ * component tests, and anything rendered outside the layout.
+ */
+export type OfficeUserSource = OfficeUser | null | Promise<OfficeUser | null>;
+
+/**
+ * A promise that crossed the server/client boundary is React's own thenable,
+ * not necessarily a `Promise` instance, so ask for `.then` rather than the class.
+ */
+export function isThenable<T>(value: T | PromiseLike<T>): value is PromiseLike<T> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === 'function'
+  );
+}
+
+const SignedInAsContext = createContext<OfficeUserSource>(null);
 
 export function SignedInAsProvider({
   user,
   children,
 }: {
-  user: OfficeUser | null;
+  user: OfficeUserSource;
   children: ReactNode;
 }) {
   return <SignedInAsContext.Provider value={user}>{children}</SignedInAsContext.Provider>;
@@ -39,12 +61,13 @@ export function SignedInAsProvider({
  * provider (the component tests) and when nobody is signed in.
  */
 export function useOfficeUser(): OfficeUser | null {
-  return useContext(SignedInAsContext);
+  const source = useContext(SignedInAsContext);
+  return isThenable(source) ? use(source) : source;
 }
 
 /** The identity half of the foot. Renders nothing when nobody is signed in. */
 export function SignedInAs() {
-  const user = useContext(SignedInAsContext);
+  const user = useOfficeUser();
   if (!user) return null;
 
   return (
