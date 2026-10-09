@@ -2,12 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { isRole, withSessionPersistence, wrongAppBody } from '@thc/db';
-import {
-  aalFromAccessToken,
-  nextLevelFor,
-  twoStepDecision,
-  verifyStepPath,
-} from './app/login/two-step';
+import { createSessionCheckCache, sessionKey } from './app/login/session-check';
+import { nextLevelFor, twoStepDecision, verifyStepPath } from './app/login/two-step';
 
 /**
  * Role routing for the admin app (§1.4).
@@ -61,6 +57,13 @@ const JOB_PATHS = [
   '/api/jobs/event-documents',
   '/api/jobs/new-starter-report',
 ];
+
+/**
+ * What GoTrue last said about each live session, per server instance
+ * (ADR-0108). Module scope on purpose: it outlives a request, so a manager
+ * clicking through the menu costs one `getUser()` a minute, not one per page.
+ */
+const sessionChecks = createSessionCheckCache();
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -119,13 +122,17 @@ export async function middleware(request: NextRequest) {
     ),
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // The token is verified HERE, on every request, against the project's
+  // published signing keys (no network once they are cached) and refreshed
+  // if it is about to expire. What it cannot tell us — has the session been
+  // revoked, does this login have an authenticator — is asked of GoTrue
+  // below, at most once a minute per session (ADR-0108).
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims ?? null;
 
   const { pathname } = request.nextUrl;
 
-  if (!user) {
+  if (!claims?.sub) {
     if (isPublic(pathname)) return response;
     const url = request.nextUrl.clone();
     url.pathname = '/login';
@@ -136,7 +143,7 @@ export async function middleware(request: NextRequest) {
   // app_metadata ONLY. user_metadata is writable by the user from the
   // browser — `supabase.auth.updateUser({ data: { role: 'admin' } })` — so
   // reading it here, even as a fallback, is a self-service role change.
-  const role = user.app_metadata?.['role'];
+  const role = claims.app_metadata?.['role'];
   // And an allow-list, not a deny-list: the old `isRole(role) && role !== …`
   // admitted a session whose role was missing from both places, because the
   // redirect only fired when the value parsed. Unknown role = not this app.
@@ -168,17 +175,32 @@ export async function middleware(request: NextRequest) {
   // until it has. /login/verify is under /login, and sign-out is answered
   // above, so neither the code step nor the way out can loop.
   //
-  // The factor list is `getUser()`'s — GoTrue's answer, not the copy of the
-  // user in the cookie, which the browser can edit (auth-js's own
-  // getAuthenticatorAssuranceLevel() reads that copy). The aal claim is read
-  // from the access token getUser() has just had GoTrue accept.
-  if (!isPublic(pathname) && nextLevelFor(user.factors) === 'aal2') {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  // The factor list is GoTrue's answer (`getUser()`), not the copy of the
+  // user in the cookie, which the browser can edit. The current level is the
+  // `aal` claim of the token this function has just verified. GoTrue is
+  // asked once a minute per session; between asks the last answer stands.
+  // A session GoTrue no longer knows (signed out elsewhere, switched off) is
+  // a signed-out request, as it was when every request asked.
+  if (!isPublic(pathname)) {
+    const key = sessionKey(claims);
+    let check = sessionChecks.get(key);
+    if (!check) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      check = { valid: !!user, secondStep: nextLevelFor(user?.factors) === 'aal2' };
+      sessionChecks.set(key, check);
+    }
+    if (!check.valid) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('next', pathname);
+      return withCookies(NextResponse.redirect(url), response);
+    }
     const decision = twoStepDecision({
-      currentLevel: aalFromAccessToken(session?.access_token),
-      nextLevel: 'aal2',
+      // Anything but a literal aal2 is not aal2 (fail closed).
+      currentLevel: claims.aal === 'aal2' ? 'aal2' : claims.aal === 'aal1' ? 'aal1' : null,
+      nextLevel: check.secondStep ? 'aal2' : 'aal1',
     });
     if (decision === 'verify') {
       const target = request.nextUrl.clone();

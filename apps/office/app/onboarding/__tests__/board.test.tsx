@@ -81,7 +81,16 @@ describe('the onboarding board', () => {
     expect(html).toContain('>Bar Staff<');
     expect(html).toContain('>Barista<');
     expect(html).not.toContain('>Host<');
-    expect(html).toContain('title="Host, Runner, Team Leader">+3<');
+    expect(html).toContain('title="Host, Runner, Team Leader"');
+    expect(html).toContain('aria-label="3 more: Host, Runner, Team Leader"');
+    expect(html).toContain('>+3<');
+  });
+
+  it('shows three roles in full — "+1" would save nothing', () => {
+    const roles = ['Bar Staff', 'Barista', 'Host'];
+    const html = render([candidate({ status: 'documents', role_names: roles })]);
+    expect(html).toContain('>Host<');
+    expect(html).not.toMatch(/>\+\d+</);
   });
 
   it('shows Willo not connected as a neutral, disabled line', () => {

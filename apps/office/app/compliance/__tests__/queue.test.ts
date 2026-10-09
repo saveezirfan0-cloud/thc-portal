@@ -286,6 +286,8 @@ const RADAR: RadarRow = {
   n3_at: null,
   n4_at: null,
   replacement_in_review: false,
+  reviewed_at: '2026-08-01T10:00:00Z',
+  reviewed_by_name: 'Gisela M.',
 };
 
 describe('Radar (§4.1, §4.2)', () => {
