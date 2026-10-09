@@ -52,6 +52,11 @@
 -- 20261008130000 (ADR-0107) added invite_roster to assertions 1 and 3:
 -- admin_read, written only by load_invite_roster() and the application
 -- matcher (780).
+-- 20261008180000 (ADR-0109) added the six client shift requirement tables
+-- to assertions 1 and 3 — client_quizzes, client_quiz_slides,
+-- client_quiz_questions (the answer key), client_quiz_attempts,
+-- client_role_requirements, booking_kit_acknowledgements — each admin_all
+-- only: the worker's every read and write is a definer RPC (783).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -89,8 +94,10 @@ select bag_eq(
             ('event_document_autosends'),
             ('payroll_codes'),
             ('invite_roster'),
-            ('new_starter_reported') $$,
-  'RLS is enabled on all 53 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000)'
+            ('new_starter_reported'),
+            ('client_quizzes'),('client_quiz_slides'),('client_quiz_questions'),
+            ('client_quiz_attempts'),('client_role_requirements'),('booking_kit_acknowledgements') $$,
+  'RLS is enabled on all 59 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0109, 20261008180000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -172,7 +179,9 @@ select bag_eq(
             ('event_document_autosends'),
             ('payroll_codes'),
             ('invite_roster'),
-            ('new_starter_reported') $$,
+            ('new_starter_reported'),
+            ('client_quizzes'),('client_quiz_slides'),('client_quiz_questions'),
+            ('client_quiz_attempts'),('client_role_requirements'),('booking_kit_acknowledgements') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 

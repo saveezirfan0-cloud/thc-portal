@@ -3,7 +3,8 @@ import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { StaffShell } from '../../_components/StaffShell';
-import { loadBookings, openInvites, shiftsBadge } from '../../data';
+import { loadBookings, loadShiftRequirements, openInvites, shiftsBadge } from '../../data';
+import { ShiftRequirements } from '../../_components/ShiftRequirements';
 import { readProfile } from '../../profile/data';
 import { loadShift, supabaseConfigured } from './data';
 import { loadBookingOffers, offersByBooking } from '../offers-data';
@@ -56,7 +57,16 @@ export default async function Page({
     { rows: bookings, problem: listProblem },
     me,
     { rows: offers, problem: offerProblem },
-  ] = await Promise.all([loadShift(id), loadBookings(), readProfile(), loadBookingOffers()]);
+    { rows: requirements },
+  ] = await Promise.all([
+    loadShift(id),
+    loadBookings(),
+    readProfile(),
+    loadBookingOffers(),
+    // ADR-0109: the client's quiz and kit message for this shift.
+    loadShiftRequirements(),
+  ]);
+  const requirement = requirements.find((row) => row.bookingId === id) ?? null;
 
   // A read that FAILED is not a 404 (audit D18): "this shift doesn't exist"
   // to a worker who has one is how a No-show happens.
@@ -82,6 +92,9 @@ export default async function Page({
         ? {}
         : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
+      {requirement && shift.status === 'confirmed' ? (
+        <ShiftRequirements requirement={requirement} />
+      ) : null}
       <ShiftScreen
         shift={shift}
         firstName={me.kind === 'ok' ? me.profile.firstName || null : null}

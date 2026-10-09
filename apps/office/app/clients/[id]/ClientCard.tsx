@@ -10,6 +10,7 @@ import { ClientEvents } from './ClientEvents';
 import { NameBadges } from './NameBadges';
 import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
+import { ShiftRequirements } from './ShiftRequirements';
 import { marginTone, newEventHref } from './card';
 import type { Client } from '../types';
 import type { ClientCardData } from './types';
@@ -168,6 +169,14 @@ export function ClientCard({
           rows={data.qualified}
           rateCard={data.rateCard}
           staff={data.staff}
+        />
+
+        {/* ADR-0109: the client's own asks of a worker, per role, and who has met them. */}
+        <ShiftRequirements
+          clientId={client.id}
+          rows={data.requirements}
+          results={data.quizResults}
+          canWrite={canWrite}
         />
 
         <ClientEvents rows={data.events} ratesVisible={ratesVisible} />

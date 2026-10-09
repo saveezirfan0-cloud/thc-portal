@@ -98,6 +98,12 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       },
       { code: 'OF5', label: 'Cover requested', when: 'A worker asks for cover inside 72 hours' },
       {
+        code: 'CR3',
+        label: 'Client quiz not passed',
+        when: 'A worker fails the last attempt at a client’s quiz',
+        warning: 'The office is not told when a worker runs out of attempts at a client’s quiz.',
+      },
+      {
         code: 'RC1',
         label: 'Profile change requested',
         when: 'A worker asks to change name, photo or date of birth',
@@ -229,6 +235,20 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       { code: 'N14', label: 'Weekly limit changed', when: 'A worker’s weekly hours limit changes' },
       { code: 'N15', label: 'Shifts open again', when: 'A block is lifted' },
       { code: 'RC2', label: 'Profile updated', when: 'The office approves a profile change' },
+      {
+        code: 'CR1',
+        label: 'Quiz before your first shift',
+        when: 'A worker is first booked on a role a client asks a quiz for',
+        warning:
+          'Workers are not told a client’s quiz is waiting; it still shows on their Shifts tab.',
+      },
+      {
+        code: 'CR2',
+        label: 'What to bring today',
+        when: 'The morning of a shift on a role a client has a kit message for',
+        warning:
+          'Workers are not reminded what to bring; the message still shows on the shift until they confirm it.',
+      },
       { code: 'RC3', label: 'Change not made', when: 'The office declines a profile change' },
       {
         code: 'RC5',
