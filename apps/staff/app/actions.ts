@@ -130,7 +130,7 @@ export async function confirmToday(bookingId: string): Promise<ActionResult> {
 }
 
 /**
- * "I've read this" on a client's kit message for one shift (ADR-0109).
+ * "I've read this" on a client's kit message for one shift (ADR-0110).
  * Idempotent in the database; nothing is released for not pressing it.
  */
 export async function acknowledgeKit(bookingId: string): Promise<ActionResult> {

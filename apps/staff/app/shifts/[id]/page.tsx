@@ -63,7 +63,7 @@ export default async function Page({
     loadBookings(),
     readProfile(),
     loadBookingOffers(),
-    // ADR-0109: the client's quiz and kit message for this shift.
+    // ADR-0110: the client's quiz and kit message for this shift.
     loadShiftRequirements(),
   ]);
   const requirement = requirements.find((row) => row.bookingId === id) ?? null;

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261008180000 · Client shift requirements: a menu quiz and a
---                            kit reminder per client and role (ADR-0109,
+--                            kit reminder per client and role (ADR-0110,
 --                            product owner 08.10.2026)
 --
 -- Leonardo Hotel St Paul's M&E wants two things of anyone THC sends it on
@@ -66,7 +66,7 @@ create table if not exists client_quizzes (
   unique (client_id, title)
 );
 comment on table client_quizzes is
-  'ADR-0109: a knowledge check a client asks of workers before their first shift on a role that names it (client_role_requirements.quiz_id). Admin only; the worker reads it through staff_client_quiz().';
+  'ADR-0110: a knowledge check a client asks of workers before their first shift on a role that names it (client_role_requirements.quiz_id). Admin only; the worker reads it through staff_client_quiz().';
 
 create table if not exists client_quiz_slides (
   id        uuid primary key default gen_random_uuid(),
@@ -81,7 +81,7 @@ create table if not exists client_quiz_slides (
   unique (quiz_id, position)
 );
 comment on table client_quiz_slides is
-  'ADR-0109: the material a client quiz is sat on, slide by slide — a heading, an optional note, and a small table (columns + rows) so a menu reads as a menu on a phone.';
+  'ADR-0110: the material a client quiz is sat on, slide by slide — a heading, an optional note, and a small table (columns + rows) so a menu reads as a menu on a phone.';
 
 create table if not exists client_quiz_questions (
   id            uuid primary key default gen_random_uuid(),
@@ -99,7 +99,7 @@ create table if not exists client_quiz_questions (
 create unique index if not exists client_quiz_questions_active_position
   on client_quiz_questions (quiz_id, position) where active;
 comment on table client_quiz_questions is
-  'ADR-0109: a client quiz''s questions and answer key. Admin only — the worker receives them without correct_index through staff_client_quiz() and is marked by submit_client_quiz_attempt().';
+  'ADR-0110: a client quiz''s questions and answer key. Admin only — the worker receives them without correct_index through staff_client_quiz() and is marked by submit_client_quiz_attempt().';
 
 create table if not exists client_quiz_attempts (
   id         uuid primary key default gen_random_uuid(),
@@ -120,7 +120,7 @@ create unique index if not exists client_quiz_attempts_live_no
   on client_quiz_attempts (quiz_id, staff_id, attempt_no) where not superseded;
 create index if not exists client_quiz_attempts_staff_idx on client_quiz_attempts (staff_id);
 comment on table client_quiz_attempts is
-  'ADR-0109: every sitting of a client quiz, marked by submit_client_quiz_attempt(). A pass (passed, not superseded) clears the worker for every role that names the quiz, for good.';
+  'ADR-0110: every sitting of a client quiz, marked by submit_client_quiz_attempt(). A pass (passed, not superseded) clears the worker for every role that names the quiz, for good.';
 
 create table if not exists client_role_requirements (
   id          uuid primary key default gen_random_uuid(),
@@ -139,7 +139,7 @@ create table if not exists client_role_requirements (
 create index if not exists client_role_requirements_quiz_idx on client_role_requirements (quiz_id);
 create index if not exists client_role_requirements_role_idx on client_role_requirements (role_id);
 comment on table client_role_requirements is
-  'ADR-0109: what a client asks of a worker on one of its roles — a quiz to pass first (quiz_id) and/or a kit message to confirm on the morning of each shift (kit_message). Read on the client card; the worker sees it through staff_shift_requirements().';
+  'ADR-0110: what a client asks of a worker on one of its roles — a quiz to pass first (quiz_id) and/or a kit message to confirm on the morning of each shift (kit_message). Read on the client card; the worker sees it through staff_shift_requirements().';
 
 create table if not exists booking_kit_acknowledgements (
   booking_id      uuid primary key references bookings(id) on delete cascade,
@@ -148,7 +148,7 @@ create table if not exists booking_kit_acknowledgements (
 );
 create index if not exists booking_kit_acknowledgements_staff_idx on booking_kit_acknowledgements (staff_id);
 comment on table booking_kit_acknowledgements is
-  'ADR-0109: the worker pressed "I''ve read this" on the kit message for this booking (acknowledge_shift_kit). One row per booking; CR2 stops once it exists.';
+  'ADR-0110: the worker pressed "I''ve read this" on the kit message for this booking (acknowledge_shift_kit). One row per booking; CR2 stops once it exists.';
 
 -- A requirement's quiz must belong to the same client.
 create or replace function public.client_role_requirement_guard()
@@ -203,7 +203,7 @@ as $$
      where a.quiz_id = p_quiz and a.staff_id = p_staff and a.passed and not a.superseded)
 $$;
 comment on function public.client_quiz_passed(uuid, uuid) is
-  'ADR-0109: true once the worker has a live (not superseded) passing attempt at this quiz.';
+  'ADR-0110: true once the worker has a live (not superseded) passing attempt at this quiz.';
 
 create or replace function public.client_quiz_attempts_used(p_quiz uuid, p_staff uuid)
 returns int
@@ -259,7 +259,7 @@ as $$
     from d
 $$;
 comment on function public.kit_reminder_due_at(timestamptz) is
-  'ADR-0109, CR2: 07:00 UK on the day the role section starts, or three hours before the start if earlier, never before that UK day begins.';
+  'ADR-0110, CR2: 07:00 UK on the day the role section starts, or three hours before the start if earlier, never before that UK day begins.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The worker's reads
@@ -317,7 +317,7 @@ as $$
    order by s.starts_at
 $$;
 comment on function public.staff_shift_requirements() is
-  'ADR-0109: for each of the caller''s live bookings on a (client, role) with a requirement — the quiz and where they stand on it, and the kit message with when it is due and whether it was acknowledged. No charge rate, no other worker.';
+  'ADR-0110: for each of the caller''s live bookings on a (client, role) with a requirement — the quiz and where they stand on it, and the kit message with when it is due and whether it was acknowledged. No charge rate, no other worker.';
 
 -- The quiz: its slides, its questions WITHOUT the key, and the caller's
 -- standing. Open to a worker a live booking names it for, or who has sat
@@ -386,7 +386,7 @@ begin
   );
 end $$;
 comment on function public.staff_client_quiz(uuid) is
-  'ADR-0109: one client quiz for the caller — slides, questions numbered 1..n WITHOUT correct_index, and their attempts. Refused (quiz_not_required) unless a live booking of theirs names it or they have sat it.';
+  'ADR-0110: one client quiz for the caller — slides, questions numbered 1..n WITHOUT correct_index, and their attempts. Refused (quiz_not_required) unless a live booking of theirs names it or they have sat it.';
 
 -- ---------------------------------------------------------------------
 -- 4 · Marking an attempt
@@ -521,7 +521,7 @@ begin
     'outcome',      v_outcome);
 end $$;
 comment on function public.submit_client_quiz_attempt(uuid, jsonb) is
-  'ADR-0109: marks one sitting of a client quiz for the caller against the key the app never sees. {ok, attemptNo, correct, total, percent, passed, attemptsLeft, outcome: passed | retry | failed}; refuses already_passed / no_attempts_left / incomplete / quiz_changed. A third failure emails the office (CR3).';
+  'ADR-0110: marks one sitting of a client quiz for the caller against the key the app never sees. {ok, attemptNo, correct, total, percent, passed, attemptsLeft, outcome: passed | retry | failed}; refuses already_passed / no_attempts_left / incomplete / quiz_changed. A third failure emails the office (CR3).';
 
 -- ---------------------------------------------------------------------
 -- 5 · "I've read this" on the kit message
@@ -565,7 +565,7 @@ begin
   return jsonb_build_object('ok', true, 'acknowledgedAt', v_at);
 end $$;
 comment on function public.acknowledge_shift_kit(uuid) is
-  'ADR-0109: the worker confirms they have read the kit message for one of their confirmed bookings. Idempotent; refuses another worker''s booking, an unbooked one (not_booked) and one with no kit message (nothing_to_acknowledge).';
+  'ADR-0110: the worker confirms they have read the kit message for one of their confirmed bookings. Idempotent; refuses another worker''s booking, an unbooked one (not_booked) and one with no kit message (nothing_to_acknowledge).';
 
 -- ---------------------------------------------------------------------
 -- 6 · CR2 · the morning-of reminder
@@ -617,7 +617,7 @@ begin
   return jsonb_build_object('cr2', v_cr2);
 end $$;
 comment on function public.client_kit_reminder_tick(timestamptz) is
-  'ADR-0109: queues CR2 for every confirmed booking on a (client, role) with a kit message, from kit_reminder_due_at() until the start, unless acknowledged. Keyed on booking + start (booking_reminder_key) so a moved shift is reminded again and a re-run never double-sends. Called every minute by the booking-tick Edge Function beside booking_tick().';
+  'ADR-0110: queues CR2 for every confirmed booking on a (client, role) with a kit message, from kit_reminder_due_at() until the start, unless acknowledged. Keyed on booking + start (booking_reminder_key) so a moved shift is reminded again and a re-run never double-sends. Called every minute by the booking-tick Edge Function beside booking_tick().';
 
 revoke execute on function public.client_kit_reminder_tick(timestamptz) from public, anon, authenticated;
 grant  execute on function public.client_kit_reminder_tick(timestamptz) to service_role;
@@ -681,7 +681,7 @@ create trigger bookings_client_quiz_notice
   after insert or update of status on bookings
   for each row execute function public.bookings_client_quiz_notice();
 comment on function public.bookings_client_quiz_notice() is
-  'ADR-0109: queues CR1 (one per worker per quiz, ever) when a booking is confirmed on a (client, role) whose requirement names a quiz the worker has not passed and can still sit.';
+  'ADR-0110: queues CR1 (one per worker per quiz, ever) when a booking is confirmed on a (client, role) whose requirement names a quiz the worker has not passed and can still sit.';
 revoke execute on function public.bookings_client_quiz_notice() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
@@ -701,7 +701,7 @@ select r.id,
   join roles ro on ro.id = r.role_id
   left join client_quizzes q on q.id = r.quiz_id;
 comment on view public.clients_shift_requirements_v is
-  'ADR-0109: the client card''s Shift requirements block — per role, the quiz and the kit message. Office only (RLS on the base tables). The clients_ prefix is the office''s, not the portal''s (ADR-0004).';
+  'ADR-0110: the client card''s Shift requirements block — per role, the quiz and the kit message. Office only (RLS on the base tables). The clients_ prefix is the office''s, not the portal''s (ADR-0004).';
 
 create or replace view public.clients_quiz_results_v
 with (security_invoker = true) as
@@ -726,7 +726,7 @@ select a.quiz_id,
  where not a.superseded
  group by a.quiz_id, q.client_id, q.title, a.staff_id, s.removed_at, s.employee_id, s.first_name, s.last_name, q.max_attempts;
 comment on view public.clients_quiz_results_v is
-  'ADR-0109: one row per worker who has sat a client quiz — attempts used, passed (and when), failed (every attempt used, none passed). Superseded attempts (an office reset) are not counted. Office only.';
+  'ADR-0110: one row per worker who has sat a client quiz — attempts used, passed (and when), failed (every attempt used, none passed). Superseded attempts (an office reset) are not counted. Office only.';
 
 -- The office gives a worker their attempts back — after a word with
 -- them, or because the questions were wrong. History stays as superseded.
@@ -757,7 +757,7 @@ begin
   return jsonb_build_object('ok', true, 'superseded', v_count);
 end $$;
 comment on function public.reset_client_quiz_attempts(uuid, uuid) is
-  'ADR-0109: the office marks a worker''s attempts at a client quiz superseded, giving them the full set again. Office only; a viewer is refused by the read-only guard. Audited as client_quiz.reset.';
+  'ADR-0110: the office marks a worker''s attempts at a client quiz superseded, giving them the full set again. Office only; a viewer is refused by the read-only guard. Audited as client_quiz.reset.';
 
 revoke execute on function public.staff_shift_requirements()                  from public, anon;
 revoke execute on function public.staff_client_quiz(uuid)                     from public, anon;
@@ -886,7 +886,7 @@ begin
   return v_quiz;
 end $$;
 comment on function public.install_bar_menu_quiz(uuid) is
-  'ADR-0109: installs the Leonardo Royal Hotel bar menu quiz (10 slides, 10 questions, pass 80%, 3 attempts) for one client and the Bar Staff / Wine Waiting Service requirements that name it, with the kit message. Idempotent. Service role and migrations only.';
+  'ADR-0110: installs the Leonardo Royal Hotel bar menu quiz (10 slides, 10 questions, pass 80%, 3 attempts) for one client and the Bar Staff / Wine Waiting Service requirements that name it, with the kit message. Idempotent. Service role and migrations only.';
 revoke execute on function public.install_bar_menu_quiz(uuid) from public, anon, authenticated;
 grant  execute on function public.install_bar_menu_quiz(uuid) to service_role;
 

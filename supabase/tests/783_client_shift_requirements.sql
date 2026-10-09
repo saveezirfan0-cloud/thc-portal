@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 783 · Client shift requirements: a menu quiz and a kit reminder per
---       client and role · 20261008180000 · ADR-0109
+--       client and role · 20261008180000 · ADR-0110
 --
 --   A. Shape: six admin-only tables, definer RPCs with a pinned
 --      search_path, nothing for anon; the installer and the tick are the

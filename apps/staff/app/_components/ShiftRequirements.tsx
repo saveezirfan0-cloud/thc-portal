@@ -6,7 +6,7 @@ import { ActionButton } from './ActionButton';
 import { UkTime } from './UkTime';
 
 /**
- * What a client asks of the worker beyond turning up (ADR-0109), drawn on
+ * What a client asks of the worker beyond turning up (ADR-0110), drawn on
  * the /shifts card and at the top of the shift screen.
  *
  * Two blocks, each only when it applies:
