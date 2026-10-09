@@ -5,6 +5,7 @@ import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
 import { formatUkStamp, reviewLabel, reviewStamp } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
+import { RtwBranchChange } from './RtwBranchChange';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
 import { GenderField } from './GenderField';
@@ -188,7 +189,14 @@ export function Overview({
                 {' '}
                 · valid until <b>{formatUkDate(profile.right_to_work_until)}</b>
               </>
-            ) : null}
+            ) : null}{' '}
+            <RtwBranchChange
+              staffId={profile.id}
+              name={profile.display_name}
+              branch={profile.rtw_branch}
+              until={profile.right_to_work_until}
+              allowed={canCorrectDob && !profile.removed}
+            />
           </span>
           <span className="k">48h opt-out</span>
           <span>

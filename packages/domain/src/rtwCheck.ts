@@ -527,7 +527,7 @@ export function decideRtwCheck(
     }
   } else if (branch !== 'eu_settled') {
     return review(
-      `gov.uk shows no time limit, but the ${BRANCH_WORDS[branch]} branch always has an end date. Confirm the status and the date by hand.`,
+      `gov.uk shows no time limit, but the ${BRANCH_WORDS[branch]} branch always has an end date. If gov.uk is right, change the branch to EU settled on the worker’s profile (Overview → Right to Work → Change) and verify; otherwise confirm the status and the date by hand.`,
     );
   }
 

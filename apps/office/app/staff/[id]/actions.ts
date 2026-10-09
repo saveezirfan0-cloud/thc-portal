@@ -318,6 +318,58 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
 }
 
 // ---------------------------------------------------------------------
+// Right-to-work branch — record_right_to_work_change (completion letter
+// requirement §7). The branch a worker picked in the wizard is only their
+// own reading of §2.5; when gov.uk's answer shows it was the wrong one
+// (settled status chosen as "Dependant / other"), the office corrects it
+// here, audited as rtw.changed. The 48-hour opt-out is untouched.
+// ---------------------------------------------------------------------
+const RTW_BRANCHES: readonly string[] = [
+  'uk_irish',
+  'eu_settled',
+  'work_visa',
+  'international_student',
+  'dependant_other',
+];
+
+const RTW_BRANCH_MESSAGES: Readonly<Record<string, string>> = {
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  branch_required: 'Choose a branch.',
+  not_authorised: 'Only the office can do this.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+  'not_reviewable: removed':
+    'This worker was removed under GDPR; nothing about them is recorded now.',
+};
+
+export async function changeRtwBranch(
+  staffId: string,
+  branch: string,
+  until: string | null,
+): Promise<ActionResult> {
+  if (!RTW_BRANCHES.includes(branch)) return { ok: false, message: 'Choose a branch.' };
+  if (until !== null && !/^\d{4}-\d{2}-\d{2}$/.test(until)) {
+    return {
+      ok: false,
+      message: 'Enter the right-to-work date as a full date, or leave it blank.',
+    };
+  }
+  if (branch === 'uk_irish' && until !== null) {
+    return { ok: false, message: 'A UK or Irish citizen has no right-to-work date.' };
+  }
+  const result = await callRpc(
+    'record_right_to_work_change',
+    { p_staff: staffId, p_branch: branch, p_until: until, p_share_code: null },
+    staffId,
+  );
+  if (result.ok) {
+    revalidatePath('/compliance');
+    revalidatePath(`/onboarding/${staffId}`);
+    return result;
+  }
+  return { ok: false, message: RTW_BRANCH_MESSAGES[result.message] ?? result.message };
+}
+
+// ---------------------------------------------------------------------
 // Scheduling (ADR-0106) — set_staff_scheduling. SpudBros Express staff do
 // their onboarding with THC and nothing else (shifts stay on Connecteam);
 // the office switches THC shifts on for the few who also work ours.
