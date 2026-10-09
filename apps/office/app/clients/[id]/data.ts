@@ -46,7 +46,7 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
 };
 
 /**
- * The two ADR-0109 views are newer than the generated types; the loader
+ * The two ADR-0110 views are newer than the generated types; the loader
  * declares the shape it reads, as /staff/roster does (the migration's
  * pgTAP, 783, holds the columns).
  */
@@ -170,7 +170,7 @@ export async function loadClientCard(
       .eq('status', 'compliant')
       .order('display_name')
       .returns<StaffOption[]>(),
-    // ADR-0109: what each role asks, and who has sat the quiz.
+    // ADR-0110: what each role asks, and who has sat the quiz.
     requirementsDb
       .from('clients_shift_requirements_v')
       .select('*')

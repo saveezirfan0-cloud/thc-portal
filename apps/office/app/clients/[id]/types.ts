@@ -88,7 +88,7 @@ export interface StaffOption {
   role_names: string[];
 }
 
-/** One role's ask of a worker (ADR-0109): `clients_shift_requirements_v`. */
+/** One role's ask of a worker (ADR-0110): `clients_shift_requirements_v`. */
 export interface ShiftRequirementRow {
   id: string;
   client_id: string;
@@ -100,7 +100,7 @@ export interface ShiftRequirementRow {
   kit_message: string | null;
 }
 
-/** Where one worker stands on a client's quiz (ADR-0109): `clients_quiz_results_v`. */
+/** Where one worker stands on a client's quiz (ADR-0110): `clients_quiz_results_v`. */
 export interface QuizResultRow {
   quiz_id: string;
   client_id: string;
@@ -126,7 +126,7 @@ export interface ClientCardData {
   /** Every dress code stored on any client's rate card, most-used first. */
   dressCodeLibrary: string[];
   qualified: QualifiedStaffRow[];
-  /** ADR-0109: per role, the quiz and the kit message; and who has sat the quiz. */
+  /** ADR-0110: per role, the quiz and the kit message; and who has sat the quiz. */
   requirements: ShiftRequirementRow[];
   quizResults: QuizResultRow[];
   events: ClientEventRow[];

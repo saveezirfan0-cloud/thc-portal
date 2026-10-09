@@ -211,14 +211,14 @@ rule: **email until the account exists, push in the app after.**
 - **No Willo link in OC1.** Willo sends the interview invitation (E1) and
   nothing stores its URL, so OC1 points the candidate at that email.
 
-## Client shift requirements (ADR-0109)
+## Client shift requirements (ADR-0110)
 
 The owner's request of 08.10.2026: Leonardo Hotel St Paul's M&E asks a bar
 menu quiz of anyone first booked on Bar Staff or Wine Waiting Service, and a
 "bring your bottle opener, notepad and pen" message, confirmed, on the morning
 of every such shift. Carried as data per (client, role) —
 `client_role_requirements` — so the codes are generic. They sit in
-`CLIENT_REQUIREMENT_CODES`; each `trigger` names ADR-0109 and says "Not in §8".
+`CLIENT_REQUIREMENT_CODES`; each `trigger` names ADR-0110 and says "Not in §8".
 None is `mandatory`.
 
 | Code | Channel · to | Title / subject | Body | When · key |
