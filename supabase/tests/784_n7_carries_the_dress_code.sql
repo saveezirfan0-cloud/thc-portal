@@ -22,17 +22,17 @@ select plan(10);
 update shift_requirements set starts_at = timestamptz '2027-06-01 10:00+00',
                               ends_at   = timestamptz '2027-06-01 18:00+00';
 
-\set evt      '78300000-0000-4000-8000-00000000000a'
-\set s_ugl    '78310000-0000-4000-8000-000000000001'
-\set s_none   '78310000-0000-4000-8000-000000000002'
-\set s_blank  '78310000-0000-4000-8000-000000000003'
-\set s_pad    '78310000-0000-4000-8000-000000000004'
-\set s_tmrw   '78310000-0000-4000-8000-000000000005'
-\set b_ugl    '78320000-0000-4000-8000-000000000001'
-\set b_none   '78320000-0000-4000-8000-000000000002'
-\set b_blank  '78320000-0000-4000-8000-000000000003'
-\set b_pad    '78320000-0000-4000-8000-000000000004'
-\set b_tmrw   '78320000-0000-4000-8000-000000000005'
+\set evt      '78400000-0000-4000-8000-00000000000a'
+\set s_ugl    '78410000-0000-4000-8000-000000000001'
+\set s_none   '78410000-0000-4000-8000-000000000002'
+\set s_blank  '78410000-0000-4000-8000-000000000003'
+\set s_pad    '78410000-0000-4000-8000-000000000004'
+\set s_tmrw   '78410000-0000-4000-8000-000000000005'
+\set b_ugl    '78420000-0000-4000-8000-000000000001'
+\set b_none   '78420000-0000-4000-8000-000000000002'
+\set b_blank  '78420000-0000-4000-8000-000000000003'
+\set b_pad    '78420000-0000-4000-8000-000000000004'
+\set b_tmrw   '78420000-0000-4000-8000-000000000005'
 
 insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location,
                     geofence_radius_m, title, event_date, pays_breaks, pays_buffer, cancelled_at) values
@@ -53,20 +53,20 @@ insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headc
 -- bookings is unique on (shift, staff); the fixtures give two workers and
 -- the rest are plain compliant staff with nothing else on.
 insert into staff (id, first_name, last_name, email, phone, dob, status) values
-  ('78330000-0000-4000-8000-000000000001', 'Dress', 'One', 'd1@n7.test', '+447700907831', date '1995-01-01', 'compliant'),
-  ('78330000-0000-4000-8000-000000000002', 'Dress', 'Two', 'd2@n7.test', '+447700907832', date '1995-01-01', 'compliant');
+  ('78430000-0000-4000-8000-000000000001', 'Dress', 'One', 'd1@n7.test', '+447700907831', date '1995-01-01', 'compliant'),
+  ('78430000-0000-4000-8000-000000000002', 'Dress', 'Two', 'd2@n7.test', '+447700907832', date '1995-01-01', 'compliant');
 
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at,
                       day_before_confirmed_at, on_day_confirmed_at, cancelled_at, cancel_cause) values
   (:'b_ugl',   :'s_ugl',   :'staffa', 'confirmed', 'auto', '2026-09-10 10:00+01', '2026-09-23 09:00+01', null, null, null),
   (:'b_none',  :'s_none',  :'staffb', 'confirmed', 'auto', '2026-09-10 10:00+01', '2026-09-23 09:00+01', null, null, null),
-  (:'b_blank', :'s_blank', '78330000-0000-4000-8000-000000000001', 'confirmed', 'auto', '2026-09-10 10:00+01', '2026-09-23 09:00+01', null, null, null),
-  (:'b_pad',   :'s_pad',   '78330000-0000-4000-8000-000000000002', 'confirmed', 'auto', '2026-09-10 10:00+01', '2026-09-23 09:00+01', null, null, null),
+  (:'b_blank', :'s_blank', '78430000-0000-4000-8000-000000000001', 'confirmed', 'auto', '2026-09-10 10:00+01', '2026-09-23 09:00+01', null, null, null),
+  (:'b_pad',   :'s_pad',   '78430000-0000-4000-8000-000000000002', 'confirmed', 'auto', '2026-09-10 10:00+01', '2026-09-23 09:00+01', null, null, null),
   (:'b_tmrw',  :'s_tmrw',  :'staffa', 'confirmed', 'auto', '2026-09-10 10:00+01', null, null, null, null);
 
-create temporary table t_783 as select booking_tick('2026-09-24 09:00+01') as counts;
+create temporary table t_784 as select booking_tick('2026-09-24 09:00+01') as counts;
 
-select is((select counts->>'n7' from t_783), '4',
+select is((select counts->>'n7' from t_784), '4',
   'at 09:00 UK the four sections starting today are reminded');
 
 -- 1 · A section with a dress code: the push names the variant and the code.
@@ -99,7 +99,7 @@ select is(
   'the dress code is trimmed before it is sent');
 
 -- 4 · N6, the day-before reminder, is unchanged: the dress code rides N7 only.
-select is((select counts->>'n6' from t_783), '1',
+select is((select counts->>'n6' from t_784), '1',
   'N6 at 09:00 UK the day before, for tomorrow''s section');
 select ok(
   (select not (payload ? 'variant') and not (payload ? 'dressCode')
