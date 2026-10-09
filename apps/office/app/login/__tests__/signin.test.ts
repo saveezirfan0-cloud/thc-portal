@@ -35,7 +35,24 @@ vi.mock('@thc/db/server', () => ({
 }));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
-    auth: { getUser: async () => ({ data: { user: state.middlewareUser } }) },
+    auth: {
+      // A fresh session id per call: the middleware remembers a GoTrue answer
+      // per session for a minute (ADR-0108), and each test is its own session.
+      getClaims: async () => ({
+        data: state.middlewareUser
+          ? {
+              claims: {
+                sub: 'u1',
+                session_id: `s${Math.random()}`,
+                aal: 'aal1',
+                app_metadata: state.middlewareUser.app_metadata,
+              },
+            }
+          : null,
+        error: null,
+      }),
+      getUser: async () => ({ data: { user: state.middlewareUser } }),
+    },
   }),
 }));
 
