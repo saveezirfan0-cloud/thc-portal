@@ -5,15 +5,17 @@
 --   A. Shape: six admin-only tables, definer RPCs with a pinned
 --      search_path, nothing for anon; the installer and the tick are the
 --      service role's only.
---   B. The bar menu quiz installs for a client — ten slides, ten
---      questions, the Bar Staff and Wine Waiting Service requirements with
---      the kit message — and installs again without doubling anything.
+--   B. The bar menu quiz installs for a client — ten slides, a pool of
+--      thirty-five questions dealt ten at a time (ADR-0111), the Bar Staff
+--      and Wine Waiting Service requirements with the kit message — and
+--      installs again without doubling anything.
 --   C. The worker sees what each live booking asks (staff_shift_
 --      requirements), and reads the quiz without its key; a worker with no
 --      such booking is refused.
 --   D. CR1 goes out once when a booking is confirmed, never at invitation.
---   E. Marking: incomplete, retry, retry, failed (CR3 to the office), then
---      no attempts left; the office resets; a pass clears the worker and a
+--   E. Marking, each sitting against the hand it was dealt (ADR-0111):
+--      incomplete, retry, retry, failed (CR3 to the office), then no
+--      attempts left; the office resets; a pass clears the worker and a
 --      second sitting is refused.
 --   F. CR2: due at 07:00 UK (or three hours before an early start), queued
 --      once per booking and start, not after acknowledging, again for a
@@ -23,7 +25,7 @@
 --   H. Reset is the office's; the views are the office's.
 -- =====================================================================
 begin;
-select plan(69);
+select plan(72);
 \ir _shared/fixtures.psql
 
 \set shift_c   'ffffffff-0000-4000-8000-000000000003'
@@ -79,8 +81,10 @@ select is((select count(*)::int from client_quiz_slides sl join client_quizzes q
             where q.client_id = :'clienta'), 10,
   'B: ten slides — the menu, section by section');
 select is((select count(*)::int from client_quiz_questions qq join client_quizzes q on q.id = qq.quiz_id
-            where q.client_id = :'clienta' and qq.active), 10,
-  'B: ten questions');
+            where q.client_id = :'clienta' and qq.active), 35,
+  'B: thirty-five questions in the pool');
+select is((select questions_per_attempt from client_quizzes where client_id = :'clienta'), 10,
+  'B: ten of them per sitting (ADR-0111)');
 select is((select qq.options[qq.correct_index + 1] from client_quiz_questions qq
             join client_quizzes q on q.id = qq.quiz_id
            where q.client_id = :'clienta' and qq.position = 1), '£34.00',
@@ -99,7 +103,7 @@ select is((select kit_message from client_role_requirements r join roles ro on r
 select is((select install_bar_menu_quiz(:'clienta')), (select id from client_quizzes where client_id = :'clienta'),
   'B: installing again returns the same quiz');
 select is((select count(*)::int from client_quiz_questions qq join client_quizzes q on q.id = qq.quiz_id
-            where q.client_id = :'clienta'), 10,
+            where q.client_id = :'clienta'), 35,
   'B: and does not double the questions');
 
 -- The requirement under test: the fixture role (shift_a, shift_c) names the quiz too.
@@ -134,7 +138,9 @@ select is((select (staff_client_quiz(:'quiz_id') ->> 'title')), 'Bar menu — Le
 select is((select jsonb_array_length(staff_client_quiz(:'quiz_id') -> 'slides')), 10,
   'C: with its ten slides');
 select is((select jsonb_array_length(staff_client_quiz(:'quiz_id') -> 'questions')), 10,
-  'C: and its ten questions');
+  'C: and the ten questions of this sitting');
+select is((select (staff_client_quiz(:'quiz_id') ->> 'questionPool') || '/' || (staff_client_quiz(:'quiz_id') ->> 'questionsPerAttempt')), '35/10',
+  'C: told they are ten of a pool of thirty-five');
 select ok((select not (staff_client_quiz(:'quiz_id') #> '{questions,0}') ? 'correctIndex'
              and not (staff_client_quiz(:'quiz_id') #> '{questions,0}') ? 'correct_index'),
   'C: WITHOUT the key');
@@ -176,11 +182,12 @@ delete from bookings where id = :'booking_d';
 -- =====================================================================
 -- E · Marking
 -- =====================================================================
--- Every question answered A; two of the ten have A as their key (the glass
--- of Prosecco, the reds by the glass), so this scores 2 of 10. The key is
--- read here, as the test, never by the worker.
-select jsonb_object_agg(qq.id::text, 0)::text as wrong, jsonb_object_agg(qq.id::text, qq.correct_index)::text as right
-  from client_quiz_questions qq where qq.quiz_id = :'quiz_id' and qq.active \gset
+-- Each sitting is marked against the hand dealt when the quiz was opened
+-- (C, above, for the first). `wrong` answers every question of the open
+-- hand one past its key; `right` answers it with the key. Read here, as
+-- the test, never by the worker; dealt again before each sitting.
+\set hand 'select jsonb_object_agg(x.id::text, (x.correct_index + 1) % array_length(x.options, 1))::text as wrong, jsonb_object_agg(x.id::text, x.correct_index)::text as right from client_quiz_draws d join client_quiz_questions x on x.id = any (d.question_ids) where d.quiz_id = ' :'quiz_id' ' and d.staff_id = ' :'staffa' ' and d.attempt_id is null'
+:hand \gset
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -188,12 +195,24 @@ set local role authenticated;
 select is((select submit_client_quiz_attempt(:'quiz_id', '{}'::jsonb) ->> 'reason'), 'incomplete',
   'E: an unanswered question is incomplete, not marked');
 select is((select submit_client_quiz_attempt(:'quiz_id', '{"00000000-0000-4000-8000-000000000000": 1}'::jsonb) ->> 'reason'), 'quiz_changed',
-  'E: an answer to a question not on the set is quiz_changed');
+  'E: an answer to a question not on the hand is quiz_changed');
 select is((select submit_client_quiz_attempt(:'quiz_id', :'wrong'::jsonb) - 'percent'),
-  '{"ok": true, "attemptNo": 1, "correct": 2, "total": 10, "passed": false, "attemptsLeft": 2, "outcome": "retry"}'::jsonb,
-  'E: attempt 1 wrong — 2 of 10, retry, two left');
+  '{"ok": true, "attemptNo": 1, "correct": 0, "total": 10, "passed": false, "attemptsLeft": 2, "outcome": "retry"}'::jsonb,
+  'E: attempt 1 wrong — 0 of 10, retry, two left');
+select is((select submit_client_quiz_attempt(:'quiz_id', :'wrong'::jsonb) ->> 'reason'), 'quiz_changed',
+  'E: the hand is spent with the attempt — the same answers again are quiz_changed');
+reset role;
+-- Opening the quiz deals the next hand (read as the migration role, with
+-- staff A's claims standing).
+select staff_client_quiz(:'quiz_id') -> 'questionPool' as _ \gset
+:hand \gset
+set local role authenticated;
 select is((select submit_client_quiz_attempt(:'quiz_id', :'wrong'::jsonb) ->> 'attemptsLeft'), '1',
   'E: attempt 2 wrong — one left');
+reset role;
+select staff_client_quiz(:'quiz_id') -> 'questionPool' as _ \gset
+:hand \gset
+set local role authenticated;
 select is((select submit_client_quiz_attempt(:'quiz_id', :'wrong'::jsonb) ->> 'outcome'), 'failed',
   'E: attempt 3 wrong — failed');
 select is((select submit_client_quiz_attempt(:'quiz_id', :'right'::jsonb) ->> 'reason'), 'no_attempts_left',
@@ -206,7 +225,7 @@ select results_eq(
   $$ select channel::text, recipient_emails, payload ->> 'name', payload ->> 'client', payload ->> 'attempts', payload ->> 'best'
        from notification_outbox where template = 'CR3' $$,
   $$ values ('email'::text, array['admin@thehospitalitycompany.co.uk'], 'Staff Alpha'::text,
-             'RLS Fixture Client A'::text, '3'::text, '2 of 10'::text) $$,
+             'RLS Fixture Client A'::text, '3'::text, '0 of 10'::text) $$,
   'E: the third failure emails the office once — who, which client, how many attempts, their best');
 select is((select count(*)::int from audit_log where action = 'client_quiz.attempt' and entity_id = :'staffa'), 3,
   'E: every sitting is audited on the worker');
@@ -224,7 +243,10 @@ reset role;
 select is((select count(*)::int from client_quiz_attempts where staff_id = :'staffa' and superseded), 3,
   'E: but stay as history');
 
+-- Their attempts back, a fresh hand is dealt on opening.
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+select staff_client_quiz(:'quiz_id') -> 'questionPool' as _ \gset
+:hand \gset
 set local role authenticated;
 select is((select submit_client_quiz_attempt(:'quiz_id', :'right'::jsonb) - 'percent'),
   '{"ok": true, "attemptNo": 1, "correct": 10, "total": 10, "passed": true, "attemptsLeft": 2, "outcome": "passed"}'::jsonb,

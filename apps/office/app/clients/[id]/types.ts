@@ -98,6 +98,9 @@ export interface ShiftRequirementRow {
   quiz_title: string | null;
   quiz_attempts_max: number | null;
   kit_message: string | null;
+  /** ADR-0111: live questions in the pool, and how many a sitting is dealt (null: all, in order). */
+  quiz_question_pool: number | null;
+  quiz_questions_per_attempt: number | null;
 }
 
 /** Where one worker stands on a client's quiz (ADR-0110): `clients_quiz_results_v`. */

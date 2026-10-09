@@ -22,6 +22,8 @@ const payload = (over: Record<string, unknown> = {}) => ({
   passed: false,
   passedAt: null,
   failed: false,
+  questionPool: 2,
+  questionsPerAttempt: null,
   slides: [
     {
       heading: 'White wine',
@@ -61,6 +63,8 @@ describe('toClientQuiz', () => {
   it('maps the quiz, its slides and its questions — with no key anywhere', () => {
     const quiz = toClientQuiz(payload());
     expect(quiz.title).toBe('Bar menu — Leonardo Royal Hotel London');
+    expect(quiz.questionPool).toBe(2);
+    expect(quiz.questionsPerAttempt).toBeNull();
     expect(quiz.roles).toEqual(['Bar Staff', 'Wine Waiting Service']);
     expect(quiz.slides[0]).toEqual({
       heading: 'White wine',
@@ -136,6 +140,18 @@ describe('ClientQuiz', () => {
     expect(markup).toContain('pass mark 80% (2 of 2)');
     expect(markup).toContain('Attempt 1 of 3');
     expect(markup).toContain('Start — read the menu');
+    expect(markup).not.toContain('dealt from a set');
+  });
+
+  it('says when the questions are dealt from a bigger pool (ADR-0111)', () => {
+    const markup = renderToStaticMarkup(
+      <ClientQuiz
+        quiz={toClientQuiz(payload({ questionPool: 35, questionsPerAttempt: 2 }))}
+        firstName="Amy"
+      />,
+    );
+    expect(markup).toContain('2 questions');
+    expect(markup).toContain('dealt from a set of 35');
   });
 
   it('opens on the passed screen once passed, for good', () => {

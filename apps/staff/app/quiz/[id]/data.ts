@@ -7,7 +7,9 @@ import { staffDb, supabaseConfigured } from '../../db';
  * The slides are the material (a menu, section by section, as small
  * tables), the questions come WITHOUT their key, and the worker's standing
  * comes with them so the screen can open on the right state: not started,
- * a result to show, passed, or no attempts left.
+ * a result to show, passed, or no attempts left. Where the quiz deals from
+ * a pool (ADR-0111) the questions are this sitting's hand, dealt at random
+ * when the quiz is opened and kept until it is marked.
  */
 export interface QuizSlide {
   heading: string;
@@ -45,6 +47,14 @@ export interface ClientQuiz {
   passed: boolean;
   passedAt: string | null;
   failed: boolean;
+  /**
+   * ADR-0111: how many live questions the quiz holds, and how many one
+   * sitting is dealt from them (null: all of them, in order). `questions`
+   * is the hand of THIS sitting, kept until it is marked; a passed or
+   * failed worker is dealt none.
+   */
+  questionPool: number;
+  questionsPerAttempt: number | null;
   slides: QuizSlide[];
   questions: ClientQuizQuestion[];
   attempts: ClientQuizAttempt[];
@@ -107,6 +117,11 @@ export function toClientQuiz(row: Record<string, unknown>): ClientQuiz {
     passed: row['passed'] === true,
     passedAt: str('passedAt'),
     failed: row['failed'] === true,
+    questionPool: Number(row['questionPool'] ?? questions.length),
+    questionsPerAttempt:
+      typeof row['questionsPerAttempt'] === 'number'
+        ? (row['questionsPerAttempt'] as number)
+        : null,
     slides,
     questions,
     attempts,

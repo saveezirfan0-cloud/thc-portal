@@ -45,6 +45,8 @@ export function ClientQuiz({
   const total = quiz.questions.length;
   const passMark = Math.ceil((total * quiz.passMarkPercent) / 100);
   const attemptNo = attempts.length + 1;
+  // ADR-0111: dealt from a bigger pool — the next sitting asks different ones.
+  const rotates = quiz.questionsPerAttempt !== null && quiz.questionPool > total;
 
   function goSlide(to: number) {
     const next = Math.max(0, Math.min(quiz.slides.length - 1, to));
@@ -89,7 +91,8 @@ export function ClientQuiz({
     setSeenLast(quiz.slides.length <= 1);
     setPhase('slides');
     // The questions came with the page; fetch them again so a new attempt
-    // is never sat against a set replaced since.
+    // is never sat against a set replaced since — and, where the quiz
+    // deals from a pool (ADR-0111), so the next hand is dealt.
     router.refresh();
   }
 
@@ -192,7 +195,8 @@ export function ClientQuiz({
                   You have {result.attemptsLeft}{' '}
                   {result.attemptsLeft === 1 ? 'attempt' : 'attempts'} left.
                 </b>{' '}
-                Go back over the menu before you try again.
+                Go back over the menu before you try again
+                {rotates ? ' — the next questions will be different ones' : ''}.
               </>
             ) : (
               <>
@@ -246,6 +250,12 @@ export function ClientQuiz({
               pass mark {quiz.passMarkPercent}% ({passMark} of {total})
             </span>
           </div>
+          {rotates ? (
+            <p className="xs muted">
+              The {total} questions are dealt from a set of {quiz.questionPool}, so no two sittings
+              ask quite the same ones.
+            </p>
+          ) : null}
         </div>
         {history}
         <p className="xs muted">
