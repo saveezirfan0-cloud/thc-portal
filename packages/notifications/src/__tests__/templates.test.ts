@@ -449,7 +449,7 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
-  it("keeps §8's line as N7's body and adds the dress code as a variant (ADR-0108)", () => {
+  it("keeps §8's line as N7's body and adds the dress code as a variant (ADR-0110)", () => {
     // The owner's request of 09.10.2026: United Grand Lodge staff are told
     // in the morning-of push not to forget their plain black waistcoat and
     // plain black tie. The dress code is the role section's own, so the
@@ -674,7 +674,7 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
   });
 
-  it('N7 names the dress code when booking_tick writes one (ADR-0108)', () => {
+  it('N7 names the dress code when booking_tick writes one (ADR-0110)', () => {
     const dressed = {
       ...payload,
       variant: 'dress-code',

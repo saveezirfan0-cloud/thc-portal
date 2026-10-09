@@ -196,7 +196,7 @@ export const TEMPLATES = {
     // As N6: "Confirm today" is on the /shifts card.
     deepLink: '/shifts',
     // The same push also carries the role section's dress code when the
-    // event has one (ADR-0108, owner request 09.10.2026: United Grand Lodge
+    // event has one (ADR-0110, owner request 09.10.2026: United Grand Lodge
     // staff reminded on the morning of the shift to arrive in their plain
     // black waistcoat and plain black tie). The dress code is the section's
     // own — set per client + role on the rate card and copied on to the
