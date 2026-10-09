@@ -48,7 +48,7 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
 /**
  * The two ADR-0109 views are newer than the generated types; the loader
  * declares the shape it reads, as /staff/roster does (the migration's
- * pgTAP, 782, holds the columns).
+ * pgTAP, 783, holds the columns).
  */
 interface RequirementQuery<T> extends PromiseLike<{
   data: T[] | null;
