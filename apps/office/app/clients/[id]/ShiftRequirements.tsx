@@ -6,6 +6,14 @@ import { employeeId, formatUkDate } from '../../staff/staff';
 import { resetQuizAttempts } from './actions';
 import type { QuizResultRow, ShiftRequirementRow } from './types';
 
+/** ADR-0111: "10 of 35 questions, dealt at random" or "10 questions". */
+function questionsLine(row: ShiftRequirementRow): string {
+  const pool = row.quiz_question_pool ?? 0;
+  const per = row.quiz_questions_per_attempt;
+  if (per !== null && per < pool) return `${per} of ${pool} questions, dealt at random`;
+  return `${pool} ${pool === 1 ? 'question' : 'questions'}`;
+}
+
 /**
  * Shift requirements (ADR-0110) — what this client asks of a worker beyond
  * turning up, per role: a quiz to pass before their first shift, and a
@@ -91,8 +99,8 @@ export function ShiftRequirements({
                       <>
                         {row.quiz_title}{' '}
                         <span className="muted xs">
-                          · {row.quiz_attempts_max ?? 3} attempts · one pass covers every role that
-                          names it
+                          · {questionsLine(row)} · {row.quiz_attempts_max ?? 3} attempts · one pass
+                          covers every role that names it
                         </span>
                       </>
                     ) : (

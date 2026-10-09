@@ -1,6 +1,6 @@
 # ADR-0110 · A client may ask a quiz before the first shift, and a kit message on the day
 
-**Status:** Accepted · Scope §3.5, §9.7, §10.4, §8 · **Owner request:** 08.10.2026
+**Status:** Accepted · Scope §3.5, §9.7, §10.4, §8 · **Owner request:** 08.10.2026 · Amended by ADR-0111 (the questions are dealt from a pool)
 
 ## Context
 

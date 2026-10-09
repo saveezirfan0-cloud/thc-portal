@@ -20,6 +20,8 @@ const rows: ShiftRequirementRow[] = [
     quiz_title: 'Bar menu — Leonardo Royal Hotel London',
     quiz_attempts_max: 3,
     kit_message: KIT,
+    quiz_question_pool: 35,
+    quiz_questions_per_attempt: 10,
   },
   {
     id: 'r2',
@@ -30,6 +32,8 @@ const rows: ShiftRequirementRow[] = [
     quiz_title: 'Bar menu — Leonardo Royal Hotel London',
     quiz_attempts_max: 3,
     kit_message: KIT,
+    quiz_question_pool: 35,
+    quiz_questions_per_attempt: 10,
   },
 ];
 
@@ -61,7 +65,21 @@ describe('Shift requirements on the client card (ADR-0110)', () => {
     expect(markup).toContain('Wine Waiting Service');
     expect(markup).toContain('Bar menu — Leonardo Royal Hotel London');
     expect(markup).toContain('bottle opener, notepad and pen');
+    expect(markup).toContain('10 of 35 questions, dealt at random');
     expect(markup).toContain('Nobody has sat the quiz yet');
+  });
+
+  it('says plainly how many questions a quiz that does not rotate asks (ADR-0111)', () => {
+    const markup = renderToStaticMarkup(
+      <ShiftRequirements
+        clientId="c1"
+        rows={[{ ...rows[0]!, quiz_question_pool: 10, quiz_questions_per_attempt: null }]}
+        results={[]}
+        canWrite
+      />,
+    );
+    expect(markup).toContain('10 questions ·');
+    expect(markup).not.toContain('dealt at random');
   });
 
   it('says so when the client asks nothing', () => {
