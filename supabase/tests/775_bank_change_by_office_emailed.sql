@@ -8,7 +8,7 @@
 -- and never the sort code or account number; one change, one email.
 -- =====================================================================
 begin;
-select plan(17);
+select plan(18);
 \ir _shared/fixtures.psql
 
 -- The fixtures insert both workers' bank rows as the owner, which (correctly) queues E5b.
@@ -77,9 +77,14 @@ set local role service_role;
 insert into bank_details (staff_id, account_holder, sort_code, account_number)
 values (:'staffb', 'Staff Beta', '30-00-00', '12345678');
 reset role;
+select is((select count(*)::int from notification_outbox where template = 'E5b' and key like 'E5b:staff:' || :'staffb' || ':%'), 0,
+  'an insert by the service role is a first entry and sends nothing (THC 07.10.2026)');
+set local role service_role;
+update bank_details set sort_code = '30-00-01' where staff_id = :'staffb';
+reset role;
 select is((select payload->>'changedBy' from notification_outbox
             where template = 'E5b' and key like 'E5b:staff:' || :'staffb' || ':%'),
-  'the system', 'an insert by the service role says "the system" changed it');
+  'the system', 'an update by the service role says "the system" changed it');
 
 -- =====================================================================
 -- 5 · The totals, and the trigger is nobody's to call

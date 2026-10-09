@@ -24,3 +24,7 @@ E5b (ADR-0092, a change made by an office login or the service role) is untouche
 - pgTAP 330, 392, 393, 672 and 775 now expect no E5 on a first entry or an unchanged save, and one E5 per real change by a worker with an Employee ID.
 - Payroll learns a new starter's bank details from the Payroll / New Starter exports (§11), not from an email.
 - The E5 template and its recipients are unchanged.
+
+## Amendment, 08.10.2026 · First entries by the office or the system
+
+The same rule applies to the other path. `bank_details_notify_change()` (ADR-0092) returned an E5b for an `INSERT` by an office login or the service role, which is a first entry too. `20261008170000_bank_first_entry_by_office_sends_nothing.sql` makes the trigger return on `INSERT`; an `UPDATE` that changes the holder, sort code or account number still queues E5b. Test 775 pins it.
