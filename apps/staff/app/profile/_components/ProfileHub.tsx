@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Avatar, Pill, SignOut } from '@thc/ui';
 import type { Tone } from '@thc/ui';
 import { appLock, canReachPayments, canReachProfileDetails, p45Availability } from '../lock';
-import { HELP_EMAIL } from '../types';
+import { CONNECTEAM_LABEL, HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
 import { expiryLine } from '../document-expiry';
 import type { ExpiringDocument } from '../document-expiry';
@@ -101,6 +101,11 @@ export function ProfileHub({
               {profile.reliability !== null ? (
                 <Pill>Show-rate {Math.round(profile.reliability)}%</Pill>
               ) : null}
+              {/* ADR-0106: said where they look for who they are. */}
+              {profile.onboardingOnly ? <Pill tone="cyan">{CONNECTEAM_LABEL}</Pill> : null}
+              {profile.spudbros && !profile.onboardingOnly ? (
+                <Pill tone="cyan">SpudBros Express</Pill>
+              ) : null}
             </div>
           </div>
         </div>
@@ -181,7 +186,11 @@ export function ProfileHub({
         <HubRow
           href="/notifications"
           title="Notifications"
-          sub="Invites, shift changes and reminders on this phone"
+          sub={
+            profile.onboardingOnly
+              ? 'If a document needs another look, on this phone'
+              : 'Invites, shift changes and reminders on this phone'
+          }
         />
       </nav>
 
@@ -280,7 +289,7 @@ export interface DocumentsStatus {
 export function documentsStatus(
   profile: Pick<
     StaffProfile,
-    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause'
+    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause' | 'onboardingOnly'
   >,
 ): DocumentsStatus | null {
   const lock = appLock(profile);
@@ -292,7 +301,9 @@ export function documentsStatus(
       ? { tone: 'amber', text: 'In review' }
       : { tone: 'coral', text: 'Action needed' };
   }
-  if (lock !== 'none') return null;
+  // ADR-0106: documents are the one thing an onboarding-only worker's
+  // account is for, so their row says where they stand like anyone's.
+  if (lock !== 'none' && lock !== 'connecteam') return null;
   if (profile.blockers.some((b) => b.startsWith('document_unverified:'))) {
     return { tone: 'amber', text: 'In review' };
   }

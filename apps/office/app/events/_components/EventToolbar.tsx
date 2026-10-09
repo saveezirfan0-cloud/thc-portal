@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { type CalendarView, periodLabel, shiftPeriod, todayInUk } from '../calendar';
 import { EventFilters } from './EventFilters';
-import type { ClientOption } from '../data';
+import type { ClientName } from '../data';
 import { type EventQuery, eventsHref } from '../_lib/filters';
 
 /** The screen's state — one definition, in `_lib/filters.ts`. */
@@ -18,7 +18,7 @@ export const hrefFor = eventsHref;
  * the list as well; "+ New event" is in the page header rather than here.
  * All of it is links, so every view is a URL a manager can bookmark or share.
  */
-export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients: ClientOption[] }) {
+export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients: ClientName[] }) {
   const { view, date } = query;
   const isCalendar = view !== 'list';
   const calendarView: CalendarView = isCalendar ? view : 'month';
@@ -40,19 +40,20 @@ export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients:
         </Link>
       </div>
 
-      {isCalendar ? (
-        <div className="seg sm">
-          {(['month', 'week', 'day'] as const).map((option) => (
-            <Link
-              key={option}
-              className={view === option ? 'on' : undefined}
-              href={hrefFor({ ...query, view: option })}
-            >
-              {option[0]!.toUpperCase() + option.slice(1)}
-            </Link>
-          ))}
-        </div>
-      ) : null}
+      {/* Shown in List too (ADR-0100), with none selected, so Day is one click
+          from where a manager already is. In List the links open the calendar
+          at that grain on the period being read. */}
+      <div className="seg sm" role="group" aria-label="Calendar grain">
+        {(['month', 'week', 'day'] as const).map((option) => (
+          <Link
+            key={option}
+            className={view === option ? 'on' : undefined}
+            href={hrefFor({ ...query, view: option })}
+          >
+            {option[0]!.toUpperCase() + option.slice(1)}
+          </Link>
+        ))}
+      </div>
 
       <div className="datenav">
         <Link

@@ -182,12 +182,15 @@ export async function loadBoard(): Promise<BoardData> {
     return { candidates: [], returning: [], roles: [], problem: NOT_CONFIGURED };
   }
   const supabase = createClient(await cookies());
+  // The chaser read needs nothing from the others, so it starts with them
+  // instead of waiting behind the referrals.
+  const chasersRead = loadBoardChasers(supabase as unknown as ChaserReader);
   const [candidates, returning, roles] = await Promise.all([
     supabase
       .from('onboarding_candidates_v')
       .select('*')
       .in('status', ON_BOARD)
-      .order('stage_entered_at')
+      .order('stage_entered_at', { ascending: false })
       .returns<CandidateRow[]>(),
     supabase
       .from('onboarding_returning_v')
@@ -204,7 +207,7 @@ export async function loadBoard(): Promise<BoardData> {
       ...(candidates.data ?? []).map((row) => row.id),
       ...(returning.data ?? []).map((row) => row.staff_id),
     ]),
-    loadBoardChasers(supabase as unknown as ChaserReader),
+    chasersRead,
   ]);
   return {
     // §2.7: the onboarding selfie follows them through the whole system —
@@ -329,9 +332,9 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .returns<CandidateDocument[]>(),
     // §1.5: declarations are a history, never overwritten — oldest first.
     supabase
-      .from('criminal_declarations')
+      .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, review_note, superseded',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name, review_note, superseded',
       )
       .eq('staff_id', id)
       .order('declared_at')

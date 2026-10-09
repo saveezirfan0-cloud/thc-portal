@@ -2,12 +2,14 @@
 
 import { Note, Panel, Pill, useTimeFormat } from '@thc/ui';
 import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
-import { formatUkStamp, reviewLabel } from './profile';
+import { formatUkStamp, reviewLabel, reviewStamp } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
 import { GenderField } from './GenderField';
+import { PayrollIdField } from './PayrollIdField';
+import { SchedulingField } from './SchedulingField';
 import { LanguagesField } from './LanguagesField';
 import type {
   DeclarationRow,
@@ -52,6 +54,12 @@ export function Overview({
   canEditGender = false,
   languages,
   canEditLanguages = false,
+  spudbros,
+  thcShifts,
+  canEditScheduling = false,
+  payrollId,
+  canEditPayrollId = false,
+  willoReviewUrl,
   emergencyContact = null,
   emergencyContactProblem = null,
   referrals = null,
@@ -75,6 +83,16 @@ export function Overview({
   languages?: string[] | null;
   /** Any office login that may write (ADR-0080). */
   canEditLanguages?: boolean;
+  /** ADR-0106: SpudBros Express staff, and THC scheduling switched on for them. */
+  spudbros?: boolean;
+  thcShifts?: boolean;
+  /** Any office login that may write (ADR-0106). */
+  canEditScheduling?: boolean;
+  /** ADR-0107: `staff.payroll_id`; null = none, undefined = not read. */
+  payrollId?: string | null;
+  canEditPayrollId?: boolean;
+  /** ADR-0098: the Willo interview link; null/undefined = none to show. */
+  willoReviewUrl?: string | null;
   /** ADR-0044 — null reads "Not provided". */
   emergencyContact?: EmergencyContact | null;
   emergencyContactProblem?: string | null;
@@ -126,6 +144,21 @@ export function Overview({
             editable={canEditLanguages && !profile.removed}
             removed={profile.removed}
           />
+          <span className="k">Payroll ID</span>
+          <PayrollIdField
+            staffId={profile.id}
+            payrollId={payrollId}
+            editable={canEditPayrollId && !profile.removed}
+            removed={profile.removed}
+          />
+          <span className="k">Scheduling</span>
+          <SchedulingField
+            staffId={profile.id}
+            spudbros={spudbros}
+            thcShifts={thcShifts}
+            editable={canEditScheduling && !profile.removed}
+            removed={profile.removed}
+          />
           <span className="k">Home address</span>
           <span>
             {value(profile.home_address)}
@@ -163,6 +196,16 @@ export function Overview({
             {profile.rtw_branch === 'international_student' ? (
               <span className="muted xs"> — a visa condition beats the opt-out in term time</span>
             ) : null}
+          </span>
+          <span className="k">Interview</span>
+          <span>
+            {willoReviewUrl ? (
+              <a href={willoReviewUrl} target="_blank" rel="noreferrer">
+                Review interview on Willo ↗
+              </a>
+            ) : (
+              <span className="muted">No interview link on file</span>
+            )}
           </span>
           <span className="k">Joined</span>
           <span>{formatUkDate(profile.joined_at)}</span>
@@ -244,6 +287,17 @@ export function Overview({
                     >
                       {reviewLabel(row.review_status)}
                     </Pill>
+                    {row.answer && row.reviewed_at && row.review_status !== 'pending' ? (
+                      <span className="muted xs">
+                        {' '}
+                        {reviewStamp(
+                          row.review_status,
+                          row.reviewed_by_name,
+                          row.reviewed_at,
+                          format,
+                        )}
+                      </span>
+                    ) : null}
                   </div>
                 </span>
               </div>

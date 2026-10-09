@@ -18,14 +18,13 @@ describe('parseEventQuery — the URL is the state (§3.1)', () => {
       q: '',
       clientId: '',
       status: '',
-      hideCancelled: false,
     });
   });
 
   it('reads every parameter', () => {
     expect(
       parseEventQuery(
-        { view: 'week', date: '2026-10-02', q: ' gala ', client: 'c-1', status: 'cancelled' },
+        { view: 'week', date: '2026-10-02', q: ' gala ', client: 'c-1', status: 'upcoming' },
         TODAY,
       ),
     ).toEqual({
@@ -33,14 +32,12 @@ describe('parseEventQuery — the URL is the state (§3.1)', () => {
       date: '2026-10-02',
       q: 'gala',
       clientId: 'c-1',
-      status: 'cancelled',
-      hideCancelled: false,
+      status: 'upcoming',
     });
   });
 
-  it('reads hide=cancelled, and nothing else switches it on', () => {
-    expect(parseEventQuery({ hide: 'cancelled' }, TODAY).hideCancelled).toBe(true);
-    expect(parseEventQuery({ hide: 'yes' }, TODAY).hideCancelled).toBe(false);
+  it('opens on any status when an old link or saved view asks for Cancelled (ADR-0099)', () => {
+    expect(parseEventQuery({ status: 'cancelled' }, TODAY).status).toBe('');
   });
 
   it('takes the first of a repeated parameter', () => {
@@ -77,12 +74,9 @@ describe('eventsHref', () => {
       q: 'Savoy & co',
       clientId: 'c-9',
       status: 'upcoming',
-      hideCancelled: true,
     };
     const href = eventsHref(query);
-    expect(href).toBe(
-      '/events?view=day&date=2026-10-01&q=Savoy+%26+co&client=c-9&status=upcoming&hide=cancelled',
-    );
+    expect(href).toBe('/events?view=day&date=2026-10-01&q=Savoy+%26+co&client=c-9&status=upcoming');
     const params = Object.fromEntries(new URL(href, 'https://x.test').searchParams);
     expect(parseEventQuery(params, TODAY)).toEqual(query);
   });
@@ -105,11 +99,9 @@ describe('filter sets — what a saved view keeps', () => {
 
   it('applies to the period on screen, whatever period it was saved on', () => {
     const onScreen = parseEventQuery({ view: 'list', date: '2026-12-01' }, TODAY);
-    // Hide cancelled is not part of a saved view: applying one leaves it as it was.
     expect(applyFilterSet(onScreen, filterSetOf(query))).toEqual({
       ...filterSetOf(query),
       date: '2026-12-01',
-      hideCancelled: false,
     });
   });
 

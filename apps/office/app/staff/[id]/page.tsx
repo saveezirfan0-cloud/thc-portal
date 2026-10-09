@@ -48,6 +48,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       canCorrectDob={officeCan(role, 'identity')}
       canEditGender={officeCan(role, 'write')}
       canEditLanguages={officeCan(role, 'write')}
+      canEditScheduling={officeCan(role, 'write')}
+      canEditPayrollId={finance && officeCan(role, 'write')}
       showPayRate={finance}
       canEditPayRate={finance && officeCan(role, 'write')}
       canMessage={canMessageWorker(data.profile.status, officeCan(role, 'write'))}

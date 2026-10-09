@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { AppBody, AppFrame, TimeFormatProvider } from '@thc/ui';
 import { AppChrome } from './AppChrome';
 import { BottomTabs } from './BottomTabs';
-import { TabLockedScreen } from './DocumentsLock';
+import { ConnecteamLockedScreen, TabLockedScreen } from './DocumentsLock';
 import { PushStatus } from './PushStatus';
 import { LoadProblem } from './LoadProblem';
 import { LockScreen } from '../profile/_components/LockScreen';
@@ -140,7 +140,7 @@ export async function StaffShell({
       <AppBody className={open ? undefined : 'center'}>
         {open ? (
           <>
-            {pushStatus ? <PushStatus /> : null}
+            {pushStatus ? <PushStatus onboardingOnly={profile?.onboardingOnly === true} /> : null}
             {children}
           </>
         ) : (
@@ -169,6 +169,7 @@ function Locked({
   lock: ReturnType<typeof appLock>;
   profile: StaffProfile | null;
 }) {
+  if (lock === 'connecteam') return <ConnecteamLockedScreen />;
   if (lock === 'documents' || lock === 'onboarding') {
     return (
       <TabLockedScreen

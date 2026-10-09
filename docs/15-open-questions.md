@@ -139,6 +139,11 @@ it with the annotation "kept as-is for v1"; that annotation describes the Django
 
 ## Q5 · A term letter that arrives for next year, in December
 
+> **Settled 07.10.2026 (ADR-0103).** The product owner replaced the 31 December rule: a
+> term letter now expires on the last day printed on it, and the reminders count down to
+> that. The question below no longer arises (a new letter carries later dates); it is kept
+> as the record of why ADR-0011 existed.
+
 §4.2 is explicit that the University Term Dates Letter expires on **31 December**,
 whatever dates are printed inside it, and that the reminder ladder opens on 1 December.
 That is a calendar year, which leaves one case the scope does not name: the student who
@@ -485,10 +490,10 @@ employment.
 
 **Where:** §8, `packages/notifications` (`ADDITION_CODES`).
 
-**Default:** RC1–RC4 (Request a change) and OF1–OF6 (Offer up a shift) are drafts written
+**Default:** RC1–RC4 (Request a change) and RC5 (the office rejects a profile selfie, ADR-0097) and OF1–OF6 (Offer up a shift) are drafts written
 to match the §8 register's tone; the copy is in `docs/19` §3 and §4.
 
-> **Ask:** please confirm or rewrite RC1–RC4 and OF1–OF6, as you did for §8.
+> **Ask:** please confirm or rewrite RC1–RC5 and OF1–OF6, as you did for §8.
 
 ---
 

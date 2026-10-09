@@ -49,6 +49,9 @@
 -- issue path (764).
 -- 20261005140400 (ADR-0091) added new_starter_reported to assertions 1 and 3:
 -- admin_read, written only by prepare_new_starter_report() (410).
+-- 20261008130000 (ADR-0107) added invite_roster to assertions 1 and 3:
+-- admin_read, written only by load_invite_roster() and the application
+-- matcher (780).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -85,8 +88,9 @@ select bag_eq(
             ('staff_pay_rates'),
             ('event_document_autosends'),
             ('payroll_codes'),
+            ('invite_roster'),
             ('new_starter_reported') $$,
-  'RLS is enabled on all 52 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400)'
+  'RLS is enabled on all 53 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -167,6 +171,7 @@ select bag_eq(
             ('staff_pay_rates'),
             ('event_document_autosends'),
             ('payroll_codes'),
+            ('invite_roster'),
             ('new_starter_reported') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );

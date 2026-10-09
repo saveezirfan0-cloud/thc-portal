@@ -415,6 +415,20 @@ export function referralCodeFrom(value: unknown): string | null {
 export const REFERRAL_FIELD = 'ref';
 
 /**
+ * Where an application came from (ADR-0106). Only `/apply/spudbros` sends
+ * one, in a hidden field; the database marks the NEW candidate it created as
+ * SpudBros Express staff. Anything else is dropped — an unknown source is
+ * the ordinary application.
+ */
+export const APPLY_SOURCES = ['spudbros'] as const;
+export type ApplySource = (typeof APPLY_SOURCES)[number];
+export const SOURCE_FIELD = 'source';
+
+export function applySourceFrom(value: unknown): ApplySource | null {
+  return value === 'spudbros' ? 'spudbros' : null;
+}
+
+/**
  * Where "Check your inbox" reads the address back from.
  *
  * A cookie rather than a query string, so the applicant's email stays out of

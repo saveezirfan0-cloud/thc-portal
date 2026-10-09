@@ -6,12 +6,14 @@ import { callerKey } from './caller';
 import {
   APPLY_UNAVAILABLE,
   REFERRAL_FIELD,
+  SOURCE_FIELD,
+  applySourceFrom,
   SENT_TO_COOKIE,
   referralCodeFrom,
   toE164,
   validate,
 } from './form';
-import type { ApplicationValues, ApplyState } from './form';
+import type { ApplicationValues, ApplySource, ApplyState } from './form';
 
 function read(formData: FormData): ApplicationValues {
   return {
@@ -45,11 +47,16 @@ type RpcAnswer = { error: { message: string; code?: string } | null };
 /**
  * `p_referral_code` is 20260930204000's 8th argument (ADR-0047). Typed by
  * hand here, like the rest of this call, until the Phase 2 type regen.
+ * `p_source` is 20261008120000's 9th (ADR-0106, /apply/spudbros).
  */
 interface AdminRpcClient {
   rpc(
     fn: 'submit_application_as_caller',
-    args: ApplicationArgs & { p_caller_hash: string | null; p_referral_code?: string },
+    args: ApplicationArgs & {
+      p_caller_hash: string | null;
+      p_referral_code?: string;
+      p_source?: string;
+    },
   ): Promise<RpcAnswer>;
 }
 
@@ -74,6 +81,7 @@ interface AdminRpcClient {
 async function submit(
   args: ApplicationArgs,
   referralCode: string | null,
+  source: ApplySource | null,
 ): Promise<RpcAnswer | null> {
   if (!process.env['SUPABASE_SERVICE_ROLE_KEY']) {
     console.error(
@@ -84,12 +92,20 @@ async function submit(
   const { createAdminClient } = await import('@thc/db/admin');
   const admin = createAdminClient() as unknown as AdminRpcClient;
   const base = { ...args, p_caller_hash: callerKey(await headers()) };
-  if (!referralCode) return admin.rpc('submit_application_as_caller', base);
-  const answer = await admin.rpc('submit_application_as_caller', {
-    ...base,
-    p_referral_code: referralCode,
-  });
-  if (answer.error?.code === 'PGRST202') return admin.rpc('submit_application_as_caller', base);
+  const extras = {
+    ...(referralCode ? { p_referral_code: referralCode } : {}),
+    // ADR-0106: SpudBros Express staff's own application.
+    ...(source ? { p_source: source } : {}),
+  };
+  if (Object.keys(extras).length === 0) return admin.rpc('submit_application_as_caller', base);
+  const answer = await admin.rpc('submit_application_as_caller', { ...base, ...extras });
+  // A referral never costs anybody their application, so a database that
+  // does not know the argument gets the call again without it. A source is
+  // not like that: sending a SpudBros applicant on without their marker
+  // would open THC shifts to them by accident, so it fails instead.
+  if (answer.error?.code === 'PGRST202' && !source) {
+    return admin.rpc('submit_application_as_caller', base);
+  }
   return answer;
 }
 
@@ -130,6 +146,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
     },
     // Shape-checked again here: the hidden field is as editable as any other.
     referralCodeFrom(formData.get(REFERRAL_FIELD)),
+    applySourceFrom(formData.get(SOURCE_FIELD)),
   );
   if (!answer) return { errors: {}, values, failure: APPLY_UNAVAILABLE };
 

@@ -6,7 +6,9 @@ import { ScheduledWindow as Shared } from '@thc/ui';
  * A scheduled window on §9.1, per §1.8: UK time, plus a second "your time"
  * line when the reader is not in Europe/London. The component is
  * `ScheduledWindow` in packages/ui; the dashboard's tables are dense, so
- * this is the same thing with the spaces dropped from the separator.
+ * this is the same thing with the spaces dropped from the separator and no
+ * "UK time" suffix — the Window column's header already names the zone, and
+ * the suffix wrapped every window onto an extra line.
  *
  * Every window on this screen is a SCHEDULED one — a role section's start
  * and end, or the event window derived from them — so it never takes the
@@ -22,5 +24,7 @@ export function ScheduledWindow({
   endsAt: string;
   className?: string;
 }) {
-  return <Shared startsAt={startsAt} endsAt={endsAt} separator="–" className={className} />;
+  return (
+    <Shared startsAt={startsAt} endsAt={endsAt} separator="–" suffix="" className={className} />
+  );
 }

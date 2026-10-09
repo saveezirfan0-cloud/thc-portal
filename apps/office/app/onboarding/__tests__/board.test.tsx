@@ -19,7 +19,7 @@ vi.mock('../../_components/OfficeShell', () => ({
   ),
 }));
 
-const { OnboardingBoard, visibleRoles } = await import('../OnboardingBoard');
+const { OnboardingBoard } = await import('../OnboardingBoard');
 
 /**
  * /onboarding against its wireframe (audit screens item): the onboarding
@@ -75,49 +75,30 @@ describe('the onboarding board', () => {
     expect(html).toContain('HK');
   });
 
+  it('folds a long role list into two chips and a "+N" with the rest as its tooltip', () => {
+    const roles = ['Bar Staff', 'Barista', 'Host', 'Runner', 'Team Leader'];
+    const html = render([candidate({ status: 'documents', role_names: roles })]);
+    expect(html).toContain('>Bar Staff<');
+    expect(html).toContain('>Barista<');
+    expect(html).not.toContain('>Host<');
+    expect(html).toContain('title="Host, Runner, Team Leader"');
+    expect(html).toContain('aria-label="3 more: Host, Runner, Team Leader"');
+    expect(html).toContain('>+3<');
+  });
+
+  it('shows three roles in full — "+1" would save nothing', () => {
+    const roles = ['Bar Staff', 'Barista', 'Host'];
+    const html = render([candidate({ status: 'documents', role_names: roles })]);
+    expect(html).toContain('>Host<');
+    expect(html).not.toMatch(/>\+\d+</);
+  });
+
   it('shows Willo not connected as a neutral, disabled line', () => {
     const html = render([candidate()]);
     expect(html).toMatch(
       /class="willo off" aria-disabled="true"[^>]*>Review interview on Willo — not connected</,
     );
     expect(html).not.toMatch(/willo off[^"]*coral/);
-  });
-
-  describe('role chips on a card', () => {
-    const TEN = [
-      'Bar Staff',
-      'Barista',
-      'Cloakroom Staff',
-      'Delegate Registration Assistant',
-      'Host',
-      'Lifting and Shifting',
-      'Runner',
-      'Team Leader',
-      'Waiting Staff',
-      'Wine Waiting Service',
-    ];
-    const onCard = (roles: string[]) =>
-      render([candidate({ status: 'documents', role_names: roles })]);
-
-    it('folds a long list into the first two and a "+N" chip naming the rest', () => {
-      const html = onCard(TEN);
-      expect(html).toContain('>Bar Staff<');
-      expect(html).toContain('>Barista<');
-      expect(html).not.toContain('>Cloakroom Staff<');
-      expect(html).toContain('>+8<');
-      expect(html).toContain(`title="${TEN.slice(2).join(', ')}"`);
-    });
-
-    it('shows three roles in full — "+1" would save nothing', () => {
-      const html = onCard(TEN.slice(0, 3));
-      expect(html).toContain('>Cloakroom Staff<');
-      expect(html).not.toMatch(/>\+\d+</);
-    });
-
-    it('cuts after the first two, in order', () => {
-      expect(visibleRoles(TEN)).toEqual({ shown: TEN.slice(0, 2), hidden: TEN.slice(2) });
-      expect(visibleRoles([])).toEqual({ shown: [], hidden: [] });
-    });
   });
 
   it('renders no builder annotations', () => {

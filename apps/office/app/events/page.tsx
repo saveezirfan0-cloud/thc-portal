@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Alert, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
-import { loadEventsInRange, loadReferenceData } from './data';
+import { loadClientNames, loadEventsInRange } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
@@ -40,7 +40,7 @@ export default async function Page({
 
   const { from, to } = periodRange(view, date);
   const [reference, { events, problem }, savedViews, format] = await Promise.all([
-    loadReferenceData(),
+    loadClientNames(),
     loadEventsInRange(from, to),
     // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),
@@ -48,12 +48,8 @@ export default async function Page({
   ]);
 
   const filters = { clientId: query.clientId, status: query.status, q: query.q };
-  const allRows = filterEventRows(toEventRows(events, new Date(), format), filters);
-  const rows = query.hideCancelled
-    ? filterEventRows(allRows, { ...filters, hideCancelled: true })
-    : allRows;
-  // Said out loud, so an emptied period is never read as "nothing booked".
-  const hiddenCancelled = allRows.length - rows.length;
+  // Cancelled events are dropped here, whatever the filters (ADR-0099).
+  const rows = filterEventRows(toEventRows(events, new Date(), format), filters);
 
   const totals = periodTotals(rows);
 
@@ -75,20 +71,13 @@ export default async function Page({
       }
     >
       <div className="stack">
-        {/* Fill moves as staff accept and the office books. */}
-        <AutoRefresh />
+        {/* Fill moves as staff accept and the office books: re-read every 15 s. */}
+        <AutoRefresh everyMs={15_000} />
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
         <EventToolbar query={query} clients={reference.clients} />
-
-        {hiddenCancelled > 0 ? (
-          <p className="muted sm" role="status">
-            {hiddenCancelled} cancelled event{hiddenCancelled === 1 ? '' : 's'} hidden in this
-            period.
-          </p>
-        ) : null}
 
         {/* Named filter sets, kept per manager in office_saved_views. */}
         <SavedViewsBar query={query} clients={reference.clients} initial={savedViews} />

@@ -27,6 +27,9 @@ import {
   stageAge,
   stageEnteredAt,
   ukDaysBetween,
+  groupQualifications,
+  matchesName,
+  newEntryCount,
 } from '../view-model';
 import type { CandidateRow, ReturningRow, StaffStatus } from '../types';
 
@@ -305,7 +308,7 @@ describe('the board', () => {
     const columns = boardColumns(rows, returning, q);
     const first = columns[0]!;
     expect(first.returning.map((r) => r.application_id)).toEqual(['app-1']);
-    expect(first.candidates.map((r) => r.id)).toEqual(['b', 'a']); // longest waiting first
+    expect(first.candidates.map((r) => r.id)).toEqual(['a', 'b']); // newest in the stage first
     expect(first.count).toBe(3);
     expect(columns.flatMap((c) => c.candidates).some((r) => r.status === 'rejected')).toBe(false);
   });
@@ -754,5 +757,86 @@ describe('the board filters', () => {
     expect(run({ stage: 'interview_requested', applied: '7d', attention: 'attention' })).toEqual([
       'app-1',
     ]);
+  });
+});
+
+describe('client qualification helpers (§9.6)', () => {
+  const q = (id: string, client_id: string, client_name: string, role_id: string) => ({
+    id,
+    client_id,
+    client_name,
+    role_id,
+    role_name: role_id,
+    do_not_return: false,
+  });
+  const rows = [q('1', 'b', 'Zeta', 'r1'), q('2', 'a', 'Alpha', 'r1'), q('3', 'b', 'Zeta', 'r2')];
+
+  it('groups the entries by client, alphabetically', () => {
+    const groups = groupQualifications(rows);
+    expect(groups.map((g) => g.client_name)).toEqual(['Alpha', 'Zeta']);
+    expect(groups[1]!.entries.map((e) => e.role_id)).toEqual(['r1', 'r2']);
+  });
+
+  it('matches a name case-insensitively, and a blank query matches all', () => {
+    expect(matchesName('Como The Halkin', 'halk')).toBe(true);
+    expect(matchesName('Como The Halkin', '  ')).toBe(true);
+    expect(matchesName('Como The Halkin', 'hackney')).toBe(false);
+  });
+
+  it('counts only the client + role pairs that do not exist yet', () => {
+    expect(newEntryCount(['a', 'b', 'c'], ['r1', 'r2'], rows)).toBe(3);
+    expect(newEntryCount([], ['r1'], rows)).toBe(0);
+  });
+});
+
+describe('the group filter (ADR-0107)', () => {
+  const spud = candidate({
+    id: 'c-spud',
+    display_name: 'Sid Spud',
+    status: 'documents',
+    spudbros_express: true,
+    payroll_id: '1641A',
+  });
+  const own = candidate({ id: 'c-own', display_name: 'Tia Own', status: 'documents' });
+  const query = { filter: 'active', query: '', roleName: '', reason: 'any' } as const;
+  const ids = (group: 'any' | 'spudbros' | 'thc') =>
+    boardColumns([spud, own], [], { ...query, group }, { now: NOW })
+      .flatMap((c) => c.candidates)
+      .map((c) => c.id)
+      .sort();
+
+  it('shows everyone by default', () => {
+    expect(ids('any')).toEqual(['c-own', 'c-spud']);
+  });
+
+  it('SpudBros Express shows only SpudBros Express staff', () => {
+    expect(ids('spudbros')).toEqual(['c-spud']);
+  });
+
+  it('THC only shows everyone else — a row from an older view counts as THC', () => {
+    expect(ids('thc')).toEqual(['c-own']);
+  });
+
+  it('search finds a candidate by Payroll ID', () => {
+    const found = boardColumns([spud, own], [], { ...query, query: '1641a' }, { now: NOW })
+      .flatMap((c) => c.candidates)
+      .map((c) => c.id);
+    expect(found).toEqual(['c-spud']);
+  });
+
+  it('a returning-applicant card has no group, so a group filter drops it', () => {
+    const back = {
+      application_id: 'a-1',
+      applicant_name: 'Ret Urner',
+      existing_name: 'Ret Urner',
+      applied_at: '2026-09-22T10:00:00Z',
+    } as unknown as ReturningRow;
+    const all = (group: 'any' | 'spudbros') =>
+      boardColumns([], [back], { ...query, group }, { now: NOW }).reduce(
+        (n, c) => n + c.returning.length,
+        0,
+      );
+    expect(all('any')).toBe(1);
+    expect(all('spudbros')).toBe(0);
   });
 });

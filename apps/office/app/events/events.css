@@ -9,7 +9,8 @@
 /* ---- week: seven columns of vertical lists, not a time grid ----------
    §3.1 is explicit that a day carries 10-15 events with overlapping
    windows, which collapses a time-gridded diary — so each column is an
-   ordered list and scrolls on its own. */
+   ordered list. ADR-0096 supersedes "scrolls on its own": the page scrolls,
+   and a long column folds into day bands. */
 .wk {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -60,11 +61,57 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
-  overflow: auto;
-  max-height: 480px;
 }
 .wk .list > * {
   flex: 0 0 auto;
+}
+
+/* ADR-0096: the column no longer scrolls on its own; the page does. A long
+   column folds into Morning / Afternoon / Evening bands instead. */
+.wk .band > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-6);
+  cursor: pointer;
+  list-style: none;
+  min-height: var(--btn-h-sm);
+  flex-wrap: wrap;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  font-weight: var(--label-weight);
+  color: var(--muted);
+}
+.wk .band > summary::-webkit-details-marker {
+  display: none;
+}
+.wk .band > summary::before {
+  content: '▸' / '';
+}
+.wk .band[open] > summary::before {
+  content: '▾' / '';
+}
+.wk .band > summary:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: 1px;
+}
+.wk .band .bc {
+  margin-left: auto;
+  font-family: var(--font-num);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--amber-ink);
+}
+.wk .band .bc.ok {
+  color: var(--green-ink);
+}
+.wk .band .bl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding-top: var(--sp-4);
 }
 
 /* The fill accent travels on --accent so the rounded look can draw it as an
@@ -162,6 +209,19 @@
 .wchip .st.ongoing {
   border-color: var(--green-line);
   color: var(--green-ink);
+}
+
+/* Client and venue each keep to one line: a long client name such as
+   "Leonardo Hotel St Paul's - M&E" would otherwise wrap and make the row
+   taller than its neighbours. Past the cap, or the width of the cell or
+   card, it ends in an ellipsis; the full name is in the title attribute. */
+.tbl .ev-clip,
+.dayrow .ev-clip {
+  display: block;
+  max-width: min(36ch, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---- day: one wide row per event ------------------------------------ */
@@ -302,6 +362,71 @@
   background: var(--accent);
 }
 
+/* ADR-0096: a month cell shows its chips in full and says "+N more" for the
+   rest. The design system's 96px scroll window is lifted here, in the app,
+   so the shared package is untouched. */
+:root .cal .day .scroll {
+  max-height: none;
+  overflow: visible;
+}
+/* A chip or "+N more" that opens the day popup is a <button>: it keeps the
+   link chip's look. */
+.cal .day button.evchip {
+  width: 100%;
+  font: inherit;
+  font-size: var(--fs-11);
+  /* The link chips take the global link colour; the button reads the same. */
+  color: var(--cyan-ink);
+  text-align: left;
+  cursor: pointer;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+.cal .day button.evchip:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+.cal .day button.evchip.cancelled {
+  color: var(--muted);
+}
+.cal .day .evmore {
+  min-height: var(--btn-h-sm);
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-num);
+  font-size: var(--fs-11);
+  color: var(--cyan-ink);
+  padding: 0 var(--sp-6);
+}
+.cal .day .evmore:hover {
+  text-decoration: underline;
+}
+
+/* The popup's rows are the week chips, drawn larger: it is the one place a
+   whole day is read at once. */
+.daypop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.daypop .wchip {
+  font-size: var(--fs-13);
+  padding-top: var(--sp-10);
+  padding-bottom: var(--sp-10);
+}
+.daypop .wchip .w,
+.daypop .wchip .m {
+  font-size: var(--fs-12);
+}
+.daypop .wchip .f {
+  font-size: var(--fs-11);
+}
+
 /* The month grid's day number, when it links to that day (MonthView). */
 .cal .day .dlink {
   color: inherit;
@@ -366,6 +491,10 @@
   }
   .cal .evchip > *,
   :root[data-style] .cal .evchip::before {
+    display: none;
+  }
+  /* A 46px cell has no room for the words; the cell itself opens the day. */
+  .cal .day .evmore {
     display: none;
   }
 }

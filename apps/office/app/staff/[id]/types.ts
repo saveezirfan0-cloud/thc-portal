@@ -171,6 +171,7 @@ export interface DeclarationRow {
   review_status: ReviewStatus;
   declared_at: string;
   reviewed_at: string | null;
+  reviewed_by_name: string | null;
 }
 
 export interface RoleOption {
@@ -307,12 +308,27 @@ export interface ProfileData {
    */
   gender?: 'M' | 'F' | null;
   /**
+   * `staff.spudbros_express` / `staff.thc_shifts_enabled` (ADR-0106):
+   * SpudBros Express staff, and whether THC scheduling is switched on for
+   * them. Undefined = not read.
+   */
+  spudbros?: boolean;
+  thcShifts?: boolean;
+  /** `staff.payroll_id` (ADR-0107). Null = none on file; undefined = not read. */
+  payrollId?: string | null;
+  /**
    * `staff.languages` — every language the worker speaks, English always in
    * it, given on onboarding step 2. ADR-0080: an event that needs another
    * language books only speakers of it. Null = never asked; undefined = not
    * read.
    */
   languages?: string[] | null;
+  /**
+   * ADR-0098: the "Review interview on Willo" link, kept on the profile for
+   * good so the interview can always be referred to. Null = no interview
+   * on file, Willo not configured, or removed (§1.7); undefined = not read.
+   */
+  willoReviewUrl?: string | null;
   /**
    * The docs/19 additions (ADR-0043/0043/0044/0046). Each is read on its
    * own and fails on its own: `undefined` = not read, and the matching

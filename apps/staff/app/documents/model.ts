@@ -192,7 +192,8 @@ function shareCodeMeta(record: DocumentRecord): string {
 /**
  * A verified row's meta line. The share code reads its expiry as the
  * right-to-work date (§4.4 "right to work until … from gov.uk"); the term
- * letter reminds the worker that it dies 31 December whatever it prints.
+ * letter runs to the last date printed on it, and the worker is reminded a
+ * month before that (ADR-0103).
  */
 function verifiedMeta(record: DocumentRecord, state: DocumentState, today: string): string {
   const expires = record.expiresOn;
@@ -210,8 +211,8 @@ function verifiedMeta(record: DocumentRecord, state: DocumentState, today: strin
   }
   if (record.docType === 'university_term_dates_letter') {
     return state === 'expiring'
-      ? `Expires ${formatDay(expires)} (${leftText}) — upload next year’s letter`
-      : `Verified · expires ${formatDay(expires)} · reminders from 1 Dec`;
+      ? `Expires ${formatDay(expires)} (${leftText}) — upload your new letter`
+      : `Verified · expires ${formatDay(expires)} · we remind you a month before`;
   }
   return state === 'expiring'
     ? `Expires ${formatDay(expires)} (${leftText}) — upload the renewed one`

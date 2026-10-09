@@ -49,21 +49,31 @@ export const officeUser = cache(async (): Promise<OfficeUser | null> => {
   if (!supabaseConfigured()) return null;
 
   const supabase = createClient(await cookies()) as any;
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) return null;
+  // getClaims(), not getUser(): the middleware has already had GoTrue accept
+  // this session on this very request (a network round trip), so asking it a
+  // second time just to learn who we are doubled the auth cost of every page
+  // and of every 15 s auto-refresh. getClaims() verifies the token's
+  // signature locally against the project's cached JWKS; on a project still
+  // on a shared-secret signing key it falls back to the same GoTrue call
+  // getUser() makes, so it is never slower and never trusts an unverified
+  // cookie. What is read below (id, email, app_metadata.role) is all in the
+  // token; the office role is not, and still comes from `profiles`.
+  const { data: auth } = await supabase.auth.getClaims();
+  const claims = auth?.claims;
+  if (!claims?.sub) return null;
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, office_role')
-    .eq('id', auth.user.id)
+    .eq('id', claims.sub)
     .maybeSingle();
 
-  const name = profile?.full_name ?? auth.user.email;
+  const name = profile?.full_name ?? claims.email;
   if (!name) return null;
 
   // app_metadata, not the profiles row: it is what the middleware gated on
   // to admit this session to this app at all, and the user cannot edit it.
-  const role = auth.user.app_metadata?.['role'];
+  const role = claims.app_metadata?.['role'];
   if (role !== 'admin') return { name };
   // The office role is read from profiles: it is not in the token, and a
   // change on /users takes effect on the next request, as the database's

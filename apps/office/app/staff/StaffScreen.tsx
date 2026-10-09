@@ -29,12 +29,13 @@ import {
   isWorker,
   limitReached,
   matchesFilter,
+  matchesGroup,
   matchesQuery,
   ratingTone,
   sortRows,
   statusLabel,
 } from './staff';
-import type { CapFilter, Filter, Sort } from './staff';
+import type { CapFilter, Filter, GroupFilter, Sort } from './staff';
 import { formatUkStamp } from './[id]/profile';
 import type { StaffRow, StudentRow } from './types';
 import './staff.css';
@@ -94,6 +95,7 @@ export function StaffScreen({
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
   const [pageSize, setPageSize] = useState<PageSize>(PAGE_SIZES[0]);
   const [role, setRole] = useState('');
+  const [group, setGroup] = useState<GroupFilter>('all');
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
@@ -124,12 +126,13 @@ export function StaffScreen({
       (row) =>
         matchesFilter(row, filter) &&
         matchesQuery(row, query) &&
+        matchesGroup(row, group) &&
         (role === '' || row.role_names.includes(role)),
     );
     // §9.6: the Inactive tab is newest first whatever the sort says
     // (`sortRows`), so the office works through P45s in arrival order.
     return sortRows(rows, filter, sort);
-  }, [staff, filter, query, role, sort]);
+  }, [staff, filter, query, role, group, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pages - 1);
@@ -205,6 +208,10 @@ export function StaffScreen({
         >
           Change requests ({pendingRequests ?? '?'})
         </Link>
+        {/* ADR-0107: who is SpudBros Express, and each person's Payroll ID. */}
+        <Link href="/staff/roster" className="btn sm ghost">
+          Invite list
+        </Link>
       </div>
 
       <div className="toolbar">
@@ -244,8 +251,8 @@ export function StaffScreen({
               type="search"
               value={query}
               onChange={(event) => reset<string>(setQuery)(event.target.value)}
-              placeholder="Search name, Employee ID, role"
-              aria-label="Search name, Employee ID, role"
+              placeholder="Search name, Employee ID, Payroll ID, role"
+              aria-label="Search name, Employee ID, Payroll ID, role"
             />
           </div>
           {view === 'directory' ? (
@@ -262,6 +269,19 @@ export function StaffScreen({
                     {name}
                   </option>
                 ))}
+              </Select>
+              {/* ADR-0107: SpudBros Express staff are onboarding-only. */}
+              <Select
+                value={group}
+                onChange={(event) =>
+                  reset<GroupFilter>(setGroup)(event.target.value as GroupFilter)
+                }
+                aria-label="Filter by group"
+                style={{ height: 32, width: 160 }}
+              >
+                <option value="all">All groups</option>
+                <option value="spudbros">SpudBros Express</option>
+                <option value="thc">THC only</option>
               </Select>
               <Select
                 value={sort}
@@ -494,9 +514,27 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
         >
           {row.display_name}
         </Link>
+        {row.spudbros_express && !row.removed ? (
+          <>
+            {' '}
+            <Pill
+              tone="cyan"
+              title={
+                row.thc_shifts_enabled
+                  ? 'SpudBros Express — also works THC shifts'
+                  : 'SpudBros Express Staff Only – scheduling on Connecteam'
+              }
+            >
+              SpudBros
+            </Pill>
+          </>
+        ) : null}
       </td>
       <td data-label="Employee ID" className="mono sm">
         {employeeId(row.employee_id)}
+        {row.payroll_id && !row.removed ? (
+          <div className="xs muted">Payroll {row.payroll_id}</div>
+        ) : null}
       </td>
       <td data-label="Role(s)">
         <div className="chips">

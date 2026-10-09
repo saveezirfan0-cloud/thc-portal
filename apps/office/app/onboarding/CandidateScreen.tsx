@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -17,12 +17,13 @@ import {
   Note,
   Panel,
   Pill,
-  Select,
   Textarea,
   useTimeFormat,
 } from '@thc/ui';
 import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
+import { RejectSelfie } from '../_components/RejectSelfie';
 import {
   RTW_LABEL,
   employeeId,
@@ -30,11 +31,11 @@ import {
   formatUkDate,
   rtwUntilLabel,
 } from '../staff/staff';
-import { formatUkStamp } from '../staff/[id]/profile';
+import { formatUkStamp, rejectionLine, reviewStamp } from '../staff/[id]/profile';
 import {
   acceptCandidate,
   addQualifiedRole,
-  grantClientQualification,
+  grantClientQualifications,
   documentLink,
   markInterviewComplete,
   rejectCandidate,
@@ -59,6 +60,9 @@ import {
   candidateActions,
   candidateCap,
   columnFor,
+  groupQualifications,
+  matchesName,
+  newEntryCount,
   orDash,
   parsePeriod,
   periodsProblem,
@@ -220,6 +224,7 @@ export function CandidateScreen({
   const doc: DocHandlers = {
     // Looking back at a finished phase never offers its actions again.
     readOnly: readOnly || past,
+    qualificationsLocked: row.status === 'rejected',
     busy,
     staffId: row.id,
     branch: row.rtw_branch,
@@ -271,6 +276,15 @@ export function CandidateScreen({
             <div className="row wrap">
               <h2>{row.display_name}</h2>
               <Pill>{row.status === 'compliant' ? 'Staff' : 'Candidate'}</Pill>
+              {/* ADR-0107: said where the office looks first. */}
+              {row.spudbros_express ? (
+                <Pill tone="cyan">
+                  {row.thc_shifts_enabled
+                    ? 'SpudBros Express · also works THC shifts'
+                    : 'SpudBros Express Staff Only – scheduling on Connecteam'}
+                </Pill>
+              ) : null}
+              {row.payroll_id ? <Pill>Payroll ID {row.payroll_id}</Pill> : null}
               <Pill
                 tone={
                   row.status === 'rejected'
@@ -329,7 +343,8 @@ export function CandidateScreen({
 
         {past ? (
           <Alert tone="cyan">
-            Viewing <b>{COLUMNS[viewing]?.label}</b>, a step already completed. Read-only —{' '}
+            Viewing <b>{COLUMNS[viewing]?.label}</b>, a step already completed. Read-only
+            {shown === 'documents' ? ' (roles and clients stay editable)' : ''} —{' '}
             <button type="button" className="linkish" onClick={() => setPicked(null)}>
               back to {COLUMNS[phase]?.label}
             </button>
@@ -368,23 +383,24 @@ export function CandidateScreen({
             row={row}
             data={data}
             doc={doc}
-            onToggleRole={(roleId, on) =>
-              run(() =>
-                on ? addQualifiedRole(row.id, roleId) : removeQualifiedRole(row.id, roleId),
-              )
+            onSaveRole={(roleId, on) =>
+              on
+                ? addQualifiedRole(row.id, roleId, false)
+                : removeQualifiedRole(row.id, roleId, false)
             }
-            onGrantClient={(clientId, roleIds, after) =>
+            onRolesSaved={() => start(() => router.refresh())}
+            onGrantClients={(clientIds, roleIds, after) =>
+              run(() => grantClientQualifications(row.id, clientIds, roleIds), after)
+            }
+            onRevokeClients={(ids) =>
               run(async () => {
-                // One entry per role, as the table holds them (client + one
-                // role). The first refusal stops the run.
-                for (const roleId of roleIds) {
-                  const result = await grantClientQualification(row.id, clientId, roleId);
+                for (const id of ids) {
+                  const result = await revokeClientQualification(row.id, id);
                   if (!result.ok) return result;
                 }
                 return { ok: true } as const;
-              }, after)
+              })
             }
-            onRevokeClient={(id) => run(() => revokeClientQualification(row.id, id))}
             onVerifyDeclaration={(d) => run(() => verifyDeclaration(row.id, d.id, ''))}
             onRejectDeclaration={(d) => {
               setReason('');
@@ -1022,7 +1038,6 @@ function RoleGroups({
         <section key={group.area} aria-label={group.label} className="rolegroup">
           <div className="rolegroup-head">
             <b>{group.label}</b>
-            <span className="muted sm">{group.roles.length}</span>
           </div>
           <div className="rolepick">
             {group.roles.map((role) => {
@@ -1062,7 +1077,15 @@ interface VerifyChoice {
 }
 
 interface DocHandlers {
+  /** The documents themselves: also true while looking back at a finished step. */
   readOnly: boolean;
+  /**
+   * Roles and clients: locked only once the candidate is rejected (final on the
+   * record, §2.3). Looking back at the Documents step, or a signed contract,
+   * does not lock them — they are not a step's output, and the office changes
+   * them at any time.
+   */
+  qualificationsLocked: boolean;
   busy: boolean;
   /** Whose documents: the office's uploads go under this worker's folder. */
   staffId: string;
@@ -1074,13 +1097,19 @@ interface DocHandlers {
   onOpen: (docId: string, which: 'file' | 'report') => void;
 }
 
-function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
-  const parts: string[] = [`Uploaded ${formatUkStamp(doc.uploaded_at)}`];
+function docMeta(doc: CandidateDocument, niNumber: string | null, format?: TimeFormat): ReactNode {
+  const parts: string[] = [`Uploaded ${formatUkStamp(doc.uploaded_at, format)}`];
   if (doc.awarding_institution) parts.push(doc.awarding_institution);
   if (doc.doc_type === 'university_term_dates_letter') {
     parts.push(`${(doc.term_dates ?? []).length} holiday range(s) found`);
     if (doc.expires_on)
-      parts.push(`Letter expires ${formatUkDate(doc.expires_on)} (calendar-year rule)`);
+      parts.push(
+        `Letter expires ${formatUkDate(doc.expires_on)} (${
+          (doc.term_dates ?? []).length > 0
+            ? 'last date on the letter'
+            : 'no dates read — calendar-year fallback'
+        })`,
+      );
   } else if (doc.doc_type === 'university_completion_letter') {
     if (doc.completion_date) parts.push(`Course completion ${formatUkDate(doc.completion_date)}`);
   } else if (doc.expiry_date) {
@@ -1092,13 +1121,11 @@ function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
     parts.push(niEvidenceLine(niNumber));
     if (doc.ni_recheck && niNumber) parts.push('waiting in Needs review to be compared');
   }
-  if (doc.review_status === 'verified' && doc.reviewed_at) {
-    parts.push(
-      `Verified${doc.reviewed_by_name ? ` by ${doc.reviewed_by_name}` : ''} · ${formatUkStamp(doc.reviewed_at)}`,
-    );
+  if (doc.reviewed_at) {
+    parts.push(reviewStamp(doc.review_status, doc.reviewed_by_name, doc.reviewed_at, format));
   }
   if (doc.review_status === 'rejected' && doc.rejection_reason) {
-    parts.push(`Rejected: “${doc.rejection_reason}” — awaiting re-upload (N8 sent)`);
+    parts.push(rejectionLine(doc.rejection_reason, doc.review_status));
   }
   return parts.join(' · ');
 }
@@ -1116,6 +1143,7 @@ function DocumentLine({
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const pill = REVIEW_PILL[doc.review_status];
+  const format = useTimeFormat();
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
   // A visa or status document is verified on its expiry: the one the
   // candidate typed at step 1 (or the AI read) is pre-filled to confirm.
@@ -1132,7 +1160,7 @@ function DocumentLine({
           {badge ? <span className={`ai ${badge.tone}`}>{badge.label}</span> : null}
         </>
       }
-      meta={docMeta(doc, niNumber)}
+      meta={docMeta(doc, niNumber, format)}
       actions={
         <>
           <Pill tone={pill.tone}>{pill.label}</Pill>
@@ -1578,158 +1606,343 @@ function RolesAndClients({
   data,
   readOnly,
   busy,
-  onToggleRole,
-  onGrantClient,
-  onRevokeClient,
+  onSaveRole,
+  onRolesSaved,
+  onGrantClients,
+  onRevokeClients,
 }: {
   row: CandidateRow;
   data: CandidateData;
   readOnly: boolean;
   busy: boolean;
-  onToggleRole: (roleId: string, on: boolean) => void;
-  onGrantClient: (clientId: string, roleIds: string[], after: () => void) => void;
-  onRevokeClient: (id: string) => void;
+  onSaveRole: (roleId: string, on: boolean) => Promise<ActionResult>;
+  onRolesSaved: () => void;
+  onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
+  onRevokeClients: (ids: string[]) => void;
 }) {
-  const [clientId, setClientId] = useState('');
-  const [clientRoles, setClientRoles] = useState<string[]>([]);
-  const clients = data.clients ?? [];
+  // A tick shows at once and saves in the background, one at a time and in the
+  // order ticked, with a single page refresh once the last one has landed. The
+  // server's list only replaces ours when nothing is still on its way, so a
+  // refresh that started before the last tick cannot untick it.
+  const [roleIds, setRoleIds] = useState<string[]>(row.role_ids);
+  const [saving, setSaving] = useState(0);
+  const [saveProblem, setSaveProblem] = useState<string | null>(null);
+  const inflight = useRef(0);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    if (inflight.current === 0) setRoleIds(row.role_ids);
+  }, [row.role_ids]);
+
+  const toggleRole = (id: string) => {
+    const on = !roleIds.includes(id);
+    setSaveProblem(null);
+    setRoleIds((current) => (on ? [...current, id] : current.filter((r) => r !== id)));
+    inflight.current += 1;
+    setSaving(inflight.current);
+    queue.current = queue.current.then(async () => {
+      let result: ActionResult;
+      try {
+        result = await onSaveRole(id, on);
+      } catch {
+        result = { ok: false, message: 'Something went wrong on the server. Try again.' };
+      }
+      if (!result.ok) {
+        setSaveProblem(result.message);
+        setRoleIds((current) => (on ? current.filter((r) => r !== id) : [...current, id]));
+      }
+      inflight.current -= 1;
+      setSaving(inflight.current);
+      if (inflight.current === 0) onRolesSaved();
+    });
+  };
+
   const qualifications = data.qualifications ?? [];
   // §9.6: a client entry names one of the roles the person already holds.
-  const held = data.roles.filter((role) => row.role_ids.includes(role.id));
-  const toggleClientRole = (id: string) =>
-    setClientRoles((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const held = data.roles.filter((role) => roleIds.includes(role.id));
 
   return (
     <div className="grid c2">
       <Panel
         title="Qualified role type(s)"
         actions={
-          row.role_ids.length === 0 ? (
+          roleIds.length === 0 ? (
             <Pill tone="amber">none yet</Pill>
           ) : (
-            <Pill tone="green">{row.role_ids.length} selected</Pill>
+            <Pill tone="green">{roleIds.length} selected</Pill>
           )
         }
       >
         <div className="stack">
-          <div className="sm muted">
-            {row.role_ids.length === 0
-              ? 'Pick the role(s) the candidate is qualified for — without one they receive no invitations later. '
-              : ''}
-            Tick as many as apply; each tick saves straight away. Editable later on the staff
-            profile.
-          </div>
+          {roleIds.length === 0 ? (
+            <div className="sm muted">
+              Pick the role(s) the candidate is qualified for — without one they receive no
+              invitations later.
+            </div>
+          ) : null}
+          {saveProblem ? <Alert tone="coral">{saveProblem}</Alert> : null}
           {data.roles.length === 0 ? (
             <EmptyState>No roles exist yet — add them under Roles.</EmptyState>
           ) : (
             <RoleGroups
               roles={data.roles}
-              picked={row.role_ids}
-              disabled={readOnly || busy}
-              onToggle={(id) => onToggleRole(id, !row.role_ids.includes(id))}
+              picked={roleIds}
+              disabled={readOnly}
+              onToggle={toggleRole}
             />
           )}
-          <Note>
-            Un-ticking a role also removes the client entries that name it. A &ldquo;Do not
-            return&rdquo; entry is kept.
-          </Note>
+          {qualifications.length > 0 ? (
+            <div className="xs muted">
+              Un-ticking a role also removes the client entries that name it. &ldquo;Do not
+              return&rdquo; is kept.
+            </div>
+          ) : null}
         </div>
       </Panel>
 
-      <Panel
-        title="Client qualification"
-        actions={<span className="muted sm">auto-assign&rsquo;s first wave</span>}
-      >
-        <div className="stack">
-          {qualifications.length === 0 ? (
-            <span className="muted sm">Not cleared at any client yet.</span>
-          ) : (
-            <div className="stack">
-              {qualifications.map((q) => (
-                <div key={q.id} className="row wrap">
-                  <b>{q.client_name}</b>
-                  <Chip>{q.role_name}</Chip>
-                  {q.do_not_return ? <Pill tone="coral">Do not return</Pill> : null}
-                  {readOnly ? null : (
-                    <Button
-                      size="sm"
-                      tone="ghost"
-                      disabled={busy || q.do_not_return}
-                      title={
-                        q.do_not_return
-                          ? 'Switch Do not return off on the staff profile first'
-                          : undefined
-                      }
-                      onClick={() => onRevokeClient(q.id)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {readOnly ? null : held.length === 0 ? (
-            <div className="sm muted">Pick at least one role first, then add clients.</div>
-          ) : clients.length === 0 ? (
-            <EmptyState>No clients exist yet — add them under Clients.</EmptyState>
-          ) : (
-            <div className="stack">
-              <Select
-                label="Add a client"
-                value={clientId}
-                disabled={busy}
-                onChange={(event) => setClientId(event.target.value)}
+      <ClientQualification
+        held={held}
+        clients={data.clients ?? []}
+        qualifications={qualifications}
+        readOnly={readOnly}
+        busy={busy || saving > 0}
+        onGrant={onGrantClients}
+        onRevoke={onRevokeClients}
+      />
+    </div>
+  );
+}
+
+/**
+ * Client qualification (§9.6): who the candidate is cleared for at which
+ * client. Two halves, so the list never grows the page:
+ *
+ *   Add — search the clients, tick as many as needed, one button; each client
+ *   is cleared for every role the candidate holds. A client already
+ *   cleared for every chosen role is shown as done, not offered again.
+ *
+ *   Cleared at — one line per client with its roles as chips, scrolling
+ *   inside the panel and searchable once there are more than a few.
+ */
+function ClientQualification({
+  held,
+  clients,
+  qualifications,
+  readOnly,
+  busy,
+  onGrant,
+  onRevoke,
+}: {
+  held: CandidateData['roles'];
+  clients: NonNullable<CandidateData['clients']>;
+  qualifications: NonNullable<CandidateData['qualifications']>;
+  readOnly: boolean;
+  busy: boolean;
+  onGrant: (clientIds: string[], roleIds: string[], after: () => void) => void;
+  onRevoke: (ids: string[]) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [listSearch, setListSearch] = useState('');
+  const [chosen, setChosen] = useState<string[]>([]);
+  // The ticks on the left are the role list: every client added is cleared for
+  // all of them, so there is no second role pick here.
+  const roleIds = held.map((role) => role.id);
+  const groups = useMemo(() => groupQualifications(qualifications), [qualifications]);
+  const cleared = useMemo(
+    () => new Set(qualifications.map((q) => `${q.client_id}:${q.role_id}`)),
+    [qualifications],
+  );
+  const doneAt = (clientId: string) =>
+    roleIds.length > 0 && roleIds.every((roleId) => cleared.has(`${clientId}:${roleId}`));
+  // A client already cleared for every role is not offered again: it is in
+  // "Cleared at" below, so the list only ever holds what is left to do.
+  const open = clients.filter((client) => !doneAt(client.id));
+  const shown = open.filter((client) => matchesName(client.name, search));
+  const pickable = shown.map((client) => client.id);
+  const toggleClient = (id: string) =>
+    setChosen((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
+  const entries = newEntryCount(chosen, roleIds, qualifications);
+  const listed = groups.filter((group) => matchesName(group.client_name, listSearch));
+
+  return (
+    <Panel
+      title="Client qualification"
+      actions={
+        groups.length > 0 ? (
+          <Pill
+            tone="green"
+            title="Cleared clients are auto-assign's first wave. A clean shift adds entries by itself; editable later on the staff profile and the client card."
+          >
+            {groups.length} client{groups.length === 1 ? '' : 's'}
+          </Pill>
+        ) : null
+      }
+    >
+      <div className="stack">
+        {readOnly ? null : held.length === 0 ? (
+          <div className="sm muted">Pick at least one role first, then add clients.</div>
+        ) : clients.length === 0 ? (
+          <EmptyState>No clients exist yet — add them under Clients.</EmptyState>
+        ) : open.length === 0 ? (
+          <div className="sm muted">Cleared at every client.</div>
+        ) : (
+          <div className="stack">
+            <div className="cq-bar">
+              <Input
+                type="search"
+                aria-label="Search clients to add"
+                placeholder={`Search ${open.length} clients to add…`}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <button
+                type="button"
+                className="linkish sm"
+                disabled={busy || pickable.length === 0}
+                onClick={() => setChosen((now) => [...new Set([...now, ...pickable])])}
               >
-                <option value="">Choose a client…</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </Select>
-              <div className="rolepick">
-                {held.map((role) => {
-                  const on = clientRoles.includes(role.id);
+                {search.trim() === '' ? 'Select all' : `Select the ${pickable.length} shown`}
+              </button>
+              {chosen.length > 0 ? (
+                <button
+                  type="button"
+                  className="linkish sm"
+                  disabled={busy}
+                  onClick={() => setChosen([])}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div className="cq-pick" role="group" aria-label="Clients">
+              {shown.length === 0 ? (
+                <span className="muted sm">No client matches &ldquo;{search.trim()}&rdquo;.</span>
+              ) : (
+                shown.map((client) => {
+                  const on = chosen.includes(client.id);
                   return (
-                    <label key={role.id} className={on ? 'check sel' : 'check'}>
+                    <label key={client.id} className={on ? 'check sel' : 'check'}>
                       <input
                         type="checkbox"
                         className="check-input"
                         checked={on}
                         disabled={busy}
-                        onChange={() => toggleClientRole(role.id)}
+                        onChange={() => toggleClient(client.id)}
                       />
                       <span className={on ? 'box on' : 'box'} />
-                      {role.name}
+                      <span className="grow">{client.name}</span>
                     </label>
                   );
-                })}
-              </div>
+                })
+              )}
+            </div>
+            {chosen.length > 0 ? (
               <div>
                 <Button
                   tone="primary"
-                  disabled={busy || clientId === '' || clientRoles.length === 0}
+                  disabled={busy || entries === 0}
+                  title={`Each client is cleared for all ${held.length} role${held.length === 1 ? '' : 's'} ticked on the left`}
                   onClick={() =>
-                    onGrantClient(clientId, clientRoles, () => {
-                      setClientId('');
-                      setClientRoles([]);
+                    onGrant(chosen, roleIds, () => {
+                      setChosen([]);
+                      setSearch('');
                     })
                   }
                 >
-                  {clientRoles.length > 1 ? `Add ${clientRoles.length} entries` : 'Add client'}
+                  {busy
+                    ? 'Adding…'
+                    : `Add ${chosen.length} client${chosen.length === 1 ? '' : 's'}`}
                 </Button>
               </div>
-            </div>
+            ) : null}
+          </div>
+        )}
+
+        <div className="stack">
+          <b>Cleared at</b>
+          {groups.length === 0 ? (
+            <span className="muted sm">Not cleared at any client yet.</span>
+          ) : (
+            <>
+              {groups.length > 5 ? (
+                <Input
+                  type="search"
+                  aria-label="Search the clients cleared"
+                  placeholder="Search these clients…"
+                  value={listSearch}
+                  onChange={(event) => setListSearch(event.target.value)}
+                />
+              ) : null}
+              <div className="cq-list">
+                {listed.length === 0 ? (
+                  <span className="muted sm">
+                    Nothing matches &ldquo;{listSearch.trim()}&rdquo;.
+                  </span>
+                ) : (
+                  listed.map((group) => {
+                    const removable = group.entries.filter((q) => !q.do_not_return);
+                    // Cleared for every role held: one chip, not one per role.
+                    // Anything less (or a Do not return) still shows role by role.
+                    const everyRole =
+                      held.length > 1 &&
+                      removable.length === group.entries.length &&
+                      held.every((role) => removable.some((q) => q.role_id === role.id));
+                    return (
+                      <div key={group.client_id} className="cq-row">
+                        <b className="cq-name">{group.client_name}</b>
+                        <div className="cq-chips">
+                          {everyRole ? (
+                            <Chip
+                              title={held.map((role) => role.name).join(' · ')}
+                              onRemove={
+                                readOnly || busy
+                                  ? undefined
+                                  : () => onRevoke(removable.map((q) => q.id))
+                              }
+                            >
+                              All {held.length} roles
+                            </Chip>
+                          ) : (
+                            group.entries.map((q) =>
+                              q.do_not_return ? (
+                                <Pill
+                                  key={q.id}
+                                  tone="coral"
+                                  title="Do not return — switch it off on the staff profile first"
+                                >
+                                  {q.role_name} · do not return
+                                </Pill>
+                              ) : (
+                                <Chip
+                                  key={q.id}
+                                  onRemove={readOnly || busy ? undefined : () => onRevoke([q.id])}
+                                >
+                                  {q.role_name}
+                                </Chip>
+                              ),
+                            )
+                          )}
+                        </div>
+                        {readOnly || everyRole || removable.length < 2 ? null : (
+                          <Button
+                            size="sm"
+                            tone="ghost"
+                            disabled={busy}
+                            onClick={() => onRevoke(removable.map((q) => q.id))}
+                          >
+                            Remove all
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
           )}
-          <Note>
-            Optional. Pick a client, then one or more of the roles above; each role is its own
-            entry. A clean shift also adds entries by itself, and the list is editable later on the
-            staff profile and the client card.
-          </Note>
         </div>
-      </Panel>
-    </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -1737,21 +1950,24 @@ function DocumentsPhase({
   row,
   data,
   doc,
-  onToggleRole,
-  onGrantClient,
-  onRevokeClient,
+  onSaveRole,
+  onRolesSaved,
+  onGrantClients,
+  onRevokeClients,
   onVerifyDeclaration,
   onRejectDeclaration,
 }: {
   row: CandidateRow;
   data: CandidateData;
   doc: DocHandlers;
-  onToggleRole: (roleId: string, on: boolean) => void;
-  onGrantClient: (clientId: string, roleIds: string[], after: () => void) => void;
-  onRevokeClient: (id: string) => void;
+  onSaveRole: (roleId: string, on: boolean) => Promise<ActionResult>;
+  onRolesSaved: () => void;
+  onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
+  onRevokeClients: (ids: string[]) => void;
   onVerifyDeclaration: (d: Declaration) => void;
   onRejectDeclaration: (d: Declaration) => void;
 }) {
+  const format = useTimeFormat();
   const live = data.documents.filter((d) => !d.superseded);
   const superseded = data.documents.filter((d) => d.superseded);
   const termLetter = live.find((d) => d.doc_type === 'university_term_dates_letter');
@@ -1781,11 +1997,12 @@ function DocumentsPhase({
       <RolesAndClients
         row={row}
         data={data}
-        readOnly={doc.readOnly}
+        readOnly={doc.qualificationsLocked}
         busy={doc.busy}
-        onToggleRole={onToggleRole}
-        onGrantClient={onGrantClient}
-        onRevokeClient={onRevokeClient}
+        onSaveRole={onSaveRole}
+        onRolesSaved={onRolesSaved}
+        onGrantClients={onGrantClients}
+        onRevokeClients={onRevokeClients}
       />
 
       <Alert tone={gate.unlocked ? 'green' : 'amber'}>
@@ -1876,7 +2093,21 @@ function DocumentsPhase({
             }
             state={row.photo_path ? 'verified' : 'pending'}
             actions={
-              row.photo_path ? <Pill tone="green">Set</Pill> : <Pill tone="amber">Not taken</Pill>
+              row.photo_path ? (
+                <>
+                  <Pill tone="green">Set</Pill>
+                  {/* ADR-0097: an inappropriate selfie comes down, with a reason the candidate reads. */}
+                  {row.status !== 'rejected' ? (
+                    <RejectSelfie
+                      staffId={row.id}
+                      name={row.display_name}
+                      disabled={doc.readOnly}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <Pill tone="amber">Not taken</Pill>
+              )
             }
           />
 
@@ -1887,7 +2118,7 @@ function DocumentsPhase({
                 <DocRow
                   key={d.id}
                   title={d.doc_label}
-                  meta={docMeta(d, null)}
+                  meta={docMeta(d, null, format)}
                   state="pending"
                   actions={<Pill>Superseded</Pill>}
                 />
@@ -1945,7 +2176,7 @@ function DocumentsPhase({
               }
               meta={
                 d.answer
-                  ? `Details: “${orDash(d.details)}”${d.conviction_date ? ` · Conviction date: ${formatUkDate(d.conviction_date)}` : ''} · No file — text only${d.review_note ? ` · Note: ${d.review_note}` : ''}`
+                  ? `Details: “${orDash(d.details)}”${d.conviction_date ? ` · Conviction date: ${formatUkDate(d.conviction_date)}` : ''} · No file — text only${d.reviewed_at && d.review_status !== 'pending' ? ` · ${reviewStamp(d.review_status, d.reviewed_by_name, d.reviewed_at, format)}` : ''}${d.review_note ? ` · Note: ${d.review_note}` : ''}`
                   : `No · auto-verified ${d.reviewed_at ? formatUkDate(d.reviewed_at) : formatUkDate(d.declared_at)}`
               }
               actions={
@@ -1992,6 +2223,7 @@ function DocumentsPhase({
 // 4 · Quiz (read-only: taken in the app)
 // ---------------------------------------------------------------------
 function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData; past: boolean }) {
+  const format = useTimeFormat();
   const gate = quizGate(row);
   const best = row.quiz_best_score;
   const bestAttempt = data.attempts.find((a) => a.score === best);
@@ -2109,7 +2341,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
               icon={ICON[d.doc_type] ?? 'DOC'}
               state="verified"
               title={DOC_LABEL[d.doc_type] ?? d.doc_label}
-              meta={`Verified ${d.reviewed_at ? formatUkStamp(d.reviewed_at) : ''}${d.doc_type === 'university_term_dates_letter' ? ` · ${(d.term_dates ?? []).length} periods confirmed` : ''}`}
+              meta={`${d.reviewed_at ? reviewStamp('verified', d.reviewed_by_name, d.reviewed_at, format) : 'Verified'}${d.doc_type === 'university_term_dates_letter' ? ` · ${(d.term_dates ?? []).length} periods confirmed` : ''}`}
               actions={<Pill tone="green">Verified</Pill>}
             />
           ))}
@@ -2118,7 +2350,7 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
               icon="DECL"
               state="verified"
               title="Criminal Record declaration · Yes"
-              meta={`Verified ${yes.reviewed_at ? formatUkStamp(yes.reviewed_at) : ''}${yes.review_note ? ` · note: “${yes.review_note}”` : ''}`}
+              meta={`${yes.reviewed_at ? reviewStamp('verified', yes.reviewed_by_name, yes.reviewed_at, format) : 'Verified'}${yes.review_note ? ` · note: “${yes.review_note}”` : ''}`}
               actions={<Pill tone="green">Verified</Pill>}
             />
           ) : null}

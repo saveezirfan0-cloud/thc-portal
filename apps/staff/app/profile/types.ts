@@ -50,6 +50,14 @@ export interface StaffProfile {
   /** Checked in and not yet checked out — §10.6 step 3 disables the P45 action. */
   checkedIn: boolean;
   bank: BankDetails | null;
+  /**
+   * SpudBros Express staff (ADR-0106, `staff_me()` since 20261008120000).
+   * `spudbros` labels the profile; `onboardingOnly` — SpudBros staff whose
+   * THC shifts are not switched on — is the app lock `connecteam`. Both
+   * optional so a profile built from an older `staff_me()` reads as neither.
+   */
+  spudbros?: boolean;
+  onboardingOnly?: boolean;
 }
 
 export interface BankDetails {
@@ -94,3 +102,6 @@ export interface EmergencyContact {
 export type ActionResult = { ok: true; note?: string } | { ok: false; message: string };
 
 export const HELP_EMAIL = 'admin@thehospitalitycompany.co.uk';
+
+/** ADR-0106: the label on a SpudBros Express profile, in the words the onboarding email promised. */
+export const CONNECTEAM_LABEL = 'SpudBros Express Staff Only – scheduling on Connecteam';

@@ -27,8 +27,10 @@ export interface DocumentsGate {
 }
 
 export function gateFor(lock: AppLock): Omit<DocumentsGate, 'profile'> {
-  const open = lock === 'none' || lock === 'documents';
-  return { lock, open, ignoreLock: lock === 'documents' };
+  // `connecteam` (ADR-0106) keeps Documents open for the same reason case 1
+  // does: an onboarding-only worker still has to upload, replace and renew.
+  const open = lock === 'none' || lock === 'documents' || lock === 'connecteam';
+  return { lock, open, ignoreLock: lock === 'documents' || lock === 'connecteam' };
 }
 
 export async function documentsGate(): Promise<DocumentsGate> {

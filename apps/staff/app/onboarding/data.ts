@@ -50,6 +50,24 @@ export async function loadLanguages(staffId: string): Promise<string[] | null> {
     : null;
 }
 
+/**
+ * Whether the caller is SpudBros Express staff whose THC shifts are not
+ * switched on (ADR-0106), through the worker's own-row read. False when
+ * unreadable: the ordinary last step then shows, which is the wording that
+ * is wrong for them but never one that withholds anything.
+ */
+export async function loadOnboardingOnly(staffId: string): Promise<boolean> {
+  if (!supabaseConfigured() || !staffId) return false;
+  const supabase = staffDb(await cookies());
+  const { data } = await supabase
+    .from('staff')
+    .select('spudbros_express, thc_shifts_enabled')
+    .eq('id', staffId)
+    .maybeSingle();
+  const row = data as { spudbros_express?: unknown; thc_shifts_enabled?: unknown } | null;
+  return row?.spudbros_express === true && row?.thc_shifts_enabled !== true;
+}
+
 export interface QuizQuestion {
   id: string;
   n: number;

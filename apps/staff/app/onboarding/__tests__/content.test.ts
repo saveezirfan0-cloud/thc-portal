@@ -5,7 +5,7 @@ import { QUIZ_FAILED_COPY, QUIZ_FAILED_TITLE } from '@thc/domain';
 import { TEMPLATES } from '@thc/notifications';
 import { contractParagraphs } from '../content/contract';
 import { INDUCTION_DECK, INDUCTION_IS_PLACEHOLDER, minutesLeft } from '../content/induction';
-import { TUTORIAL_CARDS } from '../content/tutorial';
+import { SPUDBROS_TUTORIAL_CARDS, TUTORIAL_CARDS } from '../content/tutorial';
 import { toDaterangeLiteral } from '../extractor';
 import { reasonMessage } from '../messages';
 
@@ -126,5 +126,20 @@ describe('refusals read as sentences', () => {
   });
   it('never shows a raw code', () => {
     expect(reasonMessage('some_unmapped_code')).toMatch(/Something went wrong/);
+  });
+});
+
+describe('11/11 for SpudBros Express staff (ADR-0106)', () => {
+  const words = SPUDBROS_TUTORIAL_CARDS.map((c) => `${c.title} ${c.body}`).join(' ');
+
+  it('says their shifts stay on Connecteam, in the email’s words', () => {
+    expect(words).toContain('Your shifts stay on Connecteam');
+    expect(words).toContain('Our Staff App is for your onboarding only');
+  });
+
+  it('promises nothing about invitations, the 12:00 “I’m ready” or check-in', () => {
+    expect(words).not.toMatch(/invit|ready|check in|check-in|radar/i);
+    // …which is exactly what the ordinary four cards are about.
+    expect(TUTORIAL_CARDS.map((c) => c.title).join(' ')).toMatch(/Invitations|I’m ready|Check in/);
   });
 });

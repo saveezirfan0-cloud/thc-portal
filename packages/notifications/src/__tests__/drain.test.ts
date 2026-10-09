@@ -25,7 +25,10 @@ import { decrypt } from './decrypt-push';
 function keypair() {
   const ecdh = createECDH('prime256v1');
   ecdh.generateKeys();
-  return { pub: b64urlEncode(ecdh.getPublicKey()), priv: b64urlEncode(ecdh.getPrivateKey()) };
+  // getPrivateKey() drops leading zero bytes (about 1 key in 256 comes back 31 bytes
+  // long); a P-256 scalar is always 32 on the wire, as in webpush.test.ts.
+  const scalar = Buffer.concat([Buffer.alloc(32), ecdh.getPrivateKey()]).subarray(-32);
+  return { pub: b64urlEncode(ecdh.getPublicKey()), priv: b64urlEncode(scalar) };
 }
 
 const vapidKeys = keypair();

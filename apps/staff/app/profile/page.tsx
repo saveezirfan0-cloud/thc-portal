@@ -44,7 +44,7 @@ export default async function Page() {
   const lock = appLock(profile);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
 
-  if (lock !== 'none' && lock !== 'documents' && lock !== 'onboarding') {
+  if (lock !== 'none' && lock !== 'documents' && lock !== 'connecteam' && lock !== 'onboarding') {
     const photoUrl = await signOwnPhoto(profile.photoPath);
     return (
       <ProfileShell title="The Hospitality Company" lock={lock} name={name} photoUrl={photoUrl}>

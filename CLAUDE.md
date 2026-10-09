@@ -4,7 +4,7 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 
 ## Read first
 
-- `docs/scope/scope-of-work-v1.6.txt` — the contract. Every behaviour is decided there. Grep it by section number (e.g. `grep -n "9.5 Check In"`). Where this file and the scope disagree, the scope wins, except the two deliberate changes below.
+- `docs/scope/scope-of-work-v1.6.txt` — the contract. Every behaviour is decided there. Grep it by section number (e.g. `grep -n "9.5 Check In"`). Where this file and the scope disagree, the scope wins, except the three deliberate changes below.
 - `docs/01-architecture.md` — Supabase + Next.js/Vercel + PWA layout; where each rule lives.
 - `docs/08-screen-inventory.md` — every route → wireframe → § → owning bot.
 - `wireframes/` — the visual contract. Open `wireframes/index.html`. A screen is done when it matches its wireframe.
@@ -13,6 +13,7 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 
 1. Staff App is a **PWA** (Next.js + Serwist), not Flutter. Background geofence is covered per `docs/06-pwa-vs-native.md` (ADR-0001).
 2. Backend is **Supabase** (Postgres + PostGIS, Auth, RLS, Storage, Edge Functions, pg_cron), not Django/DRF. "Django Admin" settings live in the `settings` table + a `/settings` page.
+3. A University Term Dates Letter expires on the **last day printed on it**, not on 31 December (§4.2 as written); reminders count down a month, two weeks and a week from that day, and 31 December is only the fallback for a letter with no readable dates (ADR-0103, superseding ADR-0011). Instruction of the product owner, 07.10.2026.
 
 ## Visual direction
 
@@ -68,6 +69,7 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Branch `feat/<domain>-<thing>`; small PRs; one domain per PR; shared-package changes in their own PR first.
 - Every table: RLS + pgTAP test for admin/client/staff.
 - Every screen: matches its wireframe; states listed in `docs/08-screen-inventory.md`; deviations → `docs/adr/`.
+- The Back Office `/events` calendar deliberately departs from §3.1 ("cells scroll", "columns scroll independently"): month cells show a few chips and a "+N more" day popup, week columns fold into day bands (ADR-0096).
 - Never put secrets in code; Edge Function secrets via `supabase secrets`, Vercel env vars per app.
 - Sample/seed data mirrors `wireframes/CONVENTIONS.md` so screenshots and tests read the same.
 - Use the domain bots in `.claude/agents/` (see `docs/05-domain-bots.md`). Ask `qa-reviewer` before opening a PR.

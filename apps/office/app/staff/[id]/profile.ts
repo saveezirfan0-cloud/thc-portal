@@ -340,6 +340,30 @@ export function isActionable(status: ProfileRow['status']): boolean {
 }
 
 /**
+ * Who decided a document or declaration, and when: "Verified by Gisela M. ·
+ * 08.10.2026 11:05 UK time". The name is the reviewer's; with none on file
+ * (nothing legacy ever lacks one, bar the automatic gov.uk check, which names
+ * itself) the line still carries the stamp. An audit record, so UK time (§1.8).
+ */
+export function reviewStamp(
+  status: 'pending' | 'verified' | 'rejected' | 'superseded',
+  by: string | null,
+  at: string,
+  format?: TimeFormat,
+): string {
+  const verb = status === 'verified' ? 'Verified' : status === 'rejected' ? 'Rejected' : 'Reviewed';
+  return `${verb}${by ? ` by ${by}` : ''} · ${formatUkStamp(at, format)}`;
+}
+
+/** Why a document was turned back, as both screens word it (candidate.html). */
+export function rejectionLine(
+  reason: string,
+  status: 'pending' | 'verified' | 'rejected' | 'superseded',
+): string {
+  return `Reason: “${reason}”${status === 'rejected' ? ' — awaiting re-upload (N8 sent)' : ''}`;
+}
+
+/**
  * A Criminal Record declaration as a row of the Documents tab (§9.6): when,
  * where it came from, and what happened to it. The stamps are audit
  * records, so UK time (§1.8). A declaration never has a file.
@@ -349,7 +373,8 @@ export function declarationMeta(row: DeclarationRow, format?: TimeFormat): strin
     `${row.source === 'onboarding' ? 'Onboarding' : 'In employment'} · declared ${formatUkStamp(row.declared_at, format)}`,
   ];
   if (!row.answer) parts.push('auto-verified on submission — no admin action');
-  else if (row.reviewed_at) parts.push(`reviewed ${formatUkStamp(row.reviewed_at, format)}`);
+  else if (row.reviewed_at)
+    parts.push(reviewStamp(row.review_status, row.reviewed_by_name, row.reviewed_at, format));
   parts.push('no file to download');
   return parts.join(' · ');
 }

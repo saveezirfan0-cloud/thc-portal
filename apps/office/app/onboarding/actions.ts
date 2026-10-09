@@ -257,13 +257,35 @@ export async function markInterviewComplete(
 }
 
 /** §2.4 / §9.6: a role picked after Willo accepted the candidate by itself. */
-export async function addQualifiedRole(staffId: string, roleId: string): Promise<ActionResult> {
-  return call('add_staff_role', { p_staff: staffId, p_role: roleId }, paths(staffId));
+export async function addQualifiedRole(
+  staffId: string,
+  roleId: string,
+  revalidate = true,
+): Promise<ActionResult> {
+  return call(
+    'add_staff_role',
+    { p_staff: staffId, p_role: roleId },
+    revalidate ? paths(staffId) : [],
+  );
 }
 
-/** §9.6: take a role back off a candidate (also removes the client entries that named it). */
-export async function removeQualifiedRole(staffId: string, roleId: string): Promise<ActionResult> {
-  return call('remove_staff_role', { p_staff: staffId, p_role: roleId }, paths(staffId));
+/**
+ * §9.6: take a role back off a candidate (also removes the client entries that named it).
+ *
+ * `revalidate: false` skips the server-side re-render of the page that comes back
+ * with every action that revalidates: the candidate screen ticks several roles in
+ * a row and refreshes once when the last one has saved.
+ */
+export async function removeQualifiedRole(
+  staffId: string,
+  roleId: string,
+  revalidate = true,
+): Promise<ActionResult> {
+  return call(
+    'remove_staff_role',
+    { p_staff: staffId, p_role: roleId },
+    revalidate ? paths(staffId) : [],
+  );
 }
 
 /** §9.6: clear the candidate at a client for one of the roles they hold. */
@@ -277,6 +299,42 @@ export async function grantClientQualification(
     { p_staff: staffId, p_client: clientId, p_role: roleId },
     paths(staffId),
   );
+}
+
+/**
+ * §9.6: clear the candidate at several clients for several roles at once —
+ * one entry per client + role, as the table holds them. Pairs that already
+ * exist are skipped by the caller. Run in small batches so a long list is not
+ * a long queue of round trips; the first refusal ends the run and says so.
+ */
+export async function grantClientQualifications(
+  staffId: string,
+  clientIds: string[],
+  roleIds: string[],
+): Promise<ActionResult> {
+  if (clientIds.length === 0 || roleIds.length === 0) return { ok: true };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const pairs = clientIds.flatMap((client) => roleIds.map((role) => [client, role] as const));
+  const BATCH = 8;
+  for (let at = 0; at < pairs.length; at += BATCH) {
+    const results = await Promise.all(
+      pairs.slice(at, at + BATCH).map(([client, role]) =>
+        supabase.rpc('grant_client_qualification', {
+          p_staff: staffId,
+          p_client: client,
+          p_role: role,
+        }),
+      ),
+    );
+    const failed = results.find((result) => result.error);
+    if (failed?.error) {
+      for (const path of paths(staffId)) revalidatePath(path);
+      return { ok: false, message: explain(failed.error.message) };
+    }
+  }
+  for (const path of paths(staffId)) revalidatePath(path);
+  return { ok: true };
 }
 
 export async function revokeClientQualification(

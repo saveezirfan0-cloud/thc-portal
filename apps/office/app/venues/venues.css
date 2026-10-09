@@ -294,3 +294,42 @@
     min-height: var(--tap-min);
   }
 }
+
+/* ---- search by postcode or street address (ADR-0101) ---------------- */
+.venue-search-row {
+  display: flex;
+  gap: var(--sp-8);
+}
+.venue-search-row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.venue-results {
+  list-style: none;
+  margin: var(--sp-6) 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-field);
+  overflow: hidden;
+}
+.venue-results li + li {
+  border-top: 1px solid var(--line);
+}
+.venue-results button {
+  display: block;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--sp-8) var(--sp-14);
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.venue-results button:hover,
+.venue-results button:focus-visible {
+  background: var(--hover);
+  color: var(--cyan-ink);
+}

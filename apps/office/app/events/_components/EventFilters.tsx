@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EVENT_STATUS_LABEL } from '@thc/domain';
 import { hrefFor, type ToolbarQuery } from './EventToolbar';
-import type { ClientOption } from '../data';
+import type { ClientName } from '../data';
 import { EVENT_STATUSES } from '../_lib/filters';
 
 /**
@@ -15,7 +15,7 @@ import { EVENT_STATUSES } from '../_lib/filters';
  * month" to a colleague. The search box submits as a form so it does not
  * navigate on every keystroke.
  */
-export function EventFilters({ query, clients }: { query: ToolbarQuery; clients: ClientOption[] }) {
+export function EventFilters({ query, clients }: { query: ToolbarQuery; clients: ClientName[] }) {
   const router = useRouter();
   const [q, setQ] = useState(query.q);
 
@@ -61,24 +61,12 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
         onChange={(event) => router.push(hrefFor({ ...query, status: event.target.value }))}
       >
         <option value="">Any status</option>
-        {EVENT_STATUSES.map((status) => (
+        {EVENT_STATUSES.filter((status) => status !== 'cancelled').map((status) => (
           <option key={status} value={status}>
             {EVENT_STATUS_LABEL[status]}
           </option>
         ))}
       </select>
-
-      <label className="row sm" style={{ gap: 6 }}>
-        <input
-          type="checkbox"
-          checked={query.hideCancelled && query.status !== 'cancelled'}
-          disabled={query.status === 'cancelled'}
-          onChange={(event) =>
-            router.push(hrefFor({ ...query, hideCancelled: event.target.checked }))
-          }
-        />
-        Hide cancelled
-      </label>
 
       <button type="submit" className="sb-sr-only">
         Search

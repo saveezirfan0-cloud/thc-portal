@@ -39,6 +39,14 @@ export interface CandidateRow {
   right_to_work_until: string | null;
   share_code: string | null;
   activated: boolean;
+  /**
+   * ADR-0107: SpudBros Express staff, whether THC shifts are switched on for
+   * them, and the Payroll ID — from `onboarding_candidates_v` since
+   * 20261008130000. Optional so a row from an older view reads as none.
+   */
+  spudbros_express?: boolean;
+  thc_shifts_enabled?: boolean;
+  payroll_id?: string | null;
   role_names: string[];
   role_ids: string[];
   willo_linked: boolean;
@@ -246,6 +254,7 @@ export interface Declaration {
   review_status: ReviewStatus;
   declared_at: string;
   reviewed_at: string | null;
+  reviewed_by_name: string | null;
   review_note: string | null;
   superseded: boolean;
 }

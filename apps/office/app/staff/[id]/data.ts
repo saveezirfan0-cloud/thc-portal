@@ -120,6 +120,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     manager,
     activated,
     location,
+    willo,
     violationDetails,
     rtw,
     reviewQueue,
@@ -173,9 +174,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // this is oldest first — the onboarding answer, then anything
     // declared later from the app (§10.7).
     supabase
-      .from('criminal_declarations')
+      .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name',
       )
       .eq('staff_id', id)
       .order('declared_at')
@@ -192,13 +193,27 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // admin_all; a failed read shows nothing.
     supabase
       .from('staff')
-      .select('home_location_stale, gender, languages')
+      .select(
+        'home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled, payroll_id',
+      )
       .eq('id', id)
       .maybeSingle<{
         home_location_stale: boolean;
         gender: 'M' | 'F' | null;
         languages: string[] | null;
+        spudbros_express: boolean;
+        thc_shifts_enabled: boolean;
+        payroll_id: string | null;
       }>(),
+    // ADR-0098: the Willo interview link stays on the profile after
+    // onboarding. The same column the candidate screen reads, built from
+    // staff.willo_candidate_id + settings.willo_review_url_template; a
+    // failed read shows no link, nothing more.
+    supabase
+      .from('onboarding_candidates_v')
+      .select('willo_review_url')
+      .eq('id', id)
+      .maybeSingle<{ willo_review_url: string | null }>(),
     // The Shifts tab opens the /checkin detail window and Resolve (§9.6),
     // so it reads the entries through the monitor's own query.
     loadStaffViolationLog(supabase, id),
@@ -265,10 +280,21 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     clients: clients.data ?? [],
     managerName: manager,
     activated: activated.error ? null : (activated.data ?? null),
+    willoReviewUrl: willo.error ? undefined : (willo.data?.willo_review_url ?? null),
     locationStale: location.error ? null : (location.data?.home_location_stale ?? null),
     ...(location.error
       ? {}
-      : { gender: location.data?.gender ?? null, languages: location.data?.languages ?? null }),
+      : {
+          gender: location.data?.gender ?? null,
+          languages: location.data?.languages ?? null,
+          ...(location.data
+            ? {
+                spudbros: location.data.spudbros_express,
+                thcShifts: location.data.thc_shifts_enabled,
+                payrollId: location.data.payroll_id,
+              }
+            : {}),
+        }),
     emergencyContact: emergency.error ? null : (emergency.data ?? null),
     emergencyContactProblem: emergency.error ? emergency.error.message : null,
     referrals: referrals.error ? null : (referrals.data ?? null),

@@ -243,3 +243,29 @@ describe('the banner markup', () => {
     expect(html).not.toContain('<button');
   });
 });
+
+describe('for SpudBros Express staff (ADR-0106)', () => {
+  it('never talks about shifts they are not offered here', () => {
+    const states = ['unconfigured', 'denied', 'default', 'needs-install', 'unsupported'] as const;
+    for (const state of states) {
+      for (const browser of ['ios-safari', 'ios-other', 'android', 'other'] as const) {
+        const banner = pushBanner({ ...input({ state, browser }), onboardingOnly: true });
+        if (banner) expect(banner.text).not.toMatch(/shift/i);
+      }
+    }
+  });
+
+  it('says what a notification is for: a document that needs another look', () => {
+    const banner = pushBanner({ ...input({ state: 'default' }), onboardingOnly: true });
+    expect(banner?.text).toBe(
+      'Turn on notifications so we can tell you if a document needs another look.',
+    );
+    expect(banner?.link?.href).toBe('/notifications');
+  });
+
+  it('leaves everyone else’s wording alone', () => {
+    expect(pushBanner(input({ state: 'default' }))?.text).toBe(
+      'Turn on notifications so you don’t miss shifts.',
+    );
+  });
+});

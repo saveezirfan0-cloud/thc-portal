@@ -131,7 +131,20 @@ describe('Needs review (§4.1)', () => {
 
   it("describes the file and the AI's finding", () => {
     expect(documentLine(ROW)).toBe('Queen Mary University of London · PDF 1.2 MB');
-    expect(foundLine(ROW)).toEqual({ text: '3 holiday ranges', confidence: 'hi' });
+    // The letter expires on the last day printed on it (ADR-0103) — the
+    // reviewer sees the date the reminders will count down to.
+    expect(foundLine(ROW)).toEqual({
+      text: '3 holiday ranges · Letter expires 19.09.2027',
+      confidence: 'hi',
+    });
+    // A term letter's stored expiry_date is the calendar fallback stamped at
+    // upload, not something the AI read, so it is not offered as a finding.
+    expect(foundLine({ ...ROW, expiry_date: '2026-12-31', term_dates: null }).text).toBe('—');
+    // Any other document still shows the date the AI read.
+    expect(
+      foundLine({ ...ROW, item_type: 'passport', expiry_date: '2031-03-04', term_dates: null })
+        .text,
+    ).toBe('Expiry 04.03.2031');
     expect(foundLine({ ...ROW, ai_confidence: 0.41, needs_manual_review: true }).confidence).toBe(
       'manual',
     );
@@ -203,7 +216,10 @@ describe('Needs review (§4.1)', () => {
       term_dates: ['[2025-12-13,2026-01-07)', '[2026-06-13,2026-09-22)'],
       manual_review_reason: LETTER_EXPIRED,
     };
-    expect(foundLine(expired)).toEqual({ text: '2 holiday ranges', confidence: 'manual' });
+    expect(foundLine(expired)).toEqual({
+      text: '2 holiday ranges · Letter expires 21.09.2026',
+      confidence: 'manual',
+    });
     expect(reviewFlag(expired)).toEqual({
       label: 'Letter expired',
       detail: 'every term date on it is in the past — not accepted',
@@ -270,6 +286,8 @@ const RADAR: RadarRow = {
   n3_at: null,
   n4_at: null,
   replacement_in_review: false,
+  reviewed_at: '2026-08-01T10:00:00Z',
+  reviewed_by_name: 'Gisela M.',
 };
 
 describe('Radar (§4.1, §4.2)', () => {

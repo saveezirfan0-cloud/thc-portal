@@ -1,6 +1,6 @@
 # ADR-0094 · "Hide cancelled" on the events diary
 
-**Status:** Accepted · **Refines:** Scope §3.1, §3.3
+**Status:** Superseded by ADR-0099 · **Refines:** Scope §3.1, §3.3
 
 ## Context
 §3.3 keeps a cancelled event in the list and calendar, greyed and labelled "Cancelled", never deleted, for the record. On a busy diary that clutters the day. The status filter only offers one status or all, so there was no way to see everything except cancelled.

@@ -74,13 +74,13 @@ describe('chaserLine()', () => {
       chaserLine(state({ rungs_sent: 3, stalled: true, next_due_at: null, last_failed: true }))
         ?.text,
     ).toBe(
-      'Stalled — no progress after 3 reminders (last 22 Sep, the last undelivered — notifications are off on their phone), still reminding daily. Phone them.',
+      'Stalled — 3 reminders, no progress (last 22 Sep, the last undelivered — notifications are off on their phone). Phone them.',
     );
   });
 
   it('turns coral once three have gone with no progress, and says they carry on', () => {
     expect(chaserLine(state({ rungs_sent: 3, stalled: true, next_due_at: null }))).toEqual({
-      text: 'Stalled — no progress after 3 reminders (last 22 Sep), still reminding daily. Phone them.',
+      text: 'Stalled — 3 reminders, no progress (last 22 Sep). Phone them.',
       tone: 'coral',
     });
   });
@@ -153,7 +153,7 @@ describe('the board', () => {
     const html = render({
       chasers: { 'c-1': state({ rungs_sent: 3, stalled: true, next_due_at: null }) },
     });
-    expect(html).toMatch(/class="meta coral">Stalled — no progress after 3 reminders/);
+    expect(html).toMatch(/class="meta coral">Stalled — 3 reminders, no progress/);
   });
 
   it('draws no reminder line for a candidate nobody has chased', () => {

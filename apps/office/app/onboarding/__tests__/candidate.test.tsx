@@ -1,9 +1,29 @@
+import type * as React from 'react';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { CONTRACT_VERSION_CLAUSE_28_PENDING } from '@thc/domain';
-import type { CandidateData, CandidateDocument, CandidateRow } from '../types';
+import type { CandidateData, CandidateDocument, CandidateRow, Declaration } from '../types';
 
+// The stepper's "look back at a finished step" is client state with no static
+// way in, so a test can ask `picked` — the third null-initialised useState in
+// CandidateScreen, after `reject` and `problem` — to start on a given step.
+const lookBack = vi.hoisted(() => ({
+  picked: null as { phase: number; index: number } | null,
+  nulls: 0,
+}));
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof React>();
+  return {
+    ...actual,
+    useState: ((init: unknown) => {
+      if (init === null && lookBack.picked && ++lookBack.nulls === 3) {
+        return actual.useState(lookBack.picked);
+      }
+      return actual.useState(init as never);
+    }) as typeof actual.useState,
+  };
+});
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => (
@@ -11,6 +31,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../actions', () => ({}));
+vi.mock('../../staff/[id]/actions', () => ({ rejectSelfie: vi.fn() }));
 vi.mock('../../compliance/actions', () => ({}));
 vi.mock('../../_lib/rtwCheckActions', () => ({}));
 vi.mock('../../_lib/dobCorrectionActions', () => ({ correctDob: vi.fn() }));
@@ -20,6 +41,7 @@ vi.mock('../../_components/OfficeShell', () => ({
 }));
 
 const { CandidateScreen } = await import('../CandidateScreen');
+const { phaseIndex } = await import('../view-model');
 
 /**
  * /onboarding/:id at the Documents phase: the NI number beside the NI
@@ -118,6 +140,52 @@ const render = (d: CandidateData) =>
 describe('the candidate profile, Documents phase', () => {
   it('D43: shows the full NI number beside the NI evidence', () => {
     expect(render(data())).toContain('NI number on the profile: QQ 12 34 56 C');
+  });
+
+  it('names who verified or rejected a document, and when, in UK time', () => {
+    const html = render(
+      data({
+        documents: [
+          doc({
+            id: 'p',
+            doc_type: 'passport',
+            doc_label: 'Passport',
+            review_status: 'verified',
+            reviewed_at: '2026-10-08T10:05:00Z',
+            reviewed_by_name: 'Gisela M.',
+          }),
+          doc({
+            id: 'n',
+            doc_type: 'ni_evidence',
+            doc_label: 'NI evidence',
+            review_status: 'rejected',
+            rejection_reason: 'Blurred',
+            reviewed_at: '2026-10-08T10:06:00Z',
+            reviewed_by_name: 'Sam R.',
+          }),
+        ],
+      }),
+    );
+    expect(html).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+    expect(html).toContain('Rejected by Sam R. · 08.10.2026 11:06 UK time');
+    expect(html).toContain('Reason: “Blurred” — awaiting re-upload (N8 sent)');
+  });
+
+  it('a verified document with no name on file still shows when, never a bare "Verified"', () => {
+    const html = render(
+      data({
+        documents: [
+          doc({
+            id: 'p',
+            doc_type: 'passport',
+            doc_label: 'Passport',
+            review_status: 'verified',
+            reviewed_at: '2026-10-08T10:05:00Z',
+          }),
+        ],
+      }),
+    );
+    expect(html).toContain('Verified · 08.10.2026 11:05 UK time');
   });
 
   it('D43: says when it is not entered yet, and that the document comes back', () => {
@@ -239,6 +307,28 @@ describe('the candidate profile, Documents phase', () => {
     const html = render(data());
     expect(html).not.toContain('class="annot');
     expect(html).not.toContain('ml-auto annot');
+  });
+});
+
+describe('the candidate profile · profile selfie (ADR-0097)', () => {
+  const withPhoto = (over: Partial<CandidateRow> = {}) =>
+    data({
+      candidate: { ...ROW, photo_path: 'c-1/selfie.jpg', ...over } as CandidateRow,
+    });
+
+  it('offers one more Reject — the selfie’s — when it is set, and none while it is not taken', () => {
+    const count = (html: string) => html.split('>Reject<').length - 1;
+    const without = render(data());
+    expect(without).toContain('Not taken');
+    expect(count(render(withPhoto()))).toBe(count(without) + 1);
+  });
+
+  it('does not offer it on a rejected candidate', () => {
+    const count = (html: string) => html.split('>Reject<').length - 1;
+    const rejected = { status: 'rejected' as CandidateRow['status'] };
+    expect(count(render(withPhoto(rejected)))).toBe(
+      count(render(data({ candidate: { ...ROW, ...rejected } as CandidateRow }))),
+    );
   });
 });
 
@@ -364,7 +454,8 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
         qualifications: [],
       }),
     );
-    expect(html).toContain('Add a client');
+    // No second role pick: the roles come from the ticks on the left.
+    expect(html).toContain('Search 1 clients to add');
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Not cleared at any client yet.');
   });
@@ -388,6 +479,54 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     );
     expect(html).toContain('Grand Hotel');
     expect(html).toContain('Remove');
+    expect(html).toContain('1 client');
+  });
+
+  it('does not offer a client the candidate is already cleared at for every role', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [
+          { id: 'c1', name: 'Grand Hotel' },
+          { id: 'c2', name: 'Plaza Bar' },
+        ],
+        qualifications: [
+          {
+            id: 'q1',
+            client_id: 'c1',
+            client_name: 'Grand Hotel',
+            role_id: 'r1',
+            role_name: 'Waiting Staff',
+            do_not_return: false,
+          },
+        ],
+      }),
+    );
+    expect(html).toContain('Search 1 clients to add');
+    expect(html).not.toContain('already cleared');
+    // Grand Hotel appears once (under Cleared at), Plaza Bar is still on offer.
+    expect(html.match(/Grand Hotel/g) ?? []).toHaveLength(1);
+    expect(html).toContain('Plaza Bar');
+  });
+
+  it('shows one line per client with its roles as chips, not one line per entry', () => {
+    const entry = (id: string, role_id: string, role_name: string) => ({
+      id,
+      client_id: 'c1',
+      client_name: 'Grand Hotel',
+      role_id,
+      role_name,
+      do_not_return: false,
+    });
+    const html = render(
+      data({
+        roles,
+        clients: [{ id: 'c1', name: 'Grand Hotel' }],
+        qualifications: [entry('q1', 'r1', 'Waiting Staff'), entry('q2', 'r2', 'Bar Staff')],
+      }),
+    );
+    expect(html.match(/class="cq-row"/g) ?? []).toHaveLength(1);
+    expect(html).toContain('Remove all');
   });
 
   it('asks for a role first when none is held', () => {
@@ -400,5 +539,95 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     );
     expect(html).toContain('none yet');
     expect(html).toContain('Pick at least one role first, then add clients.');
+  });
+});
+
+describe('the candidate profile, who decided and when', () => {
+  const stamped = {
+    reviewed_at: '2026-10-08T10:05:00Z',
+    reviewed_by_name: 'Gisela M.',
+  };
+  const decl = (over: Partial<Declaration>): Declaration => ({
+    id: 'dc1',
+    source: 'onboarding',
+    answer: true,
+    details: 'Minor motoring offence',
+    conviction_date: null,
+    review_status: 'verified',
+    declared_at: '2026-10-07T09:00:00Z',
+    reviewed_at: null,
+    reviewed_by_name: null,
+    review_note: null,
+    superseded: false,
+    ...over,
+  });
+
+  it('a Yes declaration names its verifier and the time', () => {
+    const html = render(data({ declarations: [decl({ ...stamped })] }));
+    expect(html).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+  });
+
+  it('a rejected Yes names who rejected it', () => {
+    const html = render(data({ declarations: [decl({ review_status: 'rejected', ...stamped })] }));
+    expect(html).toContain('Rejected by Gisela M. · 08.10.2026 11:05 UK time');
+  });
+
+  it('the quiz gate panel keeps its separator: name, then " · ", then the stamp', () => {
+    const html = render(
+      data({
+        candidate: { ...ROW, status: 'quiz', quiz_blockers: [] } as CandidateRow,
+        documents: [
+          doc({
+            id: 'p',
+            doc_type: 'passport',
+            doc_label: 'Passport',
+            review_status: 'verified',
+            ...stamped,
+          }),
+        ],
+        declarations: [decl({ ...stamped, review_note: 'disclosed' })],
+      }),
+    );
+    expect(html).toContain('Verified by Gisela M. · 08.10.2026 11:05 UK time');
+    expect(html).toContain('note: “disclosed”');
+    expect(html).not.toContain('Gisela M. 08.10.2026');
+  });
+});
+
+describe('the candidate profile, roles and clients once the candidate has moved on', () => {
+  const roles = [
+    { id: 'r1', name: 'Waiting Staff' },
+    { id: 'r2', name: 'Bar Staff' },
+  ];
+  const clients = [{ id: 'c1', name: 'Grand Hotel' }];
+
+  const lookBackAtDocuments = (status: string) => {
+    const candidate = {
+      ...ROW,
+      status,
+      contract_signed_at: status === 'compliant' ? '2026-09-25T10:00:00Z' : null,
+    } as CandidateRow;
+    lookBack.picked = { phase: phaseIndex(candidate), index: 2 };
+    lookBack.nulls = 0;
+    try {
+      return render(data({ roles, clients, candidate }));
+    } finally {
+      lookBack.picked = null;
+    }
+  };
+
+  it('keeps roles and clients editable while looking back at Documents from the Quiz', () => {
+    const html = lookBackAtDocuments('quiz');
+    expect(html).toContain('Viewing <b>');
+    expect(html).toContain('roles and clients stay editable');
+    expect(html).toContain('Search 1 clients to add');
+    // The role ticks are not disabled.
+    const ticks = html.match(/<div[^>]*>.*?Waiting Staff.*?<\/div>/s)?.[0] ?? '';
+    expect(ticks).not.toContain('disabled');
+  });
+
+  it('and after the contract is signed, but not on a rejected candidate', () => {
+    expect(lookBackAtDocuments('compliant')).toContain('clients to add');
+    expect(lookBackAtDocuments('rejected')).not.toContain('clients to add');
   });
 });
