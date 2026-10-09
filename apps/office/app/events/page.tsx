@@ -1,16 +1,12 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
-import { Alert, Panel } from '@thc/ui';
-import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
-import { loadClientNames, loadEventsInRange } from './data';
+import { SkeletonPanel, SkeletonScreen, SkeletonToolbar } from '@thc/ui';
+import { todayInUk } from './calendar';
 import { OfficeShell } from '../_components/OfficeShell';
-import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
-import { EventToolbar, hrefFor } from './_components/EventToolbar';
-import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
+import { EventsBody } from './EventsBody';
 import { parseEventQuery } from './_lib/filters';
-import { SavedViewsBar } from './_lib/SavedViewsBar';
-import { listMySavedViews } from './_lib/saved-views-actions';
-import { bucketByDay, filterEventRows, periodCrumb, periodTotals, toEventRows } from './view-model';
+import { periodCrumb } from './view-model';
 import './shift-builder.css';
 import './events.css';
 
@@ -27,6 +23,12 @@ export const metadata = { title: 'Scheduling · THC Back Office' };
  * expects. The period arrows step a day, a week or a month depending on the
  * view, and work in List too — past events are browsable there, not only in
  * the calendar.
+ *
+ * The page reads only the URL, so the topbar and chrome paint at once and
+ * the events stream in behind a skeleton (`EventsBody`). One `OfficeShell`,
+ * outside the Suspense: a shell drawn by the skeleton too put two topbars in
+ * the document during the swap. The Suspense has no key, so stepping the
+ * period keeps the old one on screen until the new one is ready, as before.
  */
 export default async function Page({
   searchParams,
@@ -36,22 +38,6 @@ export default async function Page({
   const today = todayInUk();
   // One parser for the URL, shared with the toolbar and the saved views.
   const query = parseEventQuery(await searchParams, today);
-  const { view, date } = query;
-
-  const { from, to } = periodRange(view, date);
-  const [reference, { events, problem }, savedViews, format] = await Promise.all([
-    loadClientNames(),
-    loadEventsInRange(from, to),
-    // The manager's own saved views, read fresh on every open (ADR-0059).
-    listMySavedViews(),
-    currentTimeFormat(),
-  ]);
-
-  const filters = { clientId: query.clientId, status: query.status, q: query.q };
-  // Cancelled events are dropped here, whatever the filters (ADR-0099).
-  const rows = filterEventRows(toEventRows(events, new Date(), format), filters);
-
-  const totals = periodTotals(rows);
 
   return (
     <OfficeShell
@@ -60,7 +46,7 @@ export default async function Page({
       // The wireframe's "events · Thu 18 Sep 2026": the period being read.
       crumbs={
         <>
-          events · <b>{periodCrumb(date)}</b>
+          events · <b>{periodCrumb(query.date)}</b>
         </>
       }
       actions={
@@ -70,57 +56,18 @@ export default async function Page({
         </Link>
       }
     >
-      <div className="stack">
-        {/* Fill moves as staff accept and the office books: re-read every 15 s. */}
-        <AutoRefresh everyMs={15_000} />
-        {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
-        {/* A failed read is said out loud, never drawn as an empty period. */}
-        {problem ? <Alert tone="coral">{problem}</Alert> : null}
-
-        <EventToolbar query={query} clients={reference.clients} />
-
-        {/* Named filter sets, kept per manager in office_saved_views. */}
-        <SavedViewsBar query={query} clients={reference.clients} initial={savedViews} />
-
-        {!problem && view === 'list' ? (
-          <Panel flush className="stack" actions={null}>
-            <div className="panel-b tight">
-              <ListView rows={rows} today={today} />
-            </div>
-            <div
-              className="panel-h"
-              style={{ borderBottom: 0, borderTop: '1px solid var(--line)' }}
-            >
-              <span className="muted sm">
-                {totals.events} event{totals.events === 1 ? '' : 's'} in this period · {totals.open}{' '}
-                open position{totals.open === 1 ? '' : 's'}
-              </span>
-            </div>
-          </Panel>
-        ) : null}
-
-        {!problem && view === 'month' ? (
-          <MonthView
-            cells={monthGrid(date)}
-            buckets={bucketByDay(
-              rows,
-              monthGrid(date).map((cell) => cell.iso),
-            )}
-            today={today}
-            dayHref={(iso) => hrefFor({ ...query, view: 'day', date: iso })}
-          />
-        ) : null}
-
-        {!problem && view === 'week' ? (
-          <WeekView
-            days={weekDays(date)}
-            buckets={bucketByDay(rows, weekDays(date))}
-            today={today}
-          />
-        ) : null}
-
-        {!problem && view === 'day' ? <DayView rows={rows} /> : null}
-      </div>
+      {/* Fill moves as staff accept and the office books: re-read every 15 s. */}
+      <AutoRefresh everyMs={15_000} />
+      <Suspense
+        fallback={
+          <SkeletonScreen label="Loading events">
+            <SkeletonToolbar controls={3} />
+            <SkeletonPanel rows={8} />
+          </SkeletonScreen>
+        }
+      >
+        <EventsBody query={query} today={today} />
+      </Suspense>
     </OfficeShell>
   );
 }

@@ -1,4 +1,5 @@
-import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
+import { Suspense } from 'react';
+import { Content, Logo, ModeSwitch, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { NAV_ICONS } from './navIcons';
 import { OfficeSidebar } from './OfficeSidebar';
@@ -87,6 +88,16 @@ export interface OfficeShellProps {
   children: ReactNode;
 }
 
+const BRAND = (
+  <>
+    <Logo />
+    <div>
+      <div className="name">The Hospitality Company</div>
+      <div className="sub">Back Office</div>
+    </div>
+  </>
+);
+
 export function OfficeShell({
   activeHref,
   title,
@@ -98,37 +109,34 @@ export function OfficeShell({
   return (
     <Shell
       sidebar={
-        <OfficeSidebar
-          items={NAV}
-          activeHref={activeHref}
-          brand={
-            <>
-              <Logo />
-              <div>
-                <div className="name">The Hospitality Company</div>
-                <div className="sub">Back Office</div>
-              </div>
-            </>
-          }
-          footer={
-            <>
-              <SignedInAs />
-              {/* `ml-auto xs` text link, as every backoffice wireframe's
+        // The menu depends on who is signed in (which items, which counters),
+        // and the root layout no longer waits for that. Until it arrives the
+        // sidebar is the brand alone, so the page beside it is not held back.
+        <Suspense fallback={<Sidebar items={[]} activeHref={activeHref} brand={BRAND} />}>
+          <OfficeSidebar
+            items={NAV}
+            activeHref={activeHref}
+            brand={BRAND}
+            footer={
+              <>
+                <SignedInAs />
+                {/* `ml-auto xs` text link, as every backoffice wireframe's
                   `.foot` draws it — a pill here was ADR-0012's last piece
                   of drift, waiting on a `link` tone to exist. */}
-              <SignOut tone="link" size="md" className="ml-auto xs" />
-            </>
-          }
-          phoneFooter={
-            <>
-              <div className="row">
-                <SignedInAs />
-                <SignOut className="ml-auto" />
-              </div>
-              <ModeSwitch small />
-            </>
-          }
-        />
+                <SignOut tone="link" size="md" className="ml-auto xs" />
+              </>
+            }
+            phoneFooter={
+              <>
+                <div className="row">
+                  <SignedInAs />
+                  <SignOut className="ml-auto" />
+                </div>
+                <ModeSwitch small />
+              </>
+            }
+          />
+        </Suspense>
       }
     >
       <Topbar
@@ -147,7 +155,9 @@ export function OfficeShell({
         }
       />
       <Content>
-        <ReadOnlyBanner />
+        <Suspense fallback={null}>
+          <ReadOnlyBanner />
+        </Suspense>
         {children}
       </Content>
     </Shell>
