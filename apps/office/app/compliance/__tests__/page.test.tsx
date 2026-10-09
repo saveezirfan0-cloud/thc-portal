@@ -23,7 +23,7 @@ vi.mock('../data', () => ({
     problem: null,
   }),
 }));
-vi.mock('../ComplianceScreen', () => ({ ComplianceScreen: () => null }));
+vi.mock('../ComplianceBody', () => ({ ComplianceBody: () => null }));
 vi.mock('../../_components/AutoRefresh', () => ({ AutoRefresh: () => null }));
 vi.mock('../../checkin/ViewerZone', () => ({
   ViewerZone: () => <span>viewer-zone</span>,

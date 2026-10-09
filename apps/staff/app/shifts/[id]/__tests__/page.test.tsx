@@ -71,6 +71,8 @@ vi.mock('../data', () => ({
 }));
 vi.mock('../../../data', () => ({
   loadBookings: async () => ({ rows: [], problem: null }),
+  // ADR-0109: no quiz and no kit message on the shifts under test.
+  loadShiftRequirements: async () => ({ rows: [], problem: null }),
   openInvites: () => [],
   shiftsBadge: () => 0,
 }));

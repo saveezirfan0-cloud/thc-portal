@@ -20,14 +20,16 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
  * from a client component that cannot do this lookup itself.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // All in one round: the name for the sidebar foot, the menu counters
-  // (§4.1) — a HEAD count, no rows — and the clock this operator reads
-  // times on (ADR-0085: the cookie, else their profile).
-  const [user, counts, clock] = await Promise.all([
-    officeUser(),
-    officeNavCounts(),
-    timeFormatChoice(),
-  ]);
+  // The clock is a cookie read: nothing to wait for. The operator (name,
+  // office role) and the menu counters (§4.1) are database reads, and the
+  // page below renders only after this function returns — so they are
+  // started here and handed on as PROMISES. The sidebar and the read-only
+  // banner resolve them behind their own Suspense (`OfficeShell`), and the
+  // page's own queries start at once instead of after these two. A failed
+  // lookup is "no name" / "no counters", never a broken page.
+  const clock = await timeFormatChoice();
+  const user = officeUser().catch(() => null);
+  const counts = officeNavCounts();
 
   return (
     <html lang="en-GB" data-style="warm" suppressHydrationWarning>

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { NAV_ICONS } from './navIcons';
@@ -87,6 +88,16 @@ export interface OfficeShellProps {
   children: ReactNode;
 }
 
+const BRAND = (
+  <>
+    <Logo />
+    <div>
+      <div className="name">The Hospitality Company</div>
+      <div className="sub">Back Office</div>
+    </div>
+  </>
+);
+
 export function OfficeShell({
   activeHref,
   title,
@@ -98,37 +109,43 @@ export function OfficeShell({
   return (
     <Shell
       sidebar={
-        <OfficeSidebar
-          items={NAV}
-          activeHref={activeHref}
-          brand={
-            <>
-              <Logo />
-              <div>
-                <div className="name">The Hospitality Company</div>
-                <div className="sub">Back Office</div>
-              </div>
-            </>
+        // The menu depends on who is signed in (which items, which counters),
+        // and the root layout no longer waits for that. Until it arrives the
+        // column holds the brand alone, in a `div` that is deliberately NOT an
+        // `aside.sidebar`: the streamed menu is the one sidebar in the
+        // document, and a second `aside` during the swap failed a strict
+        // locator in CI (office.phone.spec).
+        <Suspense
+          fallback={
+            <div className="sidebar" aria-hidden="true">
+              <div className="brand">{BRAND}</div>
+            </div>
           }
-          footer={
-            <>
-              <SignedInAs />
-              {/* `ml-auto xs` text link, as every backoffice wireframe's
+        >
+          <OfficeSidebar
+            items={NAV}
+            activeHref={activeHref}
+            brand={BRAND}
+            footer={
+              <>
+                <SignedInAs />
+                {/* `ml-auto xs` text link, as every backoffice wireframe's
                   `.foot` draws it — a pill here was ADR-0012's last piece
                   of drift, waiting on a `link` tone to exist. */}
-              <SignOut tone="link" size="md" className="ml-auto xs" />
-            </>
-          }
-          phoneFooter={
-            <>
-              <div className="row">
-                <SignedInAs />
-                <SignOut className="ml-auto" />
-              </div>
-              <ModeSwitch small />
-            </>
-          }
-        />
+                <SignOut tone="link" size="md" className="ml-auto xs" />
+              </>
+            }
+            phoneFooter={
+              <>
+                <div className="row">
+                  <SignedInAs />
+                  <SignOut className="ml-auto" />
+                </div>
+                <ModeSwitch small />
+              </>
+            }
+          />
+        </Suspense>
       }
     >
       <Topbar
@@ -147,7 +164,9 @@ export function OfficeShell({
         }
       />
       <Content>
-        <ReadOnlyBanner />
+        <Suspense fallback={null}>
+          <ReadOnlyBanner />
+        </Suspense>
         {children}
       </Content>
     </Shell>

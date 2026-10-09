@@ -57,10 +57,23 @@ vi.mock('@supabase/ssr', () => ({
     { cookies }: { cookies: { setAll: (toSet: unknown[]) => void } },
   ) => ({
     auth: {
-      getUser: async () => {
+      // The library refreshes an expiring token inside getClaims() (through
+      // getSession), which is where the cookies are rewritten (ADR-0108).
+      getClaims: async () => {
         cookies.setAll(state.refreshWrites);
-        return { data: { user: { app_metadata: { role: 'admin' } } } };
+        return {
+          data: {
+            claims: {
+              sub: 'u1',
+              session_id: `s${Math.random()}`,
+              aal: 'aal1',
+              app_metadata: { role: 'admin' },
+            },
+          },
+          error: null,
+        };
       },
+      getUser: async () => ({ data: { user: { app_metadata: { role: 'admin' }, factors: [] } } }),
     },
   }),
 }));

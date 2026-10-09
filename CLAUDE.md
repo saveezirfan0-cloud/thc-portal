@@ -63,6 +63,7 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Notifications: copy and timing come from the §8 register in `packages/notifications`; every send goes through `notification_outbox` with a unique key.
 - Every state change = one function in `packages/domain/state.ts` + a DB function; illegal transitions are rejected in the DB too.
 - GDPR removal anonymises to "Deleted account #id", keeps history rows and already-issued PDFs.
+- Client shift requirements (ADR-0109): a (client, role) may name a quiz (`client_role_requirements.quiz_id` — one pass covers every role that names it, for good; asked by CR1 the moment a booking is confirmed, marked in the database, three failures email the office and the worker STAYS booked) and/or a kit message (CR2 at 07:00 UK on the day or start − 3 h, until `acknowledge_shift_kit`). Neither gates check-in.
 
 ## Conventions
 

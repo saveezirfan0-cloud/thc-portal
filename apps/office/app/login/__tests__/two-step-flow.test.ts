@@ -66,6 +66,21 @@ vi.mock('@thc/db/server', () => ({
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
     auth: {
+      // The verified token (ADR-0108): who, which role, which level. A fresh
+      // session id per call, as each test here is its own session.
+      getClaims: async () => ({
+        data: state.user
+          ? {
+              claims: {
+                sub: 'u1',
+                session_id: `s${Math.random()}`,
+                aal: state.aal,
+                app_metadata: { role: state.role },
+              },
+            }
+          : null,
+        error: null,
+      }),
       getUser: async () => ({ data: { user: currentUser() } }),
       getSession: state.getSession,
     },
@@ -258,16 +273,20 @@ describe('middleware with two-step on', () => {
     expect(res.status).toBe(200);
   });
 
-  it('an unreadable session token is treated as not verified', async () => {
-    state.getSession.mockResolvedValue({ data: { session: { access_token: 'garbage' } } });
+  it('an unreadable assurance level is treated as not verified', async () => {
+    state.aal = 'garbage';
     const res = await at('/dashboard');
     expect(new URL(res.headers.get('location') ?? '').pathname).toBe('/login/verify');
   });
 
-  it('a login without a verified factor never pays for the session read', async () => {
+  it('a login without a verified factor passes at aal1', async () => {
     state.factors = [{ ...verifiedTotp, status: 'unverified' }];
     const res = await at('/dashboard');
     expect(res.status).toBe(200);
+  });
+
+  it('the middleware never reads the unverified session copy any more', async () => {
+    await at('/dashboard');
     expect(state.getSession).not.toHaveBeenCalled();
   });
 

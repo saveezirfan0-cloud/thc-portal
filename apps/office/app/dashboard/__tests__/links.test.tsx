@@ -38,11 +38,12 @@ vi.mock('../short-staffed-data', () => ({
   loadShortStaffed: async () => ({ roles: [], problem: null }),
 }));
 
-const { default: Page } = await import('../page');
+// The page is a shell that streams this body in behind a skeleton (page.tsx).
+const { DashboardBody } = await import('../DashboardBody');
 
 describe('dashboard links (§9.1)', () => {
   it('links the compliance tile to the Radar tab and the finance panel to Reports', async () => {
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(await DashboardBody());
     expect(html).toMatch(/<a href="\/compliance\?tab=radar"[^>]*>view radar →<\/a>/);
     expect(html).toMatch(/<a[^>]*href="\/reports"[^>]*>Full report →<\/a>/);
   });
@@ -50,7 +51,7 @@ describe('dashboard links (§9.1)', () => {
 
 describe('dashboard tiles and copy (§9.1, dashboard.html)', () => {
   it('draws Open positions as the accent tile with the wireframe sublines', async () => {
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(await DashboardBody());
     expect(html).toMatch(/class="kpi accent"[\s\S]*?Open positions/);
     expect(html).toContain('Sold but not staffed — all events, any date');
     expect(html).toContain('Checked in and on site this minute');

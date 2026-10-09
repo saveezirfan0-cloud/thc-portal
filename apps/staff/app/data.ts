@@ -168,6 +168,77 @@ export function toBookings(data: unknown): BookingRow[] {
   }));
 }
 
+/**
+ * What a live booking asks of the worker beyond turning up (ADR-0109): a
+ * client's quiz to pass before the first shift on one of its roles, and a
+ * kit message to confirm on the morning of each. One row per booking that
+ * has a requirement, from `staff_shift_requirements()`.
+ */
+export interface ShiftRequirementRow {
+  bookingId: string;
+  clientId: string;
+  clientName: string;
+  roleName: string;
+  /** The quiz the role names, or null when the role has only a kit message. */
+  quizId: string | null;
+  quizTitle: string | null;
+  quizPassed: boolean;
+  quizAttemptsUsed: number;
+  quizAttemptsMax: number;
+  /** The client's words, as the office wrote them on the role; null for a quiz-only role. */
+  kitMessage: string | null;
+  /** When the CR2 push goes (07:00 UK, or three hours before an early start). */
+  kitDueAt: Date | null;
+  kitAcknowledgedAt: Date | null;
+}
+
+export async function loadShiftRequirements(): Promise<Loaded<ShiftRequirementRow>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
+  const supabase = staffDb(await cookies());
+  const { data, error } = await supabase.rpc('staff_shift_requirements');
+  if (error) return { rows: [], problem: error.message || 'staff_shift_requirements failed' };
+  return { rows: toShiftRequirements(data), problem: null };
+}
+
+/** `staff_shift_requirements()` rows in the screens' shape. */
+export function toShiftRequirements(data: unknown): ShiftRequirementRow[] {
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    bookingId: row['booking_id'] as string,
+    clientId: row['client_id'] as string,
+    clientName: (row['client_name'] as string) ?? '',
+    roleName: (row['role_name'] as string) ?? '',
+    quizId: (row['quiz_id'] as string | null) ?? null,
+    quizTitle: (row['quiz_title'] as string | null) ?? null,
+    quizPassed: row['quiz_passed'] === true,
+    quizAttemptsUsed: Number(row['quiz_attempts_used'] ?? 0),
+    quizAttemptsMax: Number(row['quiz_attempts_max'] ?? 0),
+    kitMessage: (row['kit_message'] as string | null) ?? null,
+    kitDueAt: date(row['kit_due_at']),
+    kitAcknowledgedAt: date(row['kit_acknowledged_at']),
+  }));
+}
+
+/** The requirements by booking, for the cards. */
+export function requirementsByBooking(
+  rows: ShiftRequirementRow[],
+): Map<string, ShiftRequirementRow> {
+  return new Map(rows.map((row) => [row.bookingId, row]));
+}
+
+/**
+ * The quizzes the worker still has to pass, one card each on /shifts: a
+ * quiz named by more than one booking is asked once. A quiz with no attempt
+ * left is listed too — the worker is told the office has been asked.
+ */
+export function quizzesOutstanding(rows: ShiftRequirementRow[]): ShiftRequirementRow[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (!row.quizId || row.quizPassed || seen.has(row.quizId)) return false;
+    seen.add(row.quizId);
+    return true;
+  });
+}
+
 export async function loadOpenShifts(): Promise<Loaded<OpenShift>> {
   if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());

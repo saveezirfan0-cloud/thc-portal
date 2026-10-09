@@ -77,6 +77,21 @@ describe('root boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('does not stream the body of a page whose controls navigate by query alone (ADR-0109)', async () => {
+    // Tried on /events and /checkin and taken back: behind an in-page
+    // <Suspense> the navigation froze on the old period just as it did with
+    // loading.tsx (office.events.spec: "Today", "Next period"). Streaming
+    // /dashboard and /compliance is fine; they have no same-page query nav.
+    const { readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const app = join(dirname(fileURLToPath(import.meta.url)), '..');
+    for (const route of ['events', 'checkin']) {
+      const src = readFileSync(join(app, route, 'page.tsx'), 'utf8');
+      expect(src, `${route}/page.tsx`).not.toMatch(/\bSuspense\b/);
+    }
+  });
+
   it('error shows the digest, never the exception text', () => {
     const error = Object.assign(new Error('relation "secret_table" does not exist'), {
       digest: 'abc123',

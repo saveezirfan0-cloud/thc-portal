@@ -165,3 +165,16 @@ export async function setDoNotReturn(
 export async function setNameBadges(clientId: string, on: boolean): Promise<ActionResult> {
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
 }
+
+/**
+ * ADR-0109: give a worker their attempts at this client's quiz back. The
+ * attempts stay as history, superseded; the worker is asked again from
+ * their next shift on a role that names the quiz.
+ */
+export async function resetQuizAttempts(
+  clientId: string,
+  quizId: string,
+  staffId: string,
+): Promise<ActionResult> {
+  return callRpc('reset_client_quiz_attempts', { p_quiz: quizId, p_staff: staffId }, clientId);
+}
