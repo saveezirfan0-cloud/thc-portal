@@ -792,7 +792,7 @@ export const TEMPLATES = {
   // the row's payload like every other value and rendered by the drain.
   // `render` replaces in one pass, so braces inside the message stay text.
   // ────────────────────────────────────────────────────────────────────────
-  // CLIENT SHIFT REQUIREMENTS (ADR-0108, product owner 08.10.2026) — a client
+  // CLIENT SHIFT REQUIREMENTS (ADR-0109, product owner 08.10.2026) — a client
   // may ask a quiz of a worker before their first shift on one of its roles,
   // and a message of them on the morning of every such shift. `CR` codes, as
   // `CL` and `RC` are, so none can collide with an N- or E-number THC assigns
@@ -806,7 +806,7 @@ export const TEMPLATES = {
     title: 'Quiz before your first shift',
     body: '{client} asks everyone on {roles} shifts to pass a short quiz first: {quiz}. You have three attempts — tap to take it before your shift.',
     trigger:
-      'A booking is confirmed on a (client, role) whose requirement names a quiz the worker has not passed (bookings_client_quiz_notice). Not in §8: ADR-0108',
+      'A booking is confirmed on a (client, role) whose requirement names a quiz the worker has not passed (bookings_client_quiz_notice). Not in §8: ADR-0109',
     timing: 'the moment the first such booking is confirmed; once per worker per quiz',
     deepLink: '/quiz/{quizId}',
   },
@@ -817,7 +817,7 @@ export const TEMPLATES = {
     // The client's own words, written on the requirement row by the office.
     body: '{message}',
     trigger:
-      'The morning of a confirmed shift on a (client, role) whose requirement carries a kit message, until the worker confirms they have read it (client_kit_reminder_tick). Not in §8: ADR-0108',
+      'The morning of a confirmed shift on a (client, role) whose requirement carries a kit message, until the worker confirms they have read it (client_kit_reminder_tick). Not in §8: ADR-0109',
     timing:
       '07:00 UK on the day, or three hours before the start if earlier, never before the UK day begins; once per booking and start',
     deepLink: '/shifts/{bookingId}',
@@ -830,7 +830,7 @@ export const TEMPLATES = {
     title: 'Client quiz not passed — {name}, Employee ID {employeeId}',
     body: '{name} has used all {attempts} attempts at "{quiz}" for {client} without passing (best: {best}).\n\nRoles this quiz covers: {roles}\n\nThey stay booked. Decide whether to replace them on their {client} shifts, or give them their attempts back from the client card (Shift requirements → Reset).',
     trigger:
-      'A worker fails the last attempt at a client quiz (submit_client_quiz_attempt). Not in §8: ADR-0108',
+      'A worker fails the last attempt at a client quiz (submit_client_quiz_attempt). Not in §8: ADR-0109',
     timing: 'on the failed last attempt, once',
   },
 
@@ -1040,7 +1040,7 @@ export const ADDITION_CODES = [
 ] as const satisfies readonly TemplateCode[];
 
 /**
- * Client shift requirement codes (ADR-0108): CR1 a quiz to pass before the
+ * Client shift requirement codes (ADR-0109): CR1 a quiz to pass before the
  * first shift, CR2 the morning-of kit message, CR3 the office told of a
  * third failure. Not §8's; a client's own ask, carried as data on
  * client_role_requirements.

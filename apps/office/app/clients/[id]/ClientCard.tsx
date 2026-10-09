@@ -171,7 +171,7 @@ export function ClientCard({
           staff={data.staff}
         />
 
-        {/* ADR-0108: the client's own asks of a worker, per role, and who has met them. */}
+        {/* ADR-0109: the client's own asks of a worker, per role, and who has met them. */}
         <ShiftRequirements
           clientId={client.id}
           rows={data.requirements}

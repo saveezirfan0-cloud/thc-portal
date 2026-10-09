@@ -25,7 +25,7 @@ const requirement = (over: Partial<ShiftRequirementRow> = {}): ShiftRequirementR
   ...over,
 });
 
-/** ADR-0108 · the quiz card and the kit message on the worker's shift. */
+/** ADR-0109 · the quiz card and the kit message on the worker's shift. */
 describe('QuizPrompt', () => {
   it('asks for the quiz with a link to it and the attempts', () => {
     const markup = renderToStaticMarkup(<QuizPrompt requirement={requirement()} />);

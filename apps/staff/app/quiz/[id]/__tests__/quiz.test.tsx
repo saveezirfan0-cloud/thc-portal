@@ -8,7 +8,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: 
 
 const { ClientQuiz, SlideView } = await import('../ClientQuiz');
 
-/** ADR-0108 · `staff_client_quiz()` in the screen's shape, and the screens it opens on. */
+/** ADR-0109 · `staff_client_quiz()` in the screen's shape, and the screens it opens on. */
 const payload = (over: Record<string, unknown> = {}) => ({
   id: 'q1',
   title: 'Bar menu — Leonardo Royal Hotel London',

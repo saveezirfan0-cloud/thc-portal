@@ -86,7 +86,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     loadWeekMeter(),
     // ADR-0046: the open offer on each confirmed booking, for the chip.
     loadBookingOffers(),
-    // ADR-0108: a client's quiz to pass, a kit message to confirm.
+    // ADR-0109: a client's quiz to pass, a kit message to confirm.
     loadShiftRequirements(),
   ]);
   const offers = offersByBooking(offerRows);
@@ -222,7 +222,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
             // not "nothing to do".
             <LoadProblem what="what your shifts ask of you" />
           ) : null}
-          {/* ADR-0108: a client's quiz, once per quiz, above the cards it is for. */}
+          {/* ADR-0109: a client's quiz, once per quiz, above the cards it is for. */}
           {quizzes.map((requirement) => (
             <QuizPrompt key={requirement.quizId} requirement={requirement} />
           ))}
@@ -282,7 +282,7 @@ function ShiftCardView({
   now: Date;
   /** ADR-0046: the open offer on this booking, if any. */
   offer: BookingOffer | null;
-  /** ADR-0108: what the client asks of the worker on this shift, if anything. */
+  /** ADR-0109: what the client asks of the worker on this shift, if anything. */
   requirement: ShiftRequirementRow | null;
   /** The worker's clock (ADR-0085), for the times this card writes itself. */
   format: TimeFormat;
@@ -346,7 +346,7 @@ function ShiftCardView({
         </p>
       ) : null}
 
-      {/* ADR-0108: the client's kit message — read on the day, from when the
+      {/* ADR-0109: the client's kit message — read on the day, from when the
           reminder is due; as a note before that on the nearest cards. */}
       {requirement?.kitMessage &&
       booking.status === 'confirmed' &&

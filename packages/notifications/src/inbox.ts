@@ -46,7 +46,7 @@ export const OFFICE_INBOX = [
   { code: 'RC1', label: 'Profile change requested' },
   { code: 'RC4', label: 'Name change approved (payroll)' },
   { code: 'OF5', label: 'Cover requested' },
-  // ADR-0108: a worker used every attempt at a client's quiz.
+  // ADR-0109: a worker used every attempt at a client's quiz.
   { code: 'CR3', label: 'Client quiz not passed' },
 ] as const;
 

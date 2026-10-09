@@ -51,8 +51,8 @@ const result = (over: Partial<QuizResultRow> = {}): QuizResultRow => ({
   ...over,
 });
 
-/** ADR-0108: the client card's Shift requirements block. */
-describe('Shift requirements on the client card (ADR-0108)', () => {
+/** ADR-0109: the client card's Shift requirements block. */
+describe('Shift requirements on the client card (ADR-0109)', () => {
   it('lists each role with its quiz and its message', () => {
     const markup = renderToStaticMarkup(
       <ShiftRequirements clientId="c1" rows={rows} results={[]} canWrite />,

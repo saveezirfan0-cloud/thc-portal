@@ -6,7 +6,7 @@ import { staffDb, supabaseConfigured } from '../../db';
 import { refusalCopy } from './copy';
 
 /**
- * Marking a client quiz (ADR-0108): the answers go to
+ * Marking a client quiz (ADR-0109): the answers go to
  * `submit_client_quiz_attempt()` together and the database marks them
  * against a key this app never receives. What this file adds is the
  * sentence the worker reads when it refuses.

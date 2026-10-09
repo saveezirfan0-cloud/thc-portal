@@ -6,7 +6,7 @@
  * supabase/tests/170_booking_tick.sql, so there is deliberately nothing
  * to decide here: this reads one row of counts and hands them back.
  *
- * Beside it, `client_kit_reminder_tick()` (20261008160000, ADR-0108): the
+ * Beside it, `client_kit_reminder_tick()` (20261008180000, ADR-0109): the
  * morning-of "what to bring" push for a shift on a role the client has a
  * kit message for, until the worker confirms it. Its own function, so the
  * §7 timers are not restated to add it; its counts ride in the same row.

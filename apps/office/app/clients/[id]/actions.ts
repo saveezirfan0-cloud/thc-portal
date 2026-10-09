@@ -167,7 +167,7 @@ export async function setNameBadges(clientId: string, on: boolean): Promise<Acti
 }
 
 /**
- * ADR-0108: give a worker their attempts at this client's quiz back. The
+ * ADR-0109: give a worker their attempts at this client's quiz back. The
  * attempts stay as history, superseded; the worker is asked again from
  * their next shift on a role that names the quiz.
  */

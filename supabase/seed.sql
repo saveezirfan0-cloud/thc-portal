@@ -249,7 +249,7 @@ join roles r on r.name = q.role_name
 on conflict (staff_id, role_id) do nothing;
 
 -- ---------------------------------------------------------------------
--- CLIENT SHIFT REQUIREMENTS (ADR-0108)
+-- CLIENT SHIFT REQUIREMENTS (ADR-0109)
 -- The sample Leonardo card gets the bar menu quiz and the kit message for
 -- Bar Staff and Wine Waiting Service, as the live card does.
 -- ---------------------------------------------------------------------

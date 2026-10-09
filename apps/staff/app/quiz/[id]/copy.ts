@@ -1,6 +1,6 @@
 /**
  * The worker's sentence for each reason `submit_client_quiz_attempt()` answers
- * with (ADR-0108). Its own module: a 'use server' file may export only
+ * with (ADR-0109). Its own module: a 'use server' file may export only
  * async functions.
  */
 /** The sentence for each reason the database answers with. */

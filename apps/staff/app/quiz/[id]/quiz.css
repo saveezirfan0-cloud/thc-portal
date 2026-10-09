@@ -1,5 +1,5 @@
 /*
- * /quiz/:id — a client's quiz (ADR-0108). The slide, the dots and the
+ * /quiz/:id — a client's quiz (ADR-0109). The slide, the dots and the
  * answer buttons are the onboarding wizard's (onboarding.css); this adds
  * only the price-list table the slides draw. Tokens only (CLAUDE.md).
  */

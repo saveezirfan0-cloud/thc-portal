@@ -67,7 +67,7 @@ const MESSAGE_PUSH_CODES = ['OM1', 'OM2'];
 const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
 const CHASER_PUSH_CODES = ['OC3'];
 
-/** Client shift requirements (ADR-0108): a quiz first, a kit message on the day, the office told of a failure. */
+/** Client shift requirements (ADR-0109): a quiz first, a kit message on the day, the office told of a failure. */
 const CLIENT_REQUIREMENT_PUSH_CODES = ['CR1', 'CR2'];
 const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
 

@@ -7,7 +7,7 @@ import { resetQuizAttempts } from './actions';
 import type { QuizResultRow, ShiftRequirementRow } from './types';
 
 /**
- * Shift requirements (ADR-0108) — what this client asks of a worker beyond
+ * Shift requirements (ADR-0109) — what this client asks of a worker beyond
  * turning up, per role: a quiz to pass before their first shift, and a
  * message to confirm on the morning of every shift. Under it, everyone
  * who has sat the quiz and where they stand, with Reset for a worker who
@@ -15,7 +15,7 @@ import type { QuizResultRow, ShiftRequirementRow } from './types';
  *
  * Read-only for the roles and the messages: the quiz, its slides and its
  * questions are data, installed as the H&S questions are (migration
- * 20261008160000). Not in the wireframe; the ADR is the deviation record.
+ * 20261008180000). Not in the wireframe; the ADR is the deviation record.
  */
 export function ShiftRequirements({
   clientId,
@@ -67,7 +67,7 @@ export function ShiftRequirements({
           <h3>This client asks nothing extra</h3>
           <p>
             No quiz and no kit message on any role. Set up as data by the office (migration
-            20261008160000); the Leonardo Hotel bar menu quiz is the first.
+            20261008180000); the Leonardo Hotel bar menu quiz is the first.
           </p>
         </div>
       ) : (

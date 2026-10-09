@@ -169,7 +169,7 @@ export function toBookings(data: unknown): BookingRow[] {
 }
 
 /**
- * What a live booking asks of the worker beyond turning up (ADR-0108): a
+ * What a live booking asks of the worker beyond turning up (ADR-0109): a
  * client's quiz to pass before the first shift on one of its roles, and a
  * kit message to confirm on the morning of each. One row per booking that
  * has a requirement, from `staff_shift_requirements()`.
