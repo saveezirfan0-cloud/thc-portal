@@ -213,6 +213,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <Pill tone={fill.open === 0 ? 'green' : 'amber'}>{formatEventFill(fill)}</Pill>
               {/* ADR-0080: auto-assign, Radar and Accept book only staff who speak these. */}
               {languagesLabel ? <Pill tone="cyan">{languagesLabel}</Pill> : null}
+              {/* ADR-0116: one day of a multi-day job. */}
+              {event.seriesLabel ? <Pill tone="cyan">{event.seriesLabel}</Pill> : null}
               {open ? <span className="muted sm">{open}</span> : null}
               {/* §3.4: purple, default ON; both switches must be on for a round. */}
               <AutoAssignSwitch

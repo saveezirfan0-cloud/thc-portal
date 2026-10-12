@@ -90,6 +90,7 @@ const INPUT = {
       dressCode: '',
       autoAssign: true,
       requiredGender: null,
+      sameStaffAllDays: false,
       allocationPerHour: 13,
     },
   ],

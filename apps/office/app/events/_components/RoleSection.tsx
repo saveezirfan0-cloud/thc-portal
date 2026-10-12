@@ -13,6 +13,7 @@ import {
   formatConfirmationTarget,
   formatHours,
   marginPerHourPence,
+  SERIES_LABEL,
   reconfirmingChanges,
   sectionHours,
   ukInputLabel,
@@ -23,6 +24,7 @@ import {
   REQUIRED_GENDER_LABEL,
   type RoleDraft,
   isResolvable,
+  type SeriesContext,
   resolveRole,
 } from '../draft';
 import type { ClientOption, RoleOption } from '../data';
@@ -34,6 +36,20 @@ const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boole
 function signedPence(pence: number): string {
   const sign = pence < 0 ? '−' : '+';
   return `${sign}£${(Math.abs(pence) / 100).toFixed(2)}/h`;
+}
+
+/** The line under the "Same staff on all days" switch (ADR-0116). */
+export function sameStaffHint(on: boolean, series: SeriesContext, roleName: string): string {
+  if (!on) {
+    return 'Only when the client wants the same people on every day of a multi-day job';
+  }
+  if (series.kind === 'series') {
+    return `Day ${series.day} of ${series.of}: only people free for every other day of this job where ${roleName} also asks for the same staff are invited`;
+  }
+  if (series.kind === 'duplicate') {
+    return `Saving links this to the original as another day of one job. Switch it on for ${roleName} on each day that needs the same people`;
+  }
+  return 'Takes effect once another day is added with Duplicate and has it switched on too';
 }
 
 export interface RoleSectionProps {
@@ -52,6 +68,8 @@ export interface RoleSectionProps {
   changed: Set<string>;
   original: RoleDraft | undefined;
   locked: boolean;
+  /** ADR-0116: is this event one day of a multi-day job (or a Duplicate of one)? */
+  series: SeriesContext;
   /** ADR-0061: false for an office role without finance — no rate fields, no margin. */
   ratesVisible: boolean;
   onChange: (patch: Partial<RoleDraft>) => void;
@@ -71,6 +89,7 @@ export function RoleSection({
   changed,
   original,
   locked,
+  series,
   ratesVisible,
   onChange,
   onRemove,
@@ -111,6 +130,7 @@ export function RoleSection({
           {role.requiredGender ? (
             <Pill tone="cyan">{REQUIRED_GENDER_LABEL[role.requiredGender]}</Pill>
           ) : null}
+          {role.sameStaffAllDays ? <Pill tone="cyan">{SERIES_LABEL}</Pill> : null}
           <div className="right">
             <Pill tone="green">Ongoing</Pill>
           </div>
@@ -133,6 +153,7 @@ export function RoleSection({
         {role.requiredGender ? (
           <Pill tone="cyan">{REQUIRED_GENDER_LABEL[role.requiredGender]}</Pill>
         ) : null}
+        {role.sameStaffAllDays ? <Pill tone="cyan">{SERIES_LABEL}</Pill> : null}
         {ratesVisible && role.chargeRate > 0 ? (
           <span className={`mono sm ${margin >= 0 ? 'green' : 'coral'}`}>
             margin {signedPence(margin)}
@@ -375,7 +396,29 @@ export function RoleSection({
             <option value="M">{REQUIRED_GENDER_LABEL.M}</option>
             <option value="F">{REQUIRED_GENDER_LABEL.F}</option>
           </Select>
+
+          {/* ADR-0116: the client wants the same people on every day of a
+              multi-day job. Per ROLE; a hard gate in auto_assign_candidates
+              against every other day of the job that also asks for it. */}
+          <div className="field">
+            <span className="label">Multi-day job</span>
+            <Switch
+              tone="plain"
+              checked={role.sameStaffAllDays}
+              onChange={(sameStaffAllDays) => onChange({ sameStaffAllDays })}
+              label={SERIES_LABEL}
+            />
+            <span className="hint">{sameStaffHint(role.sameStaffAllDays, series, roleName)}</span>
+          </div>
         </div>
+
+        {changed.has('same_staff_all_days') && role.sameStaffAllDays && booked > 0 ? (
+          <Alert tone="cyan">
+            <b>Already booked staff are not removed or re-asked.</b> The requirement steers who is
+            invited next: open invitations stay open, and anyone who cannot do every day is refused
+            at Accept. Withdraw people on the event board if you want them off.
+          </Alert>
+        ) : null}
 
         {changed.has('required_gender') && role.requiredGender && booked > 0 ? (
           <Alert tone="cyan">

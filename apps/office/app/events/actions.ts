@@ -42,6 +42,8 @@ export interface RoleSectionInput {
   autoAssign: boolean;
   /** ADR-0079: book only this gender on the section; null for anyone. */
   requiredGender: 'M' | 'F' | null;
+  /** ADR-0116: only people who can do every other day that also asks for it. */
+  sameStaffAllDays: boolean;
   allocationPerHour: number;
 }
 
@@ -57,6 +59,11 @@ export interface EventInput {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
+  /**
+   * ADR-0116: the event this one was Duplicated from (create only). Saving
+   * links the two as days of one multi-day job; the staff are not copied.
+   */
+  duplicateOf?: string | null;
   roles: RoleSectionInput[];
 }
 
@@ -98,6 +105,7 @@ function sectionRow(eventId: string, date: string, role: RoleSectionInput) {
     dress_code: role.dressCode || null,
     auto_assign: role.autoAssign,
     required_gender: role.requiredGender,
+    same_staff_all_days: role.sameStaffAllDays,
     allocation_per_hour: role.allocationPerHour,
   };
 }
@@ -145,6 +153,21 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
     .select('id')
     .single();
   if (error || !event) return { error: error?.message ?? 'The event could not be saved.' };
+
+  // ADR-0116: a Duplicate is another day of the same job. Linked BEFORE the
+  // sections and the first auto-assign round, so that round already sees the
+  // series. Duplicating into a different client is allowed (it is only a
+  // copy of the roles) and is simply not a series.
+  if (input.duplicateOf) {
+    const { error: linkError } = await supabase.rpc('link_event_series', {
+      p_source: input.duplicateOf,
+      p_clone: event.id,
+    });
+    if (linkError && !linkError.message.includes('series_other_client')) {
+      await supabase.from('events').delete().eq('id', event.id);
+      return { error: `The days of this job could not be linked: ${linkError.message}` };
+    }
+  }
 
   const { error: sectionError } = await supabase
     .from('shift_requirements')
