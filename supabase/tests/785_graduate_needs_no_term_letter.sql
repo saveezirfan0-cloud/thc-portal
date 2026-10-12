@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 785 · A graduate needs no University Term Dates Letter
---       (20261012100000, ADR-0112)
+--       (20261012110000, ADR-0112)
 --
 --   A · the term letter is still owed when nothing stands in for it
 --   B · a pending completion letter stands in at submit, but holds the quiz

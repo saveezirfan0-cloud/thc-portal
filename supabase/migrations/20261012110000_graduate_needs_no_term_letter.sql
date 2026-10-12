@@ -80,7 +80,7 @@ as $$
 $$;
 
 comment on function public.compliance_blockers(uuid, date) is
-  '§4.3 full compliance re-check, as reasons. Empty = compliant. A declaration still PENDING blocks; a rejected one does not (§10.7 makes the manual block carry it). The optional completion letter is never a blocker (20260923100000). An unverified University Term Dates Letter is no blocker once term_letter_applies() is false — a verified completion letter whose course has completed (ADR-0112, 20261012100000).';
+  '§4.3 full compliance re-check, as reasons. Empty = compliant. A declaration still PENDING blocks; a rejected one does not (§10.7 makes the manual block carry it). The optional completion letter is never a blocker (20260923100000). An unverified University Term Dates Letter is no blocker once term_letter_applies() is false — a verified completion letter whose course has completed (ADR-0112, 20261012110000).';
 
 -- ---------------------------------------------------------------------
 -- 1 · What is missing: a completion letter stands in for the term letter.
