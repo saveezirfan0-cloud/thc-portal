@@ -313,6 +313,33 @@ Settings the round depends on, and the choices it recorded as defaults.
       - ADR-0040 — the 10 h below-degree band (the completion-letter PDF wins
         over the v1.5 changelog), visa hour limits, the NI number check.
 
+## 10 · After the 12.10 Client Portal auth hardening round (ADR-0115)
+
+- [ ] **Apply the four new migrations**: `20261012120000_client_feedback_limits`,
+      `20261012120100_office_only_payroll_flag_and_client_session`,
+      `20261012120200_client_auth_throttles` and
+      `20261012130000_client_views_cancelled_feedback_final_copy`. Nothing to do
+      by hand: CI's `deploy-database` job applies them when the branch is merged
+      to `main`. Check the job went green.
+- [ ] **Supabase → Auth → Email → `max_frequency` = 60 s** (the minimum time
+      between two emails to one address), by hand. It is the value in
+      `supabase/config.toml`; like every other Auth setting there it does not
+      reach the hosted project by itself.
+- [ ] **Then regenerate the types**: `pnpm --filter @thc/db gen:types` against
+      the live project, and commit `packages/db/src/types.generated.ts`. The
+      file does not yet know `password_check_begin`, `password_check_release`
+      or `auth_attempt_take` (the callers use narrow local types until then),
+      and the client view columns in it were edited by hand.
+- [ ] **Vercel, thc-portal-client-beta**: confirm `SUPABASE_SERVICE_ROLE_KEY`
+      is set (Production and Preview). Without it the `/login` and `/forgot`
+      throttle switches itself off and logs an error on every attempt
+      (ADR-0115); nothing else tells you.
+- [ ] Optional: review `settings.auth_throttle` — sign-in 10 per email and 30
+      per caller in 15 minutes, reset emails 3 per email and 10 per caller per
+      hour. Anyone who knows a contact's email can keep them out of `/login`
+      by posting 10 wrong passwords every 15 minutes; ADR-0115 has the SQL
+      line that lifts it.
+
 ## Done
 
 - [x] 22.09: Supabase service role key rotated.

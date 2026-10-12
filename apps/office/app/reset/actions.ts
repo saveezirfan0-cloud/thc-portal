@@ -4,34 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { createClient } from '@thc/db/server';
-
-/**
- * Is this a session an emailed reset link just made? Supabase Auth writes
- * how a session began into the access token's `amr` claim: `recovery` for a
- * reset link (token_hash or PKCE), `otp` for an emailed code. The entry's
- * timestamp is when that proof was given; after an hour the session is an
- * ordinary one. The Client Portal and Staff App hold the same rule in
- * app/reset/recovery.ts.
- */
-const RECOVERY_WINDOW_SECONDS = 60 * 60;
-
-const NOT_A_RESET_SESSION =
-  'You are already signed in. To change your password, go to My profile → Password. To reset a forgotten password, sign out and use “Forgot password” on the sign-in screen.';
-
-function isRecoverySession(claims: { amr?: unknown }): boolean {
-  const now = Math.floor(Date.now() / 1000);
-  const amr = Array.isArray(claims.amr) ? (claims.amr as unknown[]) : [];
-  return amr.some((entry) => {
-    if (!entry || typeof entry !== 'object') return false;
-    const { method, timestamp } = entry as { method?: unknown; timestamp?: unknown };
-    return (
-      (method === 'recovery' || method === 'otp') &&
-      typeof timestamp === 'number' &&
-      now - timestamp <= RECOVERY_WINDOW_SECONDS &&
-      timestamp <= now + 60
-    );
-  });
-}
+import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
 
 /**
  * A3 Set new password — §10.2, `wireframes/public/activate.html` (reset,

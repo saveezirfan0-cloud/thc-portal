@@ -171,4 +171,58 @@ describe('Modal', () => {
     key('Tab');
     expect(document.activeElement).toBe($('#note'));
   });
+
+  it('counts a radio group with a checked radio as one stop, so Tab from it wraps', () => {
+    function RadioHarness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" id="opener" onClick={() => setOpen(true)}>
+            Rate
+          </button>
+          <Modal open={open} title="Rating" onClose={() => setOpen(false)}>
+            <textarea id="note" />
+            <input type="radio" name="stars" value="1" id="r1" />
+            <input type="radio" name="stars" value="2" id="r2" defaultChecked />
+            <input type="radio" name="stars" value="3" id="r3" />
+          </Modal>
+        </>
+      );
+    }
+    mount(<RadioHarness />);
+    openFromButton();
+    const close = $('button[aria-label="Close"]');
+    const checked = $('#r2');
+
+    // The checked radio is the dialog's last tab stop, though #r3 comes after it.
+    checked.focus();
+    expect(key('Tab').defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(close);
+
+    close.focus();
+    key('Tab', { shiftKey: true });
+    expect(document.activeElement).toBe(checked);
+  });
+
+  it('keeps every radio of a group with none checked', () => {
+    function RadioHarness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" id="opener" onClick={() => setOpen(true)}>
+            Rate
+          </button>
+          <Modal open={open} title="Rating" onClose={() => setOpen(false)}>
+            <input type="radio" name="stars" value="1" id="r1" />
+            <input type="radio" name="stars" value="2" id="r2" />
+          </Modal>
+        </>
+      );
+    }
+    mount(<RadioHarness />);
+    openFromButton();
+    $('#r2').focus();
+    expect(key('Tab').defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe($('button[aria-label="Close"]'));
+  });
 });

@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { clearSignInThrottle } from './db';
 
 /**
  * Opens a gated Back Office route, signing in first if the gate is live.
@@ -37,12 +38,21 @@ async function open(page: Page, path: string, email: string, password = PASSWORD
   await page.goto(path);
   if (!new URL(page.url()).pathname.startsWith('/login')) return;
 
+  // The Client Portal allows 10 sign-ins per email (and 30 per caller) in
+  // 15 minutes (ADR-0115); the client specs sign Marco in once per test,
+  // all from 127.0.0.1, so without this the eleventh is "Too many
+  // attempts". Harmless in front of the other two apps, which have no such
+  // limit; a no-op when the database is not the local stack.
+  clearSignInThrottle();
+
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  // The middleware's `next` carries the pathname only, so a route that
-  // depends on its query string has to be asked for again by hand.
+  // The Client Portal's middleware puts the query string in `next` as well
+  // as the pathname; the Back Office's and the Staff App's carry the
+  // pathname only. Asking for `path` again lands every app on the exact
+  // route, query and all, whichever one this is.
   await page.waitForURL((url) => !url.pathname.startsWith('/login'));
   await page.goto(path);
   await expect(page).not.toHaveURL(/\/login/);

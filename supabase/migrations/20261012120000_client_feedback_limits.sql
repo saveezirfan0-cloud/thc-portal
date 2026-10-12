@@ -41,9 +41,29 @@
 -- ---------------------------------------------------------------------
 -- 1 · the table: client entries are at most 2000 characters
 -- ---------------------------------------------------------------------
+-- NOT VALID first: the check binds every insert and update from here on
+-- without reading the rows already there, so a client comment over 2000
+-- characters written before this cap cannot fail the deploy. It is then
+-- validated in its own statement only when no such row exists; if one
+-- does, the constraint stays NOT VALID (still enforced for new writes) and
+-- the notice names how many, for the office to look at.
 alter table feedback drop constraint if exists feedback_text_len;
 alter table feedback add constraint feedback_text_len
-  check (author_kind <> 'client' or char_length(text) <= 2000);
+  check (author_kind <> 'client' or char_length(text) <= 2000) not valid;
+
+do $$
+declare
+  v_over int;
+begin
+  select count(*) into v_over
+    from feedback
+   where author_kind = 'client' and char_length(text) > 2000;
+  if v_over = 0 then
+    alter table feedback validate constraint feedback_text_len;
+  else
+    raise notice 'feedback_text_len left NOT VALID: % existing client comment(s) over 2000 characters', v_over;
+  end if;
+end $$;
 
 comment on constraint feedback_text_len on feedback is
   'A client entry''s comment is at most 2000 characters (submit_client_feedback refuses longer with 22023 first). Office notes are not capped: their form never was, and a cap here would break editing an existing long note. 20261012120000.';

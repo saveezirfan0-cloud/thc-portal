@@ -1,7 +1,7 @@
 # ADR-0115 · Client Portal sign-in hardening: recovery-only /reset, atomic password-check limit, sign-in and reset-email throttles
 
 **Status:** Accepted (12.10.2026) · Builds on ADR-0024, ADR-0032, ADR-0051 · **§1.4, §1.7, §10.2, §11.1**
-**Code:** `supabase/migrations/20261012120000_client_feedback_limits.sql`, `20261012120100_office_only_payroll_flag_and_client_session.sql`, `20261012120200_client_auth_throttles.sql`; `apps/client/app/auth/throttle.ts`, `apps/client/app/{login,forgot,reset}/actions.ts`, `apps/client/app/reset/recovery.ts`, `apps/client/app/client/account/actions.ts`, `apps/client/middleware.ts`, `apps/client/next.config.ts`; the same /reset rule in `apps/office/app/reset/actions.ts` and `apps/staff/app/reset/` · **Tests:** pgTAP `786_client_auth_throttle.sql`, `787_password_check_begin.sql`, `788_client_session_and_payroll_flag.sql`, additions to `020`, `160`, `756`; Vitest under `apps/client/app/**/__tests__/`, `apps/{office,staff}/app/reset/__tests__/`
+**Code:** `supabase/migrations/20261012120000_client_feedback_limits.sql`, `20261012120100_office_only_payroll_flag_and_client_session.sql`, `20261012120200_client_auth_throttles.sql`; `apps/client/app/auth/throttle.ts`, `apps/client/app/{login,forgot,reset}/actions.ts`, `apps/client/app/reset/recovery.ts`, `apps/client/app/client/account/actions.ts`, `apps/client/middleware.ts`, `apps/client/next.config.ts`; the same /reset rule in `apps/office/app/reset/` (`recovery.ts`, read by both `page.tsx` and `actions.ts`) and `apps/staff/app/reset/` · **Tests:** pgTAP `786_client_auth_throttle.sql`, `787_password_check_begin.sql`, `788_client_session_and_payroll_flag.sql`, additions to `020`, `160`, `756`; Vitest under `apps/client/app/**/__tests__/`, `apps/{office,staff}/app/reset/__tests__/`
 
 ## Context
 
@@ -13,7 +13,7 @@ The 12.10 security review of the Client Portal found that:
 
 ## Decision
 
-**1. `/reset` accepts only a reset-link session.** The access token's `amr` claim (read through `getClaims()`, which verifies the token) must contain `recovery` or `otp` from within the last hour. Any other signed-in session gets a sentence pointing to Change password, on the page and from the action, and `updateUser` is never called. In the Client Portal the old "sign out a non-client after the reset" branch could never run (the middleware gives a non-client the wrong-app page on every path), so it is removed and the role is checked **before** anything changes. The middleware is unchanged: letting a non-client's recovery session through would let a Back Office login's password be reset from the customer app, outside its own two-step flow.
+**1. `/reset` accepts only a reset-link session.** The access token's `amr` claim (read through `getClaims()`, which verifies the token) must contain `recovery` or `otp` from within the last hour. Any other signed-in session gets a sentence pointing to Change password, on the page and from the action, and `updateUser` is never called. In the Client Portal the old "sign out a non-client after the reset" branch could never run (the middleware gives a non-client the wrong-app page on every path), so it is removed and the role is checked **before** anything changes. The role gate is unchanged: letting a non-client's recovery session through would let a Back Office login's password be reset from the customer app, outside its own two-step flow.
 
 **2. Change password runs on the freshly verified session.** The current password is checked on a cookie-less client, as before. The device then adopts that new session (`setSession` on the cookie-bound client, so ADR-0032's lifetime holds), the change runs on it, and `signOut({ scope: 'others' })` is sent from it, so the device stays signed in and every other session ends. If the device cannot adopt the session, nothing changes. A success whose sign-out of the other devices failed returns `ok: true, tone: 'warning'`.
 
@@ -37,5 +37,13 @@ The attempt is claimed and counted in one call, `password_check_begin()`, under 
 ## Consequences
 
 - A customer who is signed in and has forgotten their password signs out and uses "Forgot password". `/reset` no longer serves them.
+- On every app, a signed-in session that a reset link did not make sees "You’re already signed in" on `/reset`, with a button to its own password screen (Client Portal `/client/account`, Back Office `/account`, Staff App `/profile/security`), instead of the form.
+- **Accepted trade-off: the per-email sign-in limit can be used to keep somebody out.** Anyone who knows a contact's email can post 10 wrong passwords for it every 15 minutes and so keep that contact out of `/login` for as long as they keep it up. The limit is keyed on the email on purpose: credential stuffing and password guessing spread across many addresses (a botnet) get past any per-caller limit, Supabase's per-IP limits cannot tell one Vercel caller from another, and only a per-email limit bounds the guesses any one account can receive. It is accepted because the harm is bounded: nothing is learned about the password, the account and its data are untouched, "Forgot password" still works (it has its own, separate `reset` counter) and so does a session that is already signed in, the lock lifts by itself within 15 minutes once the attempts stop (a refused attempt is not counted), and THC can lift it at once. To lift it, run in the SQL editor (it releases every email's sign-in counter, which costs nothing):
+
+  ```sql
+  delete from private.auth_attempt_hits where action = 'login' and key_kind = 'email';
+  ```
+
+  To release one contact only, the key is the digest the app makes, `encode(extensions.hmac('thc-client-auth-throttle|email|' || lower('<email>'), '<SUPABASE_SERVICE_ROLE_KEY>', 'sha256'), 'hex')`. That puts the service key into a query, so the blanket line above is preferred. If the lock is being used against somebody, raise `settings.auth_throttle.login.per_email` for a while.
 - The hosted Auth settings need `max_frequency` raised to 60 s by hand, as for every other `config.toml` Auth value.
 - `packages/db/src/types.generated.ts` does not yet know the three new RPCs. The callers use narrow local types until `gen:types` runs against a live project.

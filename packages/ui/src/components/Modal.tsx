@@ -34,9 +34,27 @@ const TABBABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+function isRadio(el: Element): el is HTMLInputElement {
+  return el instanceof HTMLInputElement && el.type === 'radio';
+}
+
+/**
+ * The tab stops, as the browser takes them. A radio group with a checked
+ * radio is ONE stop, the checked one: Tab never lands on its unchecked
+ * siblings. Counting them would make an unchecked sibling "last", so Tab
+ * from a checked radio at the end of the dialog would not wrap.
+ */
 function tabbable(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter(
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter(
     (el) => el.tabIndex >= 0 && !el.closest('[hidden], [inert]'),
+  );
+  const checkedGroups = new Set(
+    candidates
+      .filter((el) => isRadio(el) && el.name && el.checked)
+      .map((el) => (el as HTMLInputElement).name),
+  );
+  return candidates.filter(
+    (el) => !(isRadio(el) && el.name && !el.checked && checkedGroups.has(el.name)),
   );
 }
 
