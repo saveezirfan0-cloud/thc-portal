@@ -102,3 +102,26 @@ export async function geocodePostcode(
     return { ok: false, reason: 'unreachable' };
   }
 }
+
+/**
+ * How far a home pin may sit from its postcode's centroid (security round
+ * 12.10, item 7). A UK postcode covers ~15 homes; even a rural one is a
+ * few km across, so 5 km is generous for a real pin and still stops a
+ * worker naming a point next to the venues they want (§6 proximity).
+ */
+export const PIN_MAX_FROM_POSTCODE_M = 5_000;
+
+/** Metres between two WGS-84 points (haversine), the venue map's formula. */
+export function metresBetween(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat));
+  return 2 * R * Math.asin(Math.sqrt(h));
+}

@@ -16,7 +16,7 @@ vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 
-const { checkIn, checkOut } = await import('../actions');
+const { checkIn, checkOut, recordPing } = await import('../actions');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,6 +31,7 @@ describe('check-in refused for a worker who is not compliant (D16)', () => {
       p_booking: 'bk-1',
       p_lat: 51.5,
       p_lng: -0.1,
+      p_accuracy: null,
     });
     expect(result).toEqual({
       error:
@@ -43,6 +44,61 @@ describe('check-in refused for a worker who is not compliant (D16)', () => {
     expect(await checkOut('bk-1', null, null)).toEqual({
       ok: true,
       result: { decision: 'recorded_on_site' },
+    });
+  });
+});
+
+/**
+ * Security round 12.10, item 6: the database weighs the fix's accuracy
+ * radius (`coords.accuracy`, metres), so every action that carries a fix
+ * carries it too as `p_accuracy` — and never invents one.
+ */
+describe('the GPS accuracy goes with every fix', () => {
+  beforeEach(() => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+  });
+
+  it('check-in, check-out and the ping each send p_accuracy in metres', async () => {
+    await checkIn('bk-1', 51.5, -0.1, 12);
+    expect(rpc).toHaveBeenLastCalledWith('attempt_check_in', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+      p_accuracy: 12,
+    });
+    await checkOut('bk-1', 51.5, -0.1, 30);
+    expect(rpc).toHaveBeenLastCalledWith('check_out', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+      p_accuracy: 30,
+    });
+    await recordPing('bk-1', 51.5, -0.1, 1800);
+    expect(rpc).toHaveBeenLastCalledWith('record_ping', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+      p_accuracy: 1800,
+    });
+  });
+
+  it('an accuracy that is not a real radius is sent as unknown, never as zero', async () => {
+    for (const bad of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
+      await checkIn('bk-1', 51.5, -0.1, bad);
+      expect(rpc).toHaveBeenLastCalledWith(
+        'attempt_check_in',
+        expect.objectContaining({ p_accuracy: null }),
+      );
+    }
+  });
+
+  it('a check-out with no fix sends no accuracy either', async () => {
+    await checkOut('bk-1', null, null, 25);
+    expect(rpc).toHaveBeenLastCalledWith('check_out', {
+      p_booking: 'bk-1',
+      p_lat: null,
+      p_lng: null,
+      p_accuracy: null,
     });
   });
 });

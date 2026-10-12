@@ -25,6 +25,7 @@ import { defaultCache } from '@serwist/next/worker';
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
 import { NetworkOnly, Serwist } from 'serwist';
 import { type BadgeNavigator, bumpAppBadge } from './lib/app-badge';
+import { deletePersonalCaches, isStaticAsset } from './lib/sw-cache';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -70,16 +71,47 @@ const OFFLINE = '/offline';
  * `runtimeCaching` handlers only (Serwist.ts), so a route registered any
  * other way would lose the /offline fallback and give a disconnected
  * worker the browser's error page instead of ours. First match wins, so
- * this sits ahead of `defaultCache`.
- *
- * Static assets are untouched: `_next/static` is content-hashed and
- * immutable, and it is what makes the offline shell render at all.
+ * these sit ahead of `defaultCache`.
  */
 const PAGES_ARE_NEVER_CACHED = {
   matcher: ({ request, sameOrigin }: { request: Request; sameOrigin: boolean }) =>
     sameOrigin && (request.mode === 'navigate' || request.headers.get('RSC') === '1'),
   handler: new NetworkOnly(),
 };
+
+/**
+ * Security round 12.10, item 2: from this origin only a static asset
+ * (`isStaticAsset`, lib/sw-cache.ts) reaches `defaultCache`'s caches;
+ * everything else goes to the network and nowhere else — ahead of
+ * `defaultCache`, whose NetworkFirst catch-alls ("others", "apis",
+ * "static-data-assets") would otherwise keep it.
+ */
+const ONLY_STATIC_ASSETS_ARE_CACHED = {
+  matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+    sameOrigin && !isStaticAsset(url),
+  handler: new NetworkOnly(),
+};
+
+/**
+ * Cross-origin: never cached, except Google Fonts if a stylesheet ever asks
+ * for them (`defaultCache` keeps those, and they are the same for everyone).
+ * The rest is Supabase — REST and RPC answers, and signed Storage URLs for a
+ * worker's own photo and documents, each a bearer link to personal data —
+ * which `defaultCache` would put in "cross-origin" for an hour.
+ */
+const PUBLIC_CROSS_ORIGIN = /^fonts\.(?:gstatic|googleapis)\.com$/i;
+const CROSS_ORIGIN_IS_NEVER_CACHED = {
+  matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+    !sameOrigin && !PUBLIC_CROSS_ORIGIN.test(url.hostname),
+  handler: new NetworkOnly(),
+};
+
+const RUNTIME_CACHING = [
+  PAGES_ARE_NEVER_CACHED,
+  ONLY_STATIC_ASSETS_ARE_CACHED,
+  CROSS_ORIGIN_IS_NEVER_CACHED,
+  ...defaultCache,
+];
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -88,7 +120,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [PAGES_ARE_NEVER_CACHED, ...defaultCache],
+  runtimeCaching: RUNTIME_CACHING,
   fallbacks: {
     entries: [
       {
@@ -108,6 +140,15 @@ const serwist = new Serwist({
 serwist.registerCapture(({ request }) => request.method !== 'GET', new NetworkOnly());
 
 serwist.addEventListeners();
+
+/**
+ * Runtime caches an earlier build could have filled with personal data
+ * (lib/sw-cache.ts `PERSONAL_CACHES`) are deleted on every activate; the
+ * precache, the static-asset caches and the badge count are kept.
+ */
+self.addEventListener('activate', (event) => {
+  event.waitUntil(deletePersonalCaches(self.caches).catch(() => undefined));
+});
 
 /**
  * Push (§8, §10.5).

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Input, Note } from '@thc/ui';
 import { saveBankDetails } from '../actions';
+import { CurrentPasswordField } from '../_components/CurrentPasswordField';
 import type { BankDetails } from '../types';
 
 /**
@@ -17,12 +18,16 @@ import type { BankDetails } from '../types';
  * so a saved change cannot exist without the office and payroll hearing
  * about it. The note below says who is told, because a worker who does not
  * know their bank change is reviewed will ring the office to ask.
+ *
+ * The current password goes with the save (ADR-0113): a phone left signed
+ * in is not enough to redirect someone's pay.
  */
 export function BankForm({ bank }: { bank: BankDetails | null }) {
   const router = useRouter();
   const [holder, setHolder] = useState(bank?.accountHolder ?? '');
   const [sort, setSort] = useState(bank?.sortCode ?? '');
   const [account, setAccount] = useState(bank?.accountNumber ?? '');
+  const [password, setPassword] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -31,9 +36,10 @@ export function BankForm({ bank }: { bank: BankDetails | null }) {
     setNote(null);
     setError(null);
     start(async () => {
-      const result = await saveBankDetails(holder, sort, account);
+      const result = await saveBankDetails(holder, sort, account, password);
       if (!result.ok) setError(result.message);
       else {
+        setPassword('');
         setNote(result.note ?? 'Saved.');
         router.refresh();
       }
@@ -71,10 +77,22 @@ export function BankForm({ bank }: { bank: BankDetails | null }) {
         </div>
       </div>
 
+      <CurrentPasswordField
+        value={password}
+        onChange={setPassword}
+        hint="To keep your pay safe, changes need your password."
+      />
+
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {note ? <Alert tone="green">{note}</Alert> : null}
 
-      <Button tone="primary" size="lg" block disabled={pending} onClick={save}>
+      <Button
+        tone="primary"
+        size="lg"
+        block
+        disabled={pending || password.length === 0}
+        onClick={save}
+      >
         {pending ? 'Saving…' : 'Save changes'}
       </Button>
 

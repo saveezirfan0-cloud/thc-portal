@@ -6,6 +6,7 @@ import { Alert, Button, Input } from '@thc/ui';
 import { bankErrors, formatSortCode } from '@thc/domain';
 import { saveBank } from '../actions';
 import { WizardFoot, WizardTop } from './Wizard';
+import { CurrentPasswordField } from '../../profile/_components/CurrentPasswordField';
 
 /**
  * 9/11 Bank & payroll — §2.10, wireframes/staff/onboarding-3.html.
@@ -18,6 +19,11 @@ import { WizardFoot, WizardTop } from './Wizard';
  * feed) that is not an input to this project. The format check is shown
  * instead, with the wireframe's own caveat that the account is not
  * verified with the bank.
+ *
+ * Second deviation (ADR-0113): the step also asks for the password the
+ * candidate set at activation. `staff_save_bank()` refuses a session that
+ * has not typed it in the last ten minutes, so a phone left signed in is
+ * not enough to choose where someone is paid.
  */
 export function BankStep({
   initial,
@@ -28,6 +34,7 @@ export function BankStep({
   const [holder, setHolder] = useState(initial.accountHolder);
   const [sort, setSort] = useState(initial.sortCode);
   const [account, setAccount] = useState(initial.accountNumber);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -41,6 +48,7 @@ export function BankStep({
         accountHolder: holder,
         sortCode: sort,
         accountNumber: account,
+        currentPassword: password,
       });
       if (!result.ok) setError(result.message);
       else router.push('/onboarding/10');
@@ -115,9 +123,28 @@ export function BankStep({
         You can change these later in Profile → Payment information → Bank &amp; payroll. Each
         change is emailed to the office and payroll.
       </div>
+      <CurrentPasswordField
+        value={password}
+        onChange={setPassword}
+        hint="The password you set up — to keep your pay safe."
+      />
       {error ? <Alert tone="coral">{error}</Alert> : null}
-      <WizardFoot hint={complete ? undefined : 'Enter your account details to continue'}>
-        <Button tone="primary" size="lg" block disabled={!complete || pending} onClick={next}>
+      <WizardFoot
+        hint={
+          !complete
+            ? 'Enter your account details to continue'
+            : password.length === 0
+              ? 'Enter your password to continue'
+              : undefined
+        }
+      >
+        <Button
+          tone="primary"
+          size="lg"
+          block
+          disabled={!complete || password.length === 0 || pending}
+          onClick={next}
+        >
           {pending ? 'Saving…' : 'Continue'}
         </Button>
       </WizardFoot>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { Alert, Button, Input, MobileList, MobileRow, Pill } from '@thc/ui';
 import { changePassword, signOutOtherDevices } from '../actions';
+import { CurrentPasswordField } from '../_components/CurrentPasswordField';
 
 /**
  * Security settings — §10.1, `wireframes/staff/profile.html`.
@@ -47,13 +48,7 @@ export function SecurityForm({ email }: { email: string }) {
 
   return (
     <>
-      <Input
-        label="Current password"
-        type="password"
-        autoComplete="current-password"
-        value={current}
-        onChange={(event) => setCurrent(event.target.value)}
-      />
+      <CurrentPasswordField value={current} onChange={setCurrent} />
       <Input
         label="New password"
         type="password"

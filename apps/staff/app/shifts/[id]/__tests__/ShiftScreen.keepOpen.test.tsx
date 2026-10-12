@@ -131,7 +131,8 @@ describe('keep this screen open (docs/06 Option A)', () => {
     await setVisibility('hidden');
     await setVisibility('visible');
     expect(recordPing.mock.calls.length).toBe(before + 1);
-    expect(recordPing).toHaveBeenLastCalledWith('b1', VENUE.lat, VENUE.lng);
+    // With the fix's accuracy radius in metres (security round 12.10, item 6).
+    expect(recordPing).toHaveBeenLastCalledWith('b1', VENUE.lat, VENUE.lng, 5);
   });
 
   it('releases the lock when the screen goes away', async () => {

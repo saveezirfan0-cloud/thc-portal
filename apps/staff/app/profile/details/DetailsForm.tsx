@@ -12,6 +12,7 @@ import {
 } from '../actions';
 import type { StaffProfile } from '../types';
 import { PhotoField } from './PhotoField';
+import { CurrentPasswordField } from '../_components/CurrentPasswordField';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { ChangeStatus } from './ChangeStatus';
 import { AddressFields } from '../../_components/AddressFields';
@@ -249,6 +250,7 @@ function EmailField({ current }: { current: string }) {
   const [step, setStep] = useState<'idle' | 'entering' | 'verifying'>('idle');
   const [next, setNext] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -281,18 +283,21 @@ function EmailField({ current }: { current: string }) {
           onChange={(event) => setNext(event.target.value)}
           hint={`We’ll send a 6-digit code there. ${current} stays in place until you enter it.`}
         />
+        {/* ADR-0113: a phone left signed in is not enough to move the account. */}
+        <CurrentPasswordField value={password} onChange={setPassword} />
         {error ? <Alert tone="coral">{error}</Alert> : null}
         <div className="row" style={{ gap: 'var(--sp-8)' }}>
           <Button
             tone="primary"
             block
-            disabled={pending}
+            disabled={pending || password.length === 0}
             onClick={() =>
               start(async () => {
                 setError(null);
-                const result = await requestEmailChange(next);
+                const result = await requestEmailChange(next, password);
                 if (!result.ok) setError(result.message);
                 else {
+                  setPassword('');
                   setNote(result.note ?? null);
                   setStep('verifying');
                 }
@@ -301,7 +306,15 @@ function EmailField({ current }: { current: string }) {
           >
             Send code
           </Button>
-          <Button tone="ghost" block onClick={() => setStep('idle')} disabled={pending}>
+          <Button
+            tone="ghost"
+            block
+            onClick={() => {
+              setPassword('');
+              setStep('idle');
+            }}
+            disabled={pending}
+          >
             Cancel
           </Button>
         </div>

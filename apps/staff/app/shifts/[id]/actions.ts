@@ -43,8 +43,30 @@ async function call(
   return { ok: true, result: (data ?? {}) as Record<string, unknown> };
 }
 
-export async function checkIn(bookingId: string, lat: number, lng: number): Promise<RpcResult> {
-  return call('attempt_check_in', { p_booking: bookingId, p_lat: lat, p_lng: lng }, bookingId);
+/**
+ * The fix's reported accuracy radius in metres (`coords.accuracy`), or null
+ * when there is none to send. The database weighs it (security round
+ * 12.10, item 6): a fix claiming to be inside the geofence with a 2 km
+ * error circle is not proof of being on site. Only a finite, non-negative
+ * number is forwarded; anything else is "unknown", never zero.
+ */
+function accuracyOf(accuracy: number | null | undefined): number | null {
+  return typeof accuracy === 'number' && Number.isFinite(accuracy) && accuracy >= 0
+    ? accuracy
+    : null;
+}
+
+export async function checkIn(
+  bookingId: string,
+  lat: number,
+  lng: number,
+  accuracy: number | null = null,
+): Promise<RpcResult> {
+  return call(
+    'attempt_check_in',
+    { p_booking: bookingId, p_lat: lat, p_lng: lng, p_accuracy: accuracyOf(accuracy) },
+    bookingId,
+  );
 }
 
 /**
@@ -57,11 +79,17 @@ export async function checkOut(
   bookingId: string,
   lat: number | null,
   lng: number | null,
+  accuracy: number | null = null,
 ): Promise<RpcResult> {
   const fixed = Number.isFinite(lat) && Number.isFinite(lng);
   return call(
     'check_out',
-    { p_booking: bookingId, p_lat: fixed ? lat : null, p_lng: fixed ? lng : null },
+    {
+      p_booking: bookingId,
+      p_lat: fixed ? lat : null,
+      p_lng: fixed ? lng : null,
+      p_accuracy: fixed ? accuracyOf(accuracy) : null,
+    },
     bookingId,
   );
 }
@@ -81,8 +109,17 @@ export async function finishBreak(bookingId: string): Promise<RpcResult> {
  * the difference between an off-site check-out recording their real finish
  * and falling to RULE-02.
  */
-export async function recordPing(bookingId: string, lat: number, lng: number): Promise<RpcResult> {
-  return call('record_ping', { p_booking: bookingId, p_lat: lat, p_lng: lng }, bookingId);
+export async function recordPing(
+  bookingId: string,
+  lat: number,
+  lng: number,
+  accuracy: number | null = null,
+): Promise<RpcResult> {
+  return call(
+    'record_ping',
+    { p_booking: bookingId, p_lat: lat, p_lng: lng, p_accuracy: accuracyOf(accuracy) },
+    bookingId,
+  );
 }
 
 const REASONS: Record<string, string> = {

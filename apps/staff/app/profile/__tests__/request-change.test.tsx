@@ -20,6 +20,9 @@ const createSignedUploadUrl = vi.hoisted(() => vi.fn());
 const revalidatePath = vi.hoisted(() => vi.fn());
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+// The stored-bytes check (security round 12.10, item 5) has its own tests
+// (app/_lib/__tests__/stored-media.test.ts); here the upload is a real one.
+vi.mock('../../_lib/stored-media', () => ({ checkStoredMedia: async () => 'match' }));
 vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 vi.mock('@thc/db/admin', () => ({
@@ -377,7 +380,13 @@ describe('the date of birth (ADR-0070)', () => {
 
   it('says the date rule’s refusals in words', async () => {
     for (const code of ['under_18', 'dob_invalid', 'dob_required', 'unchanged']) {
-      rpc.mockResolvedValue({ data: null, error: { message: code } });
+      // staff_me answers (the evidence is read under the worker's own
+      // prefix first — security round 12.10, item 5); the RPC refuses.
+      rpc.mockImplementation(async (fn: string) =>
+        fn === 'staff_me'
+          ? { data: { staffId: 'staff-1', status: 'compliant' }, error: null }
+          : { data: null, error: { message: code } },
+      );
       const result = await actions.requestDobChange(
         '1995-05-06',
         'staff-1/change-requests/p.pdf',
