@@ -1155,14 +1155,14 @@ describe('onboarding chasers (ADR-0071)', () => {
     }
   });
 
-  it('has a first, a second and a repeating wording, and nothing else', () => {
+  it('has a first, a second and a repeating wording (OC1 also the existing_* three), and nothing else', () => {
     for (const code of CHASER_CODES) {
       const expected = code === 'OC1' ? [...RUNGS, ...EXISTING_RUNGS] : RUNGS;
       expect(Object.keys(TEMPLATES[code].variants), code).toEqual(expected);
     }
   });
 
-  it('tells existing staff the Willo interview is part of moving onto the new app, in every OC1 rung', () => {
+  it('tells existing staff the Willo interview is part of getting set up on the new app, in every OC1 rung', () => {
     for (const rung of EXISTING_RUNGS) {
       const text = body('OC1', rung);
       expect(text, rung).toContain('{name}');

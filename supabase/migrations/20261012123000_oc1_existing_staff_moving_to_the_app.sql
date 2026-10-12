@@ -18,7 +18,12 @@
 --   · their application was matched to the invite list (audit_log
 --     'roster.matched' with via 'list', 'list_over_link' or
 --     'list_name_mismatch' — 20261008140000), or
+--   · they were already here when a list was loaded and it was applied to
+--     them ('roster.applied_existing'), or
 --   · they carry a Payroll ID: the payroll sheet already knows them.
+--
+-- Not somebody only the link decided ('roster.matched' via 'link'):
+-- /apply/spudbros is a public page, so it is no evidence of employment.
 --
 -- Nothing else changes: who is chased, when, how often (daily, never
 -- stopping, 10:00–18:00 UK), the keys, OC2 and OC3. A new applicant keeps
@@ -42,12 +47,14 @@ as $$
                   where s.id = p_staff and s.payroll_id is not null)
       or exists (select 1 from audit_log a
                   where a.entity_id = p_staff
-                    and a.action = 'roster.matched'
-                    and a.data ->> 'via' in ('list', 'list_over_link', 'list_name_mismatch'));
+                    and a.entity = 'staff'
+                    and (a.action = 'roster.applied_existing'
+                         or (a.action = 'roster.matched'
+                             and a.data ->> 'via' in ('list', 'list_over_link', 'list_name_mismatch'))));
 $$;
 
 comment on function public.onboarding_chaser_existing_staff(uuid) is
-  'Existing staff moving onto the new app: matched to the invite list when they applied (roster.matched via list*) or carrying a Payroll ID. OC1 uses its existing_* wording for them. Internal: read by onboarding_chasers().';
+  'Existing staff moving onto the new app: matched to the invite list when they applied (roster.matched via list*), had a list applied to them (roster.applied_existing), or carry a Payroll ID. OC1 uses its existing_* wording for them. Internal: read by onboarding_chasers().';
 
 revoke all on function public.onboarding_chaser_existing_staff(uuid) from public, anon, authenticated;
 

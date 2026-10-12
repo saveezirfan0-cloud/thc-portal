@@ -209,10 +209,10 @@ rule: **email until the account exists, push in the app after.**
   `/onboarding`, which N8's candidate push shares — a reminder would replace
   a document-rejected notification on the phone.
 - **OC1 for existing staff** (20261012123000). Somebody already working
-  with us who is moving onto the new app (matched to the invite list,
+  with us who is being set up on the new app (matched to the invite list,
   ADR-0107, or carrying a Payroll ID) gets OC1's `existing_first`,
   `existing_second` and `existing_repeat` wording: the Willo interview is
-  part of moving onto the new Staff App, and everyone does it, even people
+  part of getting set up on the new Staff App, and everyone does it, even people
   who already work with us. Subject `Your Willo interview for our new Staff
   App`, then `Reminder: your Willo interview for the new app`.
 - **No Willo link in OC1.** Willo sends the interview invitation (E1) and

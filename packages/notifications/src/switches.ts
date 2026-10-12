@@ -147,7 +147,7 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       {
         code: 'OC1',
         label: 'Video interview reminder',
-        when: 'A candidate has not done their Willo interview (existing staff are told it is part of moving to the new app)',
+        when: 'A candidate has not done their Willo interview',
       },
       {
         code: 'E2',

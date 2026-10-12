@@ -10,7 +10,7 @@
 --      cadence.
 -- =====================================================================
 begin;
-select plan(14);
+select plan(17);
 \ir _shared/fixtures.psql
 
 \set c_new   '80400000-0000-4000-8000-000000000001'
@@ -18,6 +18,9 @@ select plan(14);
 \set c_pay   '80400000-0000-4000-8000-000000000003'
 \set c_link  '80400000-0000-4000-8000-000000000004'
 \set c_spud  '80400000-0000-4000-8000-000000000005'
+\set c_over  '80400000-0000-4000-8000-000000000006'
+\set c_here  '80400000-0000-4000-8000-000000000007'
+\set c_other '80400000-0000-4000-8000-000000000008'
 \set t0      '2026-09-01 11:00+01'
 
 insert into staff (id, user_id, first_name, last_name, email, phone, dob, status) values
@@ -25,7 +28,10 @@ insert into staff (id, user_id, first_name, last_name, email, phone, dob, status
   (:'c_list', null, 'Lou',  'List', 'lou@oc1x.test',  '+447700980402', date '2001-02-02', 'interview_requested'),
   (:'c_pay',  null, 'Pat',  'Pay',  'pat@oc1x.test',  '+447700980403', date '2001-02-03', 'interview_requested'),
   (:'c_link', null, 'Lin',  'Link', 'lin@oc1x.test',  '+447700980404', date '2001-02-04', 'interview_requested'),
-  (:'c_spud', null, 'Sam',  'Spud', 'sam@oc1x.test',  '+447700980405', date '2001-02-05', 'interview_requested');
+  (:'c_spud', null, 'Sam',  'Spud', 'sam@oc1x.test',  '+447700980405', date '2001-02-05', 'interview_requested'),
+  (:'c_over', null, 'Ola',  'Over', 'ola@oc1x.test',  '+447700980406', date '2001-02-06', 'interview_requested'),
+  (:'c_here', null, 'Hal',  'Here', 'hal@oc1x.test',  '+447700980407', date '2001-02-07', 'interview_requested'),
+  (:'c_other', null, 'Oti', 'Other', 'oti@oc1x.test', '+447700980408', date '2001-02-08', 'interview_requested');
 
 update staff set stage_entered_at = :'t0', onboarding_started_at = :'t0', willo_invited_at = :'t0'
  where id::text like '80400000-%';
@@ -39,7 +45,14 @@ insert into audit_log (actor, action, entity, entity_id, data) values
   (null, 'roster.matched', 'staff', :'c_spud',
    jsonb_build_object('staffId', :'c_spud', 'group', 'spudbros', 'via', 'list_name_mismatch')),
   (null, 'roster.matched', 'staff', :'c_link',
-   jsonb_build_object('staffId', :'c_link', 'group', 'thc', 'via', 'link'));
+   jsonb_build_object('staffId', :'c_link', 'group', 'thc', 'via', 'link')),
+  (null, 'roster.matched', 'staff', :'c_over',
+   jsonb_build_object('staffId', :'c_over', 'group', 'thc', 'via', 'list_over_link')),
+  (null, 'roster.applied_existing', 'staff', :'c_here',
+   jsonb_build_object('staffId', :'c_here', 'group', 'thc', 'payrollId', null)),
+  -- the same uuid under another entity is not this person's audit row
+  (null, 'roster.matched', 'booking', :'c_other',
+   jsonb_build_object('via', 'list'));
 update staff set payroll_id = '1641A' where id = :'c_pay';
 
 -- =====================================================================
@@ -58,6 +71,9 @@ select ok(not has_function_privilege('authenticated', 'onboarding_chasers(timest
 select ok(onboarding_chaser_existing_staff(:'c_list'), 'matched to the invite list: existing staff');
 select ok(onboarding_chaser_existing_staff(:'c_spud'), 'on the list with a misspelt name: existing staff');
 select ok(onboarding_chaser_existing_staff(:'c_pay'), 'carrying a Payroll ID: existing staff');
+select ok(onboarding_chaser_existing_staff(:'c_over'), 'on the THC list, through the SpudBros link: existing staff');
+select ok(onboarding_chaser_existing_staff(:'c_here'), 'already here when a list was applied to them: existing staff');
+select ok(not onboarding_chaser_existing_staff(:'c_other'), 'a matching row about another entity counts for nothing');
 select ok(not onboarding_chaser_existing_staff(:'c_new'), 'a new applicant is not');
 select ok(not onboarding_chaser_existing_staff(:'c_link'), 'nor somebody only the link decided');
 

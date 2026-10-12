@@ -398,7 +398,7 @@ describe('onboarding chasers (ADR-0071)', () => {
     );
   });
 
-  it('tells existing staff the interview is part of moving onto the new app', () => {
+  it('tells existing staff the interview is part of getting set up on the new app', () => {
     const msg = messageFor(
       email({
         template: 'OC1',
