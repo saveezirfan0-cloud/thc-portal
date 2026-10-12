@@ -117,3 +117,12 @@ When the latest reminder could not be delivered (notifications off, a bounce), t
 - **No Willo link in OC1.** Willo sends the invite and nothing stores its URL, so OC1 points at that email. If Willo's API can re-send an invitation, OC1 could do that instead.
 - **No per-candidate "stop reminding" switch.** Rejecting the candidate stops the reminders, and so does the global setting.
 - **Not on `/onboarding/:id`.** The profile does not yet show the reminder history. The outbox rows are there if it is wanted.
+
+## Addendum 12.10.2026 · OC1 for existing staff moving onto the new app
+
+THC's existing staff (and SpudBros Express staff) are brought onto the platform from the invite list (ADR-0107) and go through the same Willo interview as a new applicant. OC1's wording ("Thanks for applying…") reads to them as a mistake, or as not meant for them. Owner request: remind them that the Willo interview is part of onboarding to the new app.
+
+- **Who.** `onboarding_chaser_existing_staff(staff)`: their application was matched to the invite list (`audit_log` `roster.matched` with `via` `list`, `list_over_link` or `list_name_mismatch`), or they carry a Payroll ID. Service role only.
+- **What.** OC1 gains `existing_first`, `existing_second` and `existing_repeat`: the same rungs and cadence, each saying the interview is part of moving onto the new Staff App and that everyone does it, even people who already work with us. `onboarding_chasers()` picks the variant as each reminder is queued, so a Payroll ID the office sets mid-run changes the next one.
+- **Unchanged.** Who is chased and when, the keys, OC2 and OC3, the setting and the office board.
+- Migration `20261012123000`; pgTAP 804; vitest in packages/notifications (templates, outbox).

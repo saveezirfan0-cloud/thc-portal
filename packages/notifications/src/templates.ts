@@ -867,7 +867,8 @@ export const TEMPLATES = {
   // their own, reminded daily from a day after their last progress, and it
   // never stops — by email before they have the app, by push once they have
   // signed up. One code per track; the variant is the reminder's place in
-  // the run: `first`, `second`, then `repeat` every day after. The row's
+  // the run: `first`, `second`, then `repeat` every day after (OC1 has an
+  // `existing_` set of the three for existing staff). The row's
   // payload names it. Keys `OCn:staff:<id>:<progress epoch>:<n>`, so any
   // progress starts the count again (20261001212000).
   OC1: {
@@ -886,9 +887,25 @@ export const TEMPLATES = {
         title: 'Reminder: your video interview is still waiting',
         body: "Hi {name},\n\nYour video interview with The Hospitality Company is still waiting for you. If you'd still like to work with us, find the invitation from Willo in your inbox or spam folder and record your answers, whenever suits you.\n\nCan't find it? Reply to this email and we'll help.",
       },
+      // Existing staff moving onto the new app (invite list or a Payroll
+      // ID — onboarding_chaser_existing_staff(), 20261012123000): the same
+      // three rungs, telling them the interview is part of the move and
+      // that everyone does it, even people who already work with us.
+      existing_first: {
+        title: 'Your Willo interview for our new Staff App',
+        body: "Hi {name},\n\nWe're moving everyone who works with The Hospitality Company onto our new Staff App. A short video interview with Willo is part of joining it, and everyone needs to do one, even if you already work with us. Yours is ready and waiting for you.\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for \"Willo\", and check your spam or promotions folder too. You can record your answers on your phone, whenever suits you.\n\nOnce you've finished, we'll be in touch to get you set up in the app.",
+      },
+      existing_second: {
+        title: 'Your Willo interview for our new Staff App',
+        body: "Hi {name},\n\nJust a reminder that your Willo video interview is still waiting for you. It's part of moving onto our new Staff App, and everyone needs to do it, even if you already work with us. Look for the invitation from Willo in your inbox, or in your spam folder. You can record your answers on your phone, whenever suits you.\n\nWe can't set you up in the new app until it's done.",
+      },
+      existing_repeat: {
+        title: 'Reminder: your Willo interview for the new app',
+        body: "Hi {name},\n\nYour Willo video interview is still waiting for you. Everyone moving onto The Hospitality Company's new Staff App needs to complete it, including people who already work with us. Find the invitation from Willo in your inbox or spam folder and record your answers, whenever suits you.\n\nCan't find it? Reply to this email and we'll help.",
+      },
     },
     trigger:
-      'A candidate in Interview requested whose Willo invitation (E1) went out and who has not completed the interview (onboarding_chasers). Not in §8: an addition to scope v1.6, ADR-0071',
+      'A candidate in Interview requested whose Willo invitation (E1) went out and who has not completed the interview (onboarding_chasers); existing staff moving onto the new app (invite list or a Payroll ID) get the existing_* wording. Not in §8: an addition to scope v1.6, ADR-0071',
     timing:
       'daily from a day after the invitation or their last progress, until they do it; 10:00–18:00 UK',
   },

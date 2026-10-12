@@ -1144,6 +1144,8 @@ describe('office message to one worker — OM2 (ADR-0082)', () => {
 
 describe('onboarding chasers (ADR-0071)', () => {
   const RUNGS = ['first', 'second', 'repeat'];
+  /** OC1's wording for existing staff moving onto the new app (20261012123000). */
+  const EXISTING_RUNGS = ['existing_first', 'existing_second', 'existing_repeat'];
 
   it('says why each exists, on the entry itself', () => {
     for (const code of CHASER_CODES) {
@@ -1155,8 +1157,25 @@ describe('onboarding chasers (ADR-0071)', () => {
 
   it('has a first, a second and a repeating wording, and nothing else', () => {
     for (const code of CHASER_CODES) {
-      expect(Object.keys(TEMPLATES[code].variants), code).toEqual(RUNGS);
+      const expected = code === 'OC1' ? [...RUNGS, ...EXISTING_RUNGS] : RUNGS;
+      expect(Object.keys(TEMPLATES[code].variants), code).toEqual(expected);
     }
+  });
+
+  it('tells existing staff the Willo interview is part of moving onto the new app, in every OC1 rung', () => {
+    for (const rung of EXISTING_RUNGS) {
+      const text = body('OC1', rung);
+      expect(text, rung).toContain('{name}');
+      expect(text, rung).toContain('Willo');
+      expect(text, rung).toContain('new Staff App');
+      expect(text, rung).toMatch(/already work with us/);
+      expect(title('OC1', rung), rung).toMatch(/Willo interview/);
+      // A new applicant's thanks would read as a mistake to someone on the payroll.
+      expect(text, rung).not.toMatch(/thanks for applying/i);
+    }
+    expect(body('OC1', 'existing_first')).toContain('Search your inbox for "Willo"');
+    expect(body('OC1', 'existing_repeat')).toContain("Reply to this email and we'll help.");
+    expect(title('OC1', 'existing_repeat')).toBe('Reminder: your Willo interview for the new app');
   });
 
   it('emails before sign-up from admin@, to the candidate the row names', () => {
@@ -1186,7 +1205,7 @@ describe('onboarding chasers (ADR-0071)', () => {
 
   it('never calls a reminder the last one: they carry on daily until the candidate moves', () => {
     for (const code of CHASER_CODES) {
-      for (const rung of RUNGS) {
+      for (const rung of Object.keys(TEMPLATES[code].variants)) {
         expect(
           `${title(code, rung)} ${body(code, rung)}`.toLowerCase(),
           `${code}/${rung}`,
@@ -1209,7 +1228,7 @@ describe('onboarding chasers (ADR-0071)', () => {
 
   it('uses no office vocabulary in what the candidate reads', () => {
     for (const code of CHASER_CODES) {
-      for (const rung of RUNGS) {
+      for (const rung of Object.keys(TEMPLATES[code].variants)) {
         const text = `${title(code, rung)} ${body(code, rung)}`.toLowerCase();
         for (const word of ['stalled', 'chaser', 'kanban', 'pipeline', 'rung', 'pool', 'adr-']) {
           expect(text, `${code}/${rung}`).not.toContain(word);
