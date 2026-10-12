@@ -3,6 +3,7 @@ import {
   HMRC_GENDER_NOTE,
   HMRC_GENDER_OPTIONS,
   HMRC_TAX_CODE,
+  STUDENT_LOAN_OPTIONS,
   deriveStatement,
   hmrcMissing,
   isValidNiNumber,
@@ -91,6 +92,17 @@ describe('the checklist form', () => {
 
   it('a plan and the Postgraduate Loan can run together', () => {
     expect(hmrcMissing({ ...complete, studentLoan: 'plan1', postgraduateLoan: true })).toEqual([]);
+  });
+
+  it("offers every plan on HMRC's checklist — 1, 2, 4 and 5 — and no Plan 3 (ADR-0116)", () => {
+    expect(STUDENT_LOAN_OPTIONS.map((o) => o.label)).toEqual([
+      'No',
+      'Plan 1',
+      'Plan 2',
+      'Plan 4',
+      'Plan 5',
+    ]);
+    expect(hmrcMissing({ ...complete, studentLoan: 'plan5', postgraduateLoan: true })).toEqual([]);
   });
 
   it('rejects a malformed NI number but not a blank one', () => {

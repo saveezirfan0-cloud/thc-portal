@@ -15,7 +15,9 @@
  *      Benefit?                                                  Yes → B
  *                                                                No  → A
  *
- * Student loan and the Postgraduate Loan are independent of A/B/C and of
+ * Student loan carries HMRC's plans as the checklist lists them — 1, 2, 4
+ * and 5 (ADR-0116); there is no Plan 3 on the form. It and the
+ * Postgraduate Loan are independent of A/B/C and of
  * each other: "a worker can be repaying a Plan loan and a Postgraduate Loan
  * at the same time". The National Insurance number is optional — there is
  * no temporary number (client decision 14.07.2026) — and the declaration
@@ -26,13 +28,14 @@
 
 export type HmrcStatement = 'A' | 'B' | 'C';
 
-export type StudentLoanPlan = 'none' | 'plan1' | 'plan2' | 'plan4';
+export type StudentLoanPlan = 'none' | 'plan1' | 'plan2' | 'plan4' | 'plan5';
 
 export const STUDENT_LOAN_OPTIONS: readonly { value: StudentLoanPlan; label: string }[] = [
   { value: 'none', label: 'No' },
   { value: 'plan1', label: 'Plan 1' },
   { value: 'plan2', label: 'Plan 2' },
   { value: 'plan4', label: 'Plan 4' },
+  { value: 'plan5', label: 'Plan 5' },
 ];
 
 export interface HmrcAnswers {
