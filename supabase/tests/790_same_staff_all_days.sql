@@ -35,7 +35,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(78);
+select plan(84);
 \ir _shared/fixtures.psql
 
 select cap_week_start(current_date) + 14 as w \gset
@@ -470,6 +470,29 @@ update shift_requirements set same_staff_all_days = false where id = :'s_fri';
 select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_gap'), null,
   'F: Friday''s switch off: the Saturday gap no longer matters to Friday');
 update shift_requirements set same_staff_all_days = true where id = :'s_fri';
+
+-- The wrapper and its helpers are invoker functions, like the pool: they must
+-- see the same sections, bookings and calendar entries through the
+-- sessions that call them - the office board and the jobs - or the gate
+-- would quietly fail open.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_away'),
+  'not_available_all_days', 'F: the office''s own session sees the calendar entry on a sibling day');
+select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_clash'),
+  'not_available_all_days', 'F: ... and the booking on a sibling day');
+select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_stud'),
+  'not_available_all_days', 'F: ... and the projected hours');
+select is((select count(*)::int from series_siblings(:'s_fri')), 2,
+  'F: ... and the siblings');
+reset role;
+set local role service_role;
+select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_away'),
+  'not_available_all_days', 'F: the auto-staffing job (service role) gets the same gate');
+select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_stud'),
+  'not_available_all_days', 'F: ... for the projected hours too');
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 -- =====================================================================
 -- G · Duplicate links the days
