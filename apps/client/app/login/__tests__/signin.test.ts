@@ -25,7 +25,7 @@ const jar = {
   },
 };
 
-vi.mock('next/headers', () => ({ cookies: async () => jar }));
+vi.mock('next/headers', () => ({ cookies: async () => jar, headers: async () => new Headers() }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);

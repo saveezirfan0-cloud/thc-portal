@@ -1,6 +1,6 @@
 ---
 name: thc-design-system
-description: Apply The Hospitality Company design system — tokens only across two axes (data-style warm/scope, data-theme light/dark; ADR-0007 renders warm in both modes, scope is the §1.6 literal), the fixed palette meaning, square-cornered avatars, glass mobile chrome — when building or reviewing any screen or component in this repo. Use whenever writing UI, CSS, or wireframes.
+description: Apply The Hospitality Company design system — tokens only across two axes (data-style warm/scope, data-theme light/dark; ADR-0007 renders warm in both modes, scope is the §1.6 literal), the fixed palette meaning, circular avatars (square only in scope), glass mobile chrome — when building or reviewing any screen or component in this repo. Use whenever writing UI, CSS, or wireframes.
 ---
 
 # THC design system
@@ -10,18 +10,20 @@ Source: Scope of Work §1.6 (web) and §10.1 (mobile). Reference implementation:
 ## Tokens
 
 `--bg #04080F` · `--panel #0B1220` · `--line #1C2839` · `--cyan #3EDCEC` (primary) · `--purple #A879FF` (Auto-Assign ONLY) · `--green #3DDC97` · `--amber #F5B83D` · `--coral #FF6E61` (danger) · `--text #E9EEF5` · `--muted #8A97A3`.
-Fonts: Space Grotesk (headings) · Inter (body) · IBM Plex Mono (labels: uppercase, 0.1em tracking, 10.5px).
+Fonts (scope): Space Grotesk (headings) · Inter (body) · IBM Plex Mono (labels: uppercase, 0.1em tracking, 10.5px). Warm (the product, both modes): Plus Jakarta Sans for headings AND body in all three apps (ADR-0113); mono only for codes.
+`--control-line` is the edge of an input / select / default button / removed-avatar slot (3:1, WCAG 1.4.11); `--line` is a divider only. `color-scheme` follows the theme.
 
 ## Two axes (ADR-0003)
 
-Style `warm` (default: radii 6–18px, Plus Jakarta Sans, body-face labels, 40px buttons) or `scope` (§1.6 literal: zero radius, Space Grotesk/Inter/IBM Plex Mono). Theme `dark` or `light` (off-white ground, navy ink, `--*-ink` tones for text). Always use tokens (`--r`, `--font-label`, `--cyan-ink`), never literals, so a component works in all four combinations.
+Style `warm` (default: pill controls, 22–28px cards, circular avatars, Plus Jakarta Sans, body-face labels) or `scope` (§1.6 literal: zero radius, Space Grotesk/Inter/IBM Plex Mono). Theme `dark` or `light` (off-white ground, navy ink, `--*-ink` tones for text). Always use tokens (`--r`, `--font-label`, `--cyan-ink`), never literals, so a component works in all four combinations.
 
 ## Rules (Scope style; Warm relaxes 1 and the mono labels only)
 
 1. `border-radius: 0` on everything. Only `.logo.round` is circular.
-2. Square avatars; selfie photo; initials fallback.
+2. Avatars: square in scope, **circles in warm** (`--r-avatar`, ADR-0113 — never hard-code it); selfie photo; initials fallback; "+N" overflow via `<AvatarGroup more={n} size>` (`.avatar.more`).
 3. Sidebar active: 3px cyan left bar + `rgba(62,220,236,.10)` fill + cyan text.
-4. Buttons: hover lift + sheen; primary = cyan bg, navy text; purple = auto-assign; danger = coral outline (solid for destructive confirm).
+4. Buttons: hover lift + sheen; primary = cyan bg, navy text; purple = auto-assign; danger = coral outline (solid for destructive confirm); a finished small action is `<Button size="sm" className="sent" disabled>` (green, stays green disabled).
+   Forms: `<Input labelAction>` for "Forgot password?" on the label row; `<PasswordRules>` for any new-password checklist; `<Modal dismissible={false}>` while a submit is in flight (the modal traps focus and returns it to the opener).
 5. Pills are square, mono, uppercase; tone vocabulary in `docs/07-design-system.md`.
 6. Mobile: glass (`backdrop-filter: blur(18px)`) on top bar / bottom nav / sheets; radial cyan (top-left) + purple (bottom-right) glow; collapsing header keeps the logo left and avatar right; bottom nav Documents · Shifts · Invites · Radar.
 7. Dual-zone times: first line "17:00 – 23:30 UK time", second "19:00 – 01:30 your time" only when zones differ; the narrow "Due" pill shows local time only.

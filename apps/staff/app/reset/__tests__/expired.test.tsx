@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
  * Office and Client Portal draw it: its own heading, one line of why, and
  * a "Request a new link" button back to /forgot.
  */
-const auth = vi.hoisted(() => ({ getUser: vi.fn() }));
+const auth = vi.hoisted(() => ({ getClaims: vi.fn() }));
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({ getAll: () => [], set: () => {} })),
@@ -35,13 +35,15 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+const now = () => Math.floor(Date.now() / 1000);
+
 async function render(searchParams: { error?: string }): Promise<string> {
   return renderToStaticMarkup(await ResetPage({ searchParams: Promise.resolve(searchParams) }));
 }
 
 describe('/reset', () => {
   it('no session: "This link has expired" and a "Request a new link" button', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: null } });
+    auth.getClaims.mockResolvedValue({ data: null, error: null });
     const html = await render({});
     expect(html).toContain('<h2>This link has expired</h2>');
     expect(html).toContain('expired or has already been used');
@@ -51,7 +53,7 @@ describe('/reset', () => {
   });
 
   it('a link that could not be opened reads the same way, with one alert', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: null } });
+    auth.getClaims.mockResolvedValue({ data: null, error: null });
     const html = await render({ error: 'expired' });
     expect(html).toContain('<h2>This link has expired</h2>');
     expect(html).toContain('That link could not be opened.');
@@ -60,9 +62,35 @@ describe('/reset', () => {
   });
 
   it('a signed-in recovery session gets the form', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    auth.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'u1', amr: [{ method: 'recovery', timestamp: now() - 60 }] } },
+      error: null,
+    });
     const html = await render({});
     expect(html).toContain('<h2>Set a new password</h2>');
     expect(html).not.toContain('Request a new link');
+  });
+
+  // Security review 12.10: any signed-in session could set a password here
+  // without the current one.
+  it('a password sign-in gets a pointer to Security settings, not the form', async () => {
+    auth.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'u1', amr: [{ method: 'password', timestamp: now() - 60 }] } },
+      error: null,
+    });
+    const html = await render({});
+    expect(html).not.toContain('Set a new password');
+    expect(html).not.toContain('name="password"');
+    expect(html).toContain('Security settings');
+    expect(html).toContain('href="/profile/security"');
+  });
+
+  it('a recovery session older than an hour is not one any more', async () => {
+    auth.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'u1', amr: [{ method: 'recovery', timestamp: now() - 2 * 3600 }] } },
+      error: null,
+    });
+    const html = await render({});
+    expect(html).not.toContain('Set a new password');
   });
 });

@@ -44,6 +44,19 @@ describe('the client sign-in form (§1.4)', () => {
     expect(markup).toContain('>Sign in</button>');
   });
 
+  it('puts Forgot password? on the Password label row, not a row of its own (login.html:64)', () => {
+    expect(markup).toMatch(
+      /<div class="label-row"><label class="label" for="[^"]+">Password<\/label><span class="label-action"><a href="\/forgot" class="xs">Forgot password\?<\/a><\/span><\/div><div class="input-row">/,
+    );
+    expect(markup.match(/href="\/forgot"/g)).toHaveLength(1);
+  });
+
+  it('lays out with the shared auth-form class, no inline layout', () => {
+    expect(markup).toMatch(/^<form[^>]*class="auth-form"/);
+    expect(markup).not.toContain('style="display:flex');
+    expect(markup).not.toContain('justify-content:flex-end');
+  });
+
   it('never carries a per-field hint that points at the password', () => {
     // The generic sentence is the alert the action returns; the form adds
     // no second message. login.html:123-125 — both inputs `err`, one alert.

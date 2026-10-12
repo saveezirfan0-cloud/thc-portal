@@ -1,6 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   KEEP_SIGNED_IN_FIELD,
@@ -10,6 +10,7 @@ import {
   safeNextPath,
 } from '@thc/db';
 import { createClient } from '@thc/db/server';
+import { THROTTLED, takeAuthAttempt } from '../auth/throttle';
 import { WRONG_CREDENTIALS } from './copy';
 
 /**
@@ -18,6 +19,11 @@ import { WRONG_CREDENTIALS } from './copy';
  * The failure message never distinguishes a wrong email from a wrong
  * password: saying which one is wrong tells an attacker whether an account
  * exists. The wireframes word it that way deliberately.
+ *
+ * Throttled per email and per caller BEFORE Supabase is asked (ADR-0115,
+ * app/auth/throttle.ts): 10 attempts per email and 30 per caller in 15
+ * minutes. A throttled attempt gets one sentence that says nothing about
+ * the account and never reaches signInWithPassword.
  */
 
 export async function signIn(_prev: string | null, formData: FormData): Promise<string | null> {
@@ -31,8 +37,10 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     // Not wired to a project yet (docs/04). Say so rather than throwing a 500.
-    return 'Sign-in is not available yet — this environment has no Supabase project.';
+    return "The portal isn't connected yet. Please contact THC.";
   }
+
+  if ((await takeAuthAttempt('login', email, await headers())) === 'blocked') return THROTTLED;
 
   // "Keep me signed in on this device" (ADR-0032): ticked by default on the
   // form; unticked, the auth cookies this sign-in writes are session cookies.
@@ -52,6 +60,9 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
       code: error.code,
       message: error.message,
     });
+    // Supabase's own limit (shared by every customer, see above) is still a
+    // limit: say "wait", not "wrong password".
+    if (error.status === 429 || error.code === 'over_request_rate_limit') return THROTTLED;
     return WRONG_CREDENTIALS;
   }
 

@@ -574,7 +574,10 @@ table.tbl {
   font-family: var(--font-body);
   font-weight: 600;
   font-size: var(--fs-13);
-  border: 1px solid var(--line);
+  /* --control-line, not --line: the default button is an outline, and its
+     outline is the only thing that says "button" (WCAG 1.4.11, 3:1). Every
+     tone below replaces it. */
+  border: 1px solid var(--control-line);
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -777,6 +780,30 @@ table.tbl {
   border-color: transparent !important;
   text-decoration: none;
 }
+/* Done, not available: "✓ Feedback sent". A small button that has already
+   done its job keeps its place in the row so the layout does not jump, and
+   says so in the confirmed colour (green = confirmed, docs/07). It is
+   usually rendered disabled, so it has to outrank the flat disabled surface
+   above — the same !important, more specific — or the one bit of good news
+   on the row would turn grey. No lift, no sheen, no pointer: it is a
+   status, not an action. Sized as .btn.sm whether or not `sm` is passed. */
+.btn.sent,
+.btn.sent:is(:disabled, [aria-disabled='true'], .disabled),
+.btn.sent:hover {
+  height: var(--btn-h-sm);
+  padding: 0 var(--sp-12);
+  font-size: var(--fs-12);
+  background: var(--green-dim) !important;
+  border-color: var(--green-ink) !important;
+  color: var(--green-ink) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  cursor: default;
+}
+.btn.sent::after {
+  content: none;
+}
 
 /* ---------------------------------------------------------------------
    6 · PILLS / CHIPS
@@ -956,6 +983,19 @@ table.tbl {
 .seg .active:hover {
   color: var(--on-cyan);
 }
+/* The track clips its segments (overflow: hidden keeps the pill's ends
+   clean), and that clipped the base focus ring — drawn 2px OUTSIDE the
+   segment — on every segmented control: the Light / Dark switch, list
+   filters, tabs drawn as a seg. The ring moves inside instead. On the
+   selected segment, which is an accent fill, an accent ring would vanish,
+   so it takes the label colour of that fill. */
+.seg :is(button, a):focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: -3px;
+}
+.seg :is(.on, .active):focus-visible {
+  outline-color: var(--on-cyan);
+}
 .seg .n {
   font-family: var(--font-num);
   font-size: var(--fs-10);
@@ -1044,6 +1084,20 @@ table.tbl {
 .field > .label {
   margin-bottom: 0;
 }
+/* A label with one action on the same line — "Forgot password?" beside
+   Password (wireframes/client/login.html:64). `Input`'s `labelAction`. */
+.field > .label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+.field > .label-row > .label-action {
+  margin-left: auto;
+  font-size: var(--fs-12);
+  white-space: nowrap;
+}
 .field .hint {
   font-size: var(--fs-12);
   color: var(--muted);
@@ -1061,7 +1115,8 @@ textarea.input {
   height: var(--input-h);
   padding: 0 var(--sp-12);
   background: var(--bg);
-  border: 1px solid var(--line);
+  /* A field's boundary is how it is found at all (WCAG 1.4.11). */
+  border: 1px solid var(--control-line);
   color: var(--text);
   font-family: var(--font-body);
   font-size: var(--fs-14);
@@ -1138,7 +1193,7 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--sp-10);
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-line);
   border-left: 0;
   background: var(--panel-2);
   color: var(--text);
@@ -1147,7 +1202,7 @@ textarea.input {
   border-radius: 0 var(--r-control) var(--r-control) 0;
 }
 .input-row .addon.l {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--control-line);
   border-right: 0;
   border-radius: var(--r-control) 0 0 var(--r-control);
 }
@@ -1478,11 +1533,23 @@ textarea.input {
 .avatar.photo {
   background: linear-gradient(135deg, var(--photo-a), var(--photo-b));
 }
-/* A GDPR-removed worker keeps their slot so headcount is not skewed (§1.7). */
+/* A GDPR-removed worker keeps their slot so headcount is not skewed (§1.7).
+   The dashed ring is the whole of the slot, so it takes the control edge
+   (3:1) rather than the divider, which nearly vanished in both themes. */
 .avatar.deleted {
   background: transparent;
   color: var(--muted);
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--control-line);
+}
+/* "+N" at the end of a row of faces: an avatar-sized chip, so it takes the
+   size class of the faces it follows (`AvatarGroup more`, 30×30 beside
+   `.avatar.sm`) and the same shape token. A count, set in the number face. */
+.avatar.more {
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 .avatars {
   display: flex;
@@ -2995,6 +3062,20 @@ textarea.input {
   .datenav :is(button, a),
   .menu-btn {
     min-width: var(--tap-min);
+  }
+  /* A label row's action ("Forgot password?") is a text link on the
+     label's line. It grows to the finger target and the row grows with
+     it; the label stays on the same line, centred against it. The side
+     padding is taken back by the margin so the text keeps its edge. */
+  .field > .label-row {
+    align-items: center;
+  }
+  .field > .label-row > .label-action > :is(a, button) {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+    padding: 0 var(--sp-8);
+    margin-right: calc(-1 * var(--sp-8));
   }
 
   /* A document row: the title and its meta keep the row's width and the

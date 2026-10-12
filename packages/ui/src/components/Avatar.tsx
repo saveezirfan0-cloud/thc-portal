@@ -17,9 +17,10 @@ export function initials(name: string): string {
 }
 
 /**
- * The onboarding selfie carries through the whole system: square in the scope
- * style, circular in warm, falling back to monogram initials on the divider
- * colour. The shape is a token, never a prop.
+ * The onboarding selfie carries through the whole system: a circle in the
+ * product (warm, ADR-0113), square only in the scope §1.6 literal rendering,
+ * falling back to monogram initials on the divider colour. The shape is a
+ * token (`--r-avatar`), never a prop.
  */
 export function Avatar({ name, src, size = 'md', deleted, className }: AvatarProps) {
   return (
@@ -32,9 +33,38 @@ export function Avatar({ name, src, size = 'md', deleted, className }: AvatarPro
   );
 }
 
+export interface AvatarGroupProps {
+  children: ReactNode;
+  /**
+   * How many people are not drawn. Above zero, a "+N" chip closes the row,
+   * the same size and shape as the faces before it (`.avatar.more`).
+   */
+  more?: number;
+  /** The faces' size, so the chip matches them. Defaults to `md`. */
+  size?: AvatarProps['size'];
+  /** Tooltip and spoken name for the chip. Defaults to "N more". */
+  moreLabel?: string;
+}
+
 /** Overlapping row of avatars, e.g. a role line-up preview. */
-export function AvatarGroup({ children }: { children: ReactNode }) {
-  return <span className="avatars">{children}</span>;
+export function AvatarGroup({ children, more, size = 'md', moreLabel }: AvatarGroupProps) {
+  const extra = more && more > 0 ? Math.floor(more) : 0;
+  const label = moreLabel ?? `${extra} more`;
+  return (
+    <span className="avatars">
+      {children}
+      {extra > 0 ? (
+        <span
+          className={clsx('avatar', size !== 'md' && size, 'more')}
+          title={label}
+          role="img"
+          aria-label={label}
+        >
+          +{extra}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 /** Avatar + name + sub-line, the row used across every list of people. */

@@ -13,7 +13,10 @@ import { isRole, withSessionPersistence, wrongAppBody } from '@thc/db';
 const ALLOWED_ROLE = 'client' as const;
 // /forgot and /reset are A1–A3 (§10.2, `wireframes/client/login.html`):
 // nobody who needs them is signed in, or they hold only the short-lived
-// session /auth/callback just made.
+// session /auth/callback just made. Public means "no session needed", not
+// "any role": a signed-in non-client still gets the wrong-app page here, a
+// reset link included — its password is for another app, and that app's own
+// /reset is where it is set (reset/actions.ts no longer pretends otherwise).
 const PUBLIC_PATHS = ['/login', '/forgot', '/reset', '/auth'];
 
 function isPublic(pathname: string): boolean {
@@ -90,7 +93,12 @@ export async function middleware(request: NextRequest) {
         setAll: (toSet) => {
           for (const { name, value } of toSet) request.cookies.set(name, value);
           response = NextResponse.next({ request });
-          for (const { name, value, options } of toSet) response.cookies.set(name, value, options);
+          // httpOnly: the Client Portal has no browser Supabase client, so
+          // no script needs the tokens (next.config.ts sets the same for
+          // the server client through THC_AUTH_COOKIE_HTTP_ONLY).
+          for (const { name, value, options } of toSet) {
+            response.cookies.set(name, value, { ...options, httpOnly: true });
+          }
         },
       },
       { fallback: 'persistent' },
@@ -105,9 +113,14 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     if (isPublic(pathname)) return response;
+    // The query string too: a lapse on
+    // /client/events/:id/document?kind=signout must come back to the
+    // sign-out copy, not to the route's default (the allocation sheet).
+    // Only ever followed as a path on this app (safeNextPath, login action).
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('next', pathname);
+    url.search = '';
+    url.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(url);
   }
 
@@ -130,7 +143,26 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  // A signed-in customer has nothing to do on the sign-in card.
+  if (pathname === '/login') {
+    return redirectKeepingCookies(request, response, '/client');
+  }
+
   return response;
+}
+
+/** A redirect that carries any refreshed auth cookies this request wrote. */
+function redirectKeepingCookies(
+  request: NextRequest,
+  response: NextResponse,
+  pathname: string,
+): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = '';
+  const redirect = NextResponse.redirect(url);
+  for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+  return redirect;
 }
 
 export const config = {

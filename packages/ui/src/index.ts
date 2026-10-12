@@ -13,7 +13,10 @@ export { Logo, LogoMark } from './components/Logo';
 export type { LogoMarkProps, LogoProps } from './components/Logo';
 
 export { Avatar, AvatarGroup, Person, initials } from './components/Avatar';
-export type { AvatarProps } from './components/Avatar';
+export type { AvatarGroupProps, AvatarProps } from './components/Avatar';
+
+export { PasswordRules } from './components/PasswordRules';
+export type { PasswordRuleState, PasswordRulesProps } from './components/PasswordRules';
 
 export {
   Content,

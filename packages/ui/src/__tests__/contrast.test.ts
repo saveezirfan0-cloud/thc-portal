@@ -102,6 +102,26 @@ describe('every text tone clears AA on every ground it is drawn on', () => {
     }
   });
 
+  it('draws a control’s edge at 3:1 or better on every ground (WCAG 1.4.11)', () => {
+    // --line is a divider (about 1.2:1) and was the edge of every input and
+    // default button; --control-line is the boundary of something you use.
+    const themes: [string, string][] = [
+      ['scope dark', ':root'],
+      ['light', ":root[data-theme='light']"],
+      ['fluid dark', ":root[data-style='warm'][data-theme='dark']"],
+    ];
+    for (const [name, selector] of themes) {
+      const edge = token(selector, '--control-line');
+      for (const ground of ['--bg', '--panel', '--panel-2'] as const) {
+        const value = token(selector, ground);
+        expect(
+          contrast(edge, value),
+          `${name}: ${edge} on ${ground} ${value}`,
+        ).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   it('rejects the spec’s own light foregrounds, which is why they were not taken', () => {
     const page = token(":root[data-theme='light']", '--bg');
     for (const failing of ['#0891b2', '#10b981', '#f59e0b', '#f43f5e', '#64748b']) {

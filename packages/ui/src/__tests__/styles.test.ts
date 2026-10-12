@@ -147,14 +147,14 @@ describe('typography', () => {
     expect(token(':root', '--label-case')).toBe('uppercase');
   });
 
-  it('pairs Outfit / Plus Jakarta Sans in warm, sentence case', () => {
+  it('sets headings and body in Plus Jakarta Sans in warm, sentence case (ADR-0113)', () => {
     const warm = ":root[data-style='warm']";
-    expect(token(warm, '--font-head')).toContain('Outfit');
-    expect(token(warm, '--font-body')).toContain('Plus Jakarta Sans');
+    expect(token(warm, '--font-head')).toMatch(/^'Plus Jakarta Sans'/);
+    expect(token(warm, '--font-body')).toMatch(/^'Plus Jakarta Sans'/);
     expect(token(warm, '--label-case')).toBe('none');
   });
 
-  it('loads the five families from a sheet of our own, not from a font CDN', () => {
+  it('loads the four families from a sheet of our own, not from a font CDN', () => {
     // The Google Fonts `@import` that used to sit at the top of this sheet
     // was render-blocking on every page and could never resolve for an
     // installed, offline Staff App. The woff2 subsets are checked in;
@@ -408,5 +408,70 @@ describe('phone touch targets (§1.2)', () => {
     const css = stripComments(sheets['components.css']!);
     const phone = css.slice(css.indexOf('.btn:not(.link),\n  input.input'));
     expect(phone).toMatch(/min-height:\s*var\(--tap-min\)/);
+  });
+});
+
+describe('control edges (WCAG 1.4.11, ADR-0113)', () => {
+  const css = stripComments(sheets['components.css']!);
+  const rule = (selector: string) => {
+    const start = css.indexOf(`${selector} {`);
+    expect(start, `missing ${selector}`).toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  };
+
+  it('defines --control-line in every theme', () => {
+    for (const selector of [
+      ':root',
+      ":root[data-theme='light']",
+      ":root[data-style='warm'][data-theme='dark']",
+    ]) {
+      expect(token(selector, '--control-line'), selector).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
+  it('draws inputs, selects, the default button, the addon and a removed avatar with it', () => {
+    expect(rule('.input,\nselect.input,\ntextarea.input')).toMatch(
+      /border: 1px solid var\(--control-line\)/,
+    );
+    expect(rule('.btn')).toMatch(/border: 1px solid var\(--control-line\)/);
+    expect(rule('.input-row .addon')).toMatch(/border: 1px solid var\(--control-line\)/);
+    expect(rule('.avatar.deleted')).toMatch(/border: 1px dashed var\(--control-line\)/);
+  });
+});
+
+describe('native widgets follow the theme', () => {
+  it('sets color-scheme dark by default and light on the light ground', () => {
+    expect(block(':root')).toMatch(/color-scheme:\s*dark;/);
+    expect(block(":root[data-theme='light']")).toMatch(/color-scheme:\s*light;/);
+  });
+});
+
+describe('the segmented control focus ring', () => {
+  it('is drawn inside the segment, because the track clips its children', () => {
+    const css = stripComments(sheets['components.css']!);
+    expect(css).toMatch(/\.seg \{[^}]*overflow: hidden/);
+    expect(css).toMatch(
+      /\.seg :is\(button, a\):focus-visible \{\s*outline: 2px solid var\(--focus-line\);\s*outline-offset: -3px;/,
+    );
+    // An accent ring on an accent fill is invisible; the selected segment
+    // takes the fill's label colour instead.
+    expect(css).toMatch(
+      /\.seg :is\(\.on, \.active\):focus-visible \{\s*outline-color: var\(--on-cyan\);/,
+    );
+  });
+});
+
+describe('a sent button', () => {
+  it('stays green when disabled, and outranks the flat disabled surface', () => {
+    const css = stripComments(sheets['components.css']!);
+    const start = css.indexOf('.btn.sent,');
+    const body = css.slice(start, css.indexOf('}', start));
+    expect(body).toContain(".btn.sent:is(:disabled, [aria-disabled='true'], .disabled)");
+    expect(body).toMatch(/color: var\(--green-ink\) !important/);
+    expect(body).toMatch(/border-color: var\(--green-ink\) !important/);
+    expect(body).toMatch(/height: var\(--btn-h-sm\)/);
+    expect(body).toMatch(/cursor: default/);
+    // Later in the sheet than the disabled rule it has to beat.
+    expect(start).toBeGreaterThan(css.indexOf(".btn:disabled,\n.btn[aria-disabled='true']"));
   });
 });

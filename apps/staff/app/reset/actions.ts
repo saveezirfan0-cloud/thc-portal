@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
 import { checkPassword, passwordError, passwordOk } from './rules';
+import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
 
 /**
  * A3 Set new password — §10.2.
@@ -32,12 +33,15 @@ export async function setPassword(
   }
 
   const supabase = createClient(await cookies());
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  // Only a session an emailed reset link made may set a password without
+  // the current one (./recovery.ts, security review 12.10). Any other
+  // signed-in session goes to Profile → Security settings, which asks for
+  // the current password first. Verified claims, not the cookie's say-so.
+  const { data, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !data?.claims?.sub) {
     return 'This link has expired or has already been used. Ask for a new one from the sign-in screen.';
   }
+  if (!isRecoverySession(data.claims)) return NOT_A_RESET_SESSION;
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {

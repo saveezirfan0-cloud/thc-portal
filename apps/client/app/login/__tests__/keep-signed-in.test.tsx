@@ -22,6 +22,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('next/headers', () => ({
+  headers: async () => new Headers(),
   cookies: async () => ({
     getAll: () => [...state.jar].map(([name, { value }]) => ({ name, value })),
     set: (name: string, value: string, options?: Record<string, unknown>) =>

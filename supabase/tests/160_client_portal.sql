@@ -13,7 +13,7 @@
 -- role, and signed out.
 -- =====================================================================
 begin;
-select plan(24);
+select plan(30);
 \ir _shared/fixtures.psql
 
 -- §11.2's header field. The shared fixtures leave it null, so it is set
@@ -155,6 +155,61 @@ select ok(not has_function_privilege('anon', 'public.submit_client_feedback(uuid
 reset role;
 select ok(has_function_privilege('authenticated', 'public.submit_client_feedback(uuid, int, text)', 'execute'),
   'a signed-in caller may execute it; the body decides what happens');
+
+-- ---------------------------------------------------------------------
+-- 9. 20261012120000: a length cap, a removed worker, a cancelled event.
+--    event_a has started (section 5) and the entry written there is
+--    cleared, so each case below meets the rule it names and not the
+--    duplicate guard.
+-- ---------------------------------------------------------------------
+delete from feedback where staff_id = :'staffa' and event_id = :'event_a' and author_kind = 'client';
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+
+select throws_ok(
+  format($$ select submit_client_feedback(%L, 4, %L) $$, :'booking_a', repeat('x', 2001)),
+  '22023', 'Comment must be 2000 characters or fewer',
+  'a comment over 2000 characters is refused (22023) before anything is written');
+
+reset role;
+update staff set removed_at = now() where id = :'staffa';
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(
+  format($$ select submit_client_feedback(%L, 4, 'After removal') $$, :'booking_a'),
+  '22023', 'This worker has been removed (§1.7); no new feedback can be added',
+  '§1.7 a GDPR-removed worker cannot be rated from the portal — the office''s own refusal');
+
+reset role;
+update staff set removed_at = null where id = :'staffa';
+update events set cancelled_at = now() where id = :'event_a';
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(
+  format($$ select submit_client_feedback(%L, 4, 'Cancelled') $$, :'booking_a'),
+  '42501', 'That booking is not on your line-up',
+  'a cancelled event takes no feedback, with the same single refusal as a foreign booking');
+
+reset role;
+update events set cancelled_at = null where id = :'event_a';
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(
+  format($$ select submit_client_feedback(%L, 4, %L) $$, :'booking_a', repeat('y', 2000)),
+  'exactly 2000 characters is accepted');
+
+reset role;
+select throws_ok(
+  format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
+            values ('client', %L, %L, %L, 3, %L) $$,
+         :'clientb_uid', :'staffb', :'event_b', repeat('z', 2001)),
+  '23514', null,
+  'the table refuses an over-long client entry however it arrives (feedback_text_len)');
+select lives_ok(
+  format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
+            values ('office', %L, %L, %L, 3, %L) $$,
+         :'admin_uid', :'staffa', :'event_a', repeat('o', 5000)),
+  'an office note is not capped: its form never was, and editing a long one must not break');
 
 select * from finish();
 rollback;

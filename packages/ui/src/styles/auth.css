@@ -83,6 +83,61 @@
   right: var(--sp-10);
 }
 
+/* ---- the form inside the card --------------------------------------
+   Sign in, forgot, reset, invite and "change password" all stack their
+   fields the same way. This was an inline style in each of them. */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+/* A small centred line under the submit button: "← Back to sign in",
+   "Didn't request this?…". */
+.auth-form .auth-link,
+.auth-form .auth-note {
+  align-self: center;
+  text-align: center;
+}
+
+/* ---- password rules (wireframes/public/activate.html:15-18) ----------
+   `PasswordRules`. Neutral ○ before the field has been used, green ✓ for a
+   rule that is met, coral ✕ only for a rule still unmet once the field has
+   been left. The mark is decoration; the state is in the hidden text. */
+.rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+.rules li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-6);
+}
+.rules .mark {
+  flex: 0 0 1em;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+.rules li.ok {
+  color: var(--green-ink);
+}
+.rules li.bad {
+  color: var(--coral-ink);
+}
+.rules .state {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* On a phone the corner switch sat on top of the brand name — "Light Dark"
    over "The Hospitality Company" on /apply and on every sign-in card. It
    joins the flow instead: its own line at the top right of the card, with
@@ -96,5 +151,17 @@
     position: static;
     align-self: flex-end;
     margin: calc(-1 * var(--sp-8)) calc(-1 * var(--sp-8)) calc(-1 * var(--sp-6)) 0;
+  }
+}
+
+/* A text link in an auth form is a finger target on a phone (§1.2), like
+   every other control: 44px tall, the text centred in it. */
+@media (max-width: 760px) {
+  .auth-form .auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-min);
+    padding: 0 var(--sp-8);
   }
 }

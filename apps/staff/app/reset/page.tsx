@@ -4,6 +4,7 @@ import { Alert, AuthCard } from '@thc/ui';
 import { createClient } from '@thc/db/server';
 import { RESET_LINK_VALIDITY } from '../forgot/copy';
 import { ResetForm } from './ResetForm';
+import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
 import '../login/auth-tap.css';
 
 export const dynamic = 'force-dynamic';
@@ -12,10 +13,12 @@ export const metadata = { title: 'Set a new password · THC Staff' };
 /**
  * A3 Set new password — §10.2, wireframes/staff/auth.html.
  *
- * Reached two ways: from the emailed recovery link (via /auth/confirm,
- * which exchanges the code for a session) and from an activation link. If
- * neither left a session behind, the link is spent — and this says so
- * here, before the worker types a password twice for nothing.
+ * Reached from the emailed recovery link (via /auth/confirm, which
+ * exchanges the code for a session); activation has its own /activate. If
+ * no session was left behind, the link is spent — and this says so here,
+ * before the worker types a password twice for nothing. A session that was
+ * NOT made by a reset link (./recovery.ts) gets a pointer to Security
+ * settings instead of the form.
  */
 export default async function Page({
   searchParams,
@@ -27,12 +30,12 @@ export default async function Page({
     !!process.env['NEXT_PUBLIC_SUPABASE_URL'] && !!process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
 
   let signedIn = false;
+  let recovery = false;
   if (configured) {
     const supabase = createClient(await cookies());
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    signedIn = !!user;
+    const { data } = await supabase.auth.getClaims();
+    signedIn = !!data?.claims?.sub;
+    recovery = isRecoverySession(data?.claims);
   }
 
   // One message per state, as the wireframe shows it. A callback failure
@@ -53,6 +56,19 @@ export default async function Page({
         </Alert>
         <Link href="/forgot" className="btn block">
           Request a new link
+        </Link>
+      </AuthCard>
+    );
+  }
+
+  // Signed in, but not by a reset link (./recovery.ts): no form. setPassword
+  // refuses the same session; this says so before anything is typed.
+  if (configured && !recovery) {
+    return (
+      <AuthCard product="Staff app" heading="You’re already signed in">
+        <Alert tone="amber">{NOT_A_RESET_SESSION}</Alert>
+        <Link href="/profile/security" className="btn block">
+          Go to Security settings
         </Link>
       </AuthCard>
     );

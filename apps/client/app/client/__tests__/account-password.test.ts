@@ -2,14 +2,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { PASSWORD_MIN_LENGTH } from '@thc/domain';
 
 /**
- * Change password on "Your account" (ADR-0051).
+ * Change password on "Your account" (ADR-0051; security review 12.10).
  *
- * The rules are /reset's (@thc/domain password.ts). The current password is
- * re-verified server-side against the SESSION's email on a cookie-less
- * client before updateUser runs on the caller's own session; nothing is
- * changed when that check fails.
+ * The rules are /reset's (@thc/domain password.ts). One attempt is claimed
+ * and counted in a single call (password_check_begin) before the current
+ * password is re-verified on a cookie-less `verifier` client against the
+ * SESSION's email. The change then runs on the verifier's brand-new session
+ * — which the device adopts first — because Supabase refuses a password
+ * change from a session over 24 hours old (`secure_password_change`).
  */
 type AuthErr = null | { status?: number; code?: string; message: string };
+
+const FRESH = { access_token: 'fresh-access', refresh_token: 'fresh-refresh' };
 
 const state = vi.hoisted(() => ({
   user: { id: 'u1', email: 'hannah.brooks@leonardo-stpauls.co.uk' } as null | {
@@ -17,45 +21,52 @@ const state = vi.hoisted(() => ({
     email?: string;
   },
   verifyError: null as AuthErr,
+  verifySession: null as unknown,
+  adoptError: null as AuthErr,
   updateError: null as AuthErr,
   othersSignOutError: null as AuthErr,
   verifiedWith: [] as { email: string; password: string }[],
   verifierOptions: [] as unknown[],
   verifierSignOuts: [] as unknown[],
-  updates: [] as unknown[],
-  sessionSignOuts: [] as unknown[],
-  // The per-account limit (20261001100200, security review L2).
-  allowed: true as unknown,
-  allowedError: null as null | { code?: string; message: string },
-  recordError: null as null | { code?: string; message: string },
-  rpcs: [] as string[],
+  verifierUpdates: [] as unknown[],
+  adopted: [] as unknown[],
+  deviceSignOuts: [] as unknown[],
+  // password_check_begin (20261012120200): an attempt id, or null past the limit.
+  attempt: 41 as unknown,
+  beginError: null as null | { code?: string; message: string },
+  releaseError: null as null | { code?: string; message: string },
+  rpcs: [] as { fn: string; args?: unknown }[],
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
-    rpc: async (fn: string) => {
-      state.rpcs.push(fn);
-      if (fn === 'password_check_allowed') {
-        return { data: state.allowedError ? null : state.allowed, error: state.allowedError };
+    rpc: async (fn: string, args?: unknown) => {
+      state.rpcs.push({ fn, args });
+      if (fn === 'password_check_begin') {
+        return { data: state.beginError ? null : state.attempt, error: state.beginError };
       }
-      if (fn === 'record_password_check_failure') return { data: null, error: state.recordError };
+      if (fn === 'password_check_release') return { data: null, error: state.releaseError };
       throw new Error(`unexpected rpc ${fn}`);
     },
     auth: {
       getUser: async () => ({ data: { user: state.user } }),
-      updateUser: async (attrs: unknown) => {
-        state.updates.push(attrs);
-        return { data: {}, error: state.updateError };
+      setSession: async (tokens: unknown) => {
+        state.adopted.push(tokens);
+        return { data: {}, error: state.adoptError };
       },
       signOut: async (opts: unknown) => {
-        state.sessionSignOuts.push(opts);
-        return { error: state.othersSignOutError };
+        state.deviceSignOuts.push(opts);
+        return { error: null };
       },
-      // The cookie-bound client must never be the one that re-verifies:
-      // signing in on it would replace this device's session cookies.
+      // The cookie-bound client must never re-verify (it would replace this
+      // device's cookies with no "keep me signed in" choice) nor change the
+      // password (its session may be weeks old: reauthentication_needed).
       signInWithPassword: async () => {
         throw new Error('re-verification must not run on the cookie-bound client');
+      },
+      updateUser: async () => {
+        throw new Error('the change must run on the fresh verifier session');
       },
     },
   }),
@@ -67,11 +78,17 @@ vi.mock('@supabase/supabase-js', () => ({
       auth: {
         signInWithPassword: async (creds: { email: string; password: string }) => {
           state.verifiedWith.push(creds);
-          return { data: {}, error: state.verifyError };
+          return state.verifyError
+            ? { data: { session: null }, error: state.verifyError }
+            : { data: { session: state.verifySession }, error: null };
         },
-        signOut: async (opts: unknown) => {
+        updateUser: async (attrs: unknown) => {
+          state.verifierUpdates.push(attrs);
+          return { data: {}, error: state.updateError };
+        },
+        signOut: async (opts: { scope?: string }) => {
           state.verifierSignOuts.push(opts);
-          return { error: null };
+          return { error: opts?.scope === 'others' ? state.othersSignOutError : null };
         },
       },
     };
@@ -93,6 +110,8 @@ function form(fields: Record<string, string>): FormData {
 const valid = (over: Record<string, string> = {}) =>
   form({ current: CURRENT, password: GOOD, confirm: GOOD, ...over });
 
+const released = () => state.rpcs.filter((r) => r.fn === 'password_check_release');
+
 const saved = { ...process.env };
 beforeAll(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321';
@@ -102,18 +121,22 @@ afterAll(() => {
   process.env = saved;
 });
 beforeEach(() => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
   state.user = { id: 'u1', email: 'hannah.brooks@leonardo-stpauls.co.uk' };
   state.verifyError = null;
+  state.verifySession = { ...FRESH };
+  state.adoptError = null;
   state.updateError = null;
   state.othersSignOutError = null;
   state.verifiedWith = [];
   state.verifierOptions = [];
   state.verifierSignOuts = [];
-  state.updates = [];
-  state.sessionSignOuts = [];
-  state.allowed = true;
-  state.allowedError = null;
-  state.recordError = null;
+  state.verifierUpdates = [];
+  state.adopted = [];
+  state.deviceSignOuts = [];
+  state.attempt = 41;
+  state.beginError = null;
+  state.releaseError = null;
   state.rpcs = [];
 });
 
@@ -133,16 +156,16 @@ describe('Change password · the rules are /reset’s', () => {
     expect(out.ok).toBe(false);
     expect(out.message).toBe(message);
     expect(state.verifiedWith).toEqual([]);
-    expect(state.updates).toEqual([]);
+    expect(state.rpcs).toEqual([]);
   });
 
   it('refuses a new password that is the current one', async () => {
     const out = await changePassword(null, valid({ current: GOOD }));
     expect(out.message).toBe(PASSWORD_COPY.samePassword);
-    expect(state.updates).toEqual([]);
+    expect(state.verifierUpdates).toEqual([]);
   });
 
-  it('says so when the environment has no Supabase project', async () => {
+  it('says so when the environment is not connected', async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     try {
       const out = await changePassword(null, valid());
@@ -170,15 +193,16 @@ describe('Change password · the current password is re-verified server-side', (
     state.verifyError = { status: 400, code: 'invalid_credentials', message: 'Invalid login' };
     const out = await changePassword(null, valid());
     expect(out).toEqual({ ok: false, message: PASSWORD_COPY.currentWrong, round: 0 });
-    expect(state.updates).toEqual([]);
-    expect(state.sessionSignOuts).toEqual([]);
+    expect(state.adopted).toEqual([]);
+    expect(state.verifierUpdates).toEqual([]);
+    expect(state.verifierSignOuts).toEqual([]);
   });
 
   it('tells a rate-limited caller to wait, not that the password is wrong', async () => {
     state.verifyError = { status: 429, code: 'over_request_rate_limit', message: 'Too many' };
     const out = await changePassword(null, valid());
     expect(out.message).toBe(PASSWORD_COPY.tooMany);
-    expect(state.updates).toEqual([]);
+    expect(state.verifierUpdates).toEqual([]);
   });
 
   it('refuses a signed-out caller without trying anything', async () => {
@@ -186,26 +210,62 @@ describe('Change password · the current password is re-verified server-side', (
     const out = await changePassword(null, valid());
     expect(out.message).toBe(PASSWORD_COPY.signedOut);
     expect(state.verifiedWith).toEqual([]);
+    expect(state.rpcs).toEqual([]);
   });
 });
 
-describe('Change password · the change', () => {
-  it('updates this session’s password, ends the check’s session and signs out other devices', async () => {
+describe('Change password · the change runs on the fresh session (secure_password_change)', () => {
+  it('adopts the verified session on this device, changes the password on it, then signs out the others', async () => {
     const out = await changePassword(null, valid());
     expect(out).toEqual({ ok: true, message: PASSWORD_COPY.changed, round: 1 });
-    expect(state.updates).toEqual([{ password: GOOD }]);
-    expect(state.verifierSignOuts).toEqual([{ scope: 'local' }]);
-    expect(state.sessionSignOuts).toEqual([{ scope: 'others' }]);
+    // The device now holds the fresh session (cookies written through the
+    // cookie-bound client, so "keep me signed in" is honoured)…
+    expect(state.adopted).toEqual([FRESH]);
+    // …the change is made on that fresh session, never the device's old one…
+    expect(state.verifierUpdates).toEqual([{ password: GOOD }]);
+    // …and 'others' is sent from it, so this device stays signed in.
+    expect(state.verifierSignOuts).toEqual([{ scope: 'others' }]);
+    expect(state.deviceSignOuts).toEqual([]);
   });
 
-  it('does not claim the other devices are signed out when that call fails', async () => {
+  it('a device session over 24 hours old no longer matters: nothing is asked of it but to adopt', async () => {
+    // The cookie-bound mock throws on updateUser; reaching ok proves it was never used.
+    const out = await changePassword(null, valid());
+    expect(out.ok).toBe(true);
+  });
+
+  it('changes nothing when the device cannot take the fresh session', async () => {
+    state.adoptError = { status: 500, message: 'cookie write failed' };
+    const out = await changePassword(null, valid());
+    expect(out).toEqual({ ok: false, message: PASSWORD_COPY.failed, round: 0 });
+    expect(state.verifierUpdates).toEqual([]);
+    expect(state.verifierSignOuts).toEqual([{ scope: 'local' }]);
+  });
+
+  it('changes nothing when the check returns no session', async () => {
+    state.verifySession = null;
+    const out = await changePassword(null, valid());
+    expect(out.message).toBe(PASSWORD_COPY.failed);
+    expect(state.adopted).toEqual([]);
+    expect(state.verifierUpdates).toEqual([]);
+  });
+
+  it('password changed but other devices kept: ok, with tone "warning" and the honest message', async () => {
     state.othersSignOutError = { status: 500, message: 'Database error' };
     const out = await changePassword(null, valid());
-    // The password did change, so it is still a success…
-    expect(out).toEqual({ ok: true, message: PASSWORD_COPY.changedOthersKept, round: 1 });
-    // …but not the message that says every other device was signed out.
+    expect(out).toEqual({
+      ok: true,
+      message: PASSWORD_COPY.changedOthersKept,
+      round: 1,
+      tone: 'warning',
+    });
     expect(out.message).not.toBe(PASSWORD_COPY.changed);
-    expect(state.updates).toEqual([{ password: GOOD }]);
+    expect(state.verifierUpdates).toEqual([{ password: GOOD }]);
+  });
+
+  it('a plain success carries no tone', async () => {
+    const out = await changePassword(null, valid());
+    expect(out.tone).toBeUndefined();
   });
 
   it('counts successful rounds so the form clears after each one', async () => {
@@ -220,85 +280,73 @@ describe('Change password · the change', () => {
     [{ code: 'same_password', message: 'New password should be different' }, 'samePassword'],
     [{ code: 'reauthentication_needed', message: 'Reauthentication needed' }, 'reauth'],
     [{ code: 'weak_password', message: 'Password is known to be weak' }, 'breached'],
-    [{ status: 500, message: 'Database error' }, 'failed'],
-  ] as const)('maps a Supabase refusal (%o) to its message', async (error, key) => {
+    [{ status: 500, message: 'Database error: relation "auth.users" …' }, 'failed'],
+  ] as const)('maps a Supabase refusal (%o) to its sentence, never its text', async (error, key) => {
     state.updateError = error;
     const out = await changePassword(null, valid());
     expect(out.ok).toBe(false);
     expect(out.message).toBe(PASSWORD_COPY[key]);
-    expect(state.sessionSignOuts).toEqual([]);
+    expect(out.message).not.toContain(error.message);
+    expect(state.verifierSignOuts).toEqual([]);
   });
 });
 
-describe('Change password · 5 wrong current passwords per account per 15 minutes (review L2)', () => {
-  const recorded = () => state.rpcs.filter((fn) => fn === 'record_password_check_failure');
-
-  it('checks the limit on the caller’s own session before re-verifying', async () => {
+describe('Change password · 5 counted attempts per account per 15 minutes, claimed atomically', () => {
+  it('claims the attempt on the caller’s own session before re-verifying', async () => {
     await changePassword(null, valid());
-    expect(state.rpcs[0]).toBe('password_check_allowed');
+    expect(state.rpcs[0]?.fn).toBe('password_check_begin');
     expect(state.verifiedWith).toHaveLength(1);
   });
 
   it('past the limit says "too many" and never calls signInWithPassword', async () => {
-    state.allowed = false;
+    state.attempt = null;
     const out = await changePassword(null, valid());
     expect(out).toEqual({ ok: false, message: PASSWORD_COPY.tooMany, round: 0 });
     expect(state.verifiedWith).toEqual([]);
     expect(state.verifierOptions).toEqual([]);
-    expect(state.updates).toEqual([]);
-    expect(recorded()).toEqual([]);
+    expect(state.verifierUpdates).toEqual([]);
   });
 
-  it('fails closed when the limit cannot be read', async () => {
-    state.allowedError = { code: 'PGRST202', message: 'function not found' };
+  it('fails closed when the attempt cannot be claimed', async () => {
+    state.beginError = { code: 'PGRST202', message: 'function not found' };
     const out = await changePassword(null, valid());
     expect(out).toEqual({ ok: false, message: PASSWORD_COPY.failed, round: 0 });
     expect(state.verifiedWith).toEqual([]);
-    expect(state.updates).toEqual([]);
   });
 
-  it('treats anything but a plain true as not allowed', async () => {
-    state.allowed = null;
-    const out = await changePassword(null, valid());
-    expect(out.message).toBe(PASSWORD_COPY.tooMany);
-    expect(state.verifiedWith).toEqual([]);
-  });
-
-  it('a wrong current password records exactly one failure', async () => {
+  it('a wrong current password leaves the attempt counted (no release)', async () => {
     state.verifyError = { status: 400, code: 'invalid_credentials', message: 'Invalid login' };
+    await changePassword(null, valid());
+    expect(released()).toEqual([]);
+  });
+
+  it('an older Auth server’s wrong-password answer (no code) still counts', async () => {
+    state.verifyError = { status: 400, message: 'Invalid login credentials' };
     const out = await changePassword(null, valid());
     expect(out.message).toBe(PASSWORD_COPY.currentWrong);
-    expect(recorded()).toHaveLength(1);
+    expect(released()).toEqual([]);
   });
 
-  it('a correct current password records none', async () => {
+  it('a correct current password releases its attempt', async () => {
     const out = await changePassword(null, valid());
     expect(out.ok).toBe(true);
-    expect(recorded()).toEqual([]);
+    expect(released()).toEqual([{ fn: 'password_check_release', args: { p_attempt: 41 } }]);
   });
 
   it.each([
-    [
-      'Supabase’s own rate limit',
-      { status: 429, code: 'over_request_rate_limit', message: 'Too many' },
-    ],
+    ['Supabase’s own rate limit', { status: 429, code: 'over_request_rate_limit', message: 'x' }],
     ['a network or server failure', { status: 500, message: 'upstream error' }],
-  ] as const)('%s is not counted as a wrong password', async (_, error) => {
+    ['any other 400', { status: 400, code: 'validation_failed', message: 'bad email' }],
+  ] as const)('%s is released, not counted as a wrong password', async (_, error) => {
     state.verifyError = error;
-    await changePassword(null, valid());
-    expect(recorded()).toEqual([]);
-  });
-
-  it('still says the password is wrong when the failure cannot be recorded', async () => {
-    state.verifyError = { status: 400, code: 'invalid_credentials', message: 'Invalid login' };
-    state.recordError = { message: 'connection reset' };
     const out = await changePassword(null, valid());
-    expect(out.message).toBe(PASSWORD_COPY.currentWrong);
-    expect(state.updates).toEqual([]);
+    expect(out.message).not.toBe(PASSWORD_COPY.currentWrong);
+    expect(released()).toHaveLength(1);
   });
 
-  it('a rule failure spends no attempt and reads no limit', async () => {
-    await changePassword(null, valid({ password: 'short1', confirm: 'short1' }));
-    expect(state.rpcs).toEqual([]);
+  it('a lost release still lets the change through (the slot stays counted: fails closed)', async () => {
+    state.releaseError = { message: 'connection reset' };
+    const out = await changePassword(null, valid());
+    expect(out.ok).toBe(true);
   });
 });

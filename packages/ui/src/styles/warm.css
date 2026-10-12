@@ -1,6 +1,6 @@
 /* Handoff v2 ("softened") deltas — data-style="warm".
 
-   Almost all of v2 falls out of the tokens: Outfit / Plus Jakarta Sans,
+   Almost all of v2 falls out of the tokens: Plus Jakarta Sans throughout,
    sentence-case labels, and the 20 / 18 / 14 / 999 / 50% radius scale are set
    in tokens.css and consumed by components.css. What is left here is the
    handful of rules whose *shape* changes, not just their values:
