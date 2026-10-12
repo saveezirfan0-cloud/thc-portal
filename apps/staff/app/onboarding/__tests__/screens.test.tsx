@@ -396,7 +396,7 @@ describe('4/11 Documents', () => {
         completionLetter={completionLetterDoc(graduate)}
       />,
     );
-    expect(html).toContain('Not needed — your Completion Letter below covers it');
+    expect(html).toContain('Covered by your Completion Letter below once the office approves it');
     expect(html).not.toContain('Upload your University Term Dates Letter');
     expect(html).not.toContain('Already graduated?');
     // Only the declaration is left to answer.

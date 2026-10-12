@@ -90,7 +90,9 @@ export function DocumentsStep({
               <div className="t">{requirement.label}</div>
               <div className="m">
                 {viaCompletionLetter
-                  ? 'Not needed — your Completion Letter below covers it'
+                  ? doc?.status === 'verified'
+                    ? 'Not needed — your Completion Letter below covers it'
+                    : 'Covered by your Completion Letter below once the office approves it'
                   : doc
                     ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
                         .filter(Boolean)
@@ -100,7 +102,7 @@ export function DocumentsStep({
             </div>
             <div className="right">
               {viaCompletionLetter ? (
-                <Pill>Not needed</Pill>
+                <Pill>{doc?.status === 'verified' ? 'Not needed' : 'Once approved'}</Pill>
               ) : doc ? (
                 <>
                   <Pill tone="amber">Uploaded</Pill>

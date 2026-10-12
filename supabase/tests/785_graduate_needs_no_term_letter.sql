@@ -16,7 +16,7 @@
 -- address rows by key, never by global count.
 -- =====================================================================
 begin;
-select plan(14);
+select plan(16);
 \ir _shared/fixtures.psql
 
 \set sa 'c7850000-0000-4000-8000-00000000000a'
@@ -27,6 +27,8 @@ select plan(14);
 \set sg 'c7850000-0000-4000-8000-00000000000f'
 \set sf 'c7850000-0000-4000-8000-000000000010'
 \set sh 'c7850000-0000-4000-8000-000000000011'
+\set si 'c7850000-0000-4000-8000-000000000012'
+\set sj 'c7850000-0000-4000-8000-000000000013'
 
 \set cg 'c7851000-0000-4000-8000-00000000000f'
 \set cf 'c7851000-0000-4000-8000-000000000010'
@@ -158,6 +160,37 @@ select set_config('request.jwt.claims', '', true);
 
 select is((select review_status::text from compliance_docs where id = :'th'), 'verified',
   'G: a term letter the office had verified stays as the evidence it was');
+
+-- =====================================================================
+-- H · verified but future-dated, and no term letter: still no term evidence
+-- =====================================================================
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, share_code,
+                   right_to_work_until) values
+  (:'si','Grad','I','i@785.test','+447700978509', date '2001-01-01','documents','international_student','WABCD0009', current_date + 400);
+insert into criminal_declarations (staff_id, source, answer) values (:'si', 'onboarding', false);
+insert into compliance_docs (staff_id, doc_type, file_path, review_status)
+values (:'si', 'passport', :'si' || '/passport/p.pdf', 'verified');
+insert into compliance_docs (id, staff_id, doc_type, file_path, review_status, completion_date_claimed)
+values ('c7851000-0000-4000-8000-000000000012', :'si', 'university_completion_letter',
+        :'si' || '/completion-letter/c.pdf', 'pending', current_date + 30);
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
+select approve_completion_letter('c7851000-0000-4000-8000-000000000012', current_date + 30, current_date + 400);
+select set_config('request.jwt.claims', '', true);
+
+select ok('document_unverified:university_completion_letter' = any (onboarding_quiz_blockers(:'si')),
+  'H: a verified completion letter dated in the future is not term evidence — the quiz stays shut until the course has completed');
+
+-- =====================================================================
+-- I · a worker no longer on the Student branch is not blocked by a term letter
+-- =====================================================================
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch)
+values (:'sj','Grad','J','j@785.test','+447700978510', date '1995-01-01','compliant','work_visa');
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, rejection_reason)
+values (:'sj', 'university_term_dates_letter', :'sj' || '/term/t.pdf', 'rejected', 'Out of date');
+
+select ok(not exists (select 1 from compliance_blockers(:'sj') b
+                       where b.reason = 'document_unverified:university_term_dates_letter'),
+  'I: a leftover term letter no longer blocks someone who has moved off the Student branch (§7, term_letter_applies())');
 
 select * from finish();
 rollback;
