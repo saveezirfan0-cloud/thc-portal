@@ -44,8 +44,8 @@ select throws_ok(
       on conflict (key) do update set value = excluded.value$$,
   '22023', null,
   'edge_base_url is still refused for anything but a Supabase Functions base');
--- 20261012120000: and even a real Supabase base is not a session's to write —
--- the bearer is posted there (786 has the rest).
+-- 20261012120050: and even a real Supabase base is not a session's to write —
+-- the bearer is posted there (803 has the rest).
 select throws_ok(
   $$insert into settings (key, value) values ('edge_base_url', '"https://abcdefghijklmnopqrst.supabase.co/functions/v1"'::jsonb)
       on conflict (key) do update set value = excluded.value$$,

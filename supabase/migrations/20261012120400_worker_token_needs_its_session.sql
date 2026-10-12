@@ -49,31 +49,35 @@ comment on function public.auth_session_live() is
 
 revoke execute on function public.auth_session_live() from public, anon, authenticated;
 
--- current_app_role(), 20261001204000's body; the session rule now covers
--- staff as well as admin.
+-- current_app_role(), 20261001204000's body as 20261012120000 left it
+-- (plpgsql, so its plan is cached per session: the /onboarding timeout fix,
+-- pinned by 786); the session rule now covers staff as well as admin.
 create or replace function public.current_app_role() returns app_role
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
-  select p.role
-    from profiles p
-    join auth.users u on u.id = p.id
-   where p.id = auth.uid()
-     and (u.banned_until is null or u.banned_until <= now())
-     and (p.role <> 'admin'
-          or coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
-          or not exists (select 1 from auth.mfa_factors f
-                          where f.user_id = p.id and f.status::text = 'verified'))
-     and (p.role not in ('admin', 'staff')
-          or nullif(auth.jwt() ->> 'session_id', '') is null
-          or exists (select 1 from auth.sessions s
-                      where s.id = (auth.jwt() ->> 'session_id')::uuid))
-$$;
+begin
+  return (
+    select p.role
+      from profiles p
+      join auth.users u on u.id = p.id
+     where p.id = auth.uid()
+       and (u.banned_until is null or u.banned_until <= now())
+       and (p.role <> 'admin'
+            or coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+            or not exists (select 1 from auth.mfa_factors f
+                            where f.user_id = p.id and f.status::text = 'verified'))
+       and (p.role not in ('admin', 'staff')
+            or nullif(auth.jwt() ->> 'session_id', '') is null
+            or exists (select 1 from auth.sessions s
+                        where s.id = (auth.jwt() ->> 'session_id')::uuid))
+  );
+end $$;
 
 comment on function public.current_app_role() is
-  'The caller''s app role for RLS and every admin RPC. NULL — no access — with no session; for a switched-off login; for a Back Office login with a verified two-step factor below aal2; and for a Back Office or Staff App token whose sign-in session has been ended (reset two-step, switch off, sign out other devices). 20261001204000, staff added 20261012120400.';
+  'The caller''s app role for RLS and every admin RPC. NULL — no access — with no session; for a switched-off login; for a Back Office login with a verified two-step factor below aal2; and for a Back Office or Staff App token whose sign-in session has been ended (reset two-step, switch off, sign out other devices). 20261001204000, plpgsql so the plan is cached per session (20261012120000), staff added 20261012120400.';
 
 -- The definer convention for this one is deliberate and old (0001): the
 -- policies of every role call it, anon included.

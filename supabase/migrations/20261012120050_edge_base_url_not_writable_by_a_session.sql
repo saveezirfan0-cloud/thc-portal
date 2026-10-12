@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261012120000 · settings.edge_base_url is written by the
+-- Migration 20261012120050 · settings.edge_base_url is written by the
 --                            deploy, never by a signed-in session
 --                            (docs/01 §4, security Invariant 8)
 --
@@ -38,7 +38,7 @@
 --
 -- No app writes edge_base_url: the office /settings page has no control
 -- for it (grep apps/ — the key appears only in packages/db's generated
--- types and an e2e comment). 786_edge_base_url_locked pins all of it.
+-- types and an e2e comment). 803_edge_base_url_locked pins all of it.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -63,7 +63,7 @@ begin
 end $$;
 
 comment on function public.settings_edge_base_url_lock() is
-  '20261012120000: refuses any insert, update or delete of the settings row edge_base_url from an API session (anon, authenticated) with 42501 edge_base_url_locked. Invoker on purpose, so current_user is the caller. A trigger function: not an RPC.';
+  '20261012120050: refuses any insert, update or delete of the settings row edge_base_url from an API session (anon, authenticated) with 42501 edge_base_url_locked. Invoker on purpose, so current_user is the caller. A trigger function: not an RPC.';
 
 revoke execute on function public.settings_edge_base_url_lock() from public, anon, authenticated;
 
@@ -95,7 +95,7 @@ begin
 end $$;
 
 comment on function public.edge_base_url_pinned(text) is
-  '20261012120000: true when no vault secret supabase_project_ref is set, else true only for https://<that ref>.supabase.co/functions/v1. Read by the settings guard and by edge_base_url().';
+  '20261012120050: true when no vault secret supabase_project_ref is set, else true only for https://<that ref>.supabase.co/functions/v1. Read by the settings guard and by edge_base_url().';
 
 revoke execute on function public.edge_base_url_pinned(text) from public, anon, authenticated;
 
@@ -146,7 +146,7 @@ begin
 end $$;
 
 comment on function public.edge_base_url() is
-  'settings.edge_base_url, or null when unset; raises edge_base_url_not_supabase when the row holds anything but a Supabase Functions base, and (20261012120000) edge_base_url_not_this_project when the vault secret supabase_project_ref names a different project. Every pg_cron command, the Willo nudge and auto_assign_first_round read the base through this.';
+  'settings.edge_base_url, or null when unset; raises edge_base_url_not_supabase when the row holds anything but a Supabase Functions base, and (20261012120050) edge_base_url_not_this_project when the vault secret supabase_project_ref names a different project. Every pg_cron command, the Willo nudge and auto_assign_first_round read the base through this.';
 
 revoke execute on function public.edge_base_url() from public, anon, authenticated;
 grant  execute on function public.edge_base_url() to service_role;

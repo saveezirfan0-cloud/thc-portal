@@ -1,6 +1,6 @@
 -- =====================================================================
--- 786 · settings.edge_base_url is the deploy's, not a session's
---       20261012120000 · docs/01 §4, Invariant 8
+-- 803 · settings.edge_base_url is the deploy's, not a session's
+--       20261012120050 · docs/01 §4, Invariant 8
 --
 -- The service-role bearer is POSTed to edge_base_url by every pg_cron
 -- job. An owner session could point it at their own Supabase project

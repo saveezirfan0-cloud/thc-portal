@@ -78,7 +78,7 @@ Nothing is lost; it all sends once the keys exist.
       and trigger one email (for example, Send on an event's timesheet).
 - [ ] 12.10 security round, SQL editor: **pin the service-role bearer to this
       project**. `settings.edge_base_url` can no longer be written from any
-      signed-in session (20261012120000), and with this secret it can only ever
+      signed-in session (20261012120050), and with this secret it can only ever
       be this project's own Functions base:
       `select vault.create_secret('dgxtqvalfiisfpbwodew', 'supabase_project_ref');`
 - [ ] 12.10 security round, SQL editor: **the apps' origins for set-up links**.
