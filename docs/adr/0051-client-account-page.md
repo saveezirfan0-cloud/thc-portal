@@ -43,7 +43,9 @@ The codebase has no single "office email" the client can read. The office's mail
   sha256 of the trimmed, lower-cased email, computed by the app; `private.auth_attempts` stores
   only that digest. `auth_attempt_allowed(p_kind, p_key_hash)` and
   `record_auth_attempt(p_kind, p_key_hash, p_failed)` are service role only: `sign_in` and
-  `verify` 5 failures per 15 minutes (a success records nothing), `recover` 3 requests per hour
+  `verify` 5 failures per 15 minutes (a success records nothing), `sign_in_ip` (the caller's
+  address, a second key on each sign-in) 30 failures per 15 minutes so a shared venue or office
+  network is not locked out by a few typos, `recover` 3 requests per hour
   (every call counts). Rows older than 24 hours are trimmed on each record. Pinned by
   `supabase/tests/796_sign_in_and_recover_throttled_per_account.sql`.
 - **A client login cannot change its own name** (`20261012120600`): `update_my_profile()`
