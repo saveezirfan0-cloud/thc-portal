@@ -1,5 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { currentPasswordCheckAllowed, recordCurrentPasswordFailure } from '@thc/db/auth-throttle';
 
 /**
  * The current-password step (ADR-0113) in front of the writes a stolen,
@@ -20,6 +21,7 @@ export const WRONG_PASSWORD = 'That current password isn’t right.';
 export const PASSWORD_REQUIRED = 'Enter your current password to continue.';
 export const SIGN_IN_AGAIN = 'Please sign in again to continue.';
 export const REAUTH_REQUIRED = 'For your security, please enter your current password again.';
+export const TOO_MANY_TRIES = 'Too many wrong passwords. Wait 15 minutes, then try again.';
 
 export async function confirmCurrentPassword(
   supabase: SupabaseClient,
@@ -30,6 +32,11 @@ export async function confirmCurrentPassword(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) return SIGN_IN_AGAIN;
+  // Counted with the sign-in form's own per-account limit, so a stolen
+  // session cannot guess the password here any faster than at /login.
+  if (!(await currentPasswordCheckAllowed(user.email))) return TOO_MANY_TRIES;
   const { error } = await supabase.auth.signInWithPassword({ email: user.email, password });
-  return error ? WRONG_PASSWORD : null;
+  if (!error) return null;
+  await recordCurrentPasswordFailure(user.email);
+  return WRONG_PASSWORD;
 }

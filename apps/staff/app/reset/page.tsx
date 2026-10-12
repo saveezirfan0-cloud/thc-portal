@@ -67,7 +67,7 @@ export default async function Page({
     <AuthCard product="Staff app" heading="Set a new password">
       {session.email ? (
         <p className="sm muted">
-          You are signing in as <b className="cyan">{session.email}</b>.
+          Setting a new password for <b className="mono">{session.email}</b>.
         </p>
       ) : null}
       <ResetForm />

@@ -27,8 +27,18 @@ interface RpcClient {
   rpc(
     fn: string,
     args: Record<string, string | number | null>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
+
+/**
+ * PostgREST's "no function with these arguments". The four-argument
+ * check-in / check-out / ping (20261012121200, p_accuracy) reach the
+ * database after this app does: Vercel builds on the push to main, `db
+ * push` runs once CI is green. In that window the call is made again
+ * without the accuracy, which the old three-argument functions take, so a
+ * deploy never stops a shift starting (security round 12.10, QA blocker).
+ */
+const NO_SUCH_FUNCTION = 'PGRST202';
 
 async function call(
   fn: string,
@@ -37,7 +47,11 @@ async function call(
 ): Promise<RpcResult> {
   if (!configured()) return { error: NO_SUPABASE };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
-  const { data, error } = await supabase.rpc(fn, args);
+  let { data, error } = await supabase.rpc(fn, args);
+  if (error?.code === NO_SUCH_FUNCTION && 'p_accuracy' in args) {
+    const { p_accuracy: _accuracy, ...withoutAccuracy } = args;
+    ({ data, error } = await supabase.rpc(fn, withoutAccuracy));
+  }
   if (error) return { error: REASONS[error.message] ?? error.message };
   revalidatePath(`/shifts/${bookingId}`);
   return { ok: true, result: (data ?? {}) as Record<string, unknown> };

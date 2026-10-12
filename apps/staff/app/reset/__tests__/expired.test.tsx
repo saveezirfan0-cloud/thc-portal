@@ -70,7 +70,7 @@ describe('/reset', () => {
     });
     const html = await render({});
     expect(html).toContain('<h2>Set a new password</h2>');
-    expect(html).toContain('You are signing in as <b class="cyan">amara.k@example.com</b>.');
+    expect(html).toContain('Setting a new password for <b class="mono">amara.k@example.com</b>.');
     expect(html).not.toContain('Request a new link');
   });
 

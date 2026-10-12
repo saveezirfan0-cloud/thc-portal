@@ -100,7 +100,7 @@ describe('/reset renders the form only for that session', () => {
     auth.getClaims.mockResolvedValue(amr('otp', 30));
     const html = await render();
     expect(html).toContain('Set a new password');
-    expect(html).toContain('You are signing in as <b class="mono">a@b.example</b>.');
+    expect(html).toContain('Setting a new password for <b class="mono">a@b.example</b>.');
   });
 
   it('a password sign-in: the expired card and where to go instead', async () => {

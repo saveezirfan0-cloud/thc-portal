@@ -6,10 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * who is not compliant, whatever the app's own lock believed.
  */
 const rpc = vi.hoisted(() =>
-  vi.fn(async (): Promise<{ data: unknown; error: { message: string } | null }> => ({
-    data: null,
-    error: { message: 'staff_not_compliant' },
-  })),
+  vi.fn(
+    async (
+      ..._args: unknown[]
+    ): Promise<{ data: unknown; error: { message: string; code?: string } | null }> => ({
+      data: null,
+      error: { message: 'staff_not_compliant' },
+    }),
+  ),
 );
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
@@ -100,5 +104,29 @@ describe('the GPS accuracy goes with every fix', () => {
       p_lng: null,
       p_accuracy: null,
     });
+  });
+});
+
+describe('the database is still on the three-argument functions (deploy order)', () => {
+  it('a check-in is made again without the accuracy, and goes through', async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'PGRST202', message: 'Could not find the function public.attempt_check_in' },
+    });
+    rpc.mockResolvedValueOnce({ data: { decision: 'recorded_on_site' }, error: null });
+    const result = await checkIn('bk-1', 51.5, -0.1, 12);
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenLastCalledWith('attempt_check_in', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+    });
+    expect(result).toEqual({ ok: true, result: { decision: 'recorded_on_site' } });
+  });
+
+  it('any other refusal is not retried', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'staff_not_compliant' } });
+    await checkOut('bk-1', 51.5, -0.1, 12);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

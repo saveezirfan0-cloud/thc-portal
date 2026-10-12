@@ -197,3 +197,18 @@ export async function recoveryRequestAllowed(email: string): Promise<boolean> {
   await recordAuthAttempt('recover', keys, true);
   return true;
 }
+
+/**
+ * The current-password check a signed-in user makes before a sensitive
+ * change (Change password, and the Staff App's bank / P45 / email step,
+ * ADR-0113). It counts under the account's own 'sign_in' key, so a stolen
+ * session cannot guess the password faster than the sign-in form allows.
+ * Same fail-open rule as above.
+ */
+export async function currentPasswordCheckAllowed(email: string): Promise<boolean> {
+  return authAttemptAllowed('sign_in', [await emailKey(email)]);
+}
+
+export async function recordCurrentPasswordFailure(email: string): Promise<void> {
+  await recordAuthAttempt('sign_in', [await emailKey(email)], true);
+}

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { databaseUnreachable, sql } from './_support/db';
 
 /**
  * The public application form (§2.1), on the device candidates actually use:
@@ -21,6 +22,13 @@ function dobForAge(age: number, offsetDays = 0): string {
 }
 
 test.describe('/apply', () => {
+  // The per-caller throttle (5 an hour from one address) is not what is under
+  // test, and every spec applies from 127.0.0.1. Since the security round it
+  // is on even without APPLY_THROTTLE_SALT, so retries would trip it.
+  test.beforeEach(() => {
+    if (!databaseUnreachable()) sql('delete from private.apply_caller_hits');
+  });
+
   test('is public and shows the §2.1 fields', async ({ page }) => {
     await page.goto('/apply');
 

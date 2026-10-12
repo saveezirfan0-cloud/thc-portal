@@ -8,7 +8,7 @@ import { staffDb, supabaseConfigured } from '../db';
 import { addressSavedNote, locateAddress } from './geocode';
 import { photoPathFor } from './photos';
 import { checkStoredMedia } from '../_lib/stored-media';
-import { REAUTH_REQUIRED, WRONG_PASSWORD, confirmCurrentPassword } from '../_lib/reauth';
+import { REAUTH_REQUIRED, confirmCurrentPassword } from '../_lib/reauth';
 import type { ActionResult } from './types';
 
 /**
@@ -317,11 +317,8 @@ export async function changePassword(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) return { ok: false, message: 'Sign in again to change your password.' };
-  const { error: wrong } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password: currentPassword,
-  });
-  if (wrong) return { ok: false, message: WRONG_PASSWORD };
+  const refused = await confirmCurrentPassword(supabase, currentPassword);
+  if (refused) return { ok: false, message: refused };
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) {
