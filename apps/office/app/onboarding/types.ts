@@ -94,6 +94,14 @@ export interface CandidateRow {
   quiz_scores: number[];
 }
 
+/**
+ * A card on the board: every column but `quiz_blockers`, which only the
+ * candidate screen reads (quizGate). It is the costliest column on the view —
+ * compliance_blockers() and onboarding_documents_missing() per row — and
+ * reading it for the whole pipeline timed /onboarding out (20261012120000).
+ */
+export type BoardCandidateRow = Omit<CandidateRow, 'quiz_blockers'>;
+
 export interface ReturningRow {
   application_id: string;
   applied_at: string;
@@ -116,7 +124,7 @@ export interface RoleOption {
 }
 
 export interface BoardData {
-  candidates: CandidateRow[];
+  candidates: BoardCandidateRow[];
   returning: ReturningRow[];
   roles: RoleOption[];
   /**
