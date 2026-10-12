@@ -23,8 +23,15 @@ test.beforeEach(async ({ page }) => {
 /** One role section, by position. Its labels repeat, so scope before asking. */
 const section = (page: Page, index = 0) => page.locator('.rolesec').nth(index);
 
-/** The auto-assign track is what a person clicks; the checkbox is hidden. */
-const autoAssign = (scope: Locator) => scope.locator('label.switch');
+/**
+ * The auto-assign track is what a person clicks; the checkbox is hidden. A role
+ * section also holds the "Same staff on all days" switch (ADR-0116), so leave
+ * that one out rather than match every switch in the scope.
+ */
+const autoAssign = (scope: Locator) =>
+  scope
+    .locator('label.switch')
+    .filter({ hasNot: scope.page().getByRole('checkbox', { name: 'Same staff on all days' }) });
 
 test('the builder follows the scope order: client & venue → date → roles → contact', async ({
   page,
