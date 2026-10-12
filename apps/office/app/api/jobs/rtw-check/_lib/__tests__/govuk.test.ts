@@ -689,9 +689,10 @@ describe('fitReportToOnePage', () => {
     calls.length = 0;
     await fitReportToOnePage(reportPage(500));
     const css = calls.find((c) => c.includes('display: none'));
-    expect(css).toMatch(/cookie-banner/);
-    expect(css).toMatch(/footer/);
-    expect(css).not.toMatch(/\bmain\b[^-]/);
+    const hidden = css!.split('{ display: none')[0]!;
+    expect(hidden).toMatch(/cookie-banner/);
+    expect(hidden).toMatch(/footer/);
+    expect(hidden).not.toMatch(/\bmain\b(?!-)/);
     expect(css).toMatch(/\.govuk-width-container[^{]*\{ max-width: none/);
     expect(css).toMatch(/html, body \{ background: #fff/);
   });

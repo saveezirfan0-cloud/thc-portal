@@ -483,6 +483,7 @@ const REPORT_HIDE = [
  * container stops at 960 px, so once the report is scaled down (and Chrome
  * lays it out wider, below) the result would sit in a strip with empty page
  * beside it. Released, the result uses the whole width of the sheet.
+ * ASSUMED class names (GOV.UK Frontend's) — confirm on the live service.
  */
 const REPORT_WIDEN = '.govuk-width-container, .govuk-main-wrapper';
 
@@ -550,6 +551,8 @@ export async function fitReportToOnePage(page: GovukPage): Promise<{
       if (await fits(mid)) low = mid;
       else high = mid;
     }
+    // Chrome prints at the paper size whatever the window is; put it back anyway.
+    await setViewportSize.call(page, { width: printable, height: A4_PX.height });
     return { scale: low / 100, margin };
   } catch {
     return { margin };
