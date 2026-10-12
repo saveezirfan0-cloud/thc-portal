@@ -57,7 +57,8 @@ export interface CandidateRow {
   willo_completed_at: string | null;
   willo_decision: 'accepted' | 'rejected' | null;
   willo_decided_at: string | null;
-  willo_decided_via: 'willo' | 'office' | null;
+  /** 'spudbros': SpudBros Express staff skip the interview (ADR-0117). */
+  willo_decided_via: 'willo' | 'office' | 'spudbros' | null;
   docs_total: number;
   docs_verified: number;
   docs_pending: number;

@@ -631,3 +631,58 @@ describe('the candidate profile, roles and clients once the candidate has moved 
     expect(lookBackAtDocuments('rejected')).not.toContain('clients to add');
   });
 });
+
+describe('the candidate profile · SpudBros Express skip the interview (ADR-0117)', () => {
+  const spud = { ...ROW, spudbros_express: true } as CandidateRow;
+
+  it('says no interview is needed while they wait to move, and offers no Willo or override', () => {
+    const html = renderToStaticMarkup(
+      <CandidateScreen
+        data={data({ candidate: { ...spud, status: 'interview_requested' } as CandidateRow })}
+        now="2026-09-23T10:00:00Z"
+        canMarkInterview
+      />,
+    );
+    expect(html).toContain('Interview · not needed');
+    expect(html).toContain('SpudBros Express staff do not do the Willo interview');
+    expect(html).not.toContain('AI video interview · Willo');
+    expect(html).not.toContain('>Mark interview complete<');
+  });
+
+  const lookBackAtInterview = (candidate: CandidateRow) => {
+    lookBack.picked = { phase: phaseIndex(candidate), index: 1 };
+    lookBack.nulls = 0;
+    try {
+      return render(data({ candidate }));
+    } finally {
+      lookBack.picked = null;
+    }
+  };
+
+  it('looking back, says they skipped it and when they moved to Documents', () => {
+    const html = lookBackAtInterview({
+      ...spud,
+      status: 'documents',
+      willo_decision: 'accepted',
+      willo_decided_via: 'spudbros',
+      willo_decided_at: '2026-10-12T18:01:00Z',
+      willo_completed_at: null,
+    } as CandidateRow);
+    expect(html).toContain('Interview · not needed');
+    expect(html).toContain('Moved to Documents 12.10.2026 19:01');
+    expect(html).not.toContain('made inside Willo');
+  });
+
+  it('keeps the Willo record of a SpudBros person who did the interview before this', () => {
+    const html = lookBackAtInterview({
+      ...spud,
+      status: 'documents',
+      willo_decision: 'accepted',
+      willo_decided_via: 'willo',
+      willo_decided_at: '2026-10-12T14:03:00Z',
+      willo_completed_at: '2026-10-12T14:03:00Z',
+    } as CandidateRow);
+    expect(html).toContain('AI video interview · Willo');
+    expect(html).not.toContain('Interview · not needed');
+  });
+});

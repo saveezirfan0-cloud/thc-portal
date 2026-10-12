@@ -10,7 +10,9 @@
  *                                signature, if one is sent — before reading a
  *                                byte of the body as JSON.
  *   POST /willo-webhook/invite   "Create the candidate in Willo" (Willo
- *                                then sends E1). Service key only: the
+ *                                then sends E1) — and, for SpudBros Express
+ *                                staff, skip the interview instead: login,
+ *                                Documents, E3 (ADR-0117). Service key only: the
  *                                database's nudge trigger and the
  *                                `willo-invite` schedule call it.
  *
@@ -46,6 +48,8 @@ import {
 import type { InviteDue, WilloEvent } from '../../../packages/db/src/willo.ts';
 import { issueActivationLink } from '../../../packages/db/src/provision.ts';
 import type { AdminAuth } from '../../../packages/db/src/provision.ts';
+import { runSpudbrosSkipSweep } from '../../../packages/db/src/spudbros.ts';
+import type { SkipDue } from '../../../packages/db/src/spudbros.ts';
 
 /** Willo's bodies are small; anything this size is not a webhook. */
 const MAX_BODY_BYTES = 256 * 1024;
@@ -263,6 +267,16 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
  */
 function invite(request: Request): Promise<Response> {
   return runJob('willo-invite', request, async (db) => {
+    // ADR-0117: SpudBros Express staff skip the interview. Whoever of them
+    // is still awaiting it gets their login and E3 here, Willo keys or not.
+    // Never at the cost of THC's own invitations: an error here is logged
+    // and counted, and the Willo sweep below still runs.
+    const spudbros = await skipSpudbros(db).catch((cause) => {
+      const error = cause instanceof Error ? cause.message : String(cause);
+      console.error('[spudbros-skip] sweep failed', { error });
+      return { spudbros_error: error };
+    });
+
     const config = willoApiConfig(env);
     if (!config) {
       // §2.4's inputs arrive from THC (Appendix B, B1). Until then no
@@ -272,7 +286,7 @@ function invite(request: Request): Promise<Response> {
       console.warn(
         '[willo-invite] WILLO_API_KEY / WILLO_INTERVIEW_KEY not set — no candidate created in Willo, no E1 sent',
       );
-      return { skipped: 'WILLO_API_KEY or WILLO_INTERVIEW_KEY not set' };
+      return { ...spudbros, skipped: 'WILLO_API_KEY or WILLO_INTERVIEW_KEY not set' };
     }
 
     const { data, error } = await db.rpc('willo_invite_due', { p_limit: 20 });
@@ -318,7 +332,48 @@ function invite(request: Request): Promise<Response> {
       },
       due,
     );
-    return { ...result };
+    return { ...spudbros, ...result };
+  });
+}
+
+/**
+ * SpudBros Express staff do not do the Willo interview (ADR-0117,
+ * 20261012150000): `spudbros_skip_due()` leases those still awaiting it,
+ * and each gets the office Accept's login + personal link, then Documents
+ * and E3 through `spudbros_skip_interview()`. The order is
+ * `runSpudbrosSkipSweep` (packages/db/src/spudbros.ts, held by vitest).
+ * Without STAFF_APP_URL nothing is minted and each is recorded as failed.
+ */
+async function skipSpudbros(db: SupabaseClient) {
+  const origin = env('STAFF_APP_URL') ?? '';
+  return runSpudbrosSkipSweep({
+    async due() {
+      const { data, error } = await db.rpc('spudbros_skip_due', { p_limit: 20 });
+      if (error) throw new Error(`spudbros_skip_due: ${error.message}`);
+      return (data ?? []) as SkipDue[];
+    },
+    issue: (candidate) =>
+      issueActivationLink(db.auth.admin as unknown as AdminAuth, candidate, origin),
+    async skip({ staffId, userId, link, installLink }) {
+      const { data, error } = await db.rpc('spudbros_skip_interview', {
+        p_staff: staffId,
+        p_user: userId,
+        p_activation_link: link,
+        p_install_link: installLink,
+      });
+      if (error) throw new Error(`spudbros_skip_interview: ${error.message}`);
+      return { outcome: (data as { outcome?: string } | null)?.outcome ?? 'unchanged' };
+    },
+    async recordFailure(staffId, reason) {
+      const { error } = await db.rpc('spudbros_skip_failed', {
+        p_staff: staffId,
+        p_error: reason,
+      });
+      if (error) throw new Error(error.message);
+    },
+    log(level, message, details) {
+      console[level](message, details);
+    },
   });
 }
 

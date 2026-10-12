@@ -401,6 +401,14 @@ describe('card lines', () => {
     });
   });
 
+  it('says SpudBros Express staff have no interview (ADR-0117)', () => {
+    const row = candidate({ spudbros_express: true, willo_linked: true });
+    expect(cardLines(row, 'interview_requested', NOW)[1]).toEqual({
+      text: 'No interview — SpudBros Express; moving to Documents',
+      tone: 'muted',
+    });
+  });
+
   it('says plainly when the candidate is not in Willo yet', () => {
     expect(cardLines(candidate(), 'interview_requested', NOW)[1]!.text).toMatch(/not connected/);
   });

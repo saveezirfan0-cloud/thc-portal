@@ -815,52 +815,107 @@ function InterviewRequested({
           </span>
         </div>
       </Panel>
-      <Panel
-        title="AI video interview · Willo"
-        actions={
-          <Pill tone="amber">{row.willo_linked ? 'Invitation sent' : 'Not yet in Willo'}</Pill>
-        }
-      >
-        <div className="stack">
-          <div className="kv">
-            <span className="k">Created in Willo</span>
-            <span>
-              {row.willo_invited_at
-                ? `${formatUkStamp(row.willo_invited_at)} — automatically on submission (E1)`
-                : 'Pending — the Willo integration is not connected yet (needs THC’s API key)'}
-            </span>
-            <span className="k">Invitation</span>
-            <span>
-              {row.willo_linked ? (
-                <>
-                  Sent by Willo by email · <span className="amber">{answers}</span>
-                </>
-              ) : (
-                '—'
-              )}
-            </span>
-            <span className="k">Tracking</span>
-            <span>Status arrives from the Willo webhook by itself — nothing to update by hand</span>
+      {skipsInterview(row) ? (
+        <SpudbrosNoInterview row={row} />
+      ) : (
+        <Panel
+          title="AI video interview · Willo"
+          actions={
+            <Pill tone="amber">{row.willo_linked ? 'Invitation sent' : 'Not yet in Willo'}</Pill>
+          }
+        >
+          <div className="stack">
+            <div className="kv">
+              <span className="k">Created in Willo</span>
+              <span>
+                {row.willo_invited_at
+                  ? `${formatUkStamp(row.willo_invited_at)} — automatically on submission (E1)`
+                  : 'Pending — the Willo integration is not connected yet (needs THC’s API key)'}
+              </span>
+              <span className="k">Invitation</span>
+              <span>
+                {row.willo_linked ? (
+                  <>
+                    Sent by Willo by email · <span className="amber">{answers}</span>
+                  </>
+                ) : (
+                  '—'
+                )}
+              </span>
+              <span className="k">Tracking</span>
+              <span>
+                Status arrives from the Willo webhook by itself — nothing to update by hand
+              </span>
+            </div>
+            <div className="row wrap">
+              <WilloButton url={row.willo_review_url} />
+              {onMarkComplete ? (
+                <Button
+                  tone="ghost"
+                  title="Owners and managers: move to Interview completed without Willo, with a reason"
+                  onClick={onMarkComplete}
+                >
+                  Mark interview complete
+                </Button>
+              ) : null}
+            </div>
+            <Note>
+              No documents are held on this phase — the Documents panel appears only once the
+              candidate is accepted.
+            </Note>
           </div>
-          <div className="row wrap">
-            <WilloButton url={row.willo_review_url} />
-            {onMarkComplete ? (
-              <Button
-                tone="ghost"
-                title="Owners and managers: move to Interview completed without Willo, with a reason"
-                onClick={onMarkComplete}
-              >
-                Mark interview complete
-              </Button>
-            ) : null}
-          </div>
-          <Note>
-            No documents are held on this phase — the Documents panel appears only once the
-            candidate is accepted.
-          </Note>
-        </div>
-      </Panel>
+        </Panel>
+      )}
     </div>
+  );
+}
+
+/**
+ * ADR-0117: skipped the interview as SpudBros Express staff, or is about to.
+ * Someone SpudBros who did a Willo interview before this keeps its record.
+ */
+function skipsInterview(row: CandidateRow): boolean {
+  return (
+    row.willo_decided_via === 'spudbros' ||
+    (row.spudbros_express === true &&
+      (row.status === 'interview_requested' || row.status === 'interview_completed'))
+  );
+}
+
+/**
+ * ADR-0117: SpudBros Express staff do not do the Willo interview. Until the
+ * willo-invite sweep moves them (within a minute), and afterwards when the
+ * office looks back at the interview steps, this says so instead.
+ */
+function SpudbrosNoInterview({ row }: { row: CandidateRow }) {
+  const moved = row.willo_decided_via === 'spudbros' && row.willo_decided_at;
+  return (
+    <Panel
+      title="Interview · not needed"
+      actions={<Pill tone={moved ? 'green' : 'amber'}>{moved ? 'Skipped' : 'Skipping'}</Pill>}
+    >
+      <div className="stack">
+        <div className="kv">
+          <span className="k">Interview</span>
+          <span>None — SpudBros Express staff do not do the Willo interview</span>
+          <span className="k">Documents</span>
+          {moved ? (
+            <span className="green">
+              Moved to Documents {formatUkStamp(row.willo_decided_at as string)} — login created and
+              E3 sent
+            </span>
+          ) : (
+            <span className="amber">
+              Moving on its own within a minute — login created and E3 sent
+            </span>
+          )}
+        </div>
+        <Note>
+          Their shifts stay on Connecteam; THC onboarding is for their Right to Work check,
+          documents and contract only.
+        </Note>
+      </div>
+    </Panel>
   );
 }
 
@@ -895,66 +950,70 @@ function InterviewCompleted({
 
   return (
     <div className="grid c2">
-      <Panel
-        title="AI video interview · Willo"
-        actions={
-          row.willo_completed_at ? (
-            <Pill tone="green">
-              Completed {formatUkStamp(row.willo_completed_at).replace(' UK time', '')}
-            </Pill>
-          ) : (
-            <Pill>Completed</Pill>
-          )
-        }
-      >
-        <div className="stack">
-          <div className="kv">
-            <span className="k">Completed</span>
-            {data.interviewOverride ? (
-              <span>
-                {formatUkStamp(data.interviewOverride.at)} — marked complete by{' '}
-                {data.interviewOverride.byName ?? 'the office'} without Willo
-                {data.interviewOverride.reason ? `: “${data.interviewOverride.reason}”` : ''}
-              </span>
+      {skipsInterview(row) ? (
+        <SpudbrosNoInterview row={row} />
+      ) : (
+        <Panel
+          title="AI video interview · Willo"
+          actions={
+            row.willo_completed_at ? (
+              <Pill tone="green">
+                Completed {formatUkStamp(row.willo_completed_at).replace(' UK time', '')}
+              </Pill>
             ) : (
-              <span>
-                {row.willo_completed_at ? formatUkStamp(row.willo_completed_at) : '—'} — card moved
-                here on its own (Willo &quot;New Response&quot; webhook)
-              </span>
-            )}
-            <span className="k">Answers</span>
-            <span>
-              {row.willo_answers_total
-                ? `${row.willo_answers_done ?? row.willo_answers_total} of ${row.willo_answers_total} video answers`
-                : '—'}
-            </span>
-            <span className="k">Decision</span>
-            {data.interviewOverride ? (
-              past ? (
-                <span className="green">Accepted by the office</span>
+              <Pill>Completed</Pill>
+            )
+          }
+        >
+          <div className="stack">
+            <div className="kv">
+              <span className="k">Completed</span>
+              {data.interviewOverride ? (
+                <span>
+                  {formatUkStamp(data.interviewOverride.at)} — marked complete by{' '}
+                  {data.interviewOverride.byName ?? 'the office'} without Willo
+                  {data.interviewOverride.reason ? `: “${data.interviewOverride.reason}”` : ''}
+                </span>
               ) : (
-                <span className="amber">Awaiting — Accept or Reject here</span>
-              )
-            ) : past ? (
-              <span className="green">
-                Accepted — made inside Willo, where the video is watched
+                <span>
+                  {row.willo_completed_at ? formatUkStamp(row.willo_completed_at) : '—'} — card
+                  moved here on its own (Willo &quot;New Response&quot; webhook)
+                </span>
+              )}
+              <span className="k">Answers</span>
+              <span>
+                {row.willo_answers_total
+                  ? `${row.willo_answers_done ?? row.willo_answers_total} of ${row.willo_answers_total} video answers`
+                  : '—'}
               </span>
-            ) : (
-              <span className="amber">
-                Awaiting — made inside Willo, where the video is watched
-              </span>
-            )}
+              <span className="k">Decision</span>
+              {data.interviewOverride ? (
+                past ? (
+                  <span className="green">Accepted by the office</span>
+                ) : (
+                  <span className="amber">Awaiting — Accept or Reject here</span>
+                )
+              ) : past ? (
+                <span className="green">
+                  Accepted — made inside Willo, where the video is watched
+                </span>
+              ) : (
+                <span className="amber">
+                  Awaiting — made inside Willo, where the video is watched
+                </span>
+              )}
+            </div>
+            <div>
+              <WilloButton url={row.willo_review_url} primary />
+            </div>
+            <Note>
+              Rejected in Willo → the system rejects automatically and sends E2 (THC wording).
+              Accepted in Willo → the profile advances to Documents by itself and E3 (activation +
+              password + &quot;download the app&quot;) goes out. The decision is not repeated here.
+            </Note>
           </div>
-          <div>
-            <WilloButton url={row.willo_review_url} primary />
-          </div>
-          <Note>
-            Rejected in Willo → the system rejects automatically and sends E2 (THC wording).
-            Accepted in Willo → the profile advances to Documents by itself and E3 (activation +
-            password + &quot;download the app&quot;) goes out. The decision is not repeated here.
-          </Note>
-        </div>
-      </Panel>
+        </Panel>
+      )}
       {past ? (
         <Panel title="Qualified role type(s)">
           {row.role_names.length > 0 ? (
