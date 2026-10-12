@@ -62,7 +62,13 @@ select set_config('request.jwt.claims', '', true);
 -- =====================================================================
 -- 3 · The vault pin
 -- =====================================================================
-insert into vault.secrets (name, secret) values ('supabase_project_ref', 'abcdefghijklmnopqrst');
+-- Through vault.create_secret, not an insert (601: on Supabase the encrypt
+-- trigger is not callable by the test role).
+do $$ begin
+  perform vault.create_secret('abcdefghijklmnopqrst', 'supabase_project_ref');
+exception when undefined_function then
+  insert into vault.secrets (name, secret) values ('supabase_project_ref', 'abcdefghijklmnopqrst');
+end $$;
 
 select is(edge_base_url(), :'good'::jsonb #>> '{}', 'the project''s own ref passes the pin');
 select throws_ok(format($$ update settings set value = %L::jsonb where key = 'edge_base_url' $$, :'other'),

@@ -36,8 +36,14 @@ select ok(not activation_link_ok(null), 'null is refused, not unknown');
 -- =====================================================================
 -- 2 · With the vault's app_origins set
 -- =====================================================================
-insert into vault.secrets (name, secret)
-values ('app_origins', 'https://staff.test, https://office.thc.example https://clients.thc.example/');
+-- Through vault.create_secret, not an insert: on Supabase the table's encrypt
+-- trigger is not callable by the test role, the SECURITY DEFINER API is (601).
+do $$ begin
+  perform vault.create_secret('https://staff.test, https://office.thc.example https://clients.thc.example/', 'app_origins');
+exception when undefined_function then
+  insert into vault.secrets (name, secret)
+  values ('app_origins', 'https://staff.test, https://office.thc.example https://clients.thc.example/');
+end $$;
 
 select ok(activation_link_ok('https://staff.test/activate/' || :'tok'), 'a configured origin passes');
 select ok(not activation_link_ok('https://evil.example/activate/' || :'tok'), 'another origin of the right shape does not');
