@@ -98,6 +98,38 @@
   letter-spacing: var(--label-track);
 }
 
+/* "Skip to content" (WCAG 2.4.1): the signed-in layout's first focusable
+   element, off-screen until a keyboard reaches it, then a pill over the
+   top bar's corner. */
+.skip-link {
+  position: absolute;
+  left: var(--sp-12);
+  top: var(--sp-8);
+  z-index: 60;
+  transform: translateY(-200%);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-16);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--control-line);
+  box-shadow: var(--shadow-card);
+  font-weight: 600;
+  font-size: var(--fs-13);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* Focus moved here by the skip link is not an action to ring. */
+.cwrap:focus {
+  outline: none;
+}
+
 .cwrap {
   max-width: 1280px;
   width: 100%;
@@ -212,10 +244,45 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--tap-min);
+  /* Two unbreakable halves ("Leave feedback ·" / "4 of 4 to go"): side by
+     side when the column has room, else one under the other — never three
+     lines, never a break inside a half. */
+  flex-wrap: wrap;
+  column-gap: 0.3em;
 }
 
-.tbl .ev-nudge {
-  max-width: 130px;
+.ev-nudge > span {
+  white-space: nowrap;
+}
+
+/* Desktop (the Venue column is shown above 1180px). Seven columns, five of
+   them a fixed shape (a date on one line, a pill, a bar, six faces, a
+   button), so the room for the event's name and its venue is what the
+   cells' padding leaves: a little less of it between columns (the outer
+   edges keep the panel's), and the venue gets a floor so the name and the
+   address sit on two or three lines rather than five. */
+@media (min-width: 1181px) {
+  .events-panel .tbl :is(th, td) {
+    padding-inline: var(--sp-12);
+  }
+
+  .events-panel .tbl :is(th, td):first-child {
+    padding-left: var(--sp-20);
+  }
+
+  .events-panel .tbl :is(th, td):last-child {
+    padding-right: var(--sp-20);
+  }
+
+  .events-panel .tbl .col-venue {
+    min-width: 150px;
+  }
+}
+
+@media (min-width: 1360px) {
+  .events-panel .tbl .col-venue {
+    min-width: 180px;
+  }
 }
 
 .ev-sheet {
@@ -358,6 +425,9 @@
 
 .ehead .actions {
   margin-left: auto;
+  /* A disabled document carries "Not issued yet" under it; the buttons
+     beside it stay level with the button, not with the pair's middle. */
+  align-items: flex-start;
 }
 
 /* "· as of Fri 19 Sep 2026, 10:00 your time (09:00 UK)" */
@@ -449,6 +519,33 @@
   margin-left: auto;
   flex: none;
   white-space: nowrap;
+  /* Never narrower than its label: in a tight cell the name wraps, the
+     button does not, and its text cannot spill past the pill's edge. */
+  min-width: max-content;
+  padding-inline: var(--sp-12);
+}
+
+/* A removed worker's "Leave feedback" (§1.7): nobody left to rate, so the
+   whole control greys, ink and edge, as the wireframe's disabled button. */
+.wrow .fb.gone {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-line);
+  color: var(--disabled-ink);
+}
+
+/* A role section nobody has confirmed on yet: one quiet line. */
+.wempty {
+  margin: 0;
+  padding: var(--sp-14) var(--sp-20);
+}
+
+/* A header document not issued yet: the disabled button and, under it, why
+   (as the list prints it). */
+.ehead .doc-slot {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
 }
 
 /* The line-up of a cancelled event is not shown: the bookings were
@@ -642,7 +739,8 @@
     flex-wrap: wrap;
   }
 
-  .ehead .actions .btn {
+  .ehead .actions .btn,
+  .ehead .actions .doc-slot {
     width: 100%;
     justify-content: center;
   }

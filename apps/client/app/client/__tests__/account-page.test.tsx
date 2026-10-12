@@ -172,6 +172,10 @@ describe('Your account · the page', () => {
     // As a text node: React's own form-replay script contains the word.
     expect(html).not.toContain('>null<');
     expect(html).toContain('<dd class="acct-v">—</dd>');
+    // No recipients: guidance, not a bare dash.
+    expect(html).toContain(
+      '<p class="acct-v muted">No addresses yet — ask THC to add who should receive timesheets.</p>',
+    );
     expect(html).toContain(`href="mailto:${OFFICE_EMAIL}?subject=Account%20change"`);
   });
 });

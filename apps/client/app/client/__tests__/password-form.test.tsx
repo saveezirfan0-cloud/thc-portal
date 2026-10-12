@@ -19,7 +19,7 @@ vi.mock('react', async (importOriginal) => {
 });
 vi.mock('../account/actions', () => ({ changePassword: vi.fn() }));
 
-const { PasswordForm } = await import('../account/PasswordForm');
+const { PasswordForm, serverRefusal } = await import('../account/PasswordForm');
 const { PASSWORD_COPY } = await import('../account/copy');
 
 const render = () => renderToStaticMarkup(<PasswordForm />);
@@ -59,6 +59,18 @@ describe('the change-password form', () => {
   it('takes the tone from the action when it names one', () => {
     action.state = { ok: true, message: 'Password changed.', round: 1, tone: 'warning' };
     expect(render()).toContain('toast amber');
+  });
+
+  it('drops a refusal once a field is edited after it, and shows the next one', () => {
+    const wrong = { ok: false, message: PASSWORD_COPY.currentWrong, round: 0 };
+    expect(serverRefusal(wrong, null)).toBe(PASSWORD_COPY.currentWrong);
+    // Edited after it: gone, so it never sits beside "Passwords don't match".
+    expect(serverRefusal(wrong, wrong)).toBeNull();
+    // A new submit is a new answer, shown even though the last was edited.
+    const again = { ...wrong };
+    expect(serverRefusal(again, wrong)).toBe(PASSWORD_COPY.currentWrong);
+    expect(serverRefusal({ ok: true, message: PASSWORD_COPY.changed, round: 1 }, null)).toBeNull();
+    expect(serverRefusal(null, null)).toBeNull();
   });
 
   it('keeps a refusal a coral alert', () => {

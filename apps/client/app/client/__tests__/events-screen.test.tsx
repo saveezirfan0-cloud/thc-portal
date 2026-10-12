@@ -201,7 +201,7 @@ describe('the feedback nudge (§11.2, ADR-0049)', () => {
   it('counts the workers still to rate on a started event, leaving out a removed one', () => {
     const galaCard = card(render([gala]), 'Gala Dinner');
     expect(galaCard).toContain(
-      '<a href="/client/events/ev-gala" class="ev-nudge">Leave feedback · 2 of 3 to go</a>',
+      '<a href="/client/events/ev-gala" class="ev-nudge"><span>Leave feedback ·</span> <span>2 of 3 to go</span></a>',
     );
   });
 

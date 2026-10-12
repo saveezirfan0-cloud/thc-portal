@@ -29,6 +29,8 @@ export const ACCOUNT_COPY = {
   // this list is the usual destination, not a promise for every event.
   recipientsHelp:
     'The Allocation Timesheet and the Completed Allocation Timesheet for your events are emailed to these addresses, unless THC sets different recipients for a particular event.',
+  // An empty list is a gap the customer can close, so it says how.
+  noRecipients: 'No addresses yet — ask THC to add who should receive timesheets.',
   managedByThc:
     'Your name, sign-in email, company and the addresses above are managed by The Hospitality Company, so they cannot be edited here. If anything is wrong or out of date, email the office and we will update it for you.',
 } as const;

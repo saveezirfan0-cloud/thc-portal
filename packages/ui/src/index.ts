@@ -123,5 +123,8 @@ export {
   useAppearance,
 } from './components/Appearance';
 export type { Mode } from './components/Appearance';
+// Server-safe: a plain module, so a root layout's `viewport` and an app's
+// manifest.ts get the strings (Appearance.tsx is 'use client').
+export { THEME_COLOR } from './components/theme-color';
 
 export { useVisibleInterval } from './components/AutoRefresh';

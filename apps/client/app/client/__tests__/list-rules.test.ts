@@ -186,6 +186,7 @@ describe('the search, venue and date filters (ADR-0049)', () => {
     id: 'ev-2',
     title: 'Lunch Service',
     venueName: 'The Shard',
+    venueAddress: '32 London Bridge St, SE1 9SG',
     poNumber: null,
     startsAt: '2026-09-12T10:00:00Z',
     endsAt: '2026-09-12T15:00:00Z',
@@ -211,6 +212,27 @@ describe('the search, venue and date filters (ADR-0049)', () => {
     expect(ids(applyFilters(all, { ...NO_FILTERS, query: 'gala' }))).toEqual(['ev-1']);
     expect(ids(applyFilters(all, { ...NO_FILTERS, query: 'SHARD' }))).toEqual(['ev-2']);
     expect(ids(applyFilters(all, { ...NO_FILTERS, query: 'pl-77' }))).toEqual(['ev-3']);
+  });
+
+  it('finds the PO as the row prints it, "PO 4471-A", or without the prefix', () => {
+    const q = (query: string) => ids(applyFilters(all, { ...NO_FILTERS, query }));
+    expect(q('PO 4471-A')).toEqual(['ev-1']);
+    expect(q('PO 4471')).toEqual(['ev-1']);
+    expect(q('po4471')).toEqual(['ev-1']);
+    expect(q('PO: 4471-a')).toEqual(['ev-1']);
+    expect(q('PO-4471')).toEqual(['ev-1']);
+    expect(q('4471')).toEqual(['ev-1']);
+    expect(q('PO PL-77')).toEqual(['ev-3']);
+    // A PO prefix needs a separator or a digit after it: "polo" is a word.
+    expect(q('polo')).toEqual([]);
+    // An event with no PO is never found by a PO search.
+    expect(q('PO 9')).toEqual([]);
+  });
+
+  it('searches the venue address too', () => {
+    const q = (query: string) => ids(applyFilters(all, { ...NO_FILTERS, query }));
+    expect(q('SE1 9SG')).toEqual(['ev-2']);
+    expect(q('godliman')).toEqual(['ev-1', 'ev-3']);
   });
 
   it('treats a search of only spaces as no search', () => {
@@ -468,6 +490,12 @@ describe('the "you can now leave feedback" banner', () => {
   it('goes once everyone who can be rated has been — a removed worker cannot be', () => {
     const lineup = [row('Aisha Bello', true), row('Deleted account #1042', false)];
     expect(feedbackInviteShown(event, lineup, new Date('2026-09-20T09:00:00Z'))).toBe(false);
+  });
+
+  it('never shows when there is nobody on the line-up who could be rated', () => {
+    const at = new Date('2026-09-20T09:00:00Z');
+    expect(feedbackInviteShown(event, [], at)).toBe(false);
+    expect(feedbackInviteShown(event, [row('Deleted account #1042', false)], at)).toBe(false);
   });
 
   it(`goes ${FEEDBACK_BANNER_DAYS} days after the event ended`, () => {

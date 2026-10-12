@@ -1,10 +1,10 @@
 import { Alert, PageHead } from '@thc/ui';
-import { loadArrivals } from './arrivals';
-import { AutoRefresh } from '../_components/AutoRefresh';
-import { EventsScreen } from './EventsScreen';
-import { loadEventList } from './data';
-import { DOCUMENTS_UNAVAILABLE, kindsByEvent, loadAllDocuments } from './documents';
-import { signLineupPhotos } from './photos';
+import { loadArrivals } from '../arrivals';
+import { AutoRefresh } from '../../_components/AutoRefresh';
+import { EventsScreen } from '../EventsScreen';
+import { loadEventList } from '../data';
+import { DOCUMENTS_UNAVAILABLE, kindsByEvent, loadAllDocuments } from '../documents';
+import { signLineupPhotos } from '../photos';
 
 /**
  * §11.1 · the Client Portal's event list.

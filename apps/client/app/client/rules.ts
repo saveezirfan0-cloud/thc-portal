@@ -154,9 +154,11 @@ export function headerDocuments(
  * The star picker's readout (wireframes/client/event.html: "4 of 5 — tap a
  * star"). Before a choice it says what is wanted; after one, what was
  * chosen — the number is the accessible answer to "which star is on".
+ * Device-neutral: the stars are chosen by mouse, finger or arrow keys, so
+ * the copy says "choose", never "tap".
  */
 export function starsHint(rating: number): string {
-  return rating > 0 ? `${rating} of 5 — tap a star` : 'Tap a star — 1 to 5, required';
+  return rating > 0 ? `${rating} of 5 stars` : 'Choose 1 to 5 stars — required';
 }
 
 /**
@@ -191,6 +193,11 @@ export function feedbackOpen(event: Pick<PortalEvent, 'status' | 'startsAt'>, no
  * Groups follow the section's own start time (RULE-18), so Chef at 07:00
  * comes before Waiting Staff at 17:00, and ties break by role name and
  * then by key so the order is total rather than merely sorted.
+ *
+ * Every section the customer booked is a group, including one nobody has
+ * confirmed on yet (`people` empty, `confirmed` 0): an upcoming event with
+ * no confirmations still shows its roles and their windows, each saying so,
+ * rather than a header over nothing.
  */
 export interface LineupGroup {
   /** The shift id, or role + window when the row carries none. */
@@ -218,17 +225,21 @@ export function groupBySection(
     else bySection.set(key, [row]);
   }
 
+  // Sections with nobody on them yet, so the page still lists the role.
+  for (const s of sections) if (!bySection.has(s.shiftId)) bySection.set(s.shiftId, []);
+
   return [...bySection.entries()]
     .map(([key, people]) => {
       // The section carries the role's window; fall back to the booking's
-      // own times if a section is missing, so a row is never dropped.
-      const first = people[0]!;
+      // own times if a section is missing, so a row is never dropped. A
+      // group with no people came from a section, so one of the two exists.
       const section = sections.find((s) => s.shiftId === key);
+      const from = (section ?? people[0])!;
       return {
         key,
-        role: section?.role ?? first.role,
-        startsAt: section?.startsAt ?? first.startsAt,
-        endsAt: section?.endsAt ?? first.endsAt,
+        role: from.role,
+        startsAt: from.startsAt,
+        endsAt: from.endsAt,
         confirmed: people.length,
         people: [...people].sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
       };
@@ -239,6 +250,20 @@ export function groupBySection(
         a.role.localeCompare(b.role) ||
         a.key.localeCompare(b.key),
     );
+}
+
+/**
+ * "3 roles" in the event header: the distinct roles the customer booked,
+ * read from the role sections — two sections of one role are one role —
+ * so an event with nobody confirmed yet still counts its roles. The
+ * line-up is the fallback only when no section came back.
+ */
+export function roleCountOf(
+  sections: readonly Pick<RoleSection, 'role'>[],
+  lineup: readonly Pick<LineupRow, 'role'>[],
+): number {
+  const from = sections.length > 0 ? sections : lineup;
+  return new Set(from.map((s) => s.role)).size;
 }
 
 /**
@@ -405,7 +430,8 @@ export function feedbackToGo(
  * Whether the event page still shows "The event has started — you can now
  * leave feedback" (§11.2). It is an invitation, so it goes once there is
  * nothing left to invite: every rateable worker on the line-up already has
- * the customer's feedback, or the event ended more than a week ago (the
+ * the customer's feedback (or there is nobody rateable on it at all), or
+ * the event ended more than a week ago (the
  * buttons stay live — the scope sets no closing rule — but a banner on an
  * old event is noise). Before the start, the locked-banner says when.
  */
@@ -418,7 +444,8 @@ export function feedbackInviteShown(
 ): boolean {
   if (!feedbackOpen(event, now)) return false;
   const rateable = lineup.filter((l) => !isRemoved(l));
-  if (rateable.length > 0 && rateable.every((l) => l.feedbackGiven)) return false;
+  // Nobody to rate: no banner about buttons that are not on the page.
+  if (rateable.length === 0 || rateable.every((l) => l.feedbackGiven)) return false;
   const stale = new Date(event.endsAt).getTime() + FEEDBACK_BANNER_DAYS * 86_400_000;
   return now.getTime() <= stale;
 }
@@ -512,6 +539,30 @@ export function venuesOf(events: readonly PortalEvent[]): string[] {
 }
 
 /**
+ * "PO 4431", "PO4431", "po: 4431", "PO-4431" → "4431": the reference after
+ * a "PO" prefix, so a customer can type the PO as the row prints it ("PO
+ * 4431") or as their own system writes it. Only a prefix followed by a
+ * separator or a digit counts, so "polo" is still a search for "polo".
+ */
+const PO_PREFIX = /^po(?:[\s#:.-]+|(?=\d))(.+)$/;
+
+/**
+ * Whether the list's search box matches an event: the name, the venue and
+ * its address, or the PO with or without its "PO " prefix. `needle` is
+ * already trimmed and lower-cased.
+ */
+function searchMatches(e: PortalEvent, needle: string): boolean {
+  const po = (e.poNumber ?? '').toLowerCase();
+  const bare = PO_PREFIX.exec(needle)?.[1]?.trim();
+  return (
+    e.title.toLowerCase().includes(needle) ||
+    e.venueName.toLowerCase().includes(needle) ||
+    e.venueAddress.toLowerCase().includes(needle) ||
+    (po !== '' && (po.includes(needle) || (!!bare && po.includes(bare))))
+  );
+}
+
+/**
  * The search, venue and date range, combined (ADR-0049).
  *
  * The day an event is filed under is the UK calendar day it starts on, the
@@ -526,13 +577,7 @@ export function venuesOf(events: readonly PortalEvent[]): string[] {
 export function applyFilters(events: readonly PortalEvent[], f: EventFilters): PortalEvent[] {
   const needle = f.query.trim().toLowerCase();
   return events.filter((e) => {
-    if (
-      needle !== '' &&
-      !e.title.toLowerCase().includes(needle) &&
-      !e.venueName.toLowerCase().includes(needle) &&
-      !(e.poNumber ?? '').toLowerCase().includes(needle)
-    )
-      return false;
+    if (needle !== '' && !searchMatches(e, needle)) return false;
     if (f.venue !== '' && e.venueName !== f.venue) return false;
     if (f.from === '' && f.to === '') return true;
     const day = ukToday(new Date(e.startsAt));

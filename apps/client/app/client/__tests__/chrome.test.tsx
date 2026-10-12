@@ -49,6 +49,34 @@ describe('the Client Portal top bar', () => {
   });
 });
 
+describe('landmarks (WCAG 1.3.1, 2.4.1)', () => {
+  it('opens on "Skip to content", the first focusable element, pointing at the <main>', async () => {
+    const markup = renderToStaticMarkup(await ClientPortalLayout({ children: <span /> }));
+    const first = markup.match(/<(a|button|input|select|textarea)\b[^>]*>/)?.[0];
+    expect(first).toBe('<a class="skip-link" href="#main">');
+    expect(markup).toContain('>Skip to content</a>');
+    expect(markup).toContain('<main id="main" class="cwrap" tabindex="-1"><span></span></main>');
+    expect(markup.match(/<main\b/g)).toHaveLength(1);
+  });
+
+  it('gives every signed-out page, the error and the 404 one <main>', async () => {
+    const { readFileSync, existsSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const app = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    for (const seg of ['login', 'forgot', 'reset', 'auth']) {
+      const layout = join(app, seg, 'layout.tsx');
+      expect(existsSync(layout), `${seg}/layout.tsx`).toBe(true);
+      expect(readFileSync(layout, 'utf8')).toContain('<AuthMain>');
+    }
+    for (const file of ['error.tsx', 'not-found.tsx']) {
+      expect(readFileSync(join(app, file), 'utf8'), file).toContain('<AuthMain>');
+    }
+    const { AuthMain } = await import('../../_components/AuthMain');
+    expect(renderToStaticMarkup(<AuthMain>x</AuthMain>)).toBe('<main id="main">x</main>');
+  });
+});
+
 describe('the viewer-zone note (wireframes/client/events.html)', () => {
   it('names the zone and its offset for a reader outside UK time', () => {
     const markup = renderToStaticMarkup(<ViewerZoneNote zone="Europe/Berlin" />);

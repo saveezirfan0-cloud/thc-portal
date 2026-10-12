@@ -17,6 +17,7 @@ import {
   headerDocuments,
   isRemoved,
   momentIn,
+  roleCountOf,
   statusTone,
 } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
@@ -71,11 +72,15 @@ export function EventScreen({
 
   const at = useMemo(() => new Date(now), [now]);
   const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
-  // Two sections of one role are two panels but still one role.
-  const roleCount = useMemo(() => new Set(groups.map((g) => g.role)).size, [groups]);
+  // Two sections of one role are two panels but still one role; counted
+  // from the sections the customer booked, so "0 of 6" still says "2 roles".
+  const roleCount = useMemo(() => roleCountOf(sections, lineup), [sections, lineup]);
   const fill = useMemo(() => fillOf(sections), [sections]);
   const open = feedbackOpen(event, at);
   const invite = feedbackInviteShown(event, lineup, at);
+  // Nobody on the line-up who could be rated: no banner about buttons that
+  // are not on the page, whether feedback has opened or not.
+  const rateable = lineup.some((p) => !isRemoved(p));
   const cancelled = event.status === 'cancelled';
   const completed = event.status === 'completed';
   // "On the day" (ADR-0053): the count is live information about the shift in
@@ -137,14 +142,18 @@ export function EventScreen({
                   {label}
                 </a>
               ) : (
-                <Button
-                  key={kind}
-                  tone={primary ? 'primary' : 'default'}
-                  disabled
-                  title="THC has not issued this document yet"
-                >
-                  {label}
-                </Button>
+                // Said in words under the button, as on the list: a title
+                // alone reaches nobody on a phone or a keyboard.
+                <span key={kind} className="doc-slot">
+                  <Button
+                    tone={primary ? 'primary' : 'default'}
+                    disabled
+                    title="THC has not issued this document yet"
+                  >
+                    {label}
+                  </Button>
+                  <span className="ev-sheet">Not issued yet</span>
+                </span>
               );
             })}
             {/* ADR-0050: an .ics built in the browser; none when cancelled. */}
@@ -195,7 +204,7 @@ export function EventScreen({
           <Alert tone="neutral">
             This event was cancelled, so there is no confirmed line-up to show.
           </Alert>
-        ) : open ? (
+        ) : !rateable ? null : open ? (
           invite ? (
             <Alert tone="green">
               The event has started — you can now leave feedback on each member of staff. One entry
@@ -234,60 +243,69 @@ export function EventScreen({
               }
               flush
             >
-              <div className="wgrid">
-                {group.people.map((p) => {
-                  const removed = isRemoved(p);
-                  const sent = p.feedbackGiven ? sentLine(p) : null;
-                  return (
-                    <div className="wrow" key={p.bookingId}>
-                      <Avatar
-                        name={p.name}
-                        size="lg"
-                        src={p.photoPath ? photos[p.photoPath] : undefined}
-                        deleted={removed}
-                      />
-                      <div className="who">
-                        <div className={removed ? 'n muted' : 'n'}>{p.name}</div>
-                        <div className="s">
-                          {p.role}
-                          {sent ? (
-                            <>
-                              {' · '}
-                              <span className="fb-sent">{sent}</span>
-                            </>
-                          ) : null}
+              {group.people.length === 0 ? (
+                // A section nobody has confirmed on yet still shows its role
+                // and window, and says so in one line.
+                <p className="wempty muted sm">
+                  {completed ? 'Nobody worked this role.' : 'Nobody confirmed yet.'}
+                </p>
+              ) : (
+                <div className="wgrid">
+                  {group.people.map((p) => {
+                    const removed = isRemoved(p);
+                    const sent = p.feedbackGiven ? sentLine(p) : null;
+                    return (
+                      <div className="wrow" key={p.bookingId}>
+                        <Avatar
+                          name={p.name}
+                          size="lg"
+                          src={p.photoPath ? photos[p.photoPath] : undefined}
+                          deleted={removed}
+                          silhouette
+                        />
+                        <div className="who">
+                          <div className={removed ? 'n muted' : 'n'}>{p.name}</div>
+                          <div className="s">
+                            {p.role}
+                            {sent ? (
+                              <>
+                                {' · '}
+                                <span className="fb-sent">{sent}</span>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
+                        {p.feedbackGiven ? (
+                          <Button
+                            className="fb sent"
+                            size="sm"
+                            disabled
+                            title="Your feedback is read-only once sent"
+                          >
+                            ✓ Feedback sent
+                          </Button>
+                        ) : (
+                          <Button
+                            className={removed ? 'fb gone' : 'fb'}
+                            size="sm"
+                            disabled={!open || removed}
+                            title={
+                              removed
+                                ? 'This account has been removed'
+                                : open
+                                  ? undefined
+                                  : 'Feedback opens once the event has started'
+                            }
+                            onClick={() => setRating(p)}
+                          >
+                            Leave feedback
+                          </Button>
+                        )}
                       </div>
-                      {p.feedbackGiven ? (
-                        <Button
-                          className="fb sent"
-                          size="sm"
-                          disabled
-                          title="Your feedback is read-only once sent"
-                        >
-                          ✓ Feedback sent
-                        </Button>
-                      ) : (
-                        <Button
-                          className="fb"
-                          size="sm"
-                          disabled={!open || removed}
-                          title={
-                            removed
-                              ? 'This account has been removed'
-                              : open
-                                ? undefined
-                                : 'Feedback opens once the event has started'
-                          }
-                          onClick={() => setRating(p)}
-                        >
-                          Leave feedback
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </Panel>
           ))}
 

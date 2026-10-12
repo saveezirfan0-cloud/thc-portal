@@ -60,7 +60,7 @@ vi.mock('../events/[id]/EventScreen', () => ({
   },
 }));
 
-const ListPage = (await import('../page')).default;
+const ListPage = (await import('../(list)/page')).default;
 const EventPage = (await import('../events/[id]/page')).default;
 
 const EV = '90000000-0000-4000-8000-000000000001';

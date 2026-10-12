@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { Alert, AuthCard, Button } from '@thc/ui';
+import { AuthMain } from './_components/AuthMain';
 
 /**
  * The Client Portal's route-level error boundary (Next.js `error.tsx`).
@@ -30,28 +31,32 @@ export default function RouteError({
     console.error('[client] unhandled error', { digest: error.digest });
   }, [error]);
 
+  // Rendered by the root boundary, outside every segment layout, so it
+  // brings its own landmark.
   return (
-    <AuthCard product="Client Portal" heading="Something went wrong">
-      <Alert tone="coral">
-        This page couldn’t be loaded. Please try again. If it keeps happening, email{' '}
-        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
-        {error.digest ? (
-          <>
-            {' '}
-            and quote reference <span className="mono">{error.digest}</span>
-          </>
-        ) : null}
-        .
-      </Alert>
-      {/* `.row` carries the --sp-10 gap; `wrap` lets the pair stack on a phone. */}
-      <div className="row wrap">
-        <Button tone="primary" onClick={() => reset()}>
-          Try again
-        </Button>
-        <Link className="btn" href="/client">
-          Back to your events
-        </Link>
-      </div>
-    </AuthCard>
+    <AuthMain>
+      <AuthCard product="Client Portal" heading="Something went wrong">
+        <Alert tone="coral">
+          This page couldn’t be loaded. Please try again. If it keeps happening, email{' '}
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+          {error.digest ? (
+            <>
+              {' '}
+              and quote reference <span className="mono">{error.digest}</span>
+            </>
+          ) : null}
+          .
+        </Alert>
+        {/* `.row` carries the --sp-10 gap; `wrap` lets the pair stack on a phone. */}
+        <div className="row wrap">
+          <Button tone="primary" onClick={() => reset()}>
+            Try again
+          </Button>
+          <Link className="btn" href="/client">
+            Back to your events
+          </Link>
+        </div>
+      </AuthCard>
+    </AuthMain>
   );
 }

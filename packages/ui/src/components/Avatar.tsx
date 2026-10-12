@@ -7,7 +7,23 @@ export interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** No photo and no initials: a GDPR-removed worker keeps their slot (§1.7). */
   deleted?: boolean;
+  /**
+   * Without a photo, draw a neutral person glyph instead of initials. The
+   * Client Portal shows faces, never initials (§11.1; the wireframes draw a
+   * silhouette). Off by default, so every other screen keeps its monogram.
+   */
+  silhouette?: boolean;
   className?: string;
+}
+
+/** A head-and-shoulders glyph in `currentColor`, cropped by the avatar's shape. */
+function SilhouetteGlyph() {
+  return (
+    <svg className="avatar-glyph" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <circle cx="16" cy="12" r="6.5" fill="currentColor" />
+      <path d="M3 34c0-9 6-13 13-13s13 4 13 13z" fill="currentColor" />
+    </svg>
+  );
 }
 
 /** Initials from a display name: "Amira Khan" → "AK", "Deleted account #41" → "DA". */
@@ -22,13 +38,28 @@ export function initials(name: string): string {
  * falling back to monogram initials on the divider colour. The shape is a
  * token (`--r-avatar`), never a prop.
  */
-export function Avatar({ name, src, size = 'md', deleted, className }: AvatarProps) {
+export function Avatar({ name, src, size = 'md', deleted, silhouette, className }: AvatarProps) {
+  const glyph = !deleted && !src && silhouette;
   return (
     <span
-      className={clsx('avatar', size !== 'md' && size, deleted && 'deleted', className)}
+      className={clsx(
+        'avatar',
+        size !== 'md' && size,
+        deleted && 'deleted',
+        glyph && 'silhouette',
+        className,
+      )}
       title={name}
+      // The glyph says nothing on its own, so the slot carries the name.
+      {...(glyph ? { role: 'img', 'aria-label': name } : {})}
     >
-      {deleted ? null : src ? <img src={src} alt={name} /> : initials(name)}
+      {deleted ? null : src ? (
+        <img src={src} alt={name} />
+      ) : glyph ? (
+        <SilhouetteGlyph />
+      ) : (
+        initials(name)
+      )}
     </span>
   );
 }

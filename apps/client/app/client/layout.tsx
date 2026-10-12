@@ -59,6 +59,11 @@ export default async function ClientPortalLayout({ children }: { children: React
 
   return (
     <>
+      {/* The first thing a keyboard reaches: past the bar to the page. Out
+          of sight until focused (client-portal.css .skip-link). */}
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <header className="ctop">
         <Link href="/client" className="brand">
           <Logo />
@@ -113,7 +118,11 @@ export default async function ClientPortalLayout({ children }: { children: React
         </AccountMenu>
       </header>
 
-      <div className="cwrap">{children}</div>
+      {/* The page's landmark; tabIndex -1 so "Skip to content" moves focus
+          here and the next Tab starts inside the page. */}
+      <main id="main" className="cwrap" tabIndex={-1}>
+        {children}
+      </main>
     </>
   );
 }

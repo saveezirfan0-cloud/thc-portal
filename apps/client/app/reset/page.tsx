@@ -36,6 +36,23 @@ export default async function Page({
     recovery = isRecoverySession(data?.claims);
   }
 
+  // A link that arrived without its token (/auth/confirm or /auth/callback
+  // sent `?error=missing`): nothing expired — the address was cut short,
+  // usually by an email client wrapping it. Say so, so the customer tries
+  // the whole link before asking for another.
+  if (error === 'missing') {
+    return (
+      <AuthCard product="Client Portal" heading="This link is incomplete">
+        <Alert tone="amber">
+          This link is incomplete — copy the whole link from the email, or ask for a new one.
+        </Alert>
+        <Link href="/forgot" className="btn block">
+          Request a new link
+        </Link>
+      </AuthCard>
+    );
+  }
+
   if (error || (configured && !signedIn)) {
     return (
       <AuthCard product="Client Portal" heading="This link has expired">

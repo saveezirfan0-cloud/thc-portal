@@ -43,7 +43,8 @@ afterEach(() => {
 });
 
 const { EventScreen } = await import('../events/[id]/EventScreen');
-const { FeedbackModal, COMMENT_MAX, isAlreadyLeft } = await import('../events/[id]/FeedbackModal');
+const { FeedbackModal, COMMENT_MAX, isAlreadyLeft, starForKey } =
+  await import('../events/[id]/FeedbackModal');
 
 const EVENT_ID = '60000000-0000-4000-8000-000000000001';
 
@@ -128,6 +129,11 @@ describe('before the event (event.html:81-89)', () => {
     expect(screen(gala(), BEFORE)).toContain(
       '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Allocation Timesheet</button>',
     );
+    // Said in words as well as in the title, as the list does.
+    expect(screen(gala(), BEFORE)).toContain(
+      'Download Allocation Timesheet</button><span class="ev-sheet">Not issued yet</span>',
+    );
+    expect(screen(gala(), BEFORE, [ALLOCATION])).not.toContain('Not issued yet');
     expect(screen(gala(), BEFORE, [ALLOCATION])).toContain(
       `<a class="btn primary" href="/client/events/${EVENT_ID}/document?kind=allocation">↓ Download Allocation Timesheet</a>`,
     );
@@ -230,7 +236,7 @@ describe('the feedback popup (event.html:223-229)', () => {
   });
 
   it('asks for a star, explains who reads the comment, and says it cannot be withdrawn', () => {
-    expect(markup).toContain('<span class="hint">Tap a star — 1 to 5, required</span>');
+    expect(markup).toContain('<span class="hint">Choose 1 to 5 stars — required</span>');
     expect(markup).toContain(
       'Optional · free text · seen by The Hospitality Company office, not by the worker.',
     );
@@ -332,8 +338,67 @@ describe('a removed worker (§1.7, event.html:276)', () => {
 
   it('cannot be rated, even after the event has started', () => {
     expect(row).toContain(
-      '<button type="button" class="btn sm fb" disabled="" title="This account has been removed">Leave feedback</button>',
+      '<button type="button" class="btn sm fb gone" disabled="" title="This account has been removed">Leave feedback</button>',
     );
+  });
+});
+
+describe('faces without a photo (§11.1: photos, never initials)', () => {
+  it('draws a named silhouette for a worker with no photo or no signed URL', () => {
+    const markup = screen(gala(), BEFORE);
+    expect(markup).toContain(
+      '<span class="avatar lg silhouette" title="Aisha Bello" role="img" aria-label="Aisha Bello"><svg class="avatar-glyph"',
+    );
+    expect(markup).not.toMatch(/>AB<|>LM</);
+  });
+
+  it('uses the photo when the URL was signed', () => {
+    const markup = renderToStaticMarkup(
+      <EventScreen
+        event={gala()}
+        sections={sections}
+        lineup={[{ ...lineup[0]!, photoPath: 'p/aisha.jpg' }]}
+        photos={{ 'p/aisha.jpg': 'https://example.test/aisha.jpg' }}
+        now={BEFORE}
+      />,
+    );
+    expect(markup).toContain('<img src="https://example.test/aisha.jpg" alt="Aisha Bello"/>');
+  });
+});
+
+describe('nobody confirmed yet', () => {
+  const twoRoles: RoleSection[] = [
+    { ...sections[0]!, confirmed: 0, headcount: 2 },
+    {
+      shiftId: 's-wait',
+      eventId: EVENT_ID,
+      role: 'Waiting Staff',
+      startsAt: '2026-09-19T16:00:00Z',
+      endsAt: '2026-09-19T22:30:00Z',
+      headcount: 4,
+      confirmed: 0,
+    },
+  ];
+  const empty = (now: string) =>
+    renderToStaticMarkup(
+      <EventScreen event={gala()} sections={twoRoles} lineup={[]} photos={{}} now={now} />,
+    );
+
+  it('counts the roles from the sections: "0 of 6 · 2 roles"', () => {
+    expect(empty(BEFORE)).toContain('<b>0</b> of 6 · 2 roles');
+  });
+
+  it('shows each role section, with its window, saying nobody is confirmed yet', () => {
+    const markup = empty(BEFORE);
+    expect(markup.match(/class="panel role-panel/g)).toHaveLength(2);
+    expect(markup.match(/Nobody confirmed yet\./g)).toHaveLength(2);
+    expect(markup).toContain('Waiting Staff');
+  });
+
+  it('has no banner about feedback buttons that are not on the page', () => {
+    expect(empty(BEFORE)).not.toContain('Feedback opens once the event has started');
+    expect(empty(AFTER)).not.toContain('you can now leave feedback');
+    expect(empty(BEFORE)).not.toContain('Leave feedback');
   });
 });
 
@@ -425,8 +490,25 @@ describe('the feedback popup, guarded', () => {
     expect(markup).not.toContain('fb-count');
   });
 
-  it('draws each star as a radio', () => {
+  it('draws each star as a radio, with one tab stop for the group (roving tabindex)', () => {
     expect(markup.match(/role="radio"/g)).toHaveLength(5);
+    expect(markup.match(/role="radio" aria-checked="false" tabindex="0"/g)).toHaveLength(1);
+    const stars = markup.slice(markup.indexOf('class="stars-row"'), markup.indexOf('class="hint"'));
+    expect(stars.match(/tabindex="-1"/g)).toHaveLength(4);
+    expect(markup).toMatch(/tabindex="0" aria-label="1 star"/);
+  });
+
+  it('moves the rating with the arrows, Home and End, stopping at the ends', () => {
+    expect(starForKey('ArrowRight', 0)).toBe(1);
+    expect(starForKey('ArrowUp', 3)).toBe(4);
+    expect(starForKey('ArrowRight', 5)).toBe(5);
+    expect(starForKey('ArrowLeft', 3)).toBe(2);
+    expect(starForKey('ArrowDown', 1)).toBe(1);
+    expect(starForKey('ArrowLeft', 0)).toBe(1);
+    expect(starForKey('Home', 4)).toBe(1);
+    expect(starForKey('End', 2)).toBe(5);
+    expect(starForKey('Tab', 2)).toBeNull();
+    expect(starForKey('Enter', 2)).toBeNull();
   });
 
   it('recognises the "already left" refusal, by code or by the action\'s sentence', () => {

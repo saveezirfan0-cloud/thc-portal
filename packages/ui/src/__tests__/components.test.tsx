@@ -593,6 +593,30 @@ describe('controls, people and pipeline', () => {
   });
 });
 
+describe('Avatar silhouette (Client Portal §11.1: faces, never initials)', () => {
+  it('draws a person glyph named for the worker when there is no photo', () => {
+    const out = html(<Avatar name="Tom Reid" silhouette />);
+    expect(out).toContain('class="avatar silhouette"');
+    expect(out).toContain('role="img"');
+    expect(out).toContain('aria-label="Tom Reid"');
+    expect(out).toContain('<svg class="avatar-glyph"');
+    expect(out).not.toContain('>TR<');
+  });
+
+  it('still shows the photo when there is one, and the dashed slot when removed', () => {
+    expect(html(<Avatar name="Tom Reid" silhouette src="/s.jpg" />)).toContain(
+      '<img src="/s.jpg" alt="Tom Reid"/>',
+    );
+    const removed = html(<Avatar name="Deleted account #1042" silhouette deleted />);
+    expect(removed).toContain('avatar deleted');
+    expect(removed).not.toContain('svg');
+  });
+
+  it('leaves the default (initials) alone everywhere else', () => {
+    expect(html(<Avatar name="Tom Reid" />)).toContain('>TR</span>');
+  });
+});
+
 describe('modal and auth card', () => {
   it('renders the dialog and the shared sign-in card', () => {
     expect(

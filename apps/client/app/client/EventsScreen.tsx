@@ -613,8 +613,13 @@ function RoleLine({ sections }: { sections: RoleSection[] }) {
  */
 function FeedbackNudge({ eventId, toGo, total }: { eventId: string; toGo: number; total: number }) {
   return (
+    // Two unbreakable halves: in the narrow Status column the nudge folds
+    // between them, onto two lines at most, never mid-phrase.
     <Link className="ev-nudge" href={`/client/events/${eventId}`}>
-      Leave feedback · {toGo} of {total} to go
+      <span>Leave feedback ·</span>{' '}
+      <span>
+        {toGo} of {total} to go
+      </span>
     </Link>
   );
 }
@@ -661,9 +666,11 @@ function DocumentButton({ eventId, offer }: { eventId: string; offer: DocumentOf
 
 /**
  * The faces on a row (§11.1): "photos of the confirmed workers (not
- * initials — so the customer recognises the people by face)". Initials are
- * the fallback when a worker has no selfie yet; a removed worker keeps
- * their slot with no photo at all, so the headcount is not skewed (§1.7).
+ * initials — so the customer recognises the people by face)". A worker with
+ * no selfie yet, or whose photo could not be signed, is a neutral
+ * silhouette as the wireframe draws it, never initials; a removed worker
+ * keeps their slot with no photo at all, so the headcount is not skewed
+ * (§1.7).
  */
 function Faces({ people, photos }: { people: LineupRow[]; photos: Record<string, string> }) {
   const shown = people.slice(0, FACES_SHOWN);
@@ -679,6 +686,7 @@ function Faces({ people, photos }: { people: LineupRow[]; photos: Record<string,
           size="sm"
           src={p.photoPath ? photos[p.photoPath] : undefined}
           deleted={isRemoved(p)}
+          silhouette
         />
       ))}
     </AvatarGroup>

@@ -349,7 +349,16 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
       'aria-checked',
       'true',
     );
-    await expect(dialog).toContainText('4 of 5 — tap a star');
+    await expect(dialog).toContainText('4 of 5 stars');
+    // One tab stop, arrows choose (a radio group): Right to 5, Left back to 4.
+    await page.keyboard.press('ArrowRight');
+    await expect(dialog.getByRole('radio', { name: '5 stars' })).toBeFocused();
+    await expect(dialog).toContainText('5 of 5 stars');
+    await page.keyboard.press('ArrowLeft');
+    await expect(dialog.getByRole('radio', { name: '4 stars' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
     await dialog.getByLabel('Comment').fill('Calm under pressure, great with the top table.');
     await dialog.getByRole('button', { name: 'Submit feedback' }).click();
 

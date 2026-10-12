@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { THEME_COLOR } from './theme-color';
 
 /**
  * ADR-0007: one user-facing switch, and it is a *theme* switch only. Every
@@ -38,20 +39,16 @@ export function resolveMode(): Mode {
     : 'light';
 }
 
-/**
- * The browser chrome colour (`<meta name="theme-color">`) for each mode: the
- * warm grounds' `--bg` in tokens.css, light cream and dark navy. A meta tag
- * cannot read a CSS variable, so these two strings mirror the tokens, and
- * appearance.test.ts fails if either drifts.
- *
- * Why it is written here at all: an app's metadata can only offer one
+/*
+ * THEME_COLOR (theme-color.ts) is the browser chrome colour for each mode.
+ * Why it is also set from script: an app's metadata can only offer one
  * colour per `prefers-color-scheme`, which follows the phone's setting. A
  * client on a light phone who picks dark in the portal then got a cream
  * title bar over a navy page (ADR-0052 §3). One meta with no `media`,
  * placed first in <head>, wins over those (the HTML spec takes the first
  * theme-color whose media matches), and follows the in-app switch.
  */
-export const THEME_COLOR: Record<Mode, string> = { light: '#FAF7F4', dark: '#0A0E18' };
+export { THEME_COLOR };
 
 const THEME_META_ID = 'thc-theme-color';
 

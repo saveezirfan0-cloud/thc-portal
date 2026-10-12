@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AuthCard } from '@thc/ui';
+import { AuthMain } from './_components/AuthMain';
 
 export const metadata = { title: 'Not found · THC Client Portal' };
 
@@ -11,17 +12,21 @@ export const metadata = { title: 'Not found · THC Client Portal' };
  * must not be told apart, or the page confirms another client's event ids.
  */
 export default function NotFound() {
+  // Rendered by the root boundary, outside every segment layout, so it
+  // brings its own landmark.
   return (
-    <AuthCard product="Client Portal" heading="Page not found">
-      <p className="muted">
-        There is nothing at this address. The link may be out of date, or the event is no longer
-        shown in the portal.
-      </p>
-      <div className="row">
-        <Link className="btn primary" href="/client">
-          Back to your events
-        </Link>
-      </div>
-    </AuthCard>
+    <AuthMain>
+      <AuthCard product="Client Portal" heading="Page not found">
+        <p className="muted">
+          There is nothing at this address. The link may be out of date, or the event is no longer
+          shown in the portal.
+        </p>
+        <div className="row">
+          <Link className="btn primary" href="/client">
+            Back to your events
+          </Link>
+        </div>
+      </AuthCard>
+    </AuthMain>
   );
 }

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { THEME_COLOR } from '@thc/ui';
 
 /**
  * Web app manifest (ADR-0052): what lets a client add the portal to a
@@ -25,12 +26,12 @@ export default function manifest(): MetadataRoute.Manifest {
     // The splash ground is the light ground the portal ships (`--bg` on the
     // light axis in packages/ui tokens.css), as the Staff App's is. A
     // manifest carries one literal, so it cannot follow the dark mode.
-    background_color: '#FAF7F4',
+    background_color: THEME_COLOR.light,
     // The navy ground the portal actually renders in dark mode: `--bg` on
     // `[data-style='warm'][data-theme='dark']`, the style both modes use
     // (ADR-0007). Paired with the dark entry of `viewport.themeColor` in
     // app/layout.tsx; the manifest test holds all three together.
-    theme_color: '#0A0E18',
+    theme_color: THEME_COLOR.dark,
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

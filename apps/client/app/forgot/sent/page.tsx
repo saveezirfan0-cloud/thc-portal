@@ -27,10 +27,10 @@ export default async function Page() {
         its way from <a href={`mailto:${OFFICE}`}>{OFFICE}</a>. The link works once.
       </p>
       <div className="row" style={{ justifyContent: 'center', gap: 'var(--sp-10)' }}>
-        <Link href="/forgot" className="xs">
+        <Link href="/forgot" className="xs auth-link">
           Didn’t get it? Send it again
         </Link>
-        <Link href="/login" className="xs">
+        <Link href="/login" className="xs auth-link">
           ← Back to sign in
         </Link>
       </div>

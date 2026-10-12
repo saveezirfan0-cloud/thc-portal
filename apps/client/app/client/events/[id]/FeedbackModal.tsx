@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Alert, Avatar, Button, Modal, Textarea } from '@thc/ui';
 import { isRemoved, starsHint } from '../../rules';
 import { leaveFeedback } from './actions';
@@ -34,6 +35,30 @@ const COUNTER_FROM = 1800;
 const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
 
 /** The action's "one entry per worker per event" refusal (23505, §11.5). */
+/**
+ * The star a key moves the rating to, as a radio group does (WAI-ARIA APG):
+ * Right/Up one more, Left/Down one fewer, Home the first, End the last,
+ * stopping at the ends. Null for any other key. From no rating yet, Right
+ * and Up pick 1 star and Left and Down pick 1 too — the first a keyboard
+ * can reach — rather than jumping to 5.
+ */
+export function starForKey(key: string, rating: number): number | null {
+  switch (key) {
+    case 'ArrowRight':
+    case 'ArrowUp':
+      return Math.min(5, Math.max(1, rating + 1));
+    case 'ArrowLeft':
+    case 'ArrowDown':
+      return Math.max(1, rating - 1);
+    case 'Home':
+      return 1;
+    case 'End':
+      return 5;
+    default:
+      return null;
+  }
+}
+
 export function isAlreadyLeft(result: { error?: string; code?: string | null }): boolean {
   return result.code === '23505' || /already been left/i.test(result.error ?? '');
 }
@@ -66,6 +91,18 @@ export function FeedbackModal({
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // One tab stop for the group (roving tabindex): the chosen star, or the
+  // first before a choice; the arrows, Home and End move and choose.
+  function onStarKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (pending) return;
+    const next = starForKey(e.key, rating);
+    if (next === null) return;
+    e.preventDefault();
+    setRating(next);
+    starRefs.current[next - 1]?.focus();
+  }
 
   function close() {
     if (pending) return;
@@ -126,7 +163,12 @@ export function FeedbackModal({
       {/* The face first (event.html:215): the customer rates the person
           they recognise, not a name on a list (§11.1). */}
       <div className="fb-who">
-        <Avatar name={personName} src={photo} deleted={isRemoved({ name: personName })} />
+        <Avatar
+          name={personName}
+          src={photo}
+          deleted={isRemoved({ name: personName })}
+          silhouette
+        />
         <div className="xs muted">
           {role} · {eventTitle} · {eventDate}
         </div>
@@ -136,13 +178,23 @@ export function FeedbackModal({
 
       <fieldset className="stars-field">
         <legend className="label">Rating</legend>
-        <div className="stars-row" role="radiogroup" aria-label="Rating out of five">
+        <div
+          className="stars-row"
+          role="radiogroup"
+          aria-label="Rating out of five"
+          aria-required="true"
+          onKeyDown={onStarKey}
+        >
           {STARS.map((n) => (
             <button
               key={n}
+              ref={(el) => {
+                starRefs.current[n - 1] = el;
+              }}
               type="button"
               role="radio"
               aria-checked={rating === n}
+              tabIndex={n === (rating || 1) ? 0 : -1}
               aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
               className={n <= rating ? 'star on' : 'star'}
               onClick={() => setRating(n)}

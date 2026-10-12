@@ -129,6 +129,18 @@ describe('the /reset page', () => {
     auth.getClaims.mockResolvedValue({ data: null, error: null });
     const html = await page();
     expect(html).toContain('This link has expired');
+    expect(await page({ error: 'expired' })).toContain('This link has expired');
+  });
+
+  it('a link with no token says it is incomplete, not expired', async () => {
+    auth.getClaims.mockResolvedValue({ data: null, error: null });
+    const html = await page({ error: 'missing' });
+    expect(html).toContain('This link is incomplete');
+    expect(html).toContain(
+      'This link is incomplete — copy the whole link from the email, or ask for a new one.',
+    );
+    expect(html).not.toContain('expired');
+    expect(html).toContain('href="/forgot"');
   });
 });
 

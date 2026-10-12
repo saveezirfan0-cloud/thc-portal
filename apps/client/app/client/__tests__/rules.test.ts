@@ -9,6 +9,7 @@ import {
   fillOf,
   filterByTab,
   groupBySection,
+  roleCountOf,
   headerDocuments,
   starsHint,
   statusTone,
@@ -187,6 +188,21 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
       'Deleted account #1042',
     ]);
     expect(chef?.confirmed).toBe(3);
+  });
+
+  it('lists a section nobody has confirmed on yet, empty, in its window order', () => {
+    const groups = groupBySection([], sections);
+    expect(groups.map((g) => [g.role, g.confirmed, g.people.length])).toEqual([
+      ['Chef', 0, 0],
+      ['Waiting Staff', 0, 0],
+    ]);
+  });
+
+  it('counts roles from the sections, two sections of one role as one', () => {
+    const twice = [...sections, section({ shiftId: 'ws-2', role: 'Waiting Staff' })];
+    expect(roleCountOf(twice, [])).toBe(2);
+    expect(roleCountOf([], lineup)).toBe(2);
+    expect(roleCountOf([], [])).toBe(0);
   });
 
   it('does not drop a role that has no matching section row', () => {
@@ -426,8 +442,9 @@ describe('the event page header draws both downloads once completed (§11.2, eve
 });
 
 describe("the star picker's readout (event.html:225)", () => {
-  it('reads "4 of 5 — tap a star" once a star is on, and asks for one before', () => {
-    expect(starsHint(4)).toBe('4 of 5 — tap a star');
-    expect(starsHint(0)).toBe('Tap a star — 1 to 5, required');
+  it('reads "4 of 5 stars" once a star is on, and asks for one before, device-neutral', () => {
+    expect(starsHint(4)).toBe('4 of 5 stars');
+    expect(starsHint(0)).toBe('Choose 1 to 5 stars — required');
+    expect(starsHint(0) + starsHint(3)).not.toMatch(/tap/i);
   });
 });

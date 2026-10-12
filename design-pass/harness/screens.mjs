@@ -190,6 +190,17 @@ const portalDb = {
   client_event_documents_v: [],
 };
 
+/** The portal's db for one event page: the stub client does not filter. */
+const portalEventDb = (short, edit = (db) => db) => {
+  const id = R.portalEventId(short);
+  return edit({
+    ...portalDb,
+    client_events_v: R.portalEvents.filter((e) => e.id === id),
+    client_role_sections_v: R.portalSections.filter((s) => s.event_id === id),
+    client_lineup_v: R.portalLineup.filter((l) => l.event_id === id),
+  });
+};
+
 const base = {
   checkin: { app: 'office', page: O + 'checkin/page.tsx', pathname: '/checkin' },
   compliance: {
@@ -425,7 +436,7 @@ const base = {
   'loading-event-new': { app: 'office', page: O + 'events/new/loading.tsx', pathname: '/events' },
   'loading-portal': {
     app: 'client',
-    page: C + 'client/loading.tsx',
+    page: C + 'client/(list)/loading.tsx',
     layouts: [C + 'client/layout.tsx'],
     pathname: '/client',
     db: portalDb,
@@ -455,26 +466,79 @@ const base = {
   },
   'portal-events': {
     app: 'client',
-    page: C + 'client/page.tsx',
+    page: C + 'client/(list)/page.tsx',
     layouts: [C + 'client/layout.tsx'],
     pathname: '/client',
+    db: portalDb,
+  },
+  'portal-events-all': {
+    app: 'client',
+    page: C + 'client/(list)/page.tsx',
+    layouts: [C + 'client/layout.tsx'],
+    pathname: '/client',
+    search: { tab: 'all' },
     db: portalDb,
   },
   'portal-event': {
     app: 'client',
     page: C + 'client/events/[id]/page.tsx',
     layouts: [C + 'client/layout.tsx'],
-    params: { id: 'e1' },
-    pathname: '/client/events/e1',
-    db: { ...portalDb, client_events_v: [R.portalEvents[1]] },
+    params: { id: R.portalEventId('e1') },
+    pathname: '/client/events/' + R.portalEventId('e1'),
+    db: portalEventDb('e1'),
   },
   'portal-event-done': {
     app: 'client',
     page: C + 'client/events/[id]/page.tsx',
     layouts: [C + 'client/layout.tsx'],
-    params: { id: 'e2' },
-    pathname: '/client/events/e2',
-    db: { ...portalDb, client_events_v: [R.portalEvents[2]] },
+    params: { id: R.portalEventId('e2') },
+    pathname: '/client/events/' + R.portalEventId('e2'),
+    // A GDPR-removed worker (§1.7): dashed slot, greyed "Leave feedback".
+    db: portalEventDb('e2', (db) => ({
+      ...db,
+      client_lineup_v: [
+        ...db.client_lineup_v,
+        {
+          ...db.client_lineup_v[0],
+          booking_id: 'removed',
+          name: 'Deleted account #1042',
+          sort_key: 'zzzz',
+          feedback_given: false,
+        },
+      ],
+    })),
+  },
+  'portal-login': {
+    app: 'client',
+    page: C + 'login/page.tsx',
+    layouts: [C + 'login/layout.tsx'],
+    pathname: '/login',
+  },
+  'portal-forgot-sent': {
+    app: 'client',
+    page: C + 'forgot/sent/page.tsx',
+    layouts: [C + 'forgot/layout.tsx'],
+    pathname: '/forgot/sent',
+  },
+  'portal-account': {
+    app: 'client',
+    page: C + 'client/account/page.tsx',
+    layouts: [C + 'client/layout.tsx'],
+    pathname: '/client/account',
+    db: { ...portalDb, client_account_v: [{ company: 'Grosvenor House', recipients: [] }] },
+  },
+  // An upcoming event nobody has confirmed on yet: each role says so.
+  'portal-event-empty': {
+    app: 'client',
+    page: C + 'client/events/[id]/page.tsx',
+    layouts: [C + 'client/layout.tsx'],
+    params: { id: R.portalEventId('e0') },
+    pathname: '/client/events/' + R.portalEventId('e0'),
+    db: portalEventDb('e0', (db) => ({
+      ...db,
+      client_role_sections_v: db.client_role_sections_v.map((s) => ({ ...s, confirmed: 0 })),
+      client_lineup_v: [],
+    })),
   },
 };
 

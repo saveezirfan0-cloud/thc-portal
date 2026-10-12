@@ -1541,6 +1541,17 @@ textarea.input {
   color: var(--muted);
   border: 1px dashed var(--control-line);
 }
+/* No photo where the product shows faces, never initials (`Avatar
+   silhouette`, Client Portal §11.1): a neutral person glyph in the muted ink
+   on the avatar's own ground, cropped by its shape. */
+.avatar.silhouette {
+  color: var(--muted);
+}
+.avatar-glyph {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 /* "+N" at the end of a row of faces: an avatar-sized chip, so it takes the
    size class of the faces it follows (`AvatarGroup more`, 30×30 beside
    `.avatar.sm`) and the same shape token. A count, set in the number face. */
