@@ -2,8 +2,9 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The Client Portal's reset flow (A1 → A2 → A3; audit D13; ADR-0039):
- * /forgot asks for a link to this app's /auth/confirm, which spends the
- * token_hash in any browser (or a PKCE code) and hands off to /reset.
+ * /forgot asks for a link to this app's /auth/confirm, which never spends
+ * the token_hash on GET: its interstitial's "Continue" POST does, in any
+ * browser (a PKCE code is still exchanged), and hands off to /reset.
  */
 const auth = vi.hoisted(() => ({
   verifyOtp: vi.fn(),
@@ -20,8 +21,14 @@ vi.mock('next/navigation', () => ({
   },
 }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ auth }) }));
+// The per-account throttle is held by its own tests (packages/db, ../../login/__tests__/throttle.test.ts).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  recoveryRequestAllowed: async () => true,
+}));
 
 const { GET: confirm } = await import('../../auth/confirm/route');
+const { continueReset } = await import('../../auth/confirm/continue/actions');
 const { requestReset } = await import('../actions');
 
 const ORIGIN = 'https://client.thc.example';
@@ -44,12 +51,25 @@ beforeEach(() => {
 });
 
 describe('GET /auth/confirm', () => {
-  it('spends a recovery token_hash and hands off to /reset', async () => {
+  it('GET spends nothing; "Continue" spends the token_hash and hands off to /reset', async () => {
     const res = await confirm(
       new Request(`${ORIGIN}/auth/confirm?token_hash=th&type=recovery&next=/reset`),
     );
+    expect(auth.verifyOtp).not.toHaveBeenCalled();
+    expect(location(res)).toBe(`${ORIGIN}/auth/confirm/continue?token_hash=th&next=%2Freset`);
+
+    const fd = new FormData();
+    fd.set('token_hash', 'th');
+    fd.set('next', '/reset');
+    await expect(continueReset(fd)).rejects.toThrow('REDIRECT:/reset');
     expect(auth.verifyOtp).toHaveBeenCalledWith({ type: 'recovery', token_hash: 'th' });
-    expect(location(res)).toBe(`${ORIGIN}/reset`);
+  });
+
+  it('"Continue" with a spent token lands on the expired variant', async () => {
+    auth.verifyOtp.mockResolvedValue({ error: { status: 403, message: 'expired' } });
+    const fd = new FormData();
+    fd.set('token_hash', 'th');
+    await expect(continueReset(fd)).rejects.toThrow('REDIRECT:/reset?error=expired');
   });
 
   it('still takes a PKCE code', async () => {
@@ -70,7 +90,11 @@ describe('GET /auth/confirm', () => {
         `${ORIGIN}/auth/confirm?token_hash=th&type=recovery&next=${encodeURIComponent('//evil.com')}`,
       ),
     );
-    expect(location(res)).toBe(`${ORIGIN}/reset`);
+    expect(new URL(location(res) ?? '').searchParams.get('next')).toBe('/reset');
+    const fd = new FormData();
+    fd.set('token_hash', 'th');
+    fd.set('next', '//evil.com');
+    await expect(continueReset(fd)).rejects.toThrow('REDIRECT:/reset');
   });
 });
 

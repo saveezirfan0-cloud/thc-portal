@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { securityHeaderRules } from '@thc/db/security-headers';
 
 const PDFKIT_FILES = [
   '../../node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/standard-fonts/**',
@@ -7,6 +8,9 @@ const PDFKIT_FILES = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  // Framing, sniffing, referrer, permissions, HSTS (packages/db/src/security-headers.ts).
+  headers: async () => securityHeaderRules('office'),
   transpilePackages: ['@thc/ui', '@thc/domain', '@thc/db', '@thc/notifications', '@thc/pdf'],
   // §11.3's PDFs are drawn by @react-pdf/renderer in the /api/documents route
   // handlers. It ships its own reconciler, fonts and pdfkit, and must be

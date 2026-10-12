@@ -117,3 +117,60 @@ export async function runJob(
     });
   }
 }
+
+/**
+ * A job_runs row around work that is NOT a pg_cron call — willo-webhook's
+ * inbound deliveries, which Willo authenticates with its own token rather
+ * than the service key `runJob` demands.
+ *
+ * The response is the work's own; the row records its status and outcome
+ * (`ok` = not a 5xx, the retryable failures). A failure to write the row is
+ * logged and never changes the answer: Willo's delivery is not refused
+ * because our bookkeeping failed.
+ */
+export async function recordRun(
+  db: SupabaseClient,
+  name: string,
+  work: () => Promise<Response>,
+): Promise<Response> {
+  const { data: runId, error: startError } = await db.rpc('job_run_start', { p_job: name });
+  if (startError) console.error(`[${name}] job_run_start failed`, { error: startError.message });
+
+  const finish = async (ok: boolean, counts: Record<string, unknown>, error?: string) => {
+    if (startError || runId === null || runId === undefined) return;
+    const { error: finishError } = await db.rpc('job_run_finish', {
+      p_id: runId,
+      p_ok: ok,
+      p_counts: counts,
+      p_error: error ?? null,
+    });
+    if (finishError)
+      console.error(`[${name}] job_run_finish failed`, { error: finishError.message });
+  };
+
+  let response: Response;
+  try {
+    response = await work();
+  } catch (cause) {
+    await finish(false, {}, cause instanceof Error ? cause.message : String(cause));
+    throw cause;
+  }
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await response.clone().json()) as Record<string, unknown>;
+  } catch {
+    // Not JSON: the status alone is recorded.
+  }
+  const counts: Record<string, unknown> = { status: response.status };
+  for (const field of ['outcome', 'code']) {
+    if (typeof body[field] === 'string') counts[field] = body[field];
+  }
+  const failed = response.status >= 500;
+  await finish(
+    !failed,
+    counts,
+    failed && typeof body['error'] === 'string' ? body['error'] : undefined,
+  );
+  return response;
+}

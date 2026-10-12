@@ -54,7 +54,10 @@ select is((select count(*)::int from notification_outbox where template = 'E5b' 
 -- =====================================================================
 -- 3 · The worker's own save is E5 and only E5 — one change, one email
 -- =====================================================================
-select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 set local role authenticated;
 select lives_ok($$ select staff_save_bank('Staff Alpha', '20-00-00', '55779911') $$, 'the worker saves through the Staff App');
 reset role;

@@ -16,7 +16,17 @@ const state = vi.hoisted(() => ({
   middlewareUser: null as null | { app_metadata: Record<string, unknown> },
 }));
 
-vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ getAll: () => [], set: () => {} }),
+  headers: async () => new Headers(),
+}));
+// The per-account throttle is held by its own tests (packages/db, ./throttle.test.ts).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  authAttemptAllowed: async () => true,
+  recordAuthAttempt: async () => {},
+  recoveryRequestAllowed: async () => true,
+}));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);

@@ -204,15 +204,23 @@ function isDeletion({ value, options }: CookieToSet): boolean {
 
 /**
  * One auth cookie's options under the given choice. `null` (no choice, and a
- * pass-through fallback) leaves the library's options untouched.
+ * pass-through fallback) leaves the library's lifetime untouched.
+ *
+ * Whatever the choice, `Secure` in production: `@supabase/ssr` sets no
+ * `Secure` of its own, and these cookies ARE the session — a single plain
+ * http request to the host (a typed address, a downgraded link) would carry
+ * them in the clear. Not in `next dev`, which is http and would drop them.
  */
 export function authCookieOptions(
   options: CookieOptions,
   persistence: SessionPersistence | null,
 ): CookieOptions {
-  if (persistence === null) return options;
+  const secure = options.secure === true || isProduction();
+  if (persistence === null) return { ...options, secure };
   const { maxAge: _maxAge, expires: _expires, ...rest } = options;
-  return persistence === 'persistent' ? { ...rest, maxAge: KEEP_SIGNED_IN_MAX_AGE } : rest;
+  return persistence === 'persistent'
+    ? { ...rest, secure, maxAge: KEEP_SIGNED_IN_MAX_AGE }
+    : { ...rest, secure };
 }
 
 /** Apply the choice to a batch of auth-cookie writes, leaving deletions alone. */

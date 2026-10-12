@@ -62,8 +62,22 @@ describe('authCookieOptions', () => {
     expect(out).toMatchObject({ path: '/', sameSite: 'lax', httpOnly: false });
   });
 
-  it('no choice on this device: the library options pass through untouched', () => {
-    expect(authCookieOptions(LIBRARY_DEFAULT, null)).toEqual(LIBRARY_DEFAULT);
+  it('no choice on this device: the library lifetime passes through untouched', () => {
+    expect(authCookieOptions(LIBRARY_DEFAULT, null)).toEqual({ ...LIBRARY_DEFAULT, secure: false });
+  });
+
+  it('Secure in production whatever the choice — the Staff App pass-through too', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    for (const choice of ['persistent', 'session', null] as const) {
+      expect(authCookieOptions(LIBRARY_DEFAULT, choice).secure).toBe(true);
+    }
+    expect(authCookieOptions(LIBRARY_DEFAULT, null)).toEqual({ ...LIBRARY_DEFAULT, secure: true });
+  });
+
+  it('not Secure under plain-http `next dev`, unless the library already said so', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    expect(authCookieOptions(LIBRARY_DEFAULT, 'persistent').secure).toBe(false);
+    expect(authCookieOptions({ ...LIBRARY_DEFAULT, secure: true }, null).secure).toBe(true);
   });
 });
 
@@ -206,7 +220,14 @@ describe('withSessionPersistence: the refresh path', () => {
   it('no preference, Staff App fallback (null): the library default is left alone', () => {
     const { methods, written } = harness([], { fallback: null });
     methods.setAll([tokenWrite()]);
-    expect(written()[0]?.options).toEqual(LIBRARY_DEFAULT);
+    expect(written()[0]?.options).toEqual({ ...LIBRARY_DEFAULT, secure: false });
+  });
+
+  it('Staff App fallback in production: the library lifetime, but Secure', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { methods, written } = harness([], { fallback: null });
+    methods.setAll([tokenWrite()]);
+    expect(written()[0]?.options).toEqual({ ...LIBRARY_DEFAULT, secure: true });
   });
 
   it("a device's choice beats the fallback either way", () => {

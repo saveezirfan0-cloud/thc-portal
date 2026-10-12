@@ -174,8 +174,11 @@ select throws_ok($$ select link_staff_account('45000000-0000-4000-8000-000000000
 select is(activation_preview(:'tok_mei'),
   '{"firstName":"Mei","lastName":"Lin","email":"Mei@Act.test","activated":false}'::jsonb,
   'an invite token (confirmation_token) previews the candidate it is for');
-select is(activation_preview(:'tok_zed') ->> 'firstName', 'Zed',
-  'a magic-link token (recovery_token) does too');
+-- 20261012120500: recovery_token is also where a PASSWORD-RESET token lives,
+-- so the preview no longer reads it (a magic-link activation keeps working,
+-- it is just not greeted by name).
+select is(activation_preview(:'tok_zed'), null::jsonb,
+  'a recovery_token (magic link or password reset) previews nobody');
 select ok(activation_preview('') is null and activation_preview('short') is null and activation_preview(null) is null,
   'an empty or malformed token matches nothing — the token columns default to an empty string');
 select is(activation_preview(:'tok_noor'), null::jsonb,

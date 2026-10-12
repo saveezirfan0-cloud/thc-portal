@@ -446,8 +446,8 @@ set local "request.jwt.claims" = '{"sub":"c3920000-0000-4000-8000-000000000004",
 set local role authenticated;
 select is((select count(*)::int from onboarding_progress), 0, 'client: no onboarding data');
 select is((select count(*)::int from quiz_questions), 0, 'client: no quiz');
-select ok((select count(*)::int from contract_versions) >= 1,
-  'client: reads the contract text — the deliberate any-signed-in-role read (20260923120000), carrying no person and no money');
+select is((select count(*)::int from contract_versions), 0,
+  'client: not the contract text either — since 20261012120600 contract_versions_read names staff only (ADR-0026: the client holds no table policy)');
 with u as (update contract_versions set title = 'x' where version = 'rls-probe' returning 1)
   select is((select count(*)::int from u), 0, 'client: cannot change it');
 reset role;

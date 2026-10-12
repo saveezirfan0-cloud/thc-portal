@@ -176,6 +176,46 @@ export function parseTimestamp(value: string): number | null {
 }
 
 /**
+ * The shortest WILLO_WEBHOOK_SECRET accepted: 32 characters, e.g.
+ * `openssl rand -hex 16`. Anything shorter refuses every delivery exactly as
+ * an unset secret does (`secret_missing`, a 503 the logs name), rather than
+ * guarding the webhook with something guessable.
+ */
+export const MIN_WEBHOOK_SECRET_LENGTH = 32;
+
+/**
+ * The request body as text, read no further than `maxBytes`: null as soon
+ * as it is longer. `request.text()` would buffer whatever is sent when no
+ * Content-Length is declared (a chunked upload), so the stream is read here
+ * and dropped at the cap.
+ */
+export async function readBodyCapped(request: Request, maxBytes: number): Promise<string | null> {
+  const declared = Number(request.headers.get('content-length') ?? '0');
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+/**
  * The token from the webhook address against the secret. Both are hashed
  * first, so the comparison is over two 32-byte digests whatever the
  * lengths, and the time taken says nothing about either.
@@ -206,7 +246,11 @@ export async function verifyWilloSignature(
   nowSeconds: number,
   urlToken: string | null = null,
 ): Promise<SignatureVerdict> {
-  if (!config.secret) return { ok: false, reason: 'secret_missing' };
+  // A short secret is treated as none: it is the whole of the check on the
+  // token path, and a guessable one is an open door (MIN_WEBHOOK_SECRET_LENGTH).
+  if (!config.secret || config.secret.length < MIN_WEBHOOK_SECRET_LENGTH) {
+    return { ok: false, reason: 'secret_missing' };
+  }
 
   // Willo does not sign (ADR-0066): the secret is in the address we gave
   // it. A signature header, when present, still wins — a delivery is

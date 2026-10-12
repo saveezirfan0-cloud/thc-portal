@@ -17,7 +17,7 @@
     "@thc/domain": "workspace:*",
     "@thc/notifications": "workspace:*",
     "@thc/ui": "workspace:*",
-    "next": "^15.5.4",
+    "next": "^15.5.27",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

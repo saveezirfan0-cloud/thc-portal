@@ -15,7 +15,7 @@
 -- Nothing touches `settings` here before the admin does.
 -- =====================================================================
 begin;
-select plan(7);
+select plan(8);
 
 \set admin_uid '67700000-0000-4000-8000-000000000001'
 insert into auth.users (id, email) values (:'admin_uid', 'settings-admin@rls.test');
@@ -44,14 +44,21 @@ select throws_ok(
       on conflict (key) do update set value = excluded.value$$,
   '22023', null,
   'edge_base_url is still refused for anything but a Supabase Functions base');
+-- 20261012120000: and even a real Supabase base is not a session's to write —
+-- the bearer is posted there (786 has the rest).
+select throws_ok(
+  $$insert into settings (key, value) values ('edge_base_url', '"https://abcdefghijklmnopqrst.supabase.co/functions/v1"'::jsonb)
+      on conflict (key) do update set value = excluded.value$$,
+  '42501', 'edge_base_url_locked',
+  'a Supabase Functions base from an admin session is refused: the deploy sets it');
+
+reset role;
 select lives_ok(
   $$insert into settings (key, value) values ('edge_base_url', '"https://abcdefghijklmnopqrst.supabase.co/functions/v1"'::jsonb)
       on conflict (key) do update set value = excluded.value$$,
-  'a Supabase Functions base is accepted');
+  'the deploy step (no API role) sets a Supabase Functions base');
 
-reset role;
-
--- 6–7 · the guard is a definer, and publishes no RPC
+-- 7–8 · the guard is a definer, and publishes no RPC
 select ok(
   (select prosecdef from pg_proc where oid = 'public.settings_edge_base_url_guard()'::regprocedure),
   'settings_edge_base_url_guard() runs as its owner');

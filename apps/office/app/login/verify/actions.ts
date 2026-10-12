@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { safeNextPath } from '@thc/db';
+import { authAttemptAllowed, recordAuthAttempt, userKey } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 import {
   DEFAULT_LANDING,
@@ -13,7 +14,7 @@ import {
   normaliseCode,
 } from '../two-step';
 import { readTwoStep } from '../two-step-session';
-import { NO_AUTHENTICATOR } from './copy';
+import { NO_AUTHENTICATOR, TOO_MANY_CODES } from './copy';
 
 /**
  * The code step (ADR-0057): after email + password, a login with a verified
@@ -47,9 +48,19 @@ export async function verifyTwoStep(
   if (decision === 'pass') redirect(next);
   if (!totp) return NO_AUTHENTICATOR;
 
+  // Five wrong codes in 15 minutes per login (packages/db/src/auth-throttle.ts):
+  // a 6-digit code is a million guesses, and GoTrue's own limit is per IP —
+  // Vercel's. The password is already proven here, so the refusal can say
+  // what it is.
+  const keys = [await userKey(user.id)];
+  if (!(await authAttemptAllowed('verify', keys))) return TOO_MANY_CODES;
+
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: totp.id, code });
   if (error) {
     console.error('[two-step] code refused', { status: error.status, code: error.code });
+    if (error.code === 'mfa_verification_failed' || error.code === 'mfa_verification_rejected') {
+      await recordAuthAttempt('verify', keys, true);
+    }
     return explainCodeError(error);
   }
 

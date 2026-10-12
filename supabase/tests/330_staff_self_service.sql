@@ -99,7 +99,10 @@ values (:'bkpast', timestamptz '2026-09-05 15:00+01', 'checked_in',
 
 -- The worker is the caller for everything below: none of these functions
 -- takes an id, which is the property most of this file is about.
-set local "request.jwt.claims" = '{"sub":"b7b7b7b7-0000-4000-8000-000000000001","role":"authenticated"}';
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', 'b7b7b7b7-0000-4000-8000-000000000001', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 
 -- =====================================================================
 -- 1. staff_me() — the sheet, and what it must not carry

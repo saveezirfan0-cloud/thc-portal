@@ -47,6 +47,12 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, on_d
 -- ---------------------------------------------------------------------
 set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
 
+-- 20261012121200: record_ping keeps one fix per booking per 20 seconds, and
+-- every call here shares one transaction's now(). :age_trail moves the
+-- trail and the check-in it is measured from back half a minute — what
+-- the passing of time would do — before each further fix.
+\set age_trail 'update location_pings set at = at - interval ''30 seconds'' where booking_id = ' :'bk_on' '; update check_logs set check_in_at = check_in_at - interval ''30 seconds'' where booking_id = ' :'bk_on' ';'
+
 select throws_ok(
   format('select record_ping(%L, 51.5, -0.1)', :'bk_on'),
   'P0001', 'not_checked_in',
@@ -64,11 +70,13 @@ select is((select last_on_site_at is not null from check_logs where booking_id =
   'and the check log carries the last on-site fix, so RULE-01 reads one column not a trail');
 
 -- Leaving the venue mid-shift.
+:age_trail
 select is(record_ping(:'bk_on', 51.6000, -0.1000)->>'exitRecorded', 'true',
   '§5.1 walking out of the geofence is recorded as an exit');
 select is((select count(*)::int from violations where booking_id = :'bk_on' and type = 'left_geofence'), 1,
   'BG-06/07 the exit raises a Violation for the manager to deal with');
 
+:age_trail
 select is(record_ping(:'bk_on', 51.6000, -0.1000)->>'exitRecorded', 'false',
   'a phone still reporting from across town is the same exit, not a new one');
 select is((select count(*)::int from violations where booking_id = :'bk_on' and type = 'left_geofence'), 1,
@@ -76,7 +84,9 @@ select is((select count(*)::int from violations where booking_id = :'bk_on' and 
 );
 
 -- Coming back and leaving again is genuinely a second exit.
+:age_trail
 select is(record_ping(:'bk_on', 51.5000, -0.1000)->>'decision', 'on_site', 'the worker returns');
+:age_trail
 select is(record_ping(:'bk_on', 51.6000, -0.1000)->>'exitRecorded', 'true', 'and leaves a second time');
 select is((select count(*)::int from violations where booking_id = :'bk_on' and type = 'left_geofence'), 2,
   'which is a second exit, and a second row');
@@ -85,9 +95,11 @@ select is((select count(*)::int from violations where booking_id = :'bk_on' and 
 -- geofence during the shift" (BG-07, §9.5, RULE-18). The app pings on
 -- mount, so before 20260927160600 a worker who left at the scheduled end
 -- and opened the app on the bus to check out was flagged mid-shift.
+:age_trail
 select is(record_ping(:'bk_on', 51.5000, -0.1000)->>'decision', 'on_site', 'the worker is back on site at the end');
 update shift_requirements set starts_at = now() - interval '5 hours', ends_at = now() - interval '1 minute'
  where id = :'sh_mon';
+:age_trail
 select is(record_ping(:'bk_on', 51.6000, -0.1000)->>'exitRecorded', 'false',
   'BG-07: an off-site fix after the section''s end is not an exit during the shift');
 select is((select count(*)::int from violations where booking_id = :'bk_on' and type = 'left_geofence'), 2,
