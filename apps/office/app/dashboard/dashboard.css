@@ -72,9 +72,40 @@
   .dash-upcoming td.dash-status {
     white-space: nowrap;
   }
-  .dash-upcoming .dash-roles .r {
-    flex-wrap: wrap;
-    row-gap: var(--sp-4);
+}
+
+/* A role name such as "Waiting Staff (Mandarin Oriental)" keeps to one line
+   and ends in an ellipsis; the chip's title has the full name. */
+.dash-roles .r > .chip {
+  max-width: 15rem;
+}
+.dash-roles .r > .chip .nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Wide desktop. The role lines are one grid with a column per part — role,
+   window, allocation, fill, margin — so every part sits in the same column
+   on every line of the event. Each line used to be its own wrapping flex
+   row, so the parts landed wherever they fell and no two lines matched. */
+@media (min-width: 1200px) {
+  .dash-roles {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) repeat(4, max-content);
+    column-gap: var(--sp-12);
+    row-gap: var(--sp-10);
+    align-items: center;
+  }
+  .dash-roles .r {
+    display: contents;
+  }
+  .dash-roles .r > .chip {
+    justify-self: start;
+  }
+  .dash-roles .r > .alloc,
+  .dash-roles .r > .margin {
+    text-align: right;
   }
 }
 
@@ -113,8 +144,9 @@
    card: the role and its fill on the first line, the window (with §1.8's
    "your time" under it) on the left below, and the allocation and margin
    stacked on the right. In one row the five parts were squeezed until a
-   time printed one character per line. */
-@media (max-width: 760px) {
+   time printed one character per line. A laptop too narrow for the wide
+   grid above gets the same block, inside the table. */
+@media (max-width: 1199px) {
   .dash-roles {
     gap: 0;
   }
@@ -142,6 +174,7 @@
   .dash-roles .r > .chip {
     grid-area: role;
     min-width: 0;
+    max-width: 100%;
     justify-self: start;
   }
   .dash-roles .r > .pill {
@@ -157,6 +190,18 @@
   .dash-roles .r > .margin {
     grid-area: margin;
     text-align: right;
+  }
+}
+
+/* Laptop, inside the table: the Roles cell keeps room for a window and its
+   "your time" line on one line each, so neither breaks mid-phrase. */
+@media (min-width: 761px) and (max-width: 1199px) {
+  .dash-upcoming td.cell-wide {
+    min-width: 16rem;
+  }
+  .dash-roles .r > .win,
+  .dash-roles .r > .win .sub {
+    white-space: nowrap;
   }
 }
 
