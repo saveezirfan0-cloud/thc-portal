@@ -108,7 +108,7 @@ describe('weighted score (§6)', () => {
 });
 
 describe('hard gates (§6, §3.3)', () => {
-  it('has the six the scope names, plus the three of a gender-only section (ADR-0079) and the two of an event that needs another language (ADR-0080)', () => {
+  it('has the six the scope names, plus the three of a gender-only section (ADR-0079), the two of an event that needs another language (ADR-0080) and the one of a same-staff-all-days role (ADR-0113)', () => {
     expect([...HARD_GATES]).toEqual([
       'wrong_role',
       'male_only',
@@ -121,6 +121,7 @@ describe('hard gates (§6, §3.3)', () => {
       'hours_limit',
       'self_cancelled',
       'do_not_return',
+      'not_available_all_days',
     ]);
   });
 

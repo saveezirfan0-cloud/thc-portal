@@ -1,0 +1,136 @@
+{
+  "description": "ADR-0113 same staff on all days: the series' hours, projected over every flagged day together, against the weekly cap (RULE-20). `days` are the section being judged plus its flagged siblings; `bookedHours` is the rest of the worker's week WITHOUT those days. Run by packages/domain/src/__tests__/series.test.ts; supabase/tests/787_same_staff_all_days.sql builds the same scenarios by name against series_hours_blocked().",
+  "cases": [
+    {
+      "name": "student_term_three_8h_days_in_one_week_blocked",
+      "days": [
+        { "startsOn": "2026-11-20", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-21", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-22", "hours": 8, "canRoster": true }
+      ],
+      "context": { "capHours": 20, "band": "student_term_20", "bookedHours": 0 },
+      "mode": "block",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 24 }], "blocked": true }
+    },
+    {
+      "name": "student_term_two_8h_days_fit",
+      "days": [
+        { "startsOn": "2026-11-21", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-22", "hours": 8, "canRoster": true }
+      ],
+      "context": { "capHours": 20, "band": "student_term_20", "bookedHours": 0 },
+      "mode": "block",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 16 }], "blocked": false }
+    },
+    {
+      "name": "student_term_exactly_the_cap_fits",
+      "days": [
+        { "startsOn": "2026-11-20", "hours": 7, "canRoster": true },
+        { "startsOn": "2026-11-21", "hours": 7, "canRoster": true },
+        { "startsOn": "2026-11-22", "hours": 6, "canRoster": true }
+      ],
+      "context": { "capHours": 20, "band": "student_term_20", "bookedHours": 0 },
+      "mode": "block",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 20 }], "blocked": false }
+    },
+    {
+      "name": "student_term_other_bookings_in_the_week_count",
+      "days": [
+        { "startsOn": "2026-11-21", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-22", "hours": 8, "canRoster": true }
+      ],
+      "context": { "capHours": 20, "band": "student_term_20", "bookedHours": 6 },
+      "mode": "block",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 16 }], "blocked": true }
+    },
+    {
+      "name": "below_degree_level_ten_hour_cap_blocks_two_8h_days",
+      "days": [
+        { "startsOn": "2026-11-21", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-22", "hours": 8, "canRoster": true }
+      ],
+      "context": { "capHours": 10, "band": "student_term_10", "bookedHours": 0 },
+      "mode": "warn",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 16 }], "blocked": true }
+    },
+    {
+      "name": "days_either_side_of_a_monday_are_two_weeks_each_judged_alone",
+      "days": [
+        { "startsOn": "2026-11-22", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-23", "hours": 8, "canRoster": true }
+      ],
+      "context": { "capHours": 20, "band": "student_term_20", "bookedHours": 0 },
+      "mode": "block",
+      "expect": {
+        "weeks": [
+          { "weekStart": "2026-11-16", "hours": 8 },
+          { "weekStart": "2026-11-23", "hours": 8 }
+        ],
+        "blocked": false
+      }
+    },
+    {
+      "name": "one_busy_week_among_several_blocks_the_series",
+      "days": [
+        { "startsOn": "2026-11-22", "hours": 8, "canRoster": true },
+        { "startsOn": "2026-11-23", "hours": 8, "canRoster": true }
+      ],
+      "context": { "capHours": 20, "band": "student_term_20", "bookedHours": 14 },
+      "mode": "block",
+      "expect": {
+        "weeks": [
+          { "weekStart": "2026-11-16", "hours": 8 },
+          { "weekStart": "2026-11-23", "hours": 8 }
+        ],
+        "blocked": true
+      }
+    },
+    {
+      "name": "standard_48_over_in_block_mode_blocks",
+      "days": [
+        { "startsOn": "2026-11-17", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-18", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-19", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-20", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-21", "hours": 10, "canRoster": true }
+      ],
+      "context": { "capHours": 48, "band": "standard_48", "bookedHours": 0 },
+      "mode": "block",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 50 }], "blocked": true }
+    },
+    {
+      "name": "standard_48_over_in_warn_mode_does_not_block",
+      "days": [
+        { "startsOn": "2026-11-17", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-18", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-19", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-20", "hours": 10, "canRoster": true },
+        { "startsOn": "2026-11-21", "hours": 10, "canRoster": true }
+      ],
+      "context": { "capHours": 48, "band": "standard_48", "bookedHours": 0 },
+      "mode": "warn",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 50 }], "blocked": false }
+    },
+    {
+      "name": "no_ceiling_never_blocks",
+      "days": [
+        { "startsOn": "2026-11-20", "hours": 12, "canRoster": true },
+        { "startsOn": "2026-11-21", "hours": 12, "canRoster": true },
+        { "startsOn": "2026-11-22", "hours": 12, "canRoster": true }
+      ],
+      "context": { "capHours": null, "band": "uncapped", "bookedHours": 0 },
+      "mode": "block",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 36 }], "blocked": false }
+    },
+    {
+      "name": "a_day_past_the_right_to_work_blocks_its_week",
+      "days": [
+        { "startsOn": "2026-11-20", "hours": 6, "canRoster": true },
+        { "startsOn": "2026-11-21", "hours": 6, "canRoster": false }
+      ],
+      "context": { "capHours": 48, "band": "standard_48", "bookedHours": 0 },
+      "mode": "warn",
+      "expect": { "weeks": [{ "weekStart": "2026-11-16", "hours": 12 }], "blocked": true }
+    }
+  ]
+}
