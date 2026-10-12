@@ -146,8 +146,9 @@ const PASSPORT: DocRequirement = {
  *     pt 4 had already said so of the student visa on 04.09.2026);
  *   · NI evidence anywhere but beside a UK birth certificate — there it is
  *     the second half of List A's pair and stays (ADR-0078, ADR-0065);
- *   · the completion letter — uploaded once the student graduates, from
- *     the Documents tab (§4.5), not at onboarding;
+ *   · the completion letter — uploaded once the student graduates (§4.5).
+ *     Not a row of its own here, but a graduate uploads it INSTEAD of the
+ *     Term Dates Letter and it answers that row (ADR-0112);
  *   · a P45 — never accepted anywhere (§2.8).
  *
  * The visa_document and status_document types stay in the schema: rows
@@ -194,7 +195,7 @@ export function requiredDocuments(
           key: 'university_term_dates_letter',
           label: 'University Term Dates Letter',
           accepts: ['university_term_dates_letter'],
-          hint: 'This year’s letter from your university',
+          hint: 'This year’s letter from your university. Graduated? Skip it and upload your Completion Letter instead.',
         },
       ];
   }

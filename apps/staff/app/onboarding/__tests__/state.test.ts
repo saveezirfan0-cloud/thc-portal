@@ -140,6 +140,65 @@ describe('onboarding_state() → the wizard', () => {
     expect(allUploaded(requirementRows(rejected))).toBe(false);
   });
 
+  describe('a graduate needs no Term Dates Letter (ADR-0112)', () => {
+    const completion = (status: string, id = 'c1', uploadedAt = '2026-09-19T10:00:00Z') => ({
+      ...raw.documents[0],
+      id,
+      docType: 'university_completion_letter',
+      status,
+      fileName: 'completion.pdf',
+      uploadedAt,
+    });
+    const termLetter = (status: string, uploadedAt = '2026-09-18T11:00:00Z') => ({
+      ...raw.documents[0],
+      id: 'd3',
+      docType: 'university_term_dates_letter',
+      status,
+      uploadedAt,
+    });
+    const rowsFor = (documents: unknown[]) =>
+      requirementRows(mapOnboardingState({ ...raw, documents } as typeof raw)!);
+
+    it('a Completion Letter that is not rejected answers the Term Dates Letter row', () => {
+      for (const status of ['pending', 'verified']) {
+        const rows = rowsFor([raw.documents[0], completion(status)]);
+        const term = rows.find((r) => r.requirement.key === 'university_term_dates_letter')!;
+        expect(term.viaCompletionLetter).toBe(true);
+        expect(term.doc?.docType).toBe('university_completion_letter');
+        expect(allUploaded(rows)).toBe(true);
+      }
+    });
+
+    it('a rejected Completion Letter answers nothing', () => {
+      const rows = rowsFor([raw.documents[0], completion('rejected')]);
+      expect(rows[1]!.viaCompletionLetter).toBeUndefined();
+      expect(allUploaded(rows)).toBe(false);
+    });
+
+    it('a rejected Term Dates Letter beside an approved Completion Letter is the live case: the letter stands in', () => {
+      const rows = rowsFor([raw.documents[0], termLetter('rejected'), completion('verified')]);
+      expect(rows[1]!.viaCompletionLetter).toBe(true);
+      expect(allUploaded(rows)).toBe(true);
+    });
+
+    it('a Term Dates Letter that is not rejected still wins — it is the literal requirement', () => {
+      const rows = rowsFor([raw.documents[0], termLetter('pending'), completion('pending')]);
+      expect(rows[1]!.viaCompletionLetter).toBeUndefined();
+      expect(rows[1]!.doc?.docType).toBe('university_term_dates_letter');
+    });
+
+    it('no other branch is touched', () => {
+      const rows = requirementRows(
+        mapOnboardingState({
+          ...raw,
+          rtwBranch: 'work_visa',
+          documents: [raw.documents[0], completion('verified')],
+        } as typeof raw)!,
+      );
+      expect(rows.map((r) => r.requirement.key)).toEqual(['passport']);
+    });
+  });
+
   it('labels and badges rows as the wireframes do', () => {
     expect(docIcon(s.documents[0]!)).toBe('JPG');
     expect(docIcon(null)).toBe('—');

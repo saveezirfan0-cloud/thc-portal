@@ -221,16 +221,38 @@ export interface RequirementRow {
   requirement: DocRequirement;
   /** The current upload that answers it, if any. */
   doc: UploadedDoc | null;
+  /**
+   * True when `doc` is the student's Official University Completion Letter
+   * standing in for the Term Dates Letter (ADR-0112): a graduate uploads the
+   * one and not the other. The row says so instead of offering an upload.
+   */
+  viaCompletionLetter?: boolean;
 }
 
-/** One row per document the branch asks for, with whatever answers it now. */
+const TERM_LETTER = 'university_term_dates_letter';
+
+/**
+ * One row per document the branch asks for, with whatever answers it now.
+ *
+ * A student who has graduated needs no Term Dates Letter (ADR-0112): an
+ * Official University Completion Letter that has not been rejected answers
+ * that row when there is no term letter of the same standing. A term letter
+ * that is not rejected still wins — it is the literal requirement.
+ */
 export function requirementRows(s: OnboardingState): RequirementRow[] {
   if (!s.rtwBranch) return [];
   return requiredDocuments(s.rtwBranch, s.progress.ukDocChoice).map((requirement) => {
     const candidates = s.documents
       .filter((d) => requirement.accepts.includes(d.docType))
       .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
-    return { requirement, doc: candidates[0] ?? null };
+    const row: RequirementRow = { requirement, doc: candidates[0] ?? null };
+    if (requirement.key === TERM_LETTER && (!row.doc || row.doc.status === 'rejected')) {
+      const standIn = completionLetterDoc(s);
+      if (standIn && standIn.status !== 'rejected' && standIn.status !== 'superseded') {
+        return { requirement, doc: standIn, viaCompletionLetter: true };
+      }
+    }
+    return row;
   });
 }
 
@@ -243,8 +265,9 @@ export function shareCodeDoc(s: OnboardingState): UploadedDoc | null {
  * The optional University Completion Letter (completion letter requirement
  * §2.1) — offered in the wizard to a Student-visa candidate who has already
  * finished their course. `undefined` for any other branch: the option does
- * not exist for them. Never part of `requirementRows()`, so it never holds
- * Submit or the quiz gate up (compliance_blockers() skips it too).
+ * not exist for them. Not a requirement of its own: it never holds Submit up
+ * (compliance_blockers() skips it too), but a graduate's letter stands in for
+ * the Term Dates Letter in `requirementRows()` (ADR-0112).
  */
 export function completionLetterDoc(s: OnboardingState): UploadedDoc | null | undefined {
   if (s.rtwBranch !== 'international_student') return undefined;

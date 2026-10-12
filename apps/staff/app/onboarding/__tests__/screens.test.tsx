@@ -325,7 +325,9 @@ describe('4/11 Documents', () => {
     expect(html).toContain('Criminal conviction declaration');
     // The note explains the choice before it is made (onboarding-1.html 4/11).
     expect(html).toContain('“No” is recorded as verified straight away');
-    expect(html).toContain('Upload your University Term Dates Letter to continue');
+    expect(html).toContain(
+      'Upload your University Term Dates Letter — or your Completion Letter if you’ve graduated — to continue',
+    );
     expect(footer(html)).toEqual({ label: 'Submit documents', disabled: true });
   });
 
@@ -340,13 +342,65 @@ describe('4/11 Documents', () => {
       />,
     );
     expect(html).toContain('University completion letter');
-    expect(html).toContain('Optional · finished your course already?');
+    expect(html).toContain('Finished your course already?');
     expect(html).toContain('href="/onboarding/completion-letter"');
     // Still the term letter that holds Submit, not the optional letter.
-    expect(html).toContain('Upload your University Term Dates Letter to continue');
+    expect(html).toContain(
+      'Upload your University Term Dates Letter — or your Completion Letter if you’ve graduated — to continue',
+    );
     // Any other branch: no row at all.
     const uk = mapOnboardingState({ ...rawState, rtwBranch: 'uk_irish' })!;
     expect(completionLetterDoc(uk)).toBeUndefined();
+  });
+
+  it('tells a student who has graduated that the Completion Letter is all they need (ADR-0112)', () => {
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(state)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+        completionLetter={completionLetterDoc(state)}
+      />,
+    );
+    expect(html).toContain('Already graduated?');
+    expect(html).toContain('you don’t need a University Term Dates Letter');
+    // Any other branch: no such note.
+    const uk = mapOnboardingState({ ...rawState, rtwBranch: 'uk_irish' })!;
+    const ukHtml = renderToStaticMarkup(
+      <DocumentsStep branchTitle="UK" rows={requirementRows(uk)} shareCode={null} today={TODAY} />,
+    );
+    expect(ukHtml).not.toContain('Already graduated?');
+  });
+
+  it('a graduate with a Completion Letter and no Term Dates Letter can Submit once the declaration is answered', () => {
+    const graduate = mapOnboardingState({
+      ...rawState,
+      documents: [
+        ...rawState.documents,
+        {
+          id: 'c1',
+          docType: 'university_completion_letter',
+          status: 'pending',
+          fileName: 'completion.pdf',
+          uploadedAt: '2026-09-19T10:00:00Z',
+        },
+      ],
+    })!;
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(graduate)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+        completionLetter={completionLetterDoc(graduate)}
+      />,
+    );
+    expect(html).toContain('Covered by your Completion Letter below once the office approves it');
+    expect(html).not.toContain('Upload your University Term Dates Letter');
+    expect(html).not.toContain('Already graduated?');
+    // Only the declaration is left to answer.
+    expect(html).toContain('Answer the criminal conviction question to continue');
   });
 
   it('the review hub shows a completion letter in review', () => {

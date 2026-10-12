@@ -45,7 +45,9 @@ export function DocumentsStep({
 
   const missing = rows.find((r) => !r.doc || r.doc.status === 'rejected');
   const hint = missing
-    ? `Upload your ${missing.requirement.label} to continue`
+    ? missing.requirement.key === 'university_term_dates_letter'
+      ? 'Upload your University Term Dates Letter — or your Completion Letter if you’ve graduated — to continue'
+      : `Upload your ${missing.requirement.label} to continue`
     : answer === null
       ? 'Answer the criminal conviction question to continue'
       : answer && details.trim() === ''
@@ -73,22 +75,35 @@ export function DocumentsStep({
         sub={`For your branch: ${branchTitle}. PDF, JPG, PNG or HEIC, up to 10 MB per file.`}
       />
 
+      {completionLetter !== undefined && !rows.some((r) => r.viaCompletionLetter) ? (
+        <Alert tone="cyan">
+          <b>Already graduated?</b> Then you only need to upload your Official University Completion
+          Letter (below) — you don’t need a University Term Dates Letter.
+        </Alert>
+      ) : null}
+
       <div className="mlist wiz-list">
-        {rows.map(({ requirement, doc }) => (
+        {rows.map(({ requirement, doc, viaCompletionLetter }) => (
           <div className={`docrow ${doc ? 'pending' : ''}`} key={requirement.key}>
-            <span className="ico">{docIcon(doc)}</span>
+            <span className="ico">{viaCompletionLetter ? '—' : docIcon(doc)}</span>
             <div>
               <div className="t">{requirement.label}</div>
               <div className="m">
-                {doc
-                  ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
-                      .filter(Boolean)
-                      .join(' · ')
-                  : `Missing · ${requirement.hint ?? ''}`}
+                {viaCompletionLetter
+                  ? doc?.status === 'verified'
+                    ? 'Not needed — your Completion Letter below covers it'
+                    : 'Covered by your Completion Letter below once the office approves it'
+                  : doc
+                    ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : `Missing · ${requirement.hint ?? ''}`}
               </div>
             </div>
             <div className="right">
-              {doc ? (
+              {viaCompletionLetter ? (
+                <Pill>{doc?.status === 'verified' ? 'Not needed' : 'Once approved'}</Pill>
+              ) : doc ? (
                 <>
                   <Pill tone="amber">Uploaded</Pill>
                   <button
