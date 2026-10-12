@@ -79,7 +79,8 @@ beforeEach(() => {
 });
 
 const creds = { email: ' Amara.K@Example.com ', password: 'Gala-Dinner-2026' };
-const KEYS = [sha('amara.k@example.com'), sha('ip:203.0.113.7')];
+// The address counts under its own, looser 'sign_in_ip' limit.
+const KEYS = [sha('amara.k@example.com'), { kind: 'sign_in_ip', key: sha('ip:203.0.113.7') }];
 
 describe('signIn: five wrong passwords per account, and per address', () => {
   it('asks under the account and the caller address before GoTrue', async () => {

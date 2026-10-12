@@ -39,11 +39,14 @@ const get = (site?: string) =>
 beforeEach(() => generateDocument.mockClear());
 
 describe('GET /api/documents/:eventId and Sec-Fetch-Site', () => {
-  it.each(['cross-site', 'same-site'])('refuses %s with 403 before drawing anything', async (site) => {
-    const response = await get(site);
-    expect(response.status).toBe(403);
-    expect(generateDocument).not.toHaveBeenCalled();
-  });
+  it.each(['cross-site', 'same-site'])(
+    'refuses %s with 403 before drawing anything',
+    async (site) => {
+      const response = await get(site);
+      expect(response.status).toBe(403);
+      expect(generateDocument).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(['same-origin', 'none'])('serves %s', async (site) => {
     const response = await get(site);
