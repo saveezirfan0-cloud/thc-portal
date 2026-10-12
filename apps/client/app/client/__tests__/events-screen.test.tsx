@@ -1,5 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../rules';
 
 /**
@@ -25,6 +28,13 @@ vi.mock('next/link', () => ({
       {children}
     </a>
   ),
+}));
+
+/** The address bar the list reads its tab and filters from (`useListState`). */
+let query = '';
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(query),
 }));
 
 const { EmptyList, EventsScreen, TimesheetStatus } = await import('../EventsScreen');
@@ -231,7 +241,7 @@ describe("the signed timesheet's status (§11.3, ADR-0049)", () => {
   it('is not drawn on an event that has not finished', () => {
     const markup = render([gala, launch]);
     expect(markup).not.toContain('Completed Timesheet ready');
-    expect(markup).not.toContain('Timesheet not issued yet');
+    expect(markup).not.toContain('>Timesheet not issued yet<');
   });
 });
 
@@ -316,5 +326,150 @@ describe('no money on the list (§11.1)', () => {
   it('prints no currency or rate anywhere', () => {
     const markup = render([gala, launch, lunch]);
     for (const word of ['£', 'rate', 'margin', 'per hour']) expect(markup).not.toContain(word);
+  });
+});
+
+afterEach(() => {
+  query = '';
+});
+
+/** The table's rows, in order, by title. */
+const tableOrder = (markup: string): string[] => {
+  const table = markup.slice(markup.indexOf('<tbody>'), markup.indexOf('</tbody>'));
+  return [...table.matchAll(/<td><b>(?:<s>)?([^<]+)/g)].map((m) => m[1]!);
+};
+
+const older = event({
+  id: 'ev-old',
+  title: 'Spring Ball',
+  startsAt: '2026-04-11T17:00:00Z',
+  endsAt: '2026-04-11T22:00:00Z',
+  status: 'completed',
+});
+
+describe('the order of each tab (product owner, 12.10.2026)', () => {
+  it('lists Upcoming soonest first', () => {
+    expect(tableOrder(render([launch, gala]))).toEqual(['Gala Dinner', 'Product Launch']);
+    expect(render([launch, gala])).toContain('only your events · soonest first');
+  });
+
+  it('keeps Past and All newest first', () => {
+    query = 'tab=past';
+    expect(tableOrder(render([older, lunch]))).toEqual(['Lunch Service', 'Spring Ball']);
+    expect(render([older, lunch])).toContain('only your events · newest first');
+    query = 'tab=all';
+    expect(tableOrder(render([older, gala, launch, lunch]))).toEqual([
+      'Product Launch',
+      'Gala Dinner',
+      'Lunch Service',
+      'Spring Ball',
+    ]);
+  });
+});
+
+describe('the tab and filters live in the address bar', () => {
+  it('opens the tab the URL names', () => {
+    query = 'tab=past';
+    const markup = render([gala, lunch]);
+    expect(markup).toMatch(/class="on"[^>]*>Past/);
+    expect(tableOrder(markup)).toEqual(['Lunch Service']);
+  });
+
+  it('applies the search, venue and dates from the URL and offers "Clear filters"', () => {
+    query = 'q=launch';
+    expect(tableOrder(render([gala, launch]))).toEqual(['Product Launch']);
+    expect(render([gala, launch])).toContain('value="launch"');
+    expect(render([gala, launch])).toContain('Clear filters');
+
+    query = 'venue=The+Shard';
+    expect(render([gala, launch])).toContain('<option value="The Shard" selected="">');
+    expect(tableOrder(render([gala, launch]))).toEqual(['Product Launch']);
+
+    query = 'from=2026-09-20&to=2026-09-30';
+    expect(tableOrder(render([gala, launch]))).toEqual(['Product Launch']);
+    expect(render([gala, launch])).toContain('value="2026-09-20"');
+  });
+
+  it('ignores what it cannot read', () => {
+    query = 'tab=nonsense&from=yesterday';
+    const markup = render([gala, launch]);
+    expect(tableOrder(markup)).toEqual(['Gala Dinner', 'Product Launch']);
+    expect(markup).not.toContain('Clear filters');
+  });
+});
+
+describe('a cancelled event (§11.1)', () => {
+  const rooftop = event({
+    id: 'ev-roof',
+    title: 'Rooftop Reception',
+    startsAt: '2026-09-21T17:00:00Z',
+    endsAt: '2026-09-21T21:00:00Z',
+    status: 'cancelled',
+    cancelledAt: '2026-09-16T10:12:00Z',
+  });
+
+  it('strikes the title, prints "PO —" and the day it was cancelled, on the table and the card', () => {
+    const markup = render([rooftop]);
+    expect(markup).toContain('<tr class="cancelled">');
+    expect(markup).toContain('<s>Rooftop Reception</s>');
+    expect(markup).toContain('<span class="sub">cancelled 16 Sep</span>');
+    const c = card(markup, '<s>Rooftop Reception</s>');
+    expect(c).toContain('PO —');
+    expect(c).toContain('cancelled 16 Sep');
+    expect(c).toContain('No document');
+  });
+
+  it('is greyed by colour, not faded (the card text stays legible)', () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'client-portal.css'),
+      'utf8',
+    );
+    const at = css.indexOf('.ecard.cancelled,\n.ecard.cancelled .t {');
+    expect(at).toBeGreaterThan(-1);
+    const rule = css.slice(at, css.indexOf('}', at));
+    expect(rule).not.toContain('opacity');
+    expect(rule).toContain('var(--muted)');
+  });
+});
+
+describe('the rows open the event (wireframe tr.clickable)', () => {
+  it('marks a live row clickable and keeps its Details link as the real target', () => {
+    const markup = render([gala]);
+    expect(markup).toContain('<tr class="clickable">');
+    expect(markup).toContain('<a href="/client/events/ev-gala" class="sm">Details →</a>');
+    // Not a focus stop of its own.
+    expect(markup).not.toMatch(/<tr[^>]*tabindex/);
+  });
+});
+
+describe('the venue folds under the event name at tablet width', () => {
+  it('prints the venue twice: its own column, and a sub-line the CSS shows ≤1180px', () => {
+    const markup = render([gala]);
+    expect(markup).toContain('<th class="col-venue">Venue</th>');
+    expect(markup).toContain(
+      '<span class="sub venue-inline">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</span>',
+    );
+  });
+});
+
+describe('a document not issued yet says so in words', () => {
+  it('prints "Not issued yet" under the disabled button, and names it on the card', () => {
+    const markup = render([launch]);
+    const table = markup.slice(0, markup.indexOf('class="cards"'));
+    expect(table).toMatch(
+      /disabled=""[^>]*>↓ Allocation Timesheet<\/button><span class="ev-sheet">Not issued yet<\/span>/,
+    );
+    expect(card(markup, 'Product Launch')).toContain('Allocation Timesheet not issued yet');
+  });
+
+  it('says nothing extra once the document is live', () => {
+    expect(render([gala])).not.toContain('not issued yet');
+    expect(render([gala])).not.toContain('Not issued yet');
+  });
+});
+
+describe('the page head says when it was read', () => {
+  it('stamps the read time in UK time on the first paint', () => {
+    expect(render([gala])).toContain('as of <b>Sat 19 Sep 2026, 09:00 UK time</b>');
   });
 });

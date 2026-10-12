@@ -2,18 +2,21 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Alert, Avatar, Button, Panel, Pill } from '@thc/ui';
+import { Alert, Avatar, Button, Panel, Pill, useViewerZone } from '@thc/ui';
+import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
+import { AsOf } from '../../../_components/AsOf';
 import { Arrivals } from '../../ArrivalsPill';
 import type { EventArrivals } from '../../arrivals';
-import { UK_ZONE, formatDateTimeIn, formatTimeIn } from '@thc/domain';
 import { EventWindow } from '../../EventWindow';
-import { ukDateLong, ukDateShort } from '../../format';
+import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
+  feedbackInviteShown,
   feedbackOpen,
   fillOf,
   groupBySection,
   headerDocuments,
   isRemoved,
+  momentIn,
   statusTone,
 } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
@@ -72,6 +75,7 @@ export function EventScreen({
   const roleCount = useMemo(() => new Set(groups.map((g) => g.role)).size, [groups]);
   const fill = useMemo(() => fillOf(sections), [sections]);
   const open = feedbackOpen(event, at);
+  const invite = feedbackInviteShown(event, lineup, at);
   const cancelled = event.status === 'cancelled';
   const completed = event.status === 'completed';
   // "On the day" (ADR-0053): the count is live information about the shift in
@@ -84,19 +88,25 @@ export function EventScreen({
   const timesheet = completed ? documents.find((d) => d.kind === 'signout') : undefined;
 
   return (
-    <div className="stack" style={{ gap: 20 }}>
-      <div className="ehead">
+    <div className="stack epage">
+      <div className={cancelled ? 'ehead cancelled' : 'ehead'}>
         <div className="row wrap">
           <Link className="sm" href="/client">
             ← Your events
           </Link>
+          <span className="muted sm">
+            · <AsOf now={now} />
+          </span>
         </div>
 
         <div className="row wrap top">
           <div>
-            <h1>{event.title}</h1>
+            <h1>{cancelled ? <s>{event.title}</s> : event.title}</h1>
             <div className="muted sm">
               {event.venueName} · {event.venueAddress}
+              {cancelled && event.cancelledAt
+                ? ` · cancelled ${ukDayMonth(event.cancelledAt)}`
+                : ''}
             </div>
           </div>
           <Pill tone={statusTone(event.status)} large dot={event.status === 'ongoing'}>
@@ -164,12 +174,11 @@ export function EventScreen({
             <div>
               <div className="k">Timesheet</div>
               <div className="v">
-                {/* An audit stamp: UK-only, never dual (§1.8). The final copy
-                    goes to the contact emails on the client card (§11.4);
-                    the view carries no recipient count, so none is claimed. */}
-                Completed Allocation Timesheet generated{' '}
-                {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}
-                <span className="sub">by email to the contacts on your client card</span>
+                {/* An audit stamp: UK-only, never dual, and labelled (§1.8).
+                    Nothing is said about who it was emailed to: the view
+                    records that a final copy exists, not whether or to whom
+                    the office sent it (ADR-0089). */}
+                Completed Allocation Timesheet generated {ukStamp(timesheet.issuedAt)}
               </div>
             </div>
           ) : null}
@@ -187,16 +196,14 @@ export function EventScreen({
             This event was cancelled, so there is no confirmed line-up to show.
           </Alert>
         ) : open ? (
-          <Alert tone="green">
-            The event has started — you can now leave feedback on each member of staff. One entry
-            per person per event.
-          </Alert>
+          invite ? (
+            <Alert tone="green">
+              The event has started — you can now leave feedback on each member of staff. One entry
+              per person per event.
+            </Alert>
+          ) : null
         ) : (
-          <Alert tone="cyan">
-            Feedback opens once the event has started — from{' '}
-            {formatTimeIn(new Date(event.startsAt), UK_ZONE)} UK time on the day. Until then the
-            &ldquo;Leave feedback&rdquo; buttons are disabled.
-          </Alert>
+          <FeedbackLocked startsAt={event.startsAt} now={at} />
         )}
       </div>
 
@@ -230,6 +237,7 @@ export function EventScreen({
               <div className="wgrid">
                 {group.people.map((p) => {
                   const removed = isRemoved(p);
+                  const sent = p.feedbackGiven ? sentLine(p) : null;
                   return (
                     <div className="wrow" key={p.bookingId}>
                       <Avatar
@@ -238,12 +246,27 @@ export function EventScreen({
                         src={p.photoPath ? photos[p.photoPath] : undefined}
                         deleted={removed}
                       />
-                      <div>
-                        <div className="n">{p.name}</div>
-                        <div className="s">{p.role}</div>
+                      <div className="who">
+                        <div className={removed ? 'n muted' : 'n'}>{p.name}</div>
+                        <div className="s">
+                          {p.role}
+                          {sent ? (
+                            <>
+                              {' · '}
+                              <span className="fb-sent">{sent}</span>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
                       {p.feedbackGiven ? (
-                        <span className="fb sm muted">✓ Feedback sent</span>
+                        <Button
+                          className="fb sent"
+                          size="sm"
+                          disabled
+                          title="Your feedback is read-only once sent"
+                        >
+                          ✓ Feedback sent
+                        </Button>
                       ) : (
                         <Button
                           className="fb"
@@ -274,6 +297,7 @@ export function EventScreen({
           eventId={event.id}
           bookingId={rating.bookingId}
           personName={rating.name}
+          photo={rating.photoPath ? photos[rating.photoPath] : undefined}
           role={rating.role}
           eventTitle={event.title}
           eventDate={ukDateShort(event.startsAt)}
@@ -281,5 +305,39 @@ export function EventScreen({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * "★★★★☆ sent 20 Sep" under a rated worker's role (event.html:251): the
+ * customer's own stars and the UK day they sent them. Either half is left
+ * out when the view did not return it; null when there is nothing to say.
+ */
+export function sentLine(row: Pick<LineupRow, 'feedbackRating' | 'feedbackSentAt'>): string | null {
+  const rating = row.feedbackRating;
+  const stars =
+    typeof rating === 'number' && rating >= 1 && rating <= 5
+      ? '★'.repeat(rating) + '☆'.repeat(5 - rating)
+      : null;
+  const when = row.feedbackSentAt ? `sent ${ukDayMonth(row.feedbackSentAt)}` : null;
+  if (!stars && !when) return null;
+  return [stars, when].filter(Boolean).join(' ');
+}
+
+/**
+ * The locked-feedback banner (§11.2): when the buttons unlock, in UK time,
+ * and — once mounted, for a reader outside UK time — in theirs, written as
+ * the "Next up" strip writes it ("tomorrow 08:00 your time"), so it is the
+ * reader's own calendar day too (§1.8).
+ */
+function FeedbackLocked({ startsAt, now }: { startsAt: string; now: Date }) {
+  const zone = useViewerZone();
+  const mine = needsDualZone(zone) ? momentIn(startsAt, now, false, zone) : null;
+  return (
+    <Alert tone="cyan">
+      Feedback opens once the event has started — from {formatTimeIn(new Date(startsAt), UK_ZONE)}{' '}
+      UK time on the day{mine ? ` (${mine} your time)` : ''}. Until then the &ldquo;Leave
+      feedback&rdquo; buttons are disabled.
+    </Alert>
   );
 }

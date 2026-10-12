@@ -17,6 +17,8 @@ import { Alert, AuthCard, Button } from '@thc/ui';
  * client's data, even in an error (§11.1). The digest is what an operator
  * matches against that log.
  */
+const SUPPORT_EMAIL = 'admin@thehospitalitycompany.co.uk';
+
 export default function RouteError({
   error,
   reset,
@@ -31,8 +33,8 @@ export default function RouteError({
   return (
     <AuthCard product="Client Portal" heading="Something went wrong">
       <Alert tone="coral">
-        This page couldn’t be loaded. Please try again. If it keeps happening, email
-        admin@thehospitalitycompany.co.uk
+        This page couldn’t be loaded. Please try again. If it keeps happening, email{' '}
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
         {error.digest ? (
           <>
             {' '}
@@ -41,7 +43,8 @@ export default function RouteError({
         ) : null}
         .
       </Alert>
-      <div className="row" style={{ gap: 'var(--sp-10)' }}>
+      {/* `.row` carries the --sp-10 gap; `wrap` lets the pair stack on a phone. */}
+      <div className="row wrap">
         <Button tone="primary" onClick={() => reset()}>
           Try again
         </Button>

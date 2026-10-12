@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 import {
   Avatar,
   AvatarGroup,
@@ -17,14 +19,14 @@ import {
   useViewerZone,
 } from '@thc/ui';
 import { needsDualZone } from '@thc/domain';
+import { AsOf } from '../_components/AsOf';
 import { Arrivals } from './ArrivalsPill';
 import type { ArrivalsByEvent } from './arrivals';
 import { EventWindow } from './EventWindow';
-import { ukDateShort } from './format';
+import { ukDateShort, ukDayMonth } from './format';
 import {
   NO_FILTERS,
   applyFilters,
-  byDateDescending,
   documentOffer,
   emptyReason,
   eventsPanelTitle,
@@ -33,9 +35,13 @@ import {
   filterByTab,
   filtersActive,
   isRemoved,
+  listQuery,
+  listStateFromParams,
   momentIn,
   nextUp,
+  orderLabel,
   roleBreakdown,
+  sortForTab,
   statusTone,
   timesheetStatus,
   venuesOf,
@@ -45,6 +51,7 @@ import type {
   DocumentOffer,
   EventFilters,
   LineupRow,
+  ListState,
   PortalEvent,
   RoleSection,
   Tab,
@@ -68,7 +75,9 @@ import type {
  *
  * A client component because the tabs, the filters and the viewer's own
  * time zone are all browser facts. The rows themselves were fetched on the
- * server, under the caller's session.
+ * server, under the caller's session. The tab and the filters ride in the
+ * address bar (`?tab=past&q=gala`), so Back from an event page and a
+ * reload land on the view the customer left (`useListState`).
  */
 const FACES_SHOWN = 6;
 
@@ -82,6 +91,11 @@ const STATUS_LABEL: Record<PortalEvent['status'], string> = {
 const DOC_LABEL = {
   allocation: '↓ Allocation Timesheet',
   signout: '↓ Completed Timesheet',
+} as const;
+
+const DOC_NAME = {
+  allocation: 'Allocation Timesheet',
+  signout: 'Completed Timesheet',
 } as const;
 
 const TAB_EMPTY: Record<Tab, string> = {
@@ -113,9 +127,11 @@ export function EventsScreen({
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
 }) {
-  const [tab, setTab] = useState<Tab>('upcoming');
-  const [filters, setFilters] = useState<EventFilters>(NO_FILTERS);
-  const set = (patch: Partial<EventFilters>) => setFilters((f) => ({ ...f, ...patch }));
+  const [{ tab, filters }, setList] = useListState();
+  const setTab = (next: Tab) => setList({ tab: next, filters });
+  const setFilters = (next: EventFilters) => setList({ tab, filters: next });
+  const set = (patch: Partial<EventFilters>) => setFilters({ ...filters, ...patch });
+  const router = useRouter();
 
   const at = useMemo(() => new Date(now), [now]);
 
@@ -131,7 +147,7 @@ export function EventsScreen({
   const next = useMemo(() => nextUp(events, at), [events, at]);
 
   const inTab = useMemo(() => filterByTab(events, tab, at), [events, tab, at]);
-  const rows = useMemo(() => byDateDescending(applyFilters(inTab, filters)), [inTab, filters]);
+  const rows = useMemo(() => sortForTab(applyFilters(inTab, filters), tab), [inTab, filters, tab]);
   const filtering = filtersActive(filters);
   const empty = emptyReason(events.length, inTab.length, rows.length);
 
@@ -139,13 +155,27 @@ export function EventsScreen({
   const facesFor = (id: string) =>
     lineup.filter((l) => l.eventId === id).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
+  /**
+   * The whole row opens the event, as the wireframe's `tr.clickable` does.
+   * The row is not a control of its own — not focusable, no role — because
+   * its "Details →" link is the real target for a keyboard or a screen
+   * reader; this only widens the mouse and touch target. A click that
+   * lands on the row's own link or button is theirs, and a click that ends
+   * a text selection is a selection, not a navigation.
+   */
+  const openRow = (href: string) => (e: MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as Element).closest('a, button, input, select, label')) return;
+    if (window.getSelection()?.toString()) return;
+    router.push(href);
+  };
   return (
     <>
       <div className="page-head">
         <div>
           <h1>Your events</h1>
           <div className="desc">
-            Confirmed line-ups and timesheets{company ? ` for ${company}` : ''} · read-only
+            Confirmed line-ups and timesheets{company ? ` for ${company}` : ''} · read-only ·{' '}
+            <AsOf now={now} />
           </div>
         </div>
         <div className="actions">
@@ -227,7 +257,7 @@ export function EventsScreen({
         title={
           <>
             {eventsPanelTitle(company)}{' '}
-            <span className="muted sm">only your events · newest first</span>
+            <span className="muted sm">only your events · {orderLabel(tab)}</span>
           </>
         }
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
@@ -243,12 +273,16 @@ export function EventsScreen({
           />
         ) : (
           <>
-            <div className="table-wrap">
+            {/* A plain sideways scroller inside the card: at laptop width the
+                table fits once the Venue column folds under the event name
+                (≤1180px, as the wireframe's tablet note says); this only
+                catches whatever is left, and never scrolls vertically. */}
+            <div className="ev-table">
               <table className="tbl">
                 <thead>
                   <tr>
                     <th>Event</th>
-                    <th>Venue</th>
+                    <th className="col-venue">Venue</th>
                     <th>Date &amp; time</th>
                     <th>Status</th>
                     <th>Confirmed</th>
@@ -265,14 +299,26 @@ export function EventsScreen({
                     const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
                     const nudge = feedbackToGo(e, faces, at);
                     const cancelled = e.status === 'cancelled';
+                    const href = `/client/events/${e.id}`;
 
                     return (
-                      <tr key={e.id} className={cancelled ? 'cancelled' : undefined}>
+                      <tr
+                        key={e.id}
+                        className={cancelled ? 'cancelled' : 'clickable'}
+                        onClick={cancelled ? undefined : openRow(href)}
+                      >
                         <td>
                           <b>{cancelled ? <s>{e.title}</s> : e.title}</b>
                           <span className="sub">{e.poNumber ? `PO ${e.poNumber}` : 'PO —'}</span>
+                          {cancelled && e.cancelledAt ? (
+                            <span className="sub">cancelled {ukDayMonth(e.cancelledAt)}</span>
+                          ) : null}
+                          {/* Shown only once the Venue column folds (≤1180px). */}
+                          <span className="sub venue-inline">
+                            {e.venueName}, {e.venueAddress}
+                          </span>
                         </td>
-                        <td>
+                        <td className="col-venue">
                           {e.venueName}
                           <span className="sub">{e.venueAddress}</span>
                         </td>
@@ -314,8 +360,12 @@ export function EventsScreen({
                         <td>
                           <div className="stack tight">
                             <DocumentButton eventId={e.id} offer={doc} />
-                            {sheet ? <TimesheetStatus status={sheet} /> : null}
-                            <Link className="sm" href={`/client/events/${e.id}`}>
+                            {sheet ? (
+                              <TimesheetStatus status={sheet} />
+                            ) : doc && !doc.available ? (
+                              <span className="ev-sheet">Not issued yet</span>
+                            ) : null}
+                            <Link className={cancelled ? 'sm muted' : 'sm'} href={href}>
                               Details →
                             </Link>
                           </div>
@@ -328,7 +378,7 @@ export function EventsScreen({
             </div>
 
             {/* Same rows, no table. The phone drops no field (§1.2). */}
-            <div className="cards" style={{ padding: 14 }}>
+            <div className="cards">
               {rows.map((e) => {
                 const secs = sectionsFor(e.id);
                 const fill = fillOf(secs);
@@ -349,10 +399,12 @@ export function EventsScreen({
                         <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} />
                       </span>
                     </div>
-                    <div className="t">{e.title}</div>
+                    <div className="t">{cancelled ? <s>{e.title}</s> : e.title}</div>
                     <div className="m">
-                      {e.venueName}, {e.venueAddress}
-                      {e.poNumber ? ` · PO ${e.poNumber}` : ''}
+                      {e.venueName}, {e.venueAddress} · {e.poNumber ? `PO ${e.poNumber}` : 'PO —'}
+                      {cancelled && e.cancelledAt
+                        ? ` · cancelled ${ukDayMonth(e.cancelledAt)}`
+                        : ''}
                     </div>
                     {cancelled ? null : (
                       <div className="ev-fill">
@@ -367,10 +419,14 @@ export function EventsScreen({
                         <Arrivals counts={e.status === 'ongoing' ? arrivals[e.id] : undefined} />
                       </div>
                     )}
-                    {nudge || sheet ? (
+                    {nudge || sheet || (doc && !doc.available) ? (
                       <div className="ev-notes">
                         {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
-                        {sheet ? <TimesheetStatus status={sheet} /> : null}
+                        {sheet ? (
+                          <TimesheetStatus status={sheet} />
+                        ) : doc && !doc.available ? (
+                          <span className="ev-sheet">{DOC_NAME[doc.kind]} not issued yet</span>
+                        ) : null}
                       </div>
                     ) : null}
                     <div className="foot">
@@ -388,6 +444,43 @@ export function EventsScreen({
       </Panel>
     </>
   );
+}
+
+/**
+ * The list's tab and filters, kept in the address bar (`listQuery`).
+ *
+ * React state is what the inputs render from, so typing never waits on a
+ * navigation; each change is mirrored into the URL with
+ * `history.replaceState`, which Next.js folds into `useSearchParams`
+ * without a server round trip or a scroll jump. `router.replace` would
+ * re-run this force-dynamic page on the server — four view reads and a
+ * batch of photo signatures — once per keystroke. Replace, not push: a
+ * filter is not a page, so Back still leaves the list. When the URL
+ * changes from outside (the brand link back to a bare `/client`), the
+ * state follows it.
+ */
+function useListState(): [ListState, (next: ListState) => void] {
+  const params = useSearchParams();
+  const fromUrl = useMemo(() => listStateFromParams(params), [params]);
+  const [state, setState] = useState<ListState>(fromUrl);
+  const written = useRef(listQuery(fromUrl));
+
+  useEffect(() => {
+    const query = listQuery(fromUrl);
+    if (query === written.current) return;
+    written.current = query;
+    setState(fromUrl);
+  }, [fromUrl]);
+
+  const update = useCallback((next: ListState) => {
+    setState(next);
+    const query = listQuery(next);
+    if (query === written.current) return;
+    written.current = query;
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, []);
+
+  return [state, update];
 }
 
 /**
@@ -477,7 +570,7 @@ function NextUp({
       <span className="ev-next-t">
         <b>{event.title}</b>
         <span> · {when}</span>
-        {mine ? <span className="muted"> ({live ? `until ${mine}` : mine} your time)</span> : null}
+        {mine ? <span className="mine"> ({live ? `until ${mine}` : mine} your time)</span> : null}
         <span>
           {' '}
           · {fill.confirmed} of {fill.headcount} confirmed
@@ -577,7 +670,8 @@ function Faces({ people, photos }: { people: LineupRow[]; photos: Record<string,
   const extra = people.length - shown.length;
 
   return (
-    <AvatarGroup>
+    // The "+N" chip is the group's own, sized and shaped as the faces (`sm`).
+    <AvatarGroup more={extra} size="sm" moreLabel={`${extra} more confirmed`}>
       {shown.map((p) => (
         <Avatar
           key={p.bookingId}
@@ -587,11 +681,6 @@ function Faces({ people, photos }: { people: LineupRow[]; photos: Record<string,
           deleted={isRemoved(p)}
         />
       ))}
-      {extra > 0 ? (
-        <span className="more" title={`${extra} more confirmed`}>
-          +{extra}
-        </span>
-      ) : null}
     </AvatarGroup>
   );
 }

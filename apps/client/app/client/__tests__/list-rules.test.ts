@@ -12,6 +12,12 @@ import {
   timesheetStatus,
   venuesOf,
   momentIn,
+  sortForTab,
+  orderLabel,
+  listQuery,
+  listStateFromParams,
+  feedbackInviteShown,
+  FEEDBACK_BANNER_DAYS,
 } from '../rules';
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
 
@@ -347,5 +353,136 @@ describe('momentIn · the strip\'s "your time" (§1.8)', () => {
 
   it("names a later day in the viewer's zone", () => {
     expect(momentIn('2026-09-24T21:00:00Z', evening, false, 'Asia/Dubai')).toBe('Fri 25 Sep 01:00');
+  });
+});
+
+describe('momentIn never calls a past day "today"', () => {
+  const morning = new Date('2026-09-20T08:00:00Z'); // 09:00 BST, Sun 20 Sep
+
+  it('writes "yesterday" for the day before, on the zone\'s own calendar', () => {
+    expect(momentIn('2026-09-19T22:00:00Z', morning, false, 'Europe/London')).toBe(
+      'yesterday 23:00',
+    );
+    // The same instant is already Sunday in Dubai: today there.
+    expect(momentIn('2026-09-19T22:00:00Z', morning, false, 'Asia/Dubai')).toBe('today 02:00');
+  });
+
+  it('dates anything earlier', () => {
+    expect(momentIn('2026-09-16T18:00:00Z', morning, false, 'Europe/London')).toBe(
+      'Wed 16 Sep 19:00',
+    );
+  });
+
+  it('still says "today" for an earlier hour of the same day', () => {
+    expect(momentIn('2026-09-20T06:00:00Z', morning, false, 'Europe/London')).toBe('today 07:00');
+  });
+
+  it('is right either side of the clock change (25.10.2026)', () => {
+    const sunday = new Date('2026-10-25T12:00:00Z'); // GMT from 01:00 UTC
+    // 23:30 BST on Sat 24 Oct.
+    expect(momentIn('2026-10-24T22:30:00Z', sunday, false, 'Europe/London')).toBe(
+      'yesterday 23:30',
+    );
+    // 00:30 BST and 01:30 GMT on the Sunday itself.
+    expect(momentIn('2026-10-24T23:30:00Z', sunday, false, 'Europe/London')).toBe('today 00:30');
+    expect(momentIn('2026-10-25T01:30:00Z', sunday, false, 'Europe/London')).toBe('today 01:30');
+  });
+});
+
+describe('the order of each tab', () => {
+  const at = (id: string, startsAt: string): PortalEvent => ({
+    id,
+    title: id,
+    venueName: 'V',
+    venueAddress: 'A',
+    eventDate: startsAt.slice(0, 10),
+    poNumber: null,
+    onsiteContact: null,
+    startsAt,
+    endsAt: startsAt,
+    status: 'upcoming',
+  });
+  const rows = [
+    at('b', '2026-10-02T10:00:00Z'),
+    at('a', '2026-09-30T10:00:00Z'),
+    at('c', '2026-11-01T10:00:00Z'),
+  ];
+
+  it('puts the soonest first on Upcoming, the newest first on Past and All', () => {
+    expect(sortForTab(rows, 'upcoming').map((e) => e.id)).toEqual(['a', 'b', 'c']);
+    expect(sortForTab(rows, 'past').map((e) => e.id)).toEqual(['c', 'b', 'a']);
+    expect(sortForTab(rows, 'all').map((e) => e.id)).toEqual(['c', 'b', 'a']);
+    expect(orderLabel('upcoming')).toBe('soonest first');
+    expect(orderLabel('past')).toBe('newest first');
+  });
+
+  it('does not reorder its input', () => {
+    sortForTab(rows, 'upcoming');
+    expect(rows.map((e) => e.id)).toEqual(['b', 'a', 'c']);
+  });
+});
+
+describe('the list state in the address bar', () => {
+  const read = (q: string) => listStateFromParams(new URLSearchParams(q));
+
+  it('reads a tab and every filter back', () => {
+    expect(read('tab=past&q=gala&venue=The+Shard&from=2026-09-01&to=2026-09-30')).toEqual({
+      tab: 'past',
+      filters: { query: 'gala', venue: 'The Shard', from: '2026-09-01', to: '2026-09-30' },
+    });
+  });
+
+  it('falls back to the defaults for anything it cannot read', () => {
+    expect(read('tab=archive&from=last-week&to=2026-9-1')).toEqual({
+      tab: 'upcoming',
+      filters: NO_FILTERS,
+    });
+  });
+
+  it('writes only what differs from the plain list, and round-trips', () => {
+    expect(listQuery({ tab: 'upcoming', filters: NO_FILTERS })).toBe('');
+    const state = {
+      tab: 'all' as const,
+      filters: { query: 'gala & ball', venue: '', from: '2026-09-01', to: '' },
+    };
+    const q = listQuery(state);
+    expect(q).toBe('tab=all&q=gala+%26+ball&from=2026-09-01');
+    expect(read(q)).toEqual(state);
+  });
+});
+
+describe('the "you can now leave feedback" banner', () => {
+  const event = {
+    status: 'completed' as const,
+    startsAt: '2026-09-19T06:00:00Z',
+    endsAt: '2026-09-19T22:30:00Z',
+  };
+  const row = (name: string, feedbackGiven: boolean) => ({ name, feedbackGiven });
+
+  it('shows once the event has started while someone is left to rate', () => {
+    const lineup = [row('Aisha Bello', true), row('Tom Reid', false)];
+    expect(feedbackInviteShown(event, lineup, new Date('2026-09-19T07:00:00Z'))).toBe(true);
+    expect(feedbackInviteShown(event, lineup, new Date('2026-09-19T05:59:00Z'))).toBe(false);
+  });
+
+  it('goes once everyone who can be rated has been — a removed worker cannot be', () => {
+    const lineup = [row('Aisha Bello', true), row('Deleted account #1042', false)];
+    expect(feedbackInviteShown(event, lineup, new Date('2026-09-20T09:00:00Z'))).toBe(false);
+  });
+
+  it(`goes ${FEEDBACK_BANNER_DAYS} days after the event ended`, () => {
+    const lineup = [row('Tom Reid', false)];
+    expect(feedbackInviteShown(event, lineup, new Date('2026-09-26T22:30:00Z'))).toBe(true);
+    expect(feedbackInviteShown(event, lineup, new Date('2026-09-26T22:31:00Z'))).toBe(false);
+  });
+
+  it('never shows on a cancelled event', () => {
+    expect(
+      feedbackInviteShown(
+        { ...event, status: 'cancelled' },
+        [row('Tom Reid', false)],
+        new Date('2026-09-20T09:00:00Z'),
+      ),
+    ).toBe(false);
   });
 });

@@ -28,6 +28,7 @@ vi.mock('@thc/db/server', () => ({ createClient: () => ({}) }));
 vi.mock('../data', () => ({ supabaseConfigured: () => false }));
 
 const ClientPortalLayout = (await import('../layout')).default;
+const { ViewerZoneNote } = await import('../../_components/ViewerZoneNote');
 
 /**
  * The top bar is the whole of the Client Portal's chrome (§11.1: top bar,
@@ -45,5 +46,30 @@ describe('the Client Portal top bar', () => {
   it('still shows the sign-out link beside it', async () => {
     const markup = renderToStaticMarkup(await ClientPortalLayout({ children: <span /> }));
     expect(markup).toContain('Sign out');
+  });
+});
+
+describe('the viewer-zone note (wireframes/client/events.html)', () => {
+  it('names the zone and its offset for a reader outside UK time', () => {
+    const markup = renderToStaticMarkup(<ViewerZoneNote zone="Europe/Berlin" />);
+    expect(markup).toMatch(/^<span class="tz">Viewer: Europe\/Berlin \(UTC\+[12]\)<\/span>$/);
+  });
+
+  it('says nothing to a reader on UK time, the Crown Dependencies included', () => {
+    for (const zone of ['Europe/London', 'Europe/Jersey', 'Europe/Isle_of_Man', 'GB']) {
+      expect(renderToStaticMarkup(<ViewerZoneNote zone={zone} />)).toBe('');
+    }
+  });
+
+  it('is absent from the server-rendered bar, which cannot know the zone', async () => {
+    const markup = renderToStaticMarkup(await ClientPortalLayout({ children: <span /> }));
+    expect(markup).not.toContain('class="tz"');
+  });
+
+  it('ends the menu on Account then Sign out, the pair the phone panel draws full width', async () => {
+    const markup = renderToStaticMarkup(await ClientPortalLayout({ children: <span /> }));
+    const menu = markup.slice(markup.indexOf('id="client-account"'));
+    expect(menu.indexOf('aria-label="Appearance"')).toBeLessThan(menu.indexOf('>Account<'));
+    expect(menu.indexOf('>Account<')).toBeLessThan(menu.indexOf('Sign out'));
   });
 });

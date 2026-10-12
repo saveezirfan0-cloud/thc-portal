@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { Avatar, Logo, ModeSwitch, SignOut } from '@thc/ui';
+import { ViewerZoneNote } from '../_components/ViewerZoneNote';
 import { AccountMenu } from './AccountMenu';
 import { supabaseConfigured } from './data';
 import './client-portal.css';
@@ -79,6 +80,10 @@ export default async function ClientPortalLayout({ children }: { children: React
 
         <span className="spacer" />
 
+        {/* "Viewer: Europe/Berlin (UTC+2)", only for a reader outside UK
+            time, whose windows carry a "your time" line (§1.8). */}
+        <ViewerZoneNote />
+
         <AccountMenu>
           {company ? (
             <span className="menu-who">
@@ -92,17 +97,17 @@ export default async function ClientPortalLayout({ children }: { children: React
               <span className="sm">{person}</span>
             </span>
           ) : null}
+          <span className="mode">
+            <span className="l">Appearance</span>
+            <ModeSwitch small />
+          </span>
           {/* "Your account" (ADR-0051): the customer's details, their
-              timesheet recipients and a password change. Wrapped so the
-              phone panel draws it as one of its rows. */}
+              timesheet recipients and a password change. Beside Sign out,
+              so the phone panel ends on the pair as two equal buttons. */}
           <span className="account">
             <Link href="/client/account" className="btn ghost sm">
               Account
             </Link>
-          </span>
-          <span className="mode">
-            <span className="l">Appearance</span>
-            <ModeSwitch small />
           </span>
           <SignOut />
         </AccountMenu>

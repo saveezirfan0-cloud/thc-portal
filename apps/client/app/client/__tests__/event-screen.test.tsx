@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
-import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type * as Ui from '@thc/ui';
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
 
 /**
@@ -27,9 +27,23 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../events/[id]/actions', () => ({ leaveFeedback: vi.fn() }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+/** The reader's zone as `useViewerZone` reports it once mounted. */
+let viewer = 'Europe/London';
+vi.mock('@thc/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof Ui>()),
+  useViewerZone: () => viewer,
+}));
+afterEach(() => {
+  viewer = 'Europe/London';
+});
 
 const { EventScreen } = await import('../events/[id]/EventScreen');
-const { FeedbackModal } = await import('../events/[id]/FeedbackModal');
+const { FeedbackModal, COMMENT_MAX, isAlreadyLeft } = await import('../events/[id]/FeedbackModal');
 
 const EVENT_ID = '60000000-0000-4000-8000-000000000001';
 
@@ -164,19 +178,22 @@ describe('completed (event.html:247-273)', () => {
     expect(markup).not.toContain('2 confirmed');
   });
 
-  it('stamps when the sign-out timesheet was generated, UK-only (§1.8), from issued_at', () => {
+  it('stamps when the sign-out timesheet was generated, UK-only and labelled (§1.8), from issued_at', () => {
     const markup = screen(completed, AFTER, [ALLOCATION, SIGNOUT]);
-    const stamp = formatDateTimeIn(new Date(SIGNOUT.issuedAt), UK_ZONE);
-    expect(stamp).toMatch(/^20 Sept?, 00:12$/);
+    // 23:12 UTC on the 19th is 00:12 BST on the 20th; the day unpadded, as the list writes it.
     expect(markup).toContain(
-      `<div class="k">Timesheet</div><div class="v">Completed Allocation Timesheet generated ${stamp}`,
+      '<div class="k">Timesheet</div><div class="v">Completed Allocation Timesheet generated 20 Sep, 00:12 UK time</div>',
     );
-    expect(markup).toContain('by email to the contacts on your client card');
+    // Nothing claims who it was emailed to (ADR-0089).
+    expect(markup).not.toContain('by email');
+    expect(markup).not.toContain('client card</span></div></div><div><div class="k">Your on-site');
   });
 
-  it('marks a row already rated "✓ Feedback sent" and leaves the others live', () => {
+  it('marks a row already rated with the disabled "✓ Feedback sent" button and leaves the others live', () => {
     const markup = screen(completed, AFTER);
-    expect(markup).toContain('✓ Feedback sent');
+    expect(markup).toMatch(
+      /<button type="button" class="btn sm fb sent" disabled=""[^>]*>✓ Feedback sent<\/button>/,
+    );
     expect(markup).toContain('<button type="button" class="btn sm fb">Leave feedback</button>');
     expect(markup).toContain('The event has started — you can now leave feedback');
   });
@@ -258,5 +275,165 @@ describe('arrival counts on the day (ADR-0053)', () => {
   it('shows nothing once the event is over, or before it starts, and never who', () => {
     expect(render(gala({ status: 'completed' }), AFTER)).not.toContain('arrived');
     expect(render(gala({ status: 'upcoming' }), BEFORE)).not.toContain('arrived');
+  });
+});
+
+describe('"✓ Feedback sent" carries what was sent (event.html:251)', () => {
+  const rated: LineupRow[] = lineup.map((l) =>
+    l.feedbackGiven ? { ...l, feedbackRating: 4, feedbackSentAt: '2026-09-20T09:30:00Z' } : l,
+  );
+  const render = (rows: LineupRow[]) =>
+    renderToStaticMarkup(
+      <EventScreen
+        event={gala({ status: 'completed' })}
+        sections={sections}
+        lineup={rows}
+        photos={{}}
+        now={AFTER}
+      />,
+    );
+
+  it('writes the stars and the UK day under the role', () => {
+    expect(render(rated)).toContain(
+      '<div class="s">Chef · <span class="fb-sent">★★★★☆ sent 20 Sep</span></div>',
+    );
+  });
+
+  it('says nothing more when the view returned neither', () => {
+    const markup = render(lineup);
+    expect(markup).toContain('✓ Feedback sent');
+    expect(markup).not.toContain('fb-sent');
+  });
+});
+
+describe('a removed worker (§1.7, event.html:276)', () => {
+  const removed: LineupRow = {
+    ...lineup[0]!,
+    bookingId: 'b-3',
+    name: 'Deleted account #1042',
+    sortKey: 'zzz',
+    feedbackGiven: false,
+  };
+  const markup = renderToStaticMarkup(
+    <EventScreen
+      event={gala({ status: 'completed' })}
+      sections={sections}
+      lineup={[...lineup, removed]}
+      photos={{}}
+      now={AFTER}
+    />,
+  );
+  const row = markup.slice(markup.indexOf('Deleted account #1042') - 200);
+
+  it('keeps the slot with no photo and the name muted', () => {
+    expect(row).toContain('<span class="avatar lg deleted" title="Deleted account #1042">');
+    expect(row).toContain('<div class="n muted">Deleted account #1042</div>');
+  });
+
+  it('cannot be rated, even after the event has started', () => {
+    expect(row).toContain(
+      '<button type="button" class="btn sm fb" disabled="" title="This account has been removed">Leave feedback</button>',
+    );
+  });
+});
+
+describe('the feedback banner', () => {
+  it('gives a reader outside UK time their own clock and day for the unlock', () => {
+    viewer = 'America/New_York';
+    // 07:00 BST on Sat 19 Sep is 02:00 in New York, read on Fri 18 Sep: "tomorrow".
+    expect(screen(gala(), BEFORE)).toContain(
+      'from 07:00 UK time on the day (tomorrow 02:00 your time). Until then',
+    );
+  });
+
+  it('says nothing about "your time" to a reader in a Crown Dependency', () => {
+    viewer = 'Europe/Jersey';
+    expect(screen(gala(), BEFORE)).not.toContain('your time');
+  });
+
+  it('stops inviting once every worker who can be rated has been', () => {
+    const allRated = lineup.map((l) => ({ ...l, feedbackGiven: true }));
+    const markup = renderToStaticMarkup(
+      <EventScreen
+        event={gala({ status: 'completed' })}
+        sections={sections}
+        lineup={allRated}
+        photos={{}}
+        now={AFTER}
+      />,
+    );
+    expect(markup).not.toContain('you can now leave feedback');
+  });
+
+  it('stops inviting a week after the event ended, while the buttons stay live', () => {
+    const markup = screen(gala({ status: 'completed' }), '2026-10-05T09:00:00Z');
+    expect(markup).not.toContain('you can now leave feedback');
+    expect(markup).toContain('<button type="button" class="btn sm fb">Leave feedback</button>');
+  });
+});
+
+describe('the header (event.html .ehead)', () => {
+  it('is a card stamped with when it was read', () => {
+    const markup = screen(gala(), BEFORE);
+    expect(markup).toContain('<div class="ehead">');
+    expect(markup).toContain('as of <b>Fri 18 Sep 2026, 10:00 UK time</b>');
+  });
+
+  it('gives a reader abroad their own clock first, the UK one in brackets', () => {
+    viewer = 'Europe/Berlin';
+    expect(screen(gala(), BEFORE)).toContain(
+      'as of <b>Fri 18 Sep 2026, 11:00 your time</b> (10:00 UK)',
+    );
+  });
+
+  it('greys and strikes a cancelled event, with the day it was cancelled', () => {
+    const markup = screen(
+      gala({ status: 'cancelled', cancelledAt: '2026-09-16T10:00:00Z' }),
+      AFTER,
+    );
+    expect(markup).toContain('<div class="ehead cancelled">');
+    expect(markup).toContain('<h1><s>Gala Dinner</s></h1>');
+    expect(markup).toContain('· cancelled 16 Sep');
+  });
+});
+
+describe('the feedback popup, guarded', () => {
+  const markup = renderToStaticMarkup(
+    <FeedbackModal
+      open
+      eventId={EVENT_ID}
+      bookingId="b-1"
+      personName="Priya Sharma"
+      photo="https://example.test/priya.jpg"
+      role="Waiting Staff"
+      eventTitle="Gala Dinner"
+      eventDate="Fri 19 Sep 2026"
+      onClose={() => {}}
+    />,
+  );
+
+  it("shows the worker's face beside the subtitle", () => {
+    expect(markup).toMatch(
+      /<div class="fb-who"><span class="avatar[^"]*"[^>]*><img[^>]*priya\.jpg/,
+    );
+  });
+
+  it('caps the comment at 2000 characters', () => {
+    expect(COMMENT_MAX).toBe(2000);
+    expect(markup).toContain('maxLength="2000"');
+    // The counter appears only near the limit.
+    expect(markup).not.toContain('fb-count');
+  });
+
+  it('draws each star as a radio', () => {
+    expect(markup.match(/role="radio"/g)).toHaveLength(5);
+  });
+
+  it('recognises the "already left" refusal, by code or by the action\'s sentence', () => {
+    expect(isAlreadyLeft({ code: '23505' })).toBe(true);
+    expect(
+      isAlreadyLeft({ error: 'Feedback has already been left for this person on this event.' }),
+    ).toBe(true);
+    expect(isAlreadyLeft({ error: 'That could not be saved.' })).toBe(false);
   });
 });

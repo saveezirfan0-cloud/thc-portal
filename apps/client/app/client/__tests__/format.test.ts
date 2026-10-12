@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { dayMarker, daysLaterIn } from '../format';
+import {
+  dayMarker,
+  daysBetweenIn,
+  daysLaterIn,
+  differentDayFromUk,
+  ukDayMonth,
+  ukStamp,
+  utcOffsetLabel,
+} from '../format';
 
 /**
  * The overnight marker's date maths (ADR-0050): how many calendar days an
@@ -67,5 +75,46 @@ describe('dayMarker', () => {
     expect(dayMarker(1)).toBe(' (+1 day)');
     expect(dayMarker(2)).toBe(' (+2 days)');
     expect(dayMarker(3)).toBe(' (+3 days)');
+  });
+});
+
+describe('daysBetweenIn · signed', () => {
+  it('is negative for an earlier day and agrees with daysLaterIn otherwise', () => {
+    expect(daysBetweenIn('2026-09-20T08:00:00Z', '2026-09-19T22:00:00Z', LONDON)).toBe(-1);
+    expect(daysBetweenIn('2026-09-19T08:00:00Z', '2026-09-20T08:00:00Z', LONDON)).toBe(1);
+    expect(daysLaterIn('2026-09-20T08:00:00Z', '2026-09-19T22:00:00Z', LONDON)).toBe(0);
+  });
+});
+
+describe('differentDayFromUk', () => {
+  it("is true when the viewer's calendar has turned and London's has not", () => {
+    // 23:30 BST Fri 18 Sep is 01:30 Sat in Dubai, 18:30 Fri in New York.
+    expect(differentDayFromUk('2026-09-18T22:30:00Z', 'Asia/Dubai')).toBe(true);
+    expect(differentDayFromUk('2026-09-18T22:30:00Z', 'America/New_York')).toBe(false);
+    expect(differentDayFromUk('2026-09-18T22:30:00Z', LONDON)).toBe(false);
+  });
+});
+
+describe('UK stamps and days', () => {
+  it('writes an audit stamp UK-only and labelled, the day unpadded', () => {
+    expect(ukStamp('2026-10-05T09:00:00Z')).toBe('5 Oct, 10:00 UK time');
+    // After the change to GMT (25.10.2026) the same UTC hour is an hour earlier.
+    expect(ukStamp('2026-10-26T09:00:00Z')).toBe('26 Oct, 09:00 UK time');
+  });
+
+  it('writes a day as "16 Sep"', () => {
+    expect(ukDayMonth('2026-09-16T10:12:00Z')).toBe('16 Sep');
+    // 23:30 UTC on 31 Oct is still 31 Oct in GMT.
+    expect(ukDayMonth('2026-10-31T23:30:00Z')).toBe('31 Oct');
+  });
+});
+
+describe('utcOffsetLabel · "Viewer: Europe/Berlin (UTC+2)"', () => {
+  it('names the offset in force, either side of the changes', () => {
+    expect(utcOffsetLabel('Europe/Berlin', new Date('2026-09-18T12:00:00Z'))).toBe('UTC+2');
+    expect(utcOffsetLabel('Europe/Berlin', new Date('2026-10-26T12:00:00Z'))).toBe('UTC+1');
+    expect(utcOffsetLabel('America/New_York', new Date('2027-03-29T12:00:00Z'))).toBe('UTC−4');
+    expect(utcOffsetLabel('Asia/Kolkata', new Date('2026-09-18T12:00:00Z'))).toBe('UTC+5:30');
+    expect(utcOffsetLabel('Atlantic/Reykjavik', new Date('2026-09-18T12:00:00Z'))).toBe('UTC');
   });
 });
