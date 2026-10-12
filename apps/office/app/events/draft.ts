@@ -36,6 +36,15 @@ export const REQUIRED_GENDER_LABEL: Readonly<Record<'M' | 'F', string>> = {
   F: 'Female staff only',
 };
 
+/**
+ * The dress code a role section starts with: the client's one uniform for that
+ * role (§3.2). With none or several on the rate card there is nothing to
+ * assume, so it stays empty and the manager chooses. Always editable.
+ */
+export function defaultDressCode(dressCodes: readonly string[]): string {
+  return dressCodes.length === 1 ? dressCodes[0]! : '';
+}
+
 /** The sentinel the dress-code select uses for the per-event free text (§9.7). */
 export const DRESS_CODE_OTHER = '__other__';
 

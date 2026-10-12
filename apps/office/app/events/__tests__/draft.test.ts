@@ -6,6 +6,7 @@ import {
   type RoleDraft,
   canRemoveRole,
   canSave,
+  defaultDressCode,
   draftIssues,
   draftFromSaved,
   draftLocked,
@@ -418,5 +419,18 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
       ]);
       expect(effectiveDressCode(waiting!)).toBe('Burgundy bow tie (supplied)');
     }
+  });
+});
+
+describe('defaultDressCode', () => {
+  it('fills in the client\'s one uniform for the role', () => {
+    expect(defaultDressCode(['Plain White Shirt; Plain Black Trousers'])).toBe(
+      'Plain White Shirt; Plain Black Trousers',
+    );
+  });
+
+  it('leaves the choice to the manager when there is none or more than one', () => {
+    expect(defaultDressCode([])).toBe('');
+    expect(defaultDressCode(['All black', 'Black & whites'])).toBe('');
   });
 });
