@@ -2,7 +2,9 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { readRecoverySession } from '@thc/db/recovery';
 import { createClient } from '@thc/db/server';
+import { USE_SECURITY_SETTINGS } from './copy';
 import { checkPassword, passwordError, passwordOk } from './rules';
 
 /**
@@ -38,6 +40,17 @@ export async function setPassword(
   if (!user) {
     return 'This link has expired or has already been used. Ask for a new one from the sign-in screen.';
   }
+
+  // No current password is asked for here, so the session itself must be
+  // the proof: made by a reset link, in the last 15 minutes (verified `amr`
+  // claims, packages/db/src/recovery.ts). A session from a password sign-in
+  // — or a borrowed device that is simply signed in — changes the password
+  // on the screen that asks for the current one.
+  const recovery = await readRecoverySession(supabase);
+  if (recovery.state === 'none') {
+    return 'This link has expired or has already been used. Ask for a new one from the sign-in screen.';
+  }
+  if (recovery.state !== 'recent') return USE_SECURITY_SETTINGS;
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {

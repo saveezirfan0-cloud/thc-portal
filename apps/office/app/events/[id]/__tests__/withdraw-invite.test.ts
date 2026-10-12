@@ -41,7 +41,14 @@ vi.mock('next/cache', () => ({
 }));
 vi.mock('../../db', () => ({
   eventsDb: () => ({
-    rpc: state.rpc,
+    // The admin check's own questions (current_app_role(), office_can('write'))
+    // are answered here, so state.rpc sees only the action's calls.
+    rpc: (fn: string, args: unknown) =>
+      fn === 'current_app_role'
+        ? Promise.resolve({ data: state.role, error: null })
+        : fn === 'office_can'
+          ? Promise.resolve({ data: state.role === 'admin', error: null })
+          : state.rpc(fn, args),
     auth: {
       getUser: async () =>
         state.role === null

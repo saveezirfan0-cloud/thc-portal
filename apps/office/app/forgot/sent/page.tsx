@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Alert, AuthCard } from '@thc/ui';
+import { shownEmail } from '@thc/db/recovery';
 
 export const metadata = { title: 'Check your inbox · THC Back Office' };
 
@@ -11,7 +12,8 @@ export const metadata = { title: 'Check your inbox · THC Back Office' };
  * that is not there (§1.7, no account enumeration).
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
-  const { to } = await searchParams;
+  // Only ever an address: `?to=` is anybody's to write (shownEmail).
+  const to = shownEmail((await searchParams).to);
 
   return (
     // The wireframe's A2 carries its headline in the green alert; the card

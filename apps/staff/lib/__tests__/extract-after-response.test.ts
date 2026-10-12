@@ -34,6 +34,9 @@ vi.mock('next/server', () => ({
   },
 }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+// The stored-bytes check (security round 12.10, item 5) has its own tests
+// (app/_lib/__tests__/stored-media.test.ts); here the upload is a real one.
+vi.mock('../../app/_lib/stored-media', () => ({ checkStoredMedia: async () => 'match' }));
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 vi.mock('../../app/db', () => ({
   supabaseConfigured: () => true,

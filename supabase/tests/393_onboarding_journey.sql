@@ -81,7 +81,10 @@ insert into storage.objects (bucket_id, name, metadata) values
   ('documents', :'cand' || '/university_term_dates_letter/1.pdf', '{"mimetype":"application/pdf","size":348160}');
 insert into profiles (id, role, full_name) values (:'uid', 'staff', 'Amara Journey');
 update staff set user_id = :'uid' where id = :'cand';
-set local "request.jwt.claims" = '{"sub":"c3970000-0000-4000-8000-000000000001","role":"authenticated"}';
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', 'c3970000-0000-4000-8000-000000000001', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 
 select is(onboarding_state()->>'status', 'documents', 'activated, she opens the wizard at step 1');
 

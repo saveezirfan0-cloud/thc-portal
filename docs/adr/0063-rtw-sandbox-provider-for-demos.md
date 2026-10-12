@@ -19,7 +19,8 @@ that photo with the app selfie, and only the gov.uk adapter supplied it.
   under 2 MB, and only for `right_to_work` or `no_right_to_work`, as the gov.uk adapter
   does. The field names are assumed, like the rest of `provider.config.ts`.
 - **A sandbox provider** is a `fetch` handed to the real provider adapter, turned on only
-  by `RTW_PROVIDER_URL=sandbox:` (the key may be left unset). A demo therefore runs the
+  by `RTW_PROVIDER_URL=sandbox:` **together with** `RTW_SANDBOX_ALLOW=<project ref>`
+  (the key may be left unset; see *Amendment, 12.10.2026* below). A demo therefore runs the
   real path: the adapter's mapping, the orchestrator, `decideRtwCheck`, the report and
   photo upload, `rtw_check_record()`, the Needs review queue, and the admin's Verify or
   Reject.
@@ -63,10 +64,34 @@ that photo with the app selfie, and only the gov.uk adapter supplied it.
   `provider.config.ts` checked against its documentation). ADR-0041's decision stands
   (no provider).
 
+## Amendment, 12.10.2026 · two keys, tied to one project (security review, item 4)
+
+One variable used to switch the sandbox on, and the sandbox makes "right to work"
+answers out of nothing. A demo's environment copied to production — or `sandbox:` left
+in a Vercel project that later points at the live database — would have turned it on
+where real workers are. It now takes two:
+
+- `RTW_PROVIDER_URL=sandbox:` asks for it, as before;
+- `RTW_SANDBOX_ALLOW=<project ref>` must name **the Supabase project this deployment
+  uses**: the `<ref>` in `NEXT_PUBLIC_SUPABASE_URL` (`https://<ref>.supabase.co`), the URL
+  the route's service client talks to. `local` matches a local stack (localhost /
+  127.0.0.1). A custom-domain Supabase URL names no ref, so the sandbox cannot be
+  unlocked there.
+
+Asked for without a matching second key, the sandbox is **refused**: the route logs
+`rtw-check: sandbox provider refused — …` and runs as if no provider were configured (the
+gov.uk fallback if it is on, otherwise the check goes to the office). Copying a demo's
+variables to production still does nothing, because production's ref is not the demo
+project's. Code: `rtwSandboxSwitch()` / `supabaseProjectRef()` in `sandbox.ts`; tests in
+`sandbox.test.ts`. Separately, the database no longer lets a `SANDBOX-` result verify a
+document on its own (the DB half of the same review).
+
 ## Running the demo
 
 1. **Vercel**, project `thc-portal-office`, Production:
    - `RTW_PROVIDER_URL=sandbox:`
+   - `RTW_SANDBOX_ALLOW=<the demo project's ref>` — the subdomain of that deployment's
+     `NEXT_PUBLIC_SUPABASE_URL`; without it the sandbox is refused (see the amendment)
    - `RTW_JOB_SECRET=<openssl rand -base64 48>`
 
    Leave `RTW_GOVUK_ENABLED` unset, then redeploy.
@@ -89,5 +114,14 @@ that photo with the app selfie, and only the gov.uk adapter supplied it.
       - **Verify**.
    5. Re-run with **WDEMONONE** to show a recommended reject with the reason pre-filled.
       The worker gets N8 only when the admin presses Reject.
-4. **Afterwards**, run `rtw-check-sandbox-off.sql` and remove `RTW_PROVIDER_URL` from
-   Vercel.
+4. **Afterwards**, run `rtw-check-sandbox-off.sql` and remove `RTW_PROVIDER_URL` and
+   `RTW_SANDBOX_ALLOW` from Vercel.
+
+## Amendment · 12.10.2026 (security round, `20261012120800`)
+
+A sandbox result is never acted on by itself. `rtw_check_record()` treats any result whose
+`referenceNumber` starts `SANDBOX-` (case-insensitive) as if `settings.rtw_check.admin_confirms`
+were on, whatever it says: a pass or a refusal stops at **Needs review** with the
+recommendation, and the office's reason opens "SANDBOX result, not a Home Office check."
+Before this, a sandbox left on with `admin_confirms = false` could verify a real worker's right
+to work. Pinned by `supabase/tests/794_rtw_sandbox_never_auto_verifies.sql`.

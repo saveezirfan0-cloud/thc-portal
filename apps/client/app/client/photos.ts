@@ -1,4 +1,6 @@
 import { createAdminClient } from '@thc/db/admin';
+import type { LineupRecord } from './data';
+import type { LineupRow } from './rules';
 
 /**
  * Signed URLs for the line-up photos (§11.1).
@@ -35,6 +37,11 @@ import { createAdminClient } from '@thc/db/admin';
  * When the service key is absent — which is every environment until docs/04
  * step 2 is done — this returns an empty map and `Avatar` falls back to
  * monogram initials rather than breaking the screen.
+ *
+ * What reaches the browser is the signed URL keyed by `bookingId`, never the
+ * path: the path's first segment is the worker's `staff.id`, an internal id
+ * the customer has no use for. `presentLineup` is the one door from the
+ * server's `LineupRecord` to the props of a client component.
  */
 
 /** Long enough to read a page, short enough not to be worth forwarding. */
@@ -42,9 +49,46 @@ const TTL_SECONDS = 60 * 10;
 
 const BUCKET = 'photos';
 
+/** Signed photo URLs keyed by `bookingId`; a booking with no photo is absent. */
 export async function signLineupPhotos(
-  paths: readonly (string | null)[],
+  rows: readonly Pick<LineupRecord, 'bookingId' | 'photoPath'>[],
 ): Promise<Map<string, string>> {
+  const byPath = await signPaths(rows.map((r) => r.photoPath));
+  const signed = new Map<string, string>();
+  for (const r of rows) {
+    const url = r.photoPath ? byPath.get(r.photoPath) : undefined;
+    if (url) signed.set(r.bookingId, url);
+  }
+  return signed;
+}
+
+/**
+ * The line-up as a client component may receive it: every field the screens
+ * render, named one by one so a column added to `LineupRecord` later does not
+ * ride along by default, and the photos keyed by booking.
+ */
+export function publicLineup(rows: readonly LineupRecord[]): LineupRow[] {
+  return rows.map((r) => ({
+    bookingId: r.bookingId,
+    eventId: r.eventId,
+    shiftId: r.shiftId,
+    role: r.role,
+    startsAt: r.startsAt,
+    endsAt: r.endsAt,
+    name: r.name,
+    sortKey: r.sortKey,
+    feedbackGiven: r.feedbackGiven,
+  }));
+}
+
+export async function presentLineup(
+  rows: readonly LineupRecord[],
+): Promise<{ lineup: LineupRow[]; photos: Record<string, string> }> {
+  const signed = await signLineupPhotos(rows);
+  return { lineup: publicLineup(rows), photos: Object.fromEntries(signed) };
+}
+
+async function signPaths(paths: readonly (string | null)[]): Promise<Map<string, string>> {
   const wanted = [...new Set(paths.filter((p): p is string => Boolean(p)))];
   const signed = new Map<string, string>();
 

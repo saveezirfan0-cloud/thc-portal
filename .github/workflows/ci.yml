@@ -19,11 +19,16 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Every third-party action is pinned to a full commit SHA, the tag it
+      # was resolved from in the comment: a tag can be moved to other code by
+      # whoever controls the action's repository, a commit cannot. Bump by
+      # resolving the new tag (`git ls-remote https://github.com/<owner>/<repo>
+      # refs/tags/<tag>^{}`) and changing both.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # Version comes from package.json packageManager; naming it here as well
       # makes the action fail with "multiple versions".
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22, cache: pnpm }
       # First, because it costs milliseconds and the failure it catches
       # otherwise costs three minutes of `supabase start` before anyone
@@ -55,14 +60,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint typecheck test
-      # The token is for resolving "latest": unauthenticated, the action asks
-      # api.github.com for the newest release and shares the runner's 60/h
-      # anonymous quota with everything else on that address, which is how
-      # 8e02c65 failed before a test ran ("rate limit exceeded").
-      - uses: supabase/setup-cli@v1
+      # A fixed CLI, not `latest`: the build that passes is the build that
+      # ran, and a new CLI release cannot change `supabase start` under a PR
+      # that did not ask for it. A fixed version is downloaded straight from
+      # the release, so no api.github.com lookup (the 60/h anonymous quota
+      # that failed 8e02c65) and no token handed to the action. Bump it in
+      # both jobs together.
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
-          version: latest
-          github-token: ${{ github.token }}
+          version: 2.120.0
       # Supabase takes the digits before the first underscore as a
       # migration's version and makes that the primary key of
       # supabase_migrations.schema_migrations, so two files sharing one
@@ -144,7 +150,7 @@ jobs:
       # in e2e/test-results; without this they vanished with the runner and a
       # failure on `main` could only be guessed at from the log (the §10.6
       # P45 test, 27–28.09). Seeded test data only; kept a week.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-results
@@ -183,6 +189,14 @@ jobs:
     needs: build-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Only ever runs on a push to main (the `if` above), so an environment
+    # whose deployment-branch rule is `main` never refuses it — and a pull
+    # request, which never reaches this job, is not affected. Moving the
+    # three SUPABASE_* secrets out of the repository and into this
+    # environment (with a required reviewer, if wanted) is a repository
+    # setting the owner makes; until then the repository secrets still
+    # resolve here as before (docs/14 O13).
+    environment: production
     # One deploy at a time. Two `db push` runs racing on the same project
     # is how a migration history ends up half applied.
     #
@@ -196,7 +210,7 @@ jobs:
       group: deploy-database
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Missing secrets are a setup state, not a failure: the repo should
       # not go red for everyone because the project is not wired up yet.
@@ -219,12 +233,11 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         if: steps.secrets.outputs.ready == 'true'
-        # Authenticated, as above: a deploy must not fail on the anonymous quota.
+        # The same fixed CLI as build-test: what deploys is what was tested.
         with:
-          version: latest
-          github-token: ${{ github.token }}
+          version: 2.120.0
 
       # --dry-run first, so the log records what WOULD be applied even when
       # the push then fails. Without it a failed deploy leaves no trace of

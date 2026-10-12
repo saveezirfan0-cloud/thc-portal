@@ -14,12 +14,12 @@ import { pressCheckOut } from '../press';
  * them to now as an on-site press.
  */
 describe('pressCheckOut()', () => {
-  it('takes a fresh reading with the check-out deadline and sends it', async () => {
+  it('takes a fresh reading with the check-out deadline and sends it, with its accuracy', async () => {
     const locate = vi.fn().mockResolvedValue({ lat: 51.6, lng: -0.2, accuracyM: 10 });
     const checkOut = vi.fn().mockResolvedValue({ ok: true });
     await pressCheckOut('b1', { locate, checkOut });
     expect(locate).toHaveBeenCalledWith(CHECK_OUT_FIX);
-    expect(checkOut).toHaveBeenCalledWith('b1', 51.6, -0.2);
+    expect(checkOut).toHaveBeenCalledWith('b1', 51.6, -0.2, 10);
   });
 
   it('with no reading in time, sends NO coordinates — the server uses the last on-site fix', async () => {
@@ -27,7 +27,7 @@ describe('pressCheckOut()', () => {
     const checkOut = vi.fn().mockResolvedValue({ ok: true });
     const { fix } = await pressCheckOut('b1', { locate, checkOut });
     expect(fix).toBeNull();
-    expect(checkOut).toHaveBeenCalledWith('b1', null, null);
+    expect(checkOut).toHaveBeenCalledWith('b1', null, null, null);
   });
 
   it('is handed no held fix to fall back on, and the screen no longer keeps one for it', () => {

@@ -12,20 +12,20 @@ let refuseUpload: string | null = null;
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({}) }));
-vi.mock('@thc/db/admin', () => ({
-  createAdminClient: () => ({
-    storage: {
-      from: (bucket: string) => ({
-        upload: async (path: string) => {
-          if (refuseUpload && path.includes(refuseUpload))
-            return { error: { message: 'bucket full' } };
-          uploads.push({ bucket, path });
-          return { error: null };
-        },
-      }),
-    },
-  }),
-}));
+const createAdminClient = vi.hoisted(() => vi.fn());
+vi.mock('@thc/db/admin', () => ({ createAdminClient }));
+const adminClient = () => ({
+  storage: {
+    from: (bucket: string) => ({
+      upload: async (path: string) => {
+        if (refuseUpload && path.includes(refuseUpload))
+          return { error: { message: 'bucket full' } };
+        uploads.push({ bucket, path });
+        return { error: null };
+      },
+    }),
+  },
+});
 
 const { generateDocument } = await import('../generate');
 type Db = NonNullable<Parameters<typeof generateDocument>[3]>['db'];
@@ -52,12 +52,18 @@ function person(id: string, first: string, last: string, removed = false) {
   };
 }
 
-function fakeDb(nameBadges: boolean | undefined, attachError: string | null = null) {
+function fakeDb(
+  nameBadges: boolean | undefined,
+  attachError: string | null = null,
+  /** ADR-0060: office_can('write') — false for a viewer. */
+  mayWrite = true,
+) {
   const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const db = {
     calls,
     rpc(fn: string, args: Record<string, unknown>) {
       calls.push({ fn, args });
+      if (fn === 'office_can') return Promise.resolve({ data: mayWrite, error: null });
       if (fn === 'event_document_data') {
         return Promise.resolve({
           data: {
@@ -94,11 +100,17 @@ function fakeDb(nameBadges: boolean | undefined, attachError: string | null = nu
   return db;
 }
 
+/** The document RPCs made, without the read-only check's own question (ADR-0060). */
+const rpcs = (db: ReturnType<typeof fakeDb>) =>
+  db.calls.map((c) => c.fn).filter((fn) => fn !== 'office_can');
+
 describe('generateDocument and name badges (ADR-0081)', () => {
   beforeEach(() => {
     uploads.length = 0;
     refuseUpload = null;
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+    createAdminClient.mockReset();
+    createAdminClient.mockImplementation(adminClient);
   });
 
   it('draws, stores and attaches the badges with the Allocation Timesheet', async () => {
@@ -124,7 +136,7 @@ describe('generateDocument and name badges (ADR-0081)', () => {
       p_count: 2,
     });
     // Recorded first, then attached: nothing has queued an email yet.
-    expect(db.calls.map((c) => c.fn)).toEqual([
+    expect(rpcs(db)).toEqual([
       'event_document_data',
       'record_event_document',
       'attach_event_document_badges',
@@ -140,7 +152,7 @@ describe('generateDocument and name badges (ADR-0081)', () => {
       automatic: true,
     });
     expect(result.ok).toBe(true);
-    expect(db.calls.map((c) => c.fn)).toEqual([
+    expect(rpcs(db)).toEqual([
       'event_document_data',
       'record_event_document_autosend',
       'attach_event_document_badges',
@@ -189,7 +201,7 @@ describe('generateDocument and name badges (ADR-0081)', () => {
       db: db as unknown as Db,
     });
     expect(result.ok).toBe(false);
-    expect(db.calls.map((c) => c.fn)).toEqual(['event_document_data']);
+    expect(rpcs(db)).toEqual(['event_document_data']);
   });
 
   it('a Download still hands over the sheet when the badges cannot be attached', async () => {
@@ -208,7 +220,7 @@ describe('generateDocument and name badges (ADR-0081)', () => {
       db: db as unknown as Db,
     });
     expect(result.ok && result.documentId).toBe('doc-1');
-    expect(db.calls.map((c) => c.fn)).toEqual(['event_document_data', 'record_event_document']);
+    expect(rpcs(db)).toEqual(['event_document_data', 'record_event_document']);
     if (result.ok) expect(result.badges?.storagePath).toBe(null);
   });
 
@@ -229,5 +241,50 @@ describe('generateDocument and name badges (ADR-0081)', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe('generateDocument and a read-only login (ADR-0060)', () => {
+  beforeEach(() => {
+    uploads.length = 0;
+    refuseUpload = null;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+    createAdminClient.mockReset();
+    createAdminClient.mockImplementation(adminClient);
+  });
+
+  it('a viewer’s Download is handed over but never stored or recorded', async () => {
+    const db = fakeDb(true, null, false);
+    const result = await generateDocument(EVENT_ID, 'allocation', 'best-effort', {
+      db: db as unknown as Db,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.documentId).toBeNull();
+    expect(result.storagePath).toBeNull();
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(uploads).toEqual([]);
+    expect(db.calls.map((c) => c.fn)).not.toContain('record_event_document');
+  });
+
+  it('a viewer’s Send is refused before the service key is reached', async () => {
+    const db = fakeDb(false, null, false);
+    const result = await generateDocument(EVENT_ID, 'allocation', 'required', {
+      db: db as unknown as Db,
+    });
+    expect(result).toMatchObject({ ok: false, status: 403 });
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(db.calls).toContainEqual({ fn: 'office_can', args: { p_perm: 'write' } });
+  });
+
+  it('the automatic job (service role, no login) is not asked', async () => {
+    const db = fakeDb(false, null, false);
+    const result = await generateDocument(EVENT_ID, 'allocation', 'required', {
+      db: db as unknown as Db,
+      automatic: true,
+    });
+    expect(result.ok).toBe(true);
+    expect(db.calls.map((c) => c.fn)).not.toContain('office_can');
+    expect(createAdminClient).toHaveBeenCalled();
   });
 });

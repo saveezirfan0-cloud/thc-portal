@@ -51,6 +51,9 @@ const createSignedUrls = vi.fn(async (paths: string[]) => ({
 }));
 const createClient = vi.fn(() => ({
   auth: { getUser: async () => ({ data: { user: state.user } }) },
+  // current_app_role(): the gate asks the database, not the profiles row.
+  rpc: async (fn: string) =>
+    fn === 'current_app_role' ? { data: state.role, error: null } : { data: null, error: null },
   from: vi.fn(table),
   storage: { from: () => ({ createSignedUrls }) },
 }));
@@ -92,7 +95,7 @@ describe('rtwCheckPhotos', () => {
     state.role = 'staff';
     const result = await rtwCheckPhotos('k1');
     expect(result).toEqual({ ok: false, message: expect.stringMatching(/Only the office/) });
-    expect(state.reads.map((r) => r.table)).toEqual(['profiles']);
+    expect(state.reads).toEqual([]);
     expect(createAdminClient).not.toHaveBeenCalled();
     expect(createSignedUrls).not.toHaveBeenCalled();
   });

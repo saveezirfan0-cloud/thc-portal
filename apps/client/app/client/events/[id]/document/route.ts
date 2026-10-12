@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadDocuments, signDocument } from '../../../documents';
+import { isUuid } from '../../../ids';
 
 /**
  * GET /client/events/:id/document?kind=allocation|signout — §11.2's
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Not a uuid: no event has it, and the query would only fail (22P02).
+  if (!isUuid(id)) return new NextResponse('No document for this event yet.', { status: 404 });
   const kind =
     new URL(request.url).searchParams.get('kind') === 'signout' ? 'signout' : 'allocation';
   const doc = (await loadDocuments(id)).find((d) => d.kind === kind);

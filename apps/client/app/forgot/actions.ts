@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { appOrigin, recoveryRedirect } from '@thc/db';
+import { recoveryRequestAllowed } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 
 /**
@@ -36,16 +37,21 @@ export async function requestReset(
     return 'Password reset is not available on this deployment yet. Email admin@thehospitalitycompany.co.uk.';
   }
 
-  const supabase = createClient(await cookies());
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    // /auth/confirm takes the token_hash link (any browser, any device) and
-    // the PKCE code alike (supabase/templates/recovery.html, ADR-0039).
-    redirectTo: recoveryRedirect(origin),
-  });
+  // Three links an hour per address (packages/db/src/auth-throttle.ts), so
+  // this form cannot be used to flood an inbox. Over the limit nothing is
+  // sent and the answer below is the same, word for word.
+  if (await recoveryRequestAllowed(email)) {
+    const supabase = createClient(await cookies());
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // /auth/confirm takes the token_hash link (any browser, any device) and
+      // the PKCE code alike (supabase/templates/recovery.html, ADR-0039).
+      redirectTo: recoveryRedirect(origin),
+    });
 
-  if (error) {
-    // Logged, not shown: a rate limit and an unknown address look the same.
-    console.error('[reset] request failed', { status: error.status, message: error.message });
+    if (error) {
+      // Logged, not shown: a rate limit and an unknown address look the same.
+      console.error('[reset] request failed', { status: error.status, message: error.message });
+    }
   }
 
   redirect(`/forgot/sent?to=${encodeURIComponent(email)}`);

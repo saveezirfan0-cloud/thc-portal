@@ -12,7 +12,10 @@
     "./provision": "./src/provision.ts",
     "./willo": "./src/willo.ts",
     "./chasers": "./src/chasers.ts",
-    "./time-format": "./src/time-format.ts"
+    "./time-format": "./src/time-format.ts",
+    "./recovery": "./src/recovery.ts",
+    "./auth-throttle": "./src/auth-throttle.ts",
+    "./security-headers": "./src/security-headers.ts"
   },
   "scripts": {
     "lint": "eslint .",

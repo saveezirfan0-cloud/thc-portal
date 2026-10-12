@@ -29,12 +29,13 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { runJob } from '../_shared/job.ts';
+import { recordRun, runJob } from '../_shared/job.ts';
 import {
   describeShape,
   eventTime,
   isPermanentRefusal,
   parseWilloEvent,
+  readBodyCapped,
   refusalCode,
   runInviteSweep,
   verifyWilloSignature,
@@ -42,7 +43,7 @@ import {
   willoLookupPath,
   willoSignatureConfig,
 } from '../../../packages/db/src/willo.ts';
-import type { InviteDue } from '../../../packages/db/src/willo.ts';
+import type { InviteDue, WilloEvent } from '../../../packages/db/src/willo.ts';
 import { issueActivationLink } from '../../../packages/db/src/provision.ts';
 import type { AdminAuth } from '../../../packages/db/src/provision.ts';
 
@@ -99,10 +100,10 @@ async function refuse(
 }
 
 async function webhook(request: Request): Promise<Response> {
-  const declared = Number(request.headers.get('content-length') ?? '0');
-  if (declared > MAX_BODY_BYTES) return json(413, { error: 'too large' });
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'too large' });
+  // Capped as it is read, Content-Length or not: a chunked delivery declares
+  // no length, and request.text() would buffer whatever it was sent.
+  const raw = await readBodyCapped(request, MAX_BODY_BYTES);
+  if (raw === null) return json(413, { error: 'too large' });
 
   const verdict = await verifyWilloSignature(
     raw,
@@ -113,8 +114,11 @@ async function webhook(request: Request): Promise<Response> {
   );
   if (!verdict.ok) {
     if (verdict.reason === 'secret_missing') {
-      // Never accept an unsigned delivery because the secret is missing.
-      console.error('[willo-webhook] WILLO_WEBHOOK_SECRET is not set — every delivery is refused');
+      // Never accept an unsigned delivery because the secret is missing —
+      // or shorter than MIN_WEBHOOK_SECRET_LENGTH, which counts as missing.
+      console.error(
+        '[willo-webhook] WILLO_WEBHOOK_SECRET is not set or shorter than 32 characters — every delivery is refused',
+      );
       return json(503, { error: 'not configured' });
     }
     console.warn('[willo-webhook] signature refused', { reason: verdict.reason });
@@ -141,8 +145,14 @@ async function webhook(request: Request): Promise<Response> {
   const event = parsed.event;
   const at = eventTime(event.occurredAt, Date.now());
 
+  // One job_runs row per verified delivery, as every §7 job writes, so a
+  // webhook that failed (or stopped arriving) is visible in the same place.
+  // Unverified deliveries above write nothing: anyone can send those.
   const db = serviceClient();
+  return recordRun(db, 'willo-webhook', () => applyDelivery(db, event, at));
+}
 
+async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string): Promise<Response> {
   // Which of the delivery's keys is one of our candidates: the named path
   // first, then any 32-hex value (the interview's own key matches nobody).
   const interviewKey = env('WILLO_INTERVIEW_KEY')?.trim();

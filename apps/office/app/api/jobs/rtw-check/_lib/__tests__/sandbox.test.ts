@@ -8,6 +8,8 @@ import {
   createSandboxProviderFetch,
   isSandboxProviderUrl,
   rtwSandboxEnabled,
+  rtwSandboxSwitch,
+  supabaseProjectRef,
   SANDBOX_PERSONAS,
   sandboxEnv,
   sandboxPhotoPng,
@@ -23,7 +25,12 @@ const DOB = '1999-04-17';
 const HOLDER = { firstName: 'Lucía', lastName: 'Fernández' };
 
 const env = (vars: Record<string, string>) => (name: string) => vars[name];
-const SANDBOX_ENV = { RTW_PROVIDER_URL: 'sandbox:' };
+const SANDBOX_ENV = {
+  RTW_PROVIDER_URL: 'sandbox:',
+  // Security review item 4: the second key, naming this very project.
+  RTW_SANDBOX_ALLOW: 'abcdefghijklmnopqrst',
+  NEXT_PUBLIC_SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co',
+};
 
 function checker(
   lookup = vi.fn(async (): Promise<string | null> => `${HOLDER.firstName} ${HOLDER.lastName}`),
@@ -57,6 +64,56 @@ describe('switching it on', () => {
     expect(isSandboxProviderUrl('https://provider.example/v1')).toBe(false);
     expect(rtwSandboxEnabled(env(SANDBOX_ENV))).toBe(true);
     expect(rtwSandboxEnabled(env({}))).toBe(false);
+  });
+
+  it('the URL alone is not enough: RTW_SANDBOX_ALLOW must name this project (item 4)', () => {
+    const { RTW_SANDBOX_ALLOW: _allow, ...urlOnly } = SANDBOX_ENV;
+    expect(rtwSandboxSwitch(env(urlOnly))).toMatchObject({ state: 'refused' });
+    expect(rtwSandboxEnabled(env(urlOnly))).toBe(false);
+  });
+
+  it('refuses a ref that names another project — a demo’s variables copied to production', () => {
+    const copied = {
+      ...SANDBOX_ENV,
+      NEXT_PUBLIC_SUPABASE_URL: 'https://zyxwvutsrqponmlkjihg.supabase.co',
+    };
+    expect(rtwSandboxSwitch(env(copied))).toMatchObject({ state: 'refused' });
+  });
+
+  it('refuses when the Supabase URL names no project ref (a custom domain)', () => {
+    const custom = { ...SANDBOX_ENV, NEXT_PUBLIC_SUPABASE_URL: 'https://db.thc.example' };
+    expect(rtwSandboxSwitch(env(custom))).toMatchObject({ state: 'refused' });
+  });
+
+  it('is on when both keys agree, case aside, and "local" matches a local stack', () => {
+    expect(
+      rtwSandboxSwitch(env({ ...SANDBOX_ENV, RTW_SANDBOX_ALLOW: ' ABCDEFGHIJKLMNOPQRST ' })),
+    ).toEqual({ state: 'on', projectRef: 'abcdefghijklmnopqrst' });
+    expect(
+      rtwSandboxSwitch(
+        env({
+          RTW_PROVIDER_URL: 'sandbox:',
+          RTW_SANDBOX_ALLOW: 'local',
+          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
+        }),
+      ),
+    ).toEqual({ state: 'on', projectRef: 'local' });
+  });
+
+  it('is simply off — not refused — when nobody asked for it', () => {
+    expect(rtwSandboxSwitch(env({ RTW_SANDBOX_ALLOW: 'abcdefghijklmnopqrst' }))).toEqual({
+      state: 'off',
+    });
+  });
+
+  it('reads the project ref the way the service client’s URL names it', () => {
+    expect(supabaseProjectRef('https://abcdefghijklmnopqrst.supabase.co')).toBe(
+      'abcdefghijklmnopqrst',
+    );
+    expect(supabaseProjectRef('http://localhost:54321')).toBe('local');
+    expect(supabaseProjectRef('https://abc.supabase.co.attacker.example')).toBeNull();
+    expect(supabaseProjectRef('not a url')).toBeNull();
+    expect(supabaseProjectRef(undefined)).toBeNull();
   });
 
   it('needs no key: the adapter is available with the URL alone', () => {

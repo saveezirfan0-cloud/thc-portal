@@ -42,7 +42,7 @@ function firstStatement(source: string): string {
 }
 
 describe("'server-only' marker", () => {
-  it.each(['admin.ts', 'server.ts'])('is the first statement of %s', (file) => {
+  it.each(['admin.ts', 'server.ts', 'auth-throttle.ts'])('is the first statement of %s', (file) => {
     expect(firstStatement(src(file))).toBe("import 'server-only';");
   });
 
@@ -55,6 +55,8 @@ describe("'server-only' marker", () => {
     'activation.ts',
     'env.ts',
     'session.ts',
+    'recovery.ts',
+    'security-headers.ts',
   ])('is absent from %s (shared with Deno or the browser)', (file) => {
     expect(src(file)).not.toMatch(/['"]server-only['"]/);
   });

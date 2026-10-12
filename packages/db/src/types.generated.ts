@@ -800,9 +800,11 @@ export type Database = {
       };
       check_logs: {
         Row: {
+          accuracy_m: number | null;
           attempted_at: string;
           booking_id: string;
           check_in_at: string | null;
+          check_out_accuracy_m: number | null;
           check_out_at: string | null;
           check_out_on_site: boolean | null;
           check_out_pressed_at: string | null;
@@ -810,14 +812,17 @@ export type Database = {
           id: string;
           last_on_site_at: string | null;
           location: unknown;
+          location_suspect: boolean;
           manager_finish_at: string | null;
           on_site_verified: boolean;
           outcome: Database['public']['Enums']['checklog_outcome'];
         };
         Insert: {
+          accuracy_m?: number | null;
           attempted_at?: string;
           booking_id: string;
           check_in_at?: string | null;
+          check_out_accuracy_m?: number | null;
           check_out_at?: string | null;
           check_out_on_site?: boolean | null;
           check_out_pressed_at?: string | null;
@@ -825,14 +830,17 @@ export type Database = {
           id?: string;
           last_on_site_at?: string | null;
           location?: unknown;
+          location_suspect?: boolean;
           manager_finish_at?: string | null;
           on_site_verified?: boolean;
           outcome: Database['public']['Enums']['checklog_outcome'];
         };
         Update: {
+          accuracy_m?: number | null;
           attempted_at?: string;
           booking_id?: string;
           check_in_at?: string | null;
+          check_out_accuracy_m?: number | null;
           check_out_at?: string | null;
           check_out_on_site?: boolean | null;
           check_out_pressed_at?: string | null;
@@ -840,6 +848,7 @@ export type Database = {
           id?: string;
           last_on_site_at?: string | null;
           location?: unknown;
+          location_suspect?: boolean;
           manager_finish_at?: string | null;
           on_site_verified?: boolean;
           outcome?: Database['public']['Enums']['checklog_outcome'];
@@ -2268,6 +2277,7 @@ export type Database = {
       };
       location_pings: {
         Row: {
+          accuracy_m: number | null;
           at: string;
           booking_id: string;
           id: number;
@@ -2275,6 +2285,7 @@ export type Database = {
           location: unknown;
         };
         Insert: {
+          accuracy_m?: number | null;
           at?: string;
           booking_id: string;
           id?: never;
@@ -2282,6 +2293,7 @@ export type Database = {
           location: unknown;
         };
         Update: {
+          accuracy_m?: number | null;
           at?: string;
           booking_id?: string;
           id?: never;
@@ -5376,6 +5388,7 @@ export type Database = {
           last_fix_at: string | null;
           last_fix_inside: boolean | null;
           late_check_out: boolean | null;
+          location_suspect: boolean | null;
           on_day_confirmed_at: string | null;
           photo_path: string | null;
           role_name: string | null;
@@ -8421,6 +8434,7 @@ export type Database = {
       accept_application: { Args: { p_booking: string }; Returns: Json };
       accept_invite: { Args: { p_booking: string }; Returns: Json };
       account_invite_link_ok: { Args: { p_link: string }; Returns: boolean };
+      activation_link_ok: { Args: { p_link: string }; Returns: boolean };
       activation_link_refresh: {
         Args: { p_link: string; p_staff: string; p_user: string };
         Returns: number;
@@ -8598,6 +8612,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      app_origin_allowed: { Args: { p_link: string }; Returns: boolean };
       apply_payroll_codes: {
         Args: never;
         Returns: {
@@ -8671,9 +8686,19 @@ export type Database = {
         Returns: undefined;
       };
       attempt_check_in: {
-        Args: { p_booking: string; p_lat: number; p_lng: number };
+        Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
       };
+      auth_attempt_allowed: {
+        Args: { p_key_hash: string; p_kind: string };
+        Returns: boolean;
+      };
+      auth_attempt_key_ok: { Args: { p_key_hash: string }; Returns: undefined };
+      auth_attempt_limit: {
+        Args: { p_kind: string };
+        Returns: Record<string, unknown>;
+      };
+      auth_session_live: { Args: never; Returns: boolean };
       auto_assign_candidates: {
         Args: { p_escalation?: boolean; p_shift: string };
         Returns: {
@@ -8836,7 +8861,7 @@ export type Database = {
         Returns: Json;
       };
       check_out: {
-        Args: { p_booking: string; p_lat: number; p_lng: number };
+        Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
       };
       check_out_decision: {
@@ -9125,6 +9150,7 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string };
       edge_base_url: { Args: never; Returns: string };
+      edge_base_url_pinned: { Args: { p_url: string }; Returns: boolean };
       effective_pay_rate: {
         Args: { p_section_rate: number; p_staff: string };
         Returns: number;
@@ -9392,6 +9418,7 @@ export type Database = {
       };
       is_edge_base_url: { Args: { p_url: string }; Returns: boolean };
       is_office_base_url: { Args: { p_url: string }; Returns: boolean };
+      is_push_endpoint: { Args: { p_endpoint: string }; Returns: boolean };
       is_uk_time: {
         Args: { p_hhmm: string; p_now: string; p_window?: string };
         Returns: boolean;
@@ -9413,6 +9440,11 @@ export type Database = {
         Returns: Json;
       };
       load_payroll_codes: { Args: { p_rows: Json }; Returns: Json };
+      location_accuracy_m: { Args: { p_accuracy: number }; Returns: number };
+      location_fix_suspect: {
+        Args: { p_accuracy_m: number; p_distance_m: number; p_radius_m: number };
+        Returns: boolean;
+      };
       longtransactionsenabled: { Args: never; Returns: boolean };
       looks_like_relative: { Args: { p: string }; Returns: boolean };
       mark_feedback_read: { Args: { p_id: string }; Returns: Json };
@@ -9893,6 +9925,30 @@ export type Database = {
         };
         Returns: Json;
       };
+      onboarding_save_address_for: {
+        Args: {
+          p_lat: number;
+          p_line: string;
+          p_lng: number;
+          p_postcode: string;
+          p_staff: string;
+          p_town: string;
+        };
+        Returns: Json;
+      };
+      onboarding_save_address_geocoded: {
+        Args: {
+          p_lat: number;
+          p_line: string;
+          p_lng: number;
+          p_postcode: string;
+          p_postcode_lat: number;
+          p_postcode_lng: number;
+          p_staff: string;
+          p_town: string;
+        };
+        Returns: Json;
+      };
       onboarding_save_bank: {
         Args: {
           p_account_holder: string;
@@ -10120,10 +10176,15 @@ export type Database = {
         Returns: boolean;
       };
       ready_deadline: { Args: { p_starts_at: string }; Returns: string };
+      recent_password_auth: { Args: { p_seconds?: number }; Returns: boolean };
       recompute_staff_rating: { Args: { p_staff: string }; Returns: number };
       reconfirm_booking: { Args: { p_booking: string }; Returns: Json };
       record_application_referral: {
         Args: { p_code: string; p_email: string };
+        Returns: undefined;
+      };
+      record_auth_attempt: {
+        Args: { p_failed: boolean; p_key_hash: string; p_kind: string };
         Returns: undefined;
       };
       record_document_extraction: {
@@ -10162,7 +10223,7 @@ export type Database = {
       };
       record_password_check_failure: { Args: never; Returns: undefined };
       record_ping: {
-        Args: { p_booking: string; p_lat: number; p_lng: number };
+        Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
       };
       record_right_to_work_change: {

@@ -20,10 +20,21 @@ export async function pressCheckOut<R>(
   bookingId: string,
   deps: {
     locate: (options: FixOptions) => Promise<Fix | null>;
-    checkOut: (bookingId: string, lat: number | null, lng: number | null) => Promise<R>;
+    checkOut: (
+      bookingId: string,
+      lat: number | null,
+      lng: number | null,
+      accuracy: number | null,
+    ) => Promise<R>;
   },
 ): Promise<{ fix: Fix | null; result: R }> {
   const fix = await deps.locate(CHECK_OUT_FIX);
-  const result = await deps.checkOut(bookingId, fix?.lat ?? null, fix?.lng ?? null);
+  // The fix's accuracy radius goes with it (security round 12.10, item 6).
+  const result = await deps.checkOut(
+    bookingId,
+    fix?.lat ?? null,
+    fix?.lng ?? null,
+    fix?.accuracyM ?? null,
+  );
   return { fix, result };
 }

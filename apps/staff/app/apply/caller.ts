@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 
 /**
  * The per-caller key for the /apply throttle (§2.1, ADR-0024).
@@ -73,7 +73,7 @@ export function hashCaller(address: string, salt: string): string {
 }
 
 let warned = false;
-let refused = false;
+let derived = false;
 
 /**
  * A deployed build: `next build`/`next start` set NODE_ENV=production, and
@@ -85,35 +85,59 @@ export function isProductionRuntime(env: NodeJS.ProcessEnv = process.env): boole
 }
 
 /**
+ * The salt to use when `APPLY_THROTTLE_SALT` is missing in production:
+ * SHA-256 of a fixed label and the service-role key — a secret every
+ * deployment of this app already holds (docs/12), and never in the repo.
+ * The label keeps the digest from being the key's hash for any other use.
+ * The key itself is never logged, returned or stored; only this digest is
+ * used, as an HMAC key, inside this process.
+ */
+export function derivedSalt(secret: string): string {
+  return createHash('sha256').update('thc-apply-throttle-salt/v1\0').update(secret).digest('hex');
+}
+
+/**
  * The digest to send, or null when there is none to send.
  *
  * Null when the request carries no address (local development — on Vercel
- * there always is one), and null in production when `APPLY_THROTTLE_SALT`
- * is unset. That second case used to hash under a constant that is in this
- * file, i.e. in the public repository: an unsalted-in-effect digest of an
- * IPv4 address is reversed by trying all four billion (§1.7). Refusing is
- * the honest outcome — `submit_application_as_caller` treats a null key as
- * "no per-caller limit" and the per-email and per-mobile limits still apply
- * — and it is logged as an error so the missing secret gets noticed.
+ * there always is one).
+ *
+ * With `APPLY_THROTTLE_SALT` unset in production the throttle stays ON
+ * (security round 12.10, item 9). It used to send no key at all — which
+ * `submit_application_as_caller` reads as "no per-caller limit" — so a
+ * forgotten env var silently switched the throttle off. Hashing under the
+ * constant in this file is no answer either: that constant is public, and
+ * an unsalted-in-effect digest of an IPv4 address is reversed by trying
+ * all four billion (§1.7). So the salt is derived from the service-role
+ * key (`derivedSalt`), which is secret and always present, and the missing
+ * variable is logged once as an error so it still gets set. Only with no
+ * service key either — a deployment that cannot write anyway — is there
+ * nothing to hash with, and null goes.
+ *
  * Development keeps the constant, with a one-time warning.
  */
 export function callerKey(
   headers: HeaderGetter,
   salt: string | undefined = process.env['APPLY_THROTTLE_SALT'],
   production: boolean = isProductionRuntime(),
+  fallbackSecret: string | undefined = process.env['SUPABASE_SERVICE_ROLE_KEY'],
 ): string | null {
   const address = callerAddress(headers);
   if (!address) return null;
   let key = salt?.trim();
   if (!key) {
     if (production) {
-      if (!refused) {
-        refused = true;
+      const secret = fallbackSecret?.trim();
+      if (!derived) {
+        derived = true;
         console.error(
-          '[apply] APPLY_THROTTLE_SALT is not set on this production deployment — the per-caller throttle is OFF (no caller hash is sent). Set it (any long random string) in the Vercel env vars.',
+          secret
+            ? '[apply] APPLY_THROTTLE_SALT is not set on this production deployment — the per-caller throttle is hashing with a salt derived from the service key. Set APPLY_THROTTLE_SALT (any long random string) in the Vercel env vars.'
+            : '[apply] APPLY_THROTTLE_SALT and SUPABASE_SERVICE_ROLE_KEY are both missing on this production deployment — the per-caller throttle is OFF (no caller hash is sent). Set APPLY_THROTTLE_SALT in the Vercel env vars.',
         );
       }
-      return null;
+      if (!secret) return null;
+      return hashCaller(address, derivedSalt(secret));
     }
     if (!warned) {
       warned = true;

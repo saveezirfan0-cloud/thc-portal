@@ -193,6 +193,17 @@ function isProduction(): boolean {
   return typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
 }
 
+/**
+ * Served over https: on Vercel (which sets `VERCEL=1` for every build and
+ * function, and only ever serves https). Not `next start` on a plain
+ * http://127.0.0.1, where CI's end-to-end suite runs a production build: a
+ * `Secure` session cookie is then held by the browser but never sent by a
+ * plain-http client such as Playwright's request API.
+ */
+function servedOverHttps(): boolean {
+  return typeof process !== 'undefined' && process.env.VERCEL === '1';
+}
+
 function preferenceOptions(): CookieOptions {
   return { path: '/', sameSite: 'lax', secure: isProduction(), httpOnly: false };
 }
@@ -204,15 +215,23 @@ function isDeletion({ value, options }: CookieToSet): boolean {
 
 /**
  * One auth cookie's options under the given choice. `null` (no choice, and a
- * pass-through fallback) leaves the library's options untouched.
+ * pass-through fallback) leaves the library's lifetime untouched.
+ *
+ * Whatever the choice, `Secure` on Vercel: `@supabase/ssr` sets no `Secure`
+ * of its own, and these cookies ARE the session — a single plain http
+ * request to the host (a typed address, a downgraded link) would carry them
+ * in the clear. Not in `next dev` or a local `next start`, which are http.
  */
 export function authCookieOptions(
   options: CookieOptions,
   persistence: SessionPersistence | null,
 ): CookieOptions {
-  if (persistence === null) return options;
+  const secure = options.secure === true || servedOverHttps();
+  if (persistence === null) return { ...options, secure };
   const { maxAge: _maxAge, expires: _expires, ...rest } = options;
-  return persistence === 'persistent' ? { ...rest, maxAge: KEEP_SIGNED_IN_MAX_AGE } : rest;
+  return persistence === 'persistent'
+    ? { ...rest, secure, maxAge: KEEP_SIGNED_IN_MAX_AGE }
+    : { ...rest, secure };
 }
 
 /** Apply the choice to a batch of auth-cookie writes, leaving deletions alone. */

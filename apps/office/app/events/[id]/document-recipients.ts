@@ -42,7 +42,10 @@ export function recipientsRpcRefusal(message: string): string {
   if (/event_cancelled/.test(message)) return 'A cancelled event has no timesheet to send.';
   if (/event_not_found/.test(message)) return 'That event no longer exists.';
   if (/admins_only|42501/.test(message)) return 'Only an office admin can choose the recipients.';
-  return `The recipients were not saved: ${message}`;
+  // Never the raw text (security review, NOTE item 5): logged, not shown.
+  if (/read_only/.test(message)) return 'Your login is read-only, so this cannot be changed.';
+  console.error('[events] unmapped recipients refusal', { message });
+  return 'The recipients were not saved. Refresh the page and try again.';
 }
 
 /**

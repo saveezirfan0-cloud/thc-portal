@@ -12,7 +12,7 @@ interface Recorded {
 }
 
 const recorded: Recorded[] = [];
-const rowsFor = vi.hoisted(() => ({ violations: [] as unknown[] }));
+const rowsFor = vi.hoisted(() => ({ violations: [] as unknown[], monitor: [] as unknown[] }));
 
 function builder(table: string) {
   const rec: Recorded = { table, calls: [] };
@@ -20,7 +20,9 @@ function builder(table: string) {
   const result = () =>
     table === 'violations'
       ? { data: rowsFor.violations, error: null, count: 7 }
-      : { data: [], error: null, count: null };
+      : table === 'checkin_monitor_v'
+        ? { data: rowsFor.monitor, error: null, count: null }
+        : { data: [], error: null, count: null };
   const b: Record<string, unknown> = {};
   for (const m of ['select', 'eq', 'lt', 'gt', 'order', 'range', 'limit']) {
     b[m] = (...args: unknown[]) => {
@@ -51,6 +53,7 @@ const violationRow = (i: number) => ({
 beforeEach(() => {
   recorded.length = 0;
   rowsFor.violations = [];
+  rowsFor.monitor = [];
   process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://supabase.test';
   process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = 'anon';
 });
@@ -104,5 +107,30 @@ describe('the monitor read (§9.5, §1.8)', () => {
     expect(Date.parse(lt[2] as string) - Date.parse(gt[2] as string)).toBeGreaterThanOrEqual(
       23 * 3_600_000,
     );
+  });
+});
+
+describe('the monitor read carries the location flag (20261012121200)', () => {
+  const monitorRow = (extra: Record<string, unknown>) => ({
+    booking_id: 'b1',
+    staff_id: 's1',
+    event_id: 'e1',
+    starts_at: '2026-09-17T16:00:00Z',
+    ends_at: '2026-09-17T22:00:00Z',
+    check_in_at: '2026-09-17T15:58:00Z',
+    status: 'on_shift',
+    ...extra,
+  });
+
+  it('reads location_suspect from checkin_monitor_v', async () => {
+    rowsFor.monitor = [monitorRow({ location_suspect: true })];
+    const data = await loadMonitor();
+    expect(data.rows[0]?.locationSuspect).toBe(true);
+  });
+
+  it('reads a database without the column as not flagged', async () => {
+    rowsFor.monitor = [monitorRow({})];
+    const data = await loadMonitor();
+    expect(data.rows[0]?.locationSuspect).toBe(false);
   });
 });

@@ -12,6 +12,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
  *                        moves staff.email and queues E7 (330 pins the SQL).
  */
 const auth = vi.hoisted(() => ({
+  getUser: vi.fn(),
+  signInWithPassword: vi.fn(),
   updateUser: vi.fn(),
   verifyOtp: vi.fn(),
 }));
@@ -34,6 +36,8 @@ afterAll(() => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  auth.getUser.mockResolvedValue({ data: { user: { id: 'u1', email: 'amara@example.com' } } });
+  auth.signInWithPassword.mockResolvedValue({ error: null });
   auth.updateUser.mockResolvedValue({ error: null });
   auth.verifyOtp.mockResolvedValue({ error: null });
   rpc.mockResolvedValue({ data: { ok: true, changed: true }, error: null });
@@ -41,13 +45,13 @@ beforeEach(() => {
 
 describe('requestEmailChange — step one', () => {
   it('refuses an address that is not one, without asking Auth', async () => {
-    const result = await requestEmailChange('not an email');
+    const result = await requestEmailChange('not an email', 'Correct-horse-1');
     expect(result).toEqual({ ok: false, message: 'Please enter a valid email address.' });
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
 
   it('normalises the address and sends the code to it; the old one stays', async () => {
-    const result = await requestEmailChange('  Amara.New@Example.COM ');
+    const result = await requestEmailChange('  Amara.New@Example.COM ', 'Correct-horse-1');
     expect(auth.updateUser).toHaveBeenCalledWith({ email: 'amara.new@example.com' });
     expect(result.ok).toBe(true);
     expect(result.ok && result.note).toContain('We sent a 6-digit code to amara.new@example.com');
@@ -55,12 +59,43 @@ describe('requestEmailChange — step one', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('passes Auth’s refusal back', async () => {
-    auth.updateUser.mockResolvedValue({ error: { message: 'Email rate limit exceeded' } });
-    expect(await requestEmailChange('a@b.co')).toEqual({
-      ok: false,
-      message: 'Email rate limit exceeded',
+  it('a rate limit reads as a sentence', async () => {
+    auth.updateUser.mockResolvedValue({
+      error: { code: 'over_email_send_rate_limit', message: 'Email rate limit exceeded' },
     });
+    expect(await requestEmailChange('a@b.co', 'Correct-horse-1')).toEqual({
+      ok: false,
+      message: 'Too many codes have been asked for. Please wait a few minutes and try again.',
+    });
+  });
+
+  it('an address already on another account gets the same answer as a free one (no enumeration)', async () => {
+    const free = await requestEmailChange('taken@example.com', 'Correct-horse-1');
+    auth.updateUser.mockResolvedValue({
+      error: {
+        code: 'email_exists',
+        message: 'A user with this email address has already been registered',
+      },
+    });
+    const taken = await requestEmailChange('taken@example.com', 'Correct-horse-1');
+    expect(taken).toEqual(free);
+    auth.updateUser.mockResolvedValue({
+      error: { message: 'A user with this email address has already been registered' },
+    });
+    expect(await requestEmailChange('taken@example.com', 'Correct-horse-1')).toEqual(free);
+  });
+
+  it('any other Auth refusal is the generic line, never Auth’s wording', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    auth.updateUser.mockResolvedValue({
+      error: { code: 'unexpected_failure', message: 'Database error saving new user' },
+    });
+    expect(await requestEmailChange('a@b.co', 'Correct-horse-1')).toEqual({
+      ok: false,
+      message: 'That didn’t go through. Please try again.',
+    });
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
   });
 });
 

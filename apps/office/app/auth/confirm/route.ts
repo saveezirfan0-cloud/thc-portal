@@ -9,10 +9,12 @@ import { clearTimeFormatCookie } from '@thc/db/time-format';
  * ADR-0039.
  *
  * The recovery template (supabase/templates/recovery.html) links here with
- * `token_hash` + `type=recovery`, which verifyOtp turns into a session in
- * ANY browser: no PKCE code verifier is needed, so a link opened on another
- * device, in a mail app's in-app browser or outside the PWA still works
- * (audit D13). A project still on the default template sends GoTrue's
+ * `token_hash` + `type=recovery`. That is NOT spent here: GET hands it to
+ * the interstitial (./continue), whose "Continue" POST runs verifyOtp, so a
+ * mail scanner opening the link burns nothing and another site cannot sign
+ * the visitor in. verifyOtp turns it into a session in ANY browser: no
+ * PKCE code verifier is needed, so a link opened on another device, in a
+ * mail app's in-app browser or outside the PWA still works (audit D13). A project still on the default template sends GoTrue's
  * /verify link instead, which redirects here with a PKCE `code`; that is
  * exchanged exactly as /auth/callback does, so either template works.
  *
@@ -28,19 +30,12 @@ export async function GET(request: Request) {
   const next = safeNextPath(url.searchParams.get('next'), '/reset', url.origin);
 
   if (tokenHash && type === 'recovery') {
-    const jar = await cookies();
-    // A new session: the clock is read from THIS login's profile, not the last one's (ADR-0085).
-    clearTimeFormatCookie(jar);
-    const supabase = createClient(jar);
-    const { error } = await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash });
-    if (error) {
-      console.error('[auth] recovery token rejected', {
-        status: error.status,
-        message: error.message,
-      });
-      return NextResponse.redirect(new URL('/reset?error=expired', url.origin));
-    }
-    return NextResponse.redirect(new URL(next, url.origin));
+    // Not spent on GET (scanners, previews): the interstitial's button does
+    // it, by POST from this origin (./continue).
+    const to = new URL('/auth/confirm/continue', url.origin);
+    to.searchParams.set('token_hash', tokenHash);
+    to.searchParams.set('next', next);
+    return NextResponse.redirect(to, { status: 303 });
   }
 
   if (code) {

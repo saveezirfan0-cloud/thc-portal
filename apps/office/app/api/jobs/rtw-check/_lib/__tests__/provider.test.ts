@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { mapProviderResponse, providerConfig } from '../provider.config';
-import { createProviderChecker } from '../provider';
+import { createProviderChecker, readCapped } from '../provider';
+import { MAX_REPORT_BYTES } from '../checker';
 
 /**
  * The provider adapter against SYNTHETIC responses (fixtures/README.md):
@@ -239,5 +240,77 @@ describe('the photo (ADR-0041)', () => {
     const out = await check({ status: 'not_found', photo_png_base64: PNG });
     expect(out.result.outcome).toBe('not_found');
     expect(out.photo ?? null).toBeNull();
+  });
+});
+
+describe('the report link (security review, item 3)', () => {
+  const pdf = new TextEncoder().encode('%PDF-1.4 synthetic');
+  const answering = (reportUrl: string, report: () => Response = () => new Response(pdf)) =>
+    vi.fn(async (url: string) =>
+      url === reportUrl
+        ? report()
+        : reply(200, { ...(fixture('provider-settled.json') as object), report_url: reportUrl }),
+    );
+
+  it.each([
+    'https://attacker.example/steal.pdf',
+    'http://provider.example/reports/SYNTH-1.pdf',
+    'https://provider.example.attacker.example/r.pdf',
+    'http://169.254.169.254/latest/meta-data/',
+    'file:///etc/passwd',
+    'not a url',
+  ])('never fetches a link off the provider’s own origin: %s', async (link) => {
+    const fetchImpl = answering(link);
+    const out = await createProviderChecker(env(ENV), fetchImpl as unknown as typeof fetch)!.check(
+      INPUT,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(out.report).toBeNull();
+    // The check itself still stands: only the report is missing.
+    expect(out.result.outcome).toBe('right_to_work');
+  });
+
+  it('refuses to follow a redirect from the provider’s origin', async () => {
+    const link = 'https://provider.example/reports/SYNTH-1.pdf';
+    const fetchImpl = answering(link);
+    await createProviderChecker(env(ENV), fetchImpl as unknown as typeof fetch)!.check(INPUT);
+    const [, init] = fetchImpl.mock.calls[1] as unknown as [string, RequestInit];
+    expect(init.redirect).toBe('error');
+  });
+
+  it('drops a report that declares itself over the size limit, unread', async () => {
+    const link = 'https://provider.example/reports/SYNTH-1.pdf';
+    const fetchImpl = answering(
+      link,
+      () => new Response(pdf, { headers: { 'Content-Length': String(MAX_REPORT_BYTES + 1) } }),
+    );
+    const out = await createProviderChecker(env(ENV), fetchImpl as unknown as typeof fetch)!.check(
+      INPUT,
+    );
+    expect(out.report).toBeNull();
+  });
+
+  it('stops reading a streamed report as soon as it passes the limit', async () => {
+    const chunk = new Uint8Array(1024 * 1024);
+    chunk.set(new TextEncoder().encode('%PDF-'));
+    let pulled = 0;
+    let cancelled = false;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        controller.enqueue(chunk);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const response = new Response(endless);
+    expect(await readCapped(response, MAX_REPORT_BYTES)).toBeNull();
+    expect(cancelled).toBe(true);
+    expect(pulled).toBeLessThanOrEqual(MAX_REPORT_BYTES / chunk.byteLength + 2);
+  });
+
+  it('reads a report under the limit whole', async () => {
+    expect(await readCapped(new Response(pdf), MAX_REPORT_BYTES)).toEqual(pdf);
   });
 });

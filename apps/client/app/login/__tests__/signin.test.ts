@@ -25,7 +25,17 @@ const jar = {
   },
 };
 
-vi.mock('next/headers', () => ({ cookies: async () => jar }));
+vi.mock('next/headers', () => ({
+  cookies: async () => jar,
+  headers: async () => new Headers(),
+}));
+// The per-account throttle is held by its own tests (packages/db, ./throttle.test.ts).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  authAttemptAllowed: async () => true,
+  recordAuthAttempt: async () => {},
+  recoveryRequestAllowed: async () => true,
+}));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);

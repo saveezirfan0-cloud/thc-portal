@@ -82,6 +82,9 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
     name: 'Are you sure? This can’t be undone from the app',
   });
   await expect(sure).toBeVisible();
+  // ADR-0113: the confirm asks for the current password, so a phone left
+  // signed in cannot end someone's employment.
+  await sure.getByLabel('Current password').fill(PASSWORD);
   await sure.getByRole('button', { name: 'Request my P45', exact: true }).click();
 
   // LockScreen.tsx, the leaver case (§10.6 step 7). The confirm is a server
