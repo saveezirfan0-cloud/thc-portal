@@ -153,7 +153,7 @@
 
               <!-- Role 3: Waiting Staff -->
               <div class="rolesec">
-                <div class="rh"><span class="n">Role 3</span><b>Waiting Staff</b><span class="mono sm muted">17:00 – 23:30 · 6.5 h</span><span class="pill">12 (+2)</span><span class="green mono sm">margin +£7.28/h</span><div class="right"><label class="switch purple on"><span class="track"></span>Auto-assign</label><button class="btn sm ghost">Remove</button></div></div>
+                <div class="rh"><span class="n">Role 3</span><b>Waiting Staff</b><span class="mono sm muted">17:00 – 23:30 · 6.5 h</span><span class="pill">12 (+2)</span><!-- ADR-0116 --><span class="pill cyan">Same staff on all days</span><span class="green mono sm">margin +£7.28/h</span><div class="right"><label class="switch purple on"><span class="track"></span>Auto-assign</label><button class="btn sm ghost">Remove</button></div></div>
                 <div class="rb">
                   <div class="grid6">
                     <div class="field"><span class="label">Role</span><select class="input"><option>Waiting Staff</option></select></div>
@@ -173,7 +173,7 @@
                   <div class="f3">
                     <div class="field"><span class="label">Staff gender</span><select class="input"><option>Any</option><option>Male staff only</option><option>Female staff only</option></select><span class="hint">Only when the client asks for one gender on this role</span></div>
                     <!-- ADR-0116: Same staff on all days — per ROLE, off by default, plain (not violet) switch -->
-                    <div class="field"><span class="label">Multi-day job</span><label class="switch"><span class="track"></span>Same staff on all days</label><span class="hint">Only when the client wants the same people on every day of a multi-day job</span></div>
+                    <div class="field"><span class="label">Multi-day job</span><label class="switch on"><span class="track"></span>Same staff on all days</label><span class="hint">Day 2 of 3: only people free for every other day of this job where Waiting Staff also asks for the same staff are invited</span></div>
                   </div>
                 </div>
               </div>
