@@ -155,6 +155,11 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
  * way: a worker whose languages are on file without it is hidden, one who
  * was never asked shows, so the office can record them.
  *
+ * `not_available_all_days` applies only on a role section marked "Same staff
+ * on all days" (ADR-0116): the worker fails a hard gate, the calendar or the
+ * projected weekly hours on another day of the series. It shows, because the
+ * office can act on it (clear the worker's day, or switch the requirement off).
+ *
  * `do_not_return` is the client-level bar from §9.6: "they are not invited in
  * either wave, the shift never appears on their Radar, they cannot be invited
  * manually, and they show under Unavailable → Do not return". It is the one
@@ -173,6 +178,9 @@ export const HARD_GATES = [
   'hours_limit',
   'self_cancelled',
   'do_not_return',
+  // ADR-0116: a role section marked "Same staff on all days" and a worker
+  // who cannot do one of its other days. Shows under Unavailable with why.
+  'not_available_all_days',
 ] as const;
 
 export type HardGate = (typeof HARD_GATES)[number];

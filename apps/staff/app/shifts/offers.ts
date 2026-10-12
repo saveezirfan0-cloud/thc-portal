@@ -202,6 +202,8 @@ const TAKE_REFUSAL_COPY: Readonly<Record<string, Refusal>> = {
   overlap: APPLY_REFUSAL_COPY.booked_elsewhere,
   rtw_expired: APPLY_REFUSAL_COPY.rtw_expired,
   hours_limit: APPLY_REFUSAL_COPY.hours_limit,
+  // ADR-0116.
+  not_available_all_days: APPLY_REFUSAL_COPY.not_available_all_days,
 };
 
 export function takeRefusalCopy(reason: string): Refusal | undefined {

@@ -393,6 +393,34 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
 
 // ---------------------------------------------------------------------
 
+describe('Not available all days — a same-staff role (ADR-0116)', () => {
+  const none = new Set<string>();
+
+  it('lists a worker the other days refuse under Unavailable, with why, after Do not return', () => {
+    const list = buildUnavailable(
+      [row('omar', { gate: 'do_not_return' }), row('luca', { gate: 'not_available_all_days' })],
+      [],
+      people,
+      none,
+    );
+    expect(list.map((e) => [e.name, e.reason, e.label, e.inviteAnyway])).toEqual([
+      ['Omar S.', 'do_not_return', 'Do not return', false],
+      ['Luca M.', 'not_available_all_days', 'Not available all days', false],
+    ]);
+    expect(list[1]!.detail).toMatch(/same staff on every day/);
+  });
+
+  it('is never in the Potential pool, and has no Invite anyway: the client’s requirement is not the machine’s', () => {
+    const rows = [row('luca', { gate: 'not_available_all_days' }), row('yusuf')];
+    expect(buildPool(rows, people, [], DEFAULT_WEIGHTS).map((p) => p.staffId)).toEqual(['yusuf']);
+    expect(buildUnavailable(rows, [], people, none).every((e) => !e.inviteAnyway)).toBe(true);
+  });
+
+  it('a manual invite refused for it says why, in the manager’s words', () => {
+    expect(inviteRefusal('not_available_all_days')).toMatch(/same staff on all days/);
+  });
+});
+
 describe('Marked unavailable — the calendar on the board (ADR-0043)', () => {
   const none = new Set<string>();
   // Thursday 15 Oct 2026, BST (UTC+1).

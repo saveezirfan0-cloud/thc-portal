@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
+import { type SeriesMember, UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from './db';
 
 /**
@@ -220,6 +220,8 @@ export interface SavedRoleSection {
   autoAssign: boolean;
   /** ADR-0079: the gender the client asked for on this role, or null for anyone. */
   requiredGender: 'M' | 'F' | null;
+  /** ADR-0116: the client wants the same staff on every day of this job for this role. */
+  sameStaffAllDays: boolean;
   allocationPerHour: number;
   /** Confirmed bookings on THIS role section — who re-confirms if it moves. */
   confirmed: number;
@@ -245,6 +247,12 @@ export interface SavedEvent {
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
   cancelledAt: string | null;
+  /**
+   * ADR-0116: every event of the multi-day job this one belongs to (itself
+   * included), by date; empty when it stands alone. `seriesPosition()` turns
+   * it into "Day 2 of 3".
+   */
+  seriesDays: SeriesMember[];
   sections: SavedRoleSection[];
 }
 
@@ -260,6 +268,7 @@ interface EventRow {
   auto_assign: boolean;
   required_languages: string[] | null;
   cancelled_at: string | null;
+  series_id: string | null;
 }
 
 interface SectionRow {
@@ -272,6 +281,7 @@ interface SectionRow {
   dress_code: string | null;
   auto_assign: boolean;
   required_gender: 'M' | 'F' | null;
+  same_staff_all_days: boolean;
   allocation_per_hour: number;
 }
 
@@ -307,7 +317,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, required_languages, cancelled_at',
+      'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, required_languages, cancelled_at, series_id',
     )
     .eq('id', id)
     .maybeSingle();
@@ -320,7 +330,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       supabase
         .from('shift_requirements')
         .select(
-          'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, required_gender, allocation_per_hour',
+          'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, required_gender, same_staff_all_days, allocation_per_hour',
         )
         .eq('event_id', id)
         .order('starts_at'),
@@ -349,6 +359,27 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
     }
   }
 
+  // ADR-0116: the other days of the multi-day job, for "Day 2 of 3". A failed
+  // read here only drops that line - it must not fail the whole event.
+  const seriesDays: SeriesMember[] = [];
+  if (event.series_id) {
+    const { data: days } = await supabase
+      .from('events')
+      .select('id, event_date, cancelled_at')
+      .eq('series_id', event.series_id);
+    for (const day of (days ?? []) as {
+      id: string;
+      event_date: string;
+      cancelled_at: string | null;
+    }[]) {
+      seriesDays.push({
+        eventId: day.id,
+        date: day.event_date,
+        cancelled: day.cancelled_at !== null,
+      });
+    }
+  }
+
   return {
     id: event.id,
     clientId: event.client_id,
@@ -361,6 +392,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
     autoAssign: event.auto_assign,
     requiredLanguages: normaliseLanguages(event.required_languages),
     cancelledAt: event.cancelled_at,
+    seriesDays,
     sections: sections.map((s) => ({
       id: s.id,
       roleId: s.role_id,
@@ -373,6 +405,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       dressCode: s.dress_code ?? '',
       autoAssign: s.auto_assign,
       requiredGender: s.required_gender,
+      sameStaffAllDays: s.same_staff_all_days,
       allocationPerHour: s.allocation_per_hour,
       confirmed: confirmed.get(s.id) ?? 0,
       booked: booked.get(s.id) ?? 0,

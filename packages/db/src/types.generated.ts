@@ -1778,6 +1778,7 @@ export type Database = {
           pays_buffer: boolean;
           po_number: string | null;
           required_languages: string[];
+          series_id: string | null;
           title: string;
           venue_address: string;
           venue_id: string | null;
@@ -1803,6 +1804,7 @@ export type Database = {
           pays_buffer: boolean;
           po_number?: string | null;
           required_languages?: string[];
+          series_id?: string | null;
           title: string;
           venue_address: string;
           venue_id?: string | null;
@@ -1828,6 +1830,7 @@ export type Database = {
           pays_buffer?: boolean;
           po_number?: string | null;
           required_languages?: string[];
+          series_id?: string | null;
           title?: string;
           venue_address?: string;
           venue_id?: string | null;
@@ -4073,6 +4076,7 @@ export type Database = {
           pay_rate: number;
           required_gender: string | null;
           role_id: string;
+          same_staff_all_days: boolean;
           starts_at: string;
         };
         Insert: {
@@ -4088,6 +4092,7 @@ export type Database = {
           pay_rate: number;
           required_gender?: string | null;
           role_id: string;
+          same_staff_all_days?: boolean;
           starts_at: string;
         };
         Update: {
@@ -4103,6 +4108,7 @@ export type Database = {
           pay_rate?: number;
           required_gender?: string | null;
           role_id?: string;
+          same_staff_all_days?: boolean;
           starts_at?: string;
         };
         Relationships: [
@@ -8714,6 +8720,21 @@ export type Database = {
           venue_times: number;
         }[];
       };
+      auto_assign_candidates_pool: {
+        Args: { p_escalation?: boolean; p_shift: string };
+        Returns: {
+          booking_cause: string;
+          booking_status: string;
+          distance_km: number;
+          future_shifts: number;
+          gate: string;
+          qualified: boolean;
+          rating: number;
+          reliability: number;
+          staff_id: string;
+          venue_times: number;
+        }[];
+      };
       auto_assign_due_shifts: {
         Args: { p_mode: string; p_now?: string };
         Returns: {
@@ -9435,6 +9456,10 @@ export type Database = {
       job_run_start: { Args: { p_job: string }; Returns: number };
       known_languages: { Args: never; Returns: string[] };
       lapse_shift_offers: { Args: { p_now?: string }; Returns: number };
+      link_event_series: {
+        Args: { p_clone: string; p_source: string };
+        Returns: string;
+      };
       link_staff_account: {
         Args: { p_staff: string; p_user: string };
         Returns: Json;
@@ -10450,6 +10475,21 @@ export type Database = {
       send_staff_message: {
         Args: { p_message: string; p_staff: string[] };
         Returns: Json;
+      };
+      series_hours_blocked: {
+        Args: { p_shift: string; p_staff: string };
+        Returns: boolean;
+      };
+      series_siblings: {
+        Args: { p_shift: string };
+        Returns: {
+          ends_at: string;
+          event_date: string;
+          event_id: string;
+          shift_id: string;
+          starts_at: string;
+          venue_id: string;
+        }[];
       };
       set_client_name_badges: {
         Args: { p_client: string; p_on: boolean };

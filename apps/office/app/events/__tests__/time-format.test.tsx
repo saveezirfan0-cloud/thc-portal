@@ -35,6 +35,7 @@ const DRAFT: EventDraft = {
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  duplicateOf: null,
   roles: [],
 };
 
@@ -160,6 +161,7 @@ describe('a role section (§3.5)', () => {
           changed={new Set(['starts_at', 'ends_at'])}
           original={original}
           locked={locked}
+          series={{ kind: 'single' }}
           ratesVisible
           onChange={() => {}}
           onRemove={() => {}}
