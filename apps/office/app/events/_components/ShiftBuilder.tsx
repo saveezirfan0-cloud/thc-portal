@@ -204,9 +204,7 @@ export function ShiftBuilder({
           ...role,
           chargeRate: card?.chargeRate ?? role.chargeRate,
           dressCode:
-            stillOnList && role.dressCode
-              ? role.dressCode
-              : defaultDressCode(card?.dressCodes ?? []),
+            stillOnList && role.dressCode ? role.dressCode : defaultDressCode(card?.dressCodes ?? []),
         };
       }),
     }));

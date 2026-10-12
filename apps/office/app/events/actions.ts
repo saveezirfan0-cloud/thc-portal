@@ -61,7 +61,8 @@ export interface EventInput {
   requiredLanguages: string[];
   /**
    * ADR-0116: the event this one was Duplicated from (create only). Saving
-   * links the two as days of one multi-day job; the staff are not copied.
+   * links the two as days of one multi-day job when the original has a "Same
+   * staff on all days" role; the staff are not copied either way.
    */
   duplicateOf?: string | null;
   roles: RoleSectionInput[];
@@ -154,18 +155,32 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
     .single();
   if (error || !event) return { error: error?.message ?? 'The event could not be saved.' };
 
-  // ADR-0116: a Duplicate is another day of the same job. Linked BEFORE the
-  // sections and the first auto-assign round, so that round already sees the
-  // series. Duplicating into a different client is allowed (it is only a
-  // copy of the roles) and is simply not a series.
+  // ADR-0116: a Duplicate of an event that has a "Same staff on all days" role
+  // is another day of the same job. Any other Duplicate ("copy last week's
+  // event") is just a copy and joins no series. Linked BEFORE the sections
+  // and the first auto-assign round, so that round already sees the series.
+  // Duplicating into a different client is allowed (it is only a copy of the
+  // roles) and is simply not a series.
   if (input.duplicateOf) {
-    const { error: linkError } = await supabase.rpc('link_event_series', {
-      p_source: input.duplicateOf,
-      p_clone: event.id,
-    });
-    if (linkError && !linkError.message.includes('series_other_client')) {
+    const { data: flagged, error: flagError } = await supabase
+      .from('shift_requirements')
+      .select('id')
+      .eq('event_id', input.duplicateOf)
+      .eq('same_staff_all_days', true)
+      .limit(1);
+    if (flagError) {
       await supabase.from('events').delete().eq('id', event.id);
-      return { error: `The days of this job could not be linked: ${linkError.message}` };
+      return { error: `The original event could not be read: ${flagError.message}` };
+    }
+    if ((flagged ?? []).length > 0) {
+      const { error: linkError } = await supabase.rpc('link_event_series', {
+        p_source: input.duplicateOf,
+        p_clone: event.id,
+      });
+      if (linkError && !linkError.message.includes('series_other_client')) {
+        await supabase.from('events').delete().eq('id', event.id);
+        return { error: `The days of this job could not be linked: ${linkError.message}` };
+      }
     }
   }
 

@@ -41,15 +41,15 @@ function signedPence(pence: number): string {
 /** The line under the "Same staff on all days" switch (ADR-0116). */
 export function sameStaffHint(on: boolean, series: SeriesContext, roleName: string): string {
   if (!on) {
-    return 'Only when the client wants the same people on every day of a multi-day job';
+    return 'Only when the client wants the same people on every day of a multi-day job: switch it on, save, then Duplicate to add the next day';
   }
   if (series.kind === 'series') {
     return `Day ${series.day} of ${series.of}: only people free for every other day of this job where ${roleName} also asks for the same staff are invited`;
   }
   if (series.kind === 'duplicate') {
-    return `Saving links this to the original as another day of one job. Switch it on for ${roleName} on each day that needs the same people`;
+    return `Saving links this to the original as another day of one job if the original has this on. Switch it on for ${roleName} on each day that needs the same people, then Duplicate to add the next day`;
   }
-  return 'Takes effect once another day is added with Duplicate and has it switched on too';
+  return 'Switch it on, save, then Duplicate this event to add the next day: it takes effect once another day has it switched on too';
 }
 
 export interface RoleSectionProps {

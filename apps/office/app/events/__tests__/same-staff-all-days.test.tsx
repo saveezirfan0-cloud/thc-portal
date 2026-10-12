@@ -11,6 +11,9 @@ import { TimeFormatProvider } from '@thc/ui';
 const state = vi.hoisted(() => ({
   calls: [] as string[],
   linkError: null as null | { message: string },
+  /** Does the source event have a "Same staff on all days" section? */
+  sourceFlagged: true,
+  sourceReadError: null as null | { message: string },
   rpc: vi.fn(async (fn: string, _args: unknown) => {
     state.calls.push(`rpc:${fn}`);
     if (fn === 'link_event_series') return { data: null, error: state.linkError };
@@ -52,8 +55,16 @@ function fakeDb() {
               if (prop === 'then') {
                 return (resolve: (value: unknown) => unknown) => resolve({ error: null });
               }
+              if (prop === 'select') {
+                return () =>
+                  chain({
+                    data: state.sourceFlagged ? [{ id: 'sec-flagged' }] : [],
+                    error: state.sourceReadError,
+                  });
+              }
               if (prop === 'insert') {
                 return (value: Record<string, unknown>[]) => {
+                  state.calls.push('insert:shift_requirements');
                   rows.push(...value);
                   return chain({ error: null });
                 };
@@ -255,16 +266,16 @@ describe('the switch on a role section', () => {
 
   it('explains itself according to where the event sits in its job', () => {
     expect(sameStaffHint(false, { kind: 'single' }, 'Bar Staff')).toMatch(
-      /same people on every day/,
+      /switch it on, save, then Duplicate to add the next day/,
     );
     expect(sameStaffHint(true, { kind: 'series', day: 2, of: 3 }, 'Bar Staff')).toBe(
       'Day 2 of 3: only people free for every other day of this job where Bar Staff also asks for the same staff are invited',
     );
     expect(sameStaffHint(true, { kind: 'duplicate' }, 'Bar Staff')).toMatch(
-      /links this to the original/,
+      /links this to the original as another day of one job if the original has this on/,
     );
     expect(sameStaffHint(true, { kind: 'single' }, 'Bar Staff')).toMatch(
-      /Takes effect once another day/,
+      /Switch it on, save, then Duplicate this event to add the next day/,
     );
   });
 });
@@ -312,6 +323,8 @@ describe('saving a Duplicate (createEvent)', () => {
   beforeEach(() => {
     state.calls.length = 0;
     state.linkError = null;
+    state.sourceFlagged = true;
+    state.sourceReadError = null;
     state.sectionRows.length = 0;
     state.rpc.mockClear();
   });
@@ -331,9 +344,9 @@ describe('saving a Duplicate (createEvent)', () => {
     });
     expect(state.calls.indexOf('rpc:link_event_series')).toBeGreaterThan(-1);
     expect(state.calls.indexOf('rpc:link_event_series')).toBeLessThan(
-      state.calls.indexOf('from:shift_requirements'),
+      state.calls.indexOf('insert:shift_requirements'),
     );
-    expect(state.calls.indexOf('from:shift_requirements')).toBeLessThan(
+    expect(state.calls.indexOf('insert:shift_requirements')).toBeLessThan(
       state.calls.indexOf('rpc:auto_assign_first_round'),
     );
   });
@@ -343,18 +356,33 @@ describe('saving a Duplicate (createEvent)', () => {
     expect(state.calls).not.toContain('rpc:link_event_series');
   });
 
+  it('a Duplicate of an event with no "Same staff on all days" role is only a copy: no series', async () => {
+    state.sourceFlagged = false;
+    expect(await outcome(input('ev-fri', false))).toBe('REDIRECT:/events/evt-new');
+    expect(state.calls).not.toContain('rpc:link_event_series');
+    expect(state.calls).toContain('insert:shift_requirements');
+  });
+
+  it('rolls the new event back when the original cannot be read', async () => {
+    state.sourceReadError = { message: 'boom' };
+    const result = await outcome(input('ev-fri'));
+    expect(result).toContain('The original event could not be read');
+    expect(state.calls).not.toContain('insert:shift_requirements');
+    expect(state.calls).not.toContain('rpc:link_event_series');
+  });
+
   it('rolls the new event back when the days cannot be linked — no half-built series', async () => {
     state.linkError = { message: 'event_not_found' };
     const result = await outcome(input('ev-gone'));
     expect(result).toContain('The days of this job could not be linked');
     expect(state.calls).toContain('from:events');
-    expect(state.calls).not.toContain('from:shift_requirements');
+    expect(state.calls).not.toContain('insert:shift_requirements');
     expect(state.calls).not.toContain('rpc:auto_assign_first_round');
   });
 
   it('duplicating into another client is only a copy of the roles: it saves, unlinked', async () => {
     state.linkError = { message: 'series_other_client' };
     expect(await outcome(input('ev-fri'))).toBe('REDIRECT:/events/evt-new');
-    expect(state.calls).toContain('from:shift_requirements');
+    expect(state.calls).toContain('insert:shift_requirements');
   });
 });
