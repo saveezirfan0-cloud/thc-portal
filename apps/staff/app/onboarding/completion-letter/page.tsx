@@ -77,9 +77,10 @@ export default async function Page() {
           </Alert>
         ) : null}
         <p className="sm muted">
-          Already finished your course? Upload one of these as evidence. It’s optional and doesn’t
-          hold up your onboarding. Once the office approves it, your weekly limit rises from the
-          Student visa’s term-time limit to 48 hours.
+          Already graduated? Upload one of these as evidence <b>instead of</b> a University Term
+          Dates Letter — you don’t need both. The office checks it before you move on to the quiz,
+          and once it is approved your weekly limit rises from the Student visa’s term-time limit to
+          48 hours. Still studying? You don’t need this: upload your Term Dates Letter instead.
         </p>
         <CompletionLetterForm currentLimit="your current limit" doneHref="/onboarding" />
       </>

@@ -105,7 +105,10 @@ export function ReviewHub({
       )}
 
       <div className="mlist wiz-list">
-        {rows.map(({ requirement, doc }) => {
+        {rows.map(({ requirement, doc, viaCompletionLetter }) => {
+          // The graduate's completion letter answers this row and has its own
+          // row below (ADR-0112); a Term Dates Letter line would only confuse.
+          if (viaCompletionLetter) return null;
           const status = doc?.status ?? 'pending';
           return (
             <div

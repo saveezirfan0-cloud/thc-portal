@@ -7,10 +7,11 @@ import type { UploadedDoc } from '../state';
 export const ONBOARDING_COMPLETION_HREF = '/onboarding/completion-letter';
 
 /**
- * The optional completion letter row, for a Student-visa candidate
+ * The completion letter row, for a Student-visa candidate
  * (`completionLetterDoc()`): step 4's list and the review hub both show it.
- * Optional in words and in behaviour — it is outside the documents the
- * office must verify, so it never holds onboarding up.
+ * A student still in term never needs it. A graduate uploads it INSTEAD of
+ * the Term Dates Letter (ADR-0112) — `requirementRows()` lets it answer that
+ * row — and the office approves it like any document.
  */
 export function CompletionLetterOption({ doc }: { doc: UploadedDoc | null }) {
   const status = doc?.status ?? null;
@@ -21,7 +22,7 @@ export function CompletionLetterOption({ doc }: { doc: UploadedDoc | null }) {
         ? 'Approved — your limit rises to 48 h/week from your course completion date.'
         : status === 'rejected'
           ? `Not accepted · “${doc?.rejectionReason ?? 'see the office'}”`
-          : 'Optional · finished your course already? Upload it now and the office can lift your weekly limit to 48 hours.';
+          : 'Finished your course already? Upload this instead of a Term Dates Letter — you don’t need both — and the office can lift your weekly limit to 48 hours.';
   const upload = status === null || status === 'rejected' || status === 'superseded';
 
   return (
