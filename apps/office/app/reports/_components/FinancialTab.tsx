@@ -201,23 +201,28 @@ export function FinancialTab({
   );
 }
 
+/** How many live event names a row shows before folding the rest away. */
+const SHOWN_EVENTS = 3;
+
 function GroupRow({ row }: { row: FinanceRow }) {
-  const excludedOnly = row.event_count === 0 && (row.cancelled_events?.length ?? 0) > 0;
-  const status = financialStatus(row);
+  const cancelled = row.cancelled_events ?? [];
+  const excludedOnly = row.event_count === 0 && cancelled.length > 0;
   if (excludedOnly) {
     return (
       <tr>
         <td className="rp-nowrap">{row.group_label}</td>
-        <td className="sm muted">
-          <s>{row.cancelled_events!.join(' · ')}</s> · cancelled
+        <td className="rp-events">
+          <Cancelled names={cancelled} open />
         </td>
         {Array.from({ length: 6 }, (_, i) => (
           <td key={i} className="money muted">
             —
           </td>
         ))}
-        <td className="sm">
-          <Pill>excluded</Pill>
+        <td>
+          <div className="rp-status">
+            <Pill>excluded</Pill>
+          </div>
         </td>
       </tr>
     );
@@ -225,13 +230,9 @@ function GroupRow({ row }: { row: FinanceRow }) {
   return (
     <tr>
       <td className="rp-nowrap">{row.group_label}</td>
-      <td className="sm">
-        {row.event_count} · {(row.events ?? []).join(' · ')}
-        {(row.cancelled_events?.length ?? 0) > 0 ? (
-          <span className="sub">
-            <s>{row.cancelled_events!.join(' · ')}</s> · cancelled, excluded
-          </span>
-        ) : null}
+      <td className="rp-events">
+        <EventNames count={row.event_count} names={row.events ?? []} />
+        {cancelled.length > 0 ? <Cancelled names={cancelled} /> : null}
       </td>
       <td className="money">{hours(row.payable_min)}</td>
       <td className="money">{pounds(row.base)}</td>
@@ -241,11 +242,95 @@ function GroupRow({ row }: { row: FinanceRow }) {
       <td className={`money ${num(row.margin) < 0 ? 'rp-coral' : 'rp-green'}`}>
         {pounds(row.margin)}
       </td>
-      <td className="sm">
-        <Pill tone={row.pending > 0 || row.forecast_sections > 0 ? 'amber' : 'green'}>
-          {status}
-        </Pill>
+      <td>
+        <StatusPills row={row} />
       </td>
     </tr>
+  );
+}
+
+/**
+ * One event per line, each cut to the column with the full name on hover,
+ * instead of a single run-on sentence wrapping down the cell. Past
+ * SHOWN_EVENTS the rest fold behind "+N more".
+ */
+function EventNames({ count, names }: { count: number; names: readonly string[] }) {
+  const shown = names.slice(0, SHOWN_EVENTS);
+  const rest = names.slice(SHOWN_EVENTS);
+  return (
+    <>
+      <span className="rp-count">
+        {count} {count === 1 ? 'event' : 'events'}
+      </span>
+      {shown.length > 0 ? (
+        <ul className="rp-names">
+          {shown.map((name, i) => (
+            <li key={i} title={name}>
+              {name}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {rest.length > 0 ? (
+        <details className="rp-more">
+          <summary>+{rest.length} more</summary>
+          <ul className="rp-names">
+            {rest.map((name, i) => (
+              <li key={i} title={name}>
+                {name}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Cancelled events contribute nothing (§9.9), so they fold to one line —
+ * "2 cancelled · excluded" — and open to the struck-through names.
+ */
+function Cancelled({ names, open }: { names: readonly string[]; open?: boolean }) {
+  return (
+    <details className="rp-more rp-cancelled" open={open}>
+      <summary>{names.length} cancelled · excluded</summary>
+      <ul className="rp-names">
+        {names.map((name, i) => (
+          <li key={i} title={name}>
+            <s>{name}</s>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/**
+ * `financialStatus()` as separate pills, each in its own tone, rather than
+ * one long pill: "1 shift pending" and "forecast" amber, "actual" green.
+ * The cancelled part is left to the Events cell, which already says it;
+ * the full status string (as the CSV writes it) is on hover.
+ */
+function StatusPills({ row }: { row: FinanceRow }) {
+  const pills: { label: string; tone?: 'amber' | 'green' }[] = [];
+  if (row.pending > 0) {
+    pills.push({
+      label: `${row.pending} shift${row.pending === 1 ? '' : 's'} pending`,
+      tone: 'amber',
+    });
+  }
+  if (row.forecast_sections > 0 && row.actual_sections > 0) {
+    pills.push({ label: 'actual + forecast', tone: 'amber' });
+  } else if (row.forecast_sections > 0) pills.push({ label: 'forecast', tone: 'amber' });
+  else if (row.actual_sections > 0) pills.push({ label: 'actual', tone: 'green' });
+  return (
+    <div className="rp-status" title={financialStatus(row)}>
+      {pills.map((p) => (
+        <Pill key={p.label} tone={p.tone}>
+          {p.label}
+        </Pill>
+      ))}
+    </div>
   );
 }
