@@ -132,7 +132,7 @@ describe('the check-in press turned away by the strict buffer (§3.2, RULE-15)',
     });
     await pressCheckIn();
 
-    expect(checkIn).toHaveBeenCalledWith('b1', VENUE.lat, VENUE.lng);
+    expect(checkIn).toHaveBeenCalledWith('b1', VENUE.lat, VENUE.lng, 5);
     const screen = container.querySelector('[data-static="turned_away"]');
     expect(screen).not.toBeNull();
     expect(screen!.querySelector('h2')!.textContent).toBe('Thanks for coming');

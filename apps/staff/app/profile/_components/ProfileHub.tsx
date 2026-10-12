@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Avatar, Pill, SignOut } from '@thc/ui';
+import { Avatar, Pill } from '@thc/ui';
+import { StaffSignOut } from '../../_components/StaffSignOut';
 import type { Tone } from '@thc/ui';
 import { appLock, canReachPayments, canReachProfileDetails, p45Availability } from '../lock';
 import { CONNECTEAM_LABEL, HELP_EMAIL } from '../types';
@@ -196,7 +197,7 @@ export function ProfileHub({
 
       {anyUnread ? <RetryButton /> : null}
 
-      <SignOut tone="default" size="md" block />
+      <StaffSignOut tone="default" size="md" block />
 
       {/* Text, not a link (§10.1). */}
       <div className="xs muted" style={{ textAlign: 'center' }}>

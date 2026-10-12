@@ -11,7 +11,8 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../../data';
-import { feedbackErrorMessage } from '../../rules';
+import { isUuid } from '../../ids';
+import { FEEDBACK_TOO_LONG, feedbackErrorMessage, feedbackTextTooLong } from '../../rules';
 
 /**
  * §11.2 / §11.5 · leave feedback on one confirmed worker.
@@ -38,9 +39,19 @@ export async function leaveFeedback(
     return { ok: false, error: 'This environment has no Supabase project, so nothing was saved.' };
   }
 
+  // A server action is a public endpoint: these arrive from whoever posts,
+  // not only from the modal, so their shape is checked before anything runs.
+  if (!isUuid(eventId) || !isUuid(bookingId)) {
+    return { ok: false, error: 'That could not be saved.' };
+  }
+
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return { ok: false, error: 'Choose a rating between 1 and 5 stars.' };
   }
+
+  if (typeof text !== 'string') return { ok: false, error: 'That could not be saved.' };
+  // The textarea stops at the limit; the database refuses past it too.
+  if (feedbackTextTooLong(text)) return { ok: false, error: FEEDBACK_TOO_LONG };
 
   const supabase = createClient(await cookies()) as any;
   const { error } = await supabase.rpc('submit_client_feedback', {
@@ -50,6 +61,11 @@ export async function leaveFeedback(
   });
 
   if (error) {
+    // The database's own words go to the server log only.
+    console.error('[client] submit_client_feedback refused', {
+      code: error.code,
+      message: error.message,
+    });
     // The RPC's errors in the customer's words. 22023 covers both a bad
     // rating and an event that has not started, so the message decides.
     return { ok: false, error: feedbackErrorMessage(error) };

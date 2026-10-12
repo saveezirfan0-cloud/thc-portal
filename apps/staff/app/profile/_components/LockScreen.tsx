@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Pill, SignOut } from '@thc/ui';
+import { Pill } from '@thc/ui';
+import { StaffSignOut } from '../../_components/StaffSignOut';
 import { QUIZ_FAILED_COPY, QUIZ_FAILED_TITLE } from '@thc/domain';
 import { HELP_EMAIL } from '../types';
 import type { AppLock } from '../lock';
@@ -77,7 +78,7 @@ export function LockScreen({
             <Link className="btn outline block" href="/profile/payments">
               Payment information — earnings history
             </Link>
-            <SignOut size="md" block />
+            <StaffSignOut size="md" block />
           </>
         }
       >
@@ -104,7 +105,7 @@ export function LockScreen({
             {detail}
           </>
         }
-        actions={<SignOut size="md" block />}
+        actions={<StaffSignOut size="md" block />}
       >
         {QUIZ_FAILED_COPY}
       </Static>
@@ -120,7 +121,7 @@ export function LockScreen({
           </Pill>
         }
         title="Your application is closed."
-        actions={<SignOut size="md" block />}
+        actions={<StaffSignOut size="md" block />}
       >
         Please contact us at: <b className="cyan">{HELP_EMAIL}</b>
       </Static>
@@ -131,7 +132,7 @@ export function LockScreen({
     // §1.7: a removed worker cannot sign in at all, "so no screen applies".
     // This exists only for a session that outlived the removal.
     return (
-      <Static title="This account is closed." actions={<SignOut size="md" block />}>
+      <Static title="This account is closed." actions={<StaffSignOut size="md" block />}>
         Please contact us at: <b className="cyan">{HELP_EMAIL}</b>
       </Static>
     );
@@ -147,7 +148,7 @@ export function LockScreen({
         </Pill>
       }
       title="Your account is on hold."
-      actions={<SignOut size="md" block />}
+      actions={<StaffSignOut size="md" block />}
     >
       Please contact the office at: <b className="cyan">{HELP_EMAIL}</b>
     </Static>

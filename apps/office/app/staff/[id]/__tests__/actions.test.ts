@@ -16,9 +16,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   user: { id: 'u-admin' } as { id: string } | null,
   role: 'admin' as string | null,
+  officeRole: 'manager' as string,
 }));
 
-const rpc = vi.fn(async () => ({ error: null }));
+const rpc = vi.fn(async (..._args: unknown[]) => ({ error: null as null | { message: string } }));
 const createAdminClient = vi.fn(() => ({ rpc }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
@@ -28,10 +29,13 @@ vi.mock('@thc/db/server', () => ({
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: state.user } }) },
     // The admin check asks current_app_role() (20261001200500).
+    // ADR-0060: and office_can('write') before the service key — false for a viewer.
     rpc: async (fn: string) =>
       fn === 'current_app_role'
         ? { data: state.role ?? null, error: null }
-        : { data: null, error: null },
+        : fn === 'office_can'
+          ? { data: state.role === 'admin' && state.officeRole !== 'viewer', error: null }
+          : { data: null, error: null },
     from: () => ({
       select: () => ({
         eq: () => ({
@@ -48,7 +52,9 @@ const { blockWorker, removeWorker, resetToCandidate, unblockWorker } = await imp
 beforeEach(() => {
   state.user = { id: 'u-admin' };
   state.role = 'admin';
+  state.officeRole = 'manager';
   rpc.mockClear();
+  rpc.mockImplementation(async () => ({ error: null }));
   createAdminClient.mockClear();
 });
 
@@ -125,5 +131,45 @@ describe('the service key is reached only by a signed-in admin', () => {
       message: 'A manual block needs a reason.',
     });
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('a read-only login never reaches the service key (ADR-0060)', () => {
+  it('refuses a viewer before the service client exists, in its own words', async () => {
+    state.officeRole = 'viewer';
+    expect(await removeWorker('s1', 'REMOVE')).toEqual({
+      ok: false,
+      message: 'Your login is read-only, so this cannot be changed.',
+    });
+    expect(await blockWorker('s1', 'Late twice')).toMatchObject({ ok: false });
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('a database refusal reaches the screen in words, never raw (NOTE 5)', () => {
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  it('maps a known code to the office’s copy', async () => {
+    rpc.mockImplementation(async () => ({ error: { message: 'not_resettable: compliant' } }));
+    expect(await resetToCandidate('s1', 'Returning')).toEqual({
+      ok: false,
+      message: 'Reset to candidate is only possible on a blocked, rejected or inactive record.',
+    });
+  });
+
+  it('turns an unknown one into a generic line and logs it on the server', async () => {
+    const spy = quiet();
+    rpc.mockImplementation(async () => ({
+      error: { message: 'duplicate key value violates unique constraint "staff_pkey" (id)=(s1)' },
+    }));
+    const result = await unblockWorker('s1');
+    expect(result).toEqual({
+      ok: false,
+      message: 'This could not be saved. Refresh the page and try again.',
+    });
+    expect(JSON.stringify(result)).not.toContain('staff_pkey');
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

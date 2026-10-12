@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
+import { officeMayWrite } from '../../../_lib/sessionRole';
 import {
   countPdfPages,
   layoutBadges,
@@ -255,6 +256,16 @@ export async function generateDocument(
   };
   const fail = (status: number, message: string): GenerateResult =>
     store === 'required' ? { ok: false, status, message } : unstored;
+
+  // ADR-0060: storing a copy is a write, made with the service key BEFORE
+  // record_event_document() would refuse a viewer — so a read-only login
+  // is asked about first. A viewer's Download still hands over the PDF
+  // (they may read the line-up); it just is not kept or recorded, and a
+  // Send is refused. The event-documents job is the service role, not a
+  // signed-in login, so it is not asked.
+  if (!options.automatic && !(await officeMayWrite(db))) {
+    return fail(403, 'Your login is read-only, so this document cannot be stored or sent.');
+  }
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return fail(

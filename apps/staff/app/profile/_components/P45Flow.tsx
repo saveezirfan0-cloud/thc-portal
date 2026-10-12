@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Alert, Button, Modal, Textarea } from '@thc/ui';
 import { requestP45 } from '../actions';
+import { CurrentPasswordField } from './CurrentPasswordField';
 import { reloadToLeaverScreen } from './leaverReload';
 
 /**
@@ -24,6 +25,10 @@ import { reloadToLeaverScreen } from './leaverReload';
  * right now is untouched and still paid. The released-shift count is real,
  * not a guess — it is the number of confirmed future bookings the cascade
  * is about to release.
+ *
+ * The second step also asks for the current password (ADR-0113), and its
+ * button stays off until one is typed: a phone left signed in must not be
+ * enough to end someone's work with THC.
  */
 export function P45Flow({
   open,
@@ -36,6 +41,7 @@ export function P45Flow({
   futureShifts: number;
 }) {
   const [reason, setReason] = useState('');
+  const [password, setPassword] = useState('');
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -44,7 +50,8 @@ export function P45Flow({
 
   function confirm() {
     start(async () => {
-      const result = await requestP45(reason);
+      const result = await requestP45(reason, password);
+      setPassword('');
       if (!result.ok) {
         setAsking(false);
         setError(result.message);
@@ -126,7 +133,7 @@ export function P45Flow({
             <Button tone="primary" onClick={() => setAsking(false)} disabled={pending}>
               Go back
             </Button>
-            <Button tone="danger" onClick={confirm} disabled={pending}>
+            <Button tone="danger" onClick={confirm} disabled={pending || password.length === 0}>
               {pending ? 'Requesting…' : 'Request my P45'}
             </Button>
           </>
@@ -136,6 +143,7 @@ export function P45Flow({
           Your account will close to a leaver screen. Only the office can bring you back, and you’d
           complete onboarding again on the same record.
         </p>
+        <CurrentPasswordField value={password} onChange={setPassword} />
       </Modal>
     </>
   );

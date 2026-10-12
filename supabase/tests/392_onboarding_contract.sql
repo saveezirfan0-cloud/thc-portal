@@ -49,7 +49,10 @@ select throws_ok($$ select sign_contract(current_contract_version(), true) $$,
 -- =====================================================================
 -- 2. Step 7 — HMRC (§2.8)
 -- =====================================================================
-set local "request.jwt.claims" = '{"sub":"c3950000-0000-4000-8000-000000000001","role":"authenticated"}';
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', 'c3950000-0000-4000-8000-000000000001', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 select throws_ok($$ select onboarding_save_references('[]'::jsonb) $$, 'P0001', 'previous_step',
   'references wait for the checklist');
 select throws_ok($$ select submit_hmrc_checklist(null, null, null, 'none', false, null, true) $$,
@@ -186,7 +189,10 @@ select throws_ok($$ select submit_hmrc_checklist(true, null, null, 'none', false
   'P0001', 'wrong_stage', 'and steps 7–9 close once it is signed');
 
 -- The returning worker keeps their Employee ID.
-set local "request.jwt.claims" = '{"sub":"c3950000-0000-4000-8000-000000000003","role":"authenticated"}';
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', 'c3950000-0000-4000-8000-000000000003', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 select lives_ok($$ select submit_hmrc_checklist(true, null, null, 'none', false, null, true) $$, 'Rhys: checklist');
 select lives_ok(
   $$ select onboarding_save_references('[{"name":"Ann Lee","relationship":"Former manager","phone":"07700900111","email":"ann@x.test"},

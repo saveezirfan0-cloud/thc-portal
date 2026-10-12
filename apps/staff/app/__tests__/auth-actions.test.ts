@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 const auth = vi.hoisted(() => ({
   verifyOtp: vi.fn(),
   getUser: vi.fn(),
+  getClaims: vi.fn(),
   signOut: vi.fn(),
   updateUser: vi.fn(),
   resetPasswordForEmail: vi.fn(),
@@ -54,6 +55,12 @@ vi.mock('@thc/db/server', () => ({
   }),
 }));
 
+// The per-account throttle is held by its own tests (packages/db, app/forgot).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  recoveryRequestAllowed: async () => true,
+}));
+
 const { activateAccount } = await import('../activate/actions');
 const { setPassword } = await import('../reset/actions');
 const { requestReset } = await import('../forgot/actions');
@@ -70,6 +77,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   jar.store.clear();
   staffRow.value = null;
+  // A3's session is one a reset link made a moment ago (packages/db/src/recovery.ts).
+  auth.getClaims.mockResolvedValue({
+    data: { claims: { amr: [{ method: 'otp', timestamp: Math.floor(Date.now() / 1000) }] } },
+    error: null,
+  });
 });
 
 const TOKEN = 'a'.repeat(64);

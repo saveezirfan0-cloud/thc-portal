@@ -26,6 +26,6 @@ describe('POST /auth/signout', () => {
       expect.objectContaining({ path: '/', maxAge: 0 }),
     );
     expect(response.status).toBe(303);
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/login');
+    expect(response.headers.get('location')).toBe('/login');
   });
 });

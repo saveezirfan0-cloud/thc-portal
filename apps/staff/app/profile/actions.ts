@@ -7,6 +7,8 @@ import { createAdminClient } from '@thc/db/admin';
 import { staffDb, supabaseConfigured } from '../db';
 import { addressSavedNote, locateAddress } from './geocode';
 import { photoPathFor } from './photos';
+import { checkStoredMedia } from '../_lib/stored-media';
+import { REAUTH_REQUIRED, confirmCurrentPassword } from '../_lib/reauth';
 import type { ActionResult } from './types';
 
 /**
@@ -29,10 +31,13 @@ const TRY_AGAIN = 'That didn’t go through. Please try again.';
 /** A read that failed is not "we couldn't find your record" (audit D18). */
 const COULD_NOT_READ = 'We couldn’t reach your profile just now. Please try again.';
 
+const PHOTO_NOT_IMAGE = 'That photo didn’t come through as a picture. Please take it again.';
+
 /**
- * The reason codes the RPCs raise, as sentences. Anything unmapped falls
- * through to its own message rather than a generic one — a refusal nobody
- * anticipated is worth seeing, not swallowing.
+ * The reason codes the RPCs raise, as sentences. Anything unmapped is
+ * logged on the server and the worker reads TRY_AGAIN: a raw database or
+ * Auth message is not a sentence, and it can name tables, constraints and
+ * other people's data (security round 12.10, item 4).
  */
 const REASONS: Record<string, string> = {
   phone_required: 'Please enter a mobile number we can reach you on.',
@@ -64,17 +69,22 @@ const REASONS: Record<string, string> = {
   relationship_too_long: 'Keep this to 40 characters.',
   bad_phone: 'Enter a full phone number, including the area code.',
   account_closed: 'We couldn’t find your record. Please contact the office.',
+  // ADR-0113: staff_save_bank / request_my_p45 want a password (or code)
+  // sign-in in the last 10 minutes. The action signs in again right before
+  // the call, so this is the rare case of a slow round trip.
+  reauth_required: REAUTH_REQUIRED,
 };
 
 async function db() {
   return staffDb(await cookies());
 }
 
-function message(raw: string): string {
+function message(raw: string, where = 'profile'): string {
   for (const [code, sentence] of Object.entries(REASONS)) {
     if (raw.includes(code)) return sentence;
   }
-  return raw;
+  console.error(`[${where}] unmapped refusal`, { message: raw });
+  return TRY_AGAIN;
 }
 
 function refreshProfile() {
@@ -85,9 +95,13 @@ function refreshProfile() {
 
 type Rpc = Record<string, unknown> | null;
 
-async function call(fn: string, args: Record<string, string | null>): Promise<ActionResult> {
+async function call(
+  fn: string,
+  args: Record<string, string | null>,
+  client?: SupabaseClient,
+): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  const supabase = await db();
+  const supabase = client ?? (await db());
   const { data, error } = await supabase.rpc(fn, args);
   if (error) return { ok: false, message: message(error.message) };
   refreshProfile();
@@ -171,20 +185,52 @@ export async function saveContactDetails(
  * Supabase Auth owns the code: `updateUser({ email })` sends a six-digit
  * confirmation to the NEW address and leaves the old one in place, which is
  * exactly the behaviour the scope asks for. Nothing on `staff` moves yet.
+ *
+ * The current password is asked first (ADR-0113): a phone left signed in
+ * must not be enough to move the account to an address someone else reads,
+ * after which "Forgot password" would hand them the rest.
+ *
+ * An address already on another account gets the same answer as a free
+ * one — "we sent a code" — so this form cannot be used to find out who is
+ * registered. The code simply never arrives.
  */
-export async function requestEmailChange(newEmail: string): Promise<ActionResult> {
+export async function requestEmailChange(
+  newEmail: string,
+  currentPassword: string,
+): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const email = newEmail.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
     return { ok: false, message: 'Please enter a valid email address.' };
   }
   const supabase = await db();
-  const { error } = await supabase.auth.updateUser({ email });
-  if (error) return { ok: false, message: error.message };
-  return {
-    ok: true,
+  const refused = await confirmCurrentPassword(supabase, currentPassword);
+  if (refused) return { ok: false, message: refused };
+
+  const sent = {
+    ok: true as const,
     note: `We sent a 6-digit code to ${email}. Your current email stays in place until you enter it.`,
   };
+  const { error } = await supabase.auth.updateUser({ email });
+  if (!error) return sent;
+  if (emailTaken(error)) return sent;
+  if (error.code === 'over_email_send_rate_limit' || /rate limit/i.test(error.message)) {
+    return {
+      ok: false,
+      message: 'Too many codes have been asked for. Please wait a few minutes and try again.',
+    };
+  }
+  console.error('[profile] email change refused', { code: error.code, message: error.message });
+  return { ok: false, message: TRY_AGAIN };
+}
+
+/** GoTrue's "that address belongs to another account", by code or by wording. */
+function emailTaken(error: { code?: string; message: string }): boolean {
+  return (
+    error.code === 'email_exists' ||
+    error.code === 'user_already_exists' ||
+    /already (been )?registered|already exists/i.test(error.message)
+  );
 }
 
 /**
@@ -217,17 +263,31 @@ export async function saveNiNumber(ni: string): Promise<ActionResult> {
   return call('staff_set_ni_number', { p_ni: ni });
 }
 
-/** Bank & payroll — §2.10, §10.1. Always E5. */
+/**
+ * Bank & payroll — §2.10, §10.1. Always E5.
+ *
+ * Behind the current password (ADR-0113): whoever holds an unlocked phone
+ * could otherwise send the worker's next pay to their own account.
+ */
 export async function saveBankDetails(
   accountHolder: string,
   sortCode: string,
   accountNumber: string,
+  currentPassword: string,
 ): Promise<ActionResult> {
-  return call('staff_save_bank', {
-    p_account_holder: accountHolder,
-    p_sort_code: sortCode,
-    p_account_number: accountNumber,
-  });
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = await db();
+  const refused = await confirmCurrentPassword(supabase, currentPassword);
+  if (refused) return { ok: false, message: refused };
+  return call(
+    'staff_save_bank',
+    {
+      p_account_holder: accountHolder,
+      p_sort_code: sortCode,
+      p_account_number: accountNumber,
+    },
+    supabase,
+  );
 }
 
 /**
@@ -257,14 +317,23 @@ export async function changePassword(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) return { ok: false, message: 'Sign in again to change your password.' };
-  const { error: wrong } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password: currentPassword,
-  });
-  if (wrong) return { ok: false, message: 'That current password isn’t right.' };
+  const refused = await confirmCurrentPassword(supabase, currentPassword);
+  if (refused) return { ok: false, message: refused };
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    if (error.code === 'same_password') {
+      return { ok: false, message: 'Choose a password you haven’t used for this account.' };
+    }
+    if (error.code === 'weak_password') {
+      return { ok: false, message: 'That password is too easy to guess. Try a longer one.' };
+    }
+    console.error('[profile] password change refused', {
+      code: error.code,
+      message: error.message,
+    });
+    return { ok: false, message: TRY_AGAIN };
+  }
   return { ok: true, note: 'Password updated.' };
 }
 
@@ -273,7 +342,13 @@ export async function signOutOtherDevices(): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
   const { error } = await supabase.auth.signOut({ scope: 'others' });
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    console.error('[profile] sign out others refused', {
+      code: error.code,
+      message: error.message,
+    });
+    return { ok: false, message: TRY_AGAIN };
+  }
   return { ok: true, note: 'Signed out everywhere else.' };
 }
 
@@ -304,9 +379,21 @@ export async function startPhotoUpload(): Promise<PhotoSlot> {
   return { ok: true, path: photoPathFor(me['staffId'] as string) };
 }
 
-/** Attach an uploaded file to the profile. Refused if a photo already exists. */
+/**
+ * Attach an uploaded file to the profile. Refused if a photo already exists.
+ *
+ * The object's first bytes are read back through the worker's own session
+ * (`photos_worker_read_own`) and must be the JPEG its name says: the
+ * Content-Type Storage recorded is only the browser's claim (security round
+ * 12.10, item 5; app/_lib/stored-media.ts).
+ */
 export async function finishPhotoUpload(path: string): Promise<ActionResult> {
-  return call('staff_set_photo', { p_path: path });
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = await db();
+  const verdict = await checkStoredMedia(supabase, 'photos', path);
+  if (verdict === 'mismatch') return { ok: false, message: PHOTO_NOT_IMAGE };
+  if (verdict === 'unreadable') return { ok: false, message: TRY_AGAIN };
+  return call('staff_set_photo', { p_path: path }, supabase);
 }
 
 /**
@@ -343,10 +430,15 @@ export async function clearEmergencyContact(): Promise<ActionResult> {
  *
  * It refuses `on_shift` while the worker is checked in, which is the rule
  * behind the greyed-out button rather than a second copy of it.
+ *
+ * Behind the current password (ADR-0113): a request a stolen phone could
+ * make on its own would end someone's work with THC from a pocket.
  */
-export async function requestP45(reason: string): Promise<ActionResult> {
+export async function requestP45(reason: string, currentPassword: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
+  const refused = await confirmCurrentPassword(supabase, currentPassword);
+  if (refused) return { ok: false, message: refused };
   const { error } = await supabase.rpc('request_my_p45', { p_reason: reason.trim() || null });
   if (error) return { ok: false, message: message(error.message) };
 

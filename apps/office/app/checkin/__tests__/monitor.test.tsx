@@ -79,6 +79,7 @@ const ROW: MonitorRow = {
   breaksCount: 0,
   lastBreakAt: null,
   lateCheckOut: false,
+  locationSuspect: false,
   status: 'on_shift',
 };
 
@@ -95,6 +96,27 @@ describe('/checkin (§9.5)', () => {
     );
     expect(html).not.toContain('<img');
     expect(html).toContain('>LM<');
+  });
+
+  it('marks an arrival whose location is suspect, beside its check-in time', () => {
+    const html = renderToStaticMarkup(
+      <MonitorScreen rows={[{ ...ROW, locationSuspect: true }]} violations={[]} />,
+    );
+    expect(html).toMatch(/<span class="pill amber loc-flag"[^>]*>Location unverified<\/span>/);
+  });
+
+  it('shows no flag for a clean arrival, nor before anyone has arrived', () => {
+    expect(renderToStaticMarkup(<MonitorScreen rows={[ROW]} violations={[]} />)).not.toContain(
+      'Location unverified',
+    );
+    expect(
+      renderToStaticMarkup(
+        <MonitorScreen
+          rows={[{ ...ROW, checkInAt: null, locationSuspect: true, status: 'due' }]}
+          violations={[]}
+        />,
+      ),
+    ).not.toContain('Location unverified');
   });
 
   it('highlights an unresolved violation coral and makes the whole row open it', () => {

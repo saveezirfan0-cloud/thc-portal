@@ -1,6 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   KEEP_SIGNED_IN_FIELD,
@@ -9,6 +9,13 @@ import {
   persistenceFromForm,
   safeNextPath,
 } from '@thc/db';
+import {
+  authAttemptAllowed,
+  callerIp,
+  isCredentialFailure,
+  recordAuthAttempt,
+  signInKeys,
+} from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 import { WRONG_CREDENTIALS } from './copy';
 
@@ -34,6 +41,13 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Sign-in is not available yet — this environment has no Supabase project.';
   }
 
+  // Per account and per address (packages/db/src/auth-throttle.ts): five
+  // wrong passwords in 15 minutes and the next try is not even put to
+  // GoTrue. Refused with the SAME words as a wrong password, so the limit
+  // says nothing about whether the account exists.
+  const keys = await signInKeys(email, callerIp(await headers()));
+  if (!(await authAttemptAllowed('sign_in', keys))) return WRONG_CREDENTIALS;
+
   // "Keep me signed in on this device" (ADR-0032): ticked by default on the
   // form; unticked, the auth cookies this sign-in writes are session cookies.
   // Passed explicitly because the preference cookie is written below, after
@@ -43,6 +57,7 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   const supabase = createClient(cookieStore, { persistence });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    if (isCredentialFailure(error)) await recordAuthAttempt('sign_in', keys, true);
     // The visitor gets a message that reveals nothing; the real reason goes to
     // the server log, where an operator can see whether this was a genuine bad
     // password or a misconfiguration (wrong project, provider disabled, a key

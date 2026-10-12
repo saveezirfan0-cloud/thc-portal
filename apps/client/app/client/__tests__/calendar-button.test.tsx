@@ -55,7 +55,6 @@ const lineup: LineupRow[] = [
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',
     name: 'Amelia Hart',
-    photoPath: null,
     sortKey: 'Hart Amelia',
     feedbackGiven: false,
   },

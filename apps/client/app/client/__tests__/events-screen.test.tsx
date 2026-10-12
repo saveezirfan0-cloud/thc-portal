@@ -97,7 +97,6 @@ const worker = (name: string, eventId: string, feedbackGiven = false): LineupRow
   startsAt: '2026-09-19T16:00:00Z',
   endsAt: '2026-09-19T22:30:00Z',
   name,
-  photoPath: null,
   sortKey: name.toLowerCase(),
   feedbackGiven,
 });

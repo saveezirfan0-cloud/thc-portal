@@ -199,7 +199,8 @@ export async function loadMonitor(
 
   // Same placeholder-types caveat as the RPC above: `checkin_monitor_v` is
   // not in the generated `Database`, so the row shape is asserted here and
-  // has to match 20260927160600_monitor_reads_no_checkout_and_the_uk_day.sql.
+  // has to match 20260927160600_monitor_reads_no_checkout_and_the_uk_day.sql,
+  // plus `location_suspect` from 20261012121200 (read by the `*` above).
   const monitorRows = (monitor.data ?? []) as unknown as Record<string, unknown>[];
 
   const unsigned = monitorRows.map((r) => ({
@@ -219,6 +220,9 @@ export async function loadMonitor(
     breaksCount: (r.breaks_count as number | null) ?? null,
     lastBreakAt: (r.last_break_at as string | null) ?? null,
     lateCheckOut: Boolean(r.late_check_out),
+    // 20261012121200 appended it to the view; absent (an older database)
+    // reads as not flagged.
+    locationSuspect: r.location_suspect === true,
     status: r.status as MonitorStatus,
   }));
 

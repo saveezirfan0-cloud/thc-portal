@@ -82,6 +82,15 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
             </td>
             <td data-label="Check-in" className="stamp">
               {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
+              {row.checkInAt && row.locationSuspect ? (
+                <Pill
+                  tone="amber"
+                  className="loc-flag"
+                  title="The phone's location for this arrival was missing its accuracy, too vague for the geofence, or exactly on the venue's pin. The check-in stands; check with the worker if it matters."
+                >
+                  Location unverified
+                </Pill>
+              ) : null}
             </td>
             <td data-label="Breaks" className="mono sm">
               {breaksCell(row, local)}

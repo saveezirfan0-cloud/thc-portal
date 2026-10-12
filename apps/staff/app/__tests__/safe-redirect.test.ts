@@ -7,7 +7,16 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
  * thing. Both now go through packages/db/src/redirect.ts.
  */
 // `set` is there for the sign-in's clearing of the clock cookie (ADR-0085).
-vi.mock('next/headers', () => ({ cookies: async () => ({ set: () => {} }) }));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ set: () => {} }),
+  headers: async () => new Headers(),
+}));
+// The per-account throttle is held by its own tests (packages/db).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  authAttemptAllowed: async () => true,
+  recordAuthAttempt: async () => {},
+}));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);

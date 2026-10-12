@@ -15,3 +15,10 @@ export const VERIFY_LOST_PHONE =
 /** A verified factor of a kind this screen cannot challenge (not TOTP). */
 export const NO_AUTHENTICATOR =
   'Your login is protected by a kind of second step this screen cannot ask for. Ask whoever looks after THC’s system to reset two-step sign-in for your login.';
+
+/**
+ * Five wrong codes in 15 minutes (packages/db/src/auth-throttle.ts). Only
+ * someone who already has the password sees it, so it can say what it is.
+ */
+export const TOO_MANY_CODES =
+  'Too many codes did not match. Wait 15 minutes, then type the code showing now.';

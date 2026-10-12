@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Alert, Button, Modal, Textarea } from '@thc/ui';
-import { starsHint } from '../../rules';
+import { FEEDBACK_TEXT_MAX, FEEDBACK_TOO_LONG, feedbackTextTooLong, starsHint } from '../../rules';
 import { leaveFeedback } from './actions';
 
 /**
@@ -18,6 +18,17 @@ import { leaveFeedback } from './actions';
  * a sentence.
  */
 const STARS = [1, 2, 3, 4, 5] as const;
+
+const COMMENT_HINT =
+  'Optional · free text · seen by The Hospitality Company office, not by the worker.';
+
+/** The count joins the hint only near the limit, so the wireframe's line stays as drawn. */
+const COUNT_FROM = FEEDBACK_TEXT_MAX - 200;
+
+export function commentHint(length: number): string {
+  if (length < COUNT_FROM) return COMMENT_HINT;
+  return `${COMMENT_HINT} ${length.toLocaleString('en-GB')} of ${FEEDBACK_TEXT_MAX.toLocaleString('en-GB')} characters.`;
+}
 
 export function FeedbackModal({
   open,
@@ -54,6 +65,10 @@ export function FeedbackModal({
   function submit() {
     if (rating === 0) {
       setError('Choose a rating between 1 and 5 stars.');
+      return;
+    }
+    if (feedbackTextTooLong(text)) {
+      setError(FEEDBACK_TOO_LONG);
       return;
     }
     setError(null);
@@ -109,9 +124,10 @@ export function FeedbackModal({
 
       <Textarea
         label="Comment"
-        hint="Optional · free text · seen by The Hospitality Company office, not by the worker."
+        hint={commentHint(text.length)}
         placeholder="What went well, what could be better?"
         rows={4}
+        maxLength={FEEDBACK_TEXT_MAX}
         value={text}
         onChange={(e) => setText(e.currentTarget.value)}
         disabled={pending}

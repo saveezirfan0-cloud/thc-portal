@@ -6,6 +6,7 @@ import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { reviewErrorMessage } from '../compliance/messages';
 import { signStaffPhotos } from './photos';
+import { sessionIsAdmin } from './sessionRole';
 
 /**
  * The office's buttons on an automated right-to-work check (ADR-0025):
@@ -126,18 +127,17 @@ const NOT_AUTHORISED = 'Only the office can compare right-to-work photos.';
 /** Long enough to draw the image, short enough not to be worth forwarding. */
 const GOV_PHOTO_TTL_SECONDS = 60;
 
-/** True only for a signed-in admin (§1.4), read through the session. */
+/**
+ * True only for a signed-in admin (§1.4), as the database sees them now —
+ * `current_app_role()`, so a switched-off login or a two-step login below
+ * aal2 is refused before the service key signs anything (ADR-0060 gaps).
+ */
 async function callerIsAdmin(): Promise<boolean> {
   try {
     const supabase = createClient(await cookies());
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return false;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', auth.user.id)
-      .maybeSingle<{ role: string }>();
-    return profile?.role === 'admin';
+    return await sessionIsAdmin(supabase);
   } catch {
     return false;
   }

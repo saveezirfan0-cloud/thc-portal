@@ -103,6 +103,7 @@ export function EventsScreen({
   events: PortalEvent[];
   sections: RoleSection[];
   lineup: LineupRow[];
+  /** Signed photo URLs keyed by `bookingId` (photos.ts); never a Storage path. */
   photos: Record<string, string>;
   /** Which §11.3 PDFs the office has issued, per event (`client_event_documents_v`). */
   documents?: Record<string, DocumentKind[]>;
@@ -583,7 +584,7 @@ function Faces({ people, photos }: { people: LineupRow[]; photos: Record<string,
           key={p.bookingId}
           name={p.name}
           size="sm"
-          src={p.photoPath ? photos[p.photoPath] : undefined}
+          src={photos[p.bookingId]}
           deleted={isRemoved(p)}
         />
       ))}

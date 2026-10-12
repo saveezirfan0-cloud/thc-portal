@@ -15,8 +15,12 @@ const rpc = vi.fn();
 const createSignedUploadUrl = vi.fn();
 const remove = vi.fn();
 const adminRpc = vi.fn();
+const storedMedia = vi.hoisted(() => vi.fn());
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+vi.mock('../../_lib/stored-media', () => ({
+  checkStoredMedia: (...args: unknown[]) => storedMedia(...args),
+}));
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 vi.mock('../../db', () => ({
   staffDb: () => ({ rpc: (...args: unknown[]) => rpc(...args) }),
@@ -53,6 +57,8 @@ beforeEach(() => {
   remove.mockReset();
   adminRpc.mockReset();
   adminRpc.mockResolvedValue({ data: true, error: null });
+  storedMedia.mockReset();
+  storedMedia.mockResolvedValue('match');
   createSignedUploadUrl.mockResolvedValue({
     data: { token: 'tok', signedUrl: 'x', path: 'p' },
     error: null,
@@ -201,5 +207,88 @@ describe('finish…() — the worker’s RPC', () => {
       p_awarding_institution: null,
     });
     expect(result.ok && result.note).toContain('does not change until the office approves');
+  });
+});
+
+/**
+ * Security round 12.10, item 5: the bytes Storage holds must be what the
+ * object's name says. The Content-Type is the browser's claim; a page
+ * labelled application/pdf is refused before any RPC files it, and removed.
+ */
+describe('finish…() — the stored bytes are checked against the name', () => {
+  function compliant(answer: unknown = { ok: true, documentId: 'd1', status: 'pending' }) {
+    rpc.mockImplementation(async (fn: string) =>
+      fn === 'staff_me'
+        ? { data: { staffId: STAFF, status: 'compliant', blockKind: null }, error: null }
+        : { data: answer, error: null },
+    );
+  }
+  const filed = () => rpc.mock.calls.filter(([fn]) => fn !== 'staff_me');
+
+  it('reads the object with the service key, under the worker’s own prefix, before filing it', async () => {
+    compliant();
+    const path = `${STAFF}/passport/abc.pdf`;
+    const result = await finishDocumentUpload('passport', path, null);
+    expect(result.ok).toBe(true);
+    expect(storedMedia).toHaveBeenCalledWith(expect.anything(), 'documents', path);
+    expect(filed()).toHaveLength(1);
+  });
+
+  it('bytes that are not what the name says: refused, removed, never filed', async () => {
+    compliant();
+    storedMedia.mockResolvedValue('mismatch');
+    const path = `${STAFF}/passport/abc.pdf`;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await finishDocumentUpload('passport', path, null)).toEqual({
+      ok: false,
+      message: 'Upload a PDF, JPG or PNG.',
+    });
+    warn.mockRestore();
+    expect(filed()).toHaveLength(0);
+    expect(remove).toHaveBeenCalledWith('documents', [path]);
+  });
+
+  it('the completion letter too', async () => {
+    compliant();
+    storedMedia.mockResolvedValue('mismatch');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await finishCompletionLetter({
+      path: `${STAFF}/completion-letter/abc.png`,
+      completionDate: '2027-06-30',
+      form: 'letter',
+      institution: '',
+    });
+    warn.mockRestore();
+    expect(result.ok).toBe(false);
+    expect(filed()).toHaveLength(0);
+  });
+
+  it('an object that cannot be read is never a pass', async () => {
+    compliant();
+    storedMedia.mockResolvedValue('unreadable');
+    const result = await finishDocumentUpload('passport', `${STAFF}/passport/abc.pdf`, null);
+    expect(result).toEqual({
+      ok: false,
+      message: 'The upload did not complete. Please try again.',
+    });
+    expect(filed()).toHaveLength(0);
+  });
+
+  it('a path outside the worker’s own folder is not read with the service key', async () => {
+    compliant({ ok: false, reason: 'invalid_path' });
+    await finishDocumentUpload('passport', 'someone-else/passport/abc.pdf', null);
+    expect(storedMedia).not.toHaveBeenCalled();
+  });
+
+  it('an unmapped refusal is the generic line, not the database’s words', async () => {
+    compliant({ ok: false, reason: 'duplicate key value violates unique constraint "x"' });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await finishDocumentUpload('passport', `${STAFF}/passport/abc.pdf`, null);
+    expect(result).toEqual({
+      ok: false,
+      message: 'The upload did not complete. Please try again.',
+    });
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
   });
 });

@@ -39,6 +39,14 @@ vi.mock('next/headers', () => ({
     getAll: () => [...state.jar].map(([name, value]) => ({ name, value })),
     set: (name: string, value: string) => state.jar.set(name, value),
   }),
+  headers: async () => new Headers(),
+}));
+// The per-account throttle is held by its own tests (packages/db, ./throttle.test.ts).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  authAttemptAllowed: async () => true,
+  recordAuthAttempt: async () => {},
+  recoveryRequestAllowed: async () => true,
 }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {

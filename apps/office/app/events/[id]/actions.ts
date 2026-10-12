@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { acceptApplicationRefusal, cancelEventRefusal, payrollWarning } from '@thc/domain';
-import { adminRefusal } from '../admin';
+import { NOT_ADMIN, READ_ONLY, adminRefusal } from '../admin';
 import { recipientsRefusal, recipientsRpcRefusal } from './document-recipients';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
@@ -35,6 +35,26 @@ async function db() {
 }
 
 /**
+ * A database exception, in the office's words — never its raw text, which
+ * can name a function, a constraint or an id (security review, NOTE item
+ * 5). Each action matches its own codes first; this covers the shared ones
+ * and turns anything unrecognised into `lead` plus a generic line, logged
+ * on the server so a developer can still find it. (The domain's
+ * `*Refusal(reason)` helpers are a different thing: they word the `reason`
+ * field our own functions return as data.)
+ */
+function dbRefusal(lead: string, raw: string): string {
+  if (/\bread_only\b/.test(raw)) return READ_ONLY;
+  if (/not_authorised|admins_only|row-level security|permission denied/i.test(raw))
+    return NOT_ADMIN;
+  if (/booking_not_found/.test(raw)) return 'That booking no longer exists.';
+  if (/event_not_found/.test(raw)) return 'That event no longer exists.';
+  if (/event_cancelled/.test(raw)) return 'This event is cancelled.';
+  console.error('[events] unmapped database refusal', { lead, message: raw });
+  return `${lead}. Refresh the page and try again.`;
+}
+
+/**
  * Withdraw removes a worker from the shift (§3.3). An invitation withdrawn
  * and a confirmation withdrawn are the same transition — `cancelled`,
  * cause `office_withdraw` — so the slot reopens and auto-assign can top it
@@ -57,7 +77,7 @@ export async function withdraw(eventId: string, bookingId: string): Promise<Acti
   const { data, error } = await supabase.rpc('withdraw_booking', { p_booking: bookingId });
   if (error) {
     if (/booking_not_found/.test(error.message)) return { error: 'That booking no longer exists.' };
-    return { error: `The worker was not withdrawn: ${error.message}` };
+    return { error: dbRefusal('The worker was not withdrawn', error.message) };
   }
   const result = (data ?? {}) as { ok?: boolean; reason?: string };
   revalidatePath(`/events/${eventId}`);
@@ -136,7 +156,7 @@ function noShowRefusal(raw: string): string {
   if (/outside_window/.test(raw)) {
     return 'No-show can be recorded from the shift start until two weeks after it ends.';
   }
-  return raw;
+  return dbRefusal('The no-show was not recorded', raw);
 }
 
 /** What each refusal from `get_back()` means to the manager. */
@@ -148,7 +168,7 @@ function getBackRefusal(raw: string): string {
   if (/arrived_at_required/.test(raw)) {
     return 'The shift has ended — use Resolve in the violation log to enter the arrival and finish.';
   }
-  return raw;
+  return dbRefusal('The worker was not got back', raw);
 }
 
 /**
@@ -172,7 +192,7 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
     p_event: eventId,
     p_reason: trimmed,
   });
-  if (error) return { error: `The event was not cancelled: ${error.message}` };
+  if (error) return { error: dbRefusal('The event was not cancelled', error.message) };
   const result = (data ?? {}) as { ok?: boolean; reason?: string };
   if (result.ok !== true) return { error: cancelEventRefusal(String(result.reason ?? '')) };
 
@@ -235,7 +255,7 @@ export async function messageLineUp(
     if (/event_not_found/.test(error.message)) return { error: 'That event no longer exists.' };
     if (/read_only/.test(error.message))
       return { error: 'A view-only login cannot send messages.' };
-    return { error: `The message was not sent: ${error.message}` };
+    return { error: dbRefusal('The message was not sent', error.message) };
   }
   const result = (data ?? {}) as {
     ok?: boolean;
@@ -277,7 +297,7 @@ export async function acceptApplication(eventId: string, bookingId: string): Pro
         error: acceptApplicationRefusal(guard === 'rtw_expired' ? 'rtw_expired' : 'hours_limit'),
       };
     }
-    return { error: error.message };
+    return { error: dbRefusal('The applicant was not accepted', error.message) };
   }
   const result = (data ?? {}) as { ok?: boolean; reason?: string; closedApplications?: number };
   revalidatePath(`/events/${eventId}`);
@@ -328,7 +348,7 @@ export async function inviteWorker(
     if (/not_authorised/.test(error.message)) {
       return { error: 'Only the office can invite workers to a shift.' };
     }
-    return { error: `The invitation was not sent: ${error.message}` };
+    return { error: dbRefusal('The invitation was not sent', error.message) };
   }
   const result = (data ?? {}) as { invited?: boolean; reason?: string };
   revalidatePath(`/events/${eventId}`);
@@ -356,7 +376,7 @@ export async function setEventAutoAssign(eventId: string, on: boolean): Promise<
     .eq('id', eventId)
     .is('cancelled_at', null)
     .select('id');
-  if (error) return { error: error.message };
+  if (error) return { error: dbRefusal('The switch was not changed', error.message) };
   if ((data ?? []).length === 0) {
     return {
       error: 'The switch was not changed: the event is cancelled, or you are not an admin.',
@@ -415,7 +435,7 @@ export async function setRoleAutoAssign(
     .select('cancelled_at')
     .eq('id', eventId)
     .maybeSingle();
-  if (eventError) return { error: eventError.message };
+  if (eventError) return { error: dbRefusal('The switch was not changed', eventError.message) };
   if (!event) return { error: 'That event no longer exists.' };
   if ((event as { cancelled_at: string | null }).cancelled_at) {
     return { error: 'This event is cancelled; auto-assign has stopped for it.' };
@@ -427,7 +447,7 @@ export async function setRoleAutoAssign(
     .eq('id', shiftId)
     .eq('event_id', eventId)
     .select('id');
-  if (error) return { error: error.message };
+  if (error) return { error: dbRefusal('The switch was not changed', error.message) };
   if ((data ?? []).length === 0) {
     return { error: 'The switch was not changed: the role is gone, or you are not an admin.' };
   }
@@ -453,7 +473,7 @@ interface OfferOfficeRpc {
 function offerOfficeError(raw: string): string {
   if (/not_authorised/.test(raw)) return 'Only the office can act on a cover request.';
   if (/offer_not_found/.test(raw)) return 'That request no longer exists.';
-  return raw;
+  return dbRefusal('The cover request was not changed', raw);
 }
 
 /**

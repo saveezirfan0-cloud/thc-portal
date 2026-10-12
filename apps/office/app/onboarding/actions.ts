@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
-import { sessionIsAdmin } from '../_lib/sessionRole';
+import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from '../staff/data';
 import { periodToRange, periodsProblem } from './view-model';
 import { acceptWithAccount, resendActivation } from './activation';
@@ -23,8 +23,10 @@ import type { ActionResult } from './types';
  * meets the same refusal. None of those RPCs is reached with the service
  * key.
  *
- * Two things do need the service key, and `asAdmin()` below is what stands
- * between that key and the caller in both. Opening a document: the
+ * Two things do need the service key, and a check below stands between
+ * that key and the caller in both: `asAdmin()` for opening a document (a
+ * read, which a viewer may do) and `asWriter()` for Accept (a write, which
+ * a viewer may not — ADR-0060). Opening a document: the
  * `documents` bucket is deny-all to every signed-in role (20260922183015),
  * so a signed URL can only be minted with it. And Accept: the candidate's
  * login is created through the GoTrue Admin API (activation.ts) — the
@@ -159,7 +161,11 @@ export async function acceptCandidate(
   const origin = staffOrigin();
   if (!origin) return { ok: false, message: MESSAGES.activation_link_required! };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  if (!(await asAdmin())) return { ok: false, message: MESSAGES.not_authorised! };
+  // ADR-0060: the login is created with the service key BEFORE the
+  // database is asked, so a viewer must be refused here, not by
+  // onboarding_accept_with_account after a GoTrue user already exists.
+  const gate = await asWriter();
+  if (gate) return { ok: false, message: gate };
 
   const supabase = createClient(await cookies());
   const { data: candidate, error: readError } = await supabase
@@ -212,7 +218,8 @@ export async function resendActivationLink(staffId: string): Promise<ActionResul
   const origin = staffOrigin();
   if (!origin) return { ok: false, message: MESSAGES.activation_link_required! };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  if (!(await asAdmin())) return { ok: false, message: MESSAGES.not_authorised! };
+  const gate = await asWriter();
+  if (gate) return { ok: false, message: gate };
 
   let admin: AdminAuth;
   try {
@@ -431,6 +438,20 @@ export async function resolveReturning(
 // ---------------------------------------------------------------------
 // Opening a document (§2.3 Download, §2.6 gov.uk report)
 // ---------------------------------------------------------------------
+/**
+ * The gate in front of a service-key WRITE (Accept, Resend): the caller is
+ * the office AND may change things — `office_can('write')`, which a viewer
+ * (ADR-0060), a switched-off login and a two-step login below aal2 all fail.
+ * Null when they may; otherwise the refusal to show.
+ */
+async function asWriter(): Promise<string | null> {
+  const supabase = createClient(await cookies());
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return MESSAGES.not_authorised!;
+  if (await officeMayWrite(supabase)) return null;
+  return (await sessionIsAdmin(supabase)) ? READ_ONLY_MESSAGE : MESSAGES.not_authorised!;
+}
+
 async function asAdmin(): Promise<boolean> {
   const supabase = createClient(await cookies());
   const { data: auth } = await supabase.auth.getUser();

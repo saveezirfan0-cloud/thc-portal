@@ -27,8 +27,18 @@ interface RpcClient {
   rpc(
     fn: string,
     args: Record<string, string | number | null>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
+
+/**
+ * PostgREST's "no function with these arguments". The four-argument
+ * check-in / check-out / ping (20261012121200, p_accuracy) reach the
+ * database after this app does: Vercel builds on the push to main, `db
+ * push` runs once CI is green. In that window the call is made again
+ * without the accuracy, which the old three-argument functions take, so a
+ * deploy never stops a shift starting (security round 12.10, QA blocker).
+ */
+const NO_SUCH_FUNCTION = 'PGRST202';
 
 async function call(
   fn: string,
@@ -37,14 +47,40 @@ async function call(
 ): Promise<RpcResult> {
   if (!configured()) return { error: NO_SUPABASE };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
-  const { data, error } = await supabase.rpc(fn, args);
+  let { data, error } = await supabase.rpc(fn, args);
+  if (error?.code === NO_SUCH_FUNCTION && 'p_accuracy' in args) {
+    const { p_accuracy: _accuracy, ...withoutAccuracy } = args;
+    ({ data, error } = await supabase.rpc(fn, withoutAccuracy));
+  }
   if (error) return { error: REASONS[error.message] ?? error.message };
   revalidatePath(`/shifts/${bookingId}`);
   return { ok: true, result: (data ?? {}) as Record<string, unknown> };
 }
 
-export async function checkIn(bookingId: string, lat: number, lng: number): Promise<RpcResult> {
-  return call('attempt_check_in', { p_booking: bookingId, p_lat: lat, p_lng: lng }, bookingId);
+/**
+ * The fix's reported accuracy radius in metres (`coords.accuracy`), or null
+ * when there is none to send. The database weighs it (security round
+ * 12.10, item 6): a fix claiming to be inside the geofence with a 2 km
+ * error circle is not proof of being on site. Only a finite, non-negative
+ * number is forwarded; anything else is "unknown", never zero.
+ */
+function accuracyOf(accuracy: number | null | undefined): number | null {
+  return typeof accuracy === 'number' && Number.isFinite(accuracy) && accuracy >= 0
+    ? accuracy
+    : null;
+}
+
+export async function checkIn(
+  bookingId: string,
+  lat: number,
+  lng: number,
+  accuracy: number | null = null,
+): Promise<RpcResult> {
+  return call(
+    'attempt_check_in',
+    { p_booking: bookingId, p_lat: lat, p_lng: lng, p_accuracy: accuracyOf(accuracy) },
+    bookingId,
+  );
 }
 
 /**
@@ -57,11 +93,17 @@ export async function checkOut(
   bookingId: string,
   lat: number | null,
   lng: number | null,
+  accuracy: number | null = null,
 ): Promise<RpcResult> {
   const fixed = Number.isFinite(lat) && Number.isFinite(lng);
   return call(
     'check_out',
-    { p_booking: bookingId, p_lat: fixed ? lat : null, p_lng: fixed ? lng : null },
+    {
+      p_booking: bookingId,
+      p_lat: fixed ? lat : null,
+      p_lng: fixed ? lng : null,
+      p_accuracy: fixed ? accuracyOf(accuracy) : null,
+    },
     bookingId,
   );
 }
@@ -81,8 +123,17 @@ export async function finishBreak(bookingId: string): Promise<RpcResult> {
  * the difference between an off-site check-out recording their real finish
  * and falling to RULE-02.
  */
-export async function recordPing(bookingId: string, lat: number, lng: number): Promise<RpcResult> {
-  return call('record_ping', { p_booking: bookingId, p_lat: lat, p_lng: lng }, bookingId);
+export async function recordPing(
+  bookingId: string,
+  lat: number,
+  lng: number,
+  accuracy: number | null = null,
+): Promise<RpcResult> {
+  return call(
+    'record_ping',
+    { p_booking: bookingId, p_lat: lat, p_lng: lng, p_accuracy: accuracyOf(accuracy) },
+    bookingId,
+  );
 }
 
 const REASONS: Record<string, string> = {

@@ -76,6 +76,18 @@ Nothing is lost; it all sends once the keys exist.
       the demo data is expected to move.
 - [ ] Smoke test: send yourself a push from the Staff App's notifications screen,
       and trigger one email (for example, Send on an event's timesheet).
+- [ ] 12.10 security round, SQL editor: **pin the service-role bearer to this
+      project**. `settings.edge_base_url` can no longer be written from any
+      signed-in session (20261012120050), and with this secret it can only ever
+      be this project's own Functions base:
+      `select vault.create_secret('dgxtqvalfiisfpbwodew', 'supabase_project_ref');`
+- [ ] 12.10 security round, SQL editor: **the apps' origins for set-up links**.
+      Until this is set, E3 (activation) and E11 (account invite) links are only
+      shape-checked, so a Back Office login could still send a THC email whose
+      link names another https site (20261012120500):
+      `select vault.create_secret('https://thc-portal-staff-two.vercel.app, https://thc-portal-office.vercel.app, https://thc-portal-client-beta.vercel.app', 'app_origins');`
+      Add the custom domains to the same secret when they arrive (§7), with
+      `vault.update_secret`.
 
 ## 4 · Willo (ADR-0021, ADR-0066)
 
@@ -238,8 +250,9 @@ with the worker's selfie and presses Verify or Reject.
       1. Pre-flight: `select value from settings where key = 'rtw_check';` must show
          `"primary": "govuk"` and `"admin_confirms": true` (it did on 28.09). If
          `admin_confirms` were false, a "not found" would reject the worker and send N8
-         with no one looking. The office project must not have `RTW_PROVIDER_URL` set
-         (`sandbox:` is the demo sandbox, ADR-0063 — never where real workers are). Then
+         with no one looking. The office project must not have `RTW_PROVIDER_URL` or
+         `RTW_SANDBOX_ALLOW` set (`sandbox:` is the demo sandbox, ADR-0063 — never where
+         real workers are; it now also needs `RTW_SANDBOX_ALLOW=<that project's ref>`). Then
          switch on:
          `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
       2. **A real pass.** A consenting worker enters their share code in the Staff App
@@ -289,8 +302,36 @@ Settings the round depends on, and the choices it recorded as defaults.
       `/apply` now needs it.
 - [x] **Regenerate `packages/db/src/types.generated.ts`** once the round is
       live — done 26.09 from the live project (all 145 migrations applied).
-- [ ] **Before any real data**: change the six seed passwords (`password123`)
-      or delete the seed users on the live project.
+- [ ] **URGENT (12.10 security round): change the six seed passwords
+      (`password123`) or delete the seed users on the live project.** The
+      repository is public and `supabase/seed.sql` names the password, and the
+      seed logins include both owners. An owner session is the one remaining way
+      to do real damage, so this comes before everything else on this list.
+- [ ] 12.10 security round, the rest of what only the owner can do:
+      - `supabase_project_ref` (§3 above) must be the **bare ref**, e.g.
+        `dgxtqvalfiisfpbwodew`. Anything else makes `edge_base_url()` refuse and
+        stops every scheduled job.
+      - Before setting `app_origins` (§3 above), make sure `NEXT_PUBLIC_STAFF_URL`,
+        `NEXT_PUBLIC_OFFICE_URL` and `NEXT_PUBLIC_CLIENT_URL` are set on all three
+        Vercel projects. A link built from a per-deployment `VERCEL_URL` would be
+        refused.
+      - `WILLO_WEBHOOK_SECRET` must be at least 32 characters (the
+        `openssl rand -hex 32` above gives 64). A shorter one now gets a 503 for
+        every delivery.
+      - `SUPABASE_SERVICE_ROLE_KEY` on **all three** Vercel projects: the
+        per-account sign-in limit runs on it. Without it the limit is skipped and
+        an error is logged on every sign-in.
+      - GitHub → Settings → Environments: create `production`, limit it to
+        `main`, and move `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` and
+        `SUPABASE_PROJECT_ID` into it from the repository secrets. The deploy job
+        already names the environment.
+      - Supabase → Authentication → Attack protection: turn on leaked-password
+        protection, and consider CAPTCHA (Turnstile) on sign-in and reset.
+      - Decide, with THC: (a) how long the `reports` bucket keeps new-starter and
+        payroll CSVs, which hold NI numbers, DOBs and addresses and are not
+        deleted when a worker is removed; (b) worker-facing wording for "your bank
+        details were changed" (§8 has none); (c) an inactivity timeout for Back
+        Office and Client Portal sessions (`[auth.sessions]`).
 - [ ] **On the morning of a client walk-through**: re-run
       `supabase/demo/review-data.sql` so the "today" event sits around the
       current hour, and put a few sample files in Storage so document and photo

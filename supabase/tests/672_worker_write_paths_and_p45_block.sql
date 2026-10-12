@@ -12,7 +12,10 @@ select plan(21);
 -- ---------------------------------------------------------------------
 select block_worker_manually(:'staffa', 'Repeated lateness — see notes', now(), :'admin_uid');
 
-select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 set local role authenticated;
 select throws_ok($$ select request_my_p45('Leaving') $$, 'P0001', 'blocked_manual',
   '§10.6/§10.1 a manually blocked worker cannot leave their way out of the block through the API');
@@ -62,7 +65,10 @@ insert into profiles (id, role, full_name) values (:'me_uid', 'staff', 'Photo Me
 insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status)
 values (:'me', :'me_uid', 96320, 'Photo', 'Me', 'photo.me@rls.test', '+447700906321', date '1995-01-01', 'documents');
 
-select set_config('request.jwt.claims', json_build_object('sub', :'me_uid', 'role', 'authenticated')::text, true);
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', :'me_uid', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 set local role authenticated;
 insert into storage.objects (bucket_id, name) values
   ('photos', :'me' || '/selfie-1.png'),

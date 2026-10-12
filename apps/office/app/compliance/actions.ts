@@ -8,6 +8,7 @@ import { createAdminClient } from '@thc/db/admin';
 import { evidenceFileProblem } from '@thc/domain';
 import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
+import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { visaLimitProblem, visaLimitValue } from './conditions';
 import type { ActionResult } from './types';
 
@@ -324,16 +325,38 @@ export type OfficeUploadSlot =
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function isOffice(): Promise<boolean> {
+/**
+ * Is this the shape of a name `startOfficeUpload` chose —
+ * `<staff>/<folder>/<name>.<ext>`, one plain file name? The path comes
+ * back from the browser, so a prefix match alone would let
+ * `<staff>/<folder>/../..` through to the RPC and to discard().
+ */
+function isOwnUploadPath(staffId: string, folder: OfficeUploadFolder, path: string): boolean {
+  const parts = path.split('/');
+  return (
+    parts.length === 3 &&
+    parts[0] === staffId &&
+    parts[1] === folder &&
+    /^[\w-]+\.[a-z0-9]{1,10}$/i.test(parts[2] ?? '')
+  );
+}
+
+/**
+ * The gate in front of every service-key call below (ADR-0060): the caller
+ * is the office AND may change things — `office_can('write')`, asked of the
+ * database, so a viewer, a switched-off login and a two-step login below
+ * aal2 are refused before a signed upload slot is minted or a refused
+ * upload is deleted. Not `profiles.role`, which answers 'admin' for all
+ * three. Null when they may; otherwise the refusal to show.
+ */
+async function officeWriteRefusal(): Promise<string | null> {
   const supabase = createClient(await cookies());
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return false;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', auth.user.id)
-    .maybeSingle<{ role: string }>();
-  return profile?.role === 'admin';
+  if (!auth.user) return reviewErrorMessage('not_authorised');
+  if (await officeMayWrite(supabase)) return null;
+  return (await sessionIsAdmin(supabase))
+    ? READ_ONLY_MESSAGE
+    : reviewErrorMessage('not_authorised');
 }
 
 function serviceClient(): ReturnType<typeof createAdminClient> | null {
@@ -358,7 +381,8 @@ export async function startOfficeUpload(
   }
   const problem = evidenceFileProblem(file);
   if (problem) return { ok: false, message: uploadRefusal(problem) };
-  if (!(await isOffice())) return { ok: false, message: reviewErrorMessage('not_authorised') };
+  const refused = await officeWriteRefusal();
+  if (refused) return { ok: false, message: refused };
   const admin = serviceClient();
   if (!admin) return { ok: false, message: NO_SERVICE_KEY };
 
@@ -369,7 +393,11 @@ export async function startOfficeUpload(
   return { ok: true, path: data.path, token: data.token };
 }
 
-/** Removes a refused upload — only a fresh object nothing references (evidence_path_discardable). */
+/**
+ * Removes a refused upload — only a fresh object nothing references
+ * (evidence_path_discardable). Service key, on a path the caller named, so
+ * every caller passes `officeWriteRefusal()` first.
+ */
 async function discard(staffId: string, path: string): Promise<void> {
   const admin = serviceClient();
   if (!admin) return;
@@ -392,11 +420,15 @@ export interface OfficeCompletionLetter {
 export async function submitOfficeCompletionLetter(
   input: OfficeCompletionLetter,
 ): Promise<ActionResult> {
-  if (!input.path.startsWith(`${input.staffId}/completion-letter/`)) {
+  if (!isOwnUploadPath(input.staffId, 'completion-letter', input.path)) {
     return { ok: false, message: uploadRefusal('invalid_path') };
   }
   if (!input.completionDate)
     return { ok: false, message: uploadRefusal('completion_date_required') };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  // Before the RPC: its refusal is followed by discard() with the service key.
+  const refused = await officeWriteRefusal();
+  if (refused) return { ok: false, message: refused };
   const result = await call('office_submit_completion_letter', {
     p_staff: input.staffId,
     p_file_path: input.path,
@@ -426,9 +458,13 @@ export async function attachRtwReport(
   staffId: string,
   path: string,
 ): Promise<ActionResult> {
-  if (!path.startsWith(`${staffId}/share-code-report/`)) {
+  if (!isOwnUploadPath(staffId, 'share-code-report', path)) {
     return { ok: false, message: uploadRefusal('invalid_path') };
   }
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  // Before the RPC: its refusal is followed by discard() with the service key.
+  const refused = await officeWriteRefusal();
+  if (refused) return { ok: false, message: refused };
   const result = await call('compliance_attach_rtw_report', { p_doc: docId, p_path: path });
   if (isFailure(result)) {
     await discard(staffId, path);

@@ -17,7 +17,8 @@ import type { StaffProfile } from '../types';
  *   - Cancel is the default-styled (primary) action and the confirm button
  *     "Yes, request my P45" is deliberately not;
  *   - a second "Are you sure? This can't be undone from the app" step sits
- *     behind it, and `requestP45` is called from THAT step only.
+ *     behind it, and `requestP45` is called from THAT step only — with the
+ *     current password typed there (ADR-0113), and not before one is.
  *
  * A DOM is needed for the two taps, so this file runs under jsdom and
  * drives React directly; nothing here is a screenshot.
@@ -34,7 +35,9 @@ vi.mock('next/link', () => ({
     </a>
   ),
 }));
-vi.mock('../actions', () => ({ requestP45: (reason: string) => requestP45(reason) }));
+vi.mock('../actions', () => ({
+  requestP45: (reason: string, password: string) => requestP45(reason, password),
+}));
 vi.mock('../_components/leaverReload', () => ({ reloadToLeaverScreen }));
 
 const { ProfileHub } = await import('../_components/ProfileHub');
@@ -82,6 +85,16 @@ function button(label: string): HTMLButtonElement {
   );
   if (!found) throw new Error(`no button reads "${label}"`);
   return found;
+}
+
+async function typePassword(value: string) {
+  const field = container.querySelector<HTMLInputElement>('.modal input[type="password"]');
+  if (!field) throw new Error('no current-password field on the second step');
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    set.call(field, value);
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
 async function tap(label: string) {
@@ -205,9 +218,13 @@ describe('the two-step sheet (§10.6)', () => {
     expect(requestP45).not.toHaveBeenCalled();
 
     await tap('Yes, request my P45');
+    // ADR-0113: the button stays off until the current password is typed.
+    expect(button('Request my P45').disabled).toBe(true);
+    await typePassword('Correct-horse-1');
+    expect(button('Request my P45').disabled).toBe(false);
     await tap('Request my P45');
     expect(requestP45).toHaveBeenCalledTimes(1);
-    expect(requestP45).toHaveBeenCalledWith('Moving away');
+    expect(requestP45).toHaveBeenCalledWith('Moving away', 'Correct-horse-1');
     // Step 7: the whole app is now the leaver screen — a full load of
     // /profile, not a client refresh (leaverReload.ts).
     expect(reloadToLeaverScreen).toHaveBeenCalledTimes(1);
@@ -222,6 +239,7 @@ describe('the two-step sheet (§10.6)', () => {
     mount(worker());
     await tap('Request my P45 — leaving The Hospitality Company');
     await tap('Yes, request my P45');
+    await typePassword('Correct-horse-1');
     await tap('Request my P45');
     expect(container.querySelector('.modal')).toBeNull();
     expect(container.querySelector('.alert')!.textContent).toContain(

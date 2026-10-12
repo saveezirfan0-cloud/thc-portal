@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
  * Office and Client Portal draw it: its own heading, one line of why, and
  * a "Request a new link" button back to /forgot.
  */
-const auth = vi.hoisted(() => ({ getUser: vi.fn() }));
+const auth = vi.hoisted(() => ({ getUser: vi.fn(), getClaims: vi.fn() }));
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({ getAll: () => [], set: () => {} })),
@@ -41,7 +41,7 @@ async function render(searchParams: { error?: string }): Promise<string> {
 
 describe('/reset', () => {
   it('no session: "This link has expired" and a "Request a new link" button', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: null } });
+    auth.getClaims.mockResolvedValue({ data: null, error: null });
     const html = await render({});
     expect(html).toContain('<h2>This link has expired</h2>');
     expect(html).toContain('expired or has already been used');
@@ -51,7 +51,7 @@ describe('/reset', () => {
   });
 
   it('a link that could not be opened reads the same way, with one alert', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: null } });
+    auth.getClaims.mockResolvedValue({ data: null, error: null });
     const html = await render({ error: 'expired' });
     expect(html).toContain('<h2>This link has expired</h2>');
     expect(html).toContain('That link could not be opened.');
@@ -59,10 +59,38 @@ describe('/reset', () => {
     expect(html).toContain('Request a new link');
   });
 
-  it('a signed-in recovery session gets the form', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+  it('a signed-in recovery session gets the form, naming the account', async () => {
+    auth.getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          email: 'amara.k@example.com',
+          amr: [{ method: 'otp', timestamp: Math.floor(Date.now() / 1000) - 30 }],
+        },
+      },
+    });
     const html = await render({});
     expect(html).toContain('<h2>Set a new password</h2>');
+    expect(html).toContain('Setting a new password for <b class="mono">amara.k@example.com</b>.');
     expect(html).not.toContain('Request a new link');
+  });
+
+  it('a password sign-in is not a reset link: the expired card, and where to go instead', async () => {
+    auth.getClaims.mockResolvedValue({
+      data: { claims: { amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) }] } },
+    });
+    const html = await render({});
+    expect(html).toContain('<h2>This link has expired</h2>');
+    expect(html).toContain('Profile → Security settings');
+    expect(html).not.toContain('Set a new password');
+  });
+
+  it('a reset link opened more than 15 minutes ago is spent too', async () => {
+    auth.getClaims.mockResolvedValue({
+      data: {
+        claims: { amr: [{ method: 'otp', timestamp: Math.floor(Date.now() / 1000) - 16 * 60 }] },
+      },
+    });
+    const html = await render({});
+    expect(html).toContain('<h2>This link has expired</h2>');
   });
 });

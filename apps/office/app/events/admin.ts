@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 
 /**
  * The server-side half of "admin only" for the /events actions.
@@ -11,20 +12,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * they get should be a refusal from here, not whatever the RPC's error
  * text happens to be (audit 25.09, claim 2b).
  *
- * The role is read through the caller's OWN session: `auth.getUser()`
- * verifies the token with Supabase, and `profiles` answers under its own
- * policy. Nothing the browser sent is trusted.
+ * Every caller WRITES, so the question asked is `office_can('write')`
+ * (ADR-0060): false for a viewer, and false for any session
+ * `current_app_role()` does not answer 'admin' for — a switched-off login,
+ * a two-step login below aal2. Not `profiles.role`, which says 'admin' for
+ * all of those. `auth.getUser()` verifies the token with Supabase first;
+ * nothing the browser sent is trusted.
  */
 export const NOT_ADMIN = 'Only the office can do this.';
 export const SIGNED_OUT = 'Sign in to do this.';
+export const READ_ONLY = READ_ONLY_MESSAGE;
 
 export async function adminRefusal(supabase: SupabaseClient): Promise<string | null> {
   const { data: auth, error } = await supabase.auth.getUser();
   if (error || !auth?.user) return SIGNED_OUT;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', auth.user.id)
-    .maybeSingle<{ role: string }>();
-  return profile?.role === 'admin' ? null : NOT_ADMIN;
+  if (await officeMayWrite(supabase)) return null;
+  // Only to word the refusal: the office reading, or not the office at all.
+  return (await sessionIsAdmin(supabase)) ? READ_ONLY : NOT_ADMIN;
 }

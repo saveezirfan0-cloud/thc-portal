@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
+import { currentPasswordCheckAllowed, recordCurrentPasswordFailure } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 import { saveTimeFormat } from '@thc/db/time-format';
 import { supabaseConfigured } from '../staff/data';
@@ -139,8 +140,16 @@ export async function changeMyPassword(input: {
     process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
+  // The sign-in form's per-account limit applies here too, so a stolen
+  // session cannot guess the current password any faster than at /login.
+  if (!(await currentPasswordCheckAllowed(email))) {
+    return { ok: false, message: 'Too many wrong passwords. Wait 15 minutes, then try again.' };
+  }
   const check = await probe.auth.signInWithPassword({ email, password: input.current });
-  if (check.error) return { ok: false, message: 'Your current password is not right.' };
+  if (check.error) {
+    await recordCurrentPasswordFailure(email);
+    return { ok: false, message: 'Your current password is not right.' };
+  }
   await probe.auth.signOut({ scope: 'local' });
 
   const { error } = await supabase.auth.updateUser({ password: input.next });

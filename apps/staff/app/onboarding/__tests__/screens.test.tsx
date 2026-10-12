@@ -738,7 +738,12 @@ describe('9/11 – 11/11', () => {
     );
     expect(html).toContain('Where should we pay you?');
     expect(html).toContain('Format check only');
-    expect(footer(html).disabled).toBe(false);
+    // ADR-0113: staff_save_bank wants the password typed in the last ten
+    // minutes, so Continue waits for it.
+    expect(html).toContain('Current password');
+    expect(html).toContain('autoComplete="current-password"');
+    expect(html).toContain('Enter your password to continue');
+    expect(footer(html).disabled).toBe(true);
   });
 
   it('contract, unsigned: the duty to disclose, Continue disabled', () => {

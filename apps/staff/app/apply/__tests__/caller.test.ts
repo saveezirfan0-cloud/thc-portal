@@ -5,6 +5,7 @@ import {
   callerAddress,
   callerBucket,
   callerKey,
+  derivedSalt,
   hashCaller,
   isProductionRuntime,
 } from '../caller';
@@ -62,16 +63,34 @@ describe('callerKey', () => {
     expect(String(warn.mock.calls[0]?.[0])).toContain('APPLY_THROTTLE_SALT');
     warn.mockRestore();
   });
-  it('in production, refuses the constant: no key, one error, never the guessable digest', () => {
+  it('in production with no salt, the throttle stays on: a key derived from the service key, one error', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), undefined, true)).toBeNull();
-    expect(callerKey(h({ 'x-real-ip': '203.0.113.8' }), ' ', true)).toBeNull();
+    const service = 'service-role-key-secret';
+    const one = callerKey(h({ 'x-real-ip': '203.0.113.7' }), undefined, true, service);
+    const two = callerKey(h({ 'x-real-ip': '203.0.113.8' }), ' ', true, service);
+    expect(one).toMatch(/^[0-9a-f]{64}$/);
+    expect(one).toBe(hashCaller('203.0.113.7', derivedSalt(service)));
+    expect(two).toBe(hashCaller('203.0.113.8', derivedSalt(service)));
+    // Never the guessable digest under the public constant, never the key
+    // itself as the salt, and the key is never what is logged.
+    expect(one).not.toBe(hashCaller('203.0.113.7', DEFAULT_SALT));
+    expect(one).not.toBe(hashCaller('203.0.113.7', service));
+    expect(derivedSalt(service)).not.toContain(service);
+    // The same caller is the same key across requests: that is the throttle.
+    expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), undefined, true, service)).toBe(one);
     expect(error).toHaveBeenCalledTimes(1);
     expect(String(error.mock.calls[0]?.[0])).toContain('APPLY_THROTTLE_SALT');
+    expect(JSON.stringify(error.mock.calls)).not.toContain(service);
     expect(warn).not.toHaveBeenCalled();
     error.mockRestore();
     warn.mockRestore();
+  });
+  it('in production with neither salt nor service key there is nothing secret to hash with: no key', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), undefined, true, undefined)).toBeNull();
+    expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), undefined, true, '  ')).toBeNull();
+    error.mockRestore();
   });
   it('in production, a configured salt is used as normal', () => {
     expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), 'pepper', true)).toBe(

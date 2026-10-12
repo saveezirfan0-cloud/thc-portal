@@ -184,6 +184,9 @@ reset role;
 select (now() at time zone 'Europe/London')::date as today \gset
 create function pg_temp.uk(p_day date, p_time text) returns timestamptz
 language sql immutable as $$ select (p_day + p_time::time) at time zone 'Europe/London' $$;
+-- 20261012121500: a new function is no longer PUBLIC's by default; the
+-- service-role half of this file calls the helper too.
+grant execute on function pg_temp.uk(date, text) to service_role;
 
 \set ev      '75900000-0000-4000-8000-000000000001'
 \set ev_off  '75900000-0000-4000-8000-000000000002'
