@@ -116,7 +116,10 @@ export function UpcomingTable({
                     const chip = fillChip(role.confirmed, role.headcount);
                     return (
                       <div className="r" key={role.shiftId}>
-                        <span className="chip">{role.roleName}</span>
+                        {/* A long role name ends in an ellipsis; the full one is on hover. */}
+                        <span className="chip" title={role.roleName}>
+                          <span className="nm">{role.roleName}</span>
+                        </span>
                         {/* The role's OWN window, never the event's (RULE-18). */}
                         <ScheduledWindow
                           className="mono win"

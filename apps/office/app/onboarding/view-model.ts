@@ -20,6 +20,7 @@ import { STAFF_STATUSES, canTransitionStaff, clockLabel } from '@thc/domain';
 import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { capReason, employeeId } from '../staff/staff';
 import type {
+  BoardCandidateRow,
   CandidateQualification,
   CandidateReferral,
   CandidateRow,
@@ -323,7 +324,7 @@ function attemptsLabel(scores: number[]): string {
 }
 
 /** The Willo line on the two interview columns (§2.4). */
-export function willoLine(row: CandidateRow, now: Date, format?: TimeFormat): Line {
+export function willoLine(row: BoardCandidateRow, now: Date, format?: TimeFormat): Line {
   if (row.willo_completed_at) {
     const via = row.willo_decided_via === 'office' ? '' : ' (Willo webhook)';
     return {
@@ -397,7 +398,7 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
 
 /** Every line a card carries under the name, by column (board, Active). */
 export function cardLines(
-  row: CandidateRow,
+  row: BoardCandidateRow,
   column: ColumnKey,
   now: Date,
   format?: TimeFormat,
@@ -528,7 +529,7 @@ export function rejectedPill(
   }
 }
 
-export function rejectedLines(row: CandidateRow): Line[] {
+export function rejectedLines(row: BoardCandidateRow): Line[] {
   switch (row.rejection_cause) {
     case 'willo':
       return [
@@ -616,7 +617,7 @@ export interface BoardColumn {
   key: ColumnKey;
   label: string;
   tone: string;
-  candidates: CandidateRow[];
+  candidates: BoardCandidateRow[];
   returning: ReturningRow[];
   count: number;
 }
@@ -634,7 +635,7 @@ function matchesQuery(name: string, extra: readonly string[], query: string): bo
  * for a manual Verify.
  */
 export function needsAttention(
-  row: CandidateRow,
+  row: BoardCandidateRow,
   column: ColumnKey,
   now: Date,
   chaser?: ChaserState,
@@ -659,7 +660,7 @@ function appliedWithin(appliedAt: string, applied: AppliedFilter, now: Date): bo
  * from. On Rejected it is the most recently rejected.
  */
 export function boardColumns(
-  candidates: readonly CandidateRow[],
+  candidates: readonly BoardCandidateRow[],
   returning: readonly ReturningRow[],
   q: BoardQuery,
   ctx: BoardContext = { now: new Date() },
@@ -744,7 +745,7 @@ export function boardColumns(
 }
 
 export function boardCounts(
-  candidates: readonly CandidateRow[],
+  candidates: readonly BoardCandidateRow[],
   returning: readonly ReturningRow[],
 ): { active: number; rejected: number } {
   return {
