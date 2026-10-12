@@ -1,6 +1,6 @@
 -- =====================================================================
--- 787 · Same staff on all days (ADR-0113)
---   20261012130000_same_staff_all_days.sql
+-- 790 · Same staff on all days (ADR-0116)
+--   20261012140000_same_staff_all_days.sql
 --
 -- Held here:
 --   A · the columns: both off / null by default, readable by a signed-in

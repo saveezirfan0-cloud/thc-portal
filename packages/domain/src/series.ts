@@ -1,5 +1,5 @@
 /**
- * "Same staff on all days" — ADR-0113, a deliberate change to Scope §3.2.
+ * "Same staff on all days" — ADR-0116, a deliberate change to Scope §3.2.
  *
  * §3.2 says "Multi-day = separate events created via Duplicate (the clone
  * copies the roles, NOT the staff)". That still holds: nobody is copied. What
@@ -16,12 +16,12 @@
  * The SQL twin is `auto_assign_candidates()` (a wrapper over
  * `auto_assign_candidates_pool()`), `series_siblings()` and
  * `series_hours_blocked()` in
- * supabase/migrations/20261012130000_same_staff_all_days.sql. The refusal it
+ * supabase/migrations/20261012140000_same_staff_all_days.sql. The refusal it
  * gives is the gate named below, so the pool, `invite_worker`, Radar and
- * Accept all say the same thing; pgTAP 787 holds the SQL to the scenarios in
+ * Accept all say the same thing; pgTAP 790 holds the SQL to the scenarios in
  * `series.vectors.json`, which this module's tests run too.
  *
- * What is NOT here, because the client has not answered yet (ADR-0113,
+ * What is NOT here, because the client has not answered yet (ADR-0116,
  * PROVISIONAL): one Accept booking every day, cancelling one day cascading to
  * the others, the worker being told "all 3 days", and a per-event switch.
  */

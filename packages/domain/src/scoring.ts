@@ -156,7 +156,7 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
  * was never asked shows, so the office can record them.
  *
  * `not_available_all_days` applies only on a role section marked "Same staff
- * on all days" (ADR-0113): the worker fails a hard gate, the calendar or the
+ * on all days" (ADR-0116): the worker fails a hard gate, the calendar or the
  * projected weekly hours on another day of the series. It shows, because the
  * office can act on it (clear the worker's day, or switch the requirement off).
  *
@@ -178,7 +178,7 @@ export const HARD_GATES = [
   'hours_limit',
   'self_cancelled',
   'do_not_return',
-  // ADR-0113: a role section marked "Same staff on all days" and a worker
+  // ADR-0116: a role section marked "Same staff on all days" and a worker
   // who cannot do one of its other days. Shows under Unavailable with why.
   'not_available_all_days',
 ] as const;

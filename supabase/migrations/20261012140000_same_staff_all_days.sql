@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261012130000 · "Same staff on all days" (ADR-0113)
+-- Migration 20261012140000 · "Same staff on all days" (ADR-0116)
 --
 -- A deliberate change to Scope §3.2. "Multi-day = separate events created
 -- via Duplicate (the clone copies the roles, NOT the staff)" still holds:
@@ -33,7 +33,7 @@
 -- take - inherits it without being restated, so none of them can drop it.
 -- A LATER GATE therefore belongs in auto_assign_candidates_pool(); a
 -- `create or replace function auto_assign_candidates` would replace this
--- wrapper and silently drop the series gate. pgTAP 787 fails if that happens.
+-- wrapper and silently drop the series gate. pgTAP 790 fails if that happens.
 --
 -- ENFORCED: a worker is a candidate for a flagged section only when, for
 -- EVERY sibling (same series, same role, flag on, event not cancelled, not
@@ -43,7 +43,7 @@
 -- have no availability-calendar entry over it, and the PROJECTED hours of
 -- all the series' days together fit their weekly cap (RULE-20).
 --
--- NOT ENFORCED (PROVISIONAL, awaiting the client - ADR-0113): one Accept
+-- NOT ENFORCED (PROVISIONAL, awaiting the client - ADR-0116): one Accept
 -- booking every day; withdrawing or cancelling one day cascading to the
 -- others; the worker being told "all 3 days"; a per-event switch. A worker
 -- who DECLINED a sibling day is not gated (only self-cancel is).
@@ -51,7 +51,7 @@
 -- Additive and forward-only. No RLS change: events and shift_requirements
 -- keep their policies; the client role holds no policy on either (ADR-0026,
 -- 001_rls_guard) and the client_* views name their columns, so neither new
--- column reaches the client portal (pgTAP 787 asserts it).
+-- column reaches the client portal (pgTAP 790 asserts it).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -61,7 +61,7 @@ alter table public.events
   add column if not exists series_id uuid;
 
 comment on column public.events.series_id is
-  'ADR-0113: links the days of one multi-day job. Set on BOTH events by link_event_series() when Duplicate is used (a new random uuid when the source had none, else the source''s). Null = a single-day event. Not under the §3.2 edit lock; never exposed to the client portal.';
+  'ADR-0116: links the days of one multi-day job. Set on BOTH events by link_event_series() when Duplicate is used (a new random uuid when the source had none, else the source''s). Null = a single-day event. Not under the §3.2 edit lock; never exposed to the client portal.';
 
 create index if not exists events_series_idx
   on public.events (series_id) where series_id is not null;
@@ -70,7 +70,7 @@ alter table public.shift_requirements
   add column if not exists same_staff_all_days boolean not null default false;
 
 comment on column public.shift_requirements.same_staff_all_days is
-  'ADR-0113: the client wants the SAME staff on every day of this job for this role. A worker may be invited to a section with this on only if they pass the hard gates, the availability calendar and the projected weekly hours for every sibling section (same series, same role, flag on) - gate not_available_all_days. Off by default; per role, not per event. A silent edit (nobody booked is re-asked or removed); not under the §3.2 edit lock, like required_gender.';
+  'ADR-0116: the client wants the SAME staff on every day of this job for this role. A worker may be invited to a section with this on only if they pass the hard gates, the availability calendar and the projected weekly hours for every sibling section (same series, same role, flag on) - gate not_available_all_days. Off by default; per role, not per event. A silent edit (nobody booked is re-asked or removed); not under the §3.2 edit lock, like required_gender.';
 
 -- 20261001203000 replaced SELECT on this table with SELECT on every column
 -- but the two rates; a column added since needs its own grant (753 asserts
@@ -119,7 +119,7 @@ as $$
 $$;
 
 comment on function public.series_siblings(uuid) is
-  'ADR-0113: the sections a "Same staff on all days" section must also be fillable on - other events of the same series and client, same role, flag on, not cancelled, not yet ended. Empty when the section is not flagged or not in a series. Mirrors seriesSiblings() in packages/domain/src/series.ts.';
+  'ADR-0116: the sections a "Same staff on all days" section must also be fillable on - other events of the same series and client, same role, flag on, not cancelled, not yet ended. Empty when the section is not flagged or not in a series. Mirrors seriesSiblings() in packages/domain/src/series.ts.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The series' hours, projected, against the weekly cap
@@ -179,7 +179,7 @@ as $$
 $$;
 
 comment on function public.series_hours_blocked(uuid, uuid) is
-  'ADR-0113: would the hours of this section PLUS every flagged sibling, projected together per Mon-Sun cap week, be blocked by the rota guard (RULE-20)? The worker''s other bookings count; the series'' own sections are counted once, as projected. Three 8 h days in a student-visa term week are blocked though each fits alone. A warn verdict (Working Time 48 in warn mode) does not block, exactly as weekly_cap_would_breach(). Mirrors seriesHoursBlocked() in packages/domain/src/series.ts.';
+  'ADR-0116: would the hours of this section PLUS every flagged sibling, projected together per Mon-Sun cap week, be blocked by the rota guard (RULE-20)? The worker''s other bookings count; the series'' own sections are counted once, as projected. Three 8 h days in a student-visa term week are blocked though each fits alone. A warn verdict (Working Time 48 in warn mode) does not block, exactly as weekly_cap_would_breach(). Mirrors seriesHoursBlocked() in packages/domain/src/series.ts.';
 
 -- ---------------------------------------------------------------------
 -- 4 · The pool, split: the section's own gates, then the series gate
@@ -192,7 +192,7 @@ alter function public.auto_assign_candidates(uuid, boolean)
   rename to auto_assign_candidates_pool;
 
 comment on function public.auto_assign_candidates_pool(uuid, boolean) is
-  'The section''s OWN §3.3/§3.4 pool (the body of auto_assign_candidates as of 20261008120000), with no knowledge of series. Call auto_assign_candidates(), which adds the "Same staff on all days" gate (ADR-0113), everywhere except a sibling check. A new gate on the section itself belongs HERE: redefining auto_assign_candidates() replaces the wrapper and drops the series gate. Gates: wrong_role, male_only / female_only / gender_not_recorded (ADR-0079), languages_not_recorded / language_not_spoken (ADR-0080), do_not_return, blocked, self_cancelled, booked_elsewhere, rtw_expired, hours_limit, and - only with p_escalation - outside_radius.';
+  'The section''s OWN §3.3/§3.4 pool (the body of auto_assign_candidates as of 20261008120000), with no knowledge of series. Call auto_assign_candidates(), which adds the "Same staff on all days" gate (ADR-0116), everywhere except a sibling check. A new gate on the section itself belongs HERE: redefining auto_assign_candidates() replaces the wrapper and drops the series gate. Gates: wrong_role, male_only / female_only / gender_not_recorded (ADR-0079), languages_not_recorded / language_not_spoken (ADR-0080), do_not_return, blocked, self_cancelled, booked_elsewhere, rtw_expired, hours_limit, and - only with p_escalation - outside_radius.';
 
 create or replace function public.auto_assign_candidates(
   p_shift      uuid,
@@ -259,7 +259,7 @@ as $$
 $$;
 
 comment on function public.auto_assign_candidates(uuid, boolean) is
-  'The §3.3/§3.4 pool for one role section: auto_assign_candidates_pool() plus, since 20261012130000 (ADR-0113), the gate not_available_all_days on a section marked "Same staff on all days" - a worker who fails a hard gate, has a calendar entry, or would exceed their weekly cap (projected over all the series'' days together) on ANY sibling section. The section''s own gate always wins; the series gate is the last. invite_worker, the rounds, the board, Radar, apply, Accept and the offer take all read this function, so they all refuse by that name. Do not redefine this function to add a gate: add it to auto_assign_candidates_pool().';
+  'The §3.3/§3.4 pool for one role section: auto_assign_candidates_pool() plus, since 20261012140000 (ADR-0116), the gate not_available_all_days on a section marked "Same staff on all days" - a worker who fails a hard gate, has a calendar entry, or would exceed their weekly cap (projected over all the series'' days together) on ANY sibling section. The section''s own gate always wins; the series gate is the last. invite_worker, the rounds, the board, Radar, apply, Accept and the offer take all read this function, so they all refuse by that name. Do not redefine this function to add a gate: add it to auto_assign_candidates_pool().';
 
 revoke execute on function public.auto_assign_candidates(uuid, boolean) from public, anon;
 grant  execute on function public.auto_assign_candidates(uuid, boolean) to authenticated, service_role;
@@ -329,7 +329,7 @@ begin
 end $$;
 
 comment on function public.link_event_series(uuid, uuid) is
-  'ADR-0113: Duplicate links the days of a multi-day job. Sets events.series_id on BOTH the source and the clone - the source''s own when it has one, else a new random uuid. Office logins only (a viewer is refused by the read-only guard); one client; idempotent; refuses a clone already in another series. Staff are still not copied (§3.2).';
+  'ADR-0116: Duplicate links the days of a multi-day job. Sets events.series_id on BOTH the source and the clone - the source''s own when it has one, else a new random uuid. Office logins only (a viewer is refused by the read-only guard); one client; idempotent; refuses a clone already in another series. Staff are still not copied (§3.2).';
 
 revoke execute on function public.link_event_series(uuid, uuid) from public, anon;
 grant  execute on function public.link_event_series(uuid, uuid) to authenticated, service_role;

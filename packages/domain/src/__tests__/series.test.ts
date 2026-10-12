@@ -12,7 +12,7 @@ import {
 } from '../series';
 import type { RotaGuardInput } from '../rotaGuard';
 
-describe('same staff on all days: projected hours (shared vectors, ADR-0113)', () => {
+describe('same staff on all days: projected hours (shared vectors, ADR-0116)', () => {
   it.each(vectors.cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const weeks = projectSeriesWeeks(c.days);
     expect(weeks.map((w) => ({ weekStart: w.weekStart, hours: w.hours }))).toEqual(c.expect.weeks);
