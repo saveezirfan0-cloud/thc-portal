@@ -45,7 +45,8 @@ const section = (over: Partial<SeriesSection> & { shiftId: string }): SeriesSect
   roleId: 'bar',
   sameStaffAllDays: true,
   eventCancelled: false,
-  endsAt: new Date('2026-11-21T23:00:00Z'),
+  startsAt: new Date('2026-11-21T09:00:00Z'),
+  endsAt: new Date('2026-11-21T17:00:00Z'),
   startsOn: '2026-11-21',
   hours: 8,
   ...over,
@@ -82,6 +83,20 @@ describe('which sections a flagged section must also be fillable on', () => {
   it('leave out a day that has already ended: it cannot be rostered', () => {
     const past = section({ shiftId: 'past', endsAt: new Date('2026-10-31T23:00:00Z') });
     expect(seriesSiblings(sat, [past, sun], NOW).map((s) => s.shiftId)).toEqual(['sun']);
+  });
+
+  it('leave out a day more than 14 days away: a series is a run of days, not a standing arrangement', () => {
+    const near = section({
+      shiftId: 'near',
+      startsAt: new Date('2026-12-05T09:00:00Z'),
+      endsAt: new Date('2026-12-05T17:00:00Z'),
+    });
+    const far = section({
+      shiftId: 'far',
+      startsAt: new Date('2026-12-05T09:00:01Z'),
+      endsAt: new Date('2026-12-05T17:00:00Z'),
+    });
+    expect(seriesSiblings(sat, [near, far], NOW).map((x) => x.shiftId)).toEqual(['near']);
   });
 
   it("never include the event's own other sections", () => {

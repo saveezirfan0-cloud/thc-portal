@@ -13,10 +13,12 @@
  *   the same series, with the flag also on — and whose hours, projected over
  *   all of those days together, stay inside their weekly cap (RULE-20).
  *
- * The SQL twin is `auto_assign_candidates()` (a wrapper over
- * `auto_assign_candidates_pool()`), `series_siblings()` and
- * `series_hours_blocked()` in
- * supabase/migrations/20261012140000_same_staff_all_days.sql. The refusal it
+ * The SQL twin is in supabase/migrations/20261012140000_same_staff_all_days.sql:
+ * `series_siblings()`, `series_hours_blocked()`, and the gate itself twice over
+ * - `series_gate_for()` for ONE worker (invite, Accept, apply, take, Radar:
+ * one pool row, never a sibling pool, because authenticated has an 8 s
+ * statement timeout) and `auto_assign_candidates()` for a LIST (the board and
+ * the rounds), a wrapper over `auto_assign_candidates_pool()`. The refusal it
  * gives is the gate named below, so the pool, `invite_worker`, Radar and
  * Accept all say the same thing; pgTAP 804 holds the SQL to the scenarios in
  * `series.vectors.json`, which this module's tests run too.
@@ -35,6 +37,9 @@ import { type RotaGuardInput, type RotaGuardMode, rotaGuardVerdict } from './rot
  */
 export const NOT_AVAILABLE_ALL_DAYS = 'not_available_all_days' as const;
 
+/** How far apart two days of one series may start (ADR-0116). */
+export const SERIES_WINDOW_DAYS = 14;
+
 /** The switch's label on the role section, and the chip on the board. */
 export const SERIES_LABEL = 'Same staff on all days';
 
@@ -47,6 +52,7 @@ export interface SeriesSection {
   roleId: string;
   sameStaffAllDays: boolean;
   eventCancelled: boolean;
+  startsAt: Date;
   endsAt: Date;
   /** Europe/London calendar day the section starts on, `YYYY-MM-DD`. */
   startsOn: string;
@@ -61,6 +67,9 @@ export interface SeriesSection {
  *   - another event of the SAME series (never the event's own other sections);
  *   - the SAME role, with the flag ALSO on — a day that does not ask for the
  *     same staff does not constrain this one;
+ *   - starting within SERIES_WINDOW_DAYS of this section: a series is a run of
+ *     days, not a standing arrangement ("copy last week's event" x20 is not
+ *     one job);
  *   - not a cancelled event, and not a day that has already ended (a past day
  *     cannot be rostered; whatever the worker really booked there is already
  *     in their week as a booking).
@@ -79,7 +88,8 @@ export function seriesSiblings(
       o.roleId === self.roleId &&
       o.sameStaffAllDays &&
       !o.eventCancelled &&
-      o.endsAt.getTime() > now.getTime(),
+      o.endsAt.getTime() > now.getTime() &&
+      Math.abs(o.startsAt.getTime() - self.startsAt.getTime()) <= SERIES_WINDOW_DAYS * 86_400_000,
   );
 }
 
