@@ -27,7 +27,10 @@
 --   record_auth_attempt(p_kind text, p_key_hash text, p_failed boolean) returns void
 --
 --   kind      limit                          what counts
---   sign_in   5 failures per key / 15 min    p_failed = true (null counts as a failure)
+--   sign_in     5 failures per key / 15 min   p_failed = true (null counts as a failure)
+--   sign_in_ip 30 failures per key / 15 min   the same, keyed on the caller's address:
+--                                             looser, because a venue's Wi-Fi or the
+--                                             office NAT is one address for many people
 --   verify    5 failures per key / 15 min    p_failed = true (the two-step code step)
 --   recover   3 requests per key / 1 hour    every call (p_failed is ignored)
 --
@@ -49,7 +52,7 @@ revoke all on schema private from public, anon, authenticated;
 
 create table if not exists private.auth_attempts (
   id       bigint generated always as identity primary key,
-  kind     text        not null check (kind in ('sign_in', 'recover', 'verify')),
+  kind     text        not null check (kind in ('sign_in', 'sign_in_ip', 'recover', 'verify')),
   key_hash text        not null check (key_hash ~ '^[0-9a-f]{64}$'),
   at       timestamptz not null default now()
 );
@@ -71,6 +74,7 @@ as $$
 begin
   case p_kind
     when 'sign_in' then max_count := 5; window_len := interval '15 minutes';
+    when 'sign_in_ip' then max_count := 30; window_len := interval '15 minutes';
     when 'verify'  then max_count := 5; window_len := interval '15 minutes';
     when 'recover' then max_count := 3; window_len := interval '1 hour';
     else
@@ -118,7 +122,7 @@ begin
 end $$;
 
 comment on function public.auth_attempt_allowed(text, text) is
-  '20261012121000 (ADR-0051 §25): false once the key has 5 sign_in failures / 5 verify failures in 15 minutes, or 3 recover requests in an hour. Service role only; 22023 for an unknown kind or a key that is not 64 lowercase hex characters.';
+  '20261012121000 (ADR-0051 §25): false once the key has 5 sign_in failures / 30 sign_in_ip failures / 5 verify failures in 15 minutes, or 3 recover requests in an hour. Service role only; 22023 for an unknown kind or a key that is not 64 lowercase hex characters.';
 
 revoke execute on function public.auth_attempt_allowed(text, text) from public, anon, authenticated;
 grant  execute on function public.auth_attempt_allowed(text, text) to service_role;
@@ -145,7 +149,7 @@ begin
 end $$;
 
 comment on function public.record_auth_attempt(text, text, boolean) is
-  '20261012121000 (ADR-0051 §25): records a sign_in or verify failure (p_failed true or null; a success records nothing) or any recover request (p_failed ignored), and deletes rows older than 24 hours. Service role only; 22023 for an unknown kind or a malformed key.';
+  '20261012121000 (ADR-0051 §25): records a sign_in, sign_in_ip or verify failure (p_failed true or null; a success records nothing) or any recover request (p_failed ignored), and deletes rows older than 24 hours. Service role only; 22023 for an unknown kind or a malformed key.';
 
 revoke execute on function public.record_auth_attempt(text, text, boolean) from public, anon, authenticated;
 grant  execute on function public.record_auth_attempt(text, text, boolean) to service_role;

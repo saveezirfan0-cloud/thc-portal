@@ -5,14 +5,16 @@
 --
 -- GoTrue's limits are per IP and see only Vercel. auth_attempt_allowed()
 -- and record_auth_attempt() count per sha256 of the normalised email:
--- sign_in and verify 5 failures / 15 min, recover 3 requests / hour.
+-- sign_in and verify 5 failures / 15 min, sign_in_ip (the caller's
+-- address) 30 / 15 min, recover 3 requests / hour.
 -- Service role only.
 -- =====================================================================
 begin;
-select plan(18);
+select plan(21);
 
 select encode(extensions.digest('a.worker@example.com', 'sha256'), 'hex') as k1 \gset
 select encode(extensions.digest('another@example.com', 'sha256'), 'hex') as k2 \gset
+select encode(extensions.digest('ip:198.51.100.7', 'sha256'), 'hex') as k3 \gset
 
 select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
 set local role service_role;
@@ -43,6 +45,14 @@ select record_auth_attempt('verify', :'k2', true) from generate_series(1, 5);
 select ok(not auth_attempt_allowed('verify', :'k2'), 'five wrong two-step codes in 15 minutes: refused');
 select record_auth_attempt('recover', :'k2', false) from generate_series(1, 3);
 select ok(not auth_attempt_allowed('recover', :'k2'), 'three reset requests in an hour, whatever p_failed says: refused');
+
+-- The caller's address has its own, looser limit: a venue's Wi-Fi or the
+-- office NAT is one address for many honest people.
+select record_auth_attempt('sign_in_ip', :'k3', true) from generate_series(1, 29);
+select ok(auth_attempt_allowed('sign_in_ip', :'k3'), 'one address: 29 failures in 15 minutes are still allowed');
+select ok(auth_attempt_allowed('sign_in', :'k3'), 'and an address count is not an account count');
+select record_auth_attempt('sign_in_ip', :'k3', true);
+select ok(not auth_attempt_allowed('sign_in_ip', :'k3'), 'the thirtieth failure from one address closes it');
 
 -- =====================================================================
 -- 3 · Input

@@ -38,10 +38,10 @@ describe('keys', () => {
     expect(await emailKey('a@b.c')).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('a sign-in counts under the account and, when known, the address', async () => {
+  it('a sign-in counts under the account and, when known, the address (its own looser limit)', async () => {
     expect(await signInKeys('a@b.c', '198.51.100.1')).toEqual([
       sha('a@b.c'),
-      sha('ip:198.51.100.1'),
+      { kind: 'sign_in_ip', key: sha('ip:198.51.100.1') },
     ]);
     expect(await signInKeys('a@b.c', null)).toEqual([sha('a@b.c')]);
   });
@@ -71,6 +71,19 @@ describe('authAttemptAllowed', () => {
     expect(rpc).toHaveBeenCalledWith('auth_attempt_allowed', {
       p_kind: 'sign_in',
       p_key_hash: 'k2',
+    });
+  });
+
+  it('a key carrying its own kind is asked under that kind', async () => {
+    rpc.mockResolvedValue({ data: true, error: null });
+    await authAttemptAllowed('sign_in', ['acct', { kind: 'sign_in_ip', key: 'addr' }]);
+    expect(rpc).toHaveBeenCalledWith('auth_attempt_allowed', {
+      p_kind: 'sign_in',
+      p_key_hash: 'acct',
+    });
+    expect(rpc).toHaveBeenCalledWith('auth_attempt_allowed', {
+      p_kind: 'sign_in_ip',
+      p_key_hash: 'addr',
     });
   });
 

@@ -15,7 +15,10 @@ import { createAdminClient } from './admin';
  *   auth_attempt_allowed(p_kind, p_key_hash) → boolean
  *   record_auth_attempt(p_kind, p_key_hash, p_failed) → void
  *
- *   'sign_in'  5 failures per 15 minutes, per key
+ *   'sign_in'     5 failures per 15 minutes, per account
+ *   'sign_in_ip'  30 failures per 15 minutes, per caller address — looser,
+ *                 because a venue's Wi-Fi or the office's NAT is one address
+ *                 for many honest people
  *   'recover'  3 requests per hour — every request counts
  *   'verify'   5 wrong codes per 15 minutes
  *
@@ -32,7 +35,14 @@ import { createAdminClient } from './admin';
  * different message would say the account exists.
  */
 
-export type AuthAttemptKind = 'sign_in' | 'recover' | 'verify';
+export type AuthAttemptKind = 'sign_in' | 'sign_in_ip' | 'recover' | 'verify';
+
+/** A key counted under the call's kind, or under a kind of its own. */
+export type ThrottleKey = string | { kind: AuthAttemptKind; key: string };
+
+function keyKind(kind: AuthAttemptKind, key: ThrottleKey): [AuthAttemptKind, string] {
+  return typeof key === 'string' ? [kind, key] : [key.kind, key.key];
+}
 
 /** The two RPCs, untyped until the generated types include them. */
 interface ThrottleRpc {
@@ -103,15 +113,16 @@ function logFailOpen(what: string, kind: AuthAttemptKind, cause: unknown): void 
  */
 export async function authAttemptAllowed(
   kind: AuthAttemptKind,
-  keys: readonly string[],
+  keys: readonly ThrottleKey[],
 ): Promise<boolean> {
   if (keys.length === 0) return true;
   try {
     const db = client();
     const answers = await Promise.all(
-      keys.map(async (key) => {
+      keys.map(async (entry) => {
+        const [k, key] = keyKind(kind, entry);
         const { data, error } = await db.rpc('auth_attempt_allowed', {
-          p_kind: kind,
+          p_kind: k,
           p_key_hash: key,
         });
         if (error) throw new Error(error.message);
@@ -128,16 +139,17 @@ export async function authAttemptAllowed(
 /** Count an attempt against every key. Never throws. */
 export async function recordAuthAttempt(
   kind: AuthAttemptKind,
-  keys: readonly string[],
+  keys: readonly ThrottleKey[],
   failed: boolean,
 ): Promise<void> {
   if (keys.length === 0) return;
   try {
     const db = client();
     await Promise.all(
-      keys.map(async (key) => {
+      keys.map(async (entry) => {
+        const [k, key] = keyKind(kind, entry);
         const { error } = await db.rpc('record_auth_attempt', {
-          p_kind: kind,
+          p_kind: k,
           p_key_hash: key,
           p_failed: failed,
         });
@@ -165,9 +177,13 @@ export function isCredentialFailure(error: { status?: number; code?: string } | 
 // The three call sites, so each app's action is two lines
 // ---------------------------------------------------------------------
 
-/** The keys a sign-in is counted under: the account, and the caller's address. */
-export async function signInKeys(email: string, ip: string | null): Promise<string[]> {
-  return Promise.all([emailKey(email), ...(ip ? [ipKey(ip)] : [])]);
+/**
+ * The keys a sign-in is counted under: the account, and the caller's
+ * address under its own, looser 'sign_in_ip' limit.
+ */
+export async function signInKeys(email: string, ip: string | null): Promise<ThrottleKey[]> {
+  const account = await emailKey(email);
+  return ip ? [account, { kind: 'sign_in_ip', key: await ipKey(ip) }] : [account];
 }
 
 /**
