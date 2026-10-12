@@ -34,22 +34,26 @@ const COUNTER_FROM = 1800;
 
 const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
 
-/** The action's "one entry per worker per event" refusal (23505, §11.5). */
 /**
- * The star a key moves the rating to, as a radio group does (WAI-ARIA APG):
- * Right/Up one more, Left/Down one fewer, Home the first, End the last,
- * stopping at the ends. Null for any other key. From no rating yet, Right
- * and Up pick 1 star and Left and Down pick 1 too — the first a keyboard
- * can reach — rather than jumping to 5.
+ * The star a key moves the rating to, as the WAI-ARIA APG radio group does
+ * (https://www.w3.org/WAI/ARIA/apg/patterns/radio/): Right and Down check
+ * the next radio — one star more — and Left and Up the previous — one
+ * fewer — wrapping from the last to the first and from the first to the
+ * last. With nothing checked yet the group's tab stop is the first star
+ * (roving tabindex), so the first Right or Down checks that focused star,
+ * 1, rather than skipping it; Left or Up from it wraps to the last, 5.
+ * Space checks the focused star (the button's own click). Home and End,
+ * which the pattern leaves open, take the first and the last. Null for any
+ * other key.
  */
 export function starForKey(key: string, rating: number): number | null {
   switch (key) {
     case 'ArrowRight':
-    case 'ArrowUp':
-      return Math.min(5, Math.max(1, rating + 1));
-    case 'ArrowLeft':
     case 'ArrowDown':
-      return Math.max(1, rating - 1);
+      return rating >= 5 || rating < 1 ? 1 : rating + 1;
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      return rating <= 1 ? 5 : rating - 1;
     case 'Home':
       return 1;
     case 'End':
@@ -59,6 +63,7 @@ export function starForKey(key: string, rating: number): number | null {
   }
 }
 
+/** The action's "one entry per worker per event" refusal (23505, §11.5). */
 export function isAlreadyLeft(result: { error?: string; code?: string | null }): boolean {
   return result.code === '23505' || /already been left/i.test(result.error ?? '');
 }
@@ -200,7 +205,7 @@ export function FeedbackModal({
               onClick={() => setRating(n)}
               disabled={pending}
             >
-              ★
+              <StarIcon />
             </button>
           ))}
         </div>
@@ -230,5 +235,20 @@ export function FeedbackModal({
         correcting, contact the office.
       </div>
     </Modal>
+  );
+}
+
+/**
+ * One star of the picker. A shape, not a glyph, so the two states differ in
+ * form as well as colour: an outline in --muted until chosen, then filled
+ * in the amber (client-portal.css .star). The same ★ in two colours read as
+ * five identical stars in light mode, where --muted and the amber ink are
+ * barely 1.2:1 apart.
+ */
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 2.8l2.83 5.73 6.33.92-4.58 4.46 1.08 6.3L12 17.24l-5.66 2.97 1.08-6.3-4.58-4.46 6.33-.92z" />
+    </svg>
   );
 }

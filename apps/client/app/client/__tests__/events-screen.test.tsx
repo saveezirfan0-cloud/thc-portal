@@ -200,8 +200,10 @@ describe('the phone card carries the fill bar and the role split (§11.1, ADR-00
 describe('the feedback nudge (§11.2, ADR-0049)', () => {
   it('counts the workers still to rate on a started event, leaving out a removed one', () => {
     const galaCard = card(render([gala]), 'Gala Dinner');
+    // Short enough for one line in the Status column; the whole sentence is
+    // the link's accessible name, which starts with the words on screen.
     expect(galaCard).toContain(
-      '<a href="/client/events/ev-gala" class="ev-nudge"><span>Leave feedback ·</span> <span>2 of 3 to go</span></a>',
+      '<a href="/client/events/ev-gala" class="ev-nudge" aria-label="Feedback: 2 to go. Leave feedback for 2 of 3 workers">Feedback: 2 to go</a>',
     );
   });
 
@@ -449,6 +451,41 @@ describe('the venue folds under the event name at tablet width', () => {
     expect(markup).toContain(
       '<span class="sub venue-inline">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</span>',
     );
+  });
+});
+
+describe('the table folds to four columns on a tablet (§1.2, wireframe tablet note)', () => {
+  it('marks the Status and Line-up columns so the CSS can fold them', () => {
+    const table = render([gala]).slice(0, render([gala]).indexOf('class="cards"'));
+    expect(table).toContain('<th class="col-status">Status</th>');
+    expect(table).toContain('<th class="col-lineup">Line-up</th>');
+    expect(table).toContain('<td class="col-status">');
+    expect(table).toContain('<td class="col-lineup">');
+  });
+
+  it('prints the status under the date and the faces under the fill bar as well', () => {
+    const table = render([gala]).slice(0, render([gala]).indexOf('class="cards"'));
+    // Twice each: its own column, and the folded copy the CSS shows ≤1100px / ≤1279px.
+    expect(
+      table.match(/<span class="pill green"><i class="dot"><\/i>Ongoing<\/span>/g),
+    ).toHaveLength(2);
+    expect(table).toMatch(/<div class="stack tight status-inline"><span class="pill green">/);
+    expect(table).toMatch(/<div class="faces-inline"><span class="avatars">/);
+  });
+
+  it('lets the window wrap only between its pieces in the Date cell', () => {
+    const table = render([gala]).slice(0, render([gala]).indexOf('class="cards"'));
+    expect(table).toContain('<span class="sub"><span class="wseg">07:00 – 23:30 UK time</span>');
+  });
+
+  it('folds by CSS: Venue and Line-up ≤1279px, Status ≤1100px', () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'client-portal.css'),
+      'utf8',
+    );
+    const at = (q: string) => css.slice(css.indexOf(`@media (max-width: ${q})`)).split('\n}\n')[0];
+    expect(at('1279px')).toMatch(/\.tbl \.col-venue,\s*\.tbl \.col-lineup \{\s*display: none;/);
+    expect(at('1100px')).toMatch(/\.tbl \.col-status \{\s*display: none;/);
   });
 });
 

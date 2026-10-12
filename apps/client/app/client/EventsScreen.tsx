@@ -275,7 +275,7 @@ export function EventsScreen({
           <>
             {/* A plain sideways scroller inside the card: at laptop width the
                 table fits once the Venue column folds under the event name
-                (≤1180px, as the wireframe's tablet note says); this only
+                (≤1279px, as the wireframe's tablet note says); this only
                 catches whatever is left, and never scrolls vertically. */}
             <div className="ev-table">
               <table className="tbl">
@@ -284,9 +284,9 @@ export function EventsScreen({
                     <th>Event</th>
                     <th className="col-venue">Venue</th>
                     <th>Date &amp; time</th>
-                    <th>Status</th>
+                    <th className="col-status">Status</th>
                     <th>Confirmed</th>
-                    <th>Line-up</th>
+                    <th className="col-lineup">Line-up</th>
                     <th>Document</th>
                   </tr>
                 </thead>
@@ -300,6 +300,16 @@ export function EventsScreen({
                     const nudge = feedbackToGo(e, faces, at);
                     const cancelled = e.status === 'cancelled';
                     const href = `/client/events/${e.id}`;
+                    // Its own column on a wide screen, under the date once
+                    // that column folds; rendered in both, the CSS shows one.
+                    const status = (
+                      <>
+                        <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
+                          {STATUS_LABEL[e.status]}
+                        </Pill>
+                        {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
+                      </>
+                    );
 
                     return (
                       <tr
@@ -313,7 +323,7 @@ export function EventsScreen({
                           {cancelled && e.cancelledAt ? (
                             <span className="sub">cancelled {ukDayMonth(e.cancelledAt)}</span>
                           ) : null}
-                          {/* Shown only once the Venue column folds (≤1180px). */}
+                          {/* Shown only once the Venue column folds (≤1279px). */}
                           <span className="sub venue-inline">
                             {e.venueName}, {e.venueAddress}
                           </span>
@@ -324,15 +334,17 @@ export function EventsScreen({
                         </td>
                         <td className="win">
                           <b>{ukDateShort(e.startsAt)}</b>
-                          <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} className="sub" />
+                          <EventWindow
+                            startsAt={e.startsAt}
+                            endsAt={e.endsAt}
+                            className="sub"
+                            breakable
+                          />
+                          {/* Shown only once the Status column folds (≤1100px). */}
+                          <div className="stack tight status-inline">{status}</div>
                         </td>
-                        <td>
-                          <div className="stack tight">
-                            <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
-                              {STATUS_LABEL[e.status]}
-                            </Pill>
-                            {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
-                          </div>
+                        <td className="col-status">
+                          <div className="stack tight">{status}</div>
                         </td>
                         <td>
                           {cancelled ? (
@@ -347,10 +359,14 @@ export function EventsScreen({
                               <Arrivals
                                 counts={e.status === 'ongoing' ? arrivals[e.id] : undefined}
                               />
+                              {/* Shown only once the Line-up column folds (≤1279px). */}
+                              <div className="faces-inline">
+                                <Faces people={faces} photos={photos} />
+                              </div>
                             </div>
                           )}
                         </td>
-                        <td>
+                        <td className="col-lineup">
                           {cancelled ? (
                             <span className="muted sm">—</span>
                           ) : (
@@ -608,18 +624,20 @@ function RoleLine({ sections }: { sections: RoleSection[] }) {
 }
 
 /**
- * "Leave feedback · 5 of 13 to go" (§11.2, ADR-0049). A link to the event
- * page, where the per-worker buttons are; the list itself writes nothing.
+ * "Feedback: 5 to go" (§11.2, ADR-0049). A link to the event page, where the
+ * per-worker buttons are; the list itself writes nothing. Short enough for
+ * one line in the Status column ("Leave feedback · 5 of 13 to go" folded
+ * onto two or three); the accessible name starts with the words on screen
+ * (WCAG 2.5.3) and carries the whole of it.
  */
 function FeedbackNudge({ eventId, toGo, total }: { eventId: string; toGo: number; total: number }) {
   return (
-    // Two unbreakable halves: in the narrow Status column the nudge folds
-    // between them, onto two lines at most, never mid-phrase.
-    <Link className="ev-nudge" href={`/client/events/${eventId}`}>
-      <span>Leave feedback ·</span>{' '}
-      <span>
-        {toGo} of {total} to go
-      </span>
+    <Link
+      className="ev-nudge"
+      href={`/client/events/${eventId}`}
+      aria-label={`Feedback: ${toGo} to go. Leave feedback for ${toGo} of ${total} ${total === 1 ? 'worker' : 'workers'}`}
+    >
+      {`Feedback: ${toGo} to go`}
     </Link>
   );
 }

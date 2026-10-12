@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Alert, AuthCard } from '@thc/ui';
 import { createClient } from '@thc/db/server';
 import { ResetForm } from './ResetForm';
-import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
+import { NOT_A_RESET_SESSION, accountEmail, isRecoverySession } from './recovery';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Set a new password · THC Client Portal' };
@@ -29,11 +29,13 @@ export default async function Page({
 
   let signedIn = false;
   let recovery = false;
+  let email: string | null = null;
   if (configured) {
     const supabase = createClient(await cookies());
     const { data } = await supabase.auth.getClaims();
     signedIn = !!data?.claims?.sub;
     recovery = isRecoverySession(data?.claims);
+    email = accountEmail(data?.claims);
   }
 
   // A link that arrived without its token (/auth/confirm or /auth/callback
@@ -82,7 +84,9 @@ export default async function Page({
 
   return (
     <AuthCard product="Client Portal" heading="Set a new password">
-      <ResetForm />
+      {/* "For hannah.brooks@…" (activate.html, A3): whose password this
+          is, from the reset session itself — said only when it has one. */}
+      <ResetForm email={email} />
     </AuthCard>
   );
 }

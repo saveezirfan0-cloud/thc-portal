@@ -3,6 +3,37 @@
    rule in packages/ui auth.css does for the links inside a form. Scoped to
    the Client Portal (loaded by AuthMain), so the other apps' cards keep
    their own. */
+/* A2 "Check your inbox": the envelope tile over the heading, as the
+   wireframe draws it (client/login.html, A2) — the brand's own tile
+   (.logo: --cyan-solid, --on-cyan, --r-logo), a size up. The card is one
+   flex column that draws the brand and then the heading before its
+   children, so the tile, a child, is ordered between the two. */
+.auth-card:has(> .auth-mail-ico) > .appearance {
+  order: -3;
+}
+
+.auth-card:has(> .auth-mail-ico) > .brand {
+  order: -2;
+}
+
+.auth-card > .logo.auth-mail-ico {
+  order: -1;
+  align-self: center;
+  width: 56px;
+  height: 56px;
+}
+
+.auth-mail-ico svg {
+  width: 55%;
+  height: 55%;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 @media (max-width: 760px) {
   /* Links standing on their own: "Didn't get it? Send it again". */
   .auth-card .auth-link {

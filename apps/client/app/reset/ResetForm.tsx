@@ -12,7 +12,7 @@ import { setPassword } from './actions';
  * with the same function (`@thc/domain` password.ts, which `PasswordRules`
  * reads too). This is help, not the gate.
  */
-export function ResetForm() {
+export function ResetForm({ email = null }: { email?: string | null }) {
   const [error, formAction, pending] = useActionState(setPassword, null);
   const [password, setPasswordValue] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -26,7 +26,14 @@ export function ResetForm() {
   return (
     <form action={formAction} className="auth-form">
       {error ? <Alert tone="coral">{error}</Alert> : null}
-      <p className="sm muted">You’ll be signed in straight after.</p>
+      <p className="sm muted">
+        {email ? (
+          <>
+            For <b className="mono">{email}</b>.{' '}
+          </>
+        ) : null}
+        You’ll be signed in straight after.
+      </p>
 
       <Input
         label="New password"

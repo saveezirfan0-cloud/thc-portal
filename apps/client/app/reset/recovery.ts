@@ -42,3 +42,16 @@ export function isRecoverySession(
     );
   });
 }
+
+/**
+ * The address the reset session belongs to (the access token's `email`
+ * claim), for A3's "For hannah.brooks@…" line; null when the claim is
+ * missing or does not read as one address, so the line is left out rather
+ * than printing something else.
+ */
+export function accountEmail(claims: { email?: unknown } | null | undefined): string | null {
+  const email = claims?.email;
+  if (typeof email !== 'string') return null;
+  const trimmed = email.trim();
+  return trimmed.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(trimmed) ? trimmed : null;
+}

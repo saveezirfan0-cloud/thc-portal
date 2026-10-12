@@ -71,13 +71,29 @@ describe('GET /client/events/:id/document', () => {
     expect((await get(MINE, '?kind=allocation')).status).toBe(302);
   });
 
-  it('is 400 for a missing or unknown kind — never a guess at the allocation sheet', async () => {
+  it('sends a missing or unknown kind back to the event page (303) — never a guess at the allocation sheet', async () => {
     for (const query of ['', '?kind=', '?kind=payslip', '?kind=SIGNOUT']) {
       const res = await get(MINE, query);
-      expect(res.status, query).toBe(400);
+      expect(res.status, query).toBe(303);
+      expect(res.headers.get('location'), query).toBe(
+        `https://portal.thc.example/client/events/${MINE}`,
+      );
       expect(res.headers.get('cache-control')).toBe('no-store');
     }
-    expect(state.loaded).toEqual([]);
+  });
+
+  it("answers an unknown kind on another customer's event with the same 404 as any (no oracle)", async () => {
+    const known = await get(THEIRS, '?kind=allocation');
+    const body = await known.text();
+    for (const query of ['', '?kind=payslip']) {
+      for (const id of [THEIRS, '00000000-0000-4000-8000-000000000000', 'not-a-uuid']) {
+        const res = await get(id, query);
+        expect(res.status, `${id}${query}`).toBe(404);
+        expect(res.headers.get('location')).toBeNull();
+        expect(res.headers.get('cache-control')).toBe('no-store');
+        expect(await res.text()).toBe(body);
+      }
+    }
   });
 
   it('sends the customer back to the event page when that kind has not been issued', async () => {

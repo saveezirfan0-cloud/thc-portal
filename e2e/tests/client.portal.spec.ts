@@ -321,7 +321,10 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
         .getByRole('button', { name: '↓ Download Completed Timesheet' })
         .or(page.getByRole('link', { name: '↓ Download Completed Timesheet' })),
     ).toBeVisible();
-    await expect(page.getByRole('status')).toContainText('The event has started');
+    // The seed's Lunch Service ended two weeks ago, so the "you can now leave
+    // feedback" banner has been retired (it shows for 7 days after the end,
+    // FEEDBACK_BANNER_DAYS) while the buttons themselves stay live.
+    await expect(page.getByText('The event has started')).toHaveCount(0);
 
     // The first worker whose button is still live. `has` is evaluated per
     // row, so it must not carry a `.first()` of its own — that would match
@@ -350,15 +353,26 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
       'true',
     );
     await expect(dialog).toContainText('4 of 5 stars');
-    // One tab stop, arrows choose (a radio group): Right to 5, Left back to 4.
+    // One tab stop, arrows choose (the APG radio group): Right/Down is the
+    // next star, Left/Up the previous, and the ends wrap.
     await page.keyboard.press('ArrowRight');
     await expect(dialog.getByRole('radio', { name: '5 stars' })).toBeFocused();
     await expect(dialog).toContainText('5 of 5 stars');
+    await page.keyboard.press('ArrowDown');
+    await expect(dialog.getByRole('radio', { name: '1 star' })).toBeFocused();
+    await expect(dialog.getByRole('radio', { name: '1 star' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await page.keyboard.press('ArrowUp');
+    await expect(dialog.getByRole('radio', { name: '5 stars' })).toBeFocused();
     await page.keyboard.press('ArrowLeft');
+    await expect(dialog.getByRole('radio', { name: '4 stars' })).toBeFocused();
     await expect(dialog.getByRole('radio', { name: '4 stars' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
+    await expect(dialog).toContainText('4 of 5 stars');
     await dialog.getByLabel('Comment').fill('Calm under pressure, great with the top table.');
     await dialog.getByRole('button', { name: 'Submit feedback' }).click();
 

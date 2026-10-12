@@ -20,6 +20,7 @@ export function ForgotForm() {
         name="email"
         type="email"
         autoComplete="username"
+        placeholder="you@yourvenue.co.uk"
         required
         error={error ? ' ' : undefined}
       />

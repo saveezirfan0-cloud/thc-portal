@@ -11,10 +11,13 @@ import type { DocumentKind } from '../../../rules';
  * session can see it through client_event_documents_v (ADR-0004, ADR-0114),
  * as a one-minute signed link. The answers:
  *
- *   · `kind` missing or not one of the two → 400. It is never guessed: a
- *     link that asked for nothing must not download the allocation sheet.
  *   · an event the caller cannot see — another customer's, or none at all —
  *     → the same plain 404 for both, so the route is no existence oracle.
+ *     Whatever `kind` says: that is decided first.
+ *   · the caller's own event, `kind` missing or not one of the two → 303 to
+ *     the event page, where both downloads are. It is never guessed: a link
+ *     that asked for nothing must not download the allocation sheet, and a
+ *     plain-text 400 was a dead end for a customer with a cut-short link.
  *   · the caller's own event with no copy of that kind (not issued yet, or
  *     the event was cancelled) → 303 back to the event page with
  *     `?doc=missing`, which shows an amber note above the screen.
@@ -36,22 +39,22 @@ function notFound(): NextResponse {
   return new NextResponse('No document for this event yet.', { status: 404, headers: NO_STORE });
 }
 
-function backToEvent(request: Request, id: string, doc: 'missing' | 'unavailable'): NextResponse {
+function backToEvent(request: Request, id: string, doc?: 'missing' | 'unavailable'): NextResponse {
   const url = new URL(`/client/events/${id}`, request.url);
-  url.searchParams.set('doc', doc);
+  if (doc) url.searchParams.set('doc', doc);
   return NextResponse.redirect(url, { status: 303, headers: NO_STORE });
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const kind = new URL(request.url).searchParams.get('kind');
-  if (!isKind(kind)) {
-    return new NextResponse('Unknown document.', { status: 400, headers: NO_STORE });
-  }
   if (!isEventId(id)) return notFound();
 
+  // Visibility before anything about `kind`, so another customer's event
+  // answers the same 404 whatever the query asked for.
   const { visible, documents, unavailable } = await loadEventDocuments(id);
   if (!visible) return notFound();
+  if (!isKind(kind)) return backToEvent(request, id);
   if (unavailable) return backToEvent(request, id, 'unavailable');
 
   const doc = documents.find((d) => d.kind === kind);

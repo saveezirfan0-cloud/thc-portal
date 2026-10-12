@@ -18,6 +18,7 @@ import {
   isRemoved,
   momentIn,
   roleCountOf,
+  sectionTone,
   statusTone,
 } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
@@ -230,7 +231,7 @@ export function EventScreen({
               }
               actions={
                 <>
-                  <Pill tone={completed ? 'neutral' : 'green'}>
+                  <Pill tone={sectionTone(group, completed)}>
                     {group.confirmed} {completed ? 'worked' : 'confirmed'}
                   </Pill>
                   <Arrivals

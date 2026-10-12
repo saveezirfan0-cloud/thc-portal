@@ -32,7 +32,7 @@ vi.mock('@thc/db/server', () => ({ createClient: () => ({ auth }) }));
 
 const { setPassword } = await import('../actions');
 const { default: ResetPage } = await import('../page');
-const { NOT_A_RESET_SESSION, isRecoverySession } = await import('../recovery');
+const { NOT_A_RESET_SESSION, accountEmail, isRecoverySession } = await import('../recovery');
 
 const now = () => Math.floor(Date.now() / 1000);
 const session = (method: string, { age = 60, role = 'client' } = {}) => ({
@@ -125,6 +125,23 @@ describe('the /reset page', () => {
     expect(html).toContain('Set a new password');
   });
 
+  it('names the account the reset session belongs to, as A3 does (activate.html)', async () => {
+    const withEmail = session('recovery');
+    Object.assign(withEmail.data.claims, { email: 'marco@leonardo-stpauls.example' });
+    auth.getClaims.mockResolvedValue(withEmail);
+    const html = await page();
+    expect(html).toContain(
+      'For <b class="mono">marco@leonardo-stpauls.example</b>. You’ll be signed in straight after.',
+    );
+  });
+
+  it('leaves the line out when the session carries no address', async () => {
+    auth.getClaims.mockResolvedValue(session('recovery'));
+    const html = await page();
+    expect(html).not.toContain('For <b');
+    expect(html).toContain('You’ll be signed in straight after.');
+  });
+
   it('no session: the expired-link variant', async () => {
     auth.getClaims.mockResolvedValue({ data: null, error: null });
     const html = await page();
@@ -157,5 +174,20 @@ describe('isRecoverySession', () => {
     [null, false],
   ])('%j → %s', (claims, expected) => {
     expect(isRecoverySession(claims)).toBe(expected);
+  });
+});
+
+describe('accountEmail', () => {
+  it.each([
+    [{ email: 'marco@leonardo-stpauls.example' }, 'marco@leonardo-stpauls.example'],
+    [{ email: '  venue@client.example ' }, 'venue@client.example'],
+    [{ email: '' }, null],
+    [{ email: 'not an email' }, null],
+    [{ email: '<b>x</b>@a.bc' }, null],
+    [{ email: 42 }, null],
+    [{}, null],
+    [null, null],
+  ])('%j → %s', (claims, expected) => {
+    expect(accountEmail(claims)).toBe(expected);
   });
 });

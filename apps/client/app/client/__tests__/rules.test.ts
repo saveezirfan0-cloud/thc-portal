@@ -11,6 +11,7 @@ import {
   groupBySection,
   roleCountOf,
   headerDocuments,
+  sectionTone,
   starsHint,
   statusTone,
 } from '../rules';
@@ -196,6 +197,12 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
       ['Chef', 0, 0],
       ['Waiting Staff', 0, 0],
     ]);
+  });
+
+  it('carries the section headcount, and null for a booking with no section', () => {
+    expect(groupBySection([], sections).map((g) => g.headcount)).toEqual([2, 2]);
+    const orphan = [person({ name: 'Ada Byron', role: 'Mixologist', sortKey: 'byron' })];
+    expect(groupBySection(orphan, [])[0]?.headcount).toBeNull();
   });
 
   it('counts roles from the sections, two sections of one role as one', () => {
@@ -446,5 +453,23 @@ describe("the star picker's readout (event.html:225)", () => {
     expect(starsHint(4)).toBe('4 of 5 stars');
     expect(starsHint(0)).toBe('Choose 1 to 5 stars — required');
     expect(starsHint(0) + starsHint(3)).not.toMatch(/tap/i);
+  });
+});
+
+describe("sectionTone — the event page's per-section count pill", () => {
+  it('is never green at 0 confirmed: amber, as the list marks a short fill', () => {
+    expect(sectionTone({ confirmed: 0, headcount: 12 }, false)).toBe('amber');
+    expect(sectionTone({ confirmed: 0, headcount: null }, false)).toBe('amber');
+  });
+
+  it('is amber while short and green once full, by the headcount booked', () => {
+    expect(sectionTone({ confirmed: 2, headcount: 3 }, false)).toBe('amber');
+    expect(sectionTone({ confirmed: 3, headcount: 3 }, false)).toBe('green');
+    expect(sectionTone({ confirmed: 2, headcount: null }, false)).toBe('green');
+  });
+
+  it('is neutral once the event is over: who worked, not a gap', () => {
+    expect(sectionTone({ confirmed: 0, headcount: 3 }, true)).toBe('neutral');
+    expect(sectionTone({ confirmed: 3, headcount: 3 }, true)).toBe('neutral');
   });
 });

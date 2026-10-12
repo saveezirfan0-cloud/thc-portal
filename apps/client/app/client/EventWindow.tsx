@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import { useViewerZone } from '@thc/ui';
 import { UK_ZONE, formatDateIn, formatTimeIn, needsDualZone } from '@thc/domain';
 import { dayMarker, daysLaterIn, differentDayFromUk } from './format';
@@ -46,23 +47,47 @@ export function EventWindow({
   endsAt,
   className,
   zone: override,
+  breakable = false,
 }: {
   startsAt: string;
   endsAt: string;
   className?: string;
   /** The reader's zone, for tests and previews; otherwise the browser's. */
   zone?: string;
+  /**
+   * Each line as unbreakable pieces ("Fri 18 Sep" · "20:30 – 00:30 your
+   * time" · "(+1 day)") the line may wrap between, for a narrow table
+   * cell. The words are the same either way.
+   */
+  breakable?: boolean;
 }) {
   const browser = useViewerZone();
   const zone = override ?? browser;
-  const uk = windowLine(startsAt, endsAt, UK_ZONE, 'UK time');
+  const uk = windowParts(startsAt, endsAt, UK_ZONE, 'UK time');
   return (
     <span className={className}>
-      {uk}
+      <Line parts={uk} breakable={breakable} />
       {needsDualZone(zone) ? (
-        <span className="sub">{yourTimeLine(startsAt, endsAt, zone)}</span>
+        <span className="sub">
+          <Line parts={yourTimeParts(startsAt, endsAt, zone)} breakable={breakable} />
+        </span>
       ) : null}
     </span>
+  );
+}
+
+/** One window line: plain text, or its pieces as `.wseg` spans joined by spaces. */
+function Line({ parts, breakable }: { parts: string[]; breakable: boolean }) {
+  if (!breakable) return <>{parts.join(' ')}</>;
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 ? ' ' : null}
+          <span className="wseg">{part}</span>
+        </Fragment>
+      ))}
+    </>
   );
 }
 
@@ -72,14 +97,22 @@ export function EventWindow({
  * not the UK start day the date beside it names.
  */
 export function yourTimeLine(startsAt: string, endsAt: string, zone: string): string {
-  const line = windowLine(startsAt, endsAt, zone, 'your time');
-  if (!differentDayFromUk(startsAt, zone)) return line;
-  return `${formatDateIn(new Date(startsAt), zone, { weekday: 'short' })} ${line}`;
+  return yourTimeParts(startsAt, endsAt, zone).join(' ');
 }
 
-/** "17:00 – 01:30 UK time (+1 day)": one line, judged in its own zone. */
-function windowLine(startsAt: string, endsAt: string, zone: string, label: string): string {
+function yourTimeParts(startsAt: string, endsAt: string, zone: string): string[] {
+  const parts = windowParts(startsAt, endsAt, zone, 'your time');
+  if (!differentDayFromUk(startsAt, zone)) return parts;
+  return [formatDateIn(new Date(startsAt), zone, { weekday: 'short' }), ...parts];
+}
+
+/**
+ * "17:00 – 01:30 UK time (+1 day)": one line, judged in its own zone, as
+ * its pieces — the window, and the overnight marker when there is one.
+ */
+function windowParts(startsAt: string, endsAt: string, zone: string, label: string): string[] {
   const start = formatTimeIn(new Date(startsAt), zone);
   const end = formatTimeIn(new Date(endsAt), zone);
-  return `${start} – ${end} ${label}${dayMarker(daysLaterIn(startsAt, endsAt, zone))}`;
+  const marker = dayMarker(daysLaterIn(startsAt, endsAt, zone)).trim();
+  return marker ? [`${start} – ${end} ${label}`, marker] : [`${start} – ${end} ${label}`];
 }

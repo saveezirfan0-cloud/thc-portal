@@ -240,49 +240,40 @@
   font-size: var(--fs-12);
   font-weight: 600;
   color: var(--cyan-ink);
-  /* A link to tap: a finger-sized hit area, the text still one small line. */
+  /* A link to tap: a finger-sized hit area, the text still one small line
+     ("Feedback: 4 to go" — the whole sentence is its accessible name). */
   display: inline-flex;
   align-items: center;
   min-height: var(--tap-min);
-  /* Two unbreakable halves ("Leave feedback ·" / "4 of 4 to go"): side by
-     side when the column has room, else one under the other — never three
-     lines, never a break inside a half. */
-  flex-wrap: wrap;
-  column-gap: 0.3em;
-}
-
-.ev-nudge > span {
   white-space: nowrap;
 }
 
-/* Desktop (the Venue column is shown above 1180px). Seven columns, five of
-   them a fixed shape (a date on one line, a pill, a bar, six faces, a
-   button), so the room for the event's name and its venue is what the
-   cells' padding leaves: a little less of it between columns (the outer
-   edges keep the panel's), and the venue gets a floor so the name and the
-   address sit on two or three lines rather than five. */
-@media (min-width: 1181px) {
-  .events-panel .tbl :is(th, td) {
-    padding-inline: var(--sp-12);
-  }
-
-  .events-panel .tbl :is(th, td):first-child {
-    padding-left: var(--sp-20);
-  }
-
-  .events-panel .tbl :is(th, td):last-child {
-    padding-right: var(--sp-20);
-  }
-
-  .events-panel .tbl .col-venue {
-    min-width: 150px;
-  }
+/* The table's cells: a little less padding between columns than the
+   design system's 20px (the outer edges keep the panel's), so the room the
+   five fixed-shape columns leave (a date on one line, a pill, a bar, the
+   faces, a button) goes to the event's name. The table only shows above
+   820px; below it the cards take over. */
+.events-panel .tbl :is(th, td) {
+  padding-inline: var(--sp-12);
 }
 
-@media (min-width: 1360px) {
-  .events-panel .tbl .col-venue {
-    min-width: 180px;
-  }
+.events-panel .tbl :is(th, td):first-child {
+  padding-left: var(--sp-20);
+}
+
+.events-panel .tbl :is(th, td):last-child {
+  padding-right: var(--sp-20);
+}
+
+/* The venue's floor keeps its name and address to two or three lines; the
+   event's floor keeps a long title to three (a fixture of 80 characters
+   is the yardstick). */
+.events-panel .tbl .col-venue {
+  min-width: 150px;
+}
+
+.events-panel .tbl td:first-child {
+  min-width: 200px;
 }
 
 .ev-sheet {
@@ -345,6 +336,18 @@
   color: var(--muted);
 }
 
+/* In the list's table a window line may wrap, but only between its pieces
+   (EventWindow `breakable`): "Fri 18 Sep" · "20:30 – 00:30 your time" ·
+   "(+1 day)". A reader far from London has the longest line, and kept on
+   one it pushed the Document column out of a tablet's panel. */
+.tbl td.win > .sub {
+  white-space: normal;
+}
+
+.win .wseg {
+  white-space: nowrap;
+}
+
 /* A cancelled event keeps its row, greyed, rather than disappearing. */
 .tbl tr.cancelled td {
   color: var(--muted);
@@ -364,21 +367,62 @@
   overflow-x: auto;
 }
 
-/* The venue, printed under the event's name once its own column folds. */
-.tbl .venue-inline {
+/* The folded copies: the venue under the event's name, the faces under the
+   fill bar, the status under the date. Each is rendered beside its own
+   column and shown only once that column folds. */
+.tbl .venue-inline,
+.tbl .faces-inline,
+.tbl .status-inline {
   display: none;
 }
 
-/* Laptop and tablet (wireframe: "Tablet 768–1024px — the desktop table
-   stays, with the Venue column folded under the event name"). Seven
-   columns did not fit 821–1060px and the Document column was cut off. */
-@media (max-width: 1180px) {
-  .tbl .col-venue {
+/* The status under the date: the body face, and free to wrap, inside a
+   cell that is otherwise one mono line per row. */
+.tbl .status-inline {
+  font-family: var(--font-body);
+  white-space: normal;
+  margin-top: var(--sp-8);
+}
+
+/* Laptop (wireframe: "Tablet 768–1024px — the desktop table stays, with
+   the Venue column folded under the event name"). Seven columns need about
+   1230px of panel for a three-line title; below a 1280px window the Venue
+   folds under the name and the Line-up's faces under the fill bar. */
+@media (max-width: 1279px) {
+  .tbl .col-venue,
+  .tbl .col-lineup {
     display: none;
   }
 
-  .tbl .venue-inline {
+  .tbl .venue-inline,
+  .tbl .faces-inline {
     display: block;
+  }
+
+  /* Under the fill bar the faces wrap at the role split's width rather
+     than setting the column's: six faces and a "+N" in one row were the
+     widest thing in it. */
+  .tbl .faces-inline .avatars {
+    flex-wrap: wrap;
+    row-gap: var(--sp-6);
+    max-width: 140px;
+  }
+
+  .fill-cell > .ev-roles {
+    max-width: 140px;
+  }
+}
+
+/* Tablet: four columns — event, date (and status), confirmed (and faces),
+   document. Five left the event's name about 100px at 821px and pushed the
+   Document column out of the panel. */
+@media (max-width: 1100px) {
+  .tbl .col-status {
+    display: none;
+  }
+
+  .tbl .status-inline {
+    display: flex;
   }
 }
 
@@ -471,10 +515,13 @@
 }
 
 /* Hairlines drawn by each cell rather than a 1px gap over a line-coloured
-   ground: a short last row left that ground showing as a grey slab. */
+   ground: a short last row left that ground showing as a grey slab.
+   The wireframe's two columns, three on a wide screen: a 280px track gave
+   four at 1440px and left the name about 85px beside "Leave feedback", so
+   "Luca Moretti" broke over two lines. */
 .wgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   margin: 0 -1px -1px 0;
 }
 
@@ -907,8 +954,12 @@
   margin-top: var(--sp-6);
 }
 
-/* Each star is a finger-sized target (§1.2); unselected stars are --muted,
-   which a reader can see is a star — --line was near-invisible. */
+/* Each star is a finger-sized target (§1.2), drawn as a shape so chosen
+   and not chosen differ in form, not only in colour (WCAG 1.4.1): an
+   outline in --muted (over 3:1 on the popup's panel in both themes, so the
+   empty star is still a visible control, 1.4.11) until chosen, then filled
+   in the amber with an amber-ink edge. The same ★ glyph in --muted and in
+   amber was about 1.2:1 apart in light mode: "4 of 5" read as five. */
 .star {
   background: none;
   border: 0;
@@ -922,15 +973,31 @@
   line-height: 1;
   cursor: pointer;
   color: var(--muted);
-  transition: color 0.12s ease;
 }
 
-.star:hover:not(:disabled) {
-  color: var(--amber-ink);
+.star svg {
+  width: 1.15em;
+  height: 1.15em;
+  display: block;
 }
 
-.star.on {
-  color: var(--amber-ink);
+.star path {
+  fill: transparent;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition:
+    fill 0.12s ease,
+    stroke 0.12s ease;
+}
+
+.star:hover:not(:disabled) path {
+  stroke: var(--amber-ink);
+}
+
+.star.on path {
+  fill: var(--amber);
+  stroke: var(--amber-ink);
 }
 
 .star:focus-visible {

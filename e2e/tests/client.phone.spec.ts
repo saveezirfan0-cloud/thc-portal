@@ -69,7 +69,11 @@ test('the list is cards, not a table, and every card carries every field (§11.1
     // has no line-up left to show.
     if (!cancelled) {
       await expect(card.locator('.ev-fill')).toContainText(/\d+ of \d+ confirmed/);
-      await expect(card.locator('.ev-fill .avatars')).toBeVisible();
+      // Faces only when somebody is confirmed: "0 of N" has none to show.
+      const none = /^\s*0 of \d+ confirmed/.test(
+        (await card.locator('.ev-fill').textContent()) ?? '',
+      );
+      if (!none) await expect(card.locator('.ev-fill .avatars')).toBeVisible();
     }
     // The document and the way into the event.
     const foot = card.locator('.foot');

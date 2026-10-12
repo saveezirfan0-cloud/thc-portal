@@ -53,6 +53,28 @@ describe('EventWindow (§1.8)', () => {
     );
   });
 
+  it('as `breakable`, cuts each line into unbreakable pieces with the same words', () => {
+    // The list's Date cell on a tablet: a far reader's line may wrap, but
+    // only between "Fri 18 Sep", the window, and "(+1 day)".
+    const markup = renderToStaticMarkup(
+      <EventWindow
+        startsAt="2026-09-19T00:30:00Z"
+        endsAt="2026-09-19T04:30:00Z"
+        zone="America/New_York"
+        breakable
+      />,
+    );
+    expect(markup).toBe(
+      '<span><span class="wseg">01:30 – 05:30 UK time</span>' +
+        '<span class="sub"><span class="wseg">Fri 18 Sep</span> <span class="wseg">20:30 – 00:30 your time</span> <span class="wseg">(+1 day)</span></span></span>',
+    );
+    const text = markup.replace(/<[^>]+>/g, '');
+    expect(text).toBe(
+      '01:30 – 05:30 UK time' +
+        yourTimeLine('2026-09-19T00:30:00Z', '2026-09-19T04:30:00Z', 'America/New_York'),
+    );
+  });
+
   it('writes "+2 days" for a window over two midnights', () => {
     const markup = renderToStaticMarkup(
       <EventWindow

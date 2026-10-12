@@ -23,6 +23,7 @@ export function LoginForm({ next }: { next?: string }) {
         name="email"
         type="email"
         autoComplete="username"
+        placeholder="you@yourvenue.co.uk"
         required
         // Keep what they typed. Clearing the field on a failed attempt makes a
         // typo indistinguishable from a wrong password, and means retyping.

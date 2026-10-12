@@ -206,6 +206,8 @@ export interface LineupGroup {
   startsAt: string;
   endsAt: string;
   confirmed: number;
+  /** The headcount booked for the section; null for a row with no section. */
+  headcount: number | null;
   people: LineupRow[];
 }
 
@@ -241,6 +243,7 @@ export function groupBySection(
         startsAt: from.startsAt,
         endsAt: from.endsAt,
         confirmed: people.length,
+        headcount: section ? section.headcount : null,
         people: [...people].sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
       };
     })
@@ -250,6 +253,25 @@ export function groupBySection(
         a.role.localeCompare(b.role) ||
         a.key.localeCompare(b.key),
     );
+}
+
+/**
+ * The tone of a role section's "N confirmed" pill on the event page: the
+ * list's own rule (`fillOf`, `roleBreakdown`'s `short`) — green only once
+ * the section is full, amber while it is short — so "0 confirmed" is never
+ * green. A section with no headcount to compare (a booking whose section is
+ * missing) is green when someone is on it and amber when nobody is. Once
+ * the event is over the pill counts who worked, a fact rather than a gap,
+ * and is neutral.
+ */
+export function sectionTone(
+  group: Pick<LineupGroup, 'confirmed' | 'headcount'>,
+  completed: boolean,
+): 'green' | 'amber' | 'neutral' {
+  if (completed) return 'neutral';
+  if (group.confirmed === 0) return 'amber';
+  if (group.headcount === null) return 'green';
+  return group.confirmed >= group.headcount ? 'green' : 'amber';
 }
 
 /**

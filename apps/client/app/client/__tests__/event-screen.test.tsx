@@ -490,6 +490,16 @@ describe('the feedback popup, guarded', () => {
     expect(markup).not.toContain('fb-count');
   });
 
+  it('draws each star as a shape, an outline until chosen (no glyph to tell apart by colour alone)', () => {
+    const stars = markup.slice(markup.indexOf('class="stars-row"'), markup.indexOf('class="hint"'));
+    expect(
+      stars.match(/<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path /g),
+    ).toHaveLength(5);
+    expect(stars).not.toContain('★');
+    // Nothing chosen yet: no star is filled (.star.on is the filled one).
+    expect(stars).not.toContain('star on');
+  });
+
   it('draws each star as a radio, with one tab stop for the group (roving tabindex)', () => {
     expect(markup.match(/role="radio"/g)).toHaveLength(5);
     expect(markup.match(/role="radio" aria-checked="false" tabindex="0"/g)).toHaveLength(1);
@@ -498,15 +508,30 @@ describe('the feedback popup, guarded', () => {
     expect(markup).toMatch(/tabindex="0" aria-label="1 star"/);
   });
 
-  it('moves the rating with the arrows, Home and End, stopping at the ends', () => {
+  it('moves the rating as the APG radio group does: Right/Down next, Left/Up previous, wrapping', () => {
+    // Nothing checked: the tab stop is star 1, and the first Right or Down
+    // checks that focused star rather than skipping to 2.
     expect(starForKey('ArrowRight', 0)).toBe(1);
-    expect(starForKey('ArrowUp', 3)).toBe(4);
-    expect(starForKey('ArrowRight', 5)).toBe(5);
+    expect(starForKey('ArrowDown', 0)).toBe(1);
+    // ...and Left or Up from it wraps to the last.
+    expect(starForKey('ArrowLeft', 0)).toBe(5);
+    expect(starForKey('ArrowUp', 0)).toBe(5);
+    // Next is one star more, by Right and by Down alike.
+    expect(starForKey('ArrowRight', 3)).toBe(4);
+    expect(starForKey('ArrowDown', 3)).toBe(4);
+    // Previous is one star fewer, by Left and by Up alike.
     expect(starForKey('ArrowLeft', 3)).toBe(2);
-    expect(starForKey('ArrowDown', 1)).toBe(1);
-    expect(starForKey('ArrowLeft', 0)).toBe(1);
+    expect(starForKey('ArrowUp', 3)).toBe(2);
+    // The ends wrap.
+    expect(starForKey('ArrowRight', 5)).toBe(1);
+    expect(starForKey('ArrowDown', 5)).toBe(1);
+    expect(starForKey('ArrowLeft', 1)).toBe(5);
+    expect(starForKey('ArrowUp', 1)).toBe(5);
+    // Home and End, which the pattern leaves open: the first and the last.
     expect(starForKey('Home', 4)).toBe(1);
     expect(starForKey('End', 2)).toBe(5);
+    // Space is the focused button's own click; nothing else moves it.
+    expect(starForKey(' ', 2)).toBeNull();
     expect(starForKey('Tab', 2)).toBeNull();
     expect(starForKey('Enter', 2)).toBeNull();
   });
