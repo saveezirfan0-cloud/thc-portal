@@ -35,11 +35,12 @@ describe('next.config headers()', () => {
 });
 
 describe('POST /auth/signout', () => {
-  it('clears this origin’s HTTP cache with the session, and nothing else', async () => {
+  it('redirects straight to the sign-in form, with no Clear-Site-Data to stall it', async () => {
     const res = await signOut(
       new Request('https://app.thc.example/auth/signout', { method: 'POST' }),
     );
     expect(res.status).toBe(303);
-    expect(res.headers.get('Clear-Site-Data')).toBe('"cache"');
+    expect(res.headers.get('location')).toMatch(/\/login$/);
+    expect(res.headers.get('Clear-Site-Data')).toBeNull();
   });
 });

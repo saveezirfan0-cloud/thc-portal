@@ -66,8 +66,8 @@ describe('authCookieOptions', () => {
     expect(authCookieOptions(LIBRARY_DEFAULT, null)).toEqual({ ...LIBRARY_DEFAULT, secure: false });
   });
 
-  it('Secure in production whatever the choice — the Staff App pass-through too', () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it('Secure on Vercel whatever the choice — the Staff App pass-through too', () => {
+    vi.stubEnv('VERCEL', '1');
     for (const choice of ['persistent', 'session', null] as const) {
       expect(authCookieOptions(LIBRARY_DEFAULT, choice).secure).toBe(true);
     }
@@ -76,6 +76,13 @@ describe('authCookieOptions', () => {
 
   it('not Secure under plain-http `next dev`, unless the library already said so', () => {
     vi.stubEnv('NODE_ENV', 'development');
+    expect(authCookieOptions(LIBRARY_DEFAULT, 'persistent').secure).toBe(false);
+    expect(authCookieOptions({ ...LIBRARY_DEFAULT, secure: true }, null).secure).toBe(true);
+  });
+
+  it('not Secure under a local production `next start` on http (CI end-to-end)', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL', '');
     expect(authCookieOptions(LIBRARY_DEFAULT, 'persistent').secure).toBe(false);
     expect(authCookieOptions({ ...LIBRARY_DEFAULT, secure: true }, null).secure).toBe(true);
   });
@@ -223,8 +230,8 @@ describe('withSessionPersistence: the refresh path', () => {
     expect(written()[0]?.options).toEqual({ ...LIBRARY_DEFAULT, secure: false });
   });
 
-  it('Staff App fallback in production: the library lifetime, but Secure', () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it('Staff App fallback on Vercel: the library lifetime, but Secure', () => {
+    vi.stubEnv('VERCEL', '1');
     const { methods, written } = harness([], { fallback: null });
     methods.setAll([tokenWrite()]);
     expect(written()[0]?.options).toEqual({ ...LIBRARY_DEFAULT, secure: true });

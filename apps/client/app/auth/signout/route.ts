@@ -3,9 +3,6 @@ import { NextResponse } from 'next/server';
 import { clearKeepSignedInCookie, clearLegacySessionOnlyCookie } from '@thc/db';
 import { createClient } from '@thc/db/server';
 
-/** Sent with the sign-out redirect. A quoted list, per the header's grammar. */
-const CLEAR_SITE_DATA = '"cache"';
-
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -17,14 +14,12 @@ export async function POST(request: Request) {
   // LEGACY (remove with LEGACY_SESSION_ONLY_COOKIE): #65's marker.
   const legacy = clearLegacySessionOnlyCookie();
   cookieStore.set(legacy.name, legacy.value, legacy.options);
-  // The browser's HTTP cache (and back/forward cache) of this origin goes
-  // with the session, so the next person at the device cannot step Back into
-  // the last one's pages. Only "cache": "storage" would also wipe the
-  // appearance choice in localStorage and unregister the service worker
-  // (the Staff App's offline shell and push), none of which is the user's
-  // data. The Staff App's own Cache Storage is purged by its worker.
+  // No Clear-Site-Data: Chromium holds the navigation while it clears the
+  // HTTP cache, which left sign-out stuck on the page it was pressed from.
+  // Signed-in pages are rendered per request and sent no-store, so there is
+  // no copy of them to clear (the Staff App's Cache Storage is purged by its
+  // worker, sw.ts).
   return NextResponse.redirect(new URL('/login', request.url), {
     status: 303,
-    headers: { 'Clear-Site-Data': CLEAR_SITE_DATA },
   });
 }
