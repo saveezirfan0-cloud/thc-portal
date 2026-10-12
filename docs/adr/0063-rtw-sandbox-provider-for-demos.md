@@ -116,3 +116,12 @@ document on its own (the DB half of the same review).
       The worker gets N8 only when the admin presses Reject.
 4. **Afterwards**, run `rtw-check-sandbox-off.sql` and remove `RTW_PROVIDER_URL` and
    `RTW_SANDBOX_ALLOW` from Vercel.
+
+## Amendment · 12.10.2026 (security round, `20261012120800`)
+
+A sandbox result is never acted on by itself. `rtw_check_record()` treats any result whose
+`referenceNumber` starts `SANDBOX-` (case-insensitive) as if `settings.rtw_check.admin_confirms`
+were on, whatever it says: a pass or a refusal stops at **Needs review** with the
+recommendation, and the office's reason opens "SANDBOX result, not a Home Office check."
+Before this, a sandbox left on with `admin_confirms = false` could verify a real worker's right
+to work. Pinned by `supabase/tests/794_rtw_sandbox_never_auto_verifies.sql`.

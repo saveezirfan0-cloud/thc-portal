@@ -35,3 +35,18 @@ The codebase has no single "office email" the client can read. The office's mail
 - `packages/db`'s generated types include `client_account_v`, `client_arrivals_v` and the two password-limit RPCs since they were regenerated from live after #78 deployed. The RPC calls in `actions.ts` are typed. The loader still reads the view through the untyped client, as the layout does for `client_company_v`.
 - `docs/08-screen-inventory.md` needs a row for `/client/account` pointing at this ADR, since there is no wireframe.
 - Supabase's "secure password change" setting, if it is turned on, asks for a reauthentication nonce when the session is more than 24 h old. The action reports this as "sign out and sign back in, then change your password straight away" rather than failing silently.
+
+## Amendment · 12.10.2026 (security round)
+
+- **Sign-in, the two-step code and forgot-password get the same per-account limit, keyed on the
+  address** (`20261012121000`). The caller is not signed in yet, so the key is the lowercase hex
+  sha256 of the trimmed, lower-cased email, computed by the app; `private.auth_attempts` stores
+  only that digest. `auth_attempt_allowed(p_kind, p_key_hash)` and
+  `record_auth_attempt(p_kind, p_key_hash, p_failed)` are service role only: `sign_in` and
+  `verify` 5 failures per 15 minutes (a success records nothing), `recover` 3 requests per hour
+  (every call counts). Rows older than 24 hours are trimmed on each record. Pinned by
+  `supabase/tests/796_sign_in_and_recover_throttled_per_account.sql`.
+- **A client login cannot change its own name** (`20261012120600`): `update_my_profile()`
+  refuses `role = 'client'` with `client_profile_read_only`. Change password stays the portal's
+  one account write besides §11.2 feedback, and a client's feedback comment is capped at 2,000
+  characters in the database as well as in the form. Pinned by `792`.

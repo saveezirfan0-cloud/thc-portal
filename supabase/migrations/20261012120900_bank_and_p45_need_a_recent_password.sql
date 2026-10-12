@@ -29,11 +29,11 @@
 -- addressed to Gisela and Payroll and its register copy is written for
 -- them ("A worker has updated their bank & payroll details"); a
 -- worker-facing notice would be new copy outside the scope register, so
--- it is THC's to word (reported, docs/15).
+-- it is THC's to word (reported for the owner; not invented here).
 --
 -- request_my_p45() also resolves the worker through staff_caller() now
 -- (20261012120400: a live session, an unbanned login). Grants are kept by
--- create or replace. 795_bank_and_p45_need_recent_password pins it; the
+-- create or replace. 795_bank_and_p45_need_a_recent_password pins it; the
 -- earlier files that save bank details or ask for a P45 as a worker
 -- carry an `amr` claim in their fixtures.
 -- =====================================================================

@@ -41,7 +41,8 @@
 --
 -- The caller is resolved by staff_caller() now (20261012120400: a live
 -- session, an unbanned login); 'not_a_worker' and 'account_closed' are
--- unchanged. 340 is updated to real push hosts; 793 pins the rest.
+-- unchanged. 340 is updated to real push hosts;
+-- 793_push_subscription_endpoint_guard pins the rest.
 -- =====================================================================
 
 create or replace function public.is_push_endpoint(p_endpoint text)

@@ -76,6 +76,18 @@ Nothing is lost; it all sends once the keys exist.
       the demo data is expected to move.
 - [ ] Smoke test: send yourself a push from the Staff App's notifications screen,
       and trigger one email (for example, Send on an event's timesheet).
+- [ ] 12.10 security round, SQL editor: **pin the service-role bearer to this
+      project**. `settings.edge_base_url` can no longer be written from any
+      signed-in session (20261012120000), and with this secret it can only ever
+      be this project's own Functions base:
+      `select vault.create_secret('dgxtqvalfiisfpbwodew', 'supabase_project_ref');`
+- [ ] 12.10 security round, SQL editor: **the apps' origins for set-up links**.
+      Until this is set, E3 (activation) and E11 (account invite) links are only
+      shape-checked, so a Back Office login could still send a THC email whose
+      link names another https site (20261012120500):
+      `select vault.create_secret('https://thc-portal-staff-two.vercel.app, https://thc-portal-office.vercel.app, https://thc-portal-client-beta.vercel.app', 'app_origins');`
+      Add the custom domains to the same secret when they arrive (§7), with
+      `vault.update_secret`.
 
 ## 4 · Willo (ADR-0021, ADR-0066)
 
