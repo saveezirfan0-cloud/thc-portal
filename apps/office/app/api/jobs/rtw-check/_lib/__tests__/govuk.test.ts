@@ -665,42 +665,73 @@ describe('govukPhoto (ADR-0041)', () => {
 
 describe('fitReportToOnePage', () => {
   const calls: string[] = [];
-  const reportPage = (height: unknown, fail = false): GovukPage =>
-    ({
+  const widths: number[] = [];
+  /** A4 less two 10 mm margins, in CSS px. */
+  const PRINTABLE = { width: 794 - 2 * 38, height: 1123 - 2 * 38 };
+  /** `height` is the page's height, or a function of the width it is laid out at. */
+  const reportPage = (height: unknown, fail = false): GovukPage => {
+    let width = 0;
+    return {
       emulateMedia: async () => void calls.push('media'),
       addStyleTag: async ({ content }: { content: string }) => void calls.push(content),
-      setViewportSize: async () => void calls.push('viewport'),
+      setViewportSize: async (size: { width: number }) => {
+        width = size.width;
+        widths.push(width);
+      },
       evaluate: async () => {
         if (fail) throw new Error('page closed');
-        return height;
+        return typeof height === 'function' ? height(width) : height;
       },
-    }) as unknown as GovukPage;
+    } as unknown as GovukPage;
+  };
 
-  it('hides the cookie banner and page furniture before printing', async () => {
+  it('hides the cookie banner and page furniture, and lets the result use the whole sheet', async () => {
     calls.length = 0;
     await fitReportToOnePage(reportPage(500));
     const css = calls.find((c) => c.includes('display: none'));
-    expect(css).toMatch(/cookie-banner/);
-    expect(css).toMatch(/footer/);
-    expect(css).not.toMatch(/\bmain\b/);
+    const hidden = css!.split('{ display: none')[0]!;
+    expect(hidden).toMatch(/cookie-banner/);
+    expect(hidden).toMatch(/footer/);
+    expect(hidden).not.toMatch(/\bmain\b(?!-)/);
+    expect(css).toMatch(/\.govuk-width-container[^{]*\{ max-width: none/);
+    expect(css).toMatch(/html, body \{ background: #fff/);
   });
 
-  it('leaves a page that already fits at full size', async () => {
+  it('leaves a page that already fits at full size, measured at the sheet width', async () => {
+    widths.length = 0;
     const out = await fitReportToOnePage(reportPage(600));
     expect(out.scale).toBeUndefined();
     expect(out.margin.top).toBe('10mm');
+    expect(widths).toEqual([PRINTABLE.width]);
   });
 
   it('scales a taller page down so it fits one A4 sheet, never below 0.1', async () => {
     const tall = await fitReportToOnePage(reportPage(2000));
     expect(tall.scale).toBeGreaterThan(0.1);
-    expect(tall.scale! * 2000).toBeLessThanOrEqual(1123 - 2 * 38);
+    expect(tall.scale! * 2000).toBeLessThanOrEqual(PRINTABLE.height);
+    // As large as fits: one step up would not.
+    expect((tall.scale! + 0.01) * 2000).toBeGreaterThan(PRINTABLE.height * 0.97);
     expect((await fitReportToOnePage(reportPage(1_000_000))).scale).toBe(0.1);
+  });
+
+  it('measures the height at the width Chrome prints that scale at, not at the sheet width', async () => {
+    // Text that re-wraps: twice as wide, half as tall. 2 800 px at the sheet
+    // width; the old single measurement shrank it to 0.36.
+    const rewraps = (width: number) => Math.round((2800 * PRINTABLE.width) / width);
+    widths.length = 0;
+    const out = await fitReportToOnePage(reportPage(rewraps));
+    expect(out.scale).toBeGreaterThan(0.5);
+    // Chrome lays a page printed at scale s out printable / s wide…
+    const printedAt = Math.round(PRINTABLE.width / out.scale!);
+    expect(widths).toContain(printedAt);
+    // …and at that width it fits.
+    expect(rewraps(printedAt) * out.scale!).toBeLessThanOrEqual(PRINTABLE.height);
   });
 
   it('prints unscaled when the page cannot be measured', async () => {
     expect((await fitReportToOnePage(reportPage('x'))).scale).toBeUndefined();
     expect((await fitReportToOnePage(reportPage(1, true))).scale).toBeUndefined();
     expect((await fitReportToOnePage({} as GovukPage)).scale).toBeUndefined();
+    expect((await fitReportToOnePage(reportPage(() => Number.NaN))).scale).toBeUndefined();
   });
 });
