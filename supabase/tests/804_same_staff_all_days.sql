@@ -29,13 +29,21 @@
 --     an invitation written before a sibling day went wrong and leaves it
 --     live, Radar does not list the section;
 --   G · link_event_series: both events get the series, a second Duplicate
---     reuses it, idempotent, one client, no clone already elsewhere, office
---     only and not a viewer; the audit row.
+--     reuses it, idempotent, one client, no clone already elsewhere, the
+--     clone must be new (no bookings, created in the last hour), office
+--     only and not a viewer; the audit row;
+--   H · the per-worker paths (the blocker QA found: authenticated runs
+--     under statement_timeout = 8 s): a 5-day flagged series, the Working
+--     Time 48 in block and warn mode, a 48-hour opt-out, a student visa with
+--     an opt-out still capped in term, apply_to_shift, accept_application and
+--     take_offered_shift each refuse by name, the escalation and auto rounds
+--     refuse a gated worker, and accept / invite / apply on 1,038 workers
+--     complete well inside the limit - they never run a sibling's pool.
 --
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(84);
+select plan(130);
 \ir _shared/fixtures.psql
 
 select cap_week_start(current_date) + 14 as w \gset
@@ -88,6 +96,16 @@ select cap_week_start(current_date) + 14 as w \gset
 \set w_rad    '78740000-0000-4000-8000-00000000000d'
 \set w_split  '78740000-0000-4000-8000-00000000000e'
 
+\set w_below  '78740000-0000-4000-8000-00000000000f'
+\set w_conf2  '78740000-0000-4000-8000-000000000010'
+\set w_live   '78740000-0000-4000-8000-000000000011'
+\set w_live2  '78740000-0000-4000-8000-000000000012'
+\set ser_live '78700000-0000-4000-8000-0000000000a3'
+\set ser5     '78700000-0000-4000-8000-0000000000a4'
+\set ev_live  '78710000-0000-4000-8000-000000000020'
+\set ev_live2 '78710000-0000-4000-8000-000000000021'
+\set s_live1  '78720000-0000-4000-8000-000000000020'
+\set s_live2  '78720000-0000-4000-8000-000000000021'
 \set viewer   '78750000-0000-4000-8000-000000000001'
 \set acc_uid  '78750000-0000-4000-8000-000000000002'
 \set stf_uid  '78750000-0000-4000-8000-000000000003'
@@ -194,9 +212,18 @@ insert into staff (id, user_id, first_name, last_name, email, phone, dob, status
   (:'w_rad',   :'stf_uid', 'Ray', 'Radar',   'rd@sd787.test','+447700978713', date '1995-01-13', 'compliant', 'uk_irish',
    st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null),
   (:'w_split', null, 'Sol',   'Split',   'sp@sd787.test',    '+447700978714', date '2001-01-14', 'compliant', 'international_student',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null),
+  (:'w_below', null, 'Bel',   'Below',   'bw@sd787.test',    '+447700978715', date '2001-01-15', 'compliant', 'international_student',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null),
+  (:'w_conf2', null, 'Con',   'Confirmed','cf@sd787.test',   '+447700978716', date '2001-01-16', 'compliant', 'international_student',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null),
+  (:'w_live',  null, 'Liv',   'Late',    'lv@sd787.test',    '+447700978717', date '1995-01-17', 'compliant', 'uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null),
+  (:'w_live2', null, 'Lou',   'Live',    'l2@sd787.test',    '+447700978718', date '1995-01-18', 'compliant', 'uk_irish',
    st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null);
 -- A student in term time (no holiday ranges on file) is on the 20 h cap.
-update staff set term_dates = '{}' where id in (:'w_stud', :'w_split');
+update staff set term_dates = '{}' where id in (:'w_stud', :'w_split', :'w_below', :'w_conf2');
+update staff set below_degree_level = true where id = :'w_below';
 
 insert into staff_roles (staff_id, role_id)
 select id, :'role_id' from staff where email like '%@sd787.test' and id <> :'w_wrong';
@@ -248,7 +275,7 @@ select set_config('request.jwt.claims', '', true);
 select ok(pg_get_functiondef('public.auto_assign_candidates(uuid,boolean)'::regprocedure)
           like '%not_available_all_days%',
   'B: auto_assign_candidates() still carries the series gate - if this fails a later migration redefined the wrapper; add the new gate to auto_assign_candidates_pool() instead');
-select ok(pg_get_functiondef('public.auto_assign_candidates_pool(uuid,boolean)'::regprocedure)
+select ok(pg_get_functiondef('public.auto_assign_candidates_pool(uuid,boolean,uuid[])'::regprocedure)
           not like '%not_available_all_days%',
   'B: the pool itself knows nothing of series (a sibling check would recurse)');
 select is(
@@ -262,14 +289,49 @@ select is(
   (select count(*)::int from auto_assign_candidates(:'s_solo')),
   (select count(*)::int from auto_assign_candidates_pool(:'s_solo')),
   'B: and returns the same number of rows');
+select is((select count(*)::int
+             from unnest(array['public.invite_worker(uuid,uuid,booking_source,boolean)',
+                               'public.accept_invite(uuid)',
+                               'public.apply_to_shift(uuid,uuid)',
+                               'public.accept_application(uuid)',
+                               'public.take_offered_shift(uuid)',
+                               'public.staff_open_offers(uuid)']::regprocedure[]) f
+            where pg_get_functiondef(f) like '%auto_assign_worker_gate(%'
+              and pg_get_functiondef(f) not like '%auto_assign_candidates(%'),
+  6, 'B: the six callers that judge one worker read auto_assign_worker_gate (one pool row) and none reads the list - if this fails a later migration re-created one from an older body');
+select ok(pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) like '%series_gate_for(%'
+      and pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) like '%auto_assign_candidates_pool(%'
+      and pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) like '%effective_pay_rate(%'
+      and pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) not like '%auto_assign_candidates(%',
+  'B: Radar gates the viewing worker per worker, reads no sibling pool, and still carries the worker''s own pay rate (re-created from its live body)');
 select ok(has_function_privilege('service_role', 'public.auto_assign_candidates(uuid,boolean)', 'execute')
       and has_function_privilege('authenticated', 'public.auto_assign_candidates(uuid,boolean)', 'execute')
       and not has_function_privilege('anon', 'public.auto_assign_candidates(uuid,boolean)', 'execute'),
   'B: grants as before - the jobs and the office run it, anon does not');
 select ok(not has_function_privilege('anon', 'public.series_siblings(uuid)', 'execute')
       and not has_function_privilege('anon', 'public.series_hours_blocked(uuid,uuid)', 'execute')
+      and not has_function_privilege('anon', 'public.series_gate_for(uuid,uuid)', 'execute')
+      and not has_function_privilege('anon', 'public.auto_assign_worker_gate(uuid,uuid,boolean)', 'execute')
       and not has_function_privilege('anon', 'public.link_event_series(uuid,uuid)', 'execute'),
   'B: anon runs none of the new functions');
+select is((select count(*)::int
+             from pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+            where p.oid in ('public.series_siblings(uuid)'::regprocedure,
+                            'public.series_hours_blocked(uuid,uuid)'::regprocedure,
+                            'public.series_gate_for(uuid,uuid)'::regprocedure,
+                            'public.auto_assign_worker_gate(uuid,uuid,boolean)'::regprocedure,
+                            'public.auto_assign_candidates(uuid,boolean)'::regprocedure,
+                            'public.auto_assign_candidates_pool(uuid,boolean,uuid[])'::regprocedure,
+                            'public.link_event_series(uuid,uuid)'::regprocedure)
+              and a.grantee = 0),
+  0, 'B: PUBLIC holds EXECUTE on none of them');
+select ok(has_function_privilege('authenticated', 'public.auto_assign_candidates_pool(uuid,boolean,uuid[])', 'execute')
+      and has_function_privilege('service_role', 'public.auto_assign_candidates_pool(uuid,boolean,uuid[])', 'execute')
+      and not has_function_privilege('anon', 'public.auto_assign_candidates_pool(uuid,boolean,uuid[])', 'execute'),
+  'B: the pool stays executable by authenticated and the jobs (the board calls the invoker wrapper as an office session) and by no one else');
+select is((select count(*)::int from pg_proc p
+            where p.pronamespace = 'public'::regnamespace and p.proname = 'auto_assign_candidates_pool'),
+  1, 'B: one pool function - the old two-argument one is gone, so nothing can call it');
 
 -- =====================================================================
 -- C · the series gate, one hard gate at a time
@@ -341,6 +403,15 @@ select ok(not series_hours_blocked(:'w_ok', :'s_fri'), 'D: and not for a worker 
 update shift_requirements set same_staff_all_days = false where id = :'s_sun';
 select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_stud'), null,
   'D: with Sunday not asking for the same staff, two days (16 h) fit');
+select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_below'),
+  'not_available_all_days', 'D: below degree level the term cap is 10 h: two 8 h days (16 h) already fail, where the 20 h student fits');
+-- A day the worker already holds counts ONCE: Friday confirmed + Saturday is 16 h, not 24 h.
+insert into bookings (shift_id, staff_id, status, source, confirmed_at)
+values (:'s_fri', :'w_conf2', 'confirmed', 'auto', now());
+select is((select gate from auto_assign_candidates(:'s_sat') where staff_id = :'w_conf2'), null,
+  'D: confirmed on Friday, judged for Saturday: 8 h + 8 h = 16 h of 20 h - the confirmed day is counted once, not twice');
+select is(series_gate_for(:'w_conf2', :'s_sat'), null, 'D: and series_gate_for agrees');
+delete from bookings where shift_id = :'s_fri' and staff_id = :'w_conf2';
 insert into bookings (shift_id, staff_id, status, source, confirmed_at)
 values (:'s_mon', :'w_stud', 'confirmed', 'auto', now());
 select is((select gate from auto_assign_candidates(:'s_fri') where staff_id = :'w_stud'),
@@ -407,6 +478,26 @@ update shift_requirements
        ends_at   = (:'w'::date + 5 + time '17:00') at time zone 'Europe/London'
  where id = :'s_sat';
 
+-- A series is a run of days: a sibling must start within 14 days of the
+-- section being judged (inclusive), not "copy last week's event" x20.
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, auto_assign, series_id) values
+  (:'ev_z', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Fortnight on', :'w'::date + 19, true, true, true, :'ser');
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour, auto_assign, same_staff_all_days)
+select :'s_z', :'ev_z', :'role_id', sr.starts_at + interval '14 days', sr.ends_at + interval '14 days',
+       9, 0, 20, 12, 9, true, true
+  from shift_requirements sr where sr.id = :'s_sat';
+select is((select count(*)::int from series_siblings(:'s_sat') where shift_id = :'s_z'), 1,
+  'E: a day exactly 14 days after Saturday is a sibling of Saturday');
+select is((select count(*)::int from series_siblings(:'s_fri') where shift_id = :'s_z'), 0,
+  'E: ... but not of Friday, 15 days before it: a series is a run of days, not a standing arrangement');
+update shift_requirements set starts_at = starts_at + interval '1 minute' where id = :'s_z';
+select is((select count(*)::int from series_siblings(:'s_sat') where shift_id = :'s_z'), 0,
+  'E: and a minute past the 14 days is not');
+delete from shift_requirements where id = :'s_z';
+
 -- =====================================================================
 -- F · every entry path
 -- =====================================================================
@@ -464,6 +555,65 @@ select ok(not exists (select 1 from staff_open_shifts(:'w_rad') where shift_id =
 select ok(exists (select 1 from staff_open_shifts(:'w_rad') where shift_id = :'s_sun'),
   'F: while Sunday itself stays on it, as before');
 select set_config('request.jwt.claims', '', true);
+
+-- The other entry paths refuse by the same name.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is(apply_to_shift(:'s_fri', :'w_clash'), jsonb_build_object('ok', false, 'reason', 'not_available_all_days'),
+  'F: a Radar application (apply_to_shift) is refused by name');
+select ok(not exists (select 1 from bookings where shift_id = :'s_fri' and staff_id = :'w_clash'),
+  'F: and no booking is written');
+insert into bookings (shift_id, staff_id, status, source, applied_at)
+values (:'s_fri', :'w_gap', 'applied', 'self', now());
+select is(accept_application((select id from bookings where shift_id = :'s_fri' and staff_id = :'w_gap'))->>'reason',
+  'not_available_all_days', 'F: the office''s Accept application is refused by name');
+select is((select status::text from bookings where shift_id = :'s_fri' and staff_id = :'w_gap'), 'applied',
+  'F: and the application is left pending');
+
+-- A cover request on Friday, taken by someone another day refuses.
+update bookings set status = 'confirmed', confirmed_at = now()
+ where shift_id = :'s_fri' and staff_id = :'w_ok';
+insert into shift_offers (id, booking_id, mode, expires_at)
+select '78780000-0000-4000-8000-000000000001', id, 'pool', now() + interval '3 days'
+  from bookings where shift_id = :'s_fri' and staff_id = :'w_ok';
+select set_config('request.jwt.claims', json_build_object('sub', :'stf_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(take_offered_shift('78780000-0000-4000-8000-000000000001'),
+  jsonb_build_object('ok', false, 'reason', 'not_available_all_days'),
+  'F: taking an offered shift (take_offered_shift) is refused by name');
+select ok((select count(*) = 0 from staff_open_offers('78780000-0000-4000-8000-000000000001')),
+  'F: and the offer is not on that worker''s Radar');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+
+-- The automatic rounds: a gated worker is not a candidate, so the hourly
+-- round never picks them (selectInvitees reads gate-null rows), and the
+-- insert-time re-check refuses them for the hourly source and the same-day
+-- escalation alike.
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, auto_assign, series_id) values
+  (:'ev_live', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Under way', current_date, true, true, true, :'ser_live'),
+  (:'ev_live2', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Tomorrow', current_date + 1, true, true, true, :'ser_live');
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour, auto_assign, same_staff_all_days) values
+  (:'s_live1', :'ev_live', :'role_id', now() - interval '1 hour', now() + interval '7 hours', 5, 0, 20, 12, 5, true, true),
+  (:'s_live2', :'ev_live2', :'role_id', (current_date + 1 + time '09:00') at time zone 'Europe/London',
+                                        (current_date + 1 + time '17:00') at time zone 'Europe/London', 5, 0, 20, 12, 5, true, true);
+insert into staff_unavailability (staff_id, period, all_day) values
+  (:'w_live', unavailability_range(current_date + 1), true);
+select is((select gate from auto_assign_candidates(:'s_live1', true) where staff_id = :'w_live'),
+  'not_available_all_days', 'F: the escalation pool gates a worker whose NEXT day is marked unavailable');
+select is((select gate from auto_assign_candidates(:'s_live1', true) where staff_id = :'w_live2'), null,
+  'F: ... and keeps one who is free');
+select is(invite_worker(:'s_live1', :'w_live', 'escalation', true),
+  jsonb_build_object('invited', false, 'reason', 'not_available_all_days'),
+  'F: the same-day escalation refuses the gated worker at the insert');
+select is(invite_worker(:'s_live1', :'w_live', 'auto'),
+  jsonb_build_object('invited', false, 'reason', 'not_available_all_days'),
+  'F: and so does the hourly source');
+select is(invite_worker(:'s_live1', :'w_live2', 'escalation', true) ->> 'invited', 'true',
+  'F: while a free worker is invited by the escalation');
 
 -- Switching the requirement off restores the ordinary pool.
 update shift_requirements set same_staff_all_days = false where id = :'s_fri';
@@ -539,6 +689,21 @@ select throws_ok(format($$ select link_event_series(%L, %L) $$, :'ev_solo', :'ev
   'P0001', 'series_clone_already_linked', 'G: a clone already in another series is not moved');
 select throws_ok(format($$ select link_event_series(%L, %L) $$, :'ev_b', '78710000-0000-4000-8000-0000000000ff'),
   'P0002', 'event_not_found', 'G: an unknown event is refused');
+select throws_ok(format($$ select link_event_series(%L, %L) $$, :'ev_b', :'ev_fri'),
+  'P0001', 'series_clone_already_linked', 'G: an existing job''s day is not a clone');
+select throws_ok(format($$ select link_event_series(%L, %L) $$, :'ev_b', :'ev_oth'),
+  'P0001', 'series_clone_not_new', 'G: a clone with somebody booked on it is refused - a live, staffed event cannot be pulled into a series');
+reset role;
+
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, auto_assign, created_at) values
+  (:'ev_e', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Old and empty', :'w'::date + 23, true, true, true,
+   now() - interval '2 hours');
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select link_event_series(%L, %L) $$, :'ev_b', :'ev_e'),
+  'P0001', 'series_clone_not_new', 'G: and so is an empty one created more than an hour ago');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
@@ -553,6 +718,159 @@ select throws_ok(format($$ select link_event_series(%L, %L) $$, :'ev_solo', :'ev
   '42501', 'not_authorised', 'G: a worker is refused');
 reset role;
 select set_config('request.jwt.claims', '', true);
+
+-- =====================================================================
+-- H · a 5-day job, the Working Time 48, an opt-out, and the clock
+-- =====================================================================
+-- Mon-Fri of a week four weeks on, "Bar" 09:00-18:00 (9 h) each: 45 h.
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, auto_assign, series_id)
+select ('78760000-0000-4000-8000-00000000000' || d)::uuid, :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+       st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Five-day job ' || d,
+       :'w'::date + 28 + (d - 1), true, true, true, :'ser5'
+  from generate_series(1, 5) d;
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour, auto_assign, same_staff_all_days)
+select ('78770000-0000-4000-8000-00000000000' || d)::uuid, ('78760000-0000-4000-8000-00000000000' || d)::uuid, :'role_id',
+       (:'w'::date + 28 + (d - 1) + time '09:00') at time zone 'Europe/London',
+       (:'w'::date + 28 + (d - 1) + time '18:00') at time zone 'Europe/London', 9, 0, 20, 12, 9, true, true
+  from generate_series(1, 5) d;
+\set s_h1 '78770000-0000-4000-8000-000000000001'
+\set s_h5 '78770000-0000-4000-8000-000000000005'
+-- A fourth-week Saturday 10:00-14:00 elsewhere: 4 h in the same Mon-Sun week.
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, auto_assign) values
+  ('78760000-0000-4000-8000-0000000000a0', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Saturday job', :'w'::date + 33, true, true, true);
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour, auto_assign) values
+  ('78770000-0000-4000-8000-0000000000a0', '78760000-0000-4000-8000-0000000000a0', :'role_id',
+   (:'w'::date + 33 + time '10:00') at time zone 'Europe/London', (:'w'::date + 33 + time '14:00') at time zone 'Europe/London',
+   9, 0, 20, 12, 9, true);
+-- A sixth day 20 days after the first: not within 14 days of any of them but the fifth is.
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, auto_assign, series_id) values
+  ('78760000-0000-4000-8000-0000000000a6', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Much later', :'w'::date + 28 + 20, true, true, true, :'ser5');
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour, auto_assign, same_staff_all_days) values
+  ('78770000-0000-4000-8000-0000000000a6', '78760000-0000-4000-8000-0000000000a6', :'role_id',
+   (:'w'::date + 48 + time '09:00') at time zone 'Europe/London', (:'w'::date + 48 + time '18:00') at time zone 'Europe/London',
+   9, 0, 20, 12, 9, true, true);
+
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, home_location) values
+  ('78780000-0000-4000-8000-000000000101', 'Hal',  'Clear',  'h1@h804.test', '+447700978801', date '1995-02-01', 'compliant', 'uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography),
+  ('78780000-0000-4000-8000-000000000102', 'Hub',  'Busy',   'h2@h804.test', '+447700978802', date '1995-02-02', 'compliant', 'uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography),
+  ('78780000-0000-4000-8000-000000000103', 'Hoa',  'Optout', 'h3@h804.test', '+447700978803', date '1995-02-03', 'compliant', 'uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography),
+  ('78780000-0000-4000-8000-000000000104', 'Hes',  'Student','h4@h804.test', '+447700978804', date '2001-02-04', 'compliant', 'international_student',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography);
+update staff set term_dates = '{}' where email = 'h4@h804.test';
+update staff set wtr_optout = true where email in ('h3@h804.test', 'h4@h804.test');
+insert into staff_roles (staff_id, role_id) select id, :'role_id' from staff where email like '%@h804.test';
+\set h_ok   '78780000-0000-4000-8000-000000000101'
+\set h_busy '78780000-0000-4000-8000-000000000102'
+\set h_opt  '78780000-0000-4000-8000-000000000103'
+\set h_stud '78780000-0000-4000-8000-000000000104'
+insert into bookings (shift_id, staff_id, status, source, confirmed_at) values
+  ('78770000-0000-4000-8000-0000000000a0', :'h_busy', 'confirmed', 'auto', now()),
+  ('78770000-0000-4000-8000-0000000000a0', :'h_opt',  'confirmed', 'auto', now());
+
+select is((select count(*)::int from series_siblings(:'s_h1')), 4,
+  'H: the first day of a five-day job has the four other days as siblings - the day 20 days later is not one');
+select is((select count(*)::int from series_siblings(:'s_h5') where shift_id = '78770000-0000-4000-8000-0000000000a6'), 0,
+  'H: ... nor of the fifth day, 16 days before it');
+select is((select gate from auto_assign_candidates(:'s_h1') where staff_id = :'h_ok'), null,
+  'H: five 9 h days (45 h) fit a UK worker''s 48 h');
+select is((select gate from auto_assign_candidates(:'s_h1') where staff_id = :'h_busy'), 'not_available_all_days',
+  'H: ... but not with 4 h more in the same week (49 h): the Working Time 48, in block mode');
+select is((select gate from auto_assign_candidates_pool(:'s_h1') where staff_id = :'h_busy'), null,
+  'H: day by day the pool would have let him through - the projection is what stopped it');
+select is(series_gate_for(:'h_busy', :'s_h1'), 'not_available_all_days', 'H: series_gate_for says the same for him alone');
+update settings set value = '"warn"' where key = 'rota_guard_mode';
+select is((select gate from auto_assign_candidates(:'s_h1') where staff_id = :'h_busy'), null,
+  'H: in warn mode a Working Time 48 breach is a warning, not a gate');
+select is(series_gate_for(:'h_busy', :'s_h1'), null, 'H: ... for series_gate_for too');
+update settings set value = '"block"' where key = 'rota_guard_mode';
+select is((select gate from auto_assign_candidates(:'s_h1') where staff_id = :'h_opt'), null,
+  'H: a signed 48-hour opt-out lifts the ceiling for a UK worker, whatever else they hold that week');
+select is((select gate from auto_assign_candidates(:'s_h1') where staff_id = :'h_stud'), 'not_available_all_days',
+  'H: ... but not for a student visa in term time: the opt-out is Working Time, not a visa condition');
+select is(series_gate_for(:'h_stud', :'s_h1'), 'not_available_all_days', 'H: and series_gate_for agrees');
+
+-- One worker, one list: the per-worker read says what the list says.
+select is(
+  (select count(*)::int
+     from auto_assign_candidates(:'s_h1') l
+     cross join lateral auto_assign_worker_gate(:'s_h1', l.staff_id) w
+    where l.staff_id in (:'h_ok', :'h_busy', :'h_opt', :'h_stud', :'w_clash', :'w_away', :'w_stud', :'w_back')
+      and l.gate is distinct from w.gate),
+  0, 'H: auto_assign_worker_gate gives each worker the gate the list gives');
+select is((select count(*)::int from auto_assign_worker_gate(:'s_h1', '78780000-0000-4000-8000-0000000000ff')), 0,
+  'H: and no row at all for someone who is not a worker - the callers'' not_bookable');
+
+-- The clock. Authenticated runs under statement_timeout = 8 s; a caller that
+-- judges ONE worker must not run a pool per day of the job. With a real
+-- agency's workforce (1,038) each of these completes in a small fraction of a
+-- second; the bound here is generous (2 s) so the test is not flaky, and a
+-- sibling pool per day would blow through it.
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, home_location)
+select gen_random_uuid(), 'Gen' || g, 'Worker' || g, 'gen' || g || '@h804.test', '+4477009' || lpad(g::text, 5, '0'),
+       date '1995-01-01', 'compliant', 'uk_irish',
+       st_setsrid(st_makepoint(-0.1 + (g % 50) / 500.0, 51.5), 4326)::geography
+  from generate_series(1, 1000) g;
+insert into staff_roles (staff_id, role_id) select id, :'role_id' from staff where email like 'gen%@h804.test';
+analyze staff;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+create temp table h_clock (what text, took interval);
+do $$
+declare
+  t timestamptz;
+  v jsonb;
+  b uuid;
+begin
+  t := clock_timestamp();
+  v := invite_worker('78770000-0000-4000-8000-000000000001', '78780000-0000-4000-8000-000000000101', 'auto');
+  insert into h_clock values ('invite_worker ' || (v ->> 'invited'), clock_timestamp() - t);
+  b := (v ->> 'bookingId')::uuid;
+
+  t := clock_timestamp();
+  v := accept_invite(b);
+  insert into h_clock values ('accept_invite ' || (v ->> 'ok'), clock_timestamp() - t);
+
+  t := clock_timestamp();
+  v := apply_to_shift('78770000-0000-4000-8000-000000000001', '78780000-0000-4000-8000-000000000102');
+  insert into h_clock values ('apply_to_shift ' || coalesce(v ->> 'reason', v ->> 'ok'), clock_timestamp() - t);
+
+  t := clock_timestamp();
+  perform * from auto_assign_worker_gate('78770000-0000-4000-8000-000000000001', '78780000-0000-4000-8000-000000000101');
+  insert into h_clock values ('auto_assign_worker_gate', clock_timestamp() - t);
+
+  t := clock_timestamp();
+  perform series_gate_for('78780000-0000-4000-8000-000000000101', '78770000-0000-4000-8000-000000000001');
+  insert into h_clock values ('series_gate_for', clock_timestamp() - t);
+end $$;
+
+select is((select what from h_clock where what like 'invite_worker%'), 'invite_worker true',
+  'H: with 1,038 workers a clear worker is invited to the first day of the five');
+select is((select what from h_clock where what like 'accept_invite%'), 'accept_invite true',
+  'H: ... accepts it');
+select is((select what from h_clock where what like 'apply_to_shift%'), 'apply_to_shift not_available_all_days',
+  'H: ... and the worker the projection refuses is refused on apply');
+select ok((select took < interval '2 seconds' from h_clock where what like 'invite_worker%'),
+  'H: invite_worker on a 5-day flagged job completes in well under the 8 s statement timeout');
+select ok((select took < interval '2 seconds' from h_clock where what like 'accept_invite%'),
+  'H: accept_invite on a 5-day flagged job completes in well under the 8 s statement timeout');
+select ok((select took < interval '2 seconds' from h_clock where what like 'apply_to_shift%'),
+  'H: apply_to_shift on a 5-day flagged job completes in well under the 8 s statement timeout');
+select ok((select took < interval '1 second' from h_clock where what = 'auto_assign_worker_gate'),
+  'H: the per-worker gate reads one row of the pool, not a scan');
+select ok((select took < interval '1 second' from h_clock where what = 'series_gate_for'),
+  'H: and the series gate asks each sibling about that one worker only');
+select diag(what || ' took ' || took::text) from h_clock order by what;
 
 select * from finish();
 rollback;
