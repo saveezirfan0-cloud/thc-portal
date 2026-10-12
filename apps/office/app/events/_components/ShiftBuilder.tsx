@@ -30,6 +30,7 @@ import { Switch } from './Switch';
 import { ClientPolicies, SummaryPanel } from './SummaryPanel';
 import {
   DRESS_CODE_OTHER,
+  defaultDressCode,
   type EventDraft,
   type RoleDraft,
   canRemoveRole,
@@ -199,7 +200,8 @@ export function ShiftBuilder({
         return {
           ...role,
           chargeRate: card?.chargeRate ?? role.chargeRate,
-          dressCode: stillOnList ? role.dressCode : '',
+          dressCode:
+            stillOnList && role.dressCode ? role.dressCode : defaultDressCode(card?.dressCodes ?? []),
         };
       }),
     }));
@@ -211,7 +213,7 @@ export function ShiftBuilder({
       roleId,
       payRate: role?.payRate ?? 0,
       chargeRate: client?.rateCard[roleId]?.chargeRate ?? 0,
-      dressCode: '',
+      dressCode: defaultDressCode(client?.rateCard[roleId]?.dressCodes ?? []),
       dressCodeOther: '',
     });
   }
