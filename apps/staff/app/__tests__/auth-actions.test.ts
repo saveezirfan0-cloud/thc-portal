@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 const auth = vi.hoisted(() => ({
   verifyOtp: vi.fn(),
   getUser: vi.fn(),
+  getClaims: vi.fn(),
   signOut: vi.fn(),
   updateUser: vi.fn(),
   resetPasswordForEmail: vi.fn(),
@@ -172,7 +173,15 @@ describe('activateAccount (§2.7)', () => {
 
 describe('setPassword (§10.2 A3)', () => {
   it('updates, signs every OTHER device out, then goes to /shifts', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: STAFF_USER } });
+    auth.getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: 'u1',
+          amr: [{ method: 'recovery', timestamp: Math.floor(Date.now() / 1000) - 60 }],
+        },
+      },
+      error: null,
+    });
     auth.updateUser.mockResolvedValue({ error: null });
     const result = await outcome(() =>
       setPassword(null, form({ password: 'Gala-Dinner-2026', confirm: 'Gala-Dinner-2026' })),
@@ -186,7 +195,15 @@ describe('setPassword (§10.2 A3)', () => {
   });
 
   it('names the current password when Supabase refuses it as unchanged', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: STAFF_USER } });
+    auth.getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: 'u1',
+          amr: [{ method: 'recovery', timestamp: Math.floor(Date.now() / 1000) - 60 }],
+        },
+      },
+      error: null,
+    });
     auth.updateUser.mockResolvedValue({
       error: {
         status: 422,
@@ -203,7 +220,7 @@ describe('setPassword (§10.2 A3)', () => {
   });
 
   it('with no session the link is spent, and nothing is updated', async () => {
-    auth.getUser.mockResolvedValue({ data: { user: null } });
+    auth.getClaims.mockResolvedValue({ data: null, error: null });
     const result = await setPassword(
       null,
       form({ password: 'Gala-Dinner-2026', confirm: 'Gala-Dinner-2026' }),

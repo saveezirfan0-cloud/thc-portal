@@ -130,9 +130,7 @@ describe('a malformed token is refused without asking GoTrue', () => {
 
 it('says so, without a call, when there is no Supabase project', async () => {
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
-  expect(await submit()).toBe(
-    "RETURNED:The portal isn't connected yet. Please contact THC.",
-  );
+  expect(await submit()).toBe("RETURNED:The portal isn't connected yet. Please contact THC.");
   expect(auth.verifyOtp).not.toHaveBeenCalled();
 });
 

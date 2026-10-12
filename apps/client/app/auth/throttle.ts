@@ -90,7 +90,9 @@ export function callerBucket(address: string): string {
 
 /** HMAC-SHA256, hex, with the kind in the message so an email and an address never collide. */
 export function throttleDigest(secret: string, kind: 'email' | 'caller', value: string): string {
-  return createHmac('sha256', secret).update(`thc-client-auth-throttle|${kind}|${value}`).digest('hex');
+  return createHmac('sha256', secret)
+    .update(`thc-client-auth-throttle|${kind}|${value}`)
+    .digest('hex');
 }
 
 interface ThrottleRpc {

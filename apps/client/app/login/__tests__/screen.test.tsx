@@ -27,4 +27,10 @@ describe('Client Portal sign-in page (login.html)', async () => {
     expect(form).toBeGreaterThan(lead);
     expect(html.split(LEAD)).toHaveLength(2);
   });
+
+  it('the office address in the footer is a mailto link', () => {
+    expect(html).toContain(
+      '<a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>',
+    );
+  });
 });

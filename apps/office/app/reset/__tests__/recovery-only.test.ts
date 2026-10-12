@@ -56,13 +56,17 @@ beforeEach(() => {
 describe('Back Office /reset accepts only a reset-link session', () => {
   it('refuses a password-signed-in session and never calls updateUser', async () => {
     auth.getClaims.mockResolvedValue(claims('password'));
-    expect(await submit()).toMatch(/^RETURNED:You are already signed in\. To change your password, go to My profile → Password\./);
+    expect(await submit()).toMatch(
+      /^RETURNED:You are already signed in\. To change your password, go to My profile → Password\./,
+    );
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
 
   it('refuses a stale recovery session', async () => {
     auth.getClaims.mockResolvedValue(claims('recovery', 2 * 3600));
-    expect(await submit()).toMatch(/^RETURNED:You are already signed in\. To change your password, go to My profile → Password\./);
+    expect(await submit()).toMatch(
+      /^RETURNED:You are already signed in\. To change your password, go to My profile → Password\./,
+    );
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
 

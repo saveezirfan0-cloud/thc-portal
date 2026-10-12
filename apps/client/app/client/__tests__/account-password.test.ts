@@ -281,14 +281,17 @@ describe('Change password · the change runs on the fresh session (secure_passwo
     [{ code: 'reauthentication_needed', message: 'Reauthentication needed' }, 'reauth'],
     [{ code: 'weak_password', message: 'Password is known to be weak' }, 'breached'],
     [{ status: 500, message: 'Database error: relation "auth.users" …' }, 'failed'],
-  ] as const)('maps a Supabase refusal (%o) to its sentence, never its text', async (error, key) => {
-    state.updateError = error;
-    const out = await changePassword(null, valid());
-    expect(out.ok).toBe(false);
-    expect(out.message).toBe(PASSWORD_COPY[key]);
-    expect(out.message).not.toContain(error.message);
-    expect(state.verifierSignOuts).toEqual([]);
-  });
+  ] as const)(
+    'maps a Supabase refusal (%o) to its sentence, never its text',
+    async (error, key) => {
+      state.updateError = error;
+      const out = await changePassword(null, valid());
+      expect(out.ok).toBe(false);
+      expect(out.message).toBe(PASSWORD_COPY[key]);
+      expect(out.message).not.toContain(error.message);
+      expect(state.verifierSignOuts).toEqual([]);
+    },
+  );
 });
 
 describe('Change password · 5 counted attempts per account per 15 minutes, claimed atomically', () => {

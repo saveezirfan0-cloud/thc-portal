@@ -37,6 +37,8 @@ export function isRecoverySession(
     const method = typeof entry?.method === 'string' ? entry.method : '';
     if (!RECOVERY_METHODS.includes(method)) return false;
     const at = typeof entry.timestamp === 'number' ? entry.timestamp : NaN;
-    return Number.isFinite(at) && nowSeconds - at <= RECOVERY_WINDOW_SECONDS && at <= nowSeconds + 60;
+    return (
+      Number.isFinite(at) && nowSeconds - at <= RECOVERY_WINDOW_SECONDS && at <= nowSeconds + 60
+    );
   });
 }

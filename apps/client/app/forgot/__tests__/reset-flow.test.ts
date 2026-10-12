@@ -11,8 +11,16 @@ const auth = vi.hoisted(() => ({
   resetPasswordForEmail: vi.fn(),
 }));
 
+const jar = vi.hoisted(
+  () => [] as { name: string; value: string; options?: Record<string, unknown> }[],
+);
 vi.mock('next/headers', () => ({
-  cookies: vi.fn(async () => ({ getAll: () => [], set: () => {} })),
+  headers: async () => new Headers(),
+  cookies: vi.fn(async () => ({
+    getAll: () => [],
+    set: (name: string, value: string, options?: Record<string, unknown>) =>
+      jar.push({ name, value, options }),
+  })),
 }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
@@ -33,6 +41,7 @@ afterAll(() => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  jar.length = 0;
   vi.unstubAllEnvs();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://127.0.0.1:54321';
@@ -86,12 +95,33 @@ describe('requestReset (A1)', () => {
   }
 
   it('asks for a link to this app’s /auth/confirm', async () => {
-    expect(await run('venue@client.example')).toBe(
-      'REDIRECT:/forgot/sent?to=venue%40client.example',
-    );
+    expect(await run('venue@client.example')).toBe('REDIRECT:/forgot/sent');
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('venue@client.example', {
       redirectTo: `${ORIGIN}/auth/confirm`,
     });
+  });
+
+  // Security review 12.10: `?to=` put the address in history, logs and
+  // Referer, and printed whatever a crafted link put there.
+  it('carries the address to A2 in a short-lived httpOnly cookie for /forgot/sent, never the URL', async () => {
+    expect(await run('Venue@Client.example')).toBe('REDIRECT:/forgot/sent');
+    expect(jar).toEqual([
+      {
+        name: 'thc-reset-sent',
+        value: 'venue@client.example',
+        options: expect.objectContaining({
+          httpOnly: true,
+          path: '/forgot/sent',
+          sameSite: 'strict',
+          maxAge: 300,
+        }),
+      },
+    ]);
+  });
+
+  it('the same outcome when Supabase refuses (no account enumeration)', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ error: { status: 429, message: 'rate' } });
+    expect(await run('nobody@client.example')).toBe('REDIRECT:/forgot/sent');
   });
 
   it('refuses in production without NEXT_PUBLIC_CLIENT_URL, even with VERCEL_URL set (D13)', async () => {

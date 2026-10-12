@@ -125,7 +125,8 @@ export async function changePassword(
     });
     return fail(PASSWORD_COPY.failed);
   }
-  if (typeof attempt !== 'number' && typeof attempt !== 'string') return fail(PASSWORD_COPY.tooMany);
+  if (typeof attempt !== 'number' && typeof attempt !== 'string')
+    return fail(PASSWORD_COPY.tooMany);
 
   const release = async () => {
     const { error } = await attempts.rpc('password_check_release', { p_attempt: Number(attempt) });

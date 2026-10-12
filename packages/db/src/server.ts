@@ -60,7 +60,11 @@ export function createClient(cookies: CookieStore, options: CreateClientOptions 
         setAll: (toSet) => {
           for (const { name, value, options: cookieOptions } of toSet) {
             try {
-              cookies.set(name, value, httpOnly ? { ...cookieOptions, httpOnly: true } : cookieOptions);
+              cookies.set(
+                name,
+                value,
+                httpOnly ? { ...cookieOptions, httpOnly: true } : cookieOptions,
+              );
             } catch {
               // Called from a Server Component; middleware refreshes the session instead.
             }
