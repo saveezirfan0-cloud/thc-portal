@@ -28,18 +28,44 @@ export interface ClientDocument {
 
 const DOCUMENT_COLUMNS = 'id, event_id, kind, file_name, storage_path, issued_at';
 
+/**
+ * A documents read. `unavailable` is true when the view could not be read,
+ * so a screen can say "couldn't be loaded" instead of mistaking a failure
+ * for "THC has not issued this document yet". The database's message goes
+ * to the server log only.
+ */
+export interface DocumentsLoad<T extends ClientDocument = ClientDocument> {
+  documents: T[];
+  unavailable: boolean;
+}
+
+/** What a page says above the screen when `unavailable` is true. */
+export const DOCUMENTS_UNAVAILABLE =
+  "Documents couldn't be loaded just now — refresh to try again.";
+
+function configured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any -- the generated types
    predate this view (see data.ts). */
-export async function loadDocuments(eventId: string): Promise<ClientDocument[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    return [];
-  const supabase = createClient(await cookies()) as any;
-  const { data, error } = await supabase
-    .from('client_event_documents_v')
-    .select(DOCUMENT_COLUMNS)
-    .eq('event_id', eventId);
-  if (error) return [];
-  return (data ?? []) as ClientDocument[];
+export async function loadDocuments(eventId: string): Promise<DocumentsLoad> {
+  if (!configured()) return { documents: [], unavailable: false };
+  try {
+    const supabase = createClient(await cookies()) as any;
+    const { data, error } = await supabase
+      .from('client_event_documents_v')
+      .select(DOCUMENT_COLUMNS)
+      .eq('event_id', eventId);
+    if (error) {
+      console.error('[client] documents load failed', { eventId, error });
+      return { documents: [], unavailable: true };
+    }
+    return { documents: (data ?? []) as ClientDocument[], unavailable: false };
+  } catch (error) {
+    console.error('[client] documents load threw', { eventId, error });
+    return { documents: [], unavailable: true };
+  }
 }
 
 /**
@@ -48,13 +74,64 @@ export async function loadDocuments(eventId: string): Promise<ClientDocument[]> 
  * no filter: the view scopes itself to the caller's own events (ADR-0004),
  * exactly as `loadEventList` reads the other three.
  */
-export async function loadAllDocuments(): Promise<(ClientDocument & { event_id: string })[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    return [];
-  const supabase = createClient(await cookies()) as any;
-  const { data, error } = await supabase.from('client_event_documents_v').select(DOCUMENT_COLUMNS);
-  if (error) return [];
-  return (data ?? []) as (ClientDocument & { event_id: string })[];
+export async function loadAllDocuments(): Promise<
+  DocumentsLoad<ClientDocument & { event_id: string }>
+> {
+  if (!configured()) return { documents: [], unavailable: false };
+  try {
+    const supabase = createClient(await cookies()) as any;
+    const { data, error } = await supabase
+      .from('client_event_documents_v')
+      .select(DOCUMENT_COLUMNS);
+    if (error) {
+      console.error('[client] documents load failed', { error });
+      return { documents: [], unavailable: true };
+    }
+    return {
+      documents: (data ?? []) as (ClientDocument & { event_id: string })[],
+      unavailable: false,
+    };
+  } catch (error) {
+    console.error('[client] documents load threw', { error });
+    return { documents: [], unavailable: true };
+  }
+}
+
+/**
+ * The download route's read: is the event the caller's (`client_events_v`,
+ * the same answer the event page gets), and which copies does it have.
+ *
+ * `visible: false` only when the view positively returned no row — another
+ * customer's event and a nonexistent one alike, which the route answers
+ * with one identical 404 (ADR-0004). A failed read is `unavailable`, not
+ * "invisible": it says nothing about whose event it is.
+ */
+export async function loadEventDocuments(
+  eventId: string,
+): Promise<DocumentsLoad & { visible: boolean }> {
+  if (!configured()) return { visible: false, documents: [], unavailable: false };
+  try {
+    const supabase = createClient(await cookies()) as any;
+    const [event, docs] = await Promise.all([
+      supabase.from('client_events_v').select('id').eq('id', eventId).maybeSingle(),
+      supabase.from('client_event_documents_v').select(DOCUMENT_COLUMNS).eq('event_id', eventId),
+    ]);
+    if (event.error || docs.error) {
+      if (event.error?.code === '22P02')
+        return { visible: false, documents: [], unavailable: false };
+      console.error('[client] document route load failed', {
+        eventId,
+        event: event.error,
+        documents: docs.error,
+      });
+      return { visible: true, documents: [], unavailable: true };
+    }
+    if (!event.data) return { visible: false, documents: [], unavailable: false };
+    return { visible: true, documents: (docs.data ?? []) as ClientDocument[], unavailable: false };
+  } catch (error) {
+    console.error('[client] document route load threw', { eventId, error });
+    return { visible: true, documents: [], unavailable: true };
+  }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

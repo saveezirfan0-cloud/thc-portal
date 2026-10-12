@@ -533,9 +533,9 @@ previews back on for everything.
   `supabase start` and export its URL and anon key the way `ci.yml` does. Where
   egress is blocked the signed-in specs fail with a `waitForURL` timeout instead.
   Both are the environment, not the code.
-- **Six Client Portal browser tests are unreachable**, not merely skipped: they
-  assert an ungated portal, which no longer exists in either environment.
-  Reviving them needs a signed-in client fixture — that work belongs to **C1**.
+- The Client Portal browser tests sign in through `openAsClient`
+  (`e2e/tests/_support/session.ts`, the seeded client contact), so they run
+  wherever the other signed-in specs run; they skip only on a 503 (no project).
 - `pnpm format` once rewrote the checked-in `design-handoff/` vendor bundles
   (196k lines). That folder is in `.prettierignore` now; do not take it out.
 

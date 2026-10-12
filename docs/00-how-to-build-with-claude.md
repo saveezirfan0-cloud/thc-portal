@@ -44,13 +44,12 @@ for a healthy response, so on a checkout with no `.env.local` it times out after
 the suite never starts. Point `.env.local` at a project, or run `supabase start` and
 export its URL and anon key the way `ci.yml` does, before expecting a local run.
 
-That was the right call for production and it leaves one thing to tidy. The six Client
-Portal browser tests assert an **ungated** portal, which is a state that no longer exists
-anywhere: they skip in CI because every route redirects to `/login`, and locally the app
-will not boot for them to skip. They are unreachable rather than merely skipped, and
-making them run needs a signed-in client fixture — see `docs/13` C1. Until that exists
-the portal is held by `supabase/tests/160_client_portal.sql` and the unit tests over
-`rules.ts`, both of which do run on every push.
+The Client Portal browser tests (`e2e/tests/client.portal.spec.ts`) sign in as the
+seeded client contact through `openAsClient` in `e2e/tests/_support/session.ts`, so they
+run in CI against the gated portal like the office and staff suites; they skip only when
+the app answers 503 (no project). The portal is also held by
+`supabase/tests/160_client_portal.sql`, `790_…` and the unit tests over `rules.ts` and
+`data.ts`, all of which run on every push.
 
 What exists, at platform level:
 

@@ -5659,6 +5659,7 @@ export type Database = {
       };
       client_events_v: {
         Row: {
+          cancelled_at: string | null;
           client_id: string | null;
           ends_at: string | null;
           event_date: string | null;
@@ -5708,6 +5709,8 @@ export type Database = {
           ends_at: string | null;
           event_id: string | null;
           feedback_given: boolean | null;
+          feedback_rating: number | null;
+          feedback_sent_at: string | null;
           name: string | null;
           photo_path: string | null;
           role: string | null;

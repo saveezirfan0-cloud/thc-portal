@@ -23,21 +23,57 @@ export function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
-const NO_PROJECT =
-  'This environment has no Supabase project, so your events cannot be loaded. See docs/04-setup-github-vercel-supabase.md.';
+/**
+ * What the customer reads when a load fails. Never the database's own
+ * message: a PostgREST error names relations, columns and SQLSTATEs, and the
+ * customer can do nothing with it. The detail goes to the server log.
+ * (The setup step for an environment with no project is docs/04; the
+ * customer is only told to contact THC.)
+ */
+export const LOAD_COPY = {
+  noProject: "The portal isn't connected yet. Please contact THC.",
+  listFailed:
+    "We couldn't load your events just now. Refresh the page, or try again in a few minutes.",
+  eventFailed:
+    "We couldn't load this event just now. Refresh the page, or try again in a few minutes.",
+} as const;
+
+/** A canonical UUID. Anything else is not an event id and is a 404. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isEventId(id: string): boolean {
+  return UUID.test(id);
+}
 
 const EVENT_COLUMNS =
-  'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status';
+  'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status, cancelled_at';
 const SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
 const LINEUP_COLUMNS =
-  'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given';
+  'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given, feedback_rating, feedback_sent_at';
+
+/**
+ * `PortalEvent` plus the moment a cancelled event was cancelled, for
+ * "cancelled <date>" under a greyed row (20261012130000). Null unless
+ * `status` is `cancelled`.
+ */
+export type ClientEvent = PortalEvent & { cancelledAt: string | null };
+
+/**
+ * `LineupRow` plus the customer's OWN feedback entry for that worker on that
+ * event (20261012130000): its stars (1–5) and when it was sent. Both null
+ * until the customer leaves feedback; the office's entries never appear.
+ */
+export type ClientLineupRow = LineupRow & {
+  feedbackRating: number | null;
+  feedbackSentAt: string | null;
+};
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the generated types
    predate these views; regenerating them is `pnpm --filter @thc/db gen:types`
    against a live project, which this environment has not got. */
 type Row = Record<string, any>;
 
-function toEvent(r: Row): PortalEvent {
+function toEvent(r: Row): ClientEvent {
   return {
     id: r.id,
     title: r.title,
@@ -49,6 +85,7 @@ function toEvent(r: Row): PortalEvent {
     startsAt: r.starts_at,
     endsAt: r.ends_at,
     status: r.status,
+    cancelledAt: r.cancelled_at ?? null,
   };
 }
 
@@ -64,7 +101,7 @@ function toSection(r: Row): RoleSection {
   };
 }
 
-function toLineup(r: Row): LineupRow {
+function toLineup(r: Row): ClientLineupRow {
   return {
     bookingId: r.booking_id,
     eventId: r.event_id,
@@ -78,22 +115,25 @@ function toLineup(r: Row): LineupRow {
     photoPath: r.photo_path ?? null,
     sortKey: r.sort_key,
     feedbackGiven: r.feedback_given === true,
+    feedbackRating: typeof r.feedback_rating === 'number' ? r.feedback_rating : null,
+    feedbackSentAt: r.feedback_sent_at ?? null,
   };
 }
 
 export interface EventListData {
-  events: PortalEvent[];
+  events: ClientEvent[];
   sections: RoleSection[];
-  lineup: LineupRow[];
+  lineup: ClientLineupRow[];
   /** The caller's own company (`client_company_v`), for "Events · <client>". */
   company: string | null;
+  /** A customer sentence when the list could not be read; never the DB's message. */
   problem: string | null;
 }
 
 /** §11.1 · every event this customer has, with its counts and its faces. */
 export async function loadEventList(): Promise<EventListData> {
   if (!supabaseConfigured()) {
-    return { events: [], sections: [], lineup: [], company: null, problem: NO_PROJECT };
+    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_COPY.noProject };
   }
 
   const supabase = createClient(await cookies()) as any;
@@ -109,7 +149,8 @@ export async function loadEventList(): Promise<EventListData> {
 
   const failed = [events, sections, lineup].find((r) => r.error);
   if (failed?.error) {
-    return { events: [], sections: [], lineup: [], company: null, problem: failed.error.message };
+    console.error('[client] event list load failed', failed.error);
+    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_COPY.listFailed };
   }
 
   return {
@@ -123,9 +164,10 @@ export async function loadEventList(): Promise<EventListData> {
 }
 
 export interface EventPageData {
-  event: PortalEvent | null;
+  event: ClientEvent | null;
   sections: RoleSection[];
-  lineup: LineupRow[];
+  lineup: ClientLineupRow[];
+  /** A customer sentence when the event could not be read; never the DB's message. */
   problem: string | null;
 }
 
@@ -136,10 +178,15 @@ export interface EventPageData {
  * not an authorisation decision the screen is making: the view returned no
  * row because the predicate said so, which is the same answer another
  * customer's event gives.
+ *
+ * An id that is not a UUID is answered the same way, without a query; and
+ * should one reach Postgres anyway, its 22P02 (invalid_text_representation)
+ * is treated as "no such event" rather than as a failure to load.
  */
 export async function loadEvent(id: string): Promise<EventPageData> {
+  if (!isEventId(id)) return { event: null, sections: [], lineup: [], problem: null };
   if (!supabaseConfigured()) {
-    return { event: null, sections: [], lineup: [], problem: NO_PROJECT };
+    return { event: null, sections: [], lineup: [], problem: LOAD_COPY.noProject };
   }
 
   const supabase = createClient(await cookies()) as any;
@@ -152,7 +199,10 @@ export async function loadEvent(id: string): Promise<EventPageData> {
 
   const failed = [event, sections, lineup].find((r) => r.error);
   if (failed?.error) {
-    return { event: null, sections: [], lineup: [], problem: failed.error.message };
+    if (failed.error.code === '22P02')
+      return { event: null, sections: [], lineup: [], problem: null };
+    console.error('[client] event load failed', { id, error: failed.error });
+    return { event: null, sections: [], lineup: [], problem: LOAD_COPY.eventFailed };
   }
 
   return {
