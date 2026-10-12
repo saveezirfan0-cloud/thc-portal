@@ -36,6 +36,7 @@ const LOAN_LABEL: Record<string, string> = {
   plan1: 'Plan 1',
   plan2: 'Plan 2',
   plan4: 'Plan 4',
+  plan5: 'Plan 5',
 };
 
 function value(text: string | null | undefined) {

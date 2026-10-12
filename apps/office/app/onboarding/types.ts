@@ -288,7 +288,7 @@ export interface HmrcChecklist {
   q2_pension: boolean | null;
   q3_since_6_april: boolean | null;
   statement: 'A' | 'B' | 'C';
-  student_loan: 'none' | 'plan1' | 'plan2' | 'plan4';
+  student_loan: 'none' | 'plan1' | 'plan2' | 'plan4' | 'plan5';
   postgraduate_loan: boolean;
   declared: boolean;
   submitted_at: string;

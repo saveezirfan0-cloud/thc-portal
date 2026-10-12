@@ -11736,7 +11736,7 @@ export type Database = {
         | 'inactive'
         | 'rejected'
         | 'removed';
-      student_loan_plan: 'none' | 'plan1' | 'plan2' | 'plan4';
+      student_loan_plan: 'none' | 'plan1' | 'plan2' | 'plan4' | 'plan5';
       violation_type: 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
     };
     CompositeTypes: {
@@ -11933,7 +11933,7 @@ export const Constants = {
         'rejected',
         'removed',
       ],
-      student_loan_plan: ['none', 'plan1', 'plan2', 'plan4'],
+      student_loan_plan: ['none', 'plan1', 'plan2', 'plan4', 'plan5'],
       violation_type: ['no_show', 'late', 'left_early', 'left_geofence', 'no_checkout'],
     },
   },
