@@ -479,37 +479,78 @@ const REPORT_HIDE = [
 ].join(', ');
 
 /**
+ * What is laid out narrower than the sheet on a wide page: GOV.UK's width
+ * container stops at 960 px, so once the report is scaled down (and Chrome
+ * lays it out wider, below) the result would sit in a strip with empty page
+ * beside it. Released, the result uses the whole width of the sheet.
+ */
+const REPORT_WIDEN = '.govuk-width-container, .govuk-main-wrapper';
+
+/** CSS px the viewport is measured at: low, so the page's own height is what is read, not the window's. */
+const MEASURE_HEIGHT = 100;
+
+class Unmeasurable extends Error {}
+
+/**
  * Tidy the result page for printing and return the PDF options that put all
  * of it on one A4 sheet: the page furniture is hidden and the rest is scaled
- * down only as far as it needs to be (never up). Measured at the printable
- * width, which is narrower than a screen, so the height it reads is the real
- * one. Best effort: a page that cannot be tidied or measured prints as it was
- * — an untidy report beats none, and the checks never depend on it.
+ * down only as far as it needs to be (never up).
+ *
+ * Chrome prints a page scaled by `s` by laying it out `printable width / s`
+ * px wide — wider than the sheet, so the text wraps less and the page is
+ * shorter. The height is therefore measured at the width each scale is
+ * printed at, and the largest scale whose page fits is chosen. (Measuring
+ * once at the sheet's width over-shrank the report: tiny text in a strip at
+ * the top-left of the sheet, the rest of it empty.)
+ *
+ * Best effort: a page that cannot be tidied or measured prints as it was —
+ * an untidy report beats none, and the checks never depend on it.
  */
-export async function fitReportToOnePage(
-  page: GovukPage,
-): Promise<{
+export async function fitReportToOnePage(page: GovukPage): Promise<{
   scale?: number;
   margin: { top: string; right: string; bottom: string; left: string };
 }> {
   const margin = { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN };
   try {
     await page.emulateMedia?.({ media: 'print' });
-    await page.addStyleTag?.({ content: `${REPORT_HIDE} { display: none !important; }` });
-    const width = A4_PX.width - 2 * MARGIN_PX;
-    await page.setViewportSize?.({ width, height: A4_PX.height });
-    const measured = await page.evaluate?.(
-      'Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)',
-    );
-    if (typeof measured !== 'number' || !Number.isFinite(measured) || measured <= 0)
-      return { margin };
-    const room = A4_PX.height - 2 * MARGIN_PX;
+    await page.addStyleTag?.({
+      content:
+        `${REPORT_HIDE} { display: none !important; } ` +
+        `${REPORT_WIDEN} { max-width: none !important; } ` +
+        // GOV.UK's grey page ground otherwise frames the result and fills
+        // whatever of the sheet it does not cover.
+        'html, body { background: #fff !important; }',
+    });
+    const { setViewportSize, evaluate } = page;
+    if (!setViewportSize || !evaluate) return { margin };
+    const printable = A4_PX.width - 2 * MARGIN_PX;
     // 3 % spare for rounding between the layout we measured and the one Chrome prints.
-    const scale = Math.min(1, (room / measured) * 0.97);
-    // Chrome's own floor is 0.1.
-    return scale >= 1
-      ? { margin }
-      : { scale: Math.max(0.1, Math.floor(scale * 100) / 100), margin };
+    const room = (A4_PX.height - 2 * MARGIN_PX) * 0.97;
+    const fits = async (percent: number): Promise<boolean> => {
+      await setViewportSize.call(page, {
+        width: Math.round((printable * 100) / percent),
+        height: MEASURE_HEIGHT,
+      });
+      const measured = await evaluate.call(
+        page,
+        'Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)',
+      );
+      if (typeof measured !== 'number' || !Number.isFinite(measured) || measured <= 0)
+        throw new Unmeasurable();
+      return (measured * percent) / 100 <= room;
+    };
+    if (await fits(100)) return { margin };
+    // Whole percentages between Chrome's floor (0.1) and 1: `low` fits or is
+    // the floor, `high` does not fit. A wider layout is never taller, so the
+    // fit only improves as the scale falls.
+    let low = 10;
+    let high = 100;
+    while (high - low > 1) {
+      const mid = Math.floor((low + high) / 2);
+      if (await fits(mid)) low = mid;
+      else high = mid;
+    }
+    return { scale: low / 100, margin };
   } catch {
     return { margin };
   }
