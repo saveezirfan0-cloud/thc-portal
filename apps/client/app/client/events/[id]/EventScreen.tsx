@@ -57,6 +57,7 @@ export function EventScreen({
   event: PortalEvent;
   sections: RoleSection[];
   lineup: LineupRow[];
+  /** Signed photo URLs keyed by `bookingId` (photos.ts); never a Storage path. */
   photos: Record<string, string>;
   now: string;
   /** Which §11.3 PDFs the office has produced for this event. */
@@ -232,12 +233,7 @@ export function EventScreen({
                   const removed = isRemoved(p);
                   return (
                     <div className="wrow" key={p.bookingId}>
-                      <Avatar
-                        name={p.name}
-                        size="lg"
-                        src={p.photoPath ? photos[p.photoPath] : undefined}
-                        deleted={removed}
-                      />
+                      <Avatar name={p.name} size="lg" src={photos[p.bookingId]} deleted={removed} />
                       <div>
                         <div className="n">{p.name}</div>
                         <div className="s">{p.role}</div>

@@ -39,7 +39,6 @@ const person = (over: Partial<LineupRow> & Pick<LineupRow, 'name'>): LineupRow =
   role: 'Waiting Staff',
   startsAt: '2026-09-19T16:00:00Z',
   endsAt: '2026-09-19T22:30:00Z',
-  photoPath: null,
   sortKey: over.name.toLowerCase(),
   feedbackGiven: false,
   ...over,
