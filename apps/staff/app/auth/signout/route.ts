@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@thc/db/server';
 import { clearTimeFormatCookie } from '@thc/db/time-format';
 
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   const store = await cookies();
   const supabase = createClient(store);
   await supabase.auth.signOut();
@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   // Signed-in pages are rendered per request and sent no-store, so there is
   // no copy of them to clear (the Staff App's Cache Storage is purged by its
   // worker, sw.ts).
-  return NextResponse.redirect(new URL('/login', request.url), {
-    status: 303,
-  });
+  // A relative Location: the form posted here under CSP `form-action 'self'`,
+  // which also covers where the POST redirects. `request.url` can name
+  // another host than the one in the address bar (localhost behind
+  // 127.0.0.1, a proxy), and the browser then refuses the redirect, leaving
+  // the person on the page they pressed Sign out from.
+  return new NextResponse(null, { status: 303, headers: { Location: '/login' } });
 }

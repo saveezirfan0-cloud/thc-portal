@@ -34,7 +34,7 @@ describe('POST /auth/signout', () => {
       new Request('https://app.thc.example/auth/signout', { method: 'POST' }),
     );
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toMatch(/\/login$/);
+    expect(res.headers.get('location')).toBe('/login');
     expect(res.headers.get('Clear-Site-Data')).toBeNull();
   });
 });
