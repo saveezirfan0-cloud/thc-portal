@@ -1,5 +1,5 @@
 {
-  "description": "ADR-0116 same staff on all days: the series' hours, projected over every flagged day together, against the weekly cap (RULE-20). `days` are the section being judged plus its flagged siblings; `bookedHours` is the rest of the worker's week WITHOUT those days. Run by packages/domain/src/__tests__/series.test.ts; supabase/tests/790_same_staff_all_days.sql builds the same scenarios by name against series_hours_blocked().",
+  "description": "ADR-0116 same staff on all days: the series' hours, projected over every flagged day together, against the weekly cap (RULE-20). `days` are the section being judged plus its flagged siblings; `bookedHours` is the rest of the worker's week WITHOUT those days. Run by packages/domain/src/__tests__/series.test.ts; supabase/tests/804_same_staff_all_days.sql builds the same scenarios by name against series_hours_blocked().",
   "cases": [
     {
       "name": "student_term_three_8h_days_in_one_week_blocked",

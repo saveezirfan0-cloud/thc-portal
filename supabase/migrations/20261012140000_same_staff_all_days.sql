@@ -33,7 +33,7 @@
 -- take - inherits it without being restated, so none of them can drop it.
 -- A LATER GATE therefore belongs in auto_assign_candidates_pool(); a
 -- `create or replace function auto_assign_candidates` would replace this
--- wrapper and silently drop the series gate. pgTAP 790 fails if that happens.
+-- wrapper and silently drop the series gate. pgTAP 804 fails if that happens.
 --
 -- ENFORCED: a worker is a candidate for a flagged section only when, for
 -- EVERY sibling (same series, same role, flag on, event not cancelled, not
@@ -51,7 +51,7 @@
 -- Additive and forward-only. No RLS change: events and shift_requirements
 -- keep their policies; the client role holds no policy on either (ADR-0026,
 -- 001_rls_guard) and the client_* views name their columns, so neither new
--- column reaches the client portal (pgTAP 790 asserts it).
+-- column reaches the client portal (pgTAP 804 asserts it).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

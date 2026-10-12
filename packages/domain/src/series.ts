@@ -18,7 +18,7 @@
  * `series_hours_blocked()` in
  * supabase/migrations/20261012140000_same_staff_all_days.sql. The refusal it
  * gives is the gate named below, so the pool, `invite_worker`, Radar and
- * Accept all say the same thing; pgTAP 790 holds the SQL to the scenarios in
+ * Accept all say the same thing; pgTAP 804 holds the SQL to the scenarios in
  * `series.vectors.json`, which this module's tests run too.
  *
  * What is NOT here, because the client has not answered yet (ADR-0116,
