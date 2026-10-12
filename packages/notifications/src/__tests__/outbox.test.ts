@@ -398,6 +398,22 @@ describe('onboarding chasers (ADR-0071)', () => {
     );
   });
 
+  it('tells existing staff the interview is part of getting set up on the new app', () => {
+    const msg = messageFor(
+      email({
+        template: 'OC1',
+        key: 'OC1:staff:s-1:1:1',
+        recipient_emails: ['ivy@example.com'],
+        payload: { name: 'Ivy', variant: 'existing_first' },
+      }),
+    );
+    expect(msg.kind === 'email' && msg.subject).toBe('Your Willo interview for our new Staff App');
+    expect(msg.body).toContain('Hi Ivy,');
+    expect(msg.body).toContain('new Staff App');
+    expect(msg.body).toContain('even if you already work with us');
+    expect(msg.body).not.toMatch(/\{\w+\}/);
+  });
+
   it('refuses a chaser email with no rung rather than guessing one', () => {
     expect(() =>
       messageFor(

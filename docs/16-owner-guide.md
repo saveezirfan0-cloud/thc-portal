@@ -994,6 +994,11 @@ Outside 10:00–18:00 UK the counts read `skipped`. Inside those hours they show
 `oc1`, `oc3` and `oc2_queued`. Any `oc2_failed` above zero means a link could
 not be minted: check `STAFF_APP_URL`.
 
+Existing staff being set up on the new app (matched to the invite list, or
+carrying a Payroll ID) get their own OC1 wording: the Willo interview is part
+of getting set up on the new Staff App, and everyone does it, even people who
+already work with us (`20261012123000`). Nothing to configure.
+
 **Change or pause it** on the `onboarding_chasers` setting, for example
 `{"enabled": false}`, or a different `every_days` (days between reminders),
 `stalled_after`, `from` or `until`.
