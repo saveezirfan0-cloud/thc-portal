@@ -90,10 +90,18 @@ export function ApplyForm({
       {referralCode ? <input type="hidden" name={REFERRAL_FIELD} value={referralCode} /> : null}
       {source ? <input type="hidden" name={SOURCE_FIELD} value={source} /> : null}
 
-      <p className="lead">
-        Two minutes. Straight after you submit, you&apos;ll get an email with a link to a short
-        video interview.
-      </p>
+      {source === 'spudbros' ? (
+        // ADR-0117: SpudBros Express staff do not do the Willo interview.
+        <p className="lead">
+          Two minutes. Straight after you submit, you&apos;ll get an email from us with a link to
+          set up your login and download the app.
+        </p>
+      ) : (
+        <p className="lead">
+          Two minutes. Straight after you submit, you&apos;ll get an email with a link to a short
+          video interview.
+        </p>
+      )}
 
       {state.failure ? <Alert tone="coral">{state.failure}</Alert> : null}
       {banner ? <Alert tone="coral">{banner}</Alert> : null}
@@ -125,7 +133,11 @@ export function ApplyForm({
         type="email"
         placeholder="you@example.com"
         autoComplete="email"
-        hint="Your interview link and everything else lands here."
+        hint={
+          source === 'spudbros'
+            ? 'Your set-up link and everything else lands here.'
+            : 'Your interview link and everything else lands here.'
+        }
         value={values.email}
         onChange={(e) => set('email', e.target.value)}
         error={errors.email}

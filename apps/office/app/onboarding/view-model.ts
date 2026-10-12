@@ -325,16 +325,16 @@ function attemptsLabel(scores: number[]): string {
 
 /** The Willo line on the two interview columns (§2.4). */
 export function willoLine(row: BoardCandidateRow, now: Date, format?: TimeFormat): Line {
-  // ADR-0117: SpudBros Express staff do not do the interview; the
-  // willo-invite sweep moves them to Documents with E3 within a minute.
-  if (row.spudbros_express === true) {
-    return { text: 'No interview — SpudBros Express; moving to Documents', tone: 'muted' };
-  }
   if (row.willo_completed_at) {
     const via = row.willo_decided_via === 'office' ? '' : ' (Willo webhook)';
     return {
       text: `Interview completed ${shortDay(row.willo_completed_at)} ${ukTime(row.willo_completed_at, format)}${via}`,
     };
+  }
+  // ADR-0117: onboarding-only SpudBros Express staff do not do the
+  // interview; the willo-invite sweep moves them to Documents with E3.
+  if (row.spudbros_express === true && row.thc_shifts_enabled !== true) {
+    return { text: 'No interview — SpudBros Express; moving to Documents', tone: 'muted' };
   }
   if (!row.willo_linked) {
     return { text: 'Not yet created in Willo — the integration is not connected', tone: 'muted' };

@@ -361,6 +361,8 @@ export interface CandidateData {
   facts?: CandidateFacts | null;
   /** Set when the interview was marked complete by hand, not by Willo (ADR-0077). */
   interviewOverride?: InterviewOverride | null;
+  /** The SpudBros sweep could not move them to Documents this period (ADR-0117). */
+  spudbrosSkipFailure?: SpudbrosSkipFailure | null;
   problem: string | null;
 }
 
@@ -384,6 +386,12 @@ export interface InterviewOverride {
   at: string;
   byName: string | null;
   reason: string;
+}
+
+/** The audit row the SpudBros skip sweep leaves when it fails (ADR-0117). */
+export interface SpudbrosSkipFailure {
+  at: string;
+  error: string;
 }
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };

@@ -105,6 +105,7 @@ import type {
   CandidateRow,
   ContractVersion,
   Declaration,
+  SpudbrosSkipFailure,
 } from './types';
 import './onboarding.css';
 
@@ -816,7 +817,11 @@ function InterviewRequested({
         </div>
       </Panel>
       {skipsInterview(row) ? (
-        <SpudbrosNoInterview row={row} />
+        <SpudbrosNoInterview
+          row={row}
+          failure={data.spudbrosSkipFailure ?? null}
+          onMarkComplete={onMarkComplete}
+        />
       ) : (
         <Panel
           title="AI video interview · Willo"
@@ -871,28 +876,44 @@ function InterviewRequested({
 }
 
 /**
- * ADR-0117: skipped the interview as SpudBros Express staff, or is about to.
- * Someone SpudBros who did a Willo interview before this keeps its record.
+ * ADR-0117: skipped the interview as SpudBros Express staff (onboarding
+ * only), or is about to. Anyone who did a Willo interview keeps its record,
+ * and SpudBros with THC shifts switched on still do the interview.
  */
 function skipsInterview(row: CandidateRow): boolean {
+  if (row.willo_completed_at) return false;
   return (
     row.willo_decided_via === 'spudbros' ||
     (row.spudbros_express === true &&
+      row.thc_shifts_enabled !== true &&
       (row.status === 'interview_requested' || row.status === 'interview_completed'))
   );
 }
 
 /**
  * ADR-0117: SpudBros Express staff do not do the Willo interview. Until the
- * willo-invite sweep moves them (within a minute), and afterwards when the
- * office looks back at the interview steps, this says so instead.
+ * willo-invite sweep moves them, and afterwards when the office looks back
+ * at the interview steps, this says so instead. If the sweep could not move
+ * them, the failure is shown and the office keeps its way out (ADR-0077).
  */
-function SpudbrosNoInterview({ row }: { row: CandidateRow }) {
+function SpudbrosNoInterview({
+  row,
+  failure = null,
+  onMarkComplete = null,
+}: {
+  row: CandidateRow;
+  failure?: SpudbrosSkipFailure | null;
+  onMarkComplete?: (() => void) | null;
+}) {
   const moved = row.willo_decided_via === 'spudbros' && row.willo_decided_at;
   return (
     <Panel
       title="Interview · not needed"
-      actions={<Pill tone={moved ? 'green' : 'amber'}>{moved ? 'Skipped' : 'Skipping'}</Pill>}
+      actions={
+        <Pill tone={moved ? 'green' : failure ? 'coral' : 'amber'}>
+          {moved ? 'Skipped' : failure ? 'Not moved' : 'Skipping'}
+        </Pill>
+      }
     >
       <div className="stack">
         <div className="kv">
@@ -902,14 +923,34 @@ function SpudbrosNoInterview({ row }: { row: CandidateRow }) {
           {moved ? (
             <span className="green">
               Moved to Documents {formatUkStamp(row.willo_decided_at as string)} — login created and
-              E3 sent
+              the set-up email (E3) queued
             </span>
           ) : (
             <span className="amber">
-              Moving on its own within a minute — login created and E3 sent
+              Moving to Documents automatically — login created and the set-up email (E3) queued
             </span>
           )}
+          {!moved && failure ? (
+            <>
+              <span className="k">Last try</span>
+              <span className="coral">
+                {formatUkStamp(failure.at)} — could not move them
+                {failure.error ? `: ${failure.error}` : ''}
+              </span>
+            </>
+          ) : null}
         </div>
+        {!moved && onMarkComplete ? (
+          <div className="row wrap">
+            <Button
+              tone="ghost"
+              title="Owners and managers: move to Interview completed by hand, with a reason, then Accept"
+              onClick={onMarkComplete}
+            >
+              Mark interview complete
+            </Button>
+          </div>
+        ) : null}
         <Note>
           Their shifts stay on Connecteam; THC onboarding is for their Right to Work check,
           documents and contract only.
@@ -951,7 +992,7 @@ function InterviewCompleted({
   return (
     <div className="grid c2">
       {skipsInterview(row) ? (
-        <SpudbrosNoInterview row={row} />
+        <SpudbrosNoInterview row={row} failure={data.spudbrosSkipFailure ?? null} />
       ) : (
         <Panel
           title="AI video interview · Willo"
@@ -993,6 +1034,8 @@ function InterviewCompleted({
                 ) : (
                   <span className="amber">Awaiting — Accept or Reject here</span>
                 )
+              ) : past && row.willo_decided_via === 'spudbros' ? (
+                <span className="green">Accepted — SpudBros Express, no Willo decision needed</span>
               ) : past ? (
                 <span className="green">
                   Accepted — made inside Willo, where the video is watched

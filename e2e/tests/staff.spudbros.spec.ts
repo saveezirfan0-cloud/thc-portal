@@ -92,7 +92,9 @@ async function apply(
   await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(24));
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Submit application' }).click();
-  await expect(page).toHaveURL(/\/apply\/submitted$/);
+  await expect(page).toHaveURL(
+    path === '/apply/spudbros' ? /\/apply\/submitted\?from=spudbros$/ : /\/apply\/submitted$/,
+  );
 }
 
 function group(email: string): string {

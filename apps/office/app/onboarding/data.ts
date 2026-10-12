@@ -19,6 +19,7 @@ import type {
   Declaration,
   HmrcChecklist,
   InterviewOverride,
+  SpudbrosSkipFailure,
   QuizAttempt,
   Reference,
   ReferralRow,
@@ -344,7 +345,7 @@ interface FactsRead {
   };
 }
 
-/** audit_log through a narrow shape, for the one row ADR-0077 reads. */
+/** audit_log through a narrow shape, for the one row ADR-0077 (and ADR-0117) reads. */
 interface OverrideRead {
   from(table: 'audit_log'): {
     select(columns: string): {
@@ -362,7 +363,10 @@ interface OverrideRead {
           ): {
             limit(count: number): {
               maybeSingle(): PromiseLike<{
-                data: { at: string; data: { reason?: unknown; byName?: unknown } | null } | null;
+                data: {
+                  at: string;
+                  data: { reason?: unknown; byName?: unknown; error?: unknown } | null;
+                } | null;
                 error: { message: string } | null;
               }>;
             };
@@ -398,6 +402,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     referral,
     facts,
     override,
+    skipFailure,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -475,6 +480,16 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .order('at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // ADR-0117: the latest time the SpudBros sweep could not move them to
+    // Documents. Best-effort, like the override above.
+    (supabase as unknown as OverrideRead)
+      .from('audit_log')
+      .select('at, data')
+      .eq('entity_id', id)
+      .eq('action', 'spudbros_skip_failed')
+      .order('at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const error =
@@ -544,6 +559,10 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     referralProblem: referral.problem,
     facts: facts.error || !facts.data ? null : toFacts(facts.data),
     interviewOverride: override.error || !override.data ? null : toOverride(override.data),
+    spudbrosSkipFailure:
+      skipFailure.error || !skipFailure.data || !row
+        ? null
+        : toSkipFailure(skipFailure.data, row.onboarding_started_at),
     problem: null,
   };
 }
@@ -571,4 +590,13 @@ function toOverride(row: {
     byName: typeof row.data?.byName === 'string' ? row.data.byName : null,
     reason: typeof row.data?.reason === 'string' ? row.data.reason : '',
   };
+}
+
+/** The latest `spudbros_skip_failed` row of this onboarding period (ADR-0117). */
+function toSkipFailure(
+  row: { at: string; data: { error?: unknown } | null },
+  periodStart: string,
+): SpudbrosSkipFailure | null {
+  if (Date.parse(row.at) < Date.parse(periodStart)) return null;
+  return { at: row.at, error: typeof row.data?.error === 'string' ? row.data.error : '' };
 }

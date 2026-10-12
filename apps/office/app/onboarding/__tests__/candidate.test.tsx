@@ -635,18 +635,39 @@ describe('the candidate profile, roles and clients once the candidate has moved 
 describe('the candidate profile · SpudBros Express skip the interview (ADR-0117)', () => {
   const spud = { ...ROW, spudbros_express: true } as CandidateRow;
 
-  it('says no interview is needed while they wait to move, and offers no Willo or override', () => {
+  const waiting = { ...spud, status: 'interview_requested' } as CandidateRow;
+
+  it('says no interview is needed while they wait to move, with no Willo panel', () => {
+    const html = render(data({ candidate: waiting }));
+    expect(html).toContain('Interview · not needed');
+    expect(html).toContain('SpudBros Express staff do not do the Willo interview');
+    expect(html).toContain('Moving to Documents automatically');
+    expect(html).not.toContain('AI video interview · Willo');
+    expect(html).not.toContain('>Mark interview complete<');
+  });
+
+  it('shows a failed move and keeps the override for an owner or a manager', () => {
     const html = renderToStaticMarkup(
       <CandidateScreen
-        data={data({ candidate: { ...spud, status: 'interview_requested' } as CandidateRow })}
-        now="2026-09-23T10:00:00Z"
+        data={data({
+          candidate: waiting,
+          spudbrosSkipFailure: { at: '2026-10-12T18:05:00Z', error: 'account_email_mismatch' },
+        })}
+        now="2026-10-12T19:00:00Z"
         canMarkInterview
       />,
     );
-    expect(html).toContain('Interview · not needed');
-    expect(html).toContain('SpudBros Express staff do not do the Willo interview');
-    expect(html).not.toContain('AI video interview · Willo');
-    expect(html).not.toContain('>Mark interview complete<');
+    expect(html).toContain('Not moved');
+    expect(html).toContain('could not move them: account_email_mismatch');
+    expect(html).toContain('>Mark interview complete<');
+  });
+
+  it('SpudBros with THC shifts on still do the interview', () => {
+    const html = render(
+      data({ candidate: { ...waiting, thc_shifts_enabled: true } as CandidateRow }),
+    );
+    expect(html).toContain('AI video interview · Willo');
+    expect(html).not.toContain('Interview · not needed');
   });
 
   const lookBackAtInterview = (candidate: CandidateRow) => {
@@ -684,5 +705,18 @@ describe('the candidate profile · SpudBros Express skip the interview (ADR-0117
     } as CandidateRow);
     expect(html).toContain('AI video interview · Willo');
     expect(html).not.toContain('Interview · not needed');
+  });
+
+  it('keeps the Willo record of a SpudBros person who did it and was then moved on', () => {
+    const html = lookBackAtInterview({
+      ...spud,
+      status: 'documents',
+      willo_decision: 'accepted',
+      willo_decided_via: 'spudbros',
+      willo_decided_at: '2026-10-12T18:01:00Z',
+      willo_completed_at: '2026-10-12T14:03:00Z',
+    } as CandidateRow);
+    expect(html).toContain('AI video interview · Willo');
+    expect(html).toContain('Accepted — SpudBros Express, no Willo decision needed');
   });
 });

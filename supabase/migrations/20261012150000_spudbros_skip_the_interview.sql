@@ -14,6 +14,11 @@
 -- Documents, with their login and E3 (activation + password + "download
 -- the app"), exactly as if they had been accepted in Willo:
 --
+-- "SpudBros Express" here means onboarding-only: spudbros_express and not
+-- thc_shifts_enabled (staff_onboarding_only()'s pair). Somebody the office
+-- has switched THC shifts on for will work THC shifts, so they still do
+-- THC's interview.
+--
 --   1 · willo_invite_due() no longer leases a SpudBros candidate, so no
 --       candidate is created in Willo for them and no E1 goes out. OC1
 --       needs willo_invited_at, so it does not chase them either.
@@ -21,7 +26,9 @@
 --   2 · spudbros_skip_due() leases every SpudBros candidate still in
 --       interview_requested or interview_completed — new applicants, the
 --       people already waiting when this was applied, and anyone the office
---       marks SpudBros (or resets to candidate) later. The every-minute
+--       marks SpudBros (or resets to candidate) later — but never one whose
+--       address is an office or client login, nor one refused for good
+--       this period (spudbros_skip_blocked()). The every-minute
 --       `willo-invite` sweep (and the nudge when someone applies) mints
 --       their login with the office Accept's own code
 --       (packages/db/src/provision.ts) and calls
@@ -38,8 +45,8 @@
 -- anyone could reach Documents this way. What they reach is an
 -- onboarding-only profile: never in the pool, no booking possible (the
 -- bookings trigger), and still every document, the quiz and the contract.
--- If the office switches THC shifts on for somebody, that is the office's
--- decision on a person it knows.
+-- Switching THC shifts on for somebody is the office's decision on a person
+-- it knows; switched on while they await the interview, they keep it.
 --
 -- Not changed: a Willo decision that still arrives for one of the nine
 -- people invited before this (willo_record_event) is applied as before.
@@ -85,8 +92,9 @@ begin
      where s.status = 'interview_requested'
        and s.willo_candidate_id is null
        and s.removed_at is null
-       -- 20261012150000: SpudBros Express staff do not do the interview.
-       and not s.spudbros_express
+       -- 20261012150000: onboarding-only SpudBros Express staff do not do
+       -- the interview (staff_onboarding_only()'s pair, inline).
+       and not (s.spudbros_express and not s.thc_shifts_enabled)
      order by s.onboarding_started_at, s.id
      for update skip locked
   loop
@@ -144,7 +152,7 @@ begin
 end $$;
 
 comment on function public.willo_invite_due(integer, timestamptz) is
-  '§2.4/§2.12: leases up to p_limit candidates in interview_requested with no Willo candidate yet (new applicants and resets), backing off 5 min doubling to 6 h per person per onboarding period. Each lease is an audit_log willo_invite_claim row. known_candidate_id = a key recorded this period by willo_invite_created and linked to nobody (link it, do not create); prior_candidate_ids = keys from earlier periods (never re-link). SpudBros Express staff are never leased (20261012150000: no interview). Service role only.';
+  '§2.4/§2.12: leases up to p_limit candidates in interview_requested with no Willo candidate yet (new applicants and resets), backing off 5 min doubling to 6 h per person per onboarding period. Each lease is an audit_log willo_invite_claim row. known_candidate_id = a key recorded this period by willo_invite_created and linked to nobody (link it, do not create); prior_candidate_ids = keys from earlier periods (never re-link). Onboarding-only SpudBros Express staff are never leased (20261012150000: no interview). Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 2 · Who is due to skip the interview
@@ -153,6 +161,46 @@ comment on function public.willo_invite_due(integer, timestamptz) is
 -- younger than the backoff (5 min doubling, capped at 6 h) nobody else
 -- claims that person, so the per-minute schedule and the nudge never mint
 -- two logins for one person at once.
+-- Who must never be swept, even though they are SpudBros and awaiting the
+-- interview:
+--   · an address that already belongs to an office or client login.
+--     /apply/spudbros is public and nothing at apply time reads auth.users,
+--     so anyone can apply with such an address. provisionStaffLogin() mints
+--     a magic-link token on the existing login BEFORE it reads the role, so
+--     a sweep that kept retrying would keep killing that person's pending
+--     reset or invite link. The office decides these by hand.
+--   · anyone refused for good this period (a login the database will not
+--     link to them): retrying cannot change it. The office sees the failure
+--     on the profile and uses Mark interview complete + Accept.
+create or replace function public.spudbros_skip_blocked(p_staff uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select exists (
+           select 1
+             from staff s
+             join auth.users u on lower(btrim(u.email)) = lower(btrim(s.email))
+             left join profiles p on p.id = u.id
+            where s.id = p_staff
+              and (coalesce(u.raw_app_meta_data ->> 'role', 'staff') <> 'staff'
+                   or coalesce(p.role::text, 'staff') <> 'staff'))
+      or exists (
+           select 1
+             from staff s
+             join audit_log a on a.entity_id = s.id and a.entity = 'staff'
+            where s.id = p_staff
+              and a.action = 'spudbros_skip_failed'
+              and a.at >= s.onboarding_started_at
+              and (a.data ->> 'error') ~ ('(account_not_staff|account_missing|account_email_mismatch'
+                                          '|staff_linked_elsewhere|account_linked_elsewhere|unknown_account)'));
+$$;
+
+comment on function public.spudbros_skip_blocked(uuid) is
+  '20261012150000 (ADR-0117): true for a SpudBros candidate the skip sweep must leave to the office — their address belongs to an office or client login (a mint would replace that login''s pending token), or a login was refused for good this period. Internal: read by spudbros_skip_due().';
+
 create or replace function public.spudbros_skip_due(
   p_limit integer     default 20,
   p_now   timestamptz default now()
@@ -176,8 +224,10 @@ begin
   for r in
     select * from staff s
      where s.spudbros_express
+       and not s.thc_shifts_enabled
        and s.status in ('interview_requested', 'interview_completed')
        and s.removed_at is null
+       and not spudbros_skip_blocked(s.id)
      order by s.onboarding_started_at, s.id
      for update skip locked
   loop
@@ -208,7 +258,7 @@ begin
 end $$;
 
 comment on function public.spudbros_skip_due(integer, timestamptz) is
-  '20261012150000 (ADR-0117): leases up to p_limit SpudBros Express candidates still in interview_requested / interview_completed, backing off 5 min doubling to 6 h per person per onboarding period (audit_log spudbros_skip_claim). The willo-invite sweep mints each one''s login and calls spudbros_skip_interview(). Service role only.';
+  '20261012150000 (ADR-0117): leases up to p_limit onboarding-only SpudBros Express candidates still in interview_requested / interview_completed (never one spudbros_skip_blocked() names), backing off 5 min doubling to 6 h per person per onboarding period (audit_log spudbros_skip_claim). The willo-invite sweep mints each one''s login and calls spudbros_skip_interview(). Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 3 · Skip the interview: login, Documents, E3 — one transaction
@@ -244,6 +294,7 @@ begin
   end if;
 
   if not s.spudbros_express
+     or s.thc_shifts_enabled
      or s.status not in ('interview_requested', 'interview_completed') then
     -- Moved on since the lease (accepted by the office, unmarked, …). The
     -- token minted for this call is now the live one if the login is
@@ -303,6 +354,7 @@ $$;
 comment on function public.spudbros_skip_failed(uuid, text) is
   '20261012150000 (ADR-0117): records a SpudBros candidate whose login or move to Documents failed; spudbros_skip_due() retries after its backoff. Service role only.';
 
+revoke execute on function public.spudbros_skip_blocked(uuid)                          from public, anon, authenticated;
 revoke execute on function public.spudbros_skip_due(integer, timestamptz)              from public, anon, authenticated;
 revoke execute on function public.spudbros_skip_interview(uuid, uuid, text, text)      from public, anon, authenticated;
 revoke execute on function public.spudbros_skip_failed(uuid, text)                     from public, anon, authenticated;
