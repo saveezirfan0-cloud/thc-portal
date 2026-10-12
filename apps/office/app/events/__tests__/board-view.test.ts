@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { type CandidateRow, DEFAULT_WEIGHTS, canMarkNoShow } from '@thc/domain';
 import type { ListedEvent } from '../data';
 import { periodCrumb, toEventRow } from '../view-model';
-import { NOT_ADMIN, SIGNED_OUT, adminRefusal } from '../admin';
+import { NOT_ADMIN, READ_ONLY, SIGNED_OUT, adminRefusal } from '../admin';
 import {
   type BoardPersonName,
   type EndedBooking,
@@ -296,20 +296,29 @@ describe('D12 · a cancelled event’s finance line depends on WHEN it was cance
 });
 
 describe('the server-side admin check in front of the RPCs (claim 2b)', () => {
-  const client = (user: { id: string } | null, role: string | null) =>
+  // The database's answers: current_app_role() (null for a switched-off
+  // login or one below aal2) and office_can('write') (false for a viewer).
+  const client = (
+    user: { id: string } | null,
+    role: string | null,
+    officeRole: string | null = role === 'admin' ? 'manager' : null,
+  ) =>
     ({
       auth: { getUser: async () => ({ data: { user }, error: null }) },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({ data: role ? { role } : null, error: null }),
-          }),
-        }),
+      rpc: async (fn: string) => ({
+        data:
+          fn === 'current_app_role'
+            ? role
+            : fn === 'office_can'
+              ? role === 'admin' && officeRole !== 'viewer'
+              : null,
+        error: null,
       }),
     }) as unknown as Parameters<typeof adminRefusal>[0];
 
   it('lets an admin through', async () => {
     expect(await adminRefusal(client({ id: 'u1' }, 'admin'))).toBeNull();
+    expect(await adminRefusal(client({ id: 'u1' }, 'admin', 'scheduler'))).toBeNull();
   });
 
   it('refuses a worker, a client, and anyone signed out', async () => {
@@ -317,6 +326,15 @@ describe('the server-side admin check in front of the RPCs (claim 2b)', () => {
     expect(await adminRefusal(client({ id: 'u3' }, 'client'))).toBe(NOT_ADMIN);
     expect(await adminRefusal(client({ id: 'u4' }, null))).toBe(NOT_ADMIN);
     expect(await adminRefusal(client(null, null))).toBe(SIGNED_OUT);
+  });
+
+  it('refuses a read-only login (ADR-0060) in its own words', async () => {
+    expect(await adminRefusal(client({ id: 'u5' }, 'admin', 'viewer'))).toBe(READ_ONLY);
+  });
+
+  it('refuses an office login the database no longer answers admin for (switched off, below aal2)', async () => {
+    // profiles.role would still say 'admin' here; current_app_role() does not.
+    expect(await adminRefusal(client({ id: 'u6' }, null, 'owner'))).toBe(NOT_ADMIN);
   });
 });
 

@@ -412,7 +412,8 @@ From the 23.09 build:
   not typed. THC's adviser signed it off on 28.09 (docs/17 item 24). What is
   left is the Vault secrets, Vercel Pro, one live test and the switch
   (OWNER-TODO §8). **For a demo** it can run against the sandbox provider
-  (ADR-0063, 28.09): `RTW_PROVIDER_URL=sandbox:` plus
+  (ADR-0063, 28.09; two keys since 12.10): `RTW_PROVIDER_URL=sandbox:` and
+  `RTW_SANDBOX_ALLOW=<the demo project's ref>` plus
   `supabase/demo/rtw-check-sandbox-on.sql`, with the demo share codes and the
   run sheet in the ADR.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has

@@ -5,6 +5,7 @@ import {
   parseKind,
   supabaseConfigured,
 } from '../_lib/generate';
+import { CROSS_SITE_REFUSAL, fetchSiteAllowed } from '../_lib/fetchSite';
 
 /**
  * GET /api/documents/:eventId?kind=allocation|signout — "Download" (§11.4).
@@ -15,12 +16,19 @@ import {
  * account #id" and no photo (§1.7) — and is kept in the `timesheets` bucket
  * when the deployment has the key to do so.
  *
+ * Because it has those side effects, a request another site started
+ * (`Sec-Fetch-Site: cross-site` or `same-site`) is refused with 403 before
+ * anything is read — see `_lib/fetchSite.ts` for what is allowed and why.
+ *
  * Node runtime: @react-pdf/renderer needs it.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  // Before any work: this GET stores and records a copy, so another site
+  // must not be able to start it with a link (fetchSite.ts).
+  if (!fetchSiteAllowed(request)) return new Response(CROSS_SITE_REFUSAL, { status: 403 });
   const { eventId } = await params;
   const kind = parseKind(new URL(request.url).searchParams.get('kind') ?? 'allocation');
   if (!isUuid(eventId) || !kind)

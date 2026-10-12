@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { READ_ONLY_MESSAGE, sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from './data';
 import { validateVenue } from './validate';
 import type { ActionResult, UpcomingEvent, VenueDraft } from './types';
@@ -21,18 +22,18 @@ import type { ActionResult, UpcomingEvent, VenueDraft } from './types';
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so venues cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
-/** True only for a signed-in admin (§1.4), read through the session. */
+/**
+ * True only for a signed-in admin (§1.4), as the DATABASE sees them now:
+ * `current_app_role()`, which also refuses a switched-off login and a
+ * two-step login below aal2 (20261001200500) — not `profiles.role`, which
+ * still says 'admin' for both.
+ */
 async function callerIsAdmin(): Promise<boolean> {
   if (!supabaseConfigured()) return false;
   const supabase = createClient(await cookies());
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return false;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', auth.user.id)
-    .maybeSingle<{ role: string }>();
-  return profile?.role === 'admin';
+  return sessionIsAdmin(supabase);
 }
 
 /**
@@ -48,10 +49,30 @@ interface RpcClient {
   rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
 }
 
+/**
+ * A refusal from the venue RPCs (0007_venues_directory.sql), in the
+ * office's words — never the raw database text, which names ids,
+ * functions and constraints (security review, NOTE item 5). Whatever is
+ * not recognised is logged here and shown as one generic line.
+ */
+function venueRefusal(raw: string): string {
+  if (raw.startsWith('A venue needs a name')) return 'A venue needs a name.';
+  if (raw.startsWith('A venue needs an address from the pin'))
+    return 'A venue needs an address from the pin — drop the pin on the map.';
+  if (/^(Latitude|Longitude) .* out of range/.test(raw))
+    return 'The pin is outside the map’s range — move it.';
+  if (raw.startsWith('No live venue')) return 'This venue no longer exists — refresh the page.';
+  if (/^read_only\b/.test(raw)) return READ_ONLY_MESSAGE;
+  if (/^not_authorised\b|row-level security|permission denied/i.test(raw))
+    return 'Only the office can change venues.';
+  console.error('[venues] unmapped database refusal', { message: raw });
+  return 'The venue could not be saved. Refresh the page and try again.';
+}
+
 async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { error } = await supabase.rpc(fn, args);
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: venueRefusal(error.message) };
 
   revalidatePath('/venues');
   return { ok: true };
@@ -254,8 +275,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeR
 
   // A server action is a public POST endpoint, and this one spends the
   // Mapbox token and touches no RLS on the way. So it checks the caller
-  // itself: a signed-in admin, read through the session and `profiles`'
-  // own policy — never a claim the browser sent (audit D52).
+  // itself: a signed-in admin, asked of the database through the session
+  // (`current_app_role()`) — never a claim the browser sent (audit D52).
   if (!(await callerIsAdmin())) {
     return { ok: false, message: 'Only the office can look up addresses.' };
   }

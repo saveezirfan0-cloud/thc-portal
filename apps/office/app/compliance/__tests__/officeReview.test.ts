@@ -10,16 +10,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   user: { id: 'manager-1' } as { id: string } | null,
   role: 'admin' as string | null,
+  /** ADR-0060: 'viewer' reads the Back Office and changes nothing. */
+  officeRole: 'manager' as string | null,
   rpcResult: {} as Record<string, { data: unknown; error: { message: string } | null }>,
 }));
 const sessionRpc = vi.hoisted(() =>
-  vi.fn(async (fn: string) => state.rpcResult[fn] ?? { data: {}, error: null }),
+  vi.fn(async (fn: string) => {
+    // current_app_role() and office_can('write') as the database answers them.
+    if (fn === 'current_app_role') return { data: state.role, error: null };
+    if (fn === 'office_can')
+      return { data: state.role === 'admin' && state.officeRole !== 'viewer', error: null };
+    return state.rpcResult[fn] ?? { data: {}, error: null };
+  }),
 );
 const adminRpc = vi.hoisted(() => vi.fn(async () => ({ data: true, error: null })));
 const signUpload = vi.hoisted(() =>
   vi.fn(async (path: string) => ({ data: { path, token: 'tok' }, error: null })),
 );
 const removeObject = vi.hoisted(() => vi.fn(async () => ({ error: null })));
+const createAdminClient = vi.hoisted(() =>
+  vi.fn(() => ({
+    rpc: adminRpc,
+    storage: { from: () => ({ createSignedUploadUrl: signUpload, remove: removeObject }) },
+  })),
+);
+/** The session RPCs a test made, without the gate's own questions. */
+const businessCalls = () =>
+  sessionRpc.mock.calls.filter((c) => c[0] !== 'office_can' && c[0] !== 'current_app_role');
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -37,12 +54,7 @@ vi.mock('@thc/db/server', () => ({
     rpc: sessionRpc,
   }),
 }));
-vi.mock('@thc/db/admin', () => ({
-  createAdminClient: () => ({
-    rpc: adminRpc,
-    storage: { from: () => ({ createSignedUploadUrl: signUpload, remove: removeObject }) },
-  }),
-}));
+vi.mock('@thc/db/admin', () => ({ createAdminClient }));
 
 const {
   attachRtwReport,
@@ -58,6 +70,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.user = { id: 'manager-1' };
   state.role = 'admin';
+  state.officeRole = 'manager';
   state.rpcResult = {};
 });
 
@@ -127,6 +140,18 @@ describe('D47 · the office uploads a completion letter', () => {
     });
     expect(result.ok).toBe(false);
     expect(sessionRpc).not.toHaveBeenCalled();
+  });
+
+  it('never sends a path that climbs out of the folder', async () => {
+    const result = await submitOfficeCompletionLetter({
+      staffId: STAFF,
+      path: `${STAFF}/completion-letter/../../${STAFF}/passport/p.pdf`,
+      completionDate: '2026-06-30',
+      form: 'letter',
+    });
+    expect(result.ok).toBe(false);
+    expect(sessionRpc).not.toHaveBeenCalled();
+    expect(createAdminClient).not.toHaveBeenCalled();
   });
 
   it('says why a refusal was refused, and removes the fresh upload nobody points at', async () => {
@@ -222,7 +247,7 @@ describe('D32 / D36 · the conditions confirmed beside a Verify', () => {
     );
     expect(result.ok).toBe(true);
     expect(result.message).toContain('below degree level: 10 h a week in term time');
-    expect(sessionRpc.mock.calls.map((c) => c[0])).toEqual([
+    expect(businessCalls().map((c) => c[0])).toEqual([
       'compliance_verify_document',
       'compliance_set_below_degree_level',
     ]);
@@ -253,6 +278,68 @@ describe('D32 / D36 · the conditions confirmed beside a Verify', () => {
     };
     const result = await verifyDocument('doc-1', {}, { staffId: STAFF, visaHourLimit: '20' });
     expect(result).toEqual({ ok: false, message: 'This has already been verified.' });
-    expect(sessionRpc).toHaveBeenCalledTimes(1);
+    expect(businessCalls()).toHaveLength(1);
+  });
+});
+
+describe('ADR-0060 · a read-only login reaches no service-key call', () => {
+  const file = { name: 'Letter.pdf', type: 'application/pdf', size: 120_000 };
+  const READ_ONLY = 'Your login is read-only, so this cannot be changed.';
+
+  beforeEach(() => {
+    state.officeRole = 'viewer';
+  });
+
+  it('mints no signed upload slot for a viewer', async () => {
+    const slot = await startOfficeUpload(STAFF, 'completion-letter', file);
+    expect(slot).toEqual({ ok: false, message: READ_ONLY });
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(signUpload).not.toHaveBeenCalled();
+  });
+
+  it('files no completion letter and deletes nothing for a viewer', async () => {
+    const result = await submitOfficeCompletionLetter({
+      staffId: STAFF,
+      path: `${STAFF}/completion-letter/a.pdf`,
+      completionDate: '2026-06-30',
+      form: 'letter',
+    });
+    expect(result).toEqual({ ok: false, message: READ_ONLY });
+    expect(businessCalls()).toHaveLength(0);
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(removeObject).not.toHaveBeenCalled();
+  });
+
+  it('attaches no gov.uk report and deletes nothing for a viewer', async () => {
+    const result = await attachRtwReport('doc-1', STAFF, `${STAFF}/share-code-report/r.pdf`);
+    expect(result).toEqual({ ok: false, message: READ_ONLY });
+    expect(businessCalls()).toHaveLength(0);
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it('a worker or a client gets the office refusal and no service key either', async () => {
+    state.role = 'staff';
+    state.officeRole = null;
+    expect(await attachRtwReport('doc-1', STAFF, `${STAFF}/share-code-report/r.pdf`)).toEqual({
+      ok: false,
+      message: 'Only the office can review documents.',
+    });
+    expect(
+      await submitOfficeCompletionLetter({
+        staffId: STAFF,
+        path: `${STAFF}/completion-letter/a.pdf`,
+        completionDate: '2026-06-30',
+        form: 'letter',
+      }),
+    ).toEqual({ ok: false, message: 'Only the office can review documents.' });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it('a switched-off login or one below aal2 (current_app_role() not admin) is refused too', async () => {
+    state.role = null;
+    state.officeRole = 'owner';
+    const slot = await startOfficeUpload(STAFF, 'share-code-report', file);
+    expect(slot.ok).toBe(false);
+    expect(createAdminClient).not.toHaveBeenCalled();
   });
 });

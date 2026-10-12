@@ -30,6 +30,13 @@ export interface MonitorRow {
   breaksCount: number | null;
   lastBreakAt: string | null;
   lateCheckOut: boolean;
+  /**
+   * `check_logs.location_suspect` (20261012121200): the arrival's fix had no
+   * accuracy, one wider than the geofence, or sat on the venue's centre (a
+   * pasted coordinate), or an on-site check-out fix did. A flag for the
+   * manager — it never refused the check-in (§5.1 decides on the geofence).
+   */
+  locationSuspect: boolean;
   status: MonitorStatus;
 }
 

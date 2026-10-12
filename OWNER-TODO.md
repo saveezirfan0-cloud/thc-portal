@@ -238,8 +238,9 @@ with the worker's selfie and presses Verify or Reject.
       1. Pre-flight: `select value from settings where key = 'rtw_check';` must show
          `"primary": "govuk"` and `"admin_confirms": true` (it did on 28.09). If
          `admin_confirms` were false, a "not found" would reject the worker and send N8
-         with no one looking. The office project must not have `RTW_PROVIDER_URL` set
-         (`sandbox:` is the demo sandbox, ADR-0063 — never where real workers are). Then
+         with no one looking. The office project must not have `RTW_PROVIDER_URL` or
+         `RTW_SANDBOX_ALLOW` set (`sandbox:` is the demo sandbox, ADR-0063 — never where
+         real workers are; it now also needs `RTW_SANDBOX_ALLOW=<that project's ref>`). Then
          switch on:
          `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
       2. **A real pass.** A consenting worker enters their share code in the Staff App

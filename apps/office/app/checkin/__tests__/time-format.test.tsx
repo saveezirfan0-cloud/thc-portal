@@ -40,6 +40,7 @@ const ROW: MonitorRow = {
   breaksCount: 0,
   lastBreakAt: null,
   lateCheckOut: false,
+  locationSuspect: false,
   status: 'on_shift',
 };
 
