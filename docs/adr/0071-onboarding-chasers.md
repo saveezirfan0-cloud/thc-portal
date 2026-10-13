@@ -126,4 +126,4 @@ THC's existing staff (and SpudBros Express staff) are brought onto the platform 
 - **What.** OC1 gains `existing_first`, `existing_second` and `existing_repeat`: the same rungs and cadence, each saying the interview is part of getting set up on the new Staff App (worded to fit SpudBros Express staff, who use it for onboarding only) and that everyone does it, even people who already work with us. `onboarding_chasers()` picks the variant as each reminder is queued, so a Payroll ID the office sets mid-run changes the next one.
 - **Unchanged.** Who is chased and when, the keys, OC2 and OC3, the setting and the office board.
 - **Not done.** A worker restarted from the beginning (§2.12) who carries a Payroll ID also gets this wording, though they may already have the app. Rare; the wording still holds.
-- Migration `20261012123000`; pgTAP 804; vitest in packages/notifications (templates, outbox).
+- Migration `20261012123000`; pgTAP 805; vitest in packages/notifications (templates, outbox).
