@@ -155,3 +155,20 @@
     grid-column: 1 / -1 !important;
   }
 }
+
+/*
+ * "N roles" in the qualified-staff table (ADR-0124): a chip that is a
+ * button, so it opens the role list without looking like a primary action.
+ */
+.roles-btn {
+  cursor: pointer;
+  line-height: inherit;
+}
+.roles-btn:hover {
+  border-color: var(--cyan-line);
+  color: var(--cyan-ink);
+}
+.roles-btn:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 2px;
+}

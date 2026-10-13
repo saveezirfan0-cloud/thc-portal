@@ -56,6 +56,10 @@ export function QualifiedStaff({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
   const [barring, setBarring] = useState<QualifiedStaffRow | null>(null);
+  const [viewingRoles, setViewingRoles] = useState<{
+    row: QualifiedStaffRow;
+    group: string;
+  } | null>(null);
   const [pickedStaff, setPickedStaff] = useState<string[]>([]);
   const [pickedRoles, setPickedRoles] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -199,9 +203,22 @@ export function QualifiedStaff({
                               </div>
                             </td>
                             <td>
-                              {row.role_names.map((name) => (
-                                <Chip key={name}>{name}</Chip>
-                              ))}
+                              {/*
+                                Collapsed to one button (ADR-0124): a worker
+                                cleared for eighteen roles otherwise fills
+                                four lines of chips on every group they
+                                appear in. The list opens in a pop-up.
+                              */}
+                              <button
+                                type="button"
+                                className="chip roles-btn"
+                                aria-haspopup="dialog"
+                                title={row.role_names.join(', ')}
+                                onClick={() => setViewingRoles({ row, group: group.role })}
+                              >
+                                {row.role_names.length}{' '}
+                                {row.role_names.length === 1 ? 'role' : 'roles'}
+                              </button>
                             </td>
                             <td>
                               {/*
@@ -411,6 +428,34 @@ export function QualifiedStaff({
             flag is ever switched off.
           </span>
         </div>
+      </Modal>
+
+      <Modal
+        open={viewingRoles !== null}
+        title={viewingRoles ? `Roles at this client · ${viewingRoles.row.display_name}` : ''}
+        onClose={() => setViewingRoles(null)}
+        footer={
+          <Button tone="ghost" onClick={() => setViewingRoles(null)}>
+            Close
+          </Button>
+        }
+      >
+        {viewingRoles ? (
+          <>
+            <div className="row wrap">
+              {viewingRoles.row.role_names.map((name) => (
+                <Chip key={name} tone={name === viewingRoles.group ? 'cyan' : 'neutral'}>
+                  {name}
+                </Chip>
+              ))}
+            </div>
+            <span className="muted xs">
+              {viewingRoles.row.role_names.length}{' '}
+              {viewingRoles.row.role_names.length === 1 ? 'role' : 'roles'} cleared here ·{' '}
+              {viewingRoles.group} highlighted. Remove a role from its own group&rsquo;s row.
+            </span>
+          </>
+        ) : null}
       </Modal>
 
       <Note>
