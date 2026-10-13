@@ -290,7 +290,7 @@ export interface PopupEvent {
   status: EventStatus;
   /** "N of M" (§3.1), or null once cancelled. */
   fill: string | null;
-  tone: 'green' | 'amber' | 'neutral';
+  tone: FillTone;
 }
 
 export function popupEvent(row: EventRow): PopupEvent {
@@ -319,6 +319,8 @@ export interface MonthChipModel {
   cancelled: boolean;
   ongoing: boolean;
   full: boolean;
+  /** Something in the chip is still short of staff and not over yet — it flashes red (ADR-0130). */
+  alert: boolean;
   /** A single event's board; null for a group, which opens the day popup. */
   href: string | null;
 }
@@ -354,6 +356,7 @@ export function monthCellModel(rows: EventRow[], limit: number = MONTH_CELL_CHIP
         cancelled: group.cancelled,
         ongoing: group.rows.some((row) => row.status === 'ongoing'),
         full: !group.cancelled && live.every((row) => fillTone(row) === 'green'),
+        alert: live.some(isShortStaffed),
         href: many ? null : `/events/${first.id}`,
       };
     }),
@@ -435,10 +438,23 @@ export function bandDay(rows: EventRow[]): DayBand[] {
 /** A column this short never folds: nothing to save by hiding it. */
 export const WEEK_COLUMN_FOLD_AT = 8;
 
-/** The tone the chip and the fill pill carry (§3.1). */
-export function fillTone(row: EventRow): 'green' | 'amber' | 'neutral' {
+export type FillTone = 'green' | 'amber' | 'coral' | 'neutral';
+
+/**
+ * The tone the chip and the fill pill carry (§3.1). An event still short of
+ * its headcount is coral and flashes on the Scheduling screen (ADR-0130) —
+ * upcoming or ongoing, while it can still be filled. Once it has ended nobody
+ * can fill it, so a short completed event reads amber and stays still.
+ */
+export function fillTone(row: EventRow): FillTone {
   if (row.status === 'cancelled') return 'neutral';
-  return row.fill.open === 0 ? 'green' : 'amber';
+  if (row.fill.open === 0) return 'green';
+  return row.status === 'completed' ? 'amber' : 'coral';
+}
+
+/** Not 100% filled and still to happen (or happening): the red alert (ADR-0130). */
+export function isShortStaffed(row: EventRow): boolean {
+  return fillTone(row) === 'coral';
 }
 
 /**

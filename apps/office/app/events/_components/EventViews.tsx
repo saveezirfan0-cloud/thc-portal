@@ -15,6 +15,7 @@ import {
   WEEK_COLUMN_FOLD_AT,
   bandDay,
   fillTone,
+  isShortStaffed,
   monthCellModel,
 } from '../view-model';
 import { ChipStatus } from './ChipStatus';
@@ -37,6 +38,23 @@ export function StatusPill({ status }: { status: EventStatus }) {
 }
 
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
+
+/**
+ * "13 of 17" for a live event. Green when full; red and flashing while it is
+ * still short and not over (ADR-0130); amber for a short event that has ended.
+ */
+function FillPill({ row }: { row: EventRow }) {
+  const alert = isShortStaffed(row);
+  return (
+    <Pill
+      tone={fillTone(row)}
+      className={alert ? 'fill-alert' : undefined}
+      title={alert ? `Short-staffed: ${formatOpen(row.fill)}` : undefined}
+    >
+      {formatEventFill(row.fill)}
+    </Pill>
+  );
+}
 
 // ---------------------------------------------------------------------
 // List
@@ -147,9 +165,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   </span>
                 ) : (
                   <>
-                    <Pill tone={fillTone(row) === 'green' ? 'green' : 'amber'}>
-                      {formatEventFill(row.fill)}
-                    </Pill>
+                    <FillPill row={row} />
                     {open ? <span className="sub">{open}</span> : null}
                     {row.fill.bufferConfirmed > 0 ? (
                       <span className="sub">+{row.fill.bufferConfirmed} buffer confirmed</span>
@@ -327,6 +343,7 @@ function WeekChip({ row }: { row: EventRow }) {
         row.status === 'cancelled' && 'cancelled',
         row.status === 'ongoing' && 'ongoing',
         row.status !== 'cancelled' && fillTone(row) === 'green' && 'full',
+        isShortStaffed(row) && 'alert',
       )}
       href={`/events/${row.id}`}
     >
@@ -396,9 +413,7 @@ export function DayView({ rows }: { rows: EventRow[] }) {
             <span>
               {row.status === 'cancelled' ? null : (
                 <>
-                  <Pill tone={fillTone(row) === 'green' ? 'green' : 'amber'}>
-                    {formatEventFill(row.fill)}
-                  </Pill>
+                  <FillPill row={row} />
                   {open ? <span className="sub">{open}</span> : null}
                 </>
               )}
