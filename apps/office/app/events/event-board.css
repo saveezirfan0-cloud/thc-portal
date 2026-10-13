@@ -260,6 +260,72 @@
   text-align: left;
   cursor: pointer;
 }
+/* The role's fill badge: "0 / 2 filled · 2 to fill" with a bar. Confirmed
+   against headcount only (§3.3); amber while short, green once full. */
+.role-fill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-4) var(--sp-12);
+  border: 1px solid var(--amber-line);
+  background: var(--amber-dim);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.role-fill.green {
+  border-color: var(--green-line);
+  background: var(--green-dim);
+}
+.rf-num {
+  font-family: var(--font-num);
+  font-size: var(--fs-20);
+  line-height: 1;
+  color: var(--amber-ink);
+}
+.role-fill.green .rf-num {
+  color: var(--green-ink);
+}
+.rf-num b {
+  font-weight: 700;
+}
+.rf-of {
+  margin-left: var(--sp-4);
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+.rf-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.rf-gap {
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+.rf-gap b {
+  color: var(--text);
+  font-weight: 600;
+}
+.rf-bar {
+  display: block;
+  width: 72px;
+  height: 4px;
+  background: var(--amber-line);
+  border-radius: var(--r-track);
+  overflow: hidden;
+}
+.role-fill.green .rf-bar {
+  background: var(--green-line);
+}
+.rf-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--amber-solid);
+  border-radius: var(--r-track);
+}
+.role-fill.green .rf-bar > span {
+  background: var(--green-solid);
+}
 .rsh-toggle:focus-visible {
   outline: 2px solid var(--focus-line);
   outline-offset: 2px;

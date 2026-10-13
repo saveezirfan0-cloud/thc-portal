@@ -13,6 +13,7 @@ import {
   formatTimeIn,
   openSlots,
   roleBoardHeader,
+  roleFill,
   sectionHours,
   showsCandidatePools,
 } from '@thc/domain';
@@ -95,6 +96,7 @@ export function RoleBoard({
     buffer: section.buffer,
   };
   const showPools = showsCandidatePools(status, counts);
+  const fill = roleFill(counts);
   // §3.3 wireframe: no Unavailable on a Completed or Cancelled event either.
   const live = status === 'upcoming' || status === 'ongoing';
   // ADR-0061: no rates for an office role without finance — then no line.
@@ -118,6 +120,22 @@ export function RoleBoard({
       heading={
         <>
           <b>{section.roleName}</b>
+          {/* How far the role is from its requested headcount, set large so
+              it reads before anything else in the header. */}
+          <span className={`role-fill ${fill.tone}`}>
+            <span className="rf-num">
+              <b>{fill.confirmed}</b>
+              <span className="rf-of">/ {fill.headcount}</span>
+            </span>
+            <span className="rf-meta">
+              <span className="rf-gap">
+                filled · <b>{fill.gap}</b>
+              </span>
+              <span className="rf-bar" aria-hidden="true">
+                <span style={{ width: `${fill.percent}%` }} />
+              </span>
+            </span>
+          </span>
           <span className="mono sm">{roleBoardHeader(counts)}</span>
           <ScheduledWindow
             className="win mono sm"
