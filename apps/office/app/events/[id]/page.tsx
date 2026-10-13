@@ -24,7 +24,13 @@ import { StatusPill } from '../_components/EventViews';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
 import { currentTimeFormat } from '../../_lib/timeFormat';
-import { canMessageLineUp, canToggleAutoAssign, messagePeople, pushDate } from './board-model';
+import {
+  canMessageLineUp,
+  canToggleAutoAssign,
+  dressCodeSummary,
+  messagePeople,
+  pushDate,
+} from './board-model';
 import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
 import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
@@ -81,6 +87,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const window = derivedEventWindow(windows);
   const status = eventStatus(window, event.cancelledAt);
   const languagesLabel = requiredLanguagesLabel(event.requiredLanguages);
+  // ADR-0128: each dress code once, here, rather than in every role header.
+  const dressCodes = dressCodeSummary(sections);
   const fill = eventFill(
     event.sections.map((section) => ({
       headcount: section.headcount,
@@ -262,6 +270,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <span className="muted">Set at client level; read-only here.</span>
             </div>
 
+            {dressCodes.groups.length > 0 ? (
+              <Field label={dressCodes.allRoles ? 'Dress code · all roles' : 'Dress code'}>
+                {dressCodes.allRoles ? (
+                  dressCodes.groups[0]!.dressCode
+                ) : (
+                  <div className="stack" style={{ gap: 4 }}>
+                    {dressCodes.groups.map((group) => (
+                      <span key={group.dressCode}>
+                        <b>{group.roles.join(' · ')}</b>
+                        <span className="muted"> — {group.dressCode}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Field>
+            ) : null}
             {event.onsiteContact ? (
               <Field label="On-site contact">{event.onsiteContact}</Field>
             ) : null}

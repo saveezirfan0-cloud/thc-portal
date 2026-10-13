@@ -1,4 +1,4 @@
-# ADR-0128 · Each role on the event board leads with its fill and its window
+# ADR-0129 · Each role on the event board leads with its fill and its window
 
 **Status:** Accepted · **Departs from:** `wireframes/backoffice/event-board.html` (role header: count line only) · **Owner request:** 13.10.2026
 

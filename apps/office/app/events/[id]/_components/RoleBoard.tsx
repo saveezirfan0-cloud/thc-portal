@@ -54,9 +54,10 @@ function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub:
  * Sections are ordered by their own start time so the board reads like the
  * running order of the day, and the header counts CONFIRMED only: an
  * invitation fills nothing. The header also carries the role's own window
- * (UK, plus "your time" outside the UK — §1.8), its dress code, pay with
- * the holiday-inclusive final rate and the margin (§9.8), and the role's
- * auto-assign switch (§3.4). Clicking the heading collapses the block; a
+ * (UK, plus "your time" outside the UK — §1.8), pay with the
+ * holiday-inclusive final rate and the margin (§9.8), and the role's
+ * auto-assign switch (§3.4). The dress code is not repeated here: the Event
+ * panel shows each one once, with the roles that wear it (ADR-0128). Clicking the heading collapses the block; a
  * block whose window is over starts collapsed; Unavailable starts collapsed
  * (wireframe).
  *
@@ -150,11 +151,6 @@ export function RoleBoard({
             </span>
           </span>
           <span className="mono sm">{roleBoardHeader(counts)}</span>
-          {section.dressCode ? (
-            <span className="sm muted">
-              Dress code: <b>{section.dressCode}</b>
-            </span>
-          ) : null}
           {/* Base, then base + 12.07% holiday broken out (§9.8), then the margin. */}
           {rate ? (
             <span className="rate sm muted">
