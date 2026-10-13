@@ -284,8 +284,10 @@ test('feedback is locked before the event starts, and says so (§11.2)', async (
   await openAsClient(page, `/client/events/${GALA_DINNER}`);
   // event.html:89 — with the opening time, UK-labelled: the event window's
   // start, which is what feedbackOpen() and submit_client_feedback() test.
+  // A browser outside UK time also gets its own clock in brackets (§1.8),
+  // e.g. "(Fri 16 Oct 06:00 your time)" on a UTC runner in summer time.
   await expect(page.getByRole('status')).toContainText(
-    /Feedback opens once the event has started — from \d{2}:\d{2} UK time on the day\./,
+    /Feedback opens once the event has started — from \d{2}:\d{2} UK time on the day( \([^)]*\d{2}:\d{2} your time\))?\./,
   );
   const buttons = page.getByRole('button', { name: 'Leave feedback' });
   expect(await buttons.count()).toBeGreaterThan(0);
