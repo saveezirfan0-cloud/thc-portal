@@ -1,4 +1,4 @@
-# ADR-0125 · A SpudBros person who applied under another email skips the interview too
+# ADR-0126 · A SpudBros person who applied under another email skips the interview too
 
 **Status:** Accepted · **Refines:** ADR-0118, ADR-0107, ADR-0123 · **Owner request:** 13.10.2026
 

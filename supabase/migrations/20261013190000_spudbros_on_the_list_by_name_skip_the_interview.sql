@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261013190000 · A SpudBros person who applied under another
---                            email skips the interview too (ADR-0125;
+--                            email skips the interview too (ADR-0126;
 --                            owner request, 13.10.2026)
 --
 -- ADR-0118 skips the Willo interview for everyone marked SpudBros Express.
@@ -86,7 +86,7 @@ as $$
 $$;
 
 comment on function public.spudbros_listed_by_name() is
-  'ADR-0125: candidates awaiting the interview, not SpudBros, with no Payroll ID, whose address is not on the invite list and whom neither the list nor the office has placed, each paired with a SpudBros list row nobody has applied for by email (same first name and last word of the surname). Internal: read by spudbros_mark_listed_by_name() and willo_invite_due().';
+  'ADR-0126: candidates awaiting the interview, not SpudBros, with no Payroll ID, whose address is not on the invite list and whom neither the list nor the office has placed, each paired with a SpudBros list row nobody has applied for by email (same first name and last word of the surname). Internal: read by spudbros_mark_listed_by_name() and willo_invite_due().';
 
 -- ---------------------------------------------------------------------
 -- 2 · Mark them SpudBros (the restrictive half only)
@@ -125,7 +125,7 @@ begin
 end $$;
 
 comment on function public.spudbros_mark_listed_by_name() is
-  'ADR-0125: marks SpudBros Express (THC shifts off) every candidate spudbros_listed_by_name() names and audits roster.spudbros_by_name with the list address(es). No Payroll ID moves and the list row stays for the office''s Link. Run by spudbros_skip_due() before it leases. Internal.';
+  'ADR-0126: marks SpudBros Express (THC shifts off) every candidate spudbros_listed_by_name() names and audits roster.spudbros_by_name with the list address(es). No Payroll ID moves and the list row stays for the office''s Link. Run by spudbros_skip_due() before it leases. Internal.';
 
 -- ---------------------------------------------------------------------
 -- 3 · spudbros_skip_due(): 20261012150000's body, marking first
@@ -190,7 +190,7 @@ begin
 end $$;
 
 comment on function public.spudbros_skip_due(integer, timestamptz) is
-  '20261012150000 (ADR-0118): leases up to p_limit SpudBros Express candidates still in interview_requested / interview_completed (never one spudbros_skip_blocked() names), backing off 5 min doubling to 6 h per person per onboarding period (audit_log spudbros_skip_claim). First marks SpudBros anyone on the list as SpudBros under another address (spudbros_mark_listed_by_name, ADR-0125). The willo-invite sweep mints each one''s login and calls spudbros_skip_interview(). Service role only.';
+  '20261012150000 (ADR-0118): leases up to p_limit SpudBros Express candidates still in interview_requested / interview_completed (never one spudbros_skip_blocked() names), backing off 5 min doubling to 6 h per person per onboarding period (audit_log spudbros_skip_claim). First marks SpudBros anyone on the list as SpudBros under another address (spudbros_mark_listed_by_name, ADR-0126). The willo-invite sweep mints each one''s login and calls spudbros_skip_interview(). Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 4 · willo_invite_due(): 20261012150000's body plus one predicate
@@ -285,7 +285,7 @@ begin
 end $$;
 
 comment on function public.willo_invite_due(integer, timestamptz) is
-  '§2.4/§2.12: leases up to p_limit candidates in interview_requested with no Willo candidate yet (new applicants and resets), backing off 5 min doubling to 6 h per person per onboarding period. Each lease is an audit_log willo_invite_claim row. known_candidate_id = a key recorded this period by willo_invite_created and linked to nobody (link it, do not create); prior_candidate_ids = keys from earlier periods (never re-link). SpudBros Express staff (20261012150000) and SpudBros on the list under another address (20261013190000, ADR-0125) are never leased: no interview. Service role only.';
+  '§2.4/§2.12: leases up to p_limit candidates in interview_requested with no Willo candidate yet (new applicants and resets), backing off 5 min doubling to 6 h per person per onboarding period. Each lease is an audit_log willo_invite_claim row. known_candidate_id = a key recorded this period by willo_invite_created and linked to nobody (link it, do not create); prior_candidate_ids = keys from earlier periods (never re-link). SpudBros Express staff (20261012150000) and SpudBros on the list under another address (20261013190000, ADR-0126) are never leased: no interview. Service role only.';
 
 revoke execute on function public.spudbros_listed_by_name()      from public, anon, authenticated;
 revoke execute on function public.spudbros_mark_listed_by_name() from public, anon, authenticated;

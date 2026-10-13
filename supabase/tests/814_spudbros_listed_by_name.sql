@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 814 · A SpudBros person who applied under another email skips the
---       interview too (20261013190000, ADR-0125)
+--       interview too (20261013190000, ADR-0126)
 --
 --   A. Nobody but the sweep reaches the new functions.
 --   B. Who is paired: a candidate awaiting the interview, not SpudBros, no
