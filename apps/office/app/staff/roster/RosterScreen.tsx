@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Alert, Button, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
-import { loadRoster, removeRosterEntries } from './actions';
+import { linkRosterEntry, loadRoster, removeRosterEntries, setRemindersEnabled } from './actions';
+import { MatchesPanel, ReminderPanel, RosterKpis } from './ReminderReport';
+import { reminderSummary } from './report';
+import type { RosterReportData } from './report';
+import './roster.css';
 import { REASON_TEXT } from './reasons';
 import type { RosterReport } from './actions';
 import type { RosterEntry } from './data';
@@ -20,15 +24,25 @@ const GROUP_LABEL = { spudbros: 'SpudBros Express', thc: 'THC' } as const;
  * with an email on the list they get that group and Payroll ID, whichever
  * link they used; anyone already in the system gets it applied now. What
  * remains below is "invited, not applied yet".
+ *
+ * Above it (ADR-0123): where the invited people stand, the daily reminder
+ * (IR1, ADR-0122) and what it has done, and the people who applied under
+ * another email, with a Link that gives them their Payroll ID and group.
  */
 export function RosterScreen({
   waiting,
+  reminders,
   problem,
   canEdit,
+  canWrite,
 }: {
   waiting: RosterEntry[];
+  reminders: RosterReportData | null;
   problem: string | null;
+  /** Owner or manager: load the list, remove rows, Link (Payroll IDs). */
   canEdit: boolean;
+  /** Any office login that may write: turn the daily reminder on or off. */
+  canWrite: boolean;
 }) {
   const [text, setText] = useState('');
   const [report, setReport] = useState<RosterReport | null>(null);
@@ -55,7 +69,47 @@ export function RosterScreen({
     });
   };
 
+  const [linked, setLinked] = useState<string | null>(null);
+  const link = (entryId: string, staffId: string) => {
+    setFailure(null);
+    setLinked(null);
+    start(async () => {
+      const result = await linkRosterEntry(entryId, staffId);
+      if (!result.ok) setFailure(result.message);
+      else
+        setLinked(
+          result.spudbros === 'held_upcoming_shifts'
+            ? 'Linked, with their Payroll ID. They have upcoming THC shifts, so they were not switched to SpudBros Express: do that on their profile once those are done.'
+            : 'Linked: they have their Payroll ID and group, and the daily reminder stops.',
+        );
+    });
+  };
+
+  const toggle = (enabled: boolean) => {
+    if (
+      !enabled &&
+      !window.confirm(
+        'Turn off the daily reminder? Nobody will be emailed until it is turned on again, and any reminders still waiting to go today are cancelled.',
+      )
+    )
+      return;
+    setFailure(null);
+    setLinked(null);
+    start(async () => {
+      const result = await setRemindersEnabled(enabled);
+      if (!result.ok) setFailure(result.message);
+      else
+        setLinked(
+          result.enabled
+            ? 'The daily reminder is on: it goes out once a day, at the first hourly run from 10:00 (UK time).'
+            : `The daily reminder is off.${result.cancelled > 0 ? ` ${result.cancelled} waiting to go today were cancelled.` : ''}`,
+        );
+    });
+  };
+
   const spud = waiting.filter((row) => row.grp === 'spudbros').length;
+  const applied = new Set(reminders?.applied ?? []);
+  const matched = new Set((reminders?.matches ?? []).map((m) => m.entryId));
 
   return (
     <OfficeShell
@@ -69,6 +123,27 @@ export function RosterScreen({
       }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
+      {linked ? <Alert tone="green">{linked}</Alert> : null}
+      {failure && !text ? <Alert tone="coral">{failure}</Alert> : null}
+
+      {reminders ? (
+        <>
+          <RosterKpis report={reminders} />
+          <ReminderPanel
+            report={reminders}
+            canToggle={canWrite}
+            pending={pending}
+            onToggle={toggle}
+          />
+          <MatchesPanel
+            report={reminders}
+            waiting={waiting}
+            canEdit={canEdit}
+            pending={pending}
+            onLink={link}
+          />
+        </>
+      ) : null}
 
       <Panel title="Load the list">
         <p className="muted sm">
@@ -99,16 +174,11 @@ export function RosterScreen({
           </Button>
           {!canEdit ? <span className="muted sm"> Your login is read-only.</span> : null}
         </div>
-        {failure ? <Alert tone="coral">{failure}</Alert> : null}
+        {failure && text ? <Alert tone="coral">{failure}</Alert> : null}
         {report ? <ReportView report={report} /> : null}
       </Panel>
 
       <Panel title={`Invited, not applied yet (${waiting.length})`}>
-        {/* ADR-0122: IR1, queued by the hourly onboarding-chasers job. */}
-        <p className="muted sm">
-          Everyone in the THC group gets a reminder email each day, from 10:00 (UK time), until they
-          apply. Removing someone from the list stops theirs.
-        </p>
         {waiting.length === 0 ? (
           <EmptyState>
             <h3>Nobody is waiting</h3>
@@ -123,45 +193,56 @@ export function RosterScreen({
                 </Button>
               </div>
             ) : null}
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Email</th>
-                  <th>Name</th>
-                  <th>Payroll ID</th>
-                  <th>Group</th>
-                  <th>Loaded</th>
-                  {canEdit ? <th aria-label="Remove" /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {waiting.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.email}</td>
-                    <td>{[row.first_name, row.last_name].filter(Boolean).join(' ') || '—'}</td>
-                    <td className="mono">{row.payroll_id ?? '—'}</td>
-                    <td>
-                      <Pill tone={row.grp === 'spudbros' ? 'cyan' : undefined}>
-                        {GROUP_LABEL[row.grp]}
-                      </Pill>
-                    </td>
-                    <td className="sm muted">{row.loaded_at.slice(0, 10)}</td>
-                    {canEdit ? (
-                      <td>
-                        <Button
-                          size="sm"
-                          tone="ghost"
-                          disabled={pending}
-                          onClick={() => remove([row.id])}
-                        >
-                          Remove
-                        </Button>
-                      </td>
-                    ) : null}
+            <div className="table-scroll">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Name</th>
+                    <th>Payroll ID</th>
+                    <th>Group</th>
+                    <th>Daily reminder</th>
+                    <th>Loaded</th>
+                    {canEdit ? <th aria-label="Remove" /> : null}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {waiting.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.email}</td>
+                      <td>{[row.first_name, row.last_name].filter(Boolean).join(' ') || '—'}</td>
+                      <td className="mono">{row.payroll_id ?? '—'}</td>
+                      <td>
+                        <Pill tone={row.grp === 'spudbros' ? 'cyan' : undefined}>
+                          {GROUP_LABEL[row.grp]}
+                        </Pill>
+                      </td>
+                      <td className="sm">
+                        <ReminderCell
+                          row={row}
+                          reminders={reminders}
+                          applied={applied.has(row.id)}
+                          matched={matched.has(row.id)}
+                        />
+                      </td>
+                      <td className="sm muted">{row.loaded_at.slice(0, 10)}</td>
+                      {canEdit ? (
+                        <td>
+                          <Button
+                            size="sm"
+                            tone="ghost"
+                            disabled={pending}
+                            onClick={() => remove([row.id])}
+                          >
+                            Remove
+                          </Button>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </Panel>
@@ -181,7 +262,7 @@ function ReportView({ report }: { report: RosterReport }) {
         {rows.length > 0 ? ` · ${rows.length} need a look` : ''}
       </Alert>
       {rows.length > 0 ? (
-        <table className="table">
+        <table className="tbl">
           <thead>
             <tr>
               <th />
@@ -201,5 +282,40 @@ function ReportView({ report }: { report: RosterReport }) {
         </table>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * One person's daily reminder (ADR-0122/0123): why they are not reminded, or
+ * how many they have had and when, and a bounced address in coral.
+ */
+function ReminderCell({
+  row,
+  reminders,
+  applied,
+  matched,
+}: {
+  row: RosterEntry;
+  reminders: RosterReportData | null;
+  applied: boolean;
+  matched: boolean;
+}) {
+  if (applied) return <Pill tone="amber">Applied · no Payroll ID</Pill>;
+  if (row.grp !== 'thc') return <span className="muted">Not reminded (SpudBros)</span>;
+  const mine = reminders?.reminders[row.email];
+  return (
+    <>
+      {matched ? (
+        <Pill tone="amber" title="Applied under another email: link them above">
+          Possible match
+        </Pill>
+      ) : null}{' '}
+      {mine?.lastError ? (
+        <Pill tone="coral" title={mine.lastError}>
+          Not delivered
+        </Pill>
+      ) : null}{' '}
+      <span className={mine?.sent ? undefined : 'muted'}>{reminderSummary(mine)}</span>
+    </>
   );
 }

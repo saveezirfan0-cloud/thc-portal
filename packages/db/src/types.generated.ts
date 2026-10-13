@@ -9431,11 +9431,24 @@ export type Database = {
         Args: { p_group: string };
         Returns: string;
       };
+      invite_roster_possible_matches: {
+        Args: never;
+        Returns: {
+          applied_at: string;
+          entry_email: string;
+          entry_id: string;
+          staff_email: string;
+          staff_id: string;
+          staff_name: string;
+          staff_status: string;
+        }[];
+      };
       invite_roster_reminder_config: { Args: never; Returns: Json };
       invite_roster_reminders: {
         Args: { p_apply_link?: string; p_now?: string };
         Returns: Json;
       };
+      invite_roster_report: { Args: { p_now?: string }; Returns: Json };
       invite_worker: {
         Args: {
           p_ignore_target?: boolean;
@@ -9467,6 +9480,10 @@ export type Database = {
       link_event_series: {
         Args: { p_clone: string; p_source: string };
         Returns: string;
+      };
+      link_invite_roster_entry: {
+        Args: { p_entry: string; p_staff: string };
+        Returns: Json;
       };
       link_staff_account: {
         Args: { p_staff: string; p_user: string };
@@ -10513,6 +10530,7 @@ export type Database = {
         Args: { p_event: string; p_recipients: string[] };
         Returns: Json;
       };
+      set_invite_roster_reminders: { Args: { p_enabled: boolean }; Returns: Json };
       set_my_time_format: { Args: { p_format: string }; Returns: string };
       set_staff_gender: {
         Args: { p_gender: string; p_staff: string };

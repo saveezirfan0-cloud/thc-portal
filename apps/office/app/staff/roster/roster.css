@@ -1,0 +1,76 @@
+/*
+ * Page-local styles for /staff/roster (ADR-0123): the "sent per day" bars.
+ * Tokens only (CLAUDE.md): no colour or radius the design system does not
+ * already name.
+ */
+.roster-chart {
+  margin: var(--sp-16) 0 0;
+}
+.roster-chart .k {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  text-transform: var(--label-case);
+  letter-spacing: var(--label-track);
+  font-weight: var(--label-weight);
+  color: var(--muted);
+  margin-bottom: var(--sp-8);
+}
+.roster-chart .bars {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 2px;
+  align-items: end;
+  height: 140px;
+  border-bottom: 1px solid var(--line);
+}
+.roster-chart .bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+.roster-chart .bar .fill {
+  display: block;
+  width: min(100%, 28px);
+  min-height: 0;
+  background: var(--cyan-solid);
+  border-radius: var(--r-track) var(--r-track) 0 0;
+}
+.roster-chart .bar.today .d {
+  color: var(--text);
+  font-weight: 700;
+}
+.roster-chart .bar:hover .fill {
+  opacity: 0.8;
+}
+.roster-chart .bar .v {
+  font-family: var(--font-num);
+  font-size: var(--fs-11);
+  color: var(--muted);
+  margin-bottom: var(--sp-4);
+}
+.roster-chart .bar .d {
+  position: absolute;
+  bottom: -20px;
+  font-size: var(--fs-10);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.roster-chart .bars + * {
+  margin-top: var(--sp-28);
+}
+.roster-chart {
+  padding-bottom: var(--sp-22);
+}
+@media (max-width: 600px) {
+  .roster-chart .bar .d {
+    display: none;
+  }
+  .roster-chart .bar.today .d,
+  .roster-chart .bar:first-child .d {
+    display: inline;
+  }
+}

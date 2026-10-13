@@ -38,6 +38,13 @@ const MESSAGES: Readonly<Record<string, string>> = {
   too_many_rows: 'Up to 5,000 rows at a time — split the list and load it in parts.',
   not_authorised: 'Only the office can do this.',
   read_only: 'Your login is read-only, so this cannot be changed.',
+  not_permitted: 'Only an owner or manager can change Payroll IDs.',
+  // link_invite_roster_entry (ADR-0123)
+  unknown_entry: 'That person is no longer on the list. Reload the page.',
+  unknown_staff: 'That staff record is no longer there. Reload the page.',
+  name_mismatch: 'The names do not agree, so they were not linked.',
+  payroll_id_taken: 'Somebody else already has this Payroll ID. Check who on the Staff page.',
+  has_other_payroll_id: 'This person already has a different Payroll ID.',
 };
 
 interface RpcClient {
@@ -81,4 +88,49 @@ export async function removeRosterEntries(ids: string[] | null): Promise<RemoveR
   if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
   revalidatePath('/staff/roster');
   return { ok: true, removed: Number(data ?? 0) };
+}
+
+export type LinkResult =
+  { ok: true; payrollId: string | null; spudbros: string } | { ok: false; message: string };
+
+/**
+ * Link a list row to the person who applied under another email (ADR-0123):
+ * `link_invite_roster_entry()` applies the Payroll ID and group and consumes
+ * the row, so the daily reminders stop. Owner and manager only, in the
+ * database.
+ */
+export async function linkRosterEntry(entryId: string, staffId: string): Promise<LinkResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { data, error } = await supabase.rpc('link_invite_roster_entry', {
+    p_entry: entryId,
+    p_staff: staffId,
+  });
+  if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
+  revalidatePath('/staff/roster');
+  const result = (data ?? {}) as { payrollId?: string | null; spudbros?: string };
+  return {
+    ok: true,
+    payrollId: result.payrollId ?? null,
+    spudbros: result.spudbros ?? 'unchanged',
+  };
+}
+
+export type ToggleResult =
+  { ok: true; enabled: boolean; cancelled: number } | { ok: false; message: string };
+
+/**
+ * Turn the daily reminder (IR1) on or off (ADR-0123). Off also cancels the
+ * reminders queued and not yet sent, so it stops at once.
+ */
+export async function setRemindersEnabled(enabled: boolean): Promise<ToggleResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { data, error } = await supabase.rpc('set_invite_roster_reminders', {
+    p_enabled: enabled,
+  });
+  if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
+  revalidatePath('/staff/roster');
+  const result = (data ?? {}) as { enabled?: boolean; cancelled?: number };
+  return { ok: true, enabled: result.enabled ?? enabled, cancelled: Number(result.cancelled ?? 0) };
 }

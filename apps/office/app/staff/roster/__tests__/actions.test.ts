@@ -124,3 +124,49 @@ describe('removeRosterEntries', () => {
     expect(result.ok ? '' : result.message).toMatch(/read-only/);
   });
 });
+
+describe('linkRosterEntry (ADR-0123)', () => {
+  it('links the list row to the staff record through the manager’s session', async () => {
+    rpc.mockResolvedValue({
+      data: { payrollId: '7153', group: 'thc', spudbros: 'unchanged' },
+      error: null,
+    });
+    const { linkRosterEntry } = await import('../actions');
+    const result = await linkRosterEntry('entry-1', 'staff-1');
+    expect(rpc).toHaveBeenCalledWith('link_invite_roster_entry', {
+      p_entry: 'entry-1',
+      p_staff: 'staff-1',
+    });
+    expect(result).toEqual({ ok: true, payrollId: '7153', spudbros: 'unchanged' });
+  });
+
+  it('turns each refusal into a sentence', async () => {
+    const { linkRosterEntry } = await import('../actions');
+    for (const code of ['name_mismatch', 'payroll_id_taken', 'not_permitted', 'unknown_entry']) {
+      rpc.mockResolvedValue({ data: null, error: { message: code } });
+      const result = await linkRosterEntry('e', 's');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.message).not.toBe(code);
+    }
+  });
+});
+
+describe('setRemindersEnabled (ADR-0123)', () => {
+  it('turns the daily reminder off, and says how many queued ones it stopped', async () => {
+    rpc.mockResolvedValue({ data: { enabled: false, cancelled: 412 }, error: null });
+    const { setRemindersEnabled } = await import('../actions');
+    const result = await setRemindersEnabled(false);
+    expect(rpc).toHaveBeenCalledWith('set_invite_roster_reminders', { p_enabled: false });
+    expect(result).toEqual({ ok: true, enabled: false, cancelled: 412 });
+  });
+
+  it('refuses a read-only login in a sentence', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'read_only' } });
+    const { setRemindersEnabled } = await import('../actions');
+    const result = await setRemindersEnabled(true);
+    expect(result).toEqual({
+      ok: false,
+      message: 'Your login is read-only, so this cannot be changed.',
+    });
+  });
+});

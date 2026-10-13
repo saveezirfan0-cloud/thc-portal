@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
+import { parseRosterReport } from './report';
+import type { RosterReportData } from './report';
 
 /**
  * Reads for /staff/roster (ADR-0107): the people on the invite list who have
@@ -20,6 +22,8 @@ export interface RosterEntry {
 
 export interface RosterPageData {
   waiting: RosterEntry[];
+  /** The reminder report and possible matches (ADR-0123); null when it could not be read. */
+  report: RosterReportData | null;
   problem: string | null;
 }
 
@@ -36,17 +40,23 @@ interface PageQuery extends PromiseLike<{
 
 interface ReadClient {
   from(table: 'invite_roster'): { select(columns: string): PageQuery };
+  rpc(fn: 'invite_roster_report'): PromiseLike<{
+    data: unknown;
+    error: { message: string } | null;
+  }>;
 }
 
 export async function loadRosterPage(): Promise<RosterPageData> {
   if (!supabaseConfigured()) {
     return {
       waiting: [],
+      report: null,
       problem:
         'This environment has no Supabase project, so the invite list cannot be read. See docs/04-setup-github-vercel-supabase.md.',
     };
   }
   const supabase = createClient(await cookies()) as unknown as ReadClient;
+  const reportCall = supabase.rpc('invite_roster_report');
   const waiting: RosterEntry[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
@@ -55,9 +65,15 @@ export async function loadRosterPage(): Promise<RosterPageData> {
       .order('loaded_at', { ascending: false })
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1);
-    if (error) return { waiting: [], problem: error.message };
+    if (error) return { waiting: [], report: null, problem: error.message };
     waiting.push(...(data ?? []));
     if ((data?.length ?? 0) < PAGE) break;
   }
-  return { waiting, problem: null };
+  // The report is extra: if it fails, the list still shows, and says why.
+  const { data: reportData, error: reportError } = await reportCall;
+  return {
+    waiting,
+    report: reportError ? null : parseRosterReport(reportData),
+    problem: reportError ? `The reminder report could not be read: ${reportError.message}` : null,
+  };
 }
