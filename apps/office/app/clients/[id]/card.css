@@ -60,6 +60,16 @@
   font: inherit;
   padding: 0 0 0 var(--sp-4);
 }
+/* A saved row's chips: one line each, cut with an ellipsis, so one long
+   description does not stretch the table across the screen. */
+.dcs-view .chip,
+.dcs-suggest button.chip {
+  display: inline-block;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .dcs-suggest {
   margin-top: var(--sp-8);
 }
