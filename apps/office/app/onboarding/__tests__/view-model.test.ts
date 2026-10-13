@@ -401,6 +401,27 @@ describe('card lines', () => {
     });
   });
 
+  it('says SpudBros Express staff have no interview (ADR-0118)', () => {
+    const row = candidate({ spudbros_express: true, willo_linked: true });
+    expect(cardLines(row, 'interview_requested', NOW)[1]).toEqual({
+      text: 'No interview — SpudBros Express; moving to Documents',
+      tone: 'muted',
+    });
+  });
+
+  it('but not once they have done a Willo interview', () => {
+    const done = candidate({
+      spudbros_express: true,
+      willo_linked: true,
+      willo_completed_at: '2026-09-22T14:03:00Z',
+    });
+    const texts = cardLines(done, 'interview_completed', NOW).map((line) => line.text);
+    expect(texts.some((text) => text.startsWith('Interview completed'))).toBe(true);
+    expect(texts.join(' ')).not.toContain('No interview');
+    const thc = candidate({ spudbros_express: true, thc_shifts_enabled: true });
+    expect(cardLines(thc, 'interview_requested', NOW)[1]!.text).toMatch(/^No interview/);
+  });
+
   it('says plainly when the candidate is not in Willo yet', () => {
     expect(cardLines(candidate(), 'interview_requested', NOW)[1]!.text).toMatch(/not connected/);
   });

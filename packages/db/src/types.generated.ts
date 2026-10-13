@@ -10599,6 +10599,29 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown };
         Returns: unknown;
       };
+      spudbros_skip_blocked: { Args: { p_staff: string }; Returns: boolean };
+      spudbros_skip_due: {
+        Args: { p_limit?: number; p_now?: string };
+        Returns: {
+          attempt: number;
+          email: string;
+          staff_id: string;
+          user_id: string;
+        }[];
+      };
+      spudbros_skip_failed: {
+        Args: { p_error: string; p_staff: string };
+        Returns: undefined;
+      };
+      spudbros_skip_interview: {
+        Args: {
+          p_activation_link: string;
+          p_install_link: string;
+          p_staff: string;
+          p_user: string;
+        };
+        Returns: Json;
+      };
       st_addpoint: {
         Args: { geom1: unknown; geom2: unknown };
         Returns: unknown;

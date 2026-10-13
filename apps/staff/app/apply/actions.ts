@@ -134,6 +134,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
   }
 
   const email = values.email.trim().toLowerCase();
+  const source = applySourceFrom(formData.get(SOURCE_FIELD));
 
   const answer = await submit(
     {
@@ -146,7 +147,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
     },
     // Shape-checked again here: the hidden field is as editable as any other.
     referralCodeFrom(formData.get(REFERRAL_FIELD)),
-    applySourceFrom(formData.get(SOURCE_FIELD)),
+    source,
   );
   if (!answer) return { errors: {}, values, failure: APPLY_UNAVAILABLE };
 
@@ -172,5 +173,8 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
     path: '/apply',
   });
 
-  redirect('/apply/submitted');
+  // ADR-0118: SpudBros Express staff are not sent the Willo interview; their
+  // next email is THC's set-up email. Which page they applied on, not the
+  // outcome (§2.12), picks the wording.
+  redirect(source === 'spudbros' ? '/apply/submitted?from=spudbros' : '/apply/submitted');
 }

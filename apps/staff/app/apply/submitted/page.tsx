@@ -15,10 +15,18 @@ export const metadata = {
  * record already existed or why it was blocked. Nothing on this page comes
  * from the outcome of the submission, which is the point.
  */
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: Promise<{ from?: string | string[] }>;
+}) {
   // Written by the server action for this visitor only, and expires in ten
   // minutes. Its absence is not an error: the screen simply omits the line.
   const sentTo = (await cookies()).get(SENT_TO_COOKIE)?.value;
+  // ADR-0118: the page they applied on (/apply/spudbros), never the outcome.
+  // SpudBros Express staff skip the Willo interview; THC's set-up email (E3)
+  // is what comes next.
+  const spudbros = (searchParams ? await searchParams : {}).from === 'spudbros';
 
   return (
     <div className="apply-page">
@@ -36,16 +44,32 @@ export default async function Page() {
             ✓
           </span>
           <h2>Check your inbox</h2>
-          <p className="lead">
-            We&apos;ve sent you an email from <b style={{ color: 'var(--text)' }}>Willo</b> with a
-            link to your video interview. Complete it whenever you&apos;re ready — it takes about
-            ten minutes and you can record it on your phone.
-          </p>
+          {spudbros ? (
+            <p className="lead">
+              We&apos;ve sent you an email from{' '}
+              <b style={{ color: 'var(--text)' }}>The Hospitality Company</b> titled &ldquo;Activate
+              your account&rdquo;, with a link to set your password and download the app. There is
+              no video interview for SpudBros Express staff.
+            </p>
+          ) : (
+            <p className="lead">
+              We&apos;ve sent you an email from <b style={{ color: 'var(--text)' }}>Willo</b> with a
+              link to your video interview. Complete it whenever you&apos;re ready — it takes about
+              ten minutes and you can record it on your phone.
+            </p>
+          )}
 
           <div className="alert junk-tip" role="note">
             <b>Check your junk or spam folder.</b> The email can take a few minutes to arrive, and
-            it sometimes lands in junk. If it&apos;s there, mark it &ldquo;Not junk&rdquo; and add{' '}
-            <span className="mono">notification@willotalent.com</span> to your contacts.
+            it sometimes lands in junk. If it&apos;s there, mark it &ldquo;Not junk&rdquo;
+            {spudbros ? (
+              <> and add The Hospitality Company to your contacts.</>
+            ) : (
+              <>
+                {' '}
+                and add <span className="mono">notification@willotalent.com</span> to your contacts.
+              </>
+            )}
           </div>
 
           <div className="box">
@@ -57,7 +81,11 @@ export default async function Page() {
             ) : null}
             <div className="row" style={{ marginTop: sentTo ? 8 : 0 }}>
               <span className="label">From</span>
-              <span className="mono sm">Willo (interview invitation)</span>
+              <span className="mono sm">
+                {spudbros
+                  ? 'The Hospitality Company (set up your login)'
+                  : 'Willo (interview invitation)'}
+              </span>
             </div>
           </div>
 
