@@ -48,6 +48,7 @@ import {
 import type { InviteDue, WilloEvent } from '../../../packages/db/src/willo.ts';
 import { issueActivationLink } from '../../../packages/db/src/provision.ts';
 import type { AdminAuth } from '../../../packages/db/src/provision.ts';
+import { staffAppOrigin } from '../../../packages/db/src/origin.ts';
 import { runSpudbrosSkipSweep } from '../../../packages/db/src/spudbros.ts';
 import type { SkipDue } from '../../../packages/db/src/spudbros.ts';
 
@@ -213,7 +214,8 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
 
   // An Accept that will move the card: the login first, exactly as the
   // office Accept does, then link + E3 in one transaction.
-  const origin = env('STAFF_APP_URL');
+  // As typed: a bare host reads as https (staffAppOrigin, 13.10.2026).
+  const origin = staffAppOrigin(env('STAFF_APP_URL'));
   if (!origin) {
     // Retryable on purpose: set the secret and Willo's next retry lands.
     console.error('[willo-webhook] STAFF_APP_URL is not set — E3 cannot carry a link', log);
@@ -345,7 +347,7 @@ function invite(request: Request): Promise<Response> {
  * Without STAFF_APP_URL nothing is minted and each is recorded as failed.
  */
 async function skipSpudbros(db: SupabaseClient) {
-  const origin = env('STAFF_APP_URL') ?? '';
+  const origin = staffAppOrigin(env('STAFF_APP_URL')) ?? '';
   return runSpudbrosSkipSweep({
     async due() {
       const { data, error } = await db.rpc('spudbros_skip_due', { p_limit: 20 });

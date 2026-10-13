@@ -26,10 +26,12 @@ import { runChaserSweep } from '../../../packages/db/src/chasers.ts';
 import type { ChaserQueueAnswer } from '../../../packages/db/src/chasers.ts';
 import { issueActivationLink } from '../../../packages/db/src/provision.ts';
 import type { AdminAuth } from '../../../packages/db/src/provision.ts';
+import { staffAppOrigin } from '../../../packages/db/src/origin.ts';
 
 Deno.serve((request) =>
   runJob('onboarding-chasers', request, async (db) => {
-    const origin = Deno.env.get('STAFF_APP_URL') ?? '';
+    // As typed: a bare host reads as https (staffAppOrigin, 13.10.2026).
+    const origin = staffAppOrigin(Deno.env.get('STAFF_APP_URL')) ?? '';
     const now = new Date().toISOString();
 
     const result = await runChaserSweep({
@@ -61,7 +63,7 @@ Deno.serve((request) =>
     // link; with no STAFF_APP_URL the SQL queues nothing and says so.
     const { data: invites, error: invitesError } = await db.rpc('invite_roster_reminders', {
       p_now: now,
-      p_apply_link: origin ? `${origin.replace(/\/+$/, '')}/apply` : null,
+      p_apply_link: origin ? `${origin}/apply` : null,
     });
     if (invitesError) throw new Error(`invite_roster_reminders: ${invitesError.message}`);
 
