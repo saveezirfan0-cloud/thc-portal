@@ -17,15 +17,15 @@ Implemented as CSS custom properties and component classes in `wireframes/assets
 | `--coral` | `#FF6E61` | danger, violations, blocked, rejected, alerts |
 | `--text` | `#E9EEF5` | body text |
 | `--muted` | `#8A97A3` | secondary text, labels |
-| `--control-line` | `#5D6B7E` (light `#958676`, warm dark `#64708A`) | the edge of a control — input, select, default button, a removed worker's dashed avatar slot. 3:1 on every ground (WCAG 1.4.11); `--line` stays the divider (ADR-0118) |
+| `--control-line` | `#5D6B7E` (light `#958676`, warm dark `#64708A`) | the edge of a control — input, select, default button, a removed worker's dashed avatar slot. 3:1 on every ground (WCAG 1.4.11); `--line` stays the divider (ADR-0121) |
 
-Fonts (Scope style): **Space Grotesk** headings · **Inter** body · **IBM Plex Mono** labels (uppercase, 0.1em letter-spacing) — `.label`, `.pill`, table headers, KPI captions, times. The product (Warm, both modes) sets headings and body in **Plus Jakarta Sans** in all three apps (ADR-0118); mono stays for codes.
+Fonts (Scope style): **Space Grotesk** headings · **Inter** body · **IBM Plex Mono** labels (uppercase, 0.1em letter-spacing) — `.label`, `.pill`, table headers, KPI captions, times. The product (Warm, both modes) sets headings and body in **Plus Jakarta Sans** in all three apps (ADR-0121); mono stays for codes.
 
 Native widgets: `color-scheme` is `dark` by default and `light` on the light ground (tokens.css), so a select's popup, scrollbars and date pickers follow the theme.
 
 ## Non-negotiables
 1. **Zero border-radius** on everything; the circular logo is the only exception (`.logo.round`).
-2. **Circular avatars** in the product (Warm, `--r-avatar: 50%`), real selfies; initials fallback. Square only in the Scope §1.6 literal rendering (`--r-avatar: 0`). Instruction of the product owner, 12.10.2026 (ADR-0118). A "+N" overflow chip closes a row of faces at the faces' size (`<AvatarGroup more>` → `.avatar.more`).
+2. **Circular avatars** in the product (Warm, `--r-avatar: 50%`), real selfies; initials fallback. Square only in the Scope §1.6 literal rendering (`--r-avatar: 0`). Instruction of the product owner, 12.10.2026 (ADR-0121). A "+N" overflow chip closes a row of faces at the faces' size (`<AvatarGroup more>` → `.avatar.more`).
 3. Sidebar active: 3px cyan left bar + `--cyan-dim` fill + cyan text.
 4. Buttons animate on hover (lift + sheen); primary = cyan on navy text.
 5. Mobile chrome: frosted glass (`backdrop-filter: blur(18px)`) on top bar, bottom nav and sheets, cyan/purple radial glow under the glass, collapsing header (logo left, avatar right stay).

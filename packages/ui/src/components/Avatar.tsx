@@ -34,7 +34,7 @@ export function initials(name: string): string {
 
 /**
  * The onboarding selfie carries through the whole system: a circle in the
- * product (warm, ADR-0118), square only in the scope §1.6 literal rendering,
+ * product (warm, ADR-0121), square only in the scope §1.6 literal rendering,
  * falling back to monogram initials on the divider colour. The shape is a
  * token (`--r-avatar`), never a prop.
  */

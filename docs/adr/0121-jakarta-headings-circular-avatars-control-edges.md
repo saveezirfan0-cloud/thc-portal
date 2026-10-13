@@ -1,4 +1,4 @@
-# ADR-0118 · Plus Jakarta Sans headings and circular avatars in the product; control edges at 3:1
+# ADR-0121 · Plus Jakarta Sans headings and circular avatars in the product; control edges at 3:1
 
 **Status:** Accepted · Amends `docs/07-design-system.md` (non-negotiable 2) and `docs/09-visual-direction.md` (Type family, Avatars) · Builds on ADR-0003, ADR-0007 · **Instruction of the product owner, 12.10.2026**
 

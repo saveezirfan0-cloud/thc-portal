@@ -66,7 +66,7 @@ describe('self-hosted fonts', () => {
     }
   });
 
-  it('ships no face that no token names (ADR-0118 retired Outfit)', () => {
+  it('ships no face that no token names (ADR-0121 retired Outfit)', () => {
     // A declared family nobody reads is dead weight in every app's CSS and,
     // worse, an invitation to start using it again by accident.
     const declared = new Set(faces.map((f) => field(f, 'font-family')?.replace(/'/g, '')));

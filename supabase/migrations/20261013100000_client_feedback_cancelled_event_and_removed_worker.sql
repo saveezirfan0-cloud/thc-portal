@@ -26,7 +26,7 @@
 -- the event having started, one entry per worker per event — with those
 -- two additions. `create or replace` keeps the grants 20260927160100 set
 -- (authenticated only; no anon, no PUBLIC); they are not restated.
--- 806_client_feedback_cancelled_and_removed pins it. Forward-only.
+-- 810_client_feedback_cancelled_and_removed pins it. Forward-only.
 -- =====================================================================
 
 create or replace function public.submit_client_feedback(p_booking_id uuid, p_rating integer, p_text text default null)

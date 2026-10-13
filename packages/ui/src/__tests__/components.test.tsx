@@ -648,7 +648,7 @@ describe('modal and auth card', () => {
   });
 });
 
-describe('ADR-0118 additions', () => {
+describe('ADR-0121 additions', () => {
   it('closes a row of faces with a "+N" chip the size of the faces', () => {
     const markup = html(
       <AvatarGroup size="sm" more={4}>

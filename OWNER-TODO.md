@@ -354,7 +354,7 @@ Settings the round depends on, and the choices it recorded as defaults.
       - ADR-0040 — the 10 h below-degree band (the completion-letter PDF wins
         over the v1.5 changelog), visa hour limits, the NI number check.
 
-## 10 · After the Client Portal finishing round (ADR-0118, ADR-0119, ADR-0120)
+## 10 · After the Client Portal finishing round (ADR-0121, ADR-0119, ADR-0120)
 
 The sign-in throttles, recovery-only `/reset`, the security headers and the
 payroll-flag lock this round first carried are the 12.10 security round's

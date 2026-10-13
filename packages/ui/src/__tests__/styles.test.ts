@@ -147,7 +147,7 @@ describe('typography', () => {
     expect(token(':root', '--label-case')).toBe('uppercase');
   });
 
-  it('sets headings and body in Plus Jakarta Sans in warm, sentence case (ADR-0118)', () => {
+  it('sets headings and body in Plus Jakarta Sans in warm, sentence case (ADR-0121)', () => {
     const warm = ":root[data-style='warm']";
     expect(token(warm, '--font-head')).toMatch(/^'Plus Jakarta Sans'/);
     expect(token(warm, '--font-body')).toMatch(/^'Plus Jakarta Sans'/);
@@ -411,7 +411,7 @@ describe('phone touch targets (§1.2)', () => {
   });
 });
 
-describe('control edges (WCAG 1.4.11, ADR-0118)', () => {
+describe('control edges (WCAG 1.4.11, ADR-0121)', () => {
   const css = stripComments(sheets['components.css']!);
   const rule = (selector: string) => {
     const start = css.indexOf(`${selector} {`);

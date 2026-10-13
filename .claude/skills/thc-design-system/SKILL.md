@@ -10,7 +10,7 @@ Source: Scope of Work §1.6 (web) and §10.1 (mobile). Reference implementation:
 ## Tokens
 
 `--bg #04080F` · `--panel #0B1220` · `--line #1C2839` · `--cyan #3EDCEC` (primary) · `--purple #A879FF` (Auto-Assign ONLY) · `--green #3DDC97` · `--amber #F5B83D` · `--coral #FF6E61` (danger) · `--text #E9EEF5` · `--muted #8A97A3`.
-Fonts (scope): Space Grotesk (headings) · Inter (body) · IBM Plex Mono (labels: uppercase, 0.1em tracking, 10.5px). Warm (the product, both modes): Plus Jakarta Sans for headings AND body in all three apps (ADR-0118); mono only for codes.
+Fonts (scope): Space Grotesk (headings) · Inter (body) · IBM Plex Mono (labels: uppercase, 0.1em tracking, 10.5px). Warm (the product, both modes): Plus Jakarta Sans for headings AND body in all three apps (ADR-0121); mono only for codes.
 `--control-line` is the edge of an input / select / default button / removed-avatar slot (3:1, WCAG 1.4.11); `--line` is a divider only. `color-scheme` follows the theme.
 
 ## Two axes (ADR-0003)
@@ -20,7 +20,7 @@ Style `warm` (default: pill controls, 22–28px cards, circular avatars, Plus Ja
 ## Rules (Scope style; Warm relaxes 1 and the mono labels only)
 
 1. `border-radius: 0` on everything. Only `.logo.round` is circular.
-2. Avatars: square in scope, **circles in warm** (`--r-avatar`, ADR-0118 — never hard-code it); selfie photo; initials fallback; "+N" overflow via `<AvatarGroup more={n} size>` (`.avatar.more`).
+2. Avatars: square in scope, **circles in warm** (`--r-avatar`, ADR-0121 — never hard-code it); selfie photo; initials fallback; "+N" overflow via `<AvatarGroup more={n} size>` (`.avatar.more`).
 3. Sidebar active: 3px cyan left bar + `rgba(62,220,236,.10)` fill + cyan text.
 4. Buttons: hover lift + sheen; primary = cyan bg, navy text; purple = auto-assign; danger = coral outline (solid for destructive confirm); a finished small action is `<Button size="sm" className="sent" disabled>` (green, stays green disabled).
    Forms: `<Input labelAction>` for "Forgot password?" on the label row; `<PasswordRules>` for any new-password checklist; `<Modal dismissible={false}>` while a submit is in flight (the modal traps focus and returns it to the opener).

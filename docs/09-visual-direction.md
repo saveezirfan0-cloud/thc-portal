@@ -15,10 +15,10 @@
 |---|---|---|---|
 | Corners | Zero radius everywhere | 6–18 px radii; pills fully rounded; phone frame 40 px | Square corners read as terminal / dashboard software. Rounded surfaces are the visual norm for the 18–30 audience and for hospitality brands. |
 | Labels, table headers, pills | IBM Plex Mono, uppercase, wide tracking | Plus Jakarta Sans bold, uppercase, tighter tracking | Mono everywhere is the single strongest "engineering tool" cue. Mono stays only for codes (share code, Employee ID). |
-| Type family | Space Grotesk + Inter | Plus Jakarta Sans throughout (bold headings, regular body) in all three apps — the handoff's Outfit headings are retired (ADR-0118, 12.10.2026) | One warm geometric family with clear weight contrast; friendly counters, wide apertures, excellent at small sizes on phones. |
+| Type family | Space Grotesk + Inter | Plus Jakarta Sans throughout (bold headings, regular body) in all three apps — the handoff's Outfit headings are retired (ADR-0121, 12.10.2026) | One warm geometric family with clear weight contrast; friendly counters, wide apertures, excellent at small sizes on phones. |
 | Times and money | Mono | Body face with tabular numerals | Aligns in columns without the terminal look. |
 | Sidebar active state | Cyan left bar + fill | Rounded cyan fill (bar removed) | Same signal, softer form. Scope style keeps the bar. |
-| Avatars | Square | Circles (`--r-avatar: 50%`) | The product owner's call (ADR-0118, 12.10.2026): a face in a circle is how every app the workforce uses draws a person, and it is what the boards draw. The earlier "square with 10 px radius" proposal is withdrawn. |
+| Avatars | Square | Circles (`--r-avatar: 50%`) | The product owner's call (ADR-0121, 12.10.2026): a face in a circle is how every app the workforce uses draws a person, and it is what the boards draw. The earlier "square with 10 px radius" proposal is withdrawn. |
 | Buttons | 36 px, mono-flavoured | 40–48 px, bold label, rounded | Thumb-sized targets for check-in, Accept, I'm ready. |
 | Palette | Navy, cyan, purple, green, amber, coral | **Unchanged.** Same ten tokens. | The brand is fixed; the surface around it changes. |
 | Dark only | Navy always | Dark and light, following the phone/OS setting by default | Workers use both; light mode is expected on iOS/Android and reads better outdoors at a venue entrance. |
@@ -26,7 +26,7 @@
 ## Light mode rules
 - Ground is warm off-white (`#F6F4EF`), panels white, lines `#E3DED4`, ink is deep navy (`#141A2C`). This keeps the brand's navy present as ink rather than as a wall.
 - Cyan `#3EDCEC` stays for fills (primary buttons, active fills, glows). For text and borders on white it fails contrast, so a deeper teal `#0B8A99` ("cyan-ink") is used. Every tone has a fill and an ink pair: green/amber/coral/purple likewise.
-- Control edges (input, select, default button) use `--control-line`, not the `--line` divider: 3:1 against every ground in both themes (WCAG 1.4.11), still a quiet warm grey on cream (ADR-0118).
+- Control edges (input, select, default button) use `--control-line`, not the `--line` divider: 3:1 against every ground in both themes (WCAG 1.4.11), still a quiet warm grey on cream (ADR-0121).
 - `color-scheme` follows the ground, so native select popups, scrollbars and date pickers are light on cream and dark on navy.
 - Glass surfaces (mobile top bar, bottom nav, sheets) become translucent white; the cyan/purple glow under the glass stays, slightly stronger.
 - Nothing is hard-coded in pages: every component reads tokens, so a screen looks right in all four combinations without per-screen work. `packages/ui` will carry the same tokens.
