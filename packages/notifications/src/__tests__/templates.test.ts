@@ -1300,13 +1300,13 @@ describe('IR1 — invited, not applied yet (ADR-0122)', () => {
   it('carries the apply link and the same words after the greeting in both', () => {
     const rest = (v: string) => body('IR1', v).split('\n\n').slice(1).join('\n\n');
     expect(rest('named')).toBe(rest('unnamed'));
-    expect(rest('named')).toContain('Apply here: {applyLink}');
+    expect(rest('named')).toContain('Register now: {applyLink}');
     for (const words of [
       'AXLR8 Staff App will stop working very soon',
-      'Please use this email address',
+      'using this email address, so we can match you to your existing record',
       'Willo will email you the link',
       'WhatsApp shift messages are stopping',
-      "You'll get this reminder each day until you've applied.",
+      "You'll receive this reminder each day until you've applied.",
     ]) {
       expect(rest('named'), words).toContain(words);
     }

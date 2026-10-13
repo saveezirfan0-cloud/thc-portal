@@ -227,7 +227,7 @@ OC chasers.
 
 | Code | Channel · to | When | Title / subject | Body |
 | --- | --- | --- | --- | --- |
-| IR1 | email · the listed address (from admin@) | a `thc` row on the invite list whose email nobody in staff holds | `{name}, reminder: please complete your registration on the new THC Staff App` (`named`); `Reminder: please complete…` (`unnamed`) | the owner's email of 13.10: AXLR8 is being switched off, the four steps (apply with this email · Willo · password and app · profile), **Register now** → `{applyLink}`, WhatsApp shift messages stopping, what to have ready |
+| IR1 | email · the listed address (from admin@) | a `thc` row on the invite list whose email nobody in staff holds | `{name}, reminder: please complete your registration on the new THC Staff App` (`named`); `Reminder: please complete…` (`unnamed`) | the owner's email of 13.10: AXLR8 is being switched off, Action required, the four steps (apply with this email · Willo · password and app · profile), **Register now** → `{applyLink}`, WhatsApp shift messages stopping, what to have ready, need help |
 
 - **Once a UK day**, on the first onboarding-chasers run inside
   `settings.invite_roster_reminders` from/until (10:00–18:00 by default).
@@ -237,8 +237,9 @@ OC chasers.
   email (a name mismatch, or a Payroll ID held elsewhere).
 - **`{applyLink}`** is `<STAFF_APP_URL>/apply`, passed by the job; the SQL
   queues nothing without it.
-- **Laid out in THC Light** like every email (ADR-0073); the owner's own
-  dark design was not used.
+- **The owner's own dark design**, the one exception to THC Light
+  (`email-invite-reminder.ts`). Its words are in `invite-reminder-copy.ts`,
+  which builds the plain text as well.
 
 ## Client shift requirements (ADR-0110)
 

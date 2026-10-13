@@ -24,6 +24,8 @@
  * never from this file.
  */
 
+import { INVITE_REMINDER_TEXT } from './invite-reminder-copy.ts';
+
 export type Channel = 'push' | 'email';
 
 /**
@@ -107,24 +109,6 @@ const OFFICE_AND_PAYROLL = [
   'admin@thehospitalitycompany.co.uk',
   'thc_payroll@topsourceworldwide.com',
 ] as const;
-
-/**
- * IR1's words after the greeting (ADR-0122), the owner's email of
- * 13.10.2026 laid out as register copy. `{applyLink}` is the button.
- */
-const INVITE_REMINDER_BODY =
-  "This is your daily reminder: we haven't yet received your registration on our new Staff App.\n\n" +
-  'The AXLR8 Staff App will stop working very soon. After that, every shift is offered, confirmed and checked in through the new THC Staff App only. So that we can keep offering you shifts and make sure you are paid correctly, please complete these steps before AXLR8 stops working:\n\n' +
-  '1. Apply: enter your name, email, mobile number and age on the application page. Please use this email address, so we can match you to your existing record.\n' +
-  "2. Record your video interview: Willo will email you the link. Check your spam or junk folder if you can't see it.\n" +
-  "3. Set your password and install the app: we'll email you a password link once your interview is approved.\n" +
-  '4. Complete your profile: 11 short steps, about 20 to 30 minutes, including your bank details, HMRC starter checklist and Right to Work check. Once your documents are verified, your shifts unlock.\n\n' +
-  'Apply here: {applyLink}\n\n' +
-  "WhatsApp shift messages are stopping. Going forward you won't receive a WhatsApp message to attend a shift: you'll need to confirm and re-confirm your shifts in the Staff App.\n\n" +
-  "Have these ready: passport or EU / EEA ID card, share code (if you're not British or Irish), NI number, two referees' contact details, bank details, and a selfie.\n\n" +
-  "Need help? Just reply to this email and we'll get you sorted. You'll get this reminder each day until you've applied.\n\n" +
-  'Thank you for getting this done.\n\n' +
-  'Best wishes,\nThe Hospitality Company';
 
 export const TEMPLATES = {
   // ────────────────────────────────────────────────────────────────────────
@@ -998,10 +982,10 @@ export const TEMPLATES = {
     variants: {
       named: {
         title: '{name}, reminder: please complete your registration on the new THC Staff App',
-        body: `Hi {name},\n\n${INVITE_REMINDER_BODY}`,
+        body: `Hi {name},\n\n${INVITE_REMINDER_TEXT}`,
       },
       unnamed: {
-        body: `Hi there,\n\n${INVITE_REMINDER_BODY}`,
+        body: `Hi there,\n\n${INVITE_REMINDER_TEXT}`,
       },
     },
     trigger:

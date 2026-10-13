@@ -16,6 +16,7 @@ import {
   templateToBlocks,
 } from '../email-html';
 import { EMAIL_PRESENTATION } from '../email-layouts';
+import { INVITE_REMINDER_LOGO } from '../email-invite-reminder';
 import { inlineLogoAttachment } from '../email-logo';
 import type { EmailMessage, OutboxRow } from '../outbox';
 import { messageFor } from '../outbox';
@@ -28,19 +29,23 @@ import { TEMPLATES } from '../templates';
 
 /** What a reader sees: tags dropped, entities decoded, whitespace collapsed. */
 function visibleText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/g, ' ')
-    .replace(/<title>[\s\S]*?<\/title>/g, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<br>/g, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ');
+  return (
+    html
+      .replace(/<style[\s\S]*?<\/style>/g, ' ')
+      .replace(/<title>[\s\S]*?<\/title>/g, ' ')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<br>/g, '\n')
+      // Inline tags sit inside a sentence: dropping them must not add a space.
+      .replace(/<\/?(?:a|strong|span)\b[^>]*>/g, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+  );
 }
 
 /** Every piece of every line of the text is on the HTML page (a facts row splits at ": "). */
@@ -443,7 +448,8 @@ describe('every register email has HTML (ADR-0073)', () => {
     expect(Object.keys(EMAIL_PRESENTATION).sort()).toEqual([...SENDABLE].sort());
   });
 
-  it.each(SENDABLE_CASES)(
+  // IR1 is the one email in the owner's own design (ADR-0122), held below.
+  it.each(SENDABLE_CASES.filter(({ code }) => code !== 'IR1'))(
     '$label renders as THC Light HTML with its own words',
     ({ code, variant }) => {
       const m = email(code, undefined, variant);
@@ -478,16 +484,6 @@ describe('every register email has HTML (ADR-0073)', () => {
     expect(m.html).toContain('Set your password to start onboarding:');
   });
 
-  it('draws the IR1 apply link as the Register now button, with the URL printed under it', () => {
-    const m = email('IR1', undefined, 'named');
-    expect(m.subject).toBe(
-      'Amara Kovač, reminder: please complete your registration on the new THC Staff App',
-    );
-    expect(m.html).toContain('>Register now</a>');
-    expect(m.html).toContain('href="https://staff.thehospitalitycompany.co.uk/apply"');
-    expect(m.html).toContain('>Daily reminder</p>');
-  });
-
   it('never makes a button, or a link, of a URL that is not http(s)', () => {
     const m = email('E3', { ...SAMPLE, link: 'javascript:alert(1)' });
     expect(m.html).not.toMatch(/href="javascript:/i);
@@ -516,6 +512,93 @@ describe('every register email has HTML (ADR-0073)', () => {
     if (m.kind !== 'email') throw new Error('not an email');
     expect(m.html).toContain('href="mailto:office@thc.example"');
     expect(m.html).not.toContain('admin@thehospitalitycompany.co.uk');
+  });
+});
+
+describe("IR1 — the owner's own design (ADR-0122)", () => {
+  const ir1 = (payload: Record<string, string> = {}) =>
+    email(
+      'IR1',
+      {
+        name: 'Amara',
+        applyLink: 'https://staff.thehospitalitycompany.co.uk/apply',
+        ...payload,
+      },
+      payload.variant ?? 'named',
+    );
+
+  it('is the dark navy design, with the cyan to violet accent', () => {
+    const { html } = ir1();
+    expect(html).toMatch(/^<!DOCTYPE html>/);
+    expect(html).toContain('<body style="margin:0;padding:0;background-color:#0a0e18;">');
+    expect(html).toContain('bgcolor="#171b26"');
+    expect(html).toContain('max-width:600px');
+    expect(html).toContain(`<img src="${INVITE_REMINDER_LOGO}" height="52"`);
+    expect(html).toContain('⏰&nbsp; Daily reminder</span>');
+    expect(html).toContain('>AXLR8 is being switched off soon</h1>');
+    expect(html).toContain('⚠️&nbsp; Action required');
+    expect(html).toContain('>The steps you must complete</td>');
+    for (const step of ['Step 1', 'Step 2', 'Step 3', 'Step 4'])
+      expect(html).toContain(`>${step}</div>`);
+  });
+
+  it('keeps the rules every email keeps', () => {
+    const { html } = ir1();
+    // Every gradient has a solid fallback first, for Outlook.
+    const gradients = html.match(/background-image:linear-gradient/g) ?? [];
+    const fallbacks =
+      html.match(/background-color:#3edcec;background-image:linear-gradient/g) ?? [];
+    expect(gradients.length).toBe(2);
+    expect(fallbacks.length).toBe(gradients.length);
+    expect(html).not.toMatch(/<script/i);
+    expect(html).not.toMatch(/src="data:/i);
+    expect(html).not.toMatch(/<link[^>]+stylesheet/i);
+    expect(html).not.toMatch(/javascript:/i);
+    expect(html).toContain('Registered Company in England and Wales 12411407');
+    // The footer link reads as the address, not as Markdown.
+    expect(html).toContain('>www.thehospitalitycompany.co.uk</a>');
+    expect(html).not.toContain('](');
+  });
+
+  it('shows every word of its plain text', () => {
+    for (const variant of ['named', 'unnamed']) {
+      const m = ir1({ variant });
+      expectSameWords(m.body, m.html);
+    }
+  });
+
+  it('greets by first name, or "Hi there" without one', () => {
+    expect(ir1().html).toContain('>Hi Amara,</p>');
+    expect(ir1().subject).toBe(
+      'Amara, reminder: please complete your registration on the new THC Staff App',
+    );
+    expect(ir1({ variant: 'unnamed' }).html).toContain('>Hi there,</p>');
+    expect(ir1({ variant: 'unnamed' }).html).not.toContain('Amara');
+  });
+
+  it('links the application page, the button and the printed URL to the apply link', () => {
+    const { html } = ir1();
+    expect(
+      html.match(/href="https:\/\/staff\.thehospitalitycompany\.co\.uk\/apply"/g),
+    ).toHaveLength(3);
+    expect(html).toContain('>the application page</a>');
+    expect(html).toContain('>Register now &nbsp;→</a>');
+  });
+
+  it('escapes the name, and will not draw a link that is not http(s)', () => {
+    const { html } = ir1({ name: '<b>Amara</b>' });
+    expect(html).not.toContain('<b>Amara</b>');
+    expect(html).toContain('Hi &lt;b&gt;Amara&lt;/b&gt;,');
+    expect(() => ir1({ applyLink: 'javascript:alert(1)' })).toThrow(/http\(s\) applyLink/);
+  });
+
+  it('names the reply-to it is given in the footer', () => {
+    const m = messageFor(
+      emailRow('IR1', { variant: 'named', name: 'Amara', applyLink: 'https://staff.test/apply' }),
+      { replyTo: 'office@thc.example' },
+    );
+    if (m.kind !== 'email') throw new Error('not an email');
+    expect(m.html).toContain('href="mailto:office@thc.example"');
   });
 });
 
