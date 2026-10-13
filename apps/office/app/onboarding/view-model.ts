@@ -331,6 +331,11 @@ export function willoLine(row: BoardCandidateRow, now: Date, format?: TimeFormat
       text: `Interview completed ${shortDay(row.willo_completed_at)} ${ukTime(row.willo_completed_at, format)}${via}`,
     };
   }
+  // ADR-0118: SpudBros Express staff do not do the interview; the
+  // willo-invite sweep moves them to Documents with E3.
+  if (row.spudbros_express === true) {
+    return { text: 'No interview — SpudBros Express; moving to Documents', tone: 'muted' };
+  }
   if (!row.willo_linked) {
     return { text: 'Not yet created in Willo — the integration is not connected', tone: 'muted' };
   }

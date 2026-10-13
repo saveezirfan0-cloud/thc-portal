@@ -72,7 +72,9 @@ describe('applySourceFrom', () => {
 
 describe('apply() — the SpudBros Express source', () => {
   it('sends p_source = spudbros from /apply/spudbros', async () => {
-    expect(await submit(form({ source: 'spudbros' }))).toBe('REDIRECT /apply/submitted');
+    expect(await submit(form({ source: 'spudbros' }))).toBe(
+      'REDIRECT /apply/submitted?from=spudbros',
+    );
     expect(adminRpc).toHaveBeenCalledTimes(1);
     expect(adminRpc.mock.calls[0]![1]).toMatchObject({
       p_email: 'nina@example.com',
