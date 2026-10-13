@@ -85,14 +85,26 @@
   text-overflow: ellipsis;
 }
 
-/* Wide desktop. The role lines are one grid with a column per part — role,
+/* The role lines pick their layout from the CARD's width, not the window's:
+   the sidebar takes ~250px, so a 1440px laptop has a card of ~1000px, and a
+   viewport breakpoint gave it the wide grid below — too wide for the card,
+   so the role chips were painted over and the margins and Status ran off
+   the right edge. The table's scroll wrapper is the container. */
+.table-scroll:has(> .dash-upcoming) {
+  container: dash-upcoming / inline-size;
+}
+
+/* Wide card. The role lines are one grid with a column per part — role,
    window, allocation, fill, margin — so every part sits in the same column
    on every line of the event. Each line used to be its own wrapping flex
    row, so the parts landed wherever they fell and no two lines matched. */
-@media (min-width: 1200px) {
+@container dash-upcoming (min-width: 1200px) {
+  /* The role column's floor is a real width, not 0: inside the table's
+     auto layout a 0 floor let the track collapse, and the window column
+     was painted over the role chips. Past the floor the name ellipsises. */
   .dash-roles {
     display: grid;
-    grid-template-columns: minmax(0, max-content) repeat(4, max-content);
+    grid-template-columns: minmax(9rem, max-content) repeat(4, max-content);
     column-gap: var(--sp-12);
     row-gap: var(--sp-10);
     align-items: center;
@@ -102,6 +114,8 @@
   }
   .dash-roles .r > .chip {
     justify-self: start;
+    min-width: 0;
+    max-width: min(15rem, 100%);
   }
   .dash-roles .r > .alloc,
   .dash-roles .r > .margin {
@@ -119,6 +133,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* In the table the cap must be a fixed measure: the table sizes its columns
+   before the cell has a width, so the 100% above resolved to nothing and
+   the whole client name set the column's width — which took the room the
+   Roles cell needed and pushed the margins and Status off the card. */
+@media (min-width: 761px) {
+  .dash-upcoming .dash-clip {
+    max-width: 26ch;
+  }
 }
 
 /* The financial snapshot: three tiles inside one panel, drawn flat because
@@ -146,7 +169,7 @@
    stacked on the right. In one row the five parts were squeezed until a
    time printed one character per line. A laptop too narrow for the wide
    grid above gets the same block, inside the table. */
-@media (max-width: 1199px) {
+@container dash-upcoming (max-width: 1199.98px) {
   .dash-roles {
     gap: 0;
   }
@@ -195,13 +218,25 @@
 
 /* Laptop, inside the table: the Roles cell keeps room for a window and its
    "your time" line on one line each, so neither breaks mid-phrase. */
-@media (min-width: 761px) and (max-width: 1199px) {
-  .dash-upcoming td.cell-wide {
-    min-width: 16rem;
-  }
-  .dash-roles .r > .win,
-  .dash-roles .r > .win .sub {
-    white-space: nowrap;
+@media (min-width: 761px) {
+  @container dash-upcoming (max-width: 1199.98px) {
+    .dash-upcoming td.cell-wide {
+      min-width: 16rem;
+    }
+    .dash-roles .r > .win,
+    .dash-roles .r > .win .sub {
+      white-space: nowrap;
+    }
+    /* A 1280px laptop leaves a card of ~980px beside the sidebar. The
+       client name and the event title give up a little measure (both end
+       in an ellipsis or wrap, with the full text on hover or on the
+       board) so the Status column stays inside the card. */
+    .dash-upcoming .dash-clip {
+      max-width: 20ch;
+    }
+    .dash-upcoming td.cell-title {
+      min-width: 10rem;
+    }
   }
 }
 
