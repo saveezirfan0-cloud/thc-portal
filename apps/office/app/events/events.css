@@ -255,6 +255,66 @@
   color: var(--muted);
 }
 
+/* ---- list: column measures ------------------------------------------
+   The list is eight columns with a role section a line, so on a laptop it
+   used to run past the card: the cells were squeezed to their narrowest
+   word ("Mon / 12 / Oct", an event title five lines tall), and Fill,
+   Status and PO were cut off. The card scrolls now (packages/ui), and the
+   columns are measured so the table needs that scroller as rarely as it
+   can: short values never break, the PO sits under the status (ADR-0127),
+   the title gets a readable measure, and the long free-text names (client,
+   venue, role) end in an ellipsis with the full name on hover. */
+/* Above the phone width only: below it each event is a card (card-rows)
+   whose cells take the card's own padding and width. */
+@media (min-width: 761px) {
+  .tbl.ev-list :is(th, td) {
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
+  }
+  .tbl.ev-list :is(th, td):first-child {
+    padding-left: var(--sp-20);
+  }
+  .tbl.ev-list :is(th, td):last-child {
+    padding-right: var(--sp-20);
+  }
+  .tbl.ev-list td.ev-date,
+  .tbl.ev-list td.ev-window,
+  .tbl.ev-list td.ev-window .sub,
+  .tbl.ev-list td.ev-fill,
+  .tbl.ev-list td.ev-fill .sub,
+  .tbl.ev-list td.ev-status,
+  .tbl.ev-list td.ev-status .sub {
+    white-space: nowrap;
+  }
+  /* These never wrap, so the shared cell floor (packages/ui) would only
+     pad them out; the title takes the room instead. Prefixed to outrank
+     that floor's selector. */
+  :is(.panel, .panel-b)
+    > table.tbl.ev-list
+    :is(th, td:is(.ev-date, .ev-window, .ev-fill, .ev-status)) {
+    min-width: 0;
+  }
+  :is(.panel, .panel-b) > table.tbl.ev-list td.cell-title {
+    min-width: 10.5rem;
+  }
+  /* A length, not a percentage: a percentage does not cap what the text
+     asks of an auto-width column, so the column grew to the full name. */
+  .tbl.ev-list .ev-clip {
+    max-width: 17ch;
+  }
+}
+/* A cancelled event's fill note is a sentence, not a count. */
+.tbl.ev-list td.ev-fill .muted {
+  white-space: normal;
+}
+.tbl .roles .r > .chip {
+  display: block;
+  justify-self: start;
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- list: the roles cell stacks one line per role section ---------- */
 /* The role sections share three columns — role, window, allocation — so
    the windows line up under each other however long the role name is. A
@@ -292,6 +352,10 @@
   .tbl.card-rows .roles {
     display: flex;
     flex-direction: column;
+    /* Each line takes the card's width. The desktop grid's
+       `align-items: center` would otherwise shrink every line to its
+       content and centre it, so the role lines zig-zagged down the card. */
+    align-items: stretch;
     gap: 0;
   }
   .tbl.card-rows .roles .r {
@@ -318,6 +382,8 @@
     grid-area: role;
     justify-self: start;
     min-width: 0;
+    /* The card has room for the whole name; the cap is for the table. */
+    max-width: 100%;
   }
   .tbl.card-rows .roles .r > .win {
     grid-area: win;

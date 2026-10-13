@@ -278,7 +278,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
+            <table className="tbl card-rows clients-list">
               <thead>
                 <tr>
                   <th>Client</th>
@@ -325,11 +325,16 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                         </div>
                       )}
                     </td>
-                    <td data-label="Policies" className="sm">
-                      <span className="muted">Breaks:</span>{' '}
-                      {client.pays_breaks ? 'paid' : 'unpaid'} ·{' '}
-                      <span className="muted">Buffer:</span>{' '}
-                      {client.pays_buffer ? 'paid' : 'strict'}
+                    <td data-label="Policies" className="sm client-policies">
+                      <span className="policy">
+                        <span className="muted">Breaks:</span>{' '}
+                        {client.pays_breaks ? 'paid' : 'unpaid'}
+                      </span>{' '}
+                      ·{' '}
+                      <span className="policy">
+                        <span className="muted">Buffer:</span>{' '}
+                        {client.pays_buffer ? 'paid' : 'strict'}
+                      </span>
                     </td>
                     <td data-label="Events" className="num">
                       {client.event_count}
@@ -343,11 +348,11 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                         )}
                       </td>
                     ) : null}
-                    <td data-label="Date added" className="sm">
+                    <td data-label="Date added" className="sm client-nowrap">
                       {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
                       <time dateTime={client.created_at}>{formatDateAdded(client.created_at)}</time>
                     </td>
-                    <td data-label="Added by" className="sm">
+                    <td data-label="Added by" className="sm client-nowrap">
                       {client.created_by_name ?? <span className="muted">—</span>}
                     </td>
                   </tr>
