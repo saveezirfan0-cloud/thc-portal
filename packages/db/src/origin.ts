@@ -35,3 +35,32 @@ export function appOrigin(
 export function recoveryRedirect(origin: string): string {
   return `${origin.replace(/\/+$/, '')}/auth/confirm`;
 }
+
+/**
+ * The Staff App's origin from the `STAFF_APP_URL` Edge Function secret, the
+ * way a person types it: `staff.thehospitalitycompany.co.uk` (no scheme)
+ * reads as https, and a trailing slash or path (`…/apply`) is dropped. Every
+ * link built from it (E3's and OC2's `/activate`, IR1's `/apply`) needs a
+ * bare origin, and on 13.10.2026 the secret was set without `https://`,
+ * which refused them all. Null when it is unset or not an http(s) address.
+ */
+export function staffAppOrigin(raw: string | null | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`;
+  let url: URL;
+  try {
+    url = new URL(withScheme);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  if (
+    url.username ||
+    url.password ||
+    (!url.hostname.includes('.') && url.hostname !== 'localhost')
+  ) {
+    return null;
+  }
+  return url.origin;
+}
