@@ -84,3 +84,32 @@ describe('/clients directory — Date added and Added by (§9.7)', () => {
     expect(markup).not.toContain('Clear filters');
   });
 });
+
+describe('/clients pager — rows per page (ADR-0124)', () => {
+  const many = (count: number) =>
+    Array.from({ length: count }, (_, index) =>
+      client({ id: `c${index}`, name: `Client ${String(index).padStart(3, '0')}` }),
+    );
+  const renderMany = (count: number) =>
+    renderToStaticMarkup(<ClientsScreen ratesVisible problem={null} clients={many(count)} />);
+
+  it('shows 25 by default, with 10, 25, 50 and 100 to choose from', () => {
+    const markup = renderMany(60);
+    expect(markup).toContain('Showing 1–25 of 60');
+    expect(markup).toContain('1 / 3');
+    expect(markup).toContain('aria-label="Rows per page"');
+    for (const size of [10, 25, 50, 100]) {
+      expect(markup).toMatch(new RegExp(`<option value="${size}"[^>]*>${size} / page</option>`));
+    }
+  });
+
+  it('fits a 22-client directory on one page but still offers the sizes', () => {
+    const markup = renderMany(22);
+    expect(markup).toContain('Showing 1–22 of 22');
+    expect(markup).toContain('aria-label="Rows per page"');
+  });
+
+  it('has no pager at all when the list fits the smallest size', () => {
+    expect(renderMany(10)).not.toContain('Rows per page');
+  });
+});
