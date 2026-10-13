@@ -63,6 +63,49 @@
 .dcs-suggest {
   margin-top: var(--sp-8);
 }
+/* Real dress codes are whole sentences ("Plain Black T-Shirt; Plain Black
+   Jeans; …"). A chip that never wraps sized the column to the longest one,
+   which pushed Edit / Save off the right of the card and squeezed the
+   charge-rate input to nothing. Here a chip wraps like a line of text, and
+   the column takes the room that is left rather than all of it. */
+.dcs-cell {
+  min-width: 14rem;
+}
+.dcs .chip,
+.dcs-suggest .chip {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+/* The charge-rate input keeps room for "£ 123.45" whatever the dress codes
+   beside it ask for; the input itself is min-width: 0 inside .input-row. */
+.rate-edit .input-row {
+  min-width: 7.5rem;
+}
+.rate-edit .input {
+  width: 100%;
+}
+
+/* The charge rate itself opens the row's edit (the header's ✎). */
+.rate-open {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--line);
+}
+.rate-open:hover,
+.rate-open:focus-visible {
+  color: var(--cyan-ink);
+  border-bottom-color: currentColor;
+}
+.rate-open span {
+  color: var(--muted);
+  font-size: var(--fs-11);
+}
 .dcs-suggest .chip {
   cursor: pointer;
   font: inherit;

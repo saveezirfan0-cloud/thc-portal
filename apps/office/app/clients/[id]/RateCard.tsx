@@ -246,7 +246,20 @@ function EditableRateCard({
                     <td>
                       <b>{row.role_name}</b>
                     </td>
-                    <td className="right-align mono">{gbp(row.charge_rate)}</td>
+                    <td className="right-align mono">
+                      {/* The ✎ in the header promises the figure itself opens
+                          the edit — the row's Edit button sits after the dress
+                          codes, which a long one can push out of sight. */}
+                      <button
+                        type="button"
+                        className="rate-open"
+                        aria-label={`Edit charge rate for ${row.role_name}`}
+                        disabled={pending}
+                        onClick={() => open(row)}
+                      >
+                        {gbp(row.charge_rate)} <span aria-hidden="true">✎</span>
+                      </button>
+                    </td>
                     <td className="right-align mono">{gbp(row.base_pay_rate)}</td>
                     <td className="right-align mono">{gbp(row.final_pay_rate)}</td>
                     <td className={`right-align mono ${marginTone(row.margin_pct)}`}>
@@ -256,7 +269,7 @@ function EditableRateCard({
                         {row.margin_pct === null ? '—' : `${row.margin_pct}%`}
                       </span>
                     </td>
-                    <td>
+                    <td className="dcs-cell">
                       <div className="dcs">
                         {row.dress_codes.length === 0 ? (
                           <span className="muted sm">
@@ -419,9 +432,9 @@ function EditingRow({
       <td>
         <b>{roleName}</b>
       </td>
-      <td>
+      <td className="rate-edit">
         <InputRow>
-          <Addon>£</Addon>
+          <Addon leading>£</Addon>
           <Input
             className="mono"
             value={rate}
@@ -435,7 +448,7 @@ function EditingRow({
       <td className="right-align mono">{basePay}</td>
       <td className="right-align mono">{finalPay}</td>
       <td className="right-align muted sm">saved on Save</td>
-      <td>
+      <td className="dcs-cell">
         <div className="dcs">
           {codes.map((code) => (
             <Chip key={code}>
