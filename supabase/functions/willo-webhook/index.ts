@@ -12,7 +12,7 @@
  *   POST /willo-webhook/invite   "Create the candidate in Willo" (Willo
  *                                then sends E1) — and, for SpudBros Express
  *                                staff, skip the interview instead: login,
- *                                Documents, E3 (ADR-0117). Service key only: the
+ *                                Documents, E3 (ADR-0118). Service key only: the
  *                                database's nudge trigger and the
  *                                `willo-invite` schedule call it.
  *
@@ -267,7 +267,7 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
  */
 function invite(request: Request): Promise<Response> {
   return runJob('willo-invite', request, async (db) => {
-    // ADR-0117: SpudBros Express staff skip the interview. Whoever of them
+    // ADR-0118: SpudBros Express staff skip the interview. Whoever of them
     // is still awaiting it gets their login and E3 here, Willo keys or not.
     // Never at the cost of THC's own invitations: an error here is logged
     // and counted, and the Willo sweep below still runs.
@@ -337,7 +337,7 @@ function invite(request: Request): Promise<Response> {
 }
 
 /**
- * SpudBros Express staff do not do the Willo interview (ADR-0117,
+ * SpudBros Express staff do not do the Willo interview (ADR-0118,
  * 20261012150000): `spudbros_skip_due()` leases those still awaiting it,
  * and each gets the office Accept's login + personal link, then Documents
  * and E3 through `spudbros_skip_interview()`. The order is

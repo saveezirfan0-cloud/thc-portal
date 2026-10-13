@@ -12,7 +12,7 @@ export const metadata = {
  * `/apply/spudbros` (ADR-0106) — the application for SpudBros Express staff.
  *
  * The same form, the same checks and the same eleven onboarding steps as
- * `/apply`, but no Willo interview (ADR-0117): they go straight to
+ * `/apply`, but no Willo interview (ADR-0118): they go straight to
  * Documents with THC's set-up email. What differs is who they are. A
  * candidate who comes through here is marked SpudBros Express staff by the
  * database (`record_application_source`), so once their documents are

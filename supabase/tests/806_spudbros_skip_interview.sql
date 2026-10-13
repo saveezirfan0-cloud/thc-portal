@@ -1,14 +1,14 @@
 -- =====================================================================
--- 805 · SpudBros Express staff skip the Willo interview (20261012150000,
---       ADR-0117)
+-- 806 · SpudBros Express staff skip the Willo interview (20261012150000,
+--       ADR-0118)
 --
 --   A. Who can reach the new functions.
 --   B. willo_invite_due() never leases a SpudBros candidate; THC's own
 --      still are.
---   C. spudbros_skip_due() leases every onboarding-only SpudBros candidate
---      awaiting the interview, once per backoff, and nobody else: never an
---      address that is an office or client login, never someone with THC
---      shifts on, never someone refused for good this period.
+--   C. spudbros_skip_due() leases every SpudBros candidate awaiting the
+--      interview (THC shifts on or not), once per backoff, and nobody else:
+--      never an address that is an office or client login, never someone
+--      refused for good this period.
 --   D. spudbros_skip_interview() links the login, moves them to
 --      Documents, queues E3 once, audits, in one transaction (a refused
 --      login moves nothing); keeps the record of an interview already
@@ -29,6 +29,7 @@ select plan(30);
 \set u_thc   '80500000-0000-4000-8000-0000000000a3'
 \set u_boss  '80500000-0000-4000-8000-0000000000a7'
 \set u_mis   '80500000-0000-4000-8000-0000000000a8'
+\set u_both  '80500000-0000-4000-8000-0000000000a9'
 \set c_off   '80500000-0000-4000-8000-000000000007'
 \set c_mis   '80500000-0000-4000-8000-000000000008'
 \set c_both  '80500000-0000-4000-8000-000000000009'
@@ -42,7 +43,8 @@ insert into auth.users (id, email, raw_app_meta_data, encrypted_password) values
   (:'u_thc',  'tia@spudskip.test', '{"role":"staff"}', ''),
   -- an office login, and a staff login under another address
   (:'u_boss', 'Boss@SpudSkip.test', '{"role":"admin"}', '$2a$10$hash'),
-  (:'u_mis',  'someone-else@spudskip.test', '{"role":"staff"}', '');
+  (:'u_mis',  'someone-else@spudskip.test', '{"role":"staff"}', ''),
+  (:'u_both', 'bo@spudskip.test', '{"role":"staff"}', '');
 
 -- Sam applied and is waiting for the interview (already sent to Willo, as
 -- the nine were before this); Dot is SpudBros and did the Willo interview
@@ -91,21 +93,21 @@ select ok(has_function_privilege('service_role', 'spudbros_skip_due(integer, tim
 -- =====================================================================
 select is((select array_agg(staff_id order by staff_id) from willo_invite_due(1000)
             where staff_id::text like '80500000-%'),
-  array[:'c_thc', :'c_both']::uuid[],
-  'willo_invite_due leases THC''s own applicant and SpudBros with THC shifts on, no onboarding-only one');
+  array[:'c_thc']::uuid[],
+  'willo_invite_due leases THC''s own applicant and no SpudBros one, THC shifts on or not');
 
 -- =====================================================================
 -- C · who is due to skip
 -- =====================================================================
 select is((select array_agg(staff_id order by staff_id) from spudbros_skip_due(50)
             where staff_id::text like '80500000-%'),
-  array[:'c_req', :'c_done', :'c_new', :'c_mis']::uuid[],
-  'every live onboarding-only SpudBros candidate awaiting the interview — not an office login''s address, not THC shifts on');
+  array[:'c_req', :'c_done', :'c_new', :'c_mis', :'c_both']::uuid[],
+  'every live SpudBros candidate awaiting the interview, THC shifts on too — not an office login''s address');
 select is((select count(*)::int from spudbros_skip_due(50) where staff_id::text like '80500000-%'),
   0, 'a lease holds them for the backoff: the next minute leases nobody twice');
 select is((select count(*)::int from spudbros_skip_due(50, now() + interval '6 minutes')
             where staff_id::text like '80500000-%'),
-  4, 'after the backoff they are leased again');
+  5, 'after the backoff they are leased again');
 select is((select email from spudbros_skip_due(50, now() + interval '2 hours') where staff_id = :'c_req'),
   'sam@spudskip.test', 'the lease carries the email the login is minted for');
 
@@ -150,8 +152,8 @@ select is((select array[status::text, coalesce(user_id::text, 'none')] from staf
 select is((select count(*)::int from notification_outbox where key like 'E3:staff:' || :'c_mis' || ':%'),
   0, 'and no E3 was queued');
 
-select is(spudbros_skip_interview(:'c_both', :'u_thc', :'link1', :'install') ->> 'outcome',
-  'unchanged', 'SpudBros with THC shifts on keeps THC''s interview');
+select is(spudbros_skip_interview(:'c_both', :'u_both', :'link1', :'install') ->> 'outcome',
+  'documents', 'SpudBros with THC shifts on skip it too');
 select throws_ok(
   format($$ select spudbros_skip_interview(%L, %L, %L, %L) $$, :'c_off', :'u_boss', :'link1', :'install'),
   'P0001', 'account_not_staff', 'an office login is never linked (the lease keeps the sweep from minting on it at all)');

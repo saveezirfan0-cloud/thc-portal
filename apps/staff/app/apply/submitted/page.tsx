@@ -23,7 +23,7 @@ export default async function Page({
   // Written by the server action for this visitor only, and expires in ten
   // minutes. Its absence is not an error: the screen simply omits the line.
   const sentTo = (await cookies()).get(SENT_TO_COOKIE)?.value;
-  // ADR-0117: the page they applied on (/apply/spudbros), never the outcome.
+  // ADR-0118: the page they applied on (/apply/spudbros), never the outcome.
   // SpudBros Express staff skip the Willo interview; THC's set-up email (E3)
   // is what comes next.
   const spudbros = (searchParams ? await searchParams : {}).from === 'spudbros';

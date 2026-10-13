@@ -57,7 +57,7 @@ export interface CandidateRow {
   willo_completed_at: string | null;
   willo_decision: 'accepted' | 'rejected' | null;
   willo_decided_at: string | null;
-  /** 'spudbros': SpudBros Express staff skip the interview (ADR-0117). */
+  /** 'spudbros': SpudBros Express staff skip the interview (ADR-0118). */
   willo_decided_via: 'willo' | 'office' | 'spudbros' | null;
   docs_total: number;
   docs_verified: number;
@@ -361,7 +361,7 @@ export interface CandidateData {
   facts?: CandidateFacts | null;
   /** Set when the interview was marked complete by hand, not by Willo (ADR-0077). */
   interviewOverride?: InterviewOverride | null;
-  /** The SpudBros sweep could not move them to Documents this period (ADR-0117). */
+  /** The SpudBros sweep could not move them to Documents this period (ADR-0118). */
   spudbrosSkipFailure?: SpudbrosSkipFailure | null;
   problem: string | null;
 }
@@ -388,7 +388,7 @@ export interface InterviewOverride {
   reason: string;
 }
 
-/** The audit row the SpudBros skip sweep leaves when it fails (ADR-0117). */
+/** The audit row the SpudBros skip sweep leaves when it fails (ADR-0118). */
 export interface SpudbrosSkipFailure {
   at: string;
   error: string;

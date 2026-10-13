@@ -876,22 +876,20 @@ function InterviewRequested({
 }
 
 /**
- * ADR-0117: skipped the interview as SpudBros Express staff (onboarding
- * only), or is about to. Anyone who did a Willo interview keeps its record,
- * and SpudBros with THC shifts switched on still do the interview.
+ * ADR-0118: skipped the interview as SpudBros Express staff, or is about to.
+ * Anyone who did a Willo interview keeps its record.
  */
 function skipsInterview(row: CandidateRow): boolean {
   if (row.willo_completed_at) return false;
   return (
     row.willo_decided_via === 'spudbros' ||
     (row.spudbros_express === true &&
-      row.thc_shifts_enabled !== true &&
       (row.status === 'interview_requested' || row.status === 'interview_completed'))
   );
 }
 
 /**
- * ADR-0117: SpudBros Express staff do not do the Willo interview. Until the
+ * ADR-0118: SpudBros Express staff do not do the Willo interview. Until the
  * willo-invite sweep moves them, and afterwards when the office looks back
  * at the interview steps, this says so instead. If the sweep could not move
  * them, the failure is shown and the office keeps its way out (ADR-0077).

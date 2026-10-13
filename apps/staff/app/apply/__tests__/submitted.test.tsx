@@ -13,7 +13,7 @@ const render = async (from?: string) =>
 
 /**
  * "Check your inbox" (§2.7). SpudBros Express staff skip the Willo interview
- * (ADR-0117), so after /apply/spudbros the next email is THC's set-up email,
+ * (ADR-0118), so after /apply/spudbros the next email is THC's set-up email,
  * and the page must not send them looking for a Willo one.
  */
 describe('/apply/submitted', () => {

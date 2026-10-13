@@ -4,7 +4,7 @@ import type { SkipDue, SkipSweepDeps } from '../spudbros';
 import type { IssuedLink } from '../provision';
 
 /**
- * SpudBros Express staff skip the Willo interview (ADR-0117): the SQL
+ * SpudBros Express staff skip the Willo interview (ADR-0118): the SQL
  * leases who is due; this mints each one's login and link and hands it to
  * spudbros_skip_interview(). What must hold: a failure is recorded and
  * never stops the others, and nothing reaches the database without a link.

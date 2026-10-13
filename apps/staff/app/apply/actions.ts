@@ -173,7 +173,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
     path: '/apply',
   });
 
-  // ADR-0117: SpudBros Express staff are not sent the Willo interview; their
+  // ADR-0118: SpudBros Express staff are not sent the Willo interview; their
   // next email is THC's set-up email. Which page they applied on, not the
   // outcome (§2.12), picks the wording.
   redirect(source === 'spudbros' ? '/apply/submitted?from=spudbros' : '/apply/submitted');

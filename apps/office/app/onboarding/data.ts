@@ -345,7 +345,7 @@ interface FactsRead {
   };
 }
 
-/** audit_log through a narrow shape, for the one row ADR-0077 (and ADR-0117) reads. */
+/** audit_log through a narrow shape, for the one row ADR-0077 (and ADR-0118) reads. */
 interface OverrideRead {
   from(table: 'audit_log'): {
     select(columns: string): {
@@ -480,7 +480,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .order('at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    // ADR-0117: the latest time the SpudBros sweep could not move them to
+    // ADR-0118: the latest time the SpudBros sweep could not move them to
     // Documents. Best-effort, like the override above.
     (supabase as unknown as OverrideRead)
       .from('audit_log')
@@ -592,7 +592,7 @@ function toOverride(row: {
   };
 }
 
-/** The latest `spudbros_skip_failed` row of this onboarding period (ADR-0117). */
+/** The latest `spudbros_skip_failed` row of this onboarding period (ADR-0118). */
 function toSkipFailure(
   row: { at: string; data: { error?: unknown } | null },
   periodStart: string,

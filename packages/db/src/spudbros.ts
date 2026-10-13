@@ -1,8 +1,8 @@
 /**
- * SpudBros Express staff skip the Willo interview (ADR-0117,
+ * SpudBros Express staff skip the Willo interview (ADR-0118,
  * 20261012150000) — the order of the calls.
  *
- * The rules are SQL and held by pgTAP 805: `spudbros_skip_due()` leases
+ * The rules are SQL and held by pgTAP 806: `spudbros_skip_due()` leases
  * every SpudBros candidate still awaiting the interview (with a backoff, so
  * the every-minute sweep and the nudge never mint two logins for one
  * person), and `spudbros_skip_interview()` links the login, moves them to

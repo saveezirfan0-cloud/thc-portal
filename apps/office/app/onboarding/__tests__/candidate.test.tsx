@@ -632,7 +632,7 @@ describe('the candidate profile, roles and clients once the candidate has moved 
   });
 });
 
-describe('the candidate profile · SpudBros Express skip the interview (ADR-0117)', () => {
+describe('the candidate profile · SpudBros Express skip the interview (ADR-0118)', () => {
   const spud = { ...ROW, spudbros_express: true } as CandidateRow;
 
   const waiting = { ...spud, status: 'interview_requested' } as CandidateRow;
@@ -662,12 +662,12 @@ describe('the candidate profile · SpudBros Express skip the interview (ADR-0117
     expect(html).toContain('>Mark interview complete<');
   });
 
-  it('SpudBros with THC shifts on still do the interview', () => {
+  it('SpudBros with THC shifts on skip it too', () => {
     const html = render(
       data({ candidate: { ...waiting, thc_shifts_enabled: true } as CandidateRow }),
     );
-    expect(html).toContain('AI video interview · Willo');
-    expect(html).not.toContain('Interview · not needed');
+    expect(html).toContain('Interview · not needed');
+    expect(html).not.toContain('AI video interview · Willo');
   });
 
   const lookBackAtInterview = (candidate: CandidateRow) => {
