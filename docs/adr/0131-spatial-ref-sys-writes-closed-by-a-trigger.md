@@ -24,6 +24,8 @@ That was true of RLS and grants, not of triggers. Checked on the live project on
   ```
   If that is ever done, `001` assertion 2's exemption can go; the trigger can stay.
 - **One-way on Supabase.** `DROP TRIGGER` and `ALTER TABLE … DISABLE TRIGGER` both need the owner, so `postgres` can never remove this trigger (also checked on live). To stand it down, `create or replace` the guard with a body that only returns null. The migration's `DO` block makes a re-run a no-op for the same reason.
+- **Fails loudly, on purpose.** Unlike `20260921123503`, the migration has no `insufficient_privilege` branch: an environment where `postgres` lacks TRIGGER on this table stops `db push` / `db reset` rather than deploying green with the hole open, which is what ADR-0010 says went wrong last time.
+- **Not tested from pgTAP:** the `session_user = 'authenticator'` branch. Switching `session_user` needs a superuser login, which the suite does not have; the three API roles it would catch are each asserted directly.
 - ADR-0010's survivability argument (every geography column is 4326; nothing calls `ST_Transform`) is no longer what keeps the system safe, but it is still worth keeping true.
 
 ## Rejected alternatives
