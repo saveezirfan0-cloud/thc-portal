@@ -14,6 +14,7 @@ import {
 } from '../board-model';
 import { inviteWorker } from '../actions';
 import { ApplicationActions } from './ApplicationActions';
+import { StaffRoles } from './StaffRoles';
 
 /** Rows drawn before "Show all" — a role's pool can hold most of the workforce. */
 const FIRST_PAGE = 40;
@@ -210,7 +211,9 @@ function PoolRow({
       <Avatar name={entry.name} />
       <div className="who">
         <div className="n">{entry.name}</div>
-        <div className="s">{entry.roles.length > 0 ? entry.roles.join(' · ') : roleName}</div>
+        <div className="s">
+          <StaffRoles name={entry.name} roles={entry.roles} roleName={roleName} />
+        </div>
       </div>
       {entry.qualified ? (
         <Pill tone="cyan">

@@ -8,6 +8,7 @@ import {
   buildPool,
   buildUnavailable,
   canToggleAutoAssign,
+  dressCodeSummary,
   factorChips,
   handedOverLine,
   inviteAnywayPrompt,
@@ -622,5 +623,50 @@ describe('names on the board', () => {
     expect(shortName({ first: 'Deleted', last: 'account', removed: true, employeeId: 1042 })).toBe(
       'Deleted account #1042',
     );
+  });
+});
+
+describe('dress code, once per event (ADR-0128)', () => {
+  const blacks = 'Plain White Long Sleeved Collared Shirt, Plain Black Trousers';
+
+  it('one dress code on every section is shown once, for all roles', () => {
+    const summary = dressCodeSummary([
+      { roleName: 'Day Waiting Staff M&E', dressCode: blacks },
+      { roleName: 'Mid Morning Waiting M&E', dressCode: blacks },
+      { roleName: 'Mid Morning Waiting M&E', dressCode: `${blacks} ` },
+      { roleName: 'Cloakroom Staff', dressCode: blacks },
+    ]);
+    expect(summary.allRoles).toBe(true);
+    expect(summary.groups).toEqual([
+      {
+        dressCode: blacks,
+        roles: ['Day Waiting Staff M&E', 'Mid Morning Waiting M&E', 'Cloakroom Staff'],
+      },
+    ]);
+  });
+
+  it('different dress codes each name their roles, in running order', () => {
+    const summary = dressCodeSummary([
+      { roleName: 'Chef', dressCode: 'Chef whites' },
+      { roleName: 'Kitchen Porter', dressCode: 'Kitchen blacks' },
+      { roleName: 'Waiting Staff', dressCode: 'Black & whites' },
+      { roleName: 'Bar Staff', dressCode: 'Kitchen blacks' },
+    ]);
+    expect(summary.allRoles).toBe(false);
+    expect(summary.groups).toEqual([
+      { dressCode: 'Chef whites', roles: ['Chef'] },
+      { dressCode: 'Kitchen blacks', roles: ['Kitchen Porter', 'Bar Staff'] },
+      { dressCode: 'Black & whites', roles: ['Waiting Staff'] },
+    ]);
+  });
+
+  it('a section without a dress code is left out and the rest are not "all roles"', () => {
+    const summary = dressCodeSummary([
+      { roleName: 'Chef', dressCode: 'Chef whites' },
+      { roleName: 'Runner', dressCode: '' },
+    ]);
+    expect(summary.allRoles).toBe(false);
+    expect(summary.groups).toEqual([{ dressCode: 'Chef whites', roles: ['Chef'] }]);
+    expect(dressCodeSummary([{ roleName: 'Runner', dressCode: '  ' }]).groups).toEqual([]);
   });
 });

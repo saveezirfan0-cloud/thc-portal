@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Avatar, Pill } from '@thc/ui';
 import {
   type EventStatus,
@@ -33,9 +34,10 @@ import { BookingActions } from './BookingActions';
 import { InviteAnyway } from './InviteAnyway';
 import { PotentialPool } from './PotentialPool';
 import { RoleBlock } from './RoleBlock';
+import { StaffRoles } from './StaffRoles';
 import { REQUIRED_GENDER_LABEL } from '../../draft';
 
-function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: string }) {
+function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: ReactNode }) {
   return (
     <>
       <Avatar name={person.name} deleted={person.name.startsWith('Deleted account')} />
@@ -53,9 +55,10 @@ function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub:
  * Sections are ordered by their own start time so the board reads like the
  * running order of the day, and the header counts CONFIRMED only: an
  * invitation fills nothing. The header also carries the role's own window
- * (UK, plus "your time" outside the UK — §1.8), its dress code, pay with
- * the holiday-inclusive final rate and the margin (§9.8), and the role's
- * auto-assign switch (§3.4). Clicking the heading collapses the block; a
+ * (UK, plus "your time" outside the UK — §1.8), pay with the
+ * holiday-inclusive final rate and the margin (§9.8), and the role's
+ * auto-assign switch (§3.4). The dress code is not repeated here: the Event
+ * panel shows each one once, with the roles that wear it (ADR-0128). Clicking the heading collapses the block; a
  * block whose window is over starts collapsed; Unavailable starts collapsed
  * (wireframe).
  *
@@ -126,11 +129,6 @@ export function RoleBoard({
             endsAt={section.endsAt}
             suffix={`UK time · ${formatHours(sectionHours({ startsAt, endsAt }))}`}
           />
-          {section.dressCode ? (
-            <span className="sm muted">
-              Dress code: <b>{section.dressCode}</b>
-            </span>
-          ) : null}
           {/* Base, then base + 12.07% holiday broken out (§9.8), then the margin. */}
           {rate ? (
             <span className="rate sm muted">
@@ -330,7 +328,9 @@ export function RoleBoard({
             <div className="prow" key={person.staffId}>
               <Person
                 person={person}
-                sub={person.roles.length > 0 ? person.roles.join(' · ') : section.roleName}
+                sub={
+                  <StaffRoles name={person.name} roles={person.roles} roleName={section.roleName} />
+                }
               />
               {person.appliedAt ? (
                 <span className="applied">{appliedAgo(new Date(person.appliedAt))}</span>
