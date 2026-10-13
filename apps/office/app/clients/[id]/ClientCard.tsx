@@ -91,9 +91,7 @@ export function ClientCard({
           <div className="grid c3">
             <div className="kv" style={{ gridColumn: 'span 2' }}>
               <span className="k">Client name</span>
-              <span>
-                <b>{client.name}</b>
-              </span>
+              <span className="client-title">{client.name}</span>
               <span className="k">Contact</span>
               <span>{client.contact_name}</span>
               <span className="k">Phone</span>
