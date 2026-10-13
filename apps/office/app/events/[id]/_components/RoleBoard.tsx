@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Avatar, Pill } from '@thc/ui';
 import {
   type EventStatus,
@@ -33,9 +34,10 @@ import { BookingActions } from './BookingActions';
 import { InviteAnyway } from './InviteAnyway';
 import { PotentialPool } from './PotentialPool';
 import { RoleBlock } from './RoleBlock';
+import { StaffRoles } from './StaffRoles';
 import { REQUIRED_GENDER_LABEL } from '../../draft';
 
-function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: string }) {
+function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: ReactNode }) {
   return (
     <>
       <Avatar name={person.name} deleted={person.name.startsWith('Deleted account')} />
@@ -330,7 +332,9 @@ export function RoleBoard({
             <div className="prow" key={person.staffId}>
               <Person
                 person={person}
-                sub={person.roles.length > 0 ? person.roles.join(' · ') : section.roleName}
+                sub={
+                  <StaffRoles name={person.name} roles={person.roles} roleName={section.roleName} />
+                }
               />
               {person.appliedAt ? (
                 <span className="applied">{appliedAgo(new Date(person.appliedAt))}</span>
