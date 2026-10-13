@@ -34,7 +34,7 @@ const ROW: QualifiedStaffRow = {
   notes: null,
 };
 
-describe('qualified staff (§9.7, ADR-0124)', () => {
+describe('qualified staff (§9.7, ADR-0125)', () => {
   it('collapses a worker’s roles to one "N roles" button instead of a chip per role', () => {
     const html = renderToStaticMarkup(
       <QualifiedStaff clientId="c1" rows={[ROW]} rateCard={[]} staff={[]} />,

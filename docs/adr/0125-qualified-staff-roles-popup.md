@@ -1,4 +1,4 @@
-# ADR-0124 · Qualified staff: a worker's roles open in a pop-up
+# ADR-0125 · Qualified staff: a worker's roles open in a pop-up
 
 **Status:** Accepted · **Departs from:** `wireframes/backoffice/client-card.html` block 3 · Scope §9.7 · **Owner request:** 13.10.2026
 
