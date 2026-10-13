@@ -31,5 +31,5 @@ Once IR1 went out daily (ADR-0122), the owner asked for "a report on /staff/rost
 
 ## Consequences
 - One RPC per page load, alongside the paged list read. It reads the IR1 outbox rows through the `(template, id)` index and pairs about 900 list rows with staff on two hashed name keys, well inside the 8 s statement timeout.
-- A common name could pair a list row with the wrong person. Link is never automatic, the table shows both addresses and the stage, and the names must agree in the database too.
+- A common name could pair a list row with the wrong person. Link is never automatic (since ADR-0126 a SpudBros row's name pairing does mark a candidate still waiting for the interview as SpudBros, so they are never sent it; the Payroll ID still waits for Link), the table shows both addresses and the stage, and the names must agree in the database too.
 - pgTAP `812_invite_roster_report.sql`; vitest `report.test.ts` and the Link action in `actions.test.ts`.

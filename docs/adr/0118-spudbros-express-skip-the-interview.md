@@ -1,6 +1,6 @@
 # ADR-0118 · SpudBros Express staff skip the Willo interview
 
-**Status:** Accepted · **Refines:** Scope §2.4, ADR-0106, ADR-0107 · **Owner request:** 12.10.2026
+**Status:** Accepted · **Refines:** Scope §2.4, ADR-0106, ADR-0107 · **Owner request:** 12.10.2026 · **Extended by:** ADR-0126 (SpudBros on the list under another email are marked by name and skip it too)
 
 ## Context
 SpudBros Express staff already work for SpudBros, and THC onboards them only for their Right to Work check, documents and contract; THC never books them (ADR-0106). The Willo video interview is THC's hiring screen. Until now they were sent it like any applicant: on 12.10.2026 nine SpudBros Express people sat in **Interview requested** with a Willo invitation they had not started, and one had done the interview. Most had applied through the ordinary `/apply` link and were marked SpudBros by the invite list (ADR-0107), so the link they used made no difference.
