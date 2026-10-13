@@ -218,6 +218,30 @@ rule: **email until the account exists, push in the app after.**
 - **No Willo link in OC1.** Willo sends the interview invitation (E1) and
   nothing stores its URL, so OC1 points the candidate at that email.
 
+## The invite-list reminder (ADR-0122)
+
+The owner's request of 13.10.2026: a daily email to THC's own staff who were
+invited onto the new app (the invite list, ADR-0107) and have not applied
+yet. Before an application there is no candidate, so this is not one of the
+OC chasers.
+
+| Code | Channel · to | When | Title / subject | Body |
+| --- | --- | --- | --- | --- |
+| IR1 | email · the listed address (from admin@) | a `thc` row on the invite list whose email nobody in staff holds | `{name}, reminder: please complete your registration on the new THC Staff App` (`named`); `Reminder: please complete…` (`unnamed`) | the owner's email of 13.10: AXLR8 is being switched off, Action required, the four steps (apply with this email · Willo · password and app · profile), **Register now** → `{applyLink}`, WhatsApp shift messages stopping, what to have ready, need help |
+
+- **Once a UK day**, on the first onboarding-chasers run inside
+  `settings.invite_roster_reminders` from/until (10:00–18:00 by default).
+  Key `IR1:email:<md5 of address>:<UK date>`, each row due two seconds
+  after the last so other sends are not held behind ~900 of them. It stops when the row is consumed (they
+  apply) or removed on `/staff/roster`.
+- **Not SpudBros**, and not a kept row whose person applied under the listed
+  email (a name mismatch, or a Payroll ID held elsewhere).
+- **`{applyLink}`** is `<STAFF_APP_URL>/apply`, passed by the job; the SQL
+  queues nothing without it.
+- **The owner's own dark design**, the one exception to THC Light
+  (`email-invite-reminder.ts`). Its words are in `invite-reminder-copy.ts`,
+  which builds the plain text as well.
+
 ## Client shift requirements (ADR-0110)
 
 The owner's request of 08.10.2026: Leonardo Hotel St Paul's M&E asks a bar

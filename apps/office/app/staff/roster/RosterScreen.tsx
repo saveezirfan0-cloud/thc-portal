@@ -104,6 +104,11 @@ export function RosterScreen({
       </Panel>
 
       <Panel title={`Invited, not applied yet (${waiting.length})`}>
+        {/* ADR-0122: IR1, queued by the hourly onboarding-chasers job. */}
+        <p className="muted sm">
+          Everyone in the THC group gets a reminder email each day, from 10:00 (UK time), until they
+          apply. Removing someone from the list stops theirs.
+        </p>
         {waiting.length === 0 ? (
           <EmptyState>
             <h3>Nobody is waiting</h3>

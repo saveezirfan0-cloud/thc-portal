@@ -14,14 +14,17 @@
  * Beyond §8 the register carries four more families, each in its own list:
  * the completion letter requirement's CL codes (REQUIREMENT_CODES), two
  * extensions §8 should have named (EXTENSION_CODES), and the Staff App
- * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), and the
- * onboarding chasers OC (CHASER_CODES, ADR-0071).
+ * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), the
+ * onboarding chasers OC (CHASER_CODES, ADR-0071), and the invite-list
+ * reminder IR1 (INVITE_CODES, ADR-0122).
  *
  * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
  * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
  * 'timesheets'` comes from `settings.senders` at send time (`senders.ts`),
  * never from this file.
  */
+
+import { INVITE_REMINDER_TEXT } from './invite-reminder-copy.ts';
 
 export type Channel = 'push' | 'email';
 
@@ -963,6 +966,33 @@ export const TEMPLATES = {
     // would replace a candidate's N8 re-upload notification.
     tag: 'OC3',
   },
+
+  // The daily reminder to THC's own staff who were invited onto the new app
+  // and have not applied yet (ADR-0122): every `thc` row left on the invite
+  // list (ADR-0107), whose email nobody in the system holds. Queued by
+  // invite_roster_reminders() once a UK day from the hourly onboarding-chasers
+  // job, key `IR1:email:<md5 of address>:<UK date>`, paced two seconds
+  // apart so other sends are not held behind them; it stops when they apply (the
+  // row is consumed) or the office removes them from the list. `named`
+  // carries the first name the sheet gives, `unnamed` is for a row without one.
+  IR1: {
+    code: 'IR1',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Reminder: please complete your registration on the new THC Staff App',
+    variants: {
+      named: {
+        title: '{name}, reminder: please complete your registration on the new THC Staff App',
+        body: `Hi {name},\n\n${INVITE_REMINDER_TEXT}`,
+      },
+      unnamed: {
+        body: `Hi there,\n\n${INVITE_REMINDER_TEXT}`,
+      },
+    },
+    trigger:
+      'Somebody on the THC invite list (/staff/roster, ADR-0107) who has not applied with that email yet (invite_roster_reminders). Not in §8: an addition to scope v1.6, ADR-0122',
+    timing: 'daily, once a UK day between 10:00 and 18:00, until they apply',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -1083,6 +1113,13 @@ export const MESSAGE_CODES = ['OM1', 'OM2'] as const satisfies readonly Template
  * stopping: `first`, `second`, then `repeat` every day after.
  */
 export const CHASER_CODES = ['OC1', 'OC2', 'OC3'] as const satisfies readonly TemplateCode[];
+
+/**
+ * The invite-list reminder (ADR-0122): IR1, daily to THC staff invited onto
+ * the new app who have not applied yet. Before an application there is no
+ * candidate, so it is not one of the onboarding chasers above.
+ */
+export const INVITE_CODES = ['IR1'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

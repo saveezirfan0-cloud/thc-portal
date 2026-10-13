@@ -5,6 +5,7 @@ import {
   CLIENT_REQUIREMENT_CODES,
   MESSAGE_CODES,
   EXTENSION_CODES,
+  INVITE_CODES,
   REQUIREMENT_CODES,
   SCOPE_CODES,
   TEMPLATES,
@@ -67,6 +68,9 @@ const MESSAGE_PUSH_CODES = ['OM1', 'OM2'];
 const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
 const CHASER_PUSH_CODES = ['OC3'];
 
+/** The invite-list reminder (ADR-0122): daily to THC staff who have not applied yet. */
+const INVITE_EMAIL_CODES = ['IR1'];
+
 /** Client shift requirements (ADR-0110): a quiz first, a kit message on the day, the office told of a failure. */
 const CLIENT_REQUIREMENT_PUSH_CODES = ['CR1', 'CR2'];
 const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
@@ -93,6 +97,7 @@ describe('notification register (§8)', () => {
         ...MESSAGE_PUSH_CODES,
         ...CHASER_EMAIL_CODES,
         ...CHASER_PUSH_CODES,
+        ...INVITE_EMAIL_CODES,
         ...CLIENT_REQUIREMENT_PUSH_CODES,
         ...CLIENT_REQUIREMENT_EMAIL_CODES,
       ].sort(),
@@ -120,6 +125,8 @@ describe('notification register (§8)', () => {
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
     for (const code of CHASER_PUSH_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
+    for (const code of INVITE_EMAIL_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
     for (const code of CLIENT_REQUIREMENT_PUSH_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
     for (const code of CLIENT_REQUIREMENT_EMAIL_CODES)
@@ -146,6 +153,7 @@ describe('notification register (§8)', () => {
     ]);
     expect([...MESSAGE_CODES]).toEqual(MESSAGE_PUSH_CODES);
     expect([...CHASER_CODES]).toEqual([...CHASER_EMAIL_CODES, ...CHASER_PUSH_CODES]);
+    expect([...INVITE_CODES]).toEqual(INVITE_EMAIL_CODES);
     expect([...CLIENT_REQUIREMENT_CODES]).toEqual([
       ...CLIENT_REQUIREMENT_PUSH_CODES,
       ...CLIENT_REQUIREMENT_EMAIL_CODES,
@@ -157,6 +165,7 @@ describe('notification register (§8)', () => {
       ...ADDITION_CODES,
       ...MESSAGE_CODES,
       ...CHASER_CODES,
+      ...INVITE_CODES,
       ...CLIENT_REQUIREMENT_CODES,
     ];
     // Disjoint: no code is counted in two lists.
@@ -373,6 +382,7 @@ describe('§8 copy is verbatim', () => {
       ...ADDITION_CODES,
       ...MESSAGE_CODES,
       ...CHASER_CODES,
+      ...INVITE_CODES,
       ...CLIENT_REQUIREMENT_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(
@@ -466,9 +476,9 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
-  it('are the only codes without a body, with CL2 for the same reason and the OC chasers, one body per rung', () => {
+  it('are the only codes without a body, with CL2 for the same reason, the OC chasers, one body per rung, and IR1, one per greeting', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
-    expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3']);
+    expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3', 'IR1']);
   });
 
   // The bug these halves exist for. `render` leaves an unmatched
@@ -1249,6 +1259,66 @@ describe('onboarding chasers (ADR-0071)', () => {
     );
     expect(body('OC1', 'first')).toContain('Search your inbox for "Willo"');
     expect(body('OC1', 'repeat')).toContain("Reply to this email and we'll help.");
+  });
+});
+
+/**
+ * IR1 — the daily reminder to THC staff on the invite list who have not
+ * applied yet (ADR-0122). Queued by invite_roster_reminders() with
+ * `{ variant, name?, applyLink }` (pgTAP 811).
+ */
+describe('IR1 — invited, not applied yet (ADR-0122)', () => {
+  it('says why it exists, on the entry itself', () => {
+    expect([...INVITE_CODES]).toEqual(['IR1']);
+    expect(template('IR1').trigger).toMatch(/Not in §8/);
+    expect(template('IR1').trigger).toContain('ADR-0122');
+    expect(template('IR1').mandatory).toBeUndefined();
+  });
+
+  it('emails from admin@, to the address the row names', () => {
+    expect(template('IR1').channel).toBe('email');
+    expect(template('IR1').sender).toBe('admin');
+    expect(template('IR1').recipients).toBeUndefined();
+  });
+
+  it('has a named and an unnamed wording, and nothing else', () => {
+    expect(Object.keys(TEMPLATES.IR1.variants)).toEqual(['named', 'unnamed']);
+  });
+
+  it('puts the first name in the subject and the greeting when the list has one', () => {
+    expect(render(title('IR1', 'named'), { name: 'Joshua' })).toBe(
+      'Joshua, reminder: please complete your registration on the new THC Staff App',
+    );
+    expect(render(body('IR1', 'named'), { name: 'Joshua' })).toMatch(/^Hi Joshua,\n\n/);
+    expect(title('IR1', 'unnamed')).toBe(
+      'Reminder: please complete your registration on the new THC Staff App',
+    );
+    expect(body('IR1', 'unnamed')).toMatch(/^Hi there,\n\n/);
+    expect(body('IR1', 'unnamed')).not.toContain('{name}');
+  });
+
+  it('carries the apply link and the same words after the greeting in both', () => {
+    const rest = (v: string) => body('IR1', v).split('\n\n').slice(1).join('\n\n');
+    expect(rest('named')).toBe(rest('unnamed'));
+    expect(rest('named')).toContain('Register now: {applyLink}');
+    for (const words of [
+      'AXLR8 Staff App will stop working very soon',
+      'using this email address, so we can match you to your existing record',
+      'Willo will email you the link',
+      'WhatsApp shift messages are stopping',
+      "You'll receive this reminder each day until you've applied.",
+    ]) {
+      expect(rest('named'), words).toContain(words);
+    }
+  });
+
+  it('uses no office vocabulary in what the worker reads', () => {
+    for (const v of ['named', 'unnamed']) {
+      const text = `${title('IR1', v)} ${body('IR1', v)}`.toLowerCase();
+      for (const word of ['roster', 'invite list', 'chaser', 'payroll id', 'adr-']) {
+        expect(text, `${v}: ${word}`).not.toContain(word);
+      }
+    }
   });
 });
 

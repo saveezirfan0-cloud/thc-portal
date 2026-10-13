@@ -19,6 +19,7 @@
 
 import type { EmailBlock } from './email-html.ts';
 import { preheaderFrom, renderEmailHtml, templateToBlocks } from './email-html.ts';
+import { inviteReminderHtml } from './email-invite-reminder.ts';
 import type { TemplateCode } from './templates.ts';
 
 export interface EmailPresentation {
@@ -49,6 +50,10 @@ export const EMAIL_PRESENTATION = {
     eyebrow: 'Set up your account',
     buttons: { link: 'Set your password', installLink: 'Get the THC Staff App' },
   },
+  // ADR-0122: the daily reminder to THC staff not yet on the new app. Drawn
+  // in the owner's own design (email-invite-reminder.ts), not by the blocks
+  // below; the entry names its eyebrow and button all the same.
+  IR1: { eyebrow: 'Daily reminder', buttons: { applyLink: 'Register now' } },
   CL3: { eyebrow: 'Completion letter' },
   CL4: { eyebrow: 'Right to work' },
   CL5: { eyebrow: '48-hour opt-out' },
@@ -84,6 +89,15 @@ export function templateEmailHtml(
   text: string,
   senderAddress: string,
 ): string {
+  // ADR-0122: IR1 is the one email in the owner's own design.
+  if (code === 'IR1') {
+    return inviteReminderHtml({
+      subject,
+      name: values.variant === 'named' ? values.name : undefined,
+      applyLink: values.applyLink ?? '',
+      senderAddress,
+    });
+  }
   const presentation = presentationFor(code);
   const blocks: EmailBlock[] = templateToBlocks(template, values, {
     buttons: presentation.buttons ?? {},
