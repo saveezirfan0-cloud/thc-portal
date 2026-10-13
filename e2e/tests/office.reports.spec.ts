@@ -28,7 +28,7 @@ const FINANCIAL_HEADER =
 const PAYROLL_HEADER =
   'Employee ID,Staff,Event,Client,Role,Date,Scheduled start–end,Check in,Check out,Break deduction,Payable hours,Rate,Base,Holiday,Total';
 const NEW_STARTER_HEADER =
-  'Staff,Employee ID,NI Number,Home address,Postcode,Country,Date of birth,Gender,First shift date,HMRC Statement,Student Loan';
+  'Staff,Employee ID,NI Number,Home address,Postcode,Country,Date of birth,Gender,First shift date,HMRC Statement,Student Loan,Account holder,Sort code,Account number';
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Report' });
 
