@@ -14,6 +14,26 @@ export function gbp(amount: number | null): string {
   })}`;
 }
 
+/**
+ * Why a charge rate cannot be saved, or null when it can. A third decimal
+ * is rejected rather than rounded: `numeric(8,2)` would turn £22.975 into
+ * £22.98 silently, and every margin on this screen is derived from it.
+ *
+ * Pence are compared with a tolerance, not `!==`: in binary floating point
+ * 19.99 × 100 is 1998.9999999999998, so an exact test refused one valid
+ * rate in seven (£19.99, £16.10, £10.05) as "more than two decimals".
+ * A real third decimal is at least 0.1p away from a whole penny.
+ */
+export function chargeRateProblem(rate: number): string | null {
+  if (!Number.isFinite(rate)) return 'Enter a charge rate.';
+  if (rate < 0) return 'A charge rate cannot be negative.';
+  const pence = rate * 100;
+  if (Math.abs(pence - Math.round(pence)) > 1e-6) {
+    return 'A charge rate is in pounds and pence — two decimal places.';
+  }
+  return null;
+}
+
 /** A whole-pound figure, for the events list's margin column. */
 export function gbpRound(amount: number | null): string {
   if (amount === null || !Number.isFinite(amount)) return '—';
