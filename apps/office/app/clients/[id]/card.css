@@ -102,10 +102,6 @@
   color: var(--cyan-ink);
   border-bottom-color: currentColor;
 }
-.rate-open span {
-  color: var(--muted);
-  font-size: var(--fs-11);
-}
 .dcs-suggest .chip {
   cursor: pointer;
   font: inherit;

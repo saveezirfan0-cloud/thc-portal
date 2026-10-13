@@ -43,7 +43,7 @@ describe('the rate card (§9.7, client-card.html)', () => {
     };
     const html = renderToStaticMarkup(<RateCard clientId="c1" rows={[long]} roles={ROLES} />);
     expect(html).toMatch(
-      /<button[^>]*aria-label="Edit charge rate for Waiting Staff"[^>]*>£22\.97/,
+      /<button[^>]*aria-label="Edit charge rate for Waiting Staff"[^>]*>£22\.97<\/button>/,
     );
     expect(html).toContain('class="dcs-cell"');
   });

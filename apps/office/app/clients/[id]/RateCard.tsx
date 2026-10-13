@@ -249,15 +249,17 @@ function EditableRateCard({
                     <td className="right-align mono">
                       {/* The ✎ in the header promises the figure itself opens
                           the edit — the row's Edit button sits after the dress
-                          codes, which a long one can push out of sight. */}
+                          codes, which a long one can push out of sight. The
+                          cell reads as the figure alone. */}
                       <button
                         type="button"
                         className="rate-open"
+                        title="Edit charge rate"
                         aria-label={`Edit charge rate for ${row.role_name}`}
                         disabled={pending}
                         onClick={() => open(row)}
                       >
-                        {gbp(row.charge_rate)} <span aria-hidden="true">✎</span>
+                        {gbp(row.charge_rate)}
                       </button>
                     </td>
                     <td className="right-align mono">{gbp(row.base_pay_rate)}</td>
