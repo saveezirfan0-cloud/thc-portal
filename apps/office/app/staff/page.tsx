@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { currentOfficeRole } from '../_components/officeUser';
+import { AutoRefresh } from '../_components/AutoRefresh';
 import { officeCan } from '../_lib/permissions';
 import { loadStaff, supabaseConfigured } from './data';
 import { countPendingChangeRequests } from './requests/data';
@@ -30,14 +31,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
   // /compliance uses for the completion letter requirement's §4 report.
   const { view } = await searchParams;
   return (
-    <StaffScreen
-      staff={staff}
-      students={students}
-      problem={problem}
-      initialView={view === 'student' ? 'student' : 'directory'}
-      pendingRequests={pendingRequests}
-      // ADR-0082: tick workers and Send push — any login that may write.
-      canMessage={officeCan(role, 'write')}
-    />
+    <>
+      {/* Compliance, blocks and new starters change without the manager
+          doing anything: re-read every 15 s. Filters, search and ticked
+          workers are client state and survive the refresh. */}
+      <AutoRefresh everyMs={15_000} />
+      <StaffScreen
+        staff={staff}
+        students={students}
+        problem={problem}
+        initialView={view === 'student' ? 'student' : 'directory'}
+        pendingRequests={pendingRequests}
+        // ADR-0082: tick workers and Send push — any login that may write.
+        canMessage={officeCan(role, 'write')}
+      />
+    </>
   );
 }
