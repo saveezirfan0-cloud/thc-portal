@@ -31,6 +31,15 @@
   font-size: var(--fs-13);
   align-items: baseline;
 }
+/* The client's name is what the card is about, so it reads as a heading
+   rather than one more value in the list. */
+.kv .client-title {
+  font-family: var(--font-head);
+  font-size: var(--fs-20);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
 .kv .k {
   font-family: var(--font-label);
   font-size: var(--label-size);
