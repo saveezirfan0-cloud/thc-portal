@@ -9431,6 +9431,11 @@ export type Database = {
         Args: { p_group: string };
         Returns: string;
       };
+      invite_roster_reminder_config: { Args: never; Returns: Json };
+      invite_roster_reminders: {
+        Args: { p_apply_link?: string; p_now?: string };
+        Returns: Json;
+      };
       invite_worker: {
         Args: {
           p_ignore_target?: boolean;
