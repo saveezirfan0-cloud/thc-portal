@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { type MouseEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Chip, EmptyState, Note, Panel, Select } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
@@ -113,6 +113,18 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pages - 1);
   const shown = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+
+  // The whole row opens the card, as the wireframe's `tr.clickable` does:
+  // only the name was a link, so a click anywhere else on the row — the
+  // contact line under the name included — did nothing. The name keeps its
+  // Link for the keyboard and for "open in a new tab".
+  const openClient = (id: string) => (event: MouseEvent<HTMLTableRowElement>) => {
+    // The name's own link (or any other control) already navigates.
+    if ((event.target as HTMLElement).closest('a, button')) return;
+    // Selecting a phone number or an email to copy it is not a click.
+    if (window.getSelection()?.toString()) return;
+    router.push(`/clients/${id}`);
+  };
 
   const close = () => setEditing(null);
   const saved = () => {
@@ -274,13 +286,13 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
               </thead>
               <tbody>
                 {shown.map((client) => (
-                  <tr key={client.id}>
+                  <tr key={client.id} className="clickable" onClick={openClient(client.id)}>
                     <td className="name cell-title">
                       {/*
                         The name opens the card (§9.7), not the edit modal:
                         the card is where the rate card, the qualified pool
                         and this client's events live, and Edit is one
-                        button on it.
+                        button on it. The row opens it too (openClient).
                       */}
                       <Link href={`/clients/${client.id}`} className="client-name">
                         {client.name}
