@@ -257,16 +257,7 @@ function EditableRateCard({
                       </span>
                     </td>
                     <td>
-                      <div className="dcs">
-                        {row.dress_codes.length === 0 ? (
-                          <span className="muted sm">
-                            None yet — the event form will offer only &ldquo;Other&rdquo; for this
-                            role
-                          </span>
-                        ) : (
-                          row.dress_codes.map((code) => <Chip key={code}>{code}</Chip>)
-                        )}
-                      </div>
+                      <DressCodeList codes={row.dress_codes} />
                     </td>
                     <td className="right-align">
                       <Button size="sm" onClick={() => open(row)} disabled={pending}>
@@ -343,16 +334,7 @@ function RateCardWithoutRates({ rows }: { rows: RateCardRow[] }) {
                     <b>{row.role_name}</b>
                   </td>
                   <td>
-                    <div className="dcs">
-                      {row.dress_codes.length === 0 ? (
-                        <span className="muted sm">
-                          None yet — the event form will offer only &ldquo;Other&rdquo; for this
-                          role
-                        </span>
-                      ) : (
-                        row.dress_codes.map((code) => <Chip key={code}>{code}</Chip>)
-                      )}
-                    </div>
+                    <DressCodeList codes={row.dress_codes} />
                   </td>
                 </tr>
               ))}
@@ -367,6 +349,32 @@ function RateCardWithoutRates({ rows }: { rows: RateCardRow[] }) {
         </span>
       </div>
     </Panel>
+  );
+}
+
+/**
+ * A saved row's dress codes, read-only. A code is free text and is often a
+ * full description ("Plain BLACK Collared Long Sleeve Shirt (clean and
+ * pressed); Plain Black Trousers …"), which is what the worker is shown on
+ * the shift and so is kept whole in the database. Here each chip is cut to
+ * one line with the full text on hover; Edit shows it in full.
+ */
+function DressCodeList({ codes }: { codes: string[] }) {
+  if (codes.length === 0) {
+    return (
+      <span className="muted sm">
+        None yet — the event form will offer only &ldquo;Other&rdquo; for this role
+      </span>
+    );
+  }
+  return (
+    <div className="dcs dcs-view">
+      {codes.map((code) => (
+        <Chip key={code} title={code}>
+          {code}
+        </Chip>
+      ))}
+    </div>
   );
 }
 
@@ -480,6 +488,7 @@ function EditingRow({
                 key={code}
                 type="button"
                 className="chip outline"
+                title={code}
                 onClick={() => addCode(code)}
               >
                 + {code}
