@@ -1,8 +1,9 @@
 'use client';
 
+import { Fragment } from 'react';
 import { useViewerZone } from '@thc/ui';
-import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
-import { dayMarker, daysLaterIn } from './format';
+import { UK_ZONE, formatDateIn, formatTimeIn, needsDualZone } from '@thc/domain';
+import { dayMarker, daysLaterIn, differentDayFromUk } from './format';
 
 /**
  * A scheduled window in dual zone (§1.8).
@@ -28,6 +29,14 @@ import { dayMarker, daysLaterIn } from './format';
  * in Europe/London, the same on both sides), and the second line appears
  * after hydration.
  *
+ * The UK line sits under (or beside) a UK date — the list's Date cell, the
+ * event page's Date field — so it carries no date of its own. The "your
+ * time" line does when the viewer's start falls on a different calendar
+ * day from the UK start: 01:30 UK on Sat 19 Sep is 20:30 on Fri 18 Sep in
+ * New York, and "20:30 – 06:30 your time" under "Sat 19 Sep" would send
+ * the reader a day late. So that line reads "Fri 18 Sep 20:30 – 06:30
+ * your time" (`yourTimeLine`).
+ *
  * These are scheduled times, so they are dual. Actual check-in and check-out
  * stamps are viewer-local only and audit stamps are UK-only (§1.8) — neither
  * appears in this portal, which is why this component only handles the one
@@ -38,29 +47,72 @@ export function EventWindow({
   endsAt,
   className,
   zone: override,
+  breakable = false,
 }: {
   startsAt: string;
   endsAt: string;
   className?: string;
   /** The reader's zone, for tests and previews; otherwise the browser's. */
   zone?: string;
+  /**
+   * Each line as unbreakable pieces ("Fri 18 Sep" · "20:30 – 00:30 your
+   * time" · "(+1 day)") the line may wrap between, for a narrow table
+   * cell. The words are the same either way.
+   */
+  breakable?: boolean;
 }) {
   const browser = useViewerZone();
   const zone = override ?? browser;
-  const uk = windowLine(startsAt, endsAt, UK_ZONE, 'UK time');
+  const uk = windowParts(startsAt, endsAt, UK_ZONE, 'UK time');
   return (
     <span className={className}>
-      {uk}
+      <Line parts={uk} breakable={breakable} />
       {needsDualZone(zone) ? (
-        <span className="sub">{windowLine(startsAt, endsAt, zone, 'your time')}</span>
+        <span className="sub">
+          <Line parts={yourTimeParts(startsAt, endsAt, zone)} breakable={breakable} />
+        </span>
       ) : null}
     </span>
   );
 }
 
-/** "17:00 – 01:30 UK time (+1 day)": one line, judged in its own zone. */
-function windowLine(startsAt: string, endsAt: string, zone: string, label: string): string {
+/** One window line: plain text, or its pieces as `.wseg` spans joined by spaces. */
+function Line({ parts, breakable }: { parts: string[]; breakable: boolean }) {
+  if (!breakable) return <>{parts.join(' ')}</>;
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 ? ' ' : null}
+          <span className="wseg">{part}</span>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/**
+ * The viewer's line: "02:30 – 06:30 your time", prefixed with the viewer's
+ * own date ("Sat 19 Sep 02:30 – 06:30 your time") when their start day is
+ * not the UK start day the date beside it names.
+ */
+export function yourTimeLine(startsAt: string, endsAt: string, zone: string): string {
+  return yourTimeParts(startsAt, endsAt, zone).join(' ');
+}
+
+function yourTimeParts(startsAt: string, endsAt: string, zone: string): string[] {
+  const parts = windowParts(startsAt, endsAt, zone, 'your time');
+  if (!differentDayFromUk(startsAt, zone)) return parts;
+  return [formatDateIn(new Date(startsAt), zone, { weekday: 'short' }), ...parts];
+}
+
+/**
+ * "17:00 – 01:30 UK time (+1 day)": one line, judged in its own zone, as
+ * its pieces — the window, and the overnight marker when there is one.
+ */
+function windowParts(startsAt: string, endsAt: string, zone: string, label: string): string[] {
   const start = formatTimeIn(new Date(startsAt), zone);
   const end = formatTimeIn(new Date(endsAt), zone);
-  return `${start} – ${end} ${label}${dayMarker(daysLaterIn(startsAt, endsAt, zone))}`;
+  const marker = dayMarker(daysLaterIn(startsAt, endsAt, zone)).trim();
+  return marker ? [`${start} – ${end} ${label}`, marker] : [`${start} – ${end} ${label}`];
 }

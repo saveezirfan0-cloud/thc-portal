@@ -24,18 +24,18 @@ export function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
-const NO_PROJECT =
-  'This environment has no Supabase project, so your events cannot be loaded. See docs/04-setup-github-vercel-supabase.md.';
-
 /**
- * What the customer reads when a query fails. Never the database's own
+ * What the customer reads when a load fails. Never the database's own
  * message: PostgREST passes Postgres errors through verbatim ("invalid input
  * syntax for type uuid", a column or a constraint name), and those belong in
- * the server log, which is where `logFailure` puts them.
+ * the server log, which is where `logFailure` puts them. An environment with
+ * no project (docs/04) is told only to contact THC: the setup step is not
+ * the customer's.
  */
 export const LOAD_FAILED = {
   list: 'We could not load your events just now. Refresh the page to try again.',
   event: 'We could not load this event just now. Refresh the page to try again.',
+  noProject: "The portal isn't connected yet. Please contact THC.",
 } as const;
 
 function logFailure(what: string, error: { message?: string; code?: string } | null | undefined) {
@@ -43,21 +43,39 @@ function logFailure(what: string, error: { message?: string; code?: string } | n
 }
 
 const EVENT_COLUMNS =
-  'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status';
+  'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status, cancelled_at';
 // The list renders no on-site contact (that is §11.2's, the event page), so
 // it never asks for one: what the browser is not shown, it is not sent.
 const LIST_EVENT_COLUMNS =
-  'id, title, venue_name, venue_address, event_date, po_number, starts_at, ends_at, status';
+  'id, title, venue_name, venue_address, event_date, po_number, starts_at, ends_at, status, cancelled_at';
 const SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
 const LINEUP_COLUMNS =
-  'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given';
+  'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given, feedback_rating, feedback_sent_at';
+
+/**
+ * `PortalEvent` plus the moment a cancelled event was cancelled, for
+ * "cancelled <date>" under a greyed row (20261013100300). Null unless
+ * `status` is `cancelled`.
+ */
+export type ClientEvent = PortalEvent & { cancelledAt: string | null };
+
+/**
+ * `LineupRow` plus the customer's OWN feedback entry for that worker on that
+ * event (20261013100300): its stars (1–5) and when it was sent. Both null
+ * until the customer leaves feedback; the office's entries never appear.
+ * This is the browser's shape: no `photo_path` (see `LineupRecord`).
+ */
+export type ClientLineupRow = LineupRow & {
+  feedbackRating: number | null;
+  feedbackSentAt: string | null;
+};
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the generated types
    predate these views; regenerating them is `pnpm --filter @thc/db gen:types`
    against a live project, which this environment has not got. */
 type Row = Record<string, any>;
 
-function toEvent(r: Row): PortalEvent {
+function toEvent(r: Row): ClientEvent {
   return {
     id: r.id,
     title: r.title,
@@ -69,6 +87,7 @@ function toEvent(r: Row): PortalEvent {
     startsAt: r.starts_at,
     endsAt: r.ends_at,
     status: r.status,
+    cancelledAt: r.cancelled_at ?? null,
   };
 }
 
@@ -85,13 +104,13 @@ function toSection(r: Row): RoleSection {
 }
 
 /**
- * A line-up row as the SERVER holds it: the browser's `LineupRow` plus the
- * worker's Storage path, which only `presentLineup` (photos.ts) may read.
+ * A line-up row as the SERVER holds it: the browser's `ClientLineupRow` plus
+ * the worker's Storage path, which only `presentLineup` (photos.ts) may read.
  * Never pass one of these to a client component.
  */
-export interface LineupRecord extends LineupRow {
+export type LineupRecord = ClientLineupRow & {
   photoPath: string | null;
-}
+};
 
 function toLineup(r: Row): LineupRecord {
   return {
@@ -107,22 +126,25 @@ function toLineup(r: Row): LineupRecord {
     photoPath: r.photo_path ?? null,
     sortKey: r.sort_key,
     feedbackGiven: r.feedback_given === true,
+    feedbackRating: typeof r.feedback_rating === 'number' ? r.feedback_rating : null,
+    feedbackSentAt: r.feedback_sent_at ?? null,
   };
 }
 
 export interface EventListData {
-  events: PortalEvent[];
+  events: ClientEvent[];
   sections: RoleSection[];
   lineup: LineupRecord[];
   /** The caller's own company (`client_company_v`), for "Events · <client>". */
   company: string | null;
+  /** A customer sentence when the list could not be read; never the DB's message. */
   problem: string | null;
 }
 
 /** §11.1 · every event this customer has, with its counts and its faces. */
 export async function loadEventList(): Promise<EventListData> {
   if (!supabaseConfigured()) {
-    return { events: [], sections: [], lineup: [], company: null, problem: NO_PROJECT };
+    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_FAILED.noProject };
   }
 
   const supabase = createClient(await cookies()) as any;
@@ -153,9 +175,10 @@ export async function loadEventList(): Promise<EventListData> {
 }
 
 export interface EventPageData {
-  event: PortalEvent | null;
+  event: ClientEvent | null;
   sections: RoleSection[];
   lineup: LineupRecord[];
+  /** A customer sentence when the event could not be read; never the DB's message. */
   problem: string | null;
 }
 
@@ -172,7 +195,7 @@ export interface EventPageData {
  */
 export async function loadEvent(id: string): Promise<EventPageData> {
   if (!supabaseConfigured()) {
-    return { event: null, sections: [], lineup: [], problem: NO_PROJECT };
+    return { event: null, sections: [], lineup: [], problem: LOAD_FAILED.noProject };
   }
   if (!isUuid(id)) return { event: null, sections: [], lineup: [], problem: null };
 

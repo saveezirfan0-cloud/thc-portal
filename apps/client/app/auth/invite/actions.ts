@@ -30,7 +30,7 @@ export async function acceptInvite(
     return 'This link is incomplete. Open it again from the message you were sent.';
   }
   if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
-    return 'Setting a password is not available yet — this environment has no Supabase project.';
+    return "The portal isn't connected yet. Please contact THC.";
   }
 
   const supabase = createClient(await cookies());

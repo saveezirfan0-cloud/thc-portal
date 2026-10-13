@@ -118,6 +118,13 @@ describe('requestReset (A1)', () => {
     });
   });
 
+  it('the same outcome when Supabase refuses (no account enumeration)', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ error: { status: 429, message: 'rate' } });
+    expect(await run('nobody@client.example')).toBe(
+      'REDIRECT:/forgot/sent?to=nobody%40client.example',
+    );
+  });
+
   it('refuses in production without NEXT_PUBLIC_CLIENT_URL, even with VERCEL_URL set (D13)', async () => {
     delete process.env['NEXT_PUBLIC_CLIENT_URL'];
     vi.stubEnv('VERCEL_URL', 'thc-client-abc123.vercel.app');

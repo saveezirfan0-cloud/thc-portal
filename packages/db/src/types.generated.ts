@@ -5678,6 +5678,7 @@ export type Database = {
       };
       client_events_v: {
         Row: {
+          cancelled_at: string | null;
           client_id: string | null;
           ends_at: string | null;
           event_date: string | null;
@@ -5727,6 +5728,8 @@ export type Database = {
           ends_at: string | null;
           event_id: string | null;
           feedback_given: boolean | null;
+          feedback_rating: number | null;
+          feedback_sent_at: string | null;
           name: string | null;
           photo_path: string | null;
           role: string | null;
@@ -10008,6 +10011,8 @@ export type Database = {
       onboarding_uk_today: { Args: never; Returns: string };
       outbox_backoff: { Args: { p_attempt: number }; Returns: string };
       password_check_allowed: { Args: never; Returns: boolean };
+      password_check_begin: { Args: never; Returns: number };
+      password_check_release: { Args: { p_attempt: number }; Returns: undefined };
       payable_minutes: {
         Args: {
           p_check_in_at: string;

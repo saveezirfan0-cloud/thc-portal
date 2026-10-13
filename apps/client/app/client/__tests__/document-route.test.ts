@@ -3,22 +3,28 @@ import type { ClientDocument } from '../documents';
 
 /**
  * GET /client/events/:id/document (§11.2 "↓ Download Allocation Timesheet",
- * §11.3). The handler owns three decisions — which kind was asked for, what
- * to answer when the view returned no copy, and what to answer when the
- * store cannot sign — and the tenancy decision it does NOT own: another
- * customer's event is simply an event `client_event_documents_v` returns
- * nothing for (ADR-0004), so it must come out identical to "nothing issued".
+ * §11.3). The handler owns four decisions — which kind was asked for, what
+ * to answer when the caller's own event has no copy, what to answer when the
+ * read or the store fails, and that every answer is uncached — and the
+ * tenancy decision it does NOT own: another customer's event is simply an
+ * event `client_events_v` returns nothing for (ADR-0004), so it must come out
+ * identical to an id that never existed.
  */
 const state = vi.hoisted(() => ({
+  events: new Set<string>(),
   docs: {} as Record<string, ClientDocument[]>,
+  failRead: false,
   signed: 'https://db.example/storage/v1/object/sign/timesheets/x.pdf?token=t' as string | null,
   loaded: [] as string[],
 }));
 
+vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('../documents', () => ({
-  loadDocuments: async (eventId: string) => {
+  loadEventDocuments: async (eventId: string) => {
     state.loaded.push(eventId);
-    return state.docs[eventId] ?? [];
+    if (state.failRead) return { visible: true, documents: [], unavailable: true };
+    if (!state.events.has(eventId)) return { visible: false, documents: [], unavailable: false };
+    return { visible: true, documents: state.docs[eventId] ?? [], unavailable: false };
   },
   signDocument: async () => state.signed,
 }));
@@ -43,7 +49,9 @@ function get(id: string, query = ''): Promise<Response> {
 }
 
 beforeEach(() => {
+  state.events = new Set([MINE]);
   state.docs = { [MINE]: [doc('allocation'), doc('signout')] };
+  state.failRead = false;
   state.signed = 'https://db.example/storage/v1/object/sign/timesheets/x.pdf?token=t';
   state.loaded = [];
 });
@@ -54,23 +62,48 @@ describe('GET /client/events/:id/document', () => {
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe(state.signed);
     expect(res.headers.get('cache-control')).toBe('no-store');
-    // Through the view, under the caller's own session — the only read.
+    // Through the views, under the caller's own session — the only read.
     expect(state.loaded).toEqual([MINE]);
   });
 
-  it('resolves the kind: "signout" by name, anything else is the allocation sheet', async () => {
-    state.docs[MINE] = [doc('signout')];
+  it('serves each kind by name', async () => {
     expect((await get(MINE, '?kind=signout')).status).toBe(302);
-    // No allocation copy exists, so both of these ask for one and get nothing.
-    expect((await get(MINE)).status).toBe(404);
-    expect((await get(MINE, '?kind=payslip')).status).toBe(404);
+    expect((await get(MINE, '?kind=allocation')).status).toBe(302);
   });
 
-  it('is 404 when that kind has not been issued', async () => {
+  it('sends a missing or unknown kind back to the event page (303) — never a guess at the allocation sheet', async () => {
+    for (const query of ['', '?kind=', '?kind=payslip', '?kind=SIGNOUT']) {
+      const res = await get(MINE, query);
+      expect(res.status, query).toBe(303);
+      expect(res.headers.get('location'), query).toBe(
+        `https://portal.thc.example/client/events/${MINE}`,
+      );
+      expect(res.headers.get('cache-control')).toBe('no-store');
+    }
+  });
+
+  it("answers an unknown kind on another customer's event with the same 404 as any (no oracle)", async () => {
+    const known = await get(THEIRS, '?kind=allocation');
+    const body = await known.text();
+    for (const query of ['', '?kind=payslip']) {
+      for (const id of [THEIRS, '00000000-0000-4000-8000-000000000000', 'not-a-uuid']) {
+        const res = await get(id, query);
+        expect(res.status, `${id}${query}`).toBe(404);
+        expect(res.headers.get('location')).toBeNull();
+        expect(res.headers.get('cache-control')).toBe('no-store');
+        expect(await res.text()).toBe(body);
+      }
+    }
+  });
+
+  it('sends the customer back to the event page when that kind has not been issued', async () => {
     state.docs[MINE] = [doc('allocation')];
     const res = await get(MINE, '?kind=signout');
-    expect(res.status).toBe(404);
-    expect(await res.text()).toBe('No document for this event yet.');
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(
+      `https://portal.thc.example/client/events/${MINE}?doc=missing`,
+    );
+    expect(res.headers.get('cache-control')).toBe('no-store');
   });
 
   it("is the same 404 for another customer's event as for a nonexistent one (ADR-0004)", async () => {
@@ -78,14 +111,30 @@ describe('GET /client/events/:id/document', () => {
     // that from an id that was never issued, and must not try.
     const theirs = await get(THEIRS, '?kind=allocation');
     const nothing = await get('00000000-0000-4000-8000-000000000000', '?kind=allocation');
-    expect(theirs.status).toBe(404);
-    expect(nothing.status).toBe(404);
-    expect(await theirs.text()).toBe(await nothing.text());
+    const garbage = await get('not-a-uuid', '?kind=allocation');
+    for (const res of [theirs, nothing, garbage]) {
+      expect(res.status).toBe(404);
+      expect(res.headers.get('location')).toBeNull();
+    }
+    const body = await theirs.text();
+    expect(body).toBe('No document for this event yet.');
+    expect(await nothing.text()).toBe(body);
+    expect(await garbage.text()).toBe(body);
   });
 
-  it('is 503, not a broken redirect, when the store cannot sign', async () => {
+  it('sends the customer back with ?doc=unavailable when the store cannot sign', async () => {
     state.signed = null;
     const res = await get(MINE, '?kind=allocation');
-    expect(res.status).toBe(503);
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(
+      `https://portal.thc.example/client/events/${MINE}?doc=unavailable`,
+    );
+  });
+
+  it('and when the documents could not be read', async () => {
+    state.failRead = true;
+    const res = await get(MINE, '?kind=allocation');
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toContain('?doc=unavailable');
   });
 });

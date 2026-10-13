@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The design system's five families used to arrive through
+ * The design system's four families used to arrive through
  * `@import url('https://fonts.googleapis.com/…')` at the top of tokens.css.
  * That is render-blocking on every page, it tells Google who is opening a
  * sign-in screen, and — the one that cannot be argued with — it can never
@@ -25,7 +25,7 @@ const tokens = readFileSync(join(STYLES, 'tokens.css'), 'utf8');
 const index = readFileSync(join(STYLES, 'index.css'), 'utf8');
 const wireframe = readFileSync(join(REPO, 'wireframes', 'assets', 'thc.css'), 'utf8');
 
-const FAMILIES = ['Space Grotesk', 'Inter', 'IBM Plex Mono', 'Outfit', 'Plus Jakarta Sans'];
+const FAMILIES = ['Space Grotesk', 'Inter', 'IBM Plex Mono', 'Plus Jakarta Sans'];
 
 const faces = [...fonts.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]!);
 const field = (face: string, name: string) =>
@@ -64,6 +64,14 @@ describe('self-hosted fonts', () => {
         `${family} latin-ext`,
       ).toBe(true);
     }
+  });
+
+  it('ships no face that no token names (ADR-0121 retired Outfit)', () => {
+    // A declared family nobody reads is dead weight in every app's CSS and,
+    // worse, an invitation to start using it again by accident.
+    const declared = new Set(faces.map((f) => field(f, 'font-family')?.replace(/'/g, '')));
+    expect([...declared].sort()).toEqual([...FAMILIES].sort());
+    expect(tokens.replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('Outfit');
   });
 
   it('swaps rather than blocking, so text is readable while the file loads', () => {

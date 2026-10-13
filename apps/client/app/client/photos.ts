@@ -1,6 +1,5 @@
 import { createAdminClient } from '@thc/db/admin';
-import type { LineupRecord } from './data';
-import type { LineupRow } from './rules';
+import type { ClientLineupRow, LineupRecord } from './data';
 
 /**
  * Signed URLs for the line-up photos (§11.1).
@@ -67,7 +66,7 @@ export async function signLineupPhotos(
  * render, named one by one so a column added to `LineupRecord` later does not
  * ride along by default, and the photos keyed by booking.
  */
-export function publicLineup(rows: readonly LineupRecord[]): LineupRow[] {
+export function publicLineup(rows: readonly LineupRecord[]): ClientLineupRow[] {
   return rows.map((r) => ({
     bookingId: r.bookingId,
     eventId: r.eventId,
@@ -78,12 +77,15 @@ export function publicLineup(rows: readonly LineupRecord[]): LineupRow[] {
     name: r.name,
     sortKey: r.sortKey,
     feedbackGiven: r.feedbackGiven,
+    // The customer's OWN entry: its stars and when it was sent (§11.2).
+    feedbackRating: r.feedbackRating,
+    feedbackSentAt: r.feedbackSentAt,
   }));
 }
 
 export async function presentLineup(
   rows: readonly LineupRecord[],
-): Promise<{ lineup: LineupRow[]; photos: Record<string, string> }> {
+): Promise<{ lineup: ClientLineupRow[]; photos: Record<string, string> }> {
   const signed = await signLineupPhotos(rows);
   return { lineup: publicLineup(rows), photos: Object.fromEntries(signed) };
 }

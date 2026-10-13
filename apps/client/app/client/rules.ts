@@ -14,7 +14,7 @@
  */
 
 import { UK_ZONE, formatDateIn, formatTimeIn, ukToday } from '@thc/domain';
-import { daysLaterIn } from './format';
+import { daysBetweenIn } from './format';
 
 export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
 
@@ -32,6 +32,8 @@ export interface PortalEvent {
   startsAt: string;
   endsAt: string;
   status: EventStatus;
+  /** When the event was cancelled (ISO), for "cancelled 16 Sep"; null otherwise. */
+  cancelledAt?: string | null;
 }
 
 /** One row of `client_role_sections_v`. */
@@ -65,6 +67,10 @@ export interface LineupRow {
   name: string;
   sortKey: string;
   feedbackGiven: boolean;
+  /** The stars the customer gave (1–5), once they have; null before. */
+  feedbackRating?: number | null;
+  /** When the customer's feedback was sent (ISO); null before. */
+  feedbackSentAt?: string | null;
 }
 
 /**
@@ -155,9 +161,11 @@ export function headerDocuments(
  * The star picker's readout (wireframes/client/event.html: "4 of 5 — tap a
  * star"). Before a choice it says what is wanted; after one, what was
  * chosen — the number is the accessible answer to "which star is on".
+ * Device-neutral: the stars are chosen by mouse, finger or arrow keys, so
+ * the copy says "choose", never "tap".
  */
 export function starsHint(rating: number): string {
-  return rating > 0 ? `${rating} of 5 — tap a star` : 'Tap a star — 1 to 5, required';
+  return rating > 0 ? `${rating} of 5 stars` : 'Choose 1 to 5 stars — required';
 }
 
 /**
@@ -192,6 +200,11 @@ export function feedbackOpen(event: Pick<PortalEvent, 'status' | 'startsAt'>, no
  * Groups follow the section's own start time (RULE-18), so Chef at 07:00
  * comes before Waiting Staff at 17:00, and ties break by role name and
  * then by key so the order is total rather than merely sorted.
+ *
+ * Every section the customer booked is a group, including one nobody has
+ * confirmed on yet (`people` empty, `confirmed` 0): an upcoming event with
+ * no confirmations still shows its roles and their windows, each saying so,
+ * rather than a header over nothing.
  */
 export interface LineupGroup {
   /** The shift id, or role + window when the row carries none. */
@@ -200,6 +213,8 @@ export interface LineupGroup {
   startsAt: string;
   endsAt: string;
   confirmed: number;
+  /** The headcount booked for the section; null for a row with no section. */
+  headcount: number | null;
   people: LineupRow[];
 }
 
@@ -219,18 +234,23 @@ export function groupBySection(
     else bySection.set(key, [row]);
   }
 
+  // Sections with nobody on them yet, so the page still lists the role.
+  for (const s of sections) if (!bySection.has(s.shiftId)) bySection.set(s.shiftId, []);
+
   return [...bySection.entries()]
     .map(([key, people]) => {
       // The section carries the role's window; fall back to the booking's
-      // own times if a section is missing, so a row is never dropped.
-      const first = people[0]!;
+      // own times if a section is missing, so a row is never dropped. A
+      // group with no people came from a section, so one of the two exists.
       const section = sections.find((s) => s.shiftId === key);
+      const from = (section ?? people[0])!;
       return {
         key,
-        role: section?.role ?? first.role,
-        startsAt: section?.startsAt ?? first.startsAt,
-        endsAt: section?.endsAt ?? first.endsAt,
+        role: from.role,
+        startsAt: from.startsAt,
+        endsAt: from.endsAt,
         confirmed: people.length,
+        headcount: section ? section.headcount : null,
         people: [...people].sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
       };
     })
@@ -240,6 +260,39 @@ export function groupBySection(
         a.role.localeCompare(b.role) ||
         a.key.localeCompare(b.key),
     );
+}
+
+/**
+ * The tone of a role section's "N confirmed" pill on the event page: the
+ * list's own rule (`fillOf`, `roleBreakdown`'s `short`) — green only once
+ * the section is full, amber while it is short — so "0 confirmed" is never
+ * green. A section with no headcount to compare (a booking whose section is
+ * missing) is green when someone is on it and amber when nobody is. Once
+ * the event is over the pill counts who worked, a fact rather than a gap,
+ * and is neutral.
+ */
+export function sectionTone(
+  group: Pick<LineupGroup, 'confirmed' | 'headcount'>,
+  completed: boolean,
+): 'green' | 'amber' | 'neutral' {
+  if (completed) return 'neutral';
+  if (group.confirmed === 0) return 'amber';
+  if (group.headcount === null) return 'green';
+  return group.confirmed >= group.headcount ? 'green' : 'amber';
+}
+
+/**
+ * "3 roles" in the event header: the distinct roles the customer booked,
+ * read from the role sections — two sections of one role are one role —
+ * so an event with nobody confirmed yet still counts its roles. The
+ * line-up is the fallback only when no section came back.
+ */
+export function roleCountOf(
+  sections: readonly Pick<RoleSection, 'role'>[],
+  lineup: readonly Pick<LineupRow, 'role'>[],
+): number {
+  const from = sections.length > 0 ? sections : lineup;
+  return new Set(from.map((s) => s.role)).size;
 }
 
 /**
@@ -261,9 +314,12 @@ export const FEEDBACK_TEXT_MAX = 2000;
 
 export const FEEDBACK_TOO_LONG = `Keep the comment to ${FEEDBACK_TEXT_MAX.toLocaleString('en-GB')} characters or fewer.`;
 
-/** A comment is fine at or under the limit; it is measured after trimming. */
+/**
+ * A comment is fine at or under the limit; it is measured after trimming,
+ * in code points as Postgres's char_length counts them (an emoji is one).
+ */
 export function feedbackTextTooLong(text: string): boolean {
-  return text.trim().length > FEEDBACK_TEXT_MAX;
+  return [...text.trim()].length > FEEDBACK_TEXT_MAX;
 }
 
 /**
@@ -331,9 +387,30 @@ export function filterByTab(events: readonly PortalEvent[], tab: Tab, now: Date)
   return events.filter((e) => (tab === 'past' ? ended(e) : !ended(e)));
 }
 
-/** Newest first, as §11.1's list is ordered. */
+/** Newest first, as §11.1's list is ordered on Past and All. */
 export function byDateDescending(events: readonly PortalEvent[]): PortalEvent[] {
   return [...events].sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+}
+
+/** Soonest first: what is coming up reads in the order it happens. */
+export function byDateAscending(events: readonly PortalEvent[]): PortalEvent[] {
+  return [...events].sort(
+    (a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title),
+  );
+}
+
+/**
+ * The order a tab lists in. Upcoming reads soonest first, so tonight's
+ * event is the first row rather than the last (product owner, 12.10.2026);
+ * Past and All stay newest first, as §11.1's list was ordered.
+ */
+export function sortForTab(events: readonly PortalEvent[], tab: Tab): PortalEvent[] {
+  return tab === 'upcoming' ? byDateAscending(events) : byDateDescending(events);
+}
+
+/** The panel title's note on the order, matching `sortForTab`. */
+export function orderLabel(tab: Tab): string {
+  return tab === 'upcoming' ? 'soonest first' : 'newest first';
 }
 
 /** The pill tone for a status, matching the wireframe. Completed and
@@ -418,6 +495,30 @@ export function feedbackToGo(
 }
 
 /**
+ * Whether the event page still shows "The event has started — you can now
+ * leave feedback" (§11.2). It is an invitation, so it goes once there is
+ * nothing left to invite: every rateable worker on the line-up already has
+ * the customer's feedback (or there is nobody rateable on it at all), or
+ * the event ended more than a week ago (the
+ * buttons stay live — the scope sets no closing rule — but a banner on an
+ * old event is noise). Before the start, the locked-banner says when.
+ */
+export const FEEDBACK_BANNER_DAYS = 7;
+
+export function feedbackInviteShown(
+  event: Pick<PortalEvent, 'status' | 'startsAt' | 'endsAt'>,
+  lineup: readonly Pick<LineupRow, 'name' | 'feedbackGiven'>[],
+  now: Date,
+): boolean {
+  if (!feedbackOpen(event, now)) return false;
+  const rateable = lineup.filter((l) => !isRemoved(l));
+  // Nobody to rate: no banner about buttons that are not on the page.
+  if (rateable.length === 0 || rateable.every((l) => l.feedbackGiven)) return false;
+  const stale = new Date(event.endsAt).getTime() + FEEDBACK_BANNER_DAYS * 86_400_000;
+  return now.getTime() <= stale;
+}
+
+/**
  * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0049).
  *
  * Read straight off `documentOffer`, so the words and the button cannot
@@ -448,6 +549,53 @@ export interface EventFilters {
 
 export const NO_FILTERS: EventFilters = { query: '', venue: '', from: '', to: '' };
 
+/** The list's tab and filters, as they ride in the address bar. */
+export interface ListState {
+  tab: Tab;
+  filters: EventFilters;
+}
+
+const TABS: readonly Tab[] = ['upcoming', 'past', 'all'];
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Reads `?tab=past&q=gala&venue=…&from=2026-09-01&to=2026-09-30` back into
+ * the list's state, so Back and a reload land on the view the customer
+ * left. Anything unreadable is the default: an unknown tab is Upcoming and
+ * a date that is not `yyyy-mm-dd` is no bound, so a hand-edited address can
+ * narrow the list but never break it.
+ */
+export function listStateFromParams(params: { get(name: string): string | null }): ListState {
+  const tab = params.get('tab');
+  const day = (name: string) => {
+    const v = params.get(name) ?? '';
+    return DAY.test(v) ? v : '';
+  };
+  return {
+    tab: TABS.includes(tab as Tab) ? (tab as Tab) : 'upcoming',
+    filters: {
+      query: params.get('q') ?? '',
+      venue: params.get('venue') ?? '',
+      from: day('from'),
+      to: day('to'),
+    },
+  };
+}
+
+/**
+ * The query string for a list state, defaults left out: the plain list is
+ * plain `/client`, and only what differs from it is written.
+ */
+export function listQuery({ tab, filters }: ListState): string {
+  const q = new URLSearchParams();
+  if (tab !== 'upcoming') q.set('tab', tab);
+  if (filters.query !== '') q.set('q', filters.query);
+  if (filters.venue !== '') q.set('venue', filters.venue);
+  if (filters.from !== '') q.set('from', filters.from);
+  if (filters.to !== '') q.set('to', filters.to);
+  return q.toString();
+}
+
 /** True when any filter is narrowing the list: what "Clear filters" undoes. */
 export function filtersActive(f: EventFilters): boolean {
   return f.query.trim() !== '' || f.venue !== '' || f.from !== '' || f.to !== '';
@@ -456,6 +604,30 @@ export function filtersActive(f: EventFilters): boolean {
 /** The venue select's options: each venue once, A to Z. */
 export function venuesOf(events: readonly PortalEvent[]): string[] {
   return [...new Set(events.map((e) => e.venueName))].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * "PO 4431", "PO4431", "po: 4431", "PO-4431" → "4431": the reference after
+ * a "PO" prefix, so a customer can type the PO as the row prints it ("PO
+ * 4431") or as their own system writes it. Only a prefix followed by a
+ * separator or a digit counts, so "polo" is still a search for "polo".
+ */
+const PO_PREFIX = /^po(?:[\s#:.-]+|(?=\d))(.+)$/;
+
+/**
+ * Whether the list's search box matches an event: the name, the venue and
+ * its address, or the PO with or without its "PO " prefix. `needle` is
+ * already trimmed and lower-cased.
+ */
+function searchMatches(e: PortalEvent, needle: string): boolean {
+  const po = (e.poNumber ?? '').toLowerCase();
+  const bare = PO_PREFIX.exec(needle)?.[1]?.trim();
+  return (
+    e.title.toLowerCase().includes(needle) ||
+    e.venueName.toLowerCase().includes(needle) ||
+    e.venueAddress.toLowerCase().includes(needle) ||
+    (po !== '' && (po.includes(needle) || (!!bare && po.includes(bare))))
+  );
 }
 
 /**
@@ -473,13 +645,7 @@ export function venuesOf(events: readonly PortalEvent[]): string[] {
 export function applyFilters(events: readonly PortalEvent[], f: EventFilters): PortalEvent[] {
   const needle = f.query.trim().toLowerCase();
   return events.filter((e) => {
-    if (
-      needle !== '' &&
-      !e.title.toLowerCase().includes(needle) &&
-      !e.venueName.toLowerCase().includes(needle) &&
-      !(e.poNumber ?? '').toLowerCase().includes(needle)
-    )
-      return false;
+    if (needle !== '' && !searchMatches(e, needle)) return false;
     if (f.venue !== '' && e.venueName !== f.venue) return false;
     if (f.from === '' && f.to === '') return true;
     const day = ukToday(new Date(e.startsAt));
@@ -558,9 +724,12 @@ export function nextUp(
 export function momentIn(iso: string, now: Date, dropToday: boolean, zone: string): string {
   const at = new Date(iso);
   const time = formatTimeIn(at, zone);
-  const ahead = daysLaterIn(now, at, zone);
+  // Signed: a start on an earlier day is "yesterday" or a date, never
+  // "today" (the old clamp at 0 called yesterday's 23:00 "today 23:00").
+  const ahead = daysBetweenIn(now, at, zone);
   if (ahead === 0) return dropToday ? time : `today ${time}`;
   if (ahead === 1) return `tomorrow ${time}`;
+  if (ahead === -1) return `yesterday ${time}`;
   const year = dayOf(at, zone).slice(0, 4) !== dayOf(now, zone).slice(0, 4);
   return `${formatDateIn(at, zone, { weekday: 'short', year })} ${time}`;
 }

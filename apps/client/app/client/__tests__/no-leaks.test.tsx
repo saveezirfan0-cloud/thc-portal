@@ -123,7 +123,7 @@ const { isUuid } = await import('../ids');
 const { EventScreen } = await import('../events/[id]/EventScreen');
 const { EventsScreen } = await import('../EventsScreen');
 const EventPage = (await import('../events/[id]/page')).default;
-const ListPage = (await import('../page')).default;
+const ListPage = (await import('../(list)/page')).default;
 const { GET: documentGet } = await import('../events/[id]/document/route');
 
 const saved = { ...process.env };
@@ -235,6 +235,8 @@ describe('the worker’s Storage path stays on the server', () => {
       name: 'n',
       sortKey: 'n',
       feedbackGiven: false,
+      feedbackRating: null,
+      feedbackSentAt: null,
       photoPath: PATH,
       // A column the server might read one day; the browser must not get it.
       staffId: STAFF_ID,
@@ -246,6 +248,8 @@ describe('the worker’s Storage path stays on the server', () => {
         'endsAt',
         'eventId',
         'feedbackGiven',
+        'feedbackRating',
+        'feedbackSentAt',
         'name',
         'role',
         'shiftId',

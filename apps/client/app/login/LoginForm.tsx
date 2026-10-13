@@ -15,7 +15,7 @@ export function LoginForm({ next }: { next?: string }) {
   const [keepSignedIn, setKeepSignedIn] = useState(true);
 
   return (
-    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form action={formAction} className="auth-form">
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <Input
@@ -23,6 +23,7 @@ export function LoginForm({ next }: { next?: string }) {
         name="email"
         type="email"
         autoComplete="username"
+        placeholder="you@yourvenue.co.uk"
         required
         // Keep what they typed. Clearing the field on a failed attempt makes a
         // typo indistinguishable from a wrong password, and means retyping.
@@ -33,7 +34,10 @@ export function LoginForm({ next }: { next?: string }) {
       {/* Both fields go red; neither says which was wrong. The one sentence
           is the alert above (login.html:123) — a hint under the password
           would point at it, which is what the generic wording exists to
-          avoid. `reveal` is the wireframe's "Show" addon. */}
+          avoid. `reveal` is the wireframe's "Show" addon. "Forgot password?"
+          (A1, §10.2) sits on the label row at every width and in the error
+          state, which is when it is needed (login.html:64, :188); on a phone
+          it grows to the 44px finger target without leaving the row. */}
       <Input
         label="Password"
         name="password"
@@ -41,15 +45,13 @@ export function LoginForm({ next }: { next?: string }) {
         autoComplete="current-password"
         required
         reveal
+        labelAction={
+          <Link href="/forgot" className="xs">
+            Forgot password?
+          </Link>
+        }
         error={error ? ' ' : undefined}
       />
-      {/* A1 (§10.2). The wireframe keeps it with the password field at
-          every width, and in the error state, which is when it is needed. */}
-      <div className="row" style={{ justifyContent: 'flex-end' }}>
-        <Link href="/forgot" className="xs">
-          Forgot password?
-        </Link>
-      </div>
       {/* ADR-0032: ticked → the session survives closing the browser (30
           days since last use); unticked → it ends with the browser. It only
           changes the cookie lifetime on this device, nothing server-side. */}

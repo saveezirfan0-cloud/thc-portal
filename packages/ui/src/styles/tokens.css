@@ -22,7 +22,7 @@
    Depth comes from frosted surfaces (backdrop-filter) and background radial
    glows. There is no --shadow token on purpose.
 
-   Fonts: the five families are self-hosted, from checked-in woff2 subsets.
+   Fonts: the four families are self-hosted, from checked-in woff2 subsets.
    The @font-face rules are in ./fonts.css, which index.css loads ahead of
    this sheet; that file says why the CDN had to go. This sheet names the
    families and nothing else — it loads nothing over the network. */
@@ -32,12 +32,24 @@
    delta on top of this block.
    ===================================================================== */
 :root {
+  /* Native widgets — a select's popup, scrollbars, a date picker, an
+     autofill tint — follow this, not our tokens. Dark by default, light
+     in the light block below (ADR-0121). */
+  color-scheme: dark;
+
   /* --- ground ------------------------------------------------------- */
   --canvas: #0a0c10; /* outside the app frame */
   --bg: #04080f;
   --panel: #0b1220;
   --panel-2: #131c2b; /* line mixed into panel: table stripes, readonly fields */
   --line: #1c2839;
+  /* The edge of something you type into or press: an input, a select, a
+     default button, a removed worker's dashed avatar slot. --line is a
+     divider and sits near 1.2:1 on its own ground, which is right for a
+     table rule and fails WCAG 1.4.11 (3:1) for a control's boundary. Every
+     theme sets this at 3:1 or a hair over against all three grounds, so it
+     stays quiet; contrast.test.ts holds the floor (ADR-0121). */
+  --control-line: #5d6b7e;
 
   /* --- ink ---------------------------------------------------------- */
   --text: #e9eef5;
@@ -266,6 +278,8 @@
    identical; only geometry and type differ.
    ===================================================================== */
 :root[data-theme='light'] {
+  color-scheme: light;
+
   /* Grounds from the ADR-0007 spec's "Editorial Linen": page #FAF7F4,
      card #FFFFFF, surface #F5F1EB, border #EBE4DA. Only the *grounds* are
      taken. The spec's foreground colours fail AA on its own page — cyan
@@ -277,6 +291,7 @@
   --panel: #ffffff;
   --panel-2: #f5f1eb;
   --line: #ebe4da;
+  --control-line: #958676; /* 3.1:1 on bg, panel and panel-2 */
 
   --text: #241d16;
   --muted: #7a6b5c;
@@ -361,7 +376,10 @@
    theme-driven, so this block sets no neutrals.
    ===================================================================== */
 :root[data-style='warm'] {
-  --font-head: 'Outfit', system-ui, sans-serif;
+  /* Headings and body are one family (ADR-0121, product owner 12.10.2026):
+     Plus Jakarta Sans in all three apps, bold for headings. Outfit, the
+     handoff's heading face, is no longer shipped. */
+  --font-head: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-label: var(--font-body);
   --font-num: var(--font-body);
@@ -395,7 +413,7 @@
   --r-control: 999px;
   --r-pill: 999px;
   --r-track: 999px;
-  --r-avatar: 50%;
+  --r-avatar: 50%; /* worker avatars are circles (ADR-0121) */
   --r-field: 20px;
   --r-check: 8px;
   --r-phone: 44px;
@@ -417,6 +435,7 @@
   --panel: #171b26;
   --panel-2: #1e2333;
   --line: #252a36;
+  --control-line: #64708a; /* 3.1:1 on panel-2, the lightest of the three */
 
   --glass: rgba(23, 27, 38, 0.6);
   --glass-nav: rgba(23, 27, 38, 0.72);

@@ -1,8 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Alert, Button, Modal, Textarea } from '@thc/ui';
-import { FEEDBACK_TEXT_MAX, FEEDBACK_TOO_LONG, feedbackTextTooLong, starsHint } from '../../rules';
+import { useRouter } from 'next/navigation';
+import { useRef, useState, useTransition } from 'react';
+import type { KeyboardEvent } from 'react';
+import { Alert, Avatar, Button, Modal, Textarea } from '@thc/ui';
+import {
+  FEEDBACK_TEXT_MAX,
+  FEEDBACK_TOO_LONG,
+  feedbackTextTooLong,
+  isRemoved,
+  starsHint,
+} from '../../rules';
 import { leaveFeedback } from './actions';
 
 /**
@@ -16,6 +24,13 @@ import { leaveFeedback } from './actions';
  * The comment is optional: §11.2 asks for "stars + comment", and a customer
  * who wants to record five stars and nothing else should not have to invent
  * a sentence.
+ *
+ * While a submission is in flight the popup cannot be dismissed (Esc, the
+ * backdrop and × do nothing): closing it then would leave the customer not
+ * knowing whether the entry was saved. A refused or failed call says so in
+ * plain words; "already left" — a second tab, a double tap — is not an
+ * error to fix but a row to re-read, so the popup closes and the page
+ * refreshes to show "✓ Feedback sent".
  */
 const STARS = [1, 2, 3, 4, 5] as const;
 
@@ -30,11 +45,48 @@ export function commentHint(length: number): string {
   return `${COMMENT_HINT} ${length.toLocaleString('en-GB')} of ${FEEDBACK_TEXT_MAX.toLocaleString('en-GB')} characters.`;
 }
 
+const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
+
+/**
+ * The star a key moves the rating to, as the WAI-ARIA APG radio group does
+ * (https://www.w3.org/WAI/ARIA/apg/patterns/radio/): Right and Down check
+ * the next radio — one star more — and Left and Up the previous — one
+ * fewer — wrapping from the last to the first and from the first to the
+ * last. With nothing checked yet the group's tab stop is the first star
+ * (roving tabindex), so the first Right or Down checks that focused star,
+ * 1, rather than skipping it; Left or Up from it wraps to the last, 5.
+ * Space checks the focused star (the button's own click). Home and End,
+ * which the pattern leaves open, take the first and the last. Null for any
+ * other key.
+ */
+export function starForKey(key: string, rating: number): number | null {
+  switch (key) {
+    case 'ArrowRight':
+    case 'ArrowDown':
+      return rating >= 5 || rating < 1 ? 1 : rating + 1;
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      return rating <= 1 ? 5 : rating - 1;
+    case 'Home':
+      return 1;
+    case 'End':
+      return 5;
+    default:
+      return null;
+  }
+}
+
+/** The action's "one entry per worker per event" refusal (23505, §11.5). */
+export function isAlreadyLeft(result: { error?: string; code?: string | null }): boolean {
+  return result.code === '23505' || /already been left/i.test(result.error ?? '');
+}
+
 export function FeedbackModal({
   open,
   eventId,
   bookingId,
   personName,
+  photo,
   role,
   eventTitle,
   eventDate,
@@ -44,18 +96,34 @@ export function FeedbackModal({
   eventId: string;
   bookingId: string;
   personName: string;
+  /** The worker's signed selfie URL, when there is one. */
+  photo?: string;
   /** The subtitle: "Waiting Staff · Gala Dinner · Fri 19 Sep 2026". */
   role: string;
   eventTitle: string;
   eventDate: string;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // One tab stop for the group (roving tabindex): the chosen star, or the
+  // first before a choice; the arrows, Home and End move and choose.
+  function onStarKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (pending) return;
+    const next = starForKey(e.key, rating);
+    if (next === null) return;
+    e.preventDefault();
+    setRating(next);
+    starRefs.current[next - 1]?.focus();
+  }
 
   function close() {
+    if (pending) return;
     setRating(0);
     setText('');
     setError(null);
@@ -73,9 +141,27 @@ export function FeedbackModal({
     }
     setError(null);
     startTransition(async () => {
-      const result = await leaveFeedback(eventId, bookingId, rating, text);
-      if (result.ok) close();
-      else setError(result.error);
+      let result: Awaited<ReturnType<typeof leaveFeedback>>;
+      try {
+        result = await leaveFeedback(eventId, bookingId, rating, text);
+      } catch {
+        setError(FAILED);
+        return;
+      }
+      if (result.ok) {
+        setRating(0);
+        setText('');
+        onClose();
+        return;
+      }
+      if (isAlreadyLeft(result as { error?: string; code?: string | null })) {
+        setRating(0);
+        setText('');
+        onClose();
+        router.refresh();
+        return;
+      }
+      setError(result.error);
     });
   }
 
@@ -84,6 +170,7 @@ export function FeedbackModal({
       open={open}
       title={`Feedback · ${personName}`}
       onClose={close}
+      dismissible={!pending}
       footer={
         <>
           <Button tone="ghost" onClick={close} disabled={pending}>
@@ -95,27 +182,47 @@ export function FeedbackModal({
         </>
       }
     >
-      <div className="xs muted" style={{ marginBottom: 14 }}>
-        {role} · {eventTitle} · {eventDate}
+      {/* The face first (event.html:215): the customer rates the person
+          they recognise, not a name on a list (§11.1). */}
+      <div className="fb-who">
+        <Avatar
+          name={personName}
+          src={photo}
+          deleted={isRemoved({ name: personName })}
+          silhouette
+        />
+        <div className="xs muted">
+          {role} · {eventTitle} · {eventDate}
+        </div>
       </div>
 
       {error ? <Alert tone="coral">{error}</Alert> : null}
 
       <fieldset className="stars-field">
         <legend className="label">Rating</legend>
-        <div className="stars-row" role="radiogroup" aria-label="Rating out of five">
+        <div
+          className="stars-row"
+          role="radiogroup"
+          aria-label="Rating out of five"
+          aria-required="true"
+          onKeyDown={onStarKey}
+        >
           {STARS.map((n) => (
             <button
               key={n}
+              ref={(el) => {
+                starRefs.current[n - 1] = el;
+              }}
               type="button"
               role="radio"
               aria-checked={rating === n}
+              tabIndex={n === (rating || 1) ? 0 : -1}
               aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
               className={n <= rating ? 'star on' : 'star'}
               onClick={() => setRating(n)}
               disabled={pending}
             >
-              ★
+              <StarIcon />
             </button>
           ))}
         </div>
@@ -135,10 +242,25 @@ export function FeedbackModal({
 
       {/* One entry per worker per event, and the portal has no edit or
           delete (§11.5): said here, before the button, not after. */}
-      <div className="note sm" style={{ marginTop: 14 }}>
+      <div className="note sm fb-final">
         Once submitted, feedback cannot be edited or withdrawn from the portal. If something needs
         correcting, contact the office.
       </div>
     </Modal>
+  );
+}
+
+/**
+ * One star of the picker. A shape, not a glyph, so the two states differ in
+ * form as well as colour: an outline in --muted until chosen, then filled
+ * in the amber (client-portal.css .star). The same ★ in two colours read as
+ * five identical stars in light mode, where --muted and the amber ink are
+ * barely 1.2:1 apart.
+ */
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 2.8l2.83 5.73 6.33.92-4.58 4.46 1.08 6.3L12 17.24l-5.66 2.97 1.08-6.3-4.58-4.46 6.33-.92z" />
+    </svg>
   );
 }

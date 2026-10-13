@@ -1,6 +1,6 @@
 # ADR-0073 · Branded HTML email: every email in THC Light, with the text kept
 
-**Status:** Accepted (THC, 29.09.2026) · **Amends:** §11.3/§11.4's names for the two event documents in client emails (see *Deviation*), [ADR-0015](0015-reports-money-and-document-emails.md) (D1/D2 copy), [ADR-0039](0039-gdpr-scrub-worker-write-paths-and-cross-browser-reset.md) (the recovery template's look; its link is unchanged) · **Code:** `packages/notifications/src/email-html.ts`, `email-layouts.ts`, `email-logo.ts`, `documents.ts`, `outbox.ts`, `resend.ts`, `drain.ts`, `src/assets/thc-mark-email.{png,ts}`, `scripts/gen-email-logo.mjs`; tests `email-html.test.ts`, `drain.test.ts`, `documents.test.ts`; `supabase/templates/recovery.html`
+**Status:** Accepted (THC, 29.09.2026) · **Superseded for the portal and office labels by [ADR-0074](0074-allocation-timesheet-autosend.md):** the *Deviation* section below renames the documents in client emails only and leaves the Back Office buttons, the PDF titles and the Client Portal's names unchanged; ADR-0074 (the same day) applies the names everywhere — Client Portal "↓ Download Allocation Timesheet" / "↓ Download Completed Timesheet". · **Amends:** §11.3/§11.4's names for the two event documents in client emails (see *Deviation*), [ADR-0015](0015-reports-money-and-document-emails.md) (D1/D2 copy), [ADR-0039](0039-gdpr-scrub-worker-write-paths-and-cross-browser-reset.md) (the recovery template's look; its link is unchanged) · **Code:** `packages/notifications/src/email-html.ts`, `email-layouts.ts`, `email-logo.ts`, `documents.ts`, `outbox.ts`, `resend.ts`, `drain.ts`, `src/assets/thc-mark-email.{png,ts}`, `scripts/gen-email-logo.mjs`; tests `email-html.test.ts`, `drain.test.ts`, `documents.test.ts`; `supabase/templates/recovery.html`
 
 ## Context
 
@@ -76,6 +76,8 @@ The D1/D2 payload may carry `schedule`, and D2 may carry `totalHours` (added by 
 ## Deviation
 
 §11.3/§11.4 call the two documents the "allocation sheet" and the "sign-out timesheet". THC agreed on 29.09.2026 that client emails call them **Allocation Timesheet** and **Completed Allocation Timesheet**. This ADR changes only the email copy (`documents.ts`). The Back Office button labels, the PDF titles and the client portal's document names are unchanged. Renaming those would be a separate change for their owners.
+
+> **Superseded for portal and office labels by [ADR-0074](0074-allocation-timesheet-autosend.md).** ADR-0074 §1 made that separate change: the office buttons and the Client Portal now say Allocation Timesheet / Completed Timesheet too. The PDF's own header still reads STAFF ALLOCATION.
 
 ## Owner step
 

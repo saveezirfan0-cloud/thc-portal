@@ -10,7 +10,7 @@ export function ForgotForm() {
   const [error, formAction, pending] = useActionState(requestReset, null);
 
   return (
-    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form action={formAction} className="auth-form">
       {error ? <Alert tone="coral">{error}</Alert> : null}
       <p className="sm muted">
         Enter the email you sign in with. If it has an account, we’ll send a reset link.
@@ -20,13 +20,14 @@ export function ForgotForm() {
         name="email"
         type="email"
         autoComplete="username"
+        placeholder="you@yourvenue.co.uk"
         required
         error={error ? ' ' : undefined}
       />
       <Button type="submit" tone="primary" size="lg" block disabled={pending}>
         {pending ? 'Sending…' : 'Send reset link'}
       </Button>
-      <Link href="/login" className="xs" style={{ textAlign: 'center' }}>
+      <Link href="/login" className="xs auth-link">
         ← Back to sign in
       </Link>
     </form>

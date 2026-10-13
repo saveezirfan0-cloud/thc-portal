@@ -18,6 +18,8 @@ const state = vi.hoisted(() => ({
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+// The modal re-reads the page after an "already left" answer (router.refresh).
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
     rpc: async (fn: string, args: Record<string, unknown>) => {

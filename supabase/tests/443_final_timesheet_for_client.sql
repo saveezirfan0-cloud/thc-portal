@@ -1,9 +1,11 @@
 -- =====================================================================
 -- 443 · The client sees a final sign-out timesheet only (§11.2, §11.4)
 --   20260923193100_finance_send_waits_for_p2_and_final_timesheets.sql
+--   20261013100300: "final" waits for the last role's end + 4 h, when the
+--   last check-out window closes (RULE-02, ADR-0119), not the end itself.
 -- =====================================================================
 begin;
-select plan(4);
+select plan(7);
 \ir _shared/fixtures.psql
 
 -- 20260923193100 paused the Monday finance send until the outbox drain
@@ -34,6 +36,39 @@ values (:'ev', 'signout', :'ev' || '/signout/later-draft.pdf', 'S2.pdf', 1, 1, n
 set local role authenticated;
 select is((select storage_path from client_event_documents_v where event_id = :'ev' and kind = 'signout'),
   :'ev' || '/signout/mid.pdf', 'and a newer mid-event download does not replace the sent one');
+reset role;
+
+-- ---------------------------------------------------------------------
+-- 20261013100300 · an unsent copy is final only from end + 4 h.
+-- Fixture Event B is client B's and untouched above; its last role ends
+-- eight days from now, so the copies below are drawn "in the future"
+-- relative to that end — the view compares the two timestamps only.
+-- ---------------------------------------------------------------------
+\set evb :event_b
+insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count, generated_at)
+select :'evb', 'signout', :'evb' || '/signout/end-plus-1h.pdf', 'B1.pdf', 1, 1, w.ends_at + interval '1 hour'
+  from event_windows w where w.event_id = :'evb';
+
+select set_config('request.jwt.claims', json_build_object('sub', :'clientb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from client_event_documents_v where event_id = :'evb' and kind = 'signout'), 0,
+  'a copy drawn at end + 1 h is not served: check-out is still open until end + 4 h, so finish times may be blank');
+reset role;
+
+insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count, generated_at)
+select :'evb', 'signout', :'evb' || '/signout/end-plus-4h01.pdf', 'B2.pdf', 1, 1, w.ends_at + interval '4 hours 1 minute'
+  from event_windows w where w.event_id = :'evb';
+
+set local role authenticated;
+select is((select storage_path from client_event_documents_v where event_id = :'evb' and kind = 'signout'),
+  :'evb' || '/signout/end-plus-4h01.pdf',
+  'a copy drawn at end + 4 h 01 is the client''s Completed Timesheet');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from client_event_documents_v where event_id = :'evb'), 0,
+  'and client A still reads none of client B''s copies');
 reset role;
 
 select * from finish();

@@ -28,7 +28,7 @@ export async function requestReset(
   if (!email || !email.includes('@')) return 'Enter the email address you sign in with.';
 
   if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
-    return 'Password reset is not available yet — this environment has no Supabase project.';
+    return "The portal isn't connected yet. Please contact THC.";
   }
 
   const origin = appOrigin(process.env['NEXT_PUBLIC_CLIENT_URL'], 'http://127.0.0.1:3002');

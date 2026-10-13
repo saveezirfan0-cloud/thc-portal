@@ -22,6 +22,20 @@ describe('wrongAppBody', () => {
     expect(html).toContain('Client Portal');
   });
 
+  it('looks like THC, self-contained: cream or navy by the device, a pill sign-out', () => {
+    const html = wrongAppBody('admin', 'Client Portal');
+    // The warm grounds of packages/ui tokens.css, light and dark.
+    expect(html).toContain('--bg:#faf7f4');
+    expect(html).toMatch(/@media \(prefers-color-scheme:dark\)\{:root\{--bg:#0a0e18/);
+    expect(html).toContain("'Plus Jakarta Sans',system-ui,sans-serif");
+    expect(html).toMatch(/button\{[^}]*border-radius:999px/);
+    expect(html).toMatch(/button\{[^}]*min-height:44px/);
+    // Nothing fetched: no stylesheet, font file or script to wait on.
+    expect(html).not.toMatch(/<link|<script|url\(/);
+    // Still tiny.
+    expect(html.length).toBeLessThan(2500);
+  });
+
   it('still offers the way out when the session carries no role at all', () => {
     const html = wrongAppBody(null, 'Back Office');
     expect(html).toContain('no role set');

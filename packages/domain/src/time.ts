@@ -20,9 +20,27 @@ export function viewerZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || UK_ZONE;
 }
 
+/**
+ * IANA names whose clock is Europe/London's at every instant: the zone
+ * itself, its legacy aliases (GB, GB-Eire, Europe/Belfast) and the Crown
+ * Dependencies, which link to it in tzdata. A reader on one of these is on
+ * UK time, so a "your time" line would only repeat the UK one (§1.8).
+ * Zones that merely share London's offset today (Lisbon, Dublin, the
+ * Canaries) are not here: their rules are their own and can diverge.
+ */
+export const UK_CLOCK_ZONES: ReadonlySet<string> = new Set([
+  UK_ZONE,
+  'Europe/Jersey',
+  'Europe/Guernsey',
+  'Europe/Isle_of_Man',
+  'Europe/Belfast',
+  'GB',
+  'GB-Eire',
+]);
+
 /** True when the viewer needs the second "your time" line. */
 export function needsDualZone(zone: string = viewerZone()): boolean {
-  return zone !== UK_ZONE;
+  return !UK_CLOCK_ZONES.has(zone);
 }
 
 /**

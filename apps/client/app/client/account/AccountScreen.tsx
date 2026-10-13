@@ -59,7 +59,7 @@ export function AccountScreen({ account, officeEmail, problem }: AccountScreenPr
                 ))}
               </ul>
             ) : (
-              <p className="acct-v muted">—</p>
+              <p className="acct-v muted">{ACCOUNT_COPY.noRecipients}</p>
             )}
           </section>
         </Panel>

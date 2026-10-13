@@ -41,8 +41,10 @@ async function open(page: Page, path: string, email: string, password = PASSWORD
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  // The middleware's `next` carries the pathname only, so a route that
-  // depends on its query string has to be asked for again by hand.
+  // The Client Portal's middleware puts the query string in `next` as well
+  // as the pathname; the Back Office's and the Staff App's carry the
+  // pathname only. Asking for `path` again lands every app on the exact
+  // route, query and all, whichever one this is.
   await page.waitForURL((url) => !url.pathname.startsWith('/login'));
   await page.goto(path);
   await expect(page).not.toHaveURL(/\/login/);

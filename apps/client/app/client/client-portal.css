@@ -11,7 +11,9 @@
  */
 
 .ctop {
-  min-height: 56px; /* the wireframe's own bar height (client/events.html); the office --topbar-h is 64 */
+  /* The wireframe's own 56px bar (client/events.html): a finger-sized row
+     plus its padding. The office --topbar-h is 64. */
+  min-height: calc(var(--tap-min) + var(--sp-12));
   border-bottom: 1px solid var(--line);
   background: var(--panel);
   display: flex;
@@ -21,6 +23,14 @@
   position: sticky;
   top: 0;
   z-index: 30;
+}
+
+/* The brand is the way home, not a link in a sentence: it keeps the text
+   colour and never underlines (base.css colours and underlines every <a>). */
+.ctop .brand,
+.ctop .brand:hover {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .ctop .brand .sub.co {
@@ -64,7 +74,7 @@
 .ctop-menu {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--sp-16);
 }
 
 .ctop-menu .menu-who,
@@ -76,15 +86,48 @@
 .ctop-menu .mode {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-10);
 }
 
 .ctop .tz {
-  /* Same recipe as the office .topbar .tz (packages/ui components.css). */
+  /* "Viewer: Europe/Berlin (UTC+2)" (ViewerZoneNote), only for a reader
+     outside UK time. Same recipe as the office .topbar .tz. */
   font-family: var(--font-label);
   font-size: var(--fs-11);
   color: var(--muted);
   letter-spacing: var(--label-track);
+}
+
+/* "Skip to content" (WCAG 2.4.1): the signed-in layout's first focusable
+   element, off-screen until a keyboard reaches it, then a pill over the
+   top bar's corner. */
+.skip-link {
+  position: absolute;
+  left: var(--sp-12);
+  top: var(--sp-8);
+  z-index: 60;
+  transform: translateY(-200%);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-16);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--control-line);
+  box-shadow: var(--shadow-card);
+  font-weight: 600;
+  font-size: var(--fs-13);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* Focus moved here by the skip link is not an action to ring. */
+.cwrap:focus {
+  outline: none;
 }
 
 .cwrap {
@@ -117,12 +160,7 @@
 .ev-filters .ev-date {
   width: 150px;
   min-width: 0;
-  /* The native picker's glyph follows the page's ground, not the OS. */
-  color-scheme: dark;
-}
-
-:root[data-theme='light'] .ev-filters .ev-date {
-  color-scheme: light;
+  /* The picker's glyph follows the theme's own color-scheme (tokens.css). */
 }
 
 /* ---- "Next: Gala Dinner · today 07:00 UK · 13 of 17 confirmed" ---- */
@@ -143,6 +181,9 @@
 
 .ev-next:hover {
   border-color: var(--cyan-line);
+  /* A card, not a link in a sentence: no underline, no link colour. */
+  color: var(--text);
+  text-decoration: none;
 }
 
 .ev-next.live {
@@ -157,6 +198,12 @@
 
 .ev-next-t > span {
   color: var(--muted);
+}
+
+/* On the green tint --muted falls under 4.5:1 in light; the live strip's
+   words are all ink. */
+.ev-next.live .ev-next-t > span {
+  color: var(--text);
 }
 
 .ev-next-go {
@@ -193,10 +240,40 @@
   font-size: var(--fs-12);
   font-weight: 600;
   color: var(--cyan-ink);
+  /* A link to tap: a finger-sized hit area, the text still one small line
+     ("Feedback: 4 to go" — the whole sentence is its accessible name). */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  white-space: nowrap;
 }
 
-.tbl .ev-nudge {
-  max-width: 130px;
+/* The table's cells: a little less padding between columns than the
+   design system's 20px (the outer edges keep the panel's), so the room the
+   five fixed-shape columns leave (a date on one line, a pill, a bar, the
+   faces, a button) goes to the event's name. The table only shows above
+   820px; below it the cards take over. */
+.events-panel .tbl :is(th, td) {
+  padding-inline: var(--sp-12);
+}
+
+.events-panel .tbl :is(th, td):first-child {
+  padding-left: var(--sp-20);
+}
+
+.events-panel .tbl :is(th, td):last-child {
+  padding-right: var(--sp-20);
+}
+
+/* The venue's floor keeps its name and address to two or three lines; the
+   event's floor keeps a long title to three (a fixture of 80 characters
+   is the yardstick). */
+.events-panel .tbl .col-venue {
+  min-width: 150px;
+}
+
+.events-panel .tbl td:first-child {
+  min-width: 200px;
 }
 
 .ev-sheet {
@@ -226,7 +303,7 @@
 .fill-cell {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--sp-6);
   min-width: 120px;
 }
 
@@ -259,14 +336,94 @@
   color: var(--muted);
 }
 
+/* In the list's table a window line may wrap, but only between its pieces
+   (EventWindow `breakable`): "Fri 18 Sep" · "20:30 – 00:30 your time" ·
+   "(+1 day)". A reader far from London has the longest line, and kept on
+   one it pushed the Document column out of a tablet's panel. */
+.tbl td.win > .sub {
+  white-space: normal;
+}
+
+.win .wseg {
+  white-space: nowrap;
+}
+
 /* A cancelled event keeps its row, greyed, rather than disappearing. */
 .tbl tr.cancelled td {
   color: var(--muted);
 }
 
-.tbl tr.cancelled .avatar {
+.tbl tr.cancelled .avatar,
+.ecard.cancelled .avatar {
   filter: grayscale(1);
   opacity: 0.5;
+}
+
+/* ---- the list's table (§11.1) ----
+   A plain sideways scroller inside the card: whatever the folded table
+   still cannot fit scrolls here rather than being clipped by the panel's
+   rounded corners. It has no height, so it never scrolls vertically. */
+.ev-table {
+  overflow-x: auto;
+}
+
+/* The folded copies: the venue under the event's name, the faces under the
+   fill bar, the status under the date. Each is rendered beside its own
+   column and shown only once that column folds. */
+.tbl .venue-inline,
+.tbl .faces-inline,
+.tbl .status-inline {
+  display: none;
+}
+
+/* The status under the date: the body face, and free to wrap, inside a
+   cell that is otherwise one mono line per row. */
+.tbl .status-inline {
+  font-family: var(--font-body);
+  white-space: normal;
+  margin-top: var(--sp-8);
+}
+
+/* Laptop (wireframe: "Tablet 768–1024px — the desktop table stays, with
+   the Venue column folded under the event name"). Seven columns need about
+   1230px of panel for a three-line title; below a 1280px window the Venue
+   folds under the name and the Line-up's faces under the fill bar. */
+@media (max-width: 1279px) {
+  .tbl .col-venue,
+  .tbl .col-lineup {
+    display: none;
+  }
+
+  .tbl .venue-inline,
+  .tbl .faces-inline {
+    display: block;
+  }
+
+  /* Under the fill bar the faces wrap at the role split's width rather
+     than setting the column's: six faces and a "+N" in one row were the
+     widest thing in it. */
+  .tbl .faces-inline .avatars {
+    flex-wrap: wrap;
+    row-gap: var(--sp-6);
+    max-width: 140px;
+  }
+
+  .fill-cell > .ev-roles {
+    max-width: 140px;
+  }
+}
+
+/* Tablet: four columns — event, date (and status), confirmed (and faces),
+   document. Five left the event's name about 100px at 821px and pushed the
+   Document column out of the panel. */
+@media (max-width: 1100px) {
+  .tbl .col-status {
+    display: none;
+  }
+
+  .tbl .status-inline {
+    display: flex;
+  }
 }
 
 /* ---- the event page ---- */
@@ -277,30 +434,56 @@
 .role-title {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: calc(var(--sp-4) / 2);
 }
 
 .role-title .rw {
   font-family: var(--font-num);
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 500;
   color: var(--muted);
   display: flex;
   flex-wrap: wrap;
-  column-gap: 8px;
+  column-gap: var(--sp-8);
 }
 
 .role-title .rw .sub::before {
   content: '· ';
 }
 
-.ehead .actions {
-  margin-left: auto;
+.epage {
+  gap: var(--sp-20);
 }
+
+/* The event's header is a card (wireframes/client/event.html .ehead). */
 .ehead {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-18) var(--sp-20);
+}
+
+.ehead .actions {
+  margin-left: auto;
+  /* A disabled document carries "Not issued yet" under it; the buttons
+     beside it stay level with the button, not with the pair's middle. */
+  align-items: flex-start;
+}
+
+/* "· as of Fri 19 Sep 2026, 10:00 your time (09:00 UK)" */
+.asof b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* A cancelled event's header greys with its row on the list. */
+.ehead.cancelled h1,
+.ehead.cancelled .meta .v {
+  color: var(--muted);
 }
 
 .meta {
@@ -332,10 +515,13 @@
 }
 
 /* Hairlines drawn by each cell rather than a 1px gap over a line-coloured
-   ground: a short last row left that ground showing as a grey slab. */
+   ground: a short last row left that ground showing as a grey slab.
+   The wireframe's two columns, three on a wide screen: a 280px track gave
+   four at 1440px and left the name about 85px beside "Leave feedback", so
+   "Luca Moretti" broke over two lines. */
 .wgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   margin: 0 -1px -1px 0;
 }
 
@@ -350,10 +536,25 @@
     inset 0 -1px 0 var(--line);
 }
 
+.wrow > .who {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .wrow .n {
   font-family: var(--font-head);
   font-weight: 600;
   font-size: var(--fs-14);
+}
+
+/* "Deleted account #1042" (§1.7): a slot, not a person. */
+.wrow .n.muted {
+  color: var(--muted);
+}
+
+/* "★★★★☆ sent 20 Sep" beside the role (event.html:251). */
+.wrow .fb-sent {
+  color: var(--green-ink);
 }
 
 .wrow .s {
@@ -363,6 +564,35 @@
 
 .wrow .fb {
   margin-left: auto;
+  flex: none;
+  white-space: nowrap;
+  /* Never narrower than its label: in a tight cell the name wraps, the
+     button does not, and its text cannot spill past the pill's edge. */
+  min-width: max-content;
+  padding-inline: var(--sp-12);
+}
+
+/* A removed worker's "Leave feedback" (§1.7): nobody left to rate, so the
+   whole control greys, ink and edge, as the wireframe's disabled button. */
+.wrow .fb.gone {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-line);
+  color: var(--disabled-ink);
+}
+
+/* A role section nobody has confirmed on yet: one quiet line. */
+.wempty {
+  margin: 0;
+  padding: var(--sp-14) var(--sp-20);
+}
+
+/* A header document not issued yet: the disabled button and, under it, why
+   (as the list prints it). */
+.ehead .doc-slot {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
 }
 
 /* The line-up of a cancelled event is not shown: the bookings were
@@ -390,7 +620,7 @@
 
 .ecard .when .win {
   font-family: var(--font-num);
-  font-size: 12.5px; /* half-pixel size from client/events.html; no token */
+  font-size: var(--fs-13);
   white-space: normal;
   text-align: right;
   line-height: 1.35;
@@ -407,7 +637,7 @@
   gap: var(--sp-10);
   border-top: 1px solid var(--line);
   padding-top: var(--sp-12);
-  margin-top: 2px;
+  margin-top: calc(var(--sp-4) / 2);
 }
 
 /* The download (filled) and Details (bordered) are a matched pair: equal
@@ -465,18 +695,19 @@
   min-width: 0;
 }
 
-.ecard.cancelled {
-  opacity: 0.55;
-}
-
+/* Greyed by colour, not by opacity: faded to .55 the card's text fell to
+   about 2.2:1. The title is struck (<s>) and the words are --muted, as the
+   table's cancelled row is. */
+.ecard.cancelled,
 .ecard.cancelled .t {
-  text-decoration: line-through;
+  color: var(--muted);
 }
 
 .cards {
   display: none;
   flex-direction: column;
   gap: var(--sp-12);
+  padding: var(--sp-14);
 }
 
 @media (max-width: 820px) {
@@ -489,7 +720,7 @@
      the same rows, so the phone drops no field (§1.2, §11.1). The panel
      that frames the table on a desktop would be a card around cards here,
      so it steps back to a plain heading. */
-  .table-wrap {
+  .ev-table {
     display: none;
   }
 
@@ -505,12 +736,12 @@
   }
 
   .events-panel > .panel-h {
-    padding: 0 2px 4px;
+    padding: 0 calc(var(--sp-4) / 2) var(--sp-4);
     border-bottom: 0;
   }
 
   .events-panel .cards {
-    padding: 0 !important;
+    padding: 0;
   }
 
   .wgrid {
@@ -518,7 +749,7 @@
   }
 
   .wrow {
-    padding: 12px 16px;
+    padding: var(--sp-12) var(--sp-16);
   }
 
   .role-panel > .panel-h {
@@ -538,8 +769,12 @@
     content: none;
   }
 
+  .ehead {
+    padding: var(--sp-16);
+  }
+
   .ehead h1 {
-    font-size: 26px;
+    font-size: var(--fs-20);
   }
 
   /* Up to three full-width buttons on a completed event (two documents and
@@ -551,14 +786,15 @@
     flex-wrap: wrap;
   }
 
-  .ehead .actions .btn {
+  .ehead .actions .btn,
+  .ehead .actions .doc-slot {
     width: 100%;
     justify-content: center;
   }
 
   .meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 16px;
+    gap: var(--sp-14) var(--sp-16);
   }
 }
 
@@ -570,12 +806,13 @@
    to know whose events these are (§11.1). */
 @media (max-width: 760px) {
   .ctop {
-    min-height: 60px;
-    padding: 8px 16px;
-    gap: 12px;
+    min-height: calc(var(--tap-min) + var(--sp-16));
+    padding: var(--sp-8) var(--sp-16);
+    gap: var(--sp-12);
   }
 
-  .ctop .who {
+  .ctop .who,
+  .ctop .tz {
     display: none;
   }
 
@@ -590,7 +827,7 @@
   .ctop .brand .sub.co {
     display: block;
     font-family: var(--font-body);
-    font-size: 12px;
+    font-size: var(--fs-12);
     letter-spacing: 0;
     text-transform: none;
     color: var(--text);
@@ -604,18 +841,28 @@
   .ctop-menu {
     display: none;
     position: absolute;
-    top: calc(100% + 8px);
-    left: 12px;
-    right: 12px;
+    top: calc(100% + var(--sp-8));
+    left: var(--sp-12);
+    right: var(--sp-12);
     z-index: 45;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
-    padding: 6px 16px;
+    padding: var(--sp-6) var(--sp-16);
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: var(--r-card);
     box-shadow: var(--shadow-card);
+  }
+
+  /* Dark: the frosted sheet the Staff App's sheets are, lifted by the
+     accent glow rather than a shadow (ADR-0007). */
+  :root:not([data-theme='light']) .ctop-menu {
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: blur(var(--blur));
+    backdrop-filter: blur(var(--blur));
+    border-color: var(--glass-line);
+    box-shadow: var(--glow-soft);
   }
 
   .ctop-menu.open {
@@ -623,7 +870,7 @@
   }
 
   .ctop-menu > * {
-    padding: 14px 0;
+    padding: var(--sp-14) 0;
     border-bottom: 1px solid var(--line);
   }
 
@@ -635,7 +882,7 @@
     display: flex;
     border-left: 0;
     padding-left: 0;
-    gap: 4px;
+    gap: var(--sp-4);
   }
 
   .ctop-menu .mode {
@@ -646,10 +893,22 @@
     display: inline;
   }
 
+  /* "Account" and "Sign out" are a matched pair of full-width buttons:
+     the same height, the same width, one above the other. */
+  .ctop-menu .account {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .ctop-menu .account .btn,
   .ctop-menu .signout .btn {
     width: 100%;
+    min-height: var(--tap-min);
     justify-content: center;
-    margin: 14px 0 8px;
+  }
+
+  .ctop-menu .signout .btn {
+    margin: var(--sp-10) 0 var(--sp-8);
   }
 
   /* The list's filters: the shared .toolbar rules already give the search
@@ -680,23 +939,6 @@
   }
 }
 
-/* ---- "+3 more confirmed" on a line-up preview (§11.1) ---- */
-.avatars .more {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-num);
-  font-size: var(--label-size);
-  color: var(--muted);
-  background: var(--panel-2);
-  border: 2px solid var(--panel);
-  box-shadow: 0 0 0 1px var(--line);
-  border-radius: var(--r-avatar);
-  margin-right: -6px;
-}
-
 /* ---- the feedback popup's star picker (§11.2) ----
    The design system's .stars is a read-only score; this one is an input,
    so it is five radio buttons wearing stars rather than a rating display. */
@@ -708,27 +950,54 @@
 
 .stars-row {
   display: flex;
-  gap: var(--sp-4);
+  gap: 0;
   margin-top: var(--sp-6);
 }
 
+/* Each star is a finger-sized target (§1.2), drawn as a shape so chosen
+   and not chosen differ in form, not only in colour (WCAG 1.4.1): an
+   outline in --muted (over 3:1 on the popup's panel in both themes, so the
+   empty star is still a visible control, 1.4.11) until chosen, then filled
+   in the amber with an amber-ink edge. The same ★ glyph in --muted and in
+   amber was about 1.2:1 apart in light mode: "4 of 5" read as five. */
 .star {
   background: none;
   border: 0;
-  padding: 2px var(--sp-4);
+  padding: 0;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--fs-26);
   line-height: 1;
   cursor: pointer;
-  color: var(--line);
-  transition: color 0.12s ease;
+  color: var(--muted);
 }
 
-.star:hover:not(:disabled) {
-  color: var(--amber-ink);
+.star svg {
+  width: 1.15em;
+  height: 1.15em;
+  display: block;
 }
 
-.star.on {
-  color: var(--amber-ink);
+.star path {
+  fill: transparent;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition:
+    fill 0.12s ease,
+    stroke 0.12s ease;
+}
+
+.star:hover:not(:disabled) path {
+  stroke: var(--amber-ink);
+}
+
+.star.on path {
+  fill: var(--amber);
+  stroke: var(--amber-ink);
 }
 
 .star:focus-visible {
@@ -742,6 +1011,18 @@
   cursor: default;
 }
 
+/* The popup's face and subtitle (event.html:215). */
+.fb-who {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  margin-bottom: var(--sp-14);
+}
+
+.fb-final {
+  margin-top: var(--sp-14);
+}
+
 /* Finger targets on a phone (§1.2): the brand (home) link in the bar and
    the event page's "← Your events". */
 @media (max-width: 760px) {
@@ -752,5 +1033,19 @@
     display: inline-flex;
     align-items: center;
     min-height: var(--tap-min);
+  }
+}
+
+/* Between a phone and a laptop the bar has no room for the person's name as
+   well as the company, the appearance switch and the buttons: the logo and
+   its name keep their width, the avatar stays (its initials name them) and
+   the name goes. */
+@media (min-width: 761px) and (max-width: 1000px) {
+  .ctop .brand {
+    flex: none;
+  }
+
+  .ctop-menu .me .sm {
+    display: none;
   }
 }

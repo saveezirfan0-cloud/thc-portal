@@ -5,6 +5,8 @@ import { LoginForm } from './LoginForm';
 
 export const metadata = { title: 'Sign in · THC Client Portal' };
 
+const OFFICE = 'admin@thehospitalitycompany.co.uk';
+
 /**
  * The privacy notice (§1.7) lives on the Staff App, a different deployment,
  * so its origin is configuration: NEXT_PUBLIC_STAFF_URL, as in the Back
@@ -25,8 +27,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
       product="Client Portal"
       footer={
         <>
-          Access is set up by The Hospitality Company for your venue. Need an account? Email
-          admin@thehospitalitycompany.co.uk
+          Access is set up by The Hospitality Company for your venue. Need an account? Email{' '}
+          <a href={`mailto:${OFFICE}`}>{OFFICE}</a>
           {privacy ? (
             <>
               {' · '}

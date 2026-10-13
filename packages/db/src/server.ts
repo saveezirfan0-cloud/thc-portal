@@ -28,6 +28,19 @@ export interface CreateClientOptions {
    * library's options in the Staff App (`defaultSessionFallback`).
    */
   fallback?: SessionFallback;
+  /**
+   * Write the auth cookies `httpOnly`. Opt-in, per app: only an app with NO
+   * browser Supabase client may set it, or that client loses its session.
+   * Left out, the app's build-time setting `THC_AUTH_COOKIE_HTTP_ONLY`
+   * ('1' = on), which only the Client Portal sets (apps/client/next.config.ts);
+   * the Back Office and Staff App keep @supabase/ssr's readable cookies.
+   */
+  httpOnly?: boolean;
+}
+
+/** The app's build-time opt-in, read as a literal so Next can inline it. */
+export function defaultAuthCookiesHttpOnly(): boolean {
+  return typeof process !== 'undefined' && process.env.THC_AUTH_COOKIE_HTTP_ONLY === '1';
 }
 
 /**
@@ -39,6 +52,7 @@ export interface CreateClientOptions {
  * sign-in is never quietly made persistent again (packages/db/src/session.ts).
  */
 export function createClient(cookies: CookieStore, options: CreateClientOptions = {}) {
+  const httpOnly = options.httpOnly ?? defaultAuthCookiesHttpOnly();
   return createServerClient<Database>(supabaseUrl(), supabaseAnonKey(), {
     cookies: withSessionPersistence(
       {
@@ -46,7 +60,11 @@ export function createClient(cookies: CookieStore, options: CreateClientOptions 
         setAll: (toSet) => {
           for (const { name, value, options: cookieOptions } of toSet) {
             try {
-              cookies.set(name, value, cookieOptions);
+              cookies.set(
+                name,
+                value,
+                httpOnly ? { ...cookieOptions, httpOnly: true } : cookieOptions,
+              );
             } catch {
               // Called from a Server Component; middleware refreshes the session instead.
             }

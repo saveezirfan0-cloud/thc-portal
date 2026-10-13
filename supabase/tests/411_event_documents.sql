@@ -10,7 +10,7 @@
 -- Portal's owner-rights view (ADR-0004).
 -- =====================================================================
 begin;
-select plan(40);
+select plan(41);
 \ir _shared/fixtures.psql
 
 \set ev      '41200000-0000-4000-8000-000000000001'
@@ -223,6 +223,17 @@ set local role authenticated;
 select is((select count(*)::int from event_documents), 0, 'a client reads no document rows from the table itself');
 select is((select string_agg(event_id::text, ',') from client_event_documents_v where event_id in (:'ev', :'ev_b')), :'ev',
   'client A sees its own event''s sheet through client_event_documents_v, and not client B''s');
+reset role;
+
+-- §3.3 / §11.1: a cancelled event offers no document, even one the office
+-- issued before the cancellation (ADR-0119). ev_off is client A's.
+insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count, generated_at, sent_at)
+values (:'ev_off', 'allocation', :'ev_off' || '/allocation/before-cancel.pdf', 'Off.pdf', 1, 1,
+        '2025-04-09 12:00+00', '2025-04-09 12:05+00');
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from client_event_documents_v where event_id = :'ev_off'), 0,
+  'a sheet issued (and sent) before the event was cancelled is not offered to client A once it is cancelled');
 reset role;
 
 select ok(not has_table_privilege('anon', 'client_event_documents_v', 'select'),

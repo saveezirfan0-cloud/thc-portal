@@ -1,0 +1,67 @@
+/* The portal's signed-out cards on a phone: every link and the keep-signed-
+   in box a finger-sized target (44px, --tap-min), as round 1's `.auth-link`
+   rule in packages/ui auth.css does for the links inside a form. Scoped to
+   the Client Portal (loaded by AuthMain), so the other apps' cards keep
+   their own. */
+/* A2 "Check your inbox": the envelope tile over the heading, as the
+   wireframe draws it (client/login.html, A2) — the brand's own tile
+   (.logo: --cyan-solid, --on-cyan, --r-logo), a size up. The card is one
+   flex column that draws the brand and then the heading before its
+   children, so the tile, a child, is ordered between the two. */
+.auth-card:has(> .auth-mail-ico) > .appearance {
+  order: -3;
+}
+
+.auth-card:has(> .auth-mail-ico) > .brand {
+  order: -2;
+}
+
+.auth-card > .logo.auth-mail-ico {
+  order: -1;
+  align-self: center;
+  width: 56px;
+  height: 56px;
+}
+
+.auth-mail-ico svg {
+  width: 55%;
+  height: 55%;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 760px) {
+  /* Links standing on their own: "Didn't get it? Send it again". */
+  .auth-card .auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-min);
+    padding: 0 var(--sp-8);
+  }
+
+  /* Links inside a sentence (the footer's mail and "Privacy notice"): the
+     hit area grows by vertical padding, which an inline box adds without
+     moving a single line of the text around it. */
+  .auth-card .foot a,
+  .auth-card p a {
+    padding-block: calc((var(--tap-min) - 1.1em) / 2);
+  }
+
+  /* "Keep me signed in": the whole 44px row is the box's hit area. The
+     transparent native input is stretched over the row, so a tap anywhere
+     on it lands on the input itself; the drawn square stays as it was. */
+  .auth-form .check {
+    min-height: var(--tap-min);
+    align-items: center;
+  }
+
+  .auth-form .check .check-input {
+    width: 100%;
+    height: 100%;
+  }
+}

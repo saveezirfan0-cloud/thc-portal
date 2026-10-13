@@ -17,19 +17,22 @@ Implemented as CSS custom properties and component classes in `wireframes/assets
 | `--coral` | `#FF6E61` | danger, violations, blocked, rejected, alerts |
 | `--text` | `#E9EEF5` | body text |
 | `--muted` | `#8A97A3` | secondary text, labels |
+| `--control-line` | `#5D6B7E` (light `#958676`, warm dark `#64708A`) | the edge of a control — input, select, default button, a removed worker's dashed avatar slot. 3:1 on every ground (WCAG 1.4.11); `--line` stays the divider (ADR-0121) |
 
-Fonts: **Space Grotesk** headings · **Inter** body · **IBM Plex Mono** labels (uppercase, 0.1em letter-spacing) — `.label`, `.pill`, table headers, KPI captions, times.
+Fonts (Scope style): **Space Grotesk** headings · **Inter** body · **IBM Plex Mono** labels (uppercase, 0.1em letter-spacing) — `.label`, `.pill`, table headers, KPI captions, times. The product (Warm, both modes) sets headings and body in **Plus Jakarta Sans** in all three apps (ADR-0121); mono stays for codes.
+
+Native widgets: `color-scheme` is `dark` by default and `light` on the light ground (tokens.css), so a select's popup, scrollbars and date pickers follow the theme.
 
 ## Non-negotiables
 1. **Zero border-radius** on everything; the circular logo is the only exception (`.logo.round`).
-2. **Square avatars**, real selfies; initials fallback.
+2. **Circular avatars** in the product (Warm, `--r-avatar: 50%`), real selfies; initials fallback. Square only in the Scope §1.6 literal rendering (`--r-avatar: 0`). Instruction of the product owner, 12.10.2026 (ADR-0121). A "+N" overflow chip closes a row of faces at the faces' size (`<AvatarGroup more>` → `.avatar.more`).
 3. Sidebar active: 3px cyan left bar + `--cyan-dim` fill + cyan text.
 4. Buttons animate on hover (lift + sheen); primary = cyan on navy text.
 5. Mobile chrome: frosted glass (`backdrop-filter: blur(18px)`) on top bar, bottom nav and sheets, cyan/purple radial glow under the glass, collapsing header (logo left, avatar right stay).
 6. One name + one logo everywhere: "The Hospitality Company".
 
 ## Component inventory (name → class → React component)
-Web/Sidebar `.sidebar` → `<Sidebar>` · Web/Topbar `.topbar` → `<Topbar>` · Web/Pill `.pill` → `<Pill tone>` · Web/Button `.btn` → `<Button variant>` · SegToggle `.seg` → `<SegToggle>` · Input `.input/.field` → `<Field>` · DocRow `.docrow` → `<DocRow status>` · AppHeader `.app-header` → `<AppHeader collapsed>` · BottomNav `.bottom-nav` → `<BottomNav locked>` · Sheet `.sheet` → `<Sheet>` · Stepper `.stepper` → `<Stepper>` · Kanban `.kanban/.kcol/.kcard` → `<Kanban>` · KPI `.kpi` → `<Kpi>` · Table `.tbl` → `<DataTable>` · Modal `.modal` → `<Modal>` · Toast `.toast` → `<Toast>` · Score `.score` → `<MatchScore>` · Calendar `.cal/.evchip` → `<MonthGrid>` · Map `.map` → Mapbox wrapper.
+Web/Sidebar `.sidebar` → `<Sidebar>` · Web/Topbar `.topbar` → `<Topbar>` · Web/Pill `.pill` → `<Pill tone>` · Web/Button `.btn` → `<Button variant>` (done state `.btn.sent`: green, sm-sized, stays green when disabled) · Input label row `.label-row/.label-action` → `<Input labelAction>` · Password rules `.rules` → `<PasswordRules value confirm touched confirmTouched>` · SegToggle `.seg` → `<SegToggle>` · Input `.input/.field` → `<Field>` · DocRow `.docrow` → `<DocRow status>` · AppHeader `.app-header` → `<AppHeader collapsed>` · BottomNav `.bottom-nav` → `<BottomNav locked>` · Sheet `.sheet` → `<Sheet>` · Stepper `.stepper` → `<Stepper>` · Kanban `.kanban/.kcol/.kcard` → `<Kanban>` · KPI `.kpi` → `<Kpi>` · Table `.tbl` → `<DataTable>` · Modal `.modal` → `<Modal dismissible>` (focus trapped while open, Escape closes, focus returns to the opener; `dismissible={false}` while busy) · Toast `.toast` → `<Toast>` · Score `.score` → `<MatchScore>` · Calendar `.cal/.evchip` → `<MonthGrid>` · Map `.map` → Mapbox wrapper.
 
 ## Status pill vocabulary (use exactly these tones)
 - Event: Upcoming `cyan` · Ongoing `green` · Completed neutral · Cancelled neutral (greyed row).

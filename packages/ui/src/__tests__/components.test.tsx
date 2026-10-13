@@ -41,6 +41,7 @@ import {
   WizardHeader,
 } from '../components/Mobile';
 import { Modal, Toast } from '../components/Modal';
+import { PasswordRules } from '../components/PasswordRules';
 import { Alert, EmptyState, Note, Panel } from '../components/Panel';
 import { Chip, Pill } from '../components/Pill';
 import { SegToggle, Tabs } from '../components/SegToggle';
@@ -592,6 +593,30 @@ describe('controls, people and pipeline', () => {
   });
 });
 
+describe('Avatar silhouette (Client Portal §11.1: faces, never initials)', () => {
+  it('draws a person glyph named for the worker when there is no photo', () => {
+    const out = html(<Avatar name="Tom Reid" silhouette />);
+    expect(out).toContain('class="avatar silhouette"');
+    expect(out).toContain('role="img"');
+    expect(out).toContain('aria-label="Tom Reid"');
+    expect(out).toContain('<svg class="avatar-glyph"');
+    expect(out).not.toContain('>TR<');
+  });
+
+  it('still shows the photo when there is one, and the dashed slot when removed', () => {
+    expect(html(<Avatar name="Tom Reid" silhouette src="/s.jpg" />)).toContain(
+      '<img src="/s.jpg" alt="Tom Reid"/>',
+    );
+    const removed = html(<Avatar name="Deleted account #1042" silhouette deleted />);
+    expect(removed).toContain('avatar deleted');
+    expect(removed).not.toContain('svg');
+  });
+
+  it('leaves the default (initials) alone everywhere else', () => {
+    expect(html(<Avatar name="Tom Reid" />)).toContain('>TR</span>');
+  });
+});
+
 describe('modal and auth card', () => {
   it('renders the dialog and the shared sign-in card', () => {
     expect(
@@ -620,6 +645,66 @@ describe('modal and auth card', () => {
         </AuthCard>,
       ),
     ).toMatchSnapshot();
+  });
+});
+
+describe('ADR-0121 additions', () => {
+  it('closes a row of faces with a "+N" chip the size of the faces', () => {
+    const markup = html(
+      <AvatarGroup size="sm" more={4}>
+        <Avatar name="Amira Khan" size="sm" />
+        <Avatar name="Jonah Whitfield" size="sm" />
+      </AvatarGroup>,
+    );
+    expect(markup).toContain(
+      '<span class="avatar sm more" title="4 more" role="img" aria-label="4 more">+4</span>',
+    );
+    expect(markup).toMatchSnapshot();
+    // Nothing hidden, no chip; a fraction or a negative is not a person.
+    expect(html(<AvatarGroup more={0}>x</AvatarGroup>)).not.toContain('more');
+    expect(html(<AvatarGroup more={-2}>x</AvatarGroup>)).not.toContain('more');
+    expect(
+      html(
+        <AvatarGroup more={2} moreLabel="2 more confirmed">
+          x
+        </AvatarGroup>,
+      ),
+    ).toContain('class="avatar more" title="2 more confirmed"');
+  });
+
+  it('puts one action on the label row', () => {
+    const markup = html(
+      <Input
+        id="pw"
+        label="Password"
+        type="password"
+        reveal
+        labelAction={<a href="/forgot">Forgot password?</a>}
+      />,
+    );
+    expect(markup).toContain(
+      '<div class="field"><div class="label-row"><label class="label" for="pw">Password</label><span class="label-action"><a href="/forgot">Forgot password?</a></span></div><div class="input-row">',
+    );
+    expect(markup).not.toContain('labelAction');
+    expect(markup).toMatchSnapshot();
+    // Without it, the field is exactly what it was.
+    expect(html(<Input id="e" label="Email" />)).toBe(
+      '<div class="field"><label class="label" for="e">Email</label><input id="e" class="input"/></div>',
+    );
+  });
+
+  it('marks a done action as sent and keeps it a button', () => {
+    expect(
+      html(
+        <Button size="sm" className="sent" disabled>
+          ✓ Feedback sent
+        </Button>,
+      ),
+    ).toBe('<button type="button" class="btn sm sent" disabled="">✓ Feedback sent</button>');
+  });
+
+  it('renders the password rules', () => {
+    expect(html(<PasswordRules id="rules" value="gala1" confirm="" touched />)).toMatchSnapshot();
   });
 });
 

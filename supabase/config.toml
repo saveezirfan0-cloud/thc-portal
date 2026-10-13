@@ -247,7 +247,11 @@ enable_confirmations = false
 # the Staff App's security screen, which signs in with the current password first).
 secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+# 60s per address: a "Send it again" pressed twice does not mail twice, and a script
+# cannot flood one inbox through /forgot (security review 12.10). The apps also
+# throttle per account before asking (packages/db/src/auth-throttle.ts, ADR-0051 §25). The hosted project: Auth -> Rate
+# Limits / Email, set there too.
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).

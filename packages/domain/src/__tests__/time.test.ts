@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_TIME_FORMAT,
+  UK_CLOCK_ZONES,
   UK_ZONE,
   clockLabel,
   displayTime,
@@ -56,6 +57,51 @@ describe('needsDualZone', () => {
   it('is false in the UK and true elsewhere', () => {
     expect(needsDualZone(UK_ZONE)).toBe(false);
     expect(needsDualZone('Europe/Warsaw')).toBe(true);
+  });
+
+  it.each([
+    'Europe/Jersey',
+    'Europe/Guernsey',
+    'Europe/Isle_of_Man',
+    'Europe/Belfast',
+    'GB',
+    'GB-Eire',
+  ])('treats %s as UK time: no redundant "your time" line', (zone) => {
+    expect(UK_CLOCK_ZONES.has(zone)).toBe(true);
+    expect(needsDualZone(zone)).toBe(false);
+  });
+
+  // Either side of both changeovers: 25.10.2026 (BST → GMT at 01:00 UTC)
+  // and 28.03.2027 (GMT → BST at 01:00 UTC). Every zone treated as UK must
+  // read the same wall clock as London at each instant, or it is not UK time.
+  const changeovers = [
+    '2026-10-25T00:30:00Z',
+    '2026-10-25T00:59:00Z',
+    '2026-10-25T01:00:00Z',
+    '2026-10-25T01:30:00Z',
+    '2027-03-28T00:30:00Z',
+    '2027-03-28T00:59:00Z',
+    '2027-03-28T01:00:00Z',
+    '2027-03-28T01:30:00Z',
+    '2026-07-01T12:00:00Z',
+    '2027-01-15T12:00:00Z',
+  ].map((iso) => new Date(iso));
+
+  it.each([...UK_CLOCK_ZONES])('%s reads London’s clock across both changeovers', (zone) => {
+    for (const at of changeovers) {
+      expect(`${formatDateIn(at, zone)} ${formatTimeIn(at, zone)}`).toBe(
+        `${formatDateIn(at, UK_ZONE)} ${formatTimeIn(at, UK_ZONE)}`,
+      );
+    }
+  });
+
+  it('still adds the line for a zone on London’s offset only part of the year', () => {
+    // Reykjavik is UTC+0 all year: London's clock in winter, an hour behind in summer.
+    expect(formatTimeIn(changeovers[8]!, 'Atlantic/Reykjavik')).not.toBe(
+      formatTimeIn(changeovers[8]!, UK_ZONE),
+    );
+    expect(needsDualZone('Atlantic/Reykjavik')).toBe(true);
+    expect(needsDualZone('Europe/Lisbon')).toBe(true);
   });
 });
 

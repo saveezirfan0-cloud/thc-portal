@@ -25,6 +25,11 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const { EventsScreen } = await import('../EventsScreen');
 
 const event: PortalEvent = {

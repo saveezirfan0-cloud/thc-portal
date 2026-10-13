@@ -19,8 +19,12 @@ import { FEEDBACK_TOO_LONG, feedbackErrorMessage, feedbackTextTooLong } from '..
  *
  * Every rule lives in `submit_client_feedback()`, not here: who the booking
  * belongs to, whether the worker is on the confirmed line-up, whether the
- * event has started, and one entry per worker per event. This action only
- * carries the call and turns a Postgres error into a sentence.
+ * event has started, and one entry per worker per event; since 12.10 also
+ * a 2000-character comment cap (20261012120600), no feedback on a removed
+ * worker and none on a cancelled event (20261013100000). This action checks
+ * the shape and the length itself (so a long paste is answered without a
+ * round trip), carries the call, and turns a Postgres error into a
+ * sentence.
  *
  * That split is deliberate. The screen disables the button before the event
  * starts, but a disabled button stops nobody — the RPC is what actually
@@ -29,6 +33,21 @@ import { FEEDBACK_TOO_LONG, feedbackErrorMessage, feedbackTextTooLong } from '..
  */
 export type FeedbackResult = { ok: true } | { ok: false; error: string };
 
+const WORKER_REMOVED =
+  'This person is no longer on our books, so feedback can no longer be left for them.';
+
+/**
+ * The database's refusal in the customer's words. A removed worker
+ * (20261013100000, §1.7) is recognised here; everything else — the rating,
+ * an event not yet started, an over-long comment — goes through
+ * feedbackErrorMessage (rules.ts). Never the raw text.
+ */
+function feedbackRefusal(error: { code?: string | null; message?: string | null }): string {
+  const message = (error.message ?? '').toLowerCase();
+  if (error.code === '22023' && message.includes('has been removed')) return WORKER_REMOVED;
+  return feedbackErrorMessage(error);
+}
+
 export async function leaveFeedback(
   eventId: string,
   bookingId: string,
@@ -36,7 +55,7 @@ export async function leaveFeedback(
   text: string,
 ): Promise<FeedbackResult> {
   if (!supabaseConfigured()) {
-    return { ok: false, error: 'This environment has no Supabase project, so nothing was saved.' };
+    return { ok: false, error: "The portal isn't connected yet. Please contact THC." };
   }
 
   // A server action is a public endpoint: these arrive from whoever posts,
@@ -52,12 +71,13 @@ export async function leaveFeedback(
   if (typeof text !== 'string') return { ok: false, error: 'That could not be saved.' };
   // The textarea stops at the limit; the database refuses past it too.
   if (feedbackTextTooLong(text)) return { ok: false, error: FEEDBACK_TOO_LONG };
+  const comment = text.trim();
 
   const supabase = createClient(await cookies()) as any;
   const { error } = await supabase.rpc('submit_client_feedback', {
     p_booking_id: bookingId,
     p_rating: rating,
-    p_text: text.trim() === '' ? null : text.trim(),
+    p_text: comment === '' ? null : comment,
   });
 
   if (error) {
@@ -66,9 +86,10 @@ export async function leaveFeedback(
       code: error.code,
       message: error.message,
     });
-    // The RPC's errors in the customer's words. 22023 covers both a bad
-    // rating and an event that has not started, so the message decides.
-    return { ok: false, error: feedbackErrorMessage(error) };
+    // The RPC's errors in the customer's words. 22023 covers a bad rating,
+    // an event that has not started, an over-long comment and a removed
+    // worker, so the message decides.
+    return { ok: false, error: feedbackRefusal(error) };
   }
 
   // The button on this row becomes "✓ Feedback sent", which is a column of

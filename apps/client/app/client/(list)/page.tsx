@@ -1,10 +1,10 @@
-import { Alert } from '@thc/ui';
-import { loadArrivals } from './arrivals';
-import { AutoRefresh } from '../_components/AutoRefresh';
-import { EventsScreen } from './EventsScreen';
-import { loadEventList } from './data';
-import { kindsByEvent, loadAllDocuments } from './documents';
-import { presentLineup } from './photos';
+import { Alert, PageHead } from '@thc/ui';
+import { loadArrivals } from '../arrivals';
+import { AutoRefresh } from '../../_components/AutoRefresh';
+import { EventsScreen } from '../EventsScreen';
+import { loadEventList } from '../data';
+import { DOCUMENTS_UNAVAILABLE, kindsByEvent, loadAllDocuments } from '../documents';
+import { presentLineup } from '../photos';
 
 /**
  * §11.1 · the Client Portal's event list.
@@ -21,6 +21,19 @@ export const dynamic = 'force-dynamic';
 
 export default async function ClientEventsPage() {
   const { events, sections, lineup, company, problem } = await loadEventList();
+
+  // A failed read is not an empty list: drawing the screen with no events
+  // would say "No events yet" to a customer who has some. The head and the
+  // customer sentence only (the detail is in the server log, data.ts).
+  if (problem) {
+    return (
+      <>
+        <PageHead title="Your events" description="Confirmed line-ups and timesheets · read-only" />
+        <Alert tone="amber">{problem}</Alert>
+      </>
+    );
+  }
+
   // The documents ride alongside the events, one query for the page, so the
   // list can tell a real download from a copy the office has not issued yet.
   // The photos are keyed by booking and the Storage paths stay here: a
@@ -35,13 +48,15 @@ export default async function ClientEventsPage() {
     <>
       {/* "N of M arrived" and the line-up move while an event is on. */}
       <AutoRefresh />
-      {problem ? <Alert tone="amber">{problem}</Alert> : null}
+      {/* Without this, a failed documents read would read as "not issued yet"
+          on every row's button. */}
+      {documents.unavailable ? <Alert tone="amber">{DOCUMENTS_UNAVAILABLE}</Alert> : null}
       <EventsScreen
         events={events}
         sections={sections}
         lineup={shown.lineup}
         photos={shown.photos}
-        documents={kindsByEvent(documents)}
+        documents={kindsByEvent(documents.documents)}
         arrivals={arrivals}
         company={company}
         now={new Date().toISOString()}

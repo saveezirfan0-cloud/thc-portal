@@ -354,6 +354,28 @@ Settings the round depends on, and the choices it recorded as defaults.
       - ADR-0040 — the 10 h below-degree band (the completion-letter PDF wins
         over the v1.5 changelog), visa hour limits, the NI number check.
 
+## 10 · After the Client Portal finishing round (ADR-0121, ADR-0119, ADR-0120)
+
+The sign-in throttles, recovery-only `/reset`, the security headers and the
+payroll-flag lock this round first carried are the 12.10 security round's
+(§3 and §9 above, ADR-0115); only what that round did not do is listed here.
+
+- [ ] **Apply the four new migrations**:
+      `20261013100000_client_feedback_cancelled_event_and_removed_worker`,
+      `20261013100100_client_token_needs_its_session`,
+      `20261013100200_password_check_claimed_atomically` and
+      `20261013100300_client_views_cancelled_feedback_final_copy`. Nothing to
+      do by hand: CI's `deploy-database` job applies them when the branch is
+      merged to `main`. Check the job went green.
+- [ ] **Supabase → Auth → Email → `max_frequency` = 60 s** (the minimum time
+      between two emails to one address), by hand. It is the value in
+      `supabase/config.toml`; like every other Auth setting there it does not
+      reach the hosted project by itself.
+- [ ] **Then regenerate the types**: `pnpm --filter @thc/db gen:types` against
+      the live project, and commit `packages/db/src/types.generated.ts`. The
+      client view columns and the two `password_check_*` functions in it were
+      added by hand.
+
 ## Done
 
 - [x] 22.09: Supabase service role key rotated.

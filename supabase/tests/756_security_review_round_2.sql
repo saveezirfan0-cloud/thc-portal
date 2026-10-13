@@ -32,10 +32,11 @@ delete from auth.sessions where id = :'sess';
 select is(current_app_role(), null, 'once the session is ended (reset two-step, switch off, sign out), the token has no role');
 select is(office_can('users'), false, 'and no office permission');
 
--- A client token is unaffected by the Back Office rule.
+-- A client token was unaffected by this rule until 20261013100100, which
+-- holds every role to it (807 pins the client case in full).
 select set_config('request.jwt.claims',
   json_build_object('sub', :'clienta_uid', 'role', 'authenticated', 'session_id', :'sess')::text, true);
-select is(current_app_role()::text, 'client', 'a client login is not held to the session rule');
+select is(current_app_role(), null::app_role, 'a client login with an ended session has no role either (20261013100100)');
 
 -- A token with no session_id (jobs, tests) keeps the previous behaviour.
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);

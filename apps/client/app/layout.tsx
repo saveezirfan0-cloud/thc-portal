@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { AppearanceScript } from '@thc/ui';
+import { AppearanceScript, THEME_COLOR } from '@thc/ui';
 import '@thc/ui/styles.css';
 
 export const metadata: Metadata = {
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // The two grounds of packages/ui tokens.css: light `--bg` (cream) and the
-  // warm-style dark `--bg` (navy). The dark value is the manifest's
+  // The two grounds of packages/ui tokens.css, from THEME_COLOR: light
+  // `--bg` (cream) and the warm-style dark `--bg` (navy). The dark value is the manifest's
   // `theme_color`; a browser that finds the two disagreeing paints the
   // installed app's title bar one colour and the splash another. This pair
   // follows the OS setting; packages/ui's syncThemeColor puts a media-less
   // theme-color first in <head> that follows the in-app switch (ADR-0052 §3).
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAF7F4' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A0E18' },
+    { media: '(prefers-color-scheme: light)', color: THEME_COLOR.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_COLOR.dark },
   ],
 };
 

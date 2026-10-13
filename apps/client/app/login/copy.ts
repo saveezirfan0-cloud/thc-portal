@@ -13,3 +13,11 @@ export const LEAD = 'Your events, confirmed line-ups and timesheets — read-onl
 
 /** login.html:65 — ticked by default. */
 export const REMEMBER_LABEL = 'Keep me signed in on this device';
+
+/**
+ * Supabase Auth's own rate limit answered (429). Its limit is per address,
+ * and every customer reaches it from Vercel's, so it is nobody's fault and
+ * names no account: the per-account limit (packages/db/src/auth-throttle.ts)
+ * answers with WRONG_CREDENTIALS instead.
+ */
+export const SUPABASE_BUSY = 'Too many attempts. Wait a few minutes and try again.';

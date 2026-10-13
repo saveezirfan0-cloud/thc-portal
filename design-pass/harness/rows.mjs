@@ -1005,13 +1005,17 @@ export const venueTypes = [
 ];
 
 // ---- client portal ---------------------------------------------------------
+/** 'e2' → '90000000-0000-4000-8000-000000000002'. */
+export const portalEventId = (short) =>
+  `90000000-0000-4000-8000-${short.slice(1).padStart(12, '0')}`;
 export const portalEvents = [
   ['e0', 'Autumn Gala Dinner — The Savoy Ballroom', '2026-10-03', 'upcoming'],
   ['e1', 'Corporate Awards Night', '2026-09-25', 'ongoing'],
   ['e2', 'Summer Garden Party', '2026-08-14', 'completed'],
   ['e3', 'Charity Auction Evening', '2026-07-30', 'cancelled'],
 ].map(([id, title, d, status]) => ({
-  id,
+  // The event page answers 404 to an id that is not a UUID (isUuid, ids.ts).
+  id: portalEventId(id),
   title,
   venue_name: 'The Savoy, Strand',
   venue_address: 'Strand, London WC2R 0EZ',
@@ -1046,6 +1050,7 @@ export const portalLineup = portalEvents.flatMap((e) =>
   NAMES.slice(0, 6).map((n, i) => ({
     booking_id: e.id + 'l' + i,
     event_id: e.id,
+    shift_id: e.id + (i < 4 ? 'a' : 'b'),
     role: i < 4 ? 'Waiting staff (silver service)' : 'Bartender',
     starts_at: e.starts_at,
     ends_at: e.ends_at,

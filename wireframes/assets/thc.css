@@ -5,6 +5,8 @@
      data-style = warm | scope
    "scope" reproduces §1.6 / §10.1 literally: navy, cyan, Space Grotesk /
    Inter / IBM Plex Mono, zero radius, square avatars, cyan left-bar nav.
+   (The product renders warm in both modes — ADR-0007 — with circular
+   avatars and Plus Jakarta Sans headings, ADR-0121.)
    "warm" (default) keeps the THC palette and structure but softens the
    surface for an 18–30 hospitality workforce: rounded corners, a friendlier
    type family, fewer mono labels, roomier tap targets. ADR-0003 (proposed).
@@ -23,7 +25,9 @@
    1 · TOKENS — dark + scope is the literal §1.6 palette
    --------------------------------------------------------------------- */
 :root {
+  color-scheme: dark;                  /* native selects, scrollbars, date pickers follow the theme (ADR-0121) */
   --bg: #04080F;  --panel: #0B1220;  --panel-2: #0F1828;  --line: #1C2839;
+  --control-line: #5D6B7E;             /* a control's edge (input, select, default button): 3:1 on every ground, WCAG 1.4.11 (ADR-0121) */
   --cyan: #3EDCEC;  --purple: #A879FF;  --green: #3DDC97;  --amber: #F5B83D;  --coral: #FF6E61;
   --text: #E9EEF5;  --muted: #8A97A3;
   /* "ink" = the tone used for text/borders on the current ground; equals the fill tone on dark */
@@ -54,6 +58,7 @@
 
   /* shape — zero everywhere in scope style; only the logo is round */
   --r-xs: 0; --r-sm: 0; --r: 0; --r-lg: 0; --r-pill: 0; --r-phone: 0; --r-nav: 0;
+  --r-avatar: 0;                       /* square avatars in scope only */
   --nav-bar: 3px;                      /* cyan left bar on the active sidebar item */
 
   --sidebar-w: 232px; --topbar-h: 56px; --gap: 16px;
@@ -72,6 +77,7 @@
   --pill-track: .04em;
   --head-weight: 700; --head-track: -0.02em;
   --r-xs: 6px; --r-sm: 10px; --r: 12px; --r-lg: 18px; --r-pill: 999px; --r-phone: 40px; --r-nav: 10px;
+  --r-avatar: 50%;                     /* worker avatars are circles (ADR-0121, product owner 12.10.2026) */
   --nav-bar: 0px;
   --btn-h: 40px; --input-h: 42px;
   --shadow-card: 0 1px 0 rgba(255,255,255,.03) inset;
@@ -79,7 +85,9 @@
 
 /* ---- light theme (warm off-white ground, navy ink; cyan kept for fills, deeper teal for text) ---- */
 :root[data-theme="light"] {
+  color-scheme: light;
   --bg: #F6F4EF;  --panel: #FFFFFF;  --panel-2: #F1EEE7;  --line: #E3DED4;
+  --control-line: #958676;
   --text: #141A2C;  --muted: #66707E;
   --cyan-ink: #0B8A99; --purple-ink: #6D3DE0; --green-ink: #158A5C; --amber-ink: #9A6600; --coral-ink: #C93E33;
   --on-cyan: #04202A; --on-purple: #FFFFFF; --on-green: #05301E; --on-amber: #2E1F00; --on-coral: #FFFFFF;
@@ -334,12 +342,13 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 /* ---------------------------------------------------------------------
    9 · AVATARS / DOC ROWS / STEPPER / KANBAN / MODAL / TOAST
    --------------------------------------------------------------------- */
-.avatar { width: 32px; height: 32px; background: var(--line); color: var(--text); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: 12px; flex: 0 0 auto; overflow: hidden; border-radius: var(--r-sm); }
-.avatar.sm { width: 24px; height: 24px; font-size: 10px; border-radius: var(--r-xs); }
+.avatar { width: 32px; height: 32px; background: var(--line); color: var(--text); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: 12px; flex: 0 0 auto; overflow: hidden; border-radius: var(--r-avatar); }
+.avatar.sm { width: 24px; height: 24px; font-size: 10px; }
 .avatar.lg { width: 48px; height: 48px; font-size: 16px; }
-.avatar.xl { width: 72px; height: 72px; font-size: 22px; border-radius: var(--r); }
+.avatar.xl { width: 72px; height: 72px; font-size: 22px; }
 .avatar.photo { background: linear-gradient(135deg, var(--photo-a), var(--photo-b)); }
-.avatar.deleted { background: var(--panel-2); color: var(--muted); border: 1px dashed var(--line); }
+.avatar.deleted { background: var(--panel-2); color: var(--muted); border: 1px dashed var(--control-line); }
+.avatar.more { background: var(--panel-2); color: var(--text); font-family: var(--font-num); letter-spacing: 0; } /* "+N" closing a row of faces, sized by the avatar size class beside it */
 .avatars { display: flex; }
 .avatars .avatar { margin-right: -6px; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--line); }
 .person { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -702,3 +711,28 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 .skel-text { display: flex; flex-direction: column; gap: 8px; }
 .skel-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) { .skel { animation: none; background: var(--line); } }
+
+/* ---- mirrors packages/ui (ADR-0121, 12.10.2026) ----------------------------
+   Control edges at 3:1 (WCAG 1.4.11); the segmented-control focus ring drawn
+   inside the clipped track; the "sent" state of a small done button; the
+   label row with one action ("Forgot password?"); the compact password rules
+   (public/activate.html); the auth form stack. */
+.btn, .input, select.input, textarea.input, .input-row .addon { border-color: var(--control-line); } /* one class deep, so every tone (.btn.primary …) and state (.input.err, :focus) still wins */
+.input-row .addon.l { border-left: 1px solid var(--control-line); }
+.seg button:focus-visible, .seg a:focus-visible { outline: 2px solid var(--cyan-ink); outline-offset: -3px; }
+.btn.sent, .btn.sent:disabled, .btn.sent[aria-disabled="true"], .btn.sent.disabled, .btn.sent:hover { height: var(--btn-h-sm); padding: 0 10px; font-size: 12px; background: var(--green-dim) !important; border-color: var(--green-ink) !important; color: var(--green-ink) !important; opacity: 1; box-shadow: none !important; transform: none !important; cursor: default; }
+.btn.sent::after { content: none; }
+.field > .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.field > .label-row > .label-action { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+.auth-form .auth-link, .auth-form .auth-note { align-self: center; text-align: center; }
+.rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.rules li { display: flex; align-items: baseline; gap: 6px; }
+.rules .mark { flex: 0 0 1em; text-align: center; font-family: var(--font-mono); }
+.rules li.ok { color: var(--green-ink); } .rules li.bad { color: var(--coral-ink); }
+.rules .state { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 760px) {
+  .field > .label-row { align-items: center; }
+  .field > .label-row > .label-action > :is(a, button) { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 8px; margin-right: -8px; }
+  .auth-form .auth-link { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap-min); padding: 0 8px; }
+}

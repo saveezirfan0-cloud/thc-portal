@@ -10,7 +10,7 @@
 
 1. **A recipient list per event.** `events.document_recipients text[]`:
    - **null** (every existing event, and the default for a new one) means every contact email on the client card, exactly as before;
-   - otherwise **1–10 addresses for this event only**. They can be any of the client's contacts, other addresses, or both. They need not be on the client card, because the point is that different people are involved. A check constraint holds the 1–5 bound.
+   - otherwise **1–10 addresses for this event only**. They can be any of the client's contacts, other addresses, or both. They need not be on the client card, because the point is that different people are involved. A check constraint (`events_document_recipients_check`) holds the 1–10 bound.
 2. **One place answers "who gets it":** `event_document_recipients(event)` returns the event's own list, else the client's contacts. The manual Send (`queue_event_document_email`), the automatic Allocation Timesheet and Completed Allocation Timesheet (`queue_event_document_autosend`) and the job's "no contact email" check (`event_documents_due.contacts`) all read it. The choice therefore applies to both documents, sent by hand or automatically. The recipients are recorded on each `event_documents` row and outbox row, as before.
 3. **One write path:** `set_event_document_recipients(event, addresses)`.
    - Admin only (`assert_reports_caller`, the same as the Send itself).

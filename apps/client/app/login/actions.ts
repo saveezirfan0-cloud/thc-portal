@@ -17,7 +17,7 @@ import {
   signInKeys,
 } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
-import { WRONG_CREDENTIALS } from './copy';
+import { SUPABASE_BUSY, WRONG_CREDENTIALS } from './copy';
 
 /**
  * Email + password sign-in (§1.4).
@@ -38,7 +38,7 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     // Not wired to a project yet (docs/04). Say so rather than throwing a 500.
-    return 'Sign-in is not available yet — this environment has no Supabase project.';
+    return "The portal isn't connected yet. Please contact THC.";
   }
 
   // Per account and per address (packages/db/src/auth-throttle.ts): five
@@ -67,6 +67,10 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
       code: error.code,
       message: error.message,
     });
+    // Supabase Auth's own per-IP limit is shared by every customer (all of
+    // them reach it from Vercel): say "wait", not "wrong password". It is
+    // not the account's limit, so it says nothing about the account.
+    if (error.status === 429 || error.code === 'over_request_rate_limit') return SUPABASE_BUSY;
     return WRONG_CREDENTIALS;
   }
 

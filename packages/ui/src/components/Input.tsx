@@ -13,6 +13,13 @@ interface FieldShell {
   label?: ReactNode;
   hint?: ReactNode;
   error?: ReactNode;
+  /**
+   * One action on the label's own line, right-aligned — "Forgot password?"
+   * beside Password (wireframes/client/login.html:64). Pass the link or
+   * button itself; on a phone it grows to the 44px finger target and the
+   * row grows with it, so the label and the action stay on one line.
+   */
+  labelAction?: ReactNode;
 }
 
 function Field({
@@ -20,15 +27,24 @@ function Field({
   label,
   hint,
   error,
+  labelAction,
   children,
 }: FieldShell & { id: string; children: ReactNode }) {
+  const labelEl = label ? (
+    <label className="label" htmlFor={id}>
+      {label}
+    </label>
+  ) : null;
   return (
     <div className="field">
-      {label ? (
-        <label className="label" htmlFor={id}>
-          {label}
-        </label>
-      ) : null}
+      {labelAction ? (
+        <div className="label-row">
+          {labelEl}
+          <span className="label-action">{labelAction}</span>
+        </div>
+      ) : (
+        labelEl
+      )}
       {children}
       {hint && !error ? <span className="hint">{hint}</span> : null}
       {error ? (
@@ -53,7 +69,17 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, Field
   reveal?: boolean;
 }
 
-export function Input({ label, hint, error, mono, reveal, className, id, ...rest }: InputProps) {
+export function Input({
+  label,
+  hint,
+  error,
+  labelAction,
+  mono,
+  reveal,
+  className,
+  id,
+  ...rest
+}: InputProps) {
   const auto = useId();
   const fieldId = id ?? auto;
   const inputProps = {
@@ -63,7 +89,7 @@ export function Input({ label, hint, error, mono, reveal, className, id, ...rest
     ...rest,
   };
   return (
-    <Field id={fieldId} label={label} hint={hint} error={error}>
+    <Field id={fieldId} label={label} hint={hint} error={error} labelAction={labelAction}>
       {reveal ? <RevealedInput {...inputProps} /> : <input {...inputProps} />}
     </Field>
   );
@@ -96,11 +122,19 @@ function RevealedInput({ type = 'password', ...rest }: InputHTMLAttributes<HTMLI
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement>, FieldShell {}
 
-export function Textarea({ label, hint, error, className, id, ...rest }: TextareaProps) {
+export function Textarea({
+  label,
+  hint,
+  error,
+  labelAction,
+  className,
+  id,
+  ...rest
+}: TextareaProps) {
   const auto = useId();
   const fieldId = id ?? auto;
   return (
-    <Field id={fieldId} label={label} hint={hint} error={error}>
+    <Field id={fieldId} label={label} hint={hint} error={error} labelAction={labelAction}>
       <textarea
         id={fieldId}
         aria-invalid={error ? true : undefined}
@@ -113,11 +147,20 @@ export function Textarea({ label, hint, error, className, id, ...rest }: Textare
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement>, FieldShell {}
 
-export function Select({ label, hint, error, className, id, children, ...rest }: SelectProps) {
+export function Select({
+  label,
+  hint,
+  error,
+  labelAction,
+  className,
+  id,
+  children,
+  ...rest
+}: SelectProps) {
   const auto = useId();
   const fieldId = id ?? auto;
   return (
-    <Field id={fieldId} label={label} hint={hint} error={error}>
+    <Field id={fieldId} label={label} hint={hint} error={error} labelAction={labelAction}>
       <select
         id={fieldId}
         aria-invalid={error ? true : undefined}
@@ -131,7 +174,14 @@ export function Select({ label, hint, error, className, id, children, ...rest }:
 }
 
 /** Search field with the leading glyph, used in every list toolbar. */
-export function SearchInput({ label, className, id, ...rest }: InputProps) {
+export function SearchInput({
+  label,
+  className,
+  id,
+  // No label row on a search box; kept off the <input>.
+  labelAction: _labelAction,
+  ...rest
+}: InputProps) {
   const auto = useId();
   const fieldId = id ?? auto;
   return (

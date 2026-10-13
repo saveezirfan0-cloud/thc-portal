@@ -284,8 +284,10 @@ test('feedback is locked before the event starts, and says so (§11.2)', async (
   await openAsClient(page, `/client/events/${GALA_DINNER}`);
   // event.html:89 — with the opening time, UK-labelled: the event window's
   // start, which is what feedbackOpen() and submit_client_feedback() test.
+  // A browser outside UK time also gets its own clock in brackets (§1.8),
+  // e.g. "(Fri 16 Oct 06:00 your time)" on a UTC runner in summer time.
   await expect(page.getByRole('status')).toContainText(
-    /Feedback opens once the event has started — from \d{2}:\d{2} UK time on the day\./,
+    /Feedback opens once the event has started — from \d{2}:\d{2} UK time on the day( \([^)]*\d{2}:\d{2} your time\))?\./,
   );
   const buttons = page.getByRole('button', { name: 'Leave feedback' });
   expect(await buttons.count()).toBeGreaterThan(0);
@@ -321,7 +323,10 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
         .getByRole('button', { name: '↓ Download Completed Timesheet' })
         .or(page.getByRole('link', { name: '↓ Download Completed Timesheet' })),
     ).toBeVisible();
-    await expect(page.getByRole('status')).toContainText('The event has started');
+    // The seed's Lunch Service ended two weeks ago, so the "you can now leave
+    // feedback" banner has been retired (it shows for 7 days after the end,
+    // FEEDBACK_BANNER_DAYS) while the buttons themselves stay live.
+    await expect(page.getByText('The event has started')).toHaveCount(0);
 
     // The first worker whose button is still live. `has` is evaluated per
     // row, so it must not carry a `.first()` of its own — that would match
@@ -349,7 +354,27 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
       'aria-checked',
       'true',
     );
-    await expect(dialog).toContainText('4 of 5 — tap a star');
+    await expect(dialog).toContainText('4 of 5 stars');
+    // One tab stop, arrows choose (the APG radio group): Right/Down is the
+    // next star, Left/Up the previous, and the ends wrap.
+    await page.keyboard.press('ArrowRight');
+    await expect(dialog.getByRole('radio', { name: '5 stars' })).toBeFocused();
+    await expect(dialog).toContainText('5 of 5 stars');
+    await page.keyboard.press('ArrowDown');
+    await expect(dialog.getByRole('radio', { name: '1 star' })).toBeFocused();
+    await expect(dialog.getByRole('radio', { name: '1 star' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await page.keyboard.press('ArrowUp');
+    await expect(dialog.getByRole('radio', { name: '5 stars' })).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(dialog.getByRole('radio', { name: '4 stars' })).toBeFocused();
+    await expect(dialog.getByRole('radio', { name: '4 stars' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await expect(dialog).toContainText('4 of 5 stars');
     await dialog.getByLabel('Comment').fill('Calm under pressure, great with the top table.');
     await dialog.getByRole('button', { name: 'Submit feedback' }).click();
 

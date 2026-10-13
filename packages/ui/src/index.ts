@@ -13,7 +13,10 @@ export { Logo, LogoMark } from './components/Logo';
 export type { LogoMarkProps, LogoProps } from './components/Logo';
 
 export { Avatar, AvatarGroup, Person, initials } from './components/Avatar';
-export type { AvatarProps } from './components/Avatar';
+export type { AvatarGroupProps, AvatarProps } from './components/Avatar';
+
+export { PasswordRules } from './components/PasswordRules';
+export type { PasswordRuleState, PasswordRulesProps } from './components/PasswordRules';
 
 export {
   Content,
@@ -120,5 +123,8 @@ export {
   useAppearance,
 } from './components/Appearance';
 export type { Mode } from './components/Appearance';
+// Server-safe: a plain module, so a root layout's `viewport` and an app's
+// manifest.ts get the strings (Appearance.tsx is 'use client').
+export { THEME_COLOR } from './components/theme-color';
 
 export { useVisibleInterval } from './components/AutoRefresh';
