@@ -9,6 +9,7 @@ import {
   orderSections,
   payrollWarning,
   roleBoardHeader,
+  roleFill,
   showsCandidatePools,
 } from '../board';
 import { ukRoleWindow, ukInstant } from '../time';
@@ -37,6 +38,34 @@ describe('the role section header counts confirmed only (§3.3)', () => {
     const counts = { confirmed: 0, invited: 9, headcount: 12, buffer: 2 };
     expect(openSlots(counts)).toBe(12);
     expect(roleBoardHeader(counts)).toBe('0 confirmed · 9 invited · 12 open of 12');
+  });
+});
+
+describe('the role fill badge reads confirmed against headcount', () => {
+  it('is amber and names the gap while the role is short', () => {
+    const fill = roleFill({ confirmed: 0, invited: 0, headcount: 2, buffer: 0 });
+    expect(fill).toMatchObject({ confirmed: 0, headcount: 2, open: 2, full: false });
+    expect(fill.tone).toBe('amber');
+    expect(fill.gap).toBe('2 to fill');
+    expect(fill.percent).toBe(0);
+  });
+
+  it('never counts an invitation as filled', () => {
+    expect(roleFill({ confirmed: 1, invited: 4, headcount: 5, buffer: 1 }).gap).toBe('4 to fill');
+  });
+
+  it('turns green at headcount, not headcount + buffer', () => {
+    const fill = roleFill({ confirmed: 2, invited: 0, headcount: 2, buffer: 1 });
+    expect(fill.full).toBe(true);
+    expect(fill.tone).toBe('green');
+    expect(fill.gap).toBe('Full');
+    expect(fill.percent).toBe(100);
+  });
+
+  it('names buffer seats taken beyond headcount and keeps the bar at full', () => {
+    const fill = roleFill({ confirmed: 3, invited: 0, headcount: 2, buffer: 1 });
+    expect(fill.gap).toBe('Full · +1 buffer');
+    expect(fill.percent).toBe(100);
   });
 });
 

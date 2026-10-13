@@ -14,6 +14,7 @@ import {
   formatTimeIn,
   openSlots,
   roleBoardHeader,
+  roleFill,
   sectionHours,
   showsCandidatePools,
 } from '@thc/domain';
@@ -98,6 +99,7 @@ export function RoleBoard({
     buffer: section.buffer,
   };
   const showPools = showsCandidatePools(status, counts);
+  const fill = roleFill(counts);
   // §3.3 wireframe: no Unavailable on a Completed or Cancelled event either.
   const live = status === 'upcoming' || status === 'ongoing';
   // ADR-0061: no rates for an office role without finance — then no line.
@@ -121,14 +123,36 @@ export function RoleBoard({
       heading={
         <>
           <b>{section.roleName}</b>
+          {/* How far the role is from its requested headcount, set large so
+              it reads before anything else in the header. */}
+          <span className={`role-fill ${fill.tone}`}>
+            <span className="rf-num">
+              <b>{fill.confirmed}</b>
+              <span className="rf-of">/ {fill.headcount}</span>
+            </span>
+            <span className="rf-meta">
+              <span className="rf-gap">
+                filled · <b>{fill.gap}</b>
+              </span>
+              <span className="rf-bar" aria-hidden="true">
+                <span style={{ width: `${fill.percent}%` }} />
+              </span>
+            </span>
+          </span>
+          {/* The role's own window (RULE-18), set large beside the fill so
+              a manager finds the start and finish first on a busy day. */}
+          <span className="role-win">
+            <ScheduledWindow
+              className="win rw-time"
+              lineClass="l2"
+              startsAt={section.startsAt}
+              endsAt={section.endsAt}
+            />
+            <span className="rw-meta">
+              UK time · {formatHours(sectionHours({ startsAt, endsAt }))}
+            </span>
+          </span>
           <span className="mono sm">{roleBoardHeader(counts)}</span>
-          <ScheduledWindow
-            className="win mono sm"
-            lineClass="l2"
-            startsAt={section.startsAt}
-            endsAt={section.endsAt}
-            suffix={`UK time · ${formatHours(sectionHours({ startsAt, endsAt }))}`}
-          />
           {/* Base, then base + 12.07% holiday broken out (§9.8), then the margin. */}
           {rate ? (
             <span className="rate sm muted">
