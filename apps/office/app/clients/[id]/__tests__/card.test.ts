@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chargeRateProblem,
   defaultDressCodes,
   dressCodeLibrary,
   dressCodeSuggestions,
@@ -188,5 +189,24 @@ describe('defaultDressCodes (what a newly added role starts with)', () => {
 
   it('does not guess when the roles disagree', () => {
     expect(defaultDressCodes([row('Black tie'), row('Smart casual')])).toEqual([]);
+  });
+});
+
+describe('chargeRateProblem — what Save refuses', () => {
+  it('takes every pounds-and-pence rate, including the ones binary floating point gets wrong', () => {
+    // 19.99 * 100 === 1998.9999999999998: an exact test refused these.
+    for (const rate of [19.99, 16.1, 10.05, 22.97, 21.5, 44, 0, 12.71]) {
+      expect(chargeRateProblem(rate)).toBeNull();
+    }
+    for (let p = 0; p <= 10000; p++) {
+      expect(chargeRateProblem(Number((p / 100).toFixed(2)))).toBeNull();
+    }
+  });
+
+  it('refuses a third decimal, a negative rate and a blank or non-number', () => {
+    expect(chargeRateProblem(22.975)).toMatch(/two decimal places/);
+    expect(chargeRateProblem(19.999)).toMatch(/two decimal places/);
+    expect(chargeRateProblem(-1)).toMatch(/negative/);
+    expect(chargeRateProblem(Number.NaN)).toBe('Enter a charge rate.');
   });
 });

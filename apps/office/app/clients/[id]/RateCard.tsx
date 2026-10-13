@@ -232,7 +232,7 @@ function EditableRateCard({
                     addCode={addCode}
                     library={dressCodeLibrary}
                     pending={pending}
-                    saveDisabled={false}
+                    saveDisabled={rate.trim() === ''}
                     onCancel={() => setEditing(null)}
                     onSave={() =>
                       run(

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
+import { chargeRateProblem } from './card';
 import type { ActionResult } from './types';
 
 /**
@@ -41,28 +42,14 @@ async function callRpc(fn: string, args: RpcArguments, clientId: string): Promis
   return { ok: true };
 }
 
-/**
- * The charge rate is validated here as well as in the database. A third
- * decimal is rejected rather than rounded: `numeric(8,2)` would turn
- * £22.975 into £22.98 silently, and every margin on this screen is
- * derived from the figure.
- */
-function invalidRate(rate: number): string | null {
-  if (!Number.isFinite(rate)) return 'Enter a charge rate.';
-  if (rate < 0) return 'A charge rate cannot be negative.';
-  if (Math.round(rate * 100) !== rate * 100) {
-    return 'A charge rate is in pounds and pence — two decimal places.';
-  }
-  return null;
-}
-
 export async function addRole(
   clientId: string,
   roleId: string,
   chargeRate: number,
   dressCodes: string[],
 ): Promise<ActionResult> {
-  const invalid = invalidRate(chargeRate);
+  // Validated here as well as in the database (assert_charge_rate).
+  const invalid = chargeRateProblem(chargeRate);
   if (invalid) return { ok: false, message: invalid };
 
   return callRpc(
@@ -78,7 +65,8 @@ export async function updateRole(
   chargeRate: number,
   dressCodes: string[],
 ): Promise<ActionResult> {
-  const invalid = invalidRate(chargeRate);
+  // Validated here as well as in the database (assert_charge_rate).
+  const invalid = chargeRateProblem(chargeRate);
   if (invalid) return { ok: false, message: invalid };
 
   return callRpc(
