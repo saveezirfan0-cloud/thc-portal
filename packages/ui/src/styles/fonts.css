@@ -3,7 +3,7 @@
    The four families of §1.6 and of the warm set: Space Grotesk / Inter /
    IBM Plex Mono, and Plus Jakarta Sans. Outfit, the handoff's warm heading
    face, was dropped when headings moved to Plus Jakarta Sans in every app
-   (ADR-0113); nothing named it any more.
+   (ADR-0118); nothing named it any more.
 
    They used to be pulled from Google's CDN by an `@import` at the top of
    tokens.css. Three things were wrong with that. It was render-blocking on

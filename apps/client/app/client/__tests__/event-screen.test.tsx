@@ -43,8 +43,7 @@ afterEach(() => {
 });
 
 const { EventScreen } = await import('../events/[id]/EventScreen');
-const { FeedbackModal, COMMENT_MAX, isAlreadyLeft, starForKey } =
-  await import('../events/[id]/FeedbackModal');
+const { FeedbackModal, isAlreadyLeft, starForKey } = await import('../events/[id]/FeedbackModal');
 
 const EVENT_ID = '60000000-0000-4000-8000-000000000001';
 
@@ -83,7 +82,6 @@ const lineup: LineupRow[] = [
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',
     name: 'Aisha Bello',
-    photoPath: null,
     sortKey: 'bello',
     feedbackGiven: false,
   },
@@ -95,7 +93,6 @@ const lineup: LineupRow[] = [
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',
     name: 'Luca Moretti',
-    photoPath: null,
     sortKey: 'moretti',
     feedbackGiven: true,
   },
@@ -357,8 +354,8 @@ describe('faces without a photo (§11.1: photos, never initials)', () => {
       <EventScreen
         event={gala()}
         sections={sections}
-        lineup={[{ ...lineup[0]!, photoPath: 'p/aisha.jpg' }]}
-        photos={{ 'p/aisha.jpg': 'https://example.test/aisha.jpg' }}
+        lineup={[lineup[0]!]}
+        photos={{ [lineup[0]!.bookingId]: 'https://example.test/aisha.jpg' }}
         now={BEFORE}
       />,
     );
@@ -484,10 +481,9 @@ describe('the feedback popup, guarded', () => {
   });
 
   it('caps the comment at 2000 characters', () => {
-    expect(COMMENT_MAX).toBe(2000);
     expect(markup).toContain('maxLength="2000"');
-    // The counter appears only near the limit.
-    expect(markup).not.toContain('fb-count');
+    // The count joins the hint only near the limit (feedback-length.test).
+    expect(markup).not.toMatch(/of 2,000 characters/);
   });
 
   it('draws each star as a shape, an outline until chosen (no glyph to tell apart by colour alone)', () => {

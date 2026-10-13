@@ -28,6 +28,7 @@ const row = (over: Partial<MonitorRow> = {}): MonitorRow => ({
   breaksCount: null,
   lastBreakAt: null,
   lateCheckOut: false,
+  locationSuspect: false,
   status: 'due',
   ...over,
 });

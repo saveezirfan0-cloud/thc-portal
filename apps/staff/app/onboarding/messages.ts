@@ -20,10 +20,19 @@ const REASONS: Record<string, string> = {
   address_required: 'Enter the first line of your address and your town.',
   bad_postcode: 'Enter a UK postcode, e.g. E2 0RY.',
   pin_outside_uk: 'Drop the pin on your home in the UK.',
+  // Security round 12.10, item 7: the pin is checked against the postcode.
+  pin_far_from_postcode:
+    'Your pin is more than 5 km from that postcode. Move the pin to your home, or check the postcode.',
+  postcode_not_located:
+    'We couldn’t find that postcode. Please check it, or contact the office at admin@thehospitalitycompany.co.uk.',
+  postcode_unreachable: 'We couldn’t check your postcode just now. Please try again in a minute.',
+  // ADR-0113: staff_save_bank wants the password typed in the last 10 minutes.
+  reauth_required: 'For your security, please enter your current password again.',
   // ADR-0080, step 2's languages.
   unknown_language: 'Choose your languages from the list.',
   photo_required: 'Take a photo to continue.',
   photo_locked: 'Your photo is already set. To change it, contact the office.',
+  photo_not_image: 'That photo didn’t come through as a picture. Please take it again.',
   wrong_path: 'That upload didn’t go through. Please try again.',
   doc_not_for_branch: 'That document isn’t one we need for your right to work.',
   file_empty: 'That file is empty.',

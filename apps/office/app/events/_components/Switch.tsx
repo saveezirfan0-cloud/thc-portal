@@ -5,6 +5,8 @@
  *
  * It reads the `.switch` classes already in `packages/ui`, so it inherits the
  * design system's tokens without adding a component to the shared package.
+ * `tone="plain"` is the same switch without the violet, which the design
+ * system keeps for Auto-Assign: other role-level requirements (ADR-0117).
  * A real checkbox underneath keeps it operable by keyboard and screen reader;
  * the track is the painted part.
  */
@@ -13,14 +15,16 @@ export function Switch({
   onChange,
   label,
   disabled,
+  tone = 'purple',
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: string;
   disabled?: boolean;
+  tone?: 'purple' | 'plain';
 }) {
   return (
-    <label className={`switch purple${checked ? ' on' : ''}`}>
+    <label className={`switch${tone === 'purple' ? ' purple' : ''}${checked ? ' on' : ''}`}>
       <input
         type="checkbox"
         className="sb-sr-only"

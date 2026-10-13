@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * leaveFeedback (§11.2, §11.5; 20261012120000): the comment is capped at
- * 2000 characters here as well as in the database, and every refusal the
+ * leaveFeedback (§11.2, §11.5; 20261012120600, 20261013100000): the comment
+ * is capped at 2000 characters here as well as in the database, and every refusal the
  * RPC can give reaches the customer as a fixed sentence — never the
  * database's own text, which names § sections and Postgres detail.
  */
@@ -23,6 +23,10 @@ vi.mock('@thc/db/server', () => ({
 }));
 
 const { leaveFeedback } = await import('../events/[id]/actions');
+const { FEEDBACK_TOO_LONG } = await import('../rules');
+
+const EV = '80000000-0000-4000-8000-000000000001';
+const BK = '80000000-0000-4000-8000-0000000000b1';
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -34,25 +38,25 @@ beforeEach(() => {
 
 describe('leaveFeedback', () => {
   it('refuses a comment over 2000 characters without calling the database', async () => {
-    const out = await leaveFeedback('e1', 'b1', 4, 'x'.repeat(2001));
-    expect(out).toEqual({ ok: false, error: 'Keep your comment to 2000 characters or fewer.' });
+    const out = await leaveFeedback(EV, BK, 4, 'x'.repeat(2001));
+    expect(out).toEqual({ ok: false, error: FEEDBACK_TOO_LONG });
     expect(state.calls).toEqual([]);
   });
 
   it('counts characters as the database does (an emoji is one)', async () => {
-    const out = await leaveFeedback('e1', 'b1', 4, '👍'.repeat(2000));
+    const out = await leaveFeedback(EV, BK, 4, '👍'.repeat(2000));
     expect(out).toEqual({ ok: true });
   });
 
   it('sends the trimmed comment, or null for none', async () => {
-    await leaveFeedback('e1', 'b1', 4, '  Polite and early  ');
-    await leaveFeedback('e1', 'b1', 4, '   ');
+    await leaveFeedback(EV, BK, 4, '  Polite and early  ');
+    await leaveFeedback(EV, BK, 4, '   ');
     expect(state.calls).toEqual([
       {
         fn: 'submit_client_feedback',
-        args: { p_booking_id: 'b1', p_rating: 4, p_text: 'Polite and early' },
+        args: { p_booking_id: BK, p_rating: 4, p_text: 'Polite and early' },
       },
-      { fn: 'submit_client_feedback', args: { p_booking_id: 'b1', p_rating: 4, p_text: null } },
+      { fn: 'submit_client_feedback', args: { p_booking_id: BK, p_rating: 4, p_text: null } },
     ]);
   });
 
@@ -65,8 +69,8 @@ describe('leaveFeedback', () => {
       'This person is no longer on our books, so feedback can no longer be left for them.',
     ],
     [
-      { code: '22023', message: 'Comment must be 2000 characters or fewer' },
-      'Keep your comment to 2000 characters or fewer.',
+      { code: '22023', message: 'Feedback text must be at most 2000 characters' },
+      'Keep the comment to 2,000 characters or fewer.',
     ],
     [
       { code: '42501', message: 'That booking is not on your line-up' },
@@ -78,14 +82,14 @@ describe('leaveFeedback', () => {
     ],
   ])('maps %o to a fixed sentence', async (error, sentence) => {
     state.error = error;
-    const out = await leaveFeedback('e1', 'b1', 4, 'Fine');
+    const out = await leaveFeedback(EV, BK, 4, 'Fine');
     expect(out).toEqual({ ok: false, error: sentence });
     expect(JSON.stringify(out)).not.toMatch(/§|serialize|line-up/);
   });
 
   it('says the portal is not connected without naming the vendor', async () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
-    const out = await leaveFeedback('e1', 'b1', 4, 'Fine');
+    const out = await leaveFeedback(EV, BK, 4, 'Fine');
     expect(out).toEqual({
       ok: false,
       error: "The portal isn't connected yet. Please contact THC.",

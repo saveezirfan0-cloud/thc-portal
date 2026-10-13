@@ -4,7 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Alert, Avatar, Button, Modal, Textarea } from '@thc/ui';
-import { isRemoved, starsHint } from '../../rules';
+import {
+  FEEDBACK_TEXT_MAX,
+  FEEDBACK_TOO_LONG,
+  feedbackTextTooLong,
+  isRemoved,
+  starsHint,
+} from '../../rules';
 import { leaveFeedback } from './actions';
 
 /**
@@ -28,9 +34,16 @@ import { leaveFeedback } from './actions';
  */
 const STARS = [1, 2, 3, 4, 5] as const;
 
-/** The comment's ceiling, and where the counter starts showing. */
-export const COMMENT_MAX = 2000;
-const COUNTER_FROM = 1800;
+const COMMENT_HINT =
+  'Optional · free text · seen by The Hospitality Company office, not by the worker.';
+
+/** The count joins the hint only near the limit, so the wireframe's line stays as drawn. */
+const COUNT_FROM = FEEDBACK_TEXT_MAX - 200;
+
+export function commentHint(length: number): string {
+  if (length < COUNT_FROM) return COMMENT_HINT;
+  return `${COMMENT_HINT} ${length.toLocaleString('en-GB')} of ${FEEDBACK_TEXT_MAX.toLocaleString('en-GB')} characters.`;
+}
 
 const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
 
@@ -120,6 +133,10 @@ export function FeedbackModal({
   function submit() {
     if (rating === 0) {
       setError('Choose a rating between 1 and 5 stars.');
+      return;
+    }
+    if (feedbackTextTooLong(text)) {
+      setError(FEEDBACK_TOO_LONG);
       return;
     }
     setError(null);
@@ -214,19 +231,14 @@ export function FeedbackModal({
 
       <Textarea
         label="Comment"
-        hint="Optional · free text · seen by The Hospitality Company office, not by the worker."
+        hint={commentHint(text.length)}
         placeholder="What went well, what could be better?"
         rows={4}
-        maxLength={COMMENT_MAX}
+        maxLength={FEEDBACK_TEXT_MAX}
         value={text}
         onChange={(e) => setText(e.currentTarget.value)}
         disabled={pending}
       />
-      {text.length >= COUNTER_FROM ? (
-        <div className="fb-count xs muted" aria-live="polite">
-          {text.length} / {COMMENT_MAX}
-        </div>
-      ) : null}
 
       {/* One entry per worker per event, and the portal has no edit or
           delete (§11.5): said here, before the button, not after. */}

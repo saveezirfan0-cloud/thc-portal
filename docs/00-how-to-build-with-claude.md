@@ -48,7 +48,7 @@ The Client Portal browser tests (`e2e/tests/client.portal.spec.ts`) sign in as t
 seeded client contact through `openAsClient` in `e2e/tests/_support/session.ts`, so they
 run in CI against the gated portal like the office and staff suites; they skip only when
 the app answers 503 (no project). The portal is also held by
-`supabase/tests/160_client_portal.sql`, `790_…` and the unit tests over `rules.ts` and
+`supabase/tests/160_client_portal.sql`, `806_…`–`809_…` and the unit tests over `rules.ts` and
 `data.ts`, all of which run on every push.
 
 What exists, at platform level:

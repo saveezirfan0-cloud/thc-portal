@@ -30,21 +30,17 @@ vi.mock('next/navigation', () => ({
     throw new Error('NEXT_NOT_FOUND');
   },
 }));
-vi.mock('../data', async () => {
-  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return {
-    isEventId: (id: string) => UUID.test(id),
-    loadEventList: async () => state.list,
-    loadEvent: async () => state.event,
-  };
-});
+vi.mock('../data', async () => ({
+  loadEventList: async () => state.list,
+  loadEvent: async () => state.event,
+}));
 vi.mock('../documents', () => ({
   DOCUMENTS_UNAVAILABLE: "Documents couldn't be loaded just now — refresh to try again.",
   kindsByEvent: () => ({}),
   loadAllDocuments: async () => ({ documents: [], unavailable: state.docsUnavailable }),
   loadDocuments: async () => ({ documents: [], unavailable: state.docsUnavailable }),
 }));
-vi.mock('../photos', () => ({ signLineupPhotos: async () => new Map() }));
+vi.mock('../photos', () => ({ presentLineup: async () => ({ lineup: [], photos: {} }) }));
 vi.mock('../arrivals', () => ({ loadArrivals: async () => ({}) }));
 vi.mock('../../_components/AutoRefresh', () => ({ AutoRefresh: () => null }));
 vi.mock('../EventsScreen', () => ({
@@ -64,8 +60,7 @@ const ListPage = (await import('../(list)/page')).default;
 const EventPage = (await import('../events/[id]/page')).default;
 
 const EV = '90000000-0000-4000-8000-000000000001';
-const FAILED =
-  "We couldn't load your events just now. Refresh the page, or try again in a few minutes.";
+const FAILED = 'We could not load your events just now. Refresh the page to try again.';
 
 const event = {
   id: EV,
@@ -100,7 +95,7 @@ describe('the list page', () => {
     state.list = { events: [], sections: [], lineup: [], company: null, problem: FAILED };
     const html = renderToStaticMarkup(await ListPage());
     expect(html).toContain('Your events');
-    expect(html).toContain('couldn&#x27;t load your events');
+    expect(html).toContain('could not load your events');
     expect(html).not.toContain('EVENTS-SCREEN');
     expect(html).not.toContain('No events yet');
     expect(state.screens).toEqual([]);

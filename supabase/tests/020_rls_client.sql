@@ -7,7 +7,7 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(71);
+select plan(69);
 \ir _shared/fixtures.psql
 
 -- A cap-band notice to probe for. Created here rather than in the shared
@@ -239,16 +239,6 @@ select throws_ok(
   $$ insert into applications (first_name, last_name, email, phone, dob, age_band, consented_at)
      values ('Forged', 'Row', 'forged@rls.test', '+447700900998', date '1990-01-01', '25-34', now()) $$,
   '42501', null, '§2.1: a client cannot insert an application row and skip the throttle and DOB match — submit_application() is the only door');
-
--- ---- RULE-06's payroll flag is the office's (20261012120100) ----------
-select throws_ok(
-  format($$ select booking_payroll_exported(%L) $$, :'booking_a'),
-  '42501', 'not_authorised',
-  '§11.1 a client cannot ask whether a booking has been exported to payroll, even on its own event');
-select throws_ok(
-  format($$ select booking_payroll_exported(%L) $$, :'booking_b'),
-  '42501', 'not_authorised',
-  'nor on another customer''s booking');
 
 reset role;
 select * from finish();

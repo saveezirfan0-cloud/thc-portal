@@ -5,8 +5,11 @@ import {
   type HardGate,
   type ScoreWeights,
   type TimeFormat,
+  type SeriesMember,
   normaliseLanguages,
   parseWeights,
+  seriesPosition,
+  seriesPositionLabel,
   showsUnderUnavailable,
 } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from '../db';
@@ -90,6 +93,8 @@ export interface BoardSection {
   autoAssign: boolean;
   /** ADR-0079: the gender the client asked for on this role, or null for anyone. */
   requiredGender: 'M' | 'F' | null;
+  /** ADR-0117: the client wants the same staff on every day of this job for this role. */
+  sameStaffAllDays: boolean;
   allocationPerHour: number;
   confirmed: BoardBooking[];
   invited: BoardBooking[];
@@ -135,6 +140,11 @@ export interface BoardEvent {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
+  /**
+   * ADR-0117: "Day 2 of 3" when this event is one day of a multi-day job
+   * (`events.series_id`) with other live days; null when it stands alone.
+   */
+  seriesLabel: string | null;
   paysBreaks: boolean;
   paysBuffer: boolean;
   cancelledAt: string | null;
@@ -227,7 +237,7 @@ export async function loadBoard(
   const { data: eventRow, error: eventError } = await supabase
     .from('events')
     .select(
-      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
+      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, series_id, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
     )
     .eq('id', eventId)
     .maybeSingle();
@@ -236,11 +246,30 @@ export async function loadBoard(
   if (!eventRow) return { event: null, problem: null };
   const event = eventRow as Record<string, string | boolean | null>;
 
+  // ADR-0117: "Day 2 of 3", read live with the page. Only a context line, so a
+  // failed read drops it rather than the board.
+  let seriesLabel: string | null = null;
+  if (event['series_id']) {
+    const { data: days } = await supabase
+      .from('events')
+      .select('id, event_date, cancelled_at')
+      .eq('series_id', event['series_id'] as string);
+    const members: SeriesMember[] = (
+      (days ?? []) as {
+        id: string;
+        event_date: string;
+        cancelled_at: string | null;
+      }[]
+    ).map((d) => ({ eventId: d.id, date: d.event_date, cancelled: d.cancelled_at !== null }));
+    const position = seriesPosition(eventId, members);
+    seriesLabel = position ? seriesPositionLabel(position) : null;
+  }
+
   const [sectionRes, clientRes, roleRes, settingRes, rateRes] = await Promise.all([
     supabase
       .from('shift_requirements')
       .select(
-        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, required_gender, allocation_per_hour',
+        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, required_gender, same_staff_all_days, allocation_per_hour',
       )
       .eq('event_id', eventId)
       .order('starts_at'),
@@ -590,6 +619,7 @@ export async function loadBoard(
       onsiteContact: (event['onsite_contact'] as string) ?? '',
       autoAssign: Boolean(event['auto_assign']),
       requiredLanguages: normaliseLanguages(event['required_languages'] as string[] | null),
+      seriesLabel,
       paysBreaks: Boolean(event['pays_breaks']),
       paysBuffer: Boolean(event['pays_buffer']),
       cancelledAt: (event['cancelled_at'] as string) ?? null,
@@ -638,6 +668,7 @@ export async function loadBoard(
           dressCode: (section['dress_code'] as string) ?? '',
           autoAssign: Boolean(section['auto_assign']),
           requiredGender: (section['required_gender'] as 'M' | 'F' | null) ?? null,
+          sameStaffAllDays: Boolean(section['same_staff_all_days']),
           allocationPerHour: section['allocation_per_hour'] as number,
           // A no-show stays in Confirmed, badged — never moved out (§3.3).
           confirmed: mine

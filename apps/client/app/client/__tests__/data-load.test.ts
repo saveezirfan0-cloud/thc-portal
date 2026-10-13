@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *
  * What this pins: the database's own error text never reaches the customer
  * (it goes to the server log), a non-UUID event id is "not found" without a
- * query, Postgres' 22P02 is "not found" rather than "failed", and the three
- * columns 20261012130000 added come through under their camelCase names.
+ * query, and the three columns 20261013100300 added come through under their
+ * camelCase names.
  */
 type Result = { data: unknown; error: { message: string; code?: string } | null };
 
@@ -34,7 +34,7 @@ vi.mock('@thc/db/server', () => ({
   }),
 }));
 
-const { LOAD_COPY, isEventId, loadEvent, loadEventList } = await import('../data');
+const { LOAD_FAILED, loadEvent, loadEventList } = await import('../data');
 
 const EV = '80000000-0000-4000-8000-000000000001';
 const LEAK = 'permission denied for view client_lineup_v (SQLSTATE 42501)';
@@ -84,15 +84,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('isEventId', () => {
-  it('accepts a UUID and nothing else', () => {
-    expect(isEventId(EV)).toBe(true);
-    expect(isEventId('not-a-uuid')).toBe(false);
-    expect(isEventId(`${EV}x`)).toBe(false);
-    expect(isEventId('')).toBe(false);
-  });
-});
-
 describe('loadEventList', () => {
   it('maps the new columns', async () => {
     state.results = {
@@ -129,7 +120,7 @@ describe('loadEventList', () => {
   it('gives the customer a fixed sentence and logs the database detail', async () => {
     state.results = { client_lineup_v: { data: null, error: { message: LEAK, code: '42501' } } };
     const out = await loadEventList();
-    expect(out.problem).toBe(LOAD_COPY.listFailed);
+    expect(out.problem).toBe(LOAD_FAILED.list);
     expect(out.problem).not.toContain('client_lineup_v');
     expect(out.events).toEqual([]);
     expect(JSON.stringify(logged)).toContain(LEAK);
@@ -150,24 +141,12 @@ describe('loadEvent', () => {
     expect(state.tables).toEqual([]);
   });
 
-  it('treats 22P02 as not found, not as a failure', async () => {
-    state.results = {
-      client_events_v: {
-        data: null,
-        error: { message: 'invalid input syntax for type uuid', code: '22P02' },
-      },
-    };
-    const out = await loadEvent(EV);
-    expect(out.event).toBeNull();
-    expect(out.problem).toBeNull();
-  });
-
   it('gives the customer a fixed sentence and logs the database detail', async () => {
     state.results = {
       client_role_sections_v: { data: null, error: { message: LEAK, code: '42501' } },
     };
     const out = await loadEvent(EV);
-    expect(out.problem).toBe(LOAD_COPY.eventFailed);
+    expect(out.problem).toBe(LOAD_FAILED.event);
     expect(out.problem).not.toContain('SQLSTATE');
     expect(JSON.stringify(logged)).toContain(LEAK);
   });

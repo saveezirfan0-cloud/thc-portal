@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
-import { sessionIsAdmin } from '../../_lib/sessionRole';
+import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../../_lib/sessionRole';
 import { createAdminClient } from '@thc/db/admin';
 import { validateEmergencyContact } from '@thc/domain';
 import type { EmergencyContactInput } from '@thc/domain';
@@ -46,6 +46,62 @@ interface RpcClient {
   rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
 }
 
+/**
+ * A database refusal, in words a manager can act on — never the raw text,
+ * which can name a function, a constraint or an id (security review,
+ * NOTE item 5). `callRpc` and `callPrivilegedRpc` hand the raw message on
+ * so each action's own table below can match its codes first; whatever is
+ * left comes here. A code nobody mapped is logged on the server and shown
+ * as a generic line.
+ */
+const STAFF_CODES: Readonly<Record<string, string>> = {
+  not_authorised: 'Only the office can do this.',
+  read_only: READ_ONLY_MESSAGE,
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  unknown_role: 'That role no longer exists. Refresh the page.',
+  unknown_qualification: 'That qualification no longer exists. Refresh the page.',
+  reason_required: 'A reason is required.',
+  not_blocked: 'This worker is not blocked — refresh the page.',
+  not_resettable: 'Reset to candidate is only possible on a blocked, rejected or inactive record.',
+  gdpr_login_not_disabled:
+    'The worker’s login could not be switched off, so nothing was removed. Try again, or ask a developer to check the account.',
+};
+
+/** 20260922094500 raises these as sentences meant for the screen: kept, matched by their start. */
+const STAFF_SENTENCES: readonly (readonly [string, string])[] = [
+  [
+    'A worker can only be qualified at a client for a role they already hold',
+    'A worker can only be qualified at a client for a role they already hold.',
+  ],
+  ['Do not return needs a reason', 'Do not return needs a reason — it is shown on this client.'],
+  [
+    'Switch Do not return off before removing this entry',
+    'Switch Do not return off before removing this entry — removing it would un-bar the worker at this client.',
+  ],
+];
+
+const STAFF_GENERIC = 'This could not be saved. Refresh the page and try again.';
+
+function staffErrorMessage(raw: string): string {
+  // This file's own copy (callRpc's NOT_CONFIGURED) is already for the screen.
+  if (raw === NOT_CONFIGURED) return raw;
+  const code = raw.split(/[:\s]/)[0] ?? '';
+  const known = STAFF_CODES[code];
+  if (known) return known;
+  const sentence = STAFF_SENTENCES.find(([start]) => raw.startsWith(start));
+  if (sentence) return sentence[1];
+  // RLS on the security-invoker RPCs: the caller is not the office.
+  if (/row-level security|permission denied/i.test(raw)) return STAFF_CODES['not_authorised']!;
+  console.error('[staff] unmapped database refusal', { message: raw });
+  return STAFF_GENERIC;
+}
+
+/** An action's result with any database refusal put into words (staffErrorMessage). */
+function said(result: ActionResult): ActionResult {
+  return result.ok ? result : { ok: false, message: staffErrorMessage(result.message) };
+}
+
 function done(id: string): ActionResult {
   revalidatePath(`/staff/${id}`);
   revalidatePath('/staff');
@@ -73,10 +129,18 @@ async function asAdmin(): Promise<{ ok: true; userId: string } | { ok: false; me
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: 'Sign in to do this.' };
 
-  // current_app_role(), not the profiles row: it also refuses a
-  // switched-off login and a two-step login below aal2 (20261001200500).
-  if (!(await sessionIsAdmin(supabase))) {
-    return { ok: false, message: 'Only the office can do this.' };
+  // office_can('write'), not the profiles row: it refuses a viewer
+  // (ADR-0060) — whose write the service key would otherwise carry past
+  // the office_read_only triggers until the audit row caught it — and,
+  // through current_app_role(), a switched-off login and a two-step login
+  // below aal2 (20261001200500).
+  if (!(await officeMayWrite(supabase))) {
+    return {
+      ok: false,
+      message: (await sessionIsAdmin(supabase))
+        ? READ_ONLY_MESSAGE
+        : 'Only the office can do this.',
+    };
   }
   return { ok: true, userId: auth.user.id };
 }
@@ -98,7 +162,7 @@ async function callPrivilegedRpc(
 
   const admin = createAdminClient() as unknown as RpcClient;
   const { error } = await admin.rpc(fn, { ...args, p_actor: gate.userId });
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: staffErrorMessage(error.message) };
   return done(staffId);
 }
 
@@ -106,7 +170,7 @@ async function callPrivilegedRpc(
 // Role qualification (§9.6)
 // ---------------------------------------------------------------------
 export async function addRole(staffId: string, roleId: string): Promise<ActionResult> {
-  return callRpc('add_staff_role', { p_staff: staffId, p_role: roleId }, staffId);
+  return said(await callRpc('add_staff_role', { p_staff: staffId, p_role: roleId }, staffId));
 }
 
 /**
@@ -116,7 +180,7 @@ export async function addRole(staffId: string, roleId: string): Promise<ActionRe
  * effect is wider than its label is how a bar gets deleted by accident.
  */
 export async function removeRole(staffId: string, roleId: string): Promise<ActionResult> {
-  return callRpc('remove_staff_role', { p_staff: staffId, p_role: roleId }, staffId);
+  return said(await callRpc('remove_staff_role', { p_staff: staffId, p_role: roleId }, staffId));
 }
 
 // ---------------------------------------------------------------------
@@ -128,15 +192,17 @@ export async function grantQualification(
   roleId: string,
   note: string,
 ): Promise<ActionResult> {
-  return callRpc(
-    'grant_client_qualification',
-    { p_staff: staffId, p_client: clientId, p_role: roleId, p_note: note.trim() || null },
-    staffId,
+  return said(
+    await callRpc(
+      'grant_client_qualification',
+      { p_staff: staffId, p_client: clientId, p_role: roleId, p_note: note.trim() || null },
+      staffId,
+    ),
   );
 }
 
 export async function revokeQualification(staffId: string, id: string): Promise<ActionResult> {
-  return callRpc('revoke_client_qualification', { p_id: id }, staffId);
+  return said(await callRpc('revoke_client_qualification', { p_id: id }, staffId));
 }
 
 /**
@@ -153,10 +219,12 @@ export async function setDoNotReturn(
   if (on && reason.trim() === '') {
     return { ok: false, message: 'Do not return needs a reason.' };
   }
-  return callRpc(
-    'set_do_not_return',
-    { p_id: id, p_on: on, p_reason: reason.trim() || null },
-    staffId,
+  return said(
+    await callRpc(
+      'set_do_not_return',
+      { p_id: id, p_on: on, p_reason: reason.trim() || null },
+      staffId,
+    ),
   );
 }
 
@@ -228,7 +296,7 @@ const EMERGENCY_MESSAGES: Record<string, string> = {
 function emergencyMessage(result: ActionResult): ActionResult {
   if (result.ok) return result;
   const key = Object.keys(EMERGENCY_MESSAGES).find((code) => result.message.includes(code));
-  return key ? { ok: false, message: EMERGENCY_MESSAGES[key] as string } : result;
+  return key ? { ok: false, message: EMERGENCY_MESSAGES[key] as string } : said(result);
 }
 
 export async function saveEmergencyContact(
@@ -270,7 +338,10 @@ export async function clearEmergencyContact(staffId: string): Promise<ActionResu
 // set_by from auth.uid(). Null clears the rate.
 // ---------------------------------------------------------------------
 function payRateResult(result: ActionResult): ActionResult {
-  return result.ok ? result : { ok: false, message: payRateMessage(result.message) };
+  if (result.ok) return result;
+  const mapped = payRateMessage(result.message);
+  // payRateMessage hands back what it does not know; that is not for the screen.
+  return mapped === result.message ? said(result) : { ok: false, message: mapped };
 }
 
 /**
@@ -314,7 +385,7 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
   const result = await callRpc('set_staff_gender', { p_staff: staffId, p_gender: gender }, staffId);
   return result.ok
     ? result
-    : { ok: false, message: GENDER_MESSAGES[result.message] ?? result.message };
+    : { ok: false, message: GENDER_MESSAGES[result.message] ?? staffErrorMessage(result.message) };
 }
 
 // ---------------------------------------------------------------------
@@ -366,7 +437,10 @@ export async function changeRtwBranch(
     revalidatePath(`/onboarding/${staffId}`);
     return result;
   }
-  return { ok: false, message: RTW_BRANCH_MESSAGES[result.message] ?? result.message };
+  return {
+    ok: false,
+    message: RTW_BRANCH_MESSAGES[result.message] ?? staffErrorMessage(result.message),
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -395,7 +469,10 @@ export async function saveScheduling(
   );
   return result.ok
     ? result
-    : { ok: false, message: SCHEDULING_MESSAGES[result.message] ?? result.message };
+    : {
+        ok: false,
+        message: SCHEDULING_MESSAGES[result.message] ?? staffErrorMessage(result.message),
+      };
 }
 
 // ---------------------------------------------------------------------
@@ -422,7 +499,10 @@ export async function savePayrollId(
   );
   return result.ok
     ? result
-    : { ok: false, message: PAYROLL_ID_MESSAGES[result.message] ?? result.message };
+    : {
+        ok: false,
+        message: PAYROLL_ID_MESSAGES[result.message] ?? staffErrorMessage(result.message),
+      };
 }
 
 // ---------------------------------------------------------------------
@@ -446,7 +526,10 @@ export async function saveLanguages(staffId: string, languages: string[]): Promi
   );
   return result.ok
     ? result
-    : { ok: false, message: LANGUAGES_MESSAGES[result.message] ?? result.message };
+    : {
+        ok: false,
+        message: LANGUAGES_MESSAGES[result.message] ?? staffErrorMessage(result.message),
+      };
 }
 
 // ---------------------------------------------------------------------
@@ -483,7 +566,10 @@ export async function rejectSelfie(staffId: string, reason: string): Promise<Act
   if (!result.ok) {
     // Postgres puts the code first: "no_photo", or "read_only" with a hint.
     const code = result.message.split(/[:\s]/)[0] ?? '';
-    return { ok: false, message: REJECT_SELFIE_MESSAGES[code] ?? result.message };
+    return {
+      ok: false,
+      message: REJECT_SELFIE_MESSAGES[code] ?? staffErrorMessage(result.message),
+    };
   }
   // The same selfie shows on the candidate's profile and on the board.
   revalidatePath('/onboarding');

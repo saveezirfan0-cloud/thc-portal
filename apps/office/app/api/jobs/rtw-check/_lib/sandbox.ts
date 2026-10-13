@@ -13,8 +13,9 @@ import type { EnvReader } from './checker';
  * the report and photo upload, `rtw_check_record()` and the office's
  * Verify / Reject (ADR-0041).
  *
- * Switched on only by `RTW_PROVIDER_URL=sandbox:` (with
- * `settings.rtw_check.primary = 'provider'`). It answers ONLY the fixed demo
+ * Switched on only by `RTW_PROVIDER_URL=sandbox:` together with
+ * `RTW_SANDBOX_ALLOW=<this deployment's Supabase project ref>` (with
+ * `settings.rtw_check.primary = 'provider'`) — see `rtwSandboxSwitch`. It answers ONLY the fixed demo
  * share codes below. Any other code gets a 404 without an outcome, which the
  * adapter reads as an error: a real worker's code is never given a made-up
  * answer, and goes to the gov.uk fallback if one is on. Every report it
@@ -32,9 +33,76 @@ export function isSandboxProviderUrl(url: string | null | undefined): boolean {
   return typeof url === 'string' && url.trim().toLowerCase().startsWith(SANDBOX_URL_PREFIX);
 }
 
+/**
+ * The Supabase project a URL names: the `<ref>` of `https://<ref>.supabase.co`
+ * (or `.supabase.in`), `local` for a local stack (localhost, 127.0.0.1, ::1),
+ * null for anything else — a custom domain included, so the sandbox cannot
+ * be unlocked there by guesswork.
+ */
+export function supabaseProjectRef(url: string | null | undefined): string | null {
+  if (!url) return null;
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1')
+    return 'local';
+  const match = /^([a-z0-9]+)\.supabase\.(co|in)$/.exec(host);
+  return match ? match[1]! : null;
+}
+
+export type SandboxSwitch =
+  | { state: 'off' }
+  | { state: 'on'; projectRef: string }
+  /** Asked for by RTW_PROVIDER_URL, but not allowed on this project. */
+  | { state: 'refused'; reason: string };
+
+/**
+ * Two keys, not one (security review, item 4; ADR-0063). A demo share code
+ * makes a "right to work" answer out of nothing, so the switch that turns
+ * the sandbox on must not be a single variable that could be copied into
+ * production by mistake with the rest of a demo's environment:
+ *
+ *   · `RTW_PROVIDER_URL=sandbox:` asks for it, as before, and
+ *   · `RTW_SANDBOX_ALLOW=<project ref>` must name the very Supabase project
+ *     this deployment talks to — the ref in `NEXT_PUBLIC_SUPABASE_URL`, the
+ *     URL the service client uses (`local` for a local stack).
+ *
+ * The first without a matching second is `refused`: the route logs it and
+ * runs as if no provider were configured (the gov.uk fallback, if on, or
+ * the office). Copying a demo's variables to production then still does
+ * nothing, because production's ref is not the demo project's.
+ */
+export function rtwSandboxSwitch(env: EnvReader): SandboxSwitch {
+  if (!isSandboxProviderUrl(envText(env, 'RTW_PROVIDER_URL'))) return { state: 'off' };
+  const allow = envText(env, 'RTW_SANDBOX_ALLOW')?.trim().toLowerCase() ?? null;
+  if (!allow) {
+    return {
+      state: 'refused',
+      reason: 'RTW_PROVIDER_URL=sandbox: needs RTW_SANDBOX_ALLOW=<Supabase project ref> as well',
+    };
+  }
+  const projectRef = supabaseProjectRef(envText(env, 'NEXT_PUBLIC_SUPABASE_URL'));
+  if (!projectRef) {
+    return {
+      state: 'refused',
+      reason: 'NEXT_PUBLIC_SUPABASE_URL names no Supabase project ref to match RTW_SANDBOX_ALLOW',
+    };
+  }
+  if (allow !== projectRef) {
+    return {
+      state: 'refused',
+      reason: 'RTW_SANDBOX_ALLOW does not name the Supabase project this deployment uses',
+    };
+  }
+  return { state: 'on', projectRef };
+}
+
 /** Whether the route should hand the provider adapter the sandbox. */
 export function rtwSandboxEnabled(env: EnvReader): boolean {
-  return isSandboxProviderUrl(envText(env, 'RTW_PROVIDER_URL'));
+  return rtwSandboxSwitch(env).state === 'on';
 }
 
 /**

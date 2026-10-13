@@ -385,4 +385,19 @@ describe('refusal copy', () => {
   it('uses the scope’s own words for a shift that filled while the screen was open', () => {
     expect(APPLY_REFUSAL_COPY.full.title).toBe('Sorry, this shift is now full');
   });
+
+  // ADR-0117: a role that needs the same people on every day of a job.
+  it('tells a worker a same-staff job needs them free for every day, on Accept and on Radar alike', () => {
+    expect(ACCEPT_REFUSAL_COPY.not_available_all_days.title).toBe(
+      'This job needs you free for every day of it.',
+    );
+    expect(ACCEPT_REFUSAL_COPY.not_available_all_days.body).toMatch(/contact the office/);
+    expect(APPLY_REFUSAL_COPY.not_available_all_days).toEqual(
+      ACCEPT_REFUSAL_COPY.not_available_all_days,
+    );
+    // Not the weekly-limit wording: the cause is another day of the job.
+    expect(ACCEPT_REFUSAL_COPY.not_available_all_days.title).not.toBe(
+      ACCEPT_REFUSAL_COPY.hours_limit.title,
+    );
+  });
 });

@@ -6,6 +6,7 @@ import {
   refusal,
   supabaseConfigured,
 } from '../../_lib/generate';
+import { CROSS_SITE_REFUSAL, fetchSiteAllowed } from '../../_lib/fetchSite';
 
 /**
  * POST /api/documents/:eventId/send { kind } — "Send Allocation Timesheet" /
@@ -24,6 +25,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  // Defence in depth beside SameSite=Lax: the Send button's fetch is same-origin.
+  if (!fetchSiteAllowed(request))
+    return Response.json({ error: CROSS_SITE_REFUSAL }, { status: 403 });
   const { eventId } = await params;
   let body: { kind?: unknown } = {};
   try {

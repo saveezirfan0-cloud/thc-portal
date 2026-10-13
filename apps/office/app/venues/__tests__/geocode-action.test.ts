@@ -16,6 +16,9 @@ vi.mock('../data', () => ({ supabaseConfigured: () => true }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: state.user } }) },
+    // current_app_role(), as the gate asks it (not the profiles row).
+    rpc: async (fn: string) =>
+      fn === 'current_app_role' ? { data: state.role, error: null } : { data: null, error: null },
     from: () => ({
       select: () => ({
         eq: () => ({

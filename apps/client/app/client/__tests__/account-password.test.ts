@@ -31,7 +31,7 @@ const state = vi.hoisted(() => ({
   verifierUpdates: [] as unknown[],
   adopted: [] as unknown[],
   deviceSignOuts: [] as unknown[],
-  // password_check_begin (20261012120200): an attempt id, or null past the limit.
+  // password_check_begin (20261013100200): an attempt id, or null past the limit.
   attempt: 41 as unknown,
   beginError: null as null | { code?: string; message: string },
   releaseError: null as null | { code?: string; message: string },

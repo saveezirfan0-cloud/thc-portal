@@ -6,6 +6,7 @@ import { supabaseConfigured } from '../staff/data';
 import { withPhotoUrls } from '../_lib/photos';
 import type {
   Application,
+  BoardCandidateRow,
   BoardData,
   CandidateData,
   CandidateFacts,
@@ -177,6 +178,86 @@ export async function loadBoardChasers(
   }
 }
 
+/**
+ * The board names its columns: everything on `onboarding_candidates_v` but
+ * `quiz_blockers`, which only the candidate screen reads. The view is
+ * flattened into the query, so a column left out is never computed — and
+ * that one runs compliance_blockers() and onboarding_documents_missing()
+ * per row. Read with `*` for the whole pipeline it was most of the 4 s that
+ * timed /onboarding out at 220 candidates (20261012120000).
+ */
+const BOARD_COLUMN_LIST = [
+  'id',
+  'first_name',
+  'last_name',
+  'display_name',
+  'email',
+  'phone',
+  'dob',
+  'age',
+  'applied_age_band',
+  'photo_path',
+  'status',
+  'stage_entered_at',
+  'onboarding_started_at',
+  'applied_at',
+  'gdpr_consent_at',
+  'employee_id',
+  'rtw_branch',
+  'right_to_work_until',
+  'share_code',
+  'activated',
+  'role_names',
+  'role_ids',
+  'willo_linked',
+  'willo_review_url',
+  'willo_invited_at',
+  'willo_answers_done',
+  'willo_answers_total',
+  'willo_completed_at',
+  'willo_decision',
+  'willo_decided_at',
+  'willo_decided_via',
+  'docs_total',
+  'docs_verified',
+  'docs_pending',
+  'docs_rejected',
+  'last_doc_rejected_at',
+  'docs_missing',
+  'declaration_answer',
+  'declaration_status',
+  'quiz_attempts_used',
+  'quiz_best_score',
+  'quiz_passed_at',
+  'hmrc_submitted_at',
+  'references_count',
+  'bank_saved',
+  'ni_entered',
+  'contract_signed_at',
+  'contract_version',
+  'rejected_at',
+  'rejected_from',
+  'rejection_cause',
+  'rejection_reason',
+  'rejected_by_name',
+  'activated_at',
+  'additional_info_done_at',
+  'quiz_scores',
+  'spudbros_express',
+  'thc_shifts_enabled',
+  'payroll_id',
+] as const satisfies readonly (keyof BoardCandidateRow)[];
+// Fails to compile when a column is added to BoardCandidateRow but not
+// here (photo_url is signed on the server, not read).
+const BOARD_COLUMNS_COMPLETE: Exclude<
+  keyof BoardCandidateRow,
+  (typeof BOARD_COLUMN_LIST)[number] | 'photo_url'
+> extends never
+  ? true
+  : false = true;
+void BOARD_COLUMNS_COMPLETE;
+const BOARD_COLUMNS = BOARD_COLUMN_LIST.join(', ');
+
 export async function loadBoard(): Promise<BoardData> {
   if (!supabaseConfigured()) {
     return { candidates: [], returning: [], roles: [], problem: NOT_CONFIGURED };
@@ -188,10 +269,10 @@ export async function loadBoard(): Promise<BoardData> {
   const [candidates, returning, roles] = await Promise.all([
     supabase
       .from('onboarding_candidates_v')
-      .select('*')
+      .select(BOARD_COLUMNS)
       .in('status', ON_BOARD)
       .order('stage_entered_at', { ascending: false })
-      .returns<CandidateRow[]>(),
+      .returns<BoardCandidateRow[]>(),
     supabase
       .from('onboarding_returning_v')
       .select('*')

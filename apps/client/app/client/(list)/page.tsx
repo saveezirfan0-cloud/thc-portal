@@ -4,7 +4,7 @@ import { AutoRefresh } from '../../_components/AutoRefresh';
 import { EventsScreen } from '../EventsScreen';
 import { loadEventList } from '../data';
 import { DOCUMENTS_UNAVAILABLE, kindsByEvent, loadAllDocuments } from '../documents';
-import { signLineupPhotos } from '../photos';
+import { presentLineup } from '../photos';
 
 /**
  * §11.1 · the Client Portal's event list.
@@ -36,8 +36,10 @@ export default async function ClientEventsPage() {
 
   // The documents ride alongside the events, one query for the page, so the
   // list can tell a real download from a copy the office has not issued yet.
-  const [signed, documents, arrivals] = await Promise.all([
-    signLineupPhotos(lineup.map((l) => l.photoPath)),
+  // The photos are keyed by booking and the Storage paths stay here: a
+  // path's first segment is the worker's staff id (photos.ts).
+  const [shown, documents, arrivals] = await Promise.all([
+    presentLineup(lineup),
     loadAllDocuments(),
     loadArrivals(),
   ]);
@@ -52,8 +54,8 @@ export default async function ClientEventsPage() {
       <EventsScreen
         events={events}
         sections={sections}
-        lineup={lineup}
-        photos={Object.fromEntries(signed)}
+        lineup={shown.lineup}
+        photos={shown.photos}
         documents={kindsByEvent(documents.documents)}
         arrivals={arrivals}
         company={company}

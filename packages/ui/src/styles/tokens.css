@@ -34,7 +34,7 @@
 :root {
   /* Native widgets — a select's popup, scrollbars, a date picker, an
      autofill tint — follow this, not our tokens. Dark by default, light
-     in the light block below (ADR-0113). */
+     in the light block below (ADR-0118). */
   color-scheme: dark;
 
   /* --- ground ------------------------------------------------------- */
@@ -48,7 +48,7 @@
      divider and sits near 1.2:1 on its own ground, which is right for a
      table rule and fails WCAG 1.4.11 (3:1) for a control's boundary. Every
      theme sets this at 3:1 or a hair over against all three grounds, so it
-     stays quiet; contrast.test.ts holds the floor (ADR-0113). */
+     stays quiet; contrast.test.ts holds the floor (ADR-0118). */
   --control-line: #5d6b7e;
 
   /* --- ink ---------------------------------------------------------- */
@@ -376,7 +376,7 @@
    theme-driven, so this block sets no neutrals.
    ===================================================================== */
 :root[data-style='warm'] {
-  /* Headings and body are one family (ADR-0113, product owner 12.10.2026):
+  /* Headings and body are one family (ADR-0118, product owner 12.10.2026):
      Plus Jakarta Sans in all three apps, bold for headings. Outfit, the
      handoff's heading face, is no longer shipped. */
   --font-head: 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -413,7 +413,7 @@
   --r-control: 999px;
   --r-pill: 999px;
   --r-track: 999px;
-  --r-avatar: 50%; /* worker avatars are circles (ADR-0113) */
+  --r-avatar: 50%; /* worker avatars are circles (ADR-0118) */
   --r-field: 20px;
   --r-check: 8px;
   --r-phone: 44px;

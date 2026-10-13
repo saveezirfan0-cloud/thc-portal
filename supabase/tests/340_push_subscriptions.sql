@@ -79,25 +79,25 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"e1e1e1e1-0000-4000-8000-000000000001","role":"authenticated"}';
 
 select lives_ok(
-  $$ select save_push_subscription('https://push.example/aaa', 'p256-a', 'auth-a', 'iPhone/17') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/aaa', 'p256-a', 'auth-a', 'iPhone/17') $$,
   'a worker registers their own endpoint'
 );
 
 -- The same browser returns the same endpoint on every launch. This is the
 -- assertion that stops 23505 being reported to the worker as "push failed".
 select lives_ok(
-  $$ select save_push_subscription('https://push.example/aaa', 'p256-a2', 'auth-a2', 'iPhone/17') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/aaa', 'p256-a2', 'auth-a2', 'iPhone/17') $$,
   're-registering the SAME endpoint is an upsert, not a unique violation'
 );
 
 select is(
-  (select count(*)::int from push_subscriptions where endpoint = 'https://push.example/aaa'),
+  (select count(*)::int from push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/aaa'),
   1,
   'and leaves exactly one row, not two'
 );
 
 select is(
-  (select p256dh from push_subscriptions where endpoint = 'https://push.example/aaa'),
+  (select p256dh from push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/aaa'),
   'p256-a2',
   'the refreshed keys replace the old ones — a stale p256dh is an undeliverable push'
 );
@@ -107,15 +107,15 @@ select is(
 --    in the same call, so the drain never posts to a dead one.
 -- ---------------------------------------------------------------------
 select lives_ok(
-  $$ select save_push_subscription('https://push.example/aaa2', 'p256-a3', 'auth-a3', 'iPhone/17',
-                                   'https://push.example/aaa') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/aaa2', 'p256-a3', 'auth-a3', 'iPhone/17',
+                                   'https://fcm.googleapis.com/fcm/send/aaa') $$,
   'a rotated endpoint is saved and the old one named'
 );
 
 select is(
   (select count(*)::int from push_subscriptions
     where staff_id = 'e2e2e2e2-0000-4000-8000-000000000001'
-      and endpoint = 'https://push.example/aaa'),
+      and endpoint = 'https://fcm.googleapis.com/fcm/send/aaa'),
   0,
   'the retired endpoint is gone, so nothing keeps posting to it'
 );
@@ -126,13 +126,15 @@ select is(
 -- ---------------------------------------------------------------------
 set local "request.jwt.claims" = '{"sub":"e1e1e1e1-0000-4000-8000-000000000002","role":"authenticated"}';
 
+-- The browser hands the second worker the SAME subscription, keys and all;
+-- 20261012120700 moves another worker's row only on matching keys (793).
 select lives_ok(
-  $$ select save_push_subscription('https://push.example/aaa2', 'p256-b', 'auth-b', 'iPhone/17') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/aaa2', 'p256-a3', 'auth-a3', 'iPhone/17') $$,
   'the second worker on a shared device re-registers the same endpoint'
 );
 
 select is(
-  (select staff_id from push_subscriptions where endpoint = 'https://push.example/aaa2'),
+  (select staff_id from push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/aaa2'),
   'e2e2e2e2-0000-4000-8000-000000000002'::uuid,
   'and it now belongs to whoever is signed in — otherwise they get no pushes at all'
 );
@@ -140,7 +142,7 @@ select is(
 -- B registers a second device of their own, then tries to retire it while
 -- signed in as... themselves. The interesting case is the next one.
 select lives_ok(
-  $$ select save_push_subscription('https://push.example/bbb', 'p256-b2', 'auth-b2', 'Pixel/7') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/bbb', 'p256-b2', 'auth-b2', 'Pixel/7') $$,
   'a worker may hold more than one device'
 );
 
@@ -149,14 +151,14 @@ select lives_ok(
 --    a distinct error would itself confirm another worker's endpoint.
 -- ---------------------------------------------------------------------
 set local "request.jwt.claims" = '{"sub":"e1e1e1e1-0000-4000-8000-000000000001","role":"authenticated"}';
-select save_push_subscription('https://push.example/ccc', 'p256-a4', 'auth-a4', 'iPad/17');
+select save_push_subscription('https://fcm.googleapis.com/fcm/send/ccc', 'p256-a4', 'auth-a4', 'iPad/17');
 
 set local "request.jwt.claims" = '{"sub":"e1e1e1e1-0000-4000-8000-000000000002","role":"authenticated"}';
-select forget_push_subscription('https://push.example/ccc');
+select forget_push_subscription('https://fcm.googleapis.com/fcm/send/ccc');
 
 reset role;
 select is(
-  (select staff_id from push_subscriptions where endpoint = 'https://push.example/ccc'),
+  (select staff_id from push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/ccc'),
   'e2e2e2e2-0000-4000-8000-000000000001'::uuid,
   'one worker cannot unsubscribe another worker''s device'
 );
@@ -169,7 +171,7 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"e1e1e1e1-0000-4000-8000-000000000003","role":"authenticated"}';
 
 select throws_ok(
-  $$ select save_push_subscription('https://push.example/ddd', 'p256-c', 'auth-c', 'Pixel/7') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/ddd', 'p256-c', 'auth-c', 'Pixel/7') $$,
   '42501',
   'account_closed',
   'a leaver cannot register a device: they have left the scoring pool and every send'
@@ -182,7 +184,7 @@ select throws_ok(
 set local "request.jwt.claims" = '{"sub":"e1e1e1e1-0000-4000-8000-000000000009","role":"authenticated"}';
 
 select throws_ok(
-  $$ select save_push_subscription('https://push.example/eee', 'p256-x', 'auth-x', 'Chrome') $$,
+  $$ select save_push_subscription('https://fcm.googleapis.com/fcm/send/eee', 'p256-x', 'auth-x', 'Chrome') $$,
   '42501',
   'not_a_worker',
   'a session with no staff row cannot register a device'

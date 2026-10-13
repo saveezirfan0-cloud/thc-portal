@@ -22,7 +22,7 @@
 -- dashboard.
 -- =====================================================================
 begin;
-select plan(101);
+select plan(102);
 \ir _shared/fixtures.psql
 
 \set r_wait '41000000-0000-4000-8000-000000000001'
@@ -55,7 +55,8 @@ insert into staff (id, employee_id, first_name, last_name, email, phone, dob, st
 
 insert into hmrc_checklists (staff_id, q1_other_job, q2_pension, q3_since_6_april, statement, student_loan, postgraduate_loan, declared) values
   (:'w1', false, false, false, 'B', 'plan2', false, true),
-  (:'w2', false, false, true,  'A', 'none',  true,  true);
+  (:'w2', false, false, true,  'A', 'none',  true,  true),
+  (:'w3', false, false, false, 'B', 'plan5', true,  true);
 
 -- One event + one section per shift. Charge: Waiting £22.97, Bar £24.50, Host £26.00.
 create function pg_temp.section(p_title text, p_role uuid, p_start timestamptz, p_hours numeric,
@@ -322,6 +323,8 @@ select is((select row(postcode, gender, first_shift_date, hmrc_statement, studen
   'W1: postcode read off the end of the address, gender, first shift, the HMRC statement letter and the loan plan');
 select is((select student_loan from ns where staff_id = :'w2'), 'Postgraduate',
   'W2: no undergraduate plan but a postgraduate loan reads "Postgraduate"');
+select is((select student_loan from ns where staff_id = :'w3'), 'Plan 5 + Postgraduate',
+  'W3: Plan 5 (England, course from 1 Aug 2023) reads as HMRC names it, alongside a postgraduate loan (ADR-0116)');
 select is((select row(staff_name, date_of_birth, gender)::text from ns where staff_id = :'w7'),
   row('Deleted account #91007', null::date, null::text)::text,
   'W7: the removed worker is anonymised, with no date of birth and the gender wiped by the removal trigger');

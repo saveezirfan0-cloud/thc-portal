@@ -385,6 +385,15 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
     detail: 'marked Do not return at this client',
     tone: 'coral',
   },
+  // ADR-0117: a role that asks for the same staff on every day of the job,
+  // and a worker who fails a hard gate, has marked another day unavailable or
+  // would be over their weekly hours across all the days together.
+  not_available_all_days: {
+    label: 'Not available all days',
+    detail:
+      'the client asked for the same staff on every day of this job, and this worker cannot do one of the other days (booked elsewhere, blocked, marked unavailable, or over the weekly hours limit across all the days)',
+    tone: 'amber',
+  },
   // ADR-0043. The label carries the window (`unavailableLabel`); this is
   // the fallback when the window could not be read.
   [CALENDAR_GATE]: {
@@ -491,6 +500,7 @@ const REASON_ORDER = [
   'rtw_expired',
   'self_cancelled',
   'do_not_return',
+  'not_available_all_days',
   'outside_radius',
   CALENDAR_GATE,
 ];
@@ -713,6 +723,7 @@ const INVITE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   booked_elsewhere: ACCEPT_APPLICATION_REFUSAL_COPY.booked_elsewhere,
   rtw_expired: ACCEPT_APPLICATION_REFUSAL_COPY.rtw_expired,
   hours_limit: ACCEPT_APPLICATION_REFUSAL_COPY.hours_limit,
+  not_available_all_days: ACCEPT_APPLICATION_REFUSAL_COPY.not_available_all_days,
 };
 
 export function inviteRefusal(reason: string): string {

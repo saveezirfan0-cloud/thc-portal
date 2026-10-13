@@ -1,9 +1,11 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Alert, AuthCard } from '@thc/ui';
+import { readRecoverySession } from '@thc/db/recovery';
+import type { RecoverySession } from '@thc/db/recovery';
 import { createClient } from '@thc/db/server';
+import { USE_ACCOUNT_SCREEN } from './copy';
 import { ResetForm } from './ResetForm';
-import { NOT_A_RESET_SESSION, accountEmail, isRecoverySession } from './recovery';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Set a new password · THC Client Portal' };
@@ -15,8 +17,11 @@ export const metadata = { title: 'Set a new password · THC Client Portal' };
  * Reached from the emailed recovery link via /auth/confirm, which
  * exchanges the code for a session. If that left no session behind, the
  * link is spent — and this says so here, before a password is typed twice
- * for nothing. A session that was NOT made by a reset link (./recovery.ts)
- * gets a pointer to Your account → Change password instead of the form.
+ * for nothing. So is a session that is not a reset link opened in the last
+ * 15 minutes (packages/db/src/recovery.ts): the action would refuse it.
+ *
+ * The form names the account it is for, from the verified session: a reset
+ * link someone else opened in this browser (login CSRF) shows THEIR address.
  */
 export default async function Page({
   searchParams,
@@ -27,16 +32,8 @@ export default async function Page({
   const configured =
     !!process.env['NEXT_PUBLIC_SUPABASE_URL'] && !!process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
 
-  let signedIn = false;
-  let recovery = false;
-  let email: string | null = null;
-  if (configured) {
-    const supabase = createClient(await cookies());
-    const { data } = await supabase.auth.getClaims();
-    signedIn = !!data?.claims?.sub;
-    recovery = isRecoverySession(data?.claims);
-    email = accountEmail(data?.claims);
-  }
+  let session: RecoverySession = { state: 'none', email: null };
+  if (configured) session = await readRecoverySession(createClient(await cookies()));
 
   // A link that arrived without its token (/auth/confirm or /auth/callback
   // sent `?error=missing`): nothing expired — the address was cut short,
@@ -55,12 +52,15 @@ export default async function Page({
     );
   }
 
-  if (error || (configured && !signedIn)) {
+  if (error || (configured && session.state !== 'recent')) {
     return (
       <AuthCard product="Client Portal" heading="This link has expired">
         <Alert tone="coral">
           Reset links work once and for a limited time. Request a new one and use the newest email.
         </Alert>
+        {!error && session.state === 'other' ? (
+          <p className="sm muted">{USE_ACCOUNT_SCREEN}</p>
+        ) : null}
         <Link href="/forgot" className="btn block">
           Request a new link
         </Link>
@@ -68,25 +68,14 @@ export default async function Page({
     );
   }
 
-  // Signed in, but not by a reset link: a password session must not be
-  // able to set a new password without the current one (setPassword
-  // refuses it too). Said here, before anything is typed.
-  if (configured && !recovery) {
-    return (
-      <AuthCard product="Client Portal" heading="You’re already signed in">
-        <Alert tone="amber">{NOT_A_RESET_SESSION}</Alert>
-        <Link href="/client/account" className="btn block">
-          Go to Your account
-        </Link>
-      </AuthCard>
-    );
-  }
-
   return (
     <AuthCard product="Client Portal" heading="Set a new password">
-      {/* "For hannah.brooks@…" (activate.html, A3): whose password this
-          is, from the reset session itself — said only when it has one. */}
-      <ResetForm email={email} />
+      {session.email ? (
+        <p className="sm muted">
+          Setting a new password for <b className="mono">{session.email}</b>.
+        </p>
+      ) : null}
+      <ResetForm />
     </AuthCard>
   );
 }

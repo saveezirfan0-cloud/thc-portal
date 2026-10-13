@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { isUuid } from './ids';
 import type { LineupRow, PortalEvent, RoleSection } from './rules';
 
 /**
@@ -25,43 +26,44 @@ export function supabaseConfigured(): boolean {
 
 /**
  * What the customer reads when a load fails. Never the database's own
- * message: a PostgREST error names relations, columns and SQLSTATEs, and the
- * customer can do nothing with it. The detail goes to the server log.
- * (The setup step for an environment with no project is docs/04; the
- * customer is only told to contact THC.)
+ * message: PostgREST passes Postgres errors through verbatim ("invalid input
+ * syntax for type uuid", a column or a constraint name), and those belong in
+ * the server log, which is where `logFailure` puts them. An environment with
+ * no project (docs/04) is told only to contact THC: the setup step is not
+ * the customer's.
  */
-export const LOAD_COPY = {
+export const LOAD_FAILED = {
+  list: 'We could not load your events just now. Refresh the page to try again.',
+  event: 'We could not load this event just now. Refresh the page to try again.',
   noProject: "The portal isn't connected yet. Please contact THC.",
-  listFailed:
-    "We couldn't load your events just now. Refresh the page, or try again in a few minutes.",
-  eventFailed:
-    "We couldn't load this event just now. Refresh the page, or try again in a few minutes.",
 } as const;
 
-/** A canonical UUID. Anything else is not an event id and is a 404. */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function isEventId(id: string): boolean {
-  return UUID.test(id);
+function logFailure(what: string, error: { message?: string; code?: string } | null | undefined) {
+  console.error(`[client] ${what} failed`, { code: error?.code, message: error?.message });
 }
 
 const EVENT_COLUMNS =
   'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status, cancelled_at';
+// The list renders no on-site contact (that is §11.2's, the event page), so
+// it never asks for one: what the browser is not shown, it is not sent.
+const LIST_EVENT_COLUMNS =
+  'id, title, venue_name, venue_address, event_date, po_number, starts_at, ends_at, status, cancelled_at';
 const SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
 const LINEUP_COLUMNS =
   'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given, feedback_rating, feedback_sent_at';
 
 /**
  * `PortalEvent` plus the moment a cancelled event was cancelled, for
- * "cancelled <date>" under a greyed row (20261012130000). Null unless
+ * "cancelled <date>" under a greyed row (20261013100300). Null unless
  * `status` is `cancelled`.
  */
 export type ClientEvent = PortalEvent & { cancelledAt: string | null };
 
 /**
  * `LineupRow` plus the customer's OWN feedback entry for that worker on that
- * event (20261012130000): its stars (1–5) and when it was sent. Both null
+ * event (20261013100300): its stars (1–5) and when it was sent. Both null
  * until the customer leaves feedback; the office's entries never appear.
+ * This is the browser's shape: no `photo_path` (see `LineupRecord`).
  */
 export type ClientLineupRow = LineupRow & {
   feedbackRating: number | null;
@@ -101,7 +103,16 @@ function toSection(r: Row): RoleSection {
   };
 }
 
-function toLineup(r: Row): ClientLineupRow {
+/**
+ * A line-up row as the SERVER holds it: the browser's `ClientLineupRow` plus
+ * the worker's Storage path, which only `presentLineup` (photos.ts) may read.
+ * Never pass one of these to a client component.
+ */
+export type LineupRecord = ClientLineupRow & {
+  photoPath: string | null;
+};
+
+function toLineup(r: Row): LineupRecord {
   return {
     bookingId: r.booking_id,
     eventId: r.event_id,
@@ -123,7 +134,7 @@ function toLineup(r: Row): ClientLineupRow {
 export interface EventListData {
   events: ClientEvent[];
   sections: RoleSection[];
-  lineup: ClientLineupRow[];
+  lineup: LineupRecord[];
   /** The caller's own company (`client_company_v`), for "Events · <client>". */
   company: string | null;
   /** A customer sentence when the list could not be read; never the DB's message. */
@@ -133,13 +144,13 @@ export interface EventListData {
 /** §11.1 · every event this customer has, with its counts and its faces. */
 export async function loadEventList(): Promise<EventListData> {
   if (!supabaseConfigured()) {
-    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_COPY.noProject };
+    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_FAILED.noProject };
   }
 
   const supabase = createClient(await cookies()) as any;
 
   const [events, sections, lineup, company] = await Promise.all([
-    supabase.from('client_events_v').select(EVENT_COLUMNS),
+    supabase.from('client_events_v').select(LIST_EVENT_COLUMNS),
     supabase.from('client_role_sections_v').select(SECTION_COLUMNS),
     supabase.from('client_lineup_v').select(LINEUP_COLUMNS),
     // wireframes/client/events.html titles the panel with the customer's
@@ -149,8 +160,8 @@ export async function loadEventList(): Promise<EventListData> {
 
   const failed = [events, sections, lineup].find((r) => r.error);
   if (failed?.error) {
-    console.error('[client] event list load failed', failed.error);
-    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_COPY.listFailed };
+    logFailure('event list', failed.error);
+    return { events: [], sections: [], lineup: [], company: null, problem: LOAD_FAILED.list };
   }
 
   return {
@@ -166,7 +177,7 @@ export async function loadEventList(): Promise<EventListData> {
 export interface EventPageData {
   event: ClientEvent | null;
   sections: RoleSection[];
-  lineup: ClientLineupRow[];
+  lineup: LineupRecord[];
   /** A customer sentence when the event could not be read; never the DB's message. */
   problem: string | null;
 }
@@ -179,15 +190,14 @@ export interface EventPageData {
  * row because the predicate said so, which is the same answer another
  * customer's event gives.
  *
- * An id that is not a UUID is answered the same way, without a query; and
- * should one reach Postgres anyway, its 22P02 (invalid_text_representation)
- * is treated as "no such event" rather than as a failure to load.
+ * An id that is not a uuid is the same answer, without asking: no event
+ * could have it, and asking would only earn Postgres's 22P02.
  */
 export async function loadEvent(id: string): Promise<EventPageData> {
-  if (!isEventId(id)) return { event: null, sections: [], lineup: [], problem: null };
   if (!supabaseConfigured()) {
-    return { event: null, sections: [], lineup: [], problem: LOAD_COPY.noProject };
+    return { event: null, sections: [], lineup: [], problem: LOAD_FAILED.noProject };
   }
+  if (!isUuid(id)) return { event: null, sections: [], lineup: [], problem: null };
 
   const supabase = createClient(await cookies()) as any;
 
@@ -199,10 +209,8 @@ export async function loadEvent(id: string): Promise<EventPageData> {
 
   const failed = [event, sections, lineup].find((r) => r.error);
   if (failed?.error) {
-    if (failed.error.code === '22P02')
-      return { event: null, sections: [], lineup: [], problem: null };
-    console.error('[client] event load failed', { id, error: failed.error });
-    return { event: null, sections: [], lineup: [], problem: LOAD_COPY.eventFailed };
+    logFailure('event page', failed.error);
+    return { event: null, sections: [], lineup: [], problem: LOAD_FAILED.event };
   }
 
   return {

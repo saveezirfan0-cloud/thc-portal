@@ -7,11 +7,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { isDocType, uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
 import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
-import { geocodePostcode } from '../_lib/postcode';
+import {
+  PIN_MAX_FROM_POSTCODE_M,
+  compactPostcode,
+  geocodePostcode,
+  metresBetween,
+} from '../_lib/postcode';
 import { addressLine, homeAddressMissing } from '../_lib/address';
 import type { HomeAddressParts } from '../_lib/address';
 import { photoPathFor } from '../profile/photos';
 import { extractAfterResponse } from '../../lib/extract';
+import { checkStoredMedia } from '../_lib/stored-media';
+import { confirmCurrentPassword } from '../_lib/reauth';
 import { NOT_CONFIGURED, reasonCode, reasonMessage } from './messages';
 import { documentPath, isOwnDocumentPath } from './paths';
 import type { Referee } from './state';
@@ -48,10 +55,10 @@ function refresh() {
 async function call<T extends object = object>(
   fn: string,
   args: Record<string, unknown> = {},
-  { revalidate = true }: { revalidate?: boolean } = {},
+  { revalidate = true, client }: { revalidate?: boolean; client?: SupabaseClient } = {},
 ): Promise<Result<{ data: T }>> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  const supabase = await db();
+  const supabase = client ?? (await db());
   const { data, error } = await supabase.rpc(fn, args);
   if (error) {
     return { ok: false, message: reasonMessage(error.message), reason: reasonCode(error.message) };
@@ -108,6 +115,25 @@ export async function reenterShareCode(input: { shareCode: string; dob: string }
 // ---------------------------------------------------------------------
 // 2/11 Home address
 // ---------------------------------------------------------------------
+/**
+ * The pin is the worker's to place — the map is how they find their own
+ * front door — but not anywhere they like: it is the §6 proximity factor,
+ * so a point dropped beside the venues is a better score the worker chose
+ * (security round 12.10, item 7).
+ *
+ * So, as /profile/details has done since 20260928110600: the candidate is
+ * resolved from THEIR session (`staff_me()`), the postcode is geocoded
+ * HERE (postcodes.io), and the save goes through the service key to
+ * `onboarding_save_address_geocoded()` (20261012121400) with the server's
+ * centroid. The RPC refuses a pin more than 5 km from it
+ * (`pin_far_from_postcode`) — checked here first too, so the refusal costs
+ * no round trip — and a session can no longer call the old
+ * `onboarding_save_address()` at all.
+ *
+ * With no centroid there is nothing to hold the pin to, so a postcode
+ * postcodes.io does not know, or postcodes.io being unreachable, is a
+ * refusal the worker can act on rather than an unchecked save.
+ */
 export async function saveAddress(input: {
   address: HomeAddressParts;
   lat: number;
@@ -115,16 +141,54 @@ export async function saveAddress(input: {
 }): Promise<Result> {
   // Every box but the flat is required (homeAddressMissing). The screen
   // keeps Continue disabled until then; this is the same rule on the
-  // server, because onboarding_save_address() only sees the joined line.
+  // server, because the RPC only sees the joined line.
   const missing = homeAddressMissing(input.address);
   if (missing) return { ok: false, message: `${missing}.`, reason: 'address_required' };
-  return call('onboarding_save_address', {
-    p_line: addressLine(input.address),
-    p_town: input.address.town,
-    p_postcode: input.address.postcode,
-    p_lat: input.lat,
-    p_lng: input.lng,
-  });
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
+    return { ok: false, message: reasonMessage('pin_outside_uk'), reason: 'pin_outside_uk' };
+  }
+
+  const staffId = await sessionStaffId();
+  if (!staffId)
+    return { ok: false, message: reasonMessage('unknown_staff'), reason: 'unknown_staff' };
+
+  const centre = await geocodePostcode(input.address.postcode);
+  if (!centre.ok) {
+    const reason =
+      centre.reason === 'bad_postcode'
+        ? 'bad_postcode'
+        : centre.reason === 'unreachable'
+          ? 'postcode_unreachable'
+          : 'postcode_not_located';
+    return { ok: false, message: reasonMessage(reason), reason };
+  }
+  if (metresBetween(centre, input) > PIN_MAX_FROM_POSTCODE_M) {
+    return {
+      ok: false,
+      message: reasonMessage('pin_far_from_postcode'),
+      reason: 'pin_far_from_postcode',
+    };
+  }
+
+  const admin = await adminClient();
+  // SUPABASE_SERVICE_ROLE_KEY missing (docs/12). Never the worker's own
+  // session: it holds no grant on the geocoded RPC by design.
+  if (!admin) return { ok: false, message: reasonMessage(null) };
+  return call(
+    'onboarding_save_address_geocoded',
+    {
+      p_staff: staffId,
+      p_line: addressLine(input.address),
+      p_town: input.address.town,
+      p_postcode: input.address.postcode,
+      p_lat: input.lat,
+      p_lng: input.lng,
+      p_postcode_lat: centre.lat,
+      p_postcode_lng: centre.lng,
+    },
+    { client: admin },
+  );
 }
 
 /**
@@ -145,6 +209,13 @@ export async function saveLanguages(languages: string[]): Promise<Result> {
 export async function lookupPostcode(
   postcode: string,
 ): Promise<Result<{ lat: number; lng: number }>> {
+  // Callable without signing in (/apply needs it), so it must not be an
+  // open proxy to postcodes.io (security round 12.10, item 8): only a
+  // string of a UK postcode's length and shape is ever sent anywhere —
+  // geocodePostcode() then holds it to the strict outward+inward pattern.
+  if (typeof postcode !== 'string' || postcode.length > 10 || !compactPostcode(postcode)) {
+    return { ok: false, message: 'Enter a UK postcode, e.g. E2 0RY.' };
+  }
   const found = await geocodePostcode(postcode);
   if (found.ok) return { ok: true, lat: found.lat, lng: found.lng };
   switch (found.reason) {
@@ -172,8 +243,20 @@ export async function startSelfieUpload(): Promise<Result<{ path: string }>> {
   return { ok: true, path: photoPathFor(staffId) };
 }
 
-/** The photo is uploaded by the worker's own session (photos_worker_insert_own). */
+/**
+ * The photo is uploaded by the worker's own session (photos_worker_insert_own).
+ * Its first bytes are read back through the same session
+ * (photos_worker_read_own) and must be a JPEG, as its name says — the
+ * Content-Type Storage recorded is only the browser's claim (security
+ * round 12.10, item 5; app/_lib/stored-media.ts).
+ */
 export async function saveSelfie(path: string): Promise<Result> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const verdict = await checkStoredMedia(await db(), 'photos', path);
+  if (verdict !== 'match') {
+    const reason = verdict === 'mismatch' ? 'photo_not_image' : 'wrong_path';
+    return { ok: false, message: reasonMessage(reason), reason };
+  }
   const set = await call('staff_set_photo', { p_path: path });
   if (!set.ok) return set;
   return call('onboarding_confirm_selfie');
@@ -279,6 +362,18 @@ export async function finishDocumentUpload(input: {
     return { ok: false, message: reasonMessage(size <= 0 ? 'file_empty' : 'file_too_large') };
   }
 
+  // The bytes must be what the name says (security round 12.10, item 5).
+  // The extension is the server's (`documentPath`, from the kind it
+  // accepted); `mime` is only what the browser told Storage.
+  const verdict = await checkStoredMedia(admin, 'documents', input.path);
+  if (verdict !== 'match') {
+    if (verdict === 'mismatch') {
+      await discard();
+      return { ok: false, message: reasonMessage('file_type'), reason: 'file_type' };
+    }
+    return { ok: false, message: 'That upload didn’t finish. Please try again.' };
+  }
+
   const recorded = await call<{ docId: string }>('onboarding_attach_document', {
     p_doc_type: input.docType,
     p_path: input.path,
@@ -373,16 +468,32 @@ export async function saveReferences(referees: Referee[]): Promise<Result> {
   return call('onboarding_save_references', { p_referees: referees });
 }
 
+/**
+ * Step 9 goes through `staff_save_bank()`, which since 20261012120900 wants
+ * a password sign-in in the last ten minutes (`reauth_required`). So the
+ * step asks for the current password and signs in again with it, on the
+ * same client, immediately before the save — as Profile → Payment does
+ * (ADR-0113).
+ */
 export async function saveBank(input: {
   accountHolder: string;
   sortCode: string;
   accountNumber: string;
+  currentPassword: string;
 }): Promise<Result> {
-  return call('onboarding_save_bank', {
-    p_account_holder: input.accountHolder,
-    p_sort_code: input.sortCode,
-    p_account_number: input.accountNumber,
-  });
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = await db();
+  const refused = await confirmCurrentPassword(supabase, input.currentPassword);
+  if (refused) return { ok: false, message: refused };
+  return call(
+    'onboarding_save_bank',
+    {
+      p_account_holder: input.accountHolder,
+      p_sort_code: input.sortCode,
+      p_account_number: input.accountNumber,
+    },
+    { client: supabase },
+  );
 }
 
 // ---------------------------------------------------------------------

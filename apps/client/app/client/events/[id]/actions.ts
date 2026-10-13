@@ -11,7 +11,8 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../../data';
-import { feedbackErrorMessage } from '../../rules';
+import { isUuid } from '../../ids';
+import { FEEDBACK_TOO_LONG, feedbackErrorMessage, feedbackTextTooLong } from '../../rules';
 
 /**
  * §11.2 / §11.5 · leave feedback on one confirmed worker.
@@ -19,10 +20,11 @@ import { feedbackErrorMessage } from '../../rules';
  * Every rule lives in `submit_client_feedback()`, not here: who the booking
  * belongs to, whether the worker is on the confirmed line-up, whether the
  * event has started, and one entry per worker per event; since 12.10 also
- * a 2000-character comment cap, no feedback on a removed worker and none
- * on a cancelled event. This action checks the length itself (so a long
- * paste is answered without a round trip), carries the call, and turns a
- * Postgres error into a sentence.
+ * a 2000-character comment cap (20261012120600), no feedback on a removed
+ * worker and none on a cancelled event (20261013100000). This action checks
+ * the shape and the length itself (so a long paste is answered without a
+ * round trip), carries the call, and turns a Postgres error into a
+ * sentence.
  *
  * That split is deliberate. The screen disables the button before the event
  * starts, but a disabled button stops nobody — the RPC is what actually
@@ -31,21 +33,17 @@ import { feedbackErrorMessage } from '../../rules';
  */
 export type FeedbackResult = { ok: true } | { ok: false; error: string };
 
-/** The comment cap the database holds too (20261012120000, feedback_text_len). */
-const MAX_COMMENT = 2000;
-
-const TOO_LONG = `Keep your comment to ${MAX_COMMENT} characters or fewer.`;
 const WORKER_REMOVED =
   'This person is no longer on our books, so feedback can no longer be left for them.';
 
 /**
- * The database's refusal in the customer's words. The two refusals
- * 20261012120000 added are recognised here; everything else goes through
+ * The database's refusal in the customer's words. A removed worker
+ * (20261013100000, §1.7) is recognised here; everything else — the rating,
+ * an event not yet started, an over-long comment — goes through
  * feedbackErrorMessage (rules.ts). Never the raw text.
  */
 function feedbackRefusal(error: { code?: string | null; message?: string | null }): string {
   const message = (error.message ?? '').toLowerCase();
-  if (error.code === '22023' && message.includes('2000 characters')) return TOO_LONG;
   if (error.code === '22023' && message.includes('has been removed')) return WORKER_REMOVED;
   return feedbackErrorMessage(error);
 }
@@ -60,13 +58,20 @@ export async function leaveFeedback(
     return { ok: false, error: "The portal isn't connected yet. Please contact THC." };
   }
 
+  // A server action is a public endpoint: these arrive from whoever posts,
+  // not only from the modal, so their shape is checked before anything runs.
+  if (!isUuid(eventId) || !isUuid(bookingId)) {
+    return { ok: false, error: 'That could not be saved.' };
+  }
+
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return { ok: false, error: 'Choose a rating between 1 and 5 stars.' };
   }
 
-  const comment = typeof text === 'string' ? text.trim() : '';
-  // Counted in code points, as Postgres char_length counts them.
-  if ([...comment].length > MAX_COMMENT) return { ok: false, error: TOO_LONG };
+  if (typeof text !== 'string') return { ok: false, error: 'That could not be saved.' };
+  // The textarea stops at the limit; the database refuses past it too.
+  if (feedbackTextTooLong(text)) return { ok: false, error: FEEDBACK_TOO_LONG };
+  const comment = text.trim();
 
   const supabase = createClient(await cookies()) as any;
   const { error } = await supabase.rpc('submit_client_feedback', {
@@ -76,10 +81,14 @@ export async function leaveFeedback(
   });
 
   if (error) {
+    // The database's own words go to the server log only.
+    console.error('[client] submit_client_feedback refused', {
+      code: error.code,
+      message: error.message,
+    });
     // The RPC's errors in the customer's words. 22023 covers a bad rating,
     // an event that has not started, an over-long comment and a removed
-    // worker, so the message decides. The detail is for the server log.
-    console.error('[feedback] refused', { code: error.code, message: error.message });
+    // worker, so the message decides.
     return { ok: false, error: feedbackRefusal(error) };
   }
 

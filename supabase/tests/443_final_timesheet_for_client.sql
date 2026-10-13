@@ -1,8 +1,8 @@
 -- =====================================================================
 -- 443 · The client sees a final sign-out timesheet only (§11.2, §11.4)
 --   20260923193100_finance_send_waits_for_p2_and_final_timesheets.sql
---   20261012130000: "final" waits for the last role's end + 4 h, when the
---   last check-out window closes (RULE-02, ADR-0114), not the end itself.
+--   20261013100300: "final" waits for the last role's end + 4 h, when the
+--   last check-out window closes (RULE-02, ADR-0119), not the end itself.
 -- =====================================================================
 begin;
 select plan(7);
@@ -39,7 +39,7 @@ select is((select storage_path from client_event_documents_v where event_id = :'
 reset role;
 
 -- ---------------------------------------------------------------------
--- 20261012130000 · an unsent copy is final only from end + 4 h.
+-- 20261013100300 · an unsent copy is final only from end + 4 h.
 -- Fixture Event B is client B's and untouched above; its last role ends
 -- eight days from now, so the copies below are drawn "in the future"
 -- relative to that end — the view compares the two timestamps only.

@@ -156,6 +156,8 @@ export const SILENT_FIELDS = [
   'required_gender',
   // ADR-0080: the same, for the languages an event needs.
   'required_languages',
+  // ADR-0117: steers who is invited next; nobody booked is re-asked or removed.
+  'same_staff_all_days',
   'title',
 ] as const;
 

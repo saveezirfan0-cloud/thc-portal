@@ -144,6 +144,10 @@ token before the person clicks. GoTrue's own `/verify` link has the same
 property, so this is no regression; an interstitial "Continue" button would
 close it and is left for THC to ask for.
 
+**Amended 12.10.2026 (ADR-0115):** the interstitial is built. `/auth/confirm`
+with a `token_hash` now answers with a Continue page, and the token is spent
+by that button's POST, not by opening the link.
+
 ## Owner steps (hosted project)
 
 - Authentication → Email Templates → Reset Password: the body of

@@ -2,9 +2,10 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { readRecoverySession } from '@thc/db/recovery';
 import { createClient } from '@thc/db/server';
+import { USE_SECURITY_SETTINGS } from './copy';
 import { checkPassword, passwordError, passwordOk } from './rules';
-import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
 
 /**
  * A3 Set new password — §10.2.
@@ -33,15 +34,23 @@ export async function setPassword(
   }
 
   const supabase = createClient(await cookies());
-  // Only a session an emailed reset link made may set a password without
-  // the current one (./recovery.ts, security review 12.10). Any other
-  // signed-in session goes to Profile → Security settings, which asks for
-  // the current password first. Verified claims, not the cookie's say-so.
-  const { data, error: claimsError } = await supabase.auth.getClaims();
-  if (claimsError || !data?.claims?.sub) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return 'This link has expired or has already been used. Ask for a new one from the sign-in screen.';
   }
-  if (!isRecoverySession(data.claims)) return NOT_A_RESET_SESSION;
+
+  // No current password is asked for here, so the session itself must be
+  // the proof: made by a reset link, in the last 15 minutes (verified `amr`
+  // claims, packages/db/src/recovery.ts). A session from a password sign-in
+  // — or a borrowed device that is simply signed in — changes the password
+  // on the screen that asks for the current one.
+  const recovery = await readRecoverySession(supabase);
+  if (recovery.state === 'none') {
+    return 'This link has expired or has already been used. Ask for a new one from the sign-in screen.';
+  }
+  if (recovery.state !== 'recent') return USE_SECURITY_SETTINGS;
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {

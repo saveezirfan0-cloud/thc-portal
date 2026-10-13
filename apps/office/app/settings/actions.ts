@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { isSwitchableCode } from '@thc/notifications';
+import { READ_ONLY_MESSAGE } from '../_lib/sessionRole';
 import { settingsDb } from './db';
 import { supabaseConfigured } from './data';
 import {
@@ -33,13 +34,25 @@ import type { ActionResult, RotaGuardMode, ScoringWeights, Senders, WilloStageMa
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so settings cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
+const SAVE_FAILED = 'That could not be saved. Try again, or ask an owner if it keeps happening.';
+
+/**
+ * A refused write as screen copy: the database's own text names policies
+ * and columns, so it is logged here and never shown (security round 12.10).
+ */
+function saveRefusal(what: string, error: { code?: string; message: string }): ActionResult {
+  if (/\bread_only\b/.test(error.message)) return { ok: false, message: READ_ONLY_MESSAGE };
+  console.error(`[settings] ${what} failed`, { code: error.code, message: error.message });
+  return { ok: false, message: SAVE_FAILED };
+}
+
 async function put(key: string, value: unknown): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = settingsDb(await cookies());
   const { error } = await supabase
     .from('settings')
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-  if (error) return { ok: false, message: error.message };
+  if (error) return saveRefusal(key, error);
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -82,7 +95,7 @@ export async function saveWilloReviewUrlTemplate(value: string): Promise<ActionR
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = settingsDb(await cookies());
   const { error } = await supabase.from('settings').delete().eq('key', 'willo_review_url_template');
-  if (error) return { ok: false, message: error.message };
+  if (error) return saveRefusal('willo_review_url_template', error);
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -153,7 +166,7 @@ export async function saveNotificationSwitch(code: string, on: boolean): Promise
     .select('value')
     .eq('key', 'notification_switches')
     .maybeSingle();
-  if (error) return { ok: false, message: error.message };
+  if (error) return saveRefusal('notification_switches', error);
 
   const current: unknown = data?.value;
   const off: Record<string, false> = {};
@@ -192,7 +205,7 @@ export async function saveVenueRadius(
     .from('venue_types')
     .update({ default_radius_m: metres })
     .eq('key', key);
-  if (error) return { ok: false, message: error.message };
+  if (error) return saveRefusal(`venue_types.${key}`, error);
 
   revalidatePath('/settings');
   revalidatePath('/venues');

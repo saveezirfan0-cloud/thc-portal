@@ -88,3 +88,5 @@ ripple.
 - **THC to confirm** (docs/15): Q9 — gate or preference, and whether it should also stop
   manual invitations; Q10 — the shape (ranges, repeats, horizon) and whether a reason is
   wanted.
+
+**Superseded for series siblings by ADR-0117.** On a role marked "Same staff on all days", a calendar entry on ANOTHER day of the job is the gate `not_available_all_days` for every source: an hourly or escalation round, a manual invite, a worker's own Accept, a Radar apply and a take included. The section's own day is unchanged: a manual invite there still asks "Invite anyway?" and the worker's own Accept, apply and take are still never stopped by their calendar.

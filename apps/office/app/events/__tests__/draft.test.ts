@@ -36,6 +36,7 @@ function role(over: Partial<RoleDraft> = {}): RoleDraft {
     dressCodeOther: '',
     autoAssign: true,
     requiredGender: null,
+    sameStaffAllDays: false,
     allocationPerHour: 14,
     allocationTouched: false,
     ...over,
@@ -55,6 +56,7 @@ function event(over: Partial<EventDraft> = {}): EventDraft {
     notes: '',
     autoAssign: true,
     requiredLanguages: ['English'],
+    duplicateOf: null,
     roles: [role()],
     ...over,
   };
@@ -308,6 +310,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
     autoAssign: false,
     requiredLanguages: ['English', 'Spanish'],
     cancelledAt: null,
+    seriesDays: [],
     sections: [
       {
         id: 'sec-chef',
@@ -321,6 +324,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         dressCode: 'Chef whites',
         autoAssign: false,
         requiredGender: 'F',
+        sameStaffAllDays: true,
         allocationPerHour: 3,
         confirmed: 2,
         booked: 2,
@@ -337,6 +341,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         dressCode: 'Burgundy bow tie (supplied)',
         autoAssign: true,
         requiredGender: 'M',
+        sameStaffAllDays: false,
         allocationPerHour: 14,
         confirmed: 9,
         booked: 13,
@@ -423,7 +428,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
 });
 
 describe('defaultDressCode', () => {
-  it('fills in the client\'s one uniform for the role', () => {
+  it("fills in the client's one uniform for the role", () => {
     expect(defaultDressCode(['Plain White Shirt; Plain Black Trousers'])).toBe(
       'Plain White Shirt; Plain Black Trousers',
     );

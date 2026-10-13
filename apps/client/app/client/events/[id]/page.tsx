@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, PageHead } from '@thc/ui';
-import { isEventId, loadEvent } from '../../data';
+import { loadEvent } from '../../data';
 import { loadArrivals } from '../../arrivals';
 import { DOCUMENTS_UNAVAILABLE, loadDocuments } from '../../documents';
-import { signLineupPhotos } from '../../photos';
+import { isUuid } from '../../ids';
+import { presentLineup } from '../../photos';
 import { AutoRefresh } from '../../../_components/AutoRefresh';
 import { EventScreen } from './EventScreen';
 
@@ -14,8 +15,11 @@ import { EventScreen } from './EventScreen';
  * An id belonging to another customer returns no row, exactly as a
  * nonexistent one does, so this renders not-found either way: the page
  * cannot tell the two apart and should not try to. The decision was made by
- * `client_portal_visible()` inside the view (ADR-0004), not here. An id that
- * is not a UUID at all is not-found too, before any query.
+ * `client_portal_visible()` inside the view (ADR-0004), not here.
+ *
+ * An id that is not a uuid is not-found before any query, and a failed
+ * query shows the generic `LOAD_FAILED` copy: the database's own message
+ * goes to the server log, never to the customer.
  */
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +48,7 @@ export default async function ClientEventPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  if (!isEventId(id)) notFound();
+  if (!isUuid(id)) notFound();
   const notice = docNotice((await searchParams)?.doc);
 
   const { event, sections, lineup, problem } = await loadEvent(id);
@@ -62,8 +66,8 @@ export default async function ClientEventPage({
   }
   if (!event) notFound();
 
-  const [signed, documents, arrivals] = await Promise.all([
-    signLineupPhotos(lineup.map((l) => l.photoPath)),
+  const [shown, documents, arrivals] = await Promise.all([
+    presentLineup(lineup),
     loadDocuments(event.id),
     loadArrivals([event.id]),
   ]);
@@ -80,8 +84,8 @@ export default async function ClientEventPage({
       <EventScreen
         event={event}
         sections={sections}
-        lineup={lineup}
-        photos={Object.fromEntries(signed)}
+        lineup={shown.lineup}
+        photos={shown.photos}
         documents={documents.documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
         arrivals={arrivals[event.id]}
         now={new Date().toISOString()}

@@ -17,6 +17,9 @@ const remove = vi.fn();
 const adminRpc = vi.fn();
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+// The stored-bytes check (security round 12.10, item 5) has its own tests
+// (app/_lib/__tests__/stored-media.test.ts); here the upload is a real one.
+vi.mock('../../_lib/stored-media', () => ({ checkStoredMedia: async () => 'match' }));
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('../../db', () => ({

@@ -18,7 +18,7 @@ import { PASSWORD_COPY } from './copy';
  *   1. The rules first, with the function /reset uses (@thc/domain
  *      password.ts), so both forms accept and refuse the same passwords.
  *   2. One attempt is claimed AND counted in a single database call,
- *      password_check_begin() (20261012120200): 5 counted attempts per
+ *      password_check_begin() (20261013100200): 5 counted attempts per
  *      account in 15 minutes, then refused before signInWithPassword runs.
  *      Claimed first, so parallel POSTs cannot all read "allowed" (the old
  *      check-then-record race). Fail closed if it cannot be read.
@@ -75,7 +75,7 @@ function isWrongPassword(error: AuthErrorLike): boolean {
 /**
  * password_check_begin / _release are newer than packages/db's generated
  * types (regenerated with `pnpm --filter @thc/db gen:types` against a live
- * project); 787_password_check_begin holds their real signatures.
+ * project); 808_password_check_claimed_atomically holds their real signatures.
  */
 interface AttemptRpc {
   rpc(

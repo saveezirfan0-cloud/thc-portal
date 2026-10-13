@@ -19,6 +19,7 @@ import {
   formatTimeIn,
   isEditLocked,
   reconfirmingChanges,
+  seriesPosition,
   ukRoleWindow,
   validateRoleSection,
 } from '@thc/domain';
@@ -73,6 +74,13 @@ export interface RoleDraft {
    * (`auto_assign_candidates`). Null = anyone.
    */
   requiredGender: RequiredGender;
+  /**
+   * ADR-0117: the client wants the SAME staff on every day of this job for
+   * this role. Auto-assign, Radar, Accept and a manual invite then offer the
+   * role only to someone who can do every other day that also asks for it
+   * (`auto_assign_candidates`). Per role, off by default; Duplicate keeps it.
+   */
+  sameStaffAllDays: boolean;
   allocationPerHour: number;
   /**
    * Once the manager types their own allocation the default stops following
@@ -100,6 +108,12 @@ export interface EventDraft {
    * then book only people who speak every one (`auto_assign_candidates`).
    */
   requiredLanguages: string[];
+  /**
+   * ADR-0117: the event this one is a Duplicate of, or null. Saving links
+   * the two as the days of one multi-day job (`link_event_series`) — the
+   * staff are still not copied (§3.2).
+   */
+  duplicateOf: string | null;
   roles: RoleDraft[];
 }
 
@@ -125,6 +139,7 @@ export function newRoleDraft(draft: EventDraft, roleId: string, payRate = 0): Ro
     dressCodeOther: '',
     autoAssign: draft.autoAssign,
     requiredGender: null,
+    sameStaffAllDays: false,
     allocationPerHour: defaultAllocationPerHour(1, 0),
     allocationTouched: false,
   };
@@ -258,6 +273,9 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
  *     booked on the original — confirmed, invited or applied — comes along;
  *   * leaves the DATE empty: a day is the one thing a duplicate must change,
  *     and Save stays disabled until the manager sets it;
+ *   * keeps each section's "Same staff on all days" (ADR-0117) and links the
+ *     clone to the original as another day of one job on save — the staff
+ *     are still not copied, only who may be invited is constrained;
  *   * starts with auto-assign ON at event and role level, the §3.4 default
  *     for any new event — a switch turned off on the original was about
  *     that day's people.
@@ -287,6 +305,8 @@ export function draftFromSaved(
       dressCodeOther: section.dressCode && !onList ? section.dressCode : '',
       autoAssign: duplicate ? true : section.autoAssign,
       requiredGender: section.requiredGender,
+      // ADR-0117: the client's ask, not the day's - the clone keeps it.
+      sameStaffAllDays: section.sameStaffAllDays,
       allocationPerHour: section.allocationPerHour,
       // Whatever is stored is the manager's choice; the default never
       // overwrites it on reopening (§3.4).
@@ -314,6 +334,7 @@ export function draftFromSaved(
     notes: event.notes,
     autoAssign: duplicate ? true : event.autoAssign,
     requiredLanguages: [...event.requiredLanguages],
+    duplicateOf: duplicate ? event.id : null,
     roles,
   };
 }
@@ -356,6 +377,7 @@ export function roleChanges(before: RoleDraft, after: RoleDraft, dateChanged: bo
   if (before.allocationPerHour !== after.allocationPerHour) changed.push('allocation_per_hour');
   if (before.autoAssign !== after.autoAssign) changed.push('auto_assign');
   if (before.requiredGender !== after.requiredGender) changed.push('required_gender');
+  if (before.sameStaffAllDays !== after.sameStaffAllDays) changed.push('same_staff_all_days');
 
   return { key: after.key, changed, reconfirming: reconfirmingChanges(changed) };
 }
@@ -381,4 +403,30 @@ export function reconfirmPlan(
   }
 
   return { venueChanged: before.venueId !== after.venueId, roles };
+}
+
+// ---------------------------------------------------------------------
+// ADR-0117 — what the builder says about the days of a multi-day job
+// ---------------------------------------------------------------------
+
+/**
+ * Where this event stands in a multi-day job, for the hint under the
+ * "Same staff on all days" switch:
+ *   * `duplicate` — a new event being built from another; saving links them;
+ *   * `series`    — a saved event with other live days (Day 2 of 3);
+ *   * `single`    — neither: the switch changes nothing until another day is
+ *                   added by Duplicate.
+ */
+export type SeriesContext =
+  { kind: 'single' } | { kind: 'duplicate' } | { kind: 'series'; day: number; of: number };
+
+export function seriesContextFor(
+  draft: Pick<EventDraft, 'duplicateOf'>,
+  saved: Pick<SavedEvent, 'id' | 'seriesDays'> | null,
+): SeriesContext {
+  if (saved) {
+    const position = seriesPosition(saved.id, saved.seriesDays);
+    return position ? { kind: 'series', ...position } : { kind: 'single' };
+  }
+  return draft.duplicateOf ? { kind: 'duplicate' } : { kind: 'single' };
 }

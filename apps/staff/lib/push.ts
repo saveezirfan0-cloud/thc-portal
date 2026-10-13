@@ -300,3 +300,49 @@ export async function currentSubscription(): Promise<SerialisedSubscription | nu
   if (!subscription) return null;
   return serialise(subscription, navigator.userAgent);
 }
+
+/**
+ * Sign-out's half of push (security round 12.10, item 3): this device stops
+ * being the signed-out worker's. The record's row goes first
+ * (`forget_push_subscription`, while the session that owns it still
+ * exists), then the browser's own subscription, so the next person to sign
+ * in on a shared phone starts from nothing rather than inheriting the last
+ * worker's notifications.
+ *
+ * Best effort and bounded: every step is caught, and the whole thing gives
+ * up after `timeoutMs`, because nothing here may hold up a sign-out.
+ * Resolves `true` when it ran to the end, `false` when it gave up or there
+ * was nothing to do.
+ */
+export async function forgetThisDevice(
+  forget: (endpoint: string) => Promise<unknown>,
+  timeoutMs = 1_500,
+  nav: Navigator | undefined = typeof navigator === 'undefined' ? undefined : navigator,
+): Promise<boolean> {
+  const work = (async () => {
+    if (!nav || !('serviceWorker' in nav)) return false;
+    const registration = await nav.serviceWorker.getRegistration('/');
+    const subscription = await registration?.pushManager?.getSubscription();
+    if (!subscription) return false;
+    try {
+      await forget(subscription.endpoint);
+    } catch {
+      // The row is orphaned at worst; the drain prunes a dead endpoint.
+    }
+    try {
+      await subscription.unsubscribe();
+    } catch {
+      // Nothing else to do: the browser keeps it, the record does not.
+    }
+    return true;
+  })().catch(() => false);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const giveUp = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  try {
+    return await Promise.race([work, giveUp]);
+  } finally {
+    clearTimeout(timer);
+  }
+}

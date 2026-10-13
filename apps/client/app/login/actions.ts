@@ -9,9 +9,15 @@ import {
   persistenceFromForm,
   safeNextPath,
 } from '@thc/db';
+import {
+  authAttemptAllowed,
+  callerIp,
+  isCredentialFailure,
+  recordAuthAttempt,
+  signInKeys,
+} from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
-import { THROTTLED, takeAuthAttempt } from '../auth/throttle';
-import { WRONG_CREDENTIALS } from './copy';
+import { SUPABASE_BUSY, WRONG_CREDENTIALS } from './copy';
 
 /**
  * Email + password sign-in (§1.4).
@@ -19,11 +25,6 @@ import { WRONG_CREDENTIALS } from './copy';
  * The failure message never distinguishes a wrong email from a wrong
  * password: saying which one is wrong tells an attacker whether an account
  * exists. The wireframes word it that way deliberately.
- *
- * Throttled per email and per caller BEFORE Supabase is asked (ADR-0115,
- * app/auth/throttle.ts): 10 attempts per email and 30 per caller in 15
- * minutes. A throttled attempt gets one sentence that says nothing about
- * the account and never reaches signInWithPassword.
  */
 
 export async function signIn(_prev: string | null, formData: FormData): Promise<string | null> {
@@ -40,7 +41,12 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return "The portal isn't connected yet. Please contact THC.";
   }
 
-  if ((await takeAuthAttempt('login', email, await headers())) === 'blocked') return THROTTLED;
+  // Per account and per address (packages/db/src/auth-throttle.ts): five
+  // wrong passwords in 15 minutes and the next try is not even put to
+  // GoTrue. Refused with the SAME words as a wrong password, so the limit
+  // says nothing about whether the account exists.
+  const keys = await signInKeys(email, callerIp(await headers()));
+  if (!(await authAttemptAllowed('sign_in', keys))) return WRONG_CREDENTIALS;
 
   // "Keep me signed in on this device" (ADR-0032): ticked by default on the
   // form; unticked, the auth cookies this sign-in writes are session cookies.
@@ -51,6 +57,7 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   const supabase = createClient(cookieStore, { persistence });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    if (isCredentialFailure(error)) await recordAuthAttempt('sign_in', keys, true);
     // The visitor gets a message that reveals nothing; the real reason goes to
     // the server log, where an operator can see whether this was a genuine bad
     // password or a misconfiguration (wrong project, provider disabled, a key
@@ -60,9 +67,10 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
       code: error.code,
       message: error.message,
     });
-    // Supabase's own limit (shared by every customer, see above) is still a
-    // limit: say "wait", not "wrong password".
-    if (error.status === 429 || error.code === 'over_request_rate_limit') return THROTTLED;
+    // Supabase Auth's own per-IP limit is shared by every customer (all of
+    // them reach it from Vercel): say "wait", not "wrong password". It is
+    // not the account's limit, so it says nothing about the account.
+    if (error.status === 429 || error.code === 'over_request_rate_limit') return SUPABASE_BUSY;
     return WRONG_CREDENTIALS;
   }
 

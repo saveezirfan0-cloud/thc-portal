@@ -226,7 +226,7 @@ select is((select string_agg(event_id::text, ',') from client_event_documents_v 
 reset role;
 
 -- §3.3 / §11.1: a cancelled event offers no document, even one the office
--- issued before the cancellation (ADR-0114). ev_off is client A's.
+-- issued before the cancellation (ADR-0119). ev_off is client A's.
 insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count, generated_at, sent_at)
 values (:'ev_off', 'allocation', :'ev_off' || '/allocation/before-cancel.pdf', 'Off.pdf', 1, 1,
         '2025-04-09 12:00+00', '2025-04-09 12:05+00');

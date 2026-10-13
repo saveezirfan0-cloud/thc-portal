@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isEventId } from '../../../data';
 import { loadEventDocuments, signDocument } from '../../../documents';
+import { isUuid } from '../../../ids';
 import type { DocumentKind } from '../../../rules';
 
 /**
@@ -8,7 +8,7 @@ import type { DocumentKind } from '../../../rules';
  * "Download Allocation Timesheet" / "Download Completed Timesheet".
  *
  * The newest stored copy of that kind for this event, if the caller's own
- * session can see it through client_event_documents_v (ADR-0004, ADR-0114),
+ * session can see it through client_event_documents_v (ADR-0004, ADR-0119),
  * as a one-minute signed link. The answers:
  *
  *   · an event the caller cannot see — another customer's, or none at all —
@@ -48,7 +48,8 @@ function backToEvent(request: Request, id: string, doc?: 'missing' | 'unavailabl
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const kind = new URL(request.url).searchParams.get('kind');
-  if (!isEventId(id)) return notFound();
+  // Not a uuid: no event has it, and the query would only fail (22P02).
+  if (!isUuid(id)) return notFound();
 
   // Visibility before anything about `kind`, so another customer's event
   // answers the same 404 whatever the query asked for.

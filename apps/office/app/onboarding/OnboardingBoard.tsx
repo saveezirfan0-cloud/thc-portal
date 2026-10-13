@@ -47,7 +47,7 @@ import type {
   ReasonFilter,
   StageFilter,
 } from './view-model';
-import type { BoardData, CandidateRow, ChaserState, ReturningRow } from './types';
+import type { BoardCandidateRow, BoardData, ChaserState, ReturningRow } from './types';
 import './onboarding.css';
 
 function Meta({ line }: { line: Line }) {
@@ -190,7 +190,7 @@ export function OnboardingBoard({
     setGroup('any');
   };
 
-  const open = (row: CandidateRow) => router.push(`/onboarding/${row.id}`);
+  const open = (row: BoardCandidateRow) => router.push(`/onboarding/${row.id}`);
 
   const confirm = () => {
     if (!pending) return;
@@ -448,7 +448,7 @@ function Column({
   now: Date;
   referred: Referred;
   chasers: Record<string, ChaserState>;
-  onOpen: (row: CandidateRow) => void;
+  onOpen: (row: BoardCandidateRow) => void;
   onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
 }) {
   const empty = column.candidates.length === 0 && column.returning.length === 0;
@@ -581,13 +581,13 @@ function CandidateCard({
   chaser,
   onOpen,
 }: {
-  row: CandidateRow;
+  row: BoardCandidateRow;
   column: BoardColumn['key'];
   now: Date;
   referred: boolean;
   /** The onboarding chasers' state for this candidate (ADR-0071), if any. */
   chaser?: ChaserState;
-  onOpen: (row: CandidateRow) => void;
+  onOpen: (row: BoardCandidateRow) => void;
 }) {
   const format = useTimeFormat();
   const age = stageAge(stageEnteredAt(row, column), now);
@@ -620,9 +620,9 @@ function RejectedCard({
   referred,
   onOpen,
 }: {
-  row: CandidateRow;
+  row: BoardCandidateRow;
   referred: boolean;
-  onOpen: (row: CandidateRow) => void;
+  onOpen: (row: BoardCandidateRow) => void;
 }) {
   return (
     <KanbanCard onOpen={() => onOpen(row)}>

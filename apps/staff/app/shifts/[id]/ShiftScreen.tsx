@@ -176,7 +176,7 @@ export function ShiftScreen({
     let cancelled = false;
     const send = async () => {
       const f = await locate(TRACKING_FIX);
-      if (f && !cancelled) await recordPing(shift.bookingId, f.lat, f.lng);
+      if (f && !cancelled) await recordPing(shift.bookingId, f.lat, f.lng, f.accuracyM);
     };
     // Back from another app or a locked screen: a fix now, not up to two
     // minutes later — the gap is exactly what the trail is missing.
@@ -223,7 +223,7 @@ export function ShiftScreen({
     const at = await locate(CHECK_IN_FIX);
     setBusy(false);
     if (!at) return;
-    await run(() => checkIn(shift.bookingId, at.lat, at.lng));
+    await run(() => checkIn(shift.bookingId, at.lat, at.lng, at.accuracyM));
   }
   // The auto check-in below runs from an effect; it calls the latest press.
   const pressRef = useRef(pressCheckIn);

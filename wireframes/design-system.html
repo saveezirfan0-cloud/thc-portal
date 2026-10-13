@@ -87,7 +87,7 @@
     <button class="btn primary">+ New event</button><button class="btn">Secondary</button><button class="btn outline">Apply for this shift</button>
     <button class="btn purple">Auto-assign · ON</button><button class="btn green">Verify</button><button class="btn danger">Reject</button><button class="btn danger solid">Remove (GDPR)</button>
     <button class="btn ghost">Cancel</button><button class="btn sm">Small</button><button class="btn lg primary">Check in — verify GPS</button><button class="btn" disabled>Disabled</button>
-    <!-- Done, not available (ADR-0113): a small button whose job is finished keeps its place,
+    <!-- Done, not available (ADR-0118): a small button whose job is finished keeps its place,
          green (= confirmed) even though it is disabled. Product: <Button size="sm" className="sent" disabled>. -->
     <button class="btn sm sent" disabled>✓ Feedback sent</button>
   </div>
@@ -127,7 +127,7 @@
       <div class="progress"><div class="fill" style="width:45%"></div></div>
     </div>
     <div class="stack">
-      <!-- Label row with one action (ADR-0113, client/login.html:64): Input's `labelAction`. On a
+      <!-- Label row with one action (ADR-0118, client/login.html:64): Input's `labelAction`. On a
            phone the link grows to the 44px finger target and the row grows with it. -->
       <div class="field"><div class="label-row"><span class="label">Password</span><span class="label-action"><a class="xs" href="#">Forgot password?</a></span></div><div class="input-row"><input class="input" type="password" value="••••••••••"><span class="addon" style="cursor:pointer">Show</span></div></div>
       <!-- PasswordRules (public/activate.html:15-18): ○ before the field is used, ✓ green when met,
@@ -148,7 +148,7 @@
 </div>
 
 <div class="wf-section">
-  <h2>7 · Avatars · KPI · Table · Alerts · Modal<small>Circular avatars in the product (Warm, ADR-0113); square only in the Scope §1.6 rendering. Real selfies, initials fallback. Removed workers show "Deleted account #id". A "+N" chip closes a row of faces at the faces' size.</small></h2>
+  <h2>7 · Avatars · KPI · Table · Alerts · Modal<small>Circular avatars in the product (Warm, ADR-0118); square only in the Scope §1.6 rendering. Real selfies, initials fallback. Removed workers show "Deleted account #id". A "+N" chip closes a row of faces at the faces' size.</small></h2>
   <div class="grid c2">
     <div class="stack">
       <div class="demo"><span class="avatar sm photo">AK</span><span class="avatar photo">TR</span><span class="avatar lg photo">PS</span><span class="avatar xl photo">LM</span><span class="avatar lg deleted">#1042</span><div class="avatars"><span class="avatar photo">AK</span><span class="avatar photo">TR</span><span class="avatar photo">PS</span><span class="avatar more" title="6 more">+6</span></div></div>

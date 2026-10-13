@@ -3,6 +3,7 @@ import {
   type EventStatus,
   type ScoreWeights,
   type TimeFormat,
+  SERIES_LABEL,
   UK_ZONE,
   appliedAgo,
   canCancelBooking,
@@ -148,6 +149,8 @@ export function RoleBoard({
           {section.requiredGender ? (
             <Pill tone="cyan">{REQUIRED_GENDER_LABEL[section.requiredGender]}</Pill>
           ) : null}
+          {/* ADR-0117: invited only if free on every other day that asks too. */}
+          {section.sameStaffAllDays ? <Pill tone="cyan">{SERIES_LABEL}</Pill> : null}
           {escalating ? (
             <Pill tone="purple">Escalation · every 10 min · radius pool</Pill>
           ) : (

@@ -167,6 +167,10 @@ select is(record_ping(:'bk_blk', 51.5000, -0.1000)->>'decision', 'on_site',
 
 reset role;
 update staff set status = 'blocked', block_kind = 'manual', block_reason = 'fixture' where id = :'st_blk';
+-- 20261012121200: one fix per booking per 20 s; the trail (and the check-in
+-- it is measured from) moves back half a minute, as time would.
+update location_pings set at = at - interval '30 seconds' where booking_id = :'bk_blk';
+update check_logs set check_in_at = check_in_at - interval '30 seconds' where booking_id = :'bk_blk';
 set local "request.jwt.claims" = '{"sub":"65000000-0000-4000-8000-0000000000a1","role":"authenticated"}';
 select is(record_ping(:'bk_blk', 51.5000, -0.1000)->>'decision', 'on_site',
   'D16: blocked mid-shift, tracking keeps working');
@@ -180,9 +184,9 @@ select is(attempt_check_in(:'bk_blk', 51.5000, -0.1000)->>'decision', 'already_c
   'D16: a repeat press on a shift already started answers as before, it does not throw');
 
 reset role;
-select ok(not has_function_privilege('anon', 'attempt_check_in(uuid, double precision, double precision)', 'execute'),
+select ok(not has_function_privilege('anon', 'attempt_check_in(uuid, double precision, double precision, double precision)', 'execute'),
   'anon still cannot call attempt_check_in');
-select ok(has_function_privilege('authenticated', 'check_out(uuid, double precision, double precision)', 'execute'),
+select ok(has_function_privilege('authenticated', 'check_out(uuid, double precision, double precision, double precision)', 'execute'),
   'a signed-in worker still can call check_out');
 
 select * from finish();

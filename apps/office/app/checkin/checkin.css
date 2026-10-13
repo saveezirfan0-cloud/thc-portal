@@ -67,6 +67,12 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
+/* "Location unverified" (check_logs.location_suspect): beside the arrival
+   it describes, and onto its own line rather than squeezing the time. */
+.monitor-tbl .stamp .loc-flag {
+  margin-left: var(--sp-6);
+  white-space: nowrap;
+}
 
 /* The violation log's rows open the detail window from the keyboard too
    (violationRow.ts), so a focused row has to be visible. */

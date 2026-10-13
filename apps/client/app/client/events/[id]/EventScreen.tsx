@@ -62,6 +62,7 @@ export function EventScreen({
   event: PortalEvent;
   sections: RoleSection[];
   lineup: LineupRow[];
+  /** Signed photo URLs keyed by `bookingId` (photos.ts); never a Storage path. */
   photos: Record<string, string>;
   now: string;
   /** Which §11.3 PDFs the office has produced for this event. */
@@ -260,7 +261,7 @@ export function EventScreen({
                         <Avatar
                           name={p.name}
                           size="lg"
-                          src={p.photoPath ? photos[p.photoPath] : undefined}
+                          src={photos[p.bookingId]}
                           deleted={removed}
                           silhouette
                         />
@@ -316,7 +317,7 @@ export function EventScreen({
           eventId={event.id}
           bookingId={rating.bookingId}
           personName={rating.name}
-          photo={rating.photoPath ? photos[rating.photoPath] : undefined}
+          photo={photos[rating.bookingId]}
           role={rating.role}
           eventTitle={event.title}
           eventDate={ukDateShort(event.startsAt)}

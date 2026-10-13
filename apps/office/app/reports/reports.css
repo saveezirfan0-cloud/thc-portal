@@ -199,3 +199,70 @@
     flex-wrap: wrap;
   }
 }
+
+/* Breakdown · Events. A count, then one event per line cut to the column
+   (full name on hover), the rest folded behind "+N more"; cancelled events
+   fold to one "N cancelled · excluded" line. A sentence of names joined by
+   "·" wrapped down the cell eleven lines deep. */
+.tbl td.rp-events {
+  min-width: 220px;
+  max-width: 300px;
+  font-size: var(--fs-12);
+  line-height: 1.45;
+}
+.rp-count {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--fs-11);
+  color: var(--muted);
+  margin-bottom: var(--sp-4);
+}
+.rp-names {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rp-names li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-more {
+  margin-top: var(--sp-4);
+}
+.rp-more > summary {
+  cursor: pointer;
+  width: max-content;
+  font-family: var(--font-label);
+  font-size: var(--fs-11);
+  color: var(--muted);
+  list-style: none;
+}
+.rp-more > summary::-webkit-details-marker {
+  display: none;
+}
+.rp-more > summary::before {
+  content: '▸ ';
+}
+.rp-more[open] > summary::before {
+  content: '▾ ';
+}
+.rp-more > summary:hover {
+  color: var(--text);
+}
+.rp-more > .rp-names {
+  margin-top: var(--sp-4);
+}
+.rp-cancelled .rp-names li {
+  color: var(--muted);
+}
+
+/* Breakdown · status. One pill per part, stacked to the right edge, so
+   "forecast" and "1 shift pending" each read on their own. */
+.rp-status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-4);
+  min-width: 96px;
+}

@@ -30,6 +30,7 @@ const BLANK: EventDraft = {
   autoAssign: true,
   // ADR-0080: English unless the client asks for another language too.
   requiredLanguages: ['English'],
+  duplicateOf: null,
   roles: [],
 };
 

@@ -2,8 +2,9 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The Client Portal's reset flow (A1 → A2 → A3; audit D13; ADR-0039):
- * /forgot asks for a link to this app's /auth/confirm, which spends the
- * token_hash in any browser (or a PKCE code) and hands off to /reset.
+ * /forgot asks for a link to this app's /auth/confirm, which never spends
+ * the token_hash on GET: its interstitial's "Continue" POST does, in any
+ * browser (a PKCE code is still exchanged), and hands off to /reset.
  */
 const auth = vi.hoisted(() => ({
   verifyOtp: vi.fn(),
@@ -11,16 +12,8 @@ const auth = vi.hoisted(() => ({
   resetPasswordForEmail: vi.fn(),
 }));
 
-const jar = vi.hoisted(
-  () => [] as { name: string; value: string; options?: Record<string, unknown> }[],
-);
 vi.mock('next/headers', () => ({
-  headers: async () => new Headers(),
-  cookies: vi.fn(async () => ({
-    getAll: () => [],
-    set: (name: string, value: string, options?: Record<string, unknown>) =>
-      jar.push({ name, value, options }),
-  })),
+  cookies: vi.fn(async () => ({ getAll: () => [], set: () => {} })),
 }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
@@ -28,8 +21,14 @@ vi.mock('next/navigation', () => ({
   },
 }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ auth }) }));
+// The per-account throttle is held by its own tests (packages/db, ../../login/__tests__/throttle.test.ts).
+vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  recoveryRequestAllowed: async () => true,
+}));
 
 const { GET: confirm } = await import('../../auth/confirm/route');
+const { continueReset } = await import('../../auth/confirm/continue/actions');
 const { requestReset } = await import('../actions');
 
 const ORIGIN = 'https://client.thc.example';
@@ -41,7 +40,6 @@ afterAll(() => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
-  jar.length = 0;
   vi.unstubAllEnvs();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://127.0.0.1:54321';
@@ -53,12 +51,25 @@ beforeEach(() => {
 });
 
 describe('GET /auth/confirm', () => {
-  it('spends a recovery token_hash and hands off to /reset', async () => {
+  it('GET spends nothing; "Continue" spends the token_hash and hands off to /reset', async () => {
     const res = await confirm(
       new Request(`${ORIGIN}/auth/confirm?token_hash=th&type=recovery&next=/reset`),
     );
+    expect(auth.verifyOtp).not.toHaveBeenCalled();
+    expect(location(res)).toBe(`${ORIGIN}/auth/confirm/continue?token_hash=th&next=%2Freset`);
+
+    const fd = new FormData();
+    fd.set('token_hash', 'th');
+    fd.set('next', '/reset');
+    await expect(continueReset(fd)).rejects.toThrow('REDIRECT:/reset');
     expect(auth.verifyOtp).toHaveBeenCalledWith({ type: 'recovery', token_hash: 'th' });
-    expect(location(res)).toBe(`${ORIGIN}/reset`);
+  });
+
+  it('"Continue" with a spent token lands on the expired variant', async () => {
+    auth.verifyOtp.mockResolvedValue({ error: { status: 403, message: 'expired' } });
+    const fd = new FormData();
+    fd.set('token_hash', 'th');
+    await expect(continueReset(fd)).rejects.toThrow('REDIRECT:/reset?error=expired');
   });
 
   it('still takes a PKCE code', async () => {
@@ -79,7 +90,11 @@ describe('GET /auth/confirm', () => {
         `${ORIGIN}/auth/confirm?token_hash=th&type=recovery&next=${encodeURIComponent('//evil.com')}`,
       ),
     );
-    expect(location(res)).toBe(`${ORIGIN}/reset`);
+    expect(new URL(location(res) ?? '').searchParams.get('next')).toBe('/reset');
+    const fd = new FormData();
+    fd.set('token_hash', 'th');
+    fd.set('next', '//evil.com');
+    await expect(continueReset(fd)).rejects.toThrow('REDIRECT:/reset');
   });
 });
 
@@ -95,33 +110,19 @@ describe('requestReset (A1)', () => {
   }
 
   it('asks for a link to this app’s /auth/confirm', async () => {
-    expect(await run('venue@client.example')).toBe('REDIRECT:/forgot/sent');
+    expect(await run('venue@client.example')).toBe(
+      'REDIRECT:/forgot/sent?to=venue%40client.example',
+    );
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('venue@client.example', {
       redirectTo: `${ORIGIN}/auth/confirm`,
     });
   });
 
-  // Security review 12.10: `?to=` put the address in history, logs and
-  // Referer, and printed whatever a crafted link put there.
-  it('carries the address to A2 in a short-lived httpOnly cookie for /forgot/sent, never the URL', async () => {
-    expect(await run('Venue@Client.example')).toBe('REDIRECT:/forgot/sent');
-    expect(jar).toEqual([
-      {
-        name: 'thc-reset-sent',
-        value: 'venue@client.example',
-        options: expect.objectContaining({
-          httpOnly: true,
-          path: '/forgot/sent',
-          sameSite: 'strict',
-          maxAge: 300,
-        }),
-      },
-    ]);
-  });
-
   it('the same outcome when Supabase refuses (no account enumeration)', async () => {
     auth.resetPasswordForEmail.mockResolvedValue({ error: { status: 429, message: 'rate' } });
-    expect(await run('nobody@client.example')).toBe('REDIRECT:/forgot/sent');
+    expect(await run('nobody@client.example')).toBe(
+      'REDIRECT:/forgot/sent?to=nobody%40client.example',
+    );
   });
 
   it('refuses in production without NEXT_PUBLIC_CLIENT_URL, even with VERCEL_URL set (D13)', async () => {

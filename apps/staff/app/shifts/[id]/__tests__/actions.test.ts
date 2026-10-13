@@ -6,17 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * who is not compliant, whatever the app's own lock believed.
  */
 const rpc = vi.hoisted(() =>
-  vi.fn(async (): Promise<{ data: unknown; error: { message: string } | null }> => ({
-    data: null,
-    error: { message: 'staff_not_compliant' },
-  })),
+  vi.fn(
+    async (
+      ..._args: unknown[]
+    ): Promise<{ data: unknown; error: { message: string; code?: string } | null }> => ({
+      data: null,
+      error: { message: 'staff_not_compliant' },
+    }),
+  ),
 );
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 
-const { checkIn, checkOut } = await import('../actions');
+const { checkIn, checkOut, recordPing } = await import('../actions');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,6 +35,7 @@ describe('check-in refused for a worker who is not compliant (D16)', () => {
       p_booking: 'bk-1',
       p_lat: 51.5,
       p_lng: -0.1,
+      p_accuracy: null,
     });
     expect(result).toEqual({
       error:
@@ -44,5 +49,84 @@ describe('check-in refused for a worker who is not compliant (D16)', () => {
       ok: true,
       result: { decision: 'recorded_on_site' },
     });
+  });
+});
+
+/**
+ * Security round 12.10, item 6: the database weighs the fix's accuracy
+ * radius (`coords.accuracy`, metres), so every action that carries a fix
+ * carries it too as `p_accuracy` — and never invents one.
+ */
+describe('the GPS accuracy goes with every fix', () => {
+  beforeEach(() => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+  });
+
+  it('check-in, check-out and the ping each send p_accuracy in metres', async () => {
+    await checkIn('bk-1', 51.5, -0.1, 12);
+    expect(rpc).toHaveBeenLastCalledWith('attempt_check_in', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+      p_accuracy: 12,
+    });
+    await checkOut('bk-1', 51.5, -0.1, 30);
+    expect(rpc).toHaveBeenLastCalledWith('check_out', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+      p_accuracy: 30,
+    });
+    await recordPing('bk-1', 51.5, -0.1, 1800);
+    expect(rpc).toHaveBeenLastCalledWith('record_ping', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+      p_accuracy: 1800,
+    });
+  });
+
+  it('an accuracy that is not a real radius is sent as unknown, never as zero', async () => {
+    for (const bad of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
+      await checkIn('bk-1', 51.5, -0.1, bad);
+      expect(rpc).toHaveBeenLastCalledWith(
+        'attempt_check_in',
+        expect.objectContaining({ p_accuracy: null }),
+      );
+    }
+  });
+
+  it('a check-out with no fix sends no accuracy either', async () => {
+    await checkOut('bk-1', null, null, 25);
+    expect(rpc).toHaveBeenLastCalledWith('check_out', {
+      p_booking: 'bk-1',
+      p_lat: null,
+      p_lng: null,
+      p_accuracy: null,
+    });
+  });
+});
+
+describe('the database is still on the three-argument functions (deploy order)', () => {
+  it('a check-in is made again without the accuracy, and goes through', async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'PGRST202', message: 'Could not find the function public.attempt_check_in' },
+    });
+    rpc.mockResolvedValueOnce({ data: { decision: 'recorded_on_site' }, error: null });
+    const result = await checkIn('bk-1', 51.5, -0.1, 12);
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenLastCalledWith('attempt_check_in', {
+      p_booking: 'bk-1',
+      p_lat: 51.5,
+      p_lng: -0.1,
+    });
+    expect(result).toEqual({ ok: true, result: { decision: 'recorded_on_site' } });
+  });
+
+  it('any other refusal is not retried', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'staff_not_compliant' } });
+    await checkOut('bk-1', 51.5, -0.1, 12);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

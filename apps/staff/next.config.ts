@@ -1,5 +1,6 @@
 import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
+import { securityHeaderRules } from '@thc/db/security-headers';
 
 /**
  * The Staff App is the PWA (ADR-0001, docs/06). `sw.ts` is compiled to
@@ -24,14 +25,23 @@ const withSerwist = withSerwistInit({
   // A fresh revision per build: the offline shell must not be the one from
   // three deploys ago.
   additionalPrecacheEntries: [{ url: '/offline', revision: crypto.randomUUID() }],
-  // The SW must not be cached by the CDN for longer than a deploy, or an
-  // updated worker waits behind a stale one.
-  cacheOnNavigation: true,
+  // Off. `cacheOnNavigation` makes every client-side navigation post its URL
+  // to the worker, which then fetches and stores the page — a signed-in
+  // worker's shifts, documents and payment details, left in Cache Storage on
+  // a shared or lost phone after sign-out. The offline shell is precached
+  // above; pages are not. (Nothing to do with the CDN: Vercel already serves
+  // sw.js revalidated on every load.)
+  cacheOnNavigation: false,
   reloadOnOnline: true,
 });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  // Framing, sniffing, referrer, permissions (location and camera for check-in
+  // and the selfie), HSTS — packages/db/src/security-headers.ts. sw.js gets
+  // them too, harmlessly: none restricts what a worker script may fetch.
+  headers: async () => securityHeaderRules('staff'),
   transpilePackages: ['@thc/ui', '@thc/domain', '@thc/db', '@thc/notifications'],
   env: {
     APP_TZ: process.env.APP_TZ ?? 'Europe/London',

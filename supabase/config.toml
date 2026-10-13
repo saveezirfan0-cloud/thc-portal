@@ -249,7 +249,7 @@ secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 # 60s per address: a "Send it again" pressed twice does not mail twice, and a script
 # cannot flood one inbox through /forgot (security review 12.10). The apps also
-# throttle per address before asking (ADR-0115). The hosted project: Auth -> Rate
+# throttle per account before asking (packages/db/src/auth-throttle.ts, ADR-0051 §25). The hosted project: Auth -> Rate
 # Limits / Email, set there too.
 max_frequency = "60s"
 # Number of characters used in the email OTP.

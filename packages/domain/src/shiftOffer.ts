@@ -71,6 +71,8 @@ export const TAKE_OFFER_REFUSALS = [
   'overlap',
   'rtw_expired',
   'hours_limit',
+  // ADR-0117: a same-staff-all-days role and another day the taker cannot do.
+  'not_available_all_days',
   'already_had_booking',
   'not_yet',
 ] as const;
@@ -95,6 +97,7 @@ const GATE_REFUSAL: Readonly<Record<string, TakeOfferRefusal>> = {
   booked_elsewhere: 'overlap',
   rtw_expired: 'rtw_expired',
   hours_limit: 'hours_limit',
+  not_available_all_days: 'not_available_all_days',
 };
 
 /** The taker's own booking on this section, if any. */

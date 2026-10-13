@@ -16,7 +16,7 @@ You are the client-portal bot. Read §11.1, §11.2, §11.5, §9.10, §1.4, §1.7
   - `client_events_v` — the events, their window and status, `cancelled_at`;
   - `client_role_sections_v` — "N of M confirmed" (M is the headcount, N the confirmed count; never the buffer);
   - `client_lineup_v` — the confirmed line-up, plus the customer's OWN feedback entry (`feedback_given`, `feedback_rating`, `feedback_sent_at`);
-  - `client_event_documents_v` — the latest copy of each document THC has issued (ADR-0114);
+  - `client_event_documents_v` — the latest copy of each document THC has issued (ADR-0119);
   - `client_arrivals_v` — "N of M arrived" on the day (ADR-0053);
   - `client_company_v` — the customer's company name;
   - `client_account_v` — "Your account": company and timesheet recipients (ADR-0051);

@@ -1,10 +1,12 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Alert, AuthCard } from '@thc/ui';
+import { readRecoverySession } from '@thc/db/recovery';
+import type { RecoverySession } from '@thc/db/recovery';
 import { createClient } from '@thc/db/server';
 import { RESET_LINK_VALIDITY } from '../forgot/copy';
+import { USE_SECURITY_SETTINGS } from './copy';
 import { ResetForm } from './ResetForm';
-import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
 import '../login/auth-tap.css';
 
 export const dynamic = 'force-dynamic';
@@ -13,12 +15,15 @@ export const metadata = { title: 'Set a new password · THC Staff' };
 /**
  * A3 Set new password — §10.2, wireframes/staff/auth.html.
  *
- * Reached from the emailed recovery link (via /auth/confirm, which
- * exchanges the code for a session); activation has its own /activate. If
- * no session was left behind, the link is spent — and this says so here,
- * before the worker types a password twice for nothing. A session that was
- * NOT made by a reset link (./recovery.ts) gets a pointer to Security
- * settings instead of the form.
+ * Reached two ways: from the emailed recovery link (via /auth/confirm,
+ * which exchanges the code for a session) and from an activation link. If
+ * neither left a session behind, the link is spent — and this says so
+ * here, before the worker types a password twice for nothing. So is a
+ * session that is not a reset link opened in the last 15 minutes
+ * (packages/db/src/recovery.ts): the action would refuse it.
+ *
+ * The form names the account it is for, from the verified session: a reset
+ * link someone else opened on this phone (login CSRF) shows THEIR address.
  */
 export default async function Page({
   searchParams,
@@ -29,20 +34,14 @@ export default async function Page({
   const configured =
     !!process.env['NEXT_PUBLIC_SUPABASE_URL'] && !!process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
 
-  let signedIn = false;
-  let recovery = false;
-  if (configured) {
-    const supabase = createClient(await cookies());
-    const { data } = await supabase.auth.getClaims();
-    signedIn = !!data?.claims?.sub;
-    recovery = isRecoverySession(data?.claims);
-  }
+  let session: RecoverySession = { state: 'none', email: null };
+  if (configured) session = await readRecoverySession(createClient(await cookies()));
 
   // One message per state, as the wireframe shows it. A callback failure
   // (`?error=`) and "no session" are the same event seen twice — the
   // callback redirects here with `error` exactly when it made no session —
   // so they must not stack two coral alerts that say the same thing.
-  const spent = Boolean(error) || (configured && !signedIn);
+  const spent = Boolean(error) || (configured && session.state !== 'recent');
 
   if (spent) {
     // The expired-link variant, as the Back Office and Client Portal draw
@@ -54,6 +53,9 @@ export default async function Page({
             ? 'That link could not be opened. Reset links work once and for a limited time.'
             : `This link has expired or has already been used. Reset links are valid for ${RESET_LINK_VALIDITY}.`}
         </Alert>
+        {!error && session.state === 'other' ? (
+          <p className="sm muted">{USE_SECURITY_SETTINGS}</p>
+        ) : null}
         <Link href="/forgot" className="btn block">
           Request a new link
         </Link>
@@ -61,21 +63,13 @@ export default async function Page({
     );
   }
 
-  // Signed in, but not by a reset link (./recovery.ts): no form. setPassword
-  // refuses the same session; this says so before anything is typed.
-  if (configured && !recovery) {
-    return (
-      <AuthCard product="Staff app" heading="You’re already signed in">
-        <Alert tone="amber">{NOT_A_RESET_SESSION}</Alert>
-        <Link href="/profile/security" className="btn block">
-          Go to Security settings
-        </Link>
-      </AuthCard>
-    );
-  }
-
   return (
     <AuthCard product="Staff app" heading="Set a new password">
+      {session.email ? (
+        <p className="sm muted">
+          Setting a new password for <b className="mono">{session.email}</b>.
+        </p>
+      ) : null}
       <ResetForm />
     </AuthCard>
   );

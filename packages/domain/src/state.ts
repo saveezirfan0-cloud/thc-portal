@@ -272,6 +272,8 @@ export const APPLICATION_ACCEPT_REFUSALS = [
   'booked_elsewhere',
   'rtw_expired',
   'hours_limit',
+  // ADR-0117: a "Same staff on all days" role and another day the worker cannot do.
+  'not_available_all_days',
 ] as const;
 
 export type ApplicationAcceptRefusal = (typeof APPLICATION_ACCEPT_REFUSALS)[number];

@@ -7,6 +7,7 @@ import { DOCUMENT_UPLOAD_REASONS, evidenceFileProblem } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../../../db';
 import { photoPathFor } from '../../photos';
 import { changeReason } from '../../change-requests';
+import { checkStoredMedia } from '../../../_lib/stored-media';
 import type { ActionResult } from '../../types';
 
 /**
@@ -114,8 +115,45 @@ export async function startChangePhotoUpload(): Promise<PhotoSlot> {
   return { ok: true, path: photoPathFor(worker.staffId) };
 }
 
+/**
+ * The uploaded object's first bytes must be what its name says (security
+ * round 12.10, item 5; app/_lib/stored-media.ts) — the Content-Type
+ * Storage recorded is only the browser's claim. Evidence lives in
+ * `documents`, which only the service key reads, and is read only under
+ * the caller's own prefix; a photo is read through the worker's own
+ * session (`photos_worker_read_own`). A path outside the caller's folder
+ * is left to the RPC, which refuses it as it always has.
+ */
+async function storedFileProblem(
+  bucket: 'documents' | 'photos',
+  path: string | null,
+): Promise<string | null> {
+  if (!path) return null;
+  let verdict;
+  if (bucket === 'photos') {
+    verdict = await checkStoredMedia(await db(), bucket, path);
+  } else {
+    const worker = await me();
+    if (!worker.ok) return worker.message;
+    if (!path.startsWith(`${worker.staffId}/change-requests/`)) return null;
+    try {
+      verdict = await checkStoredMedia(createAdminClient(), bucket, path);
+    } catch {
+      return TRY_AGAIN;
+    }
+  }
+  if (verdict === 'match') return null;
+  return verdict === 'mismatch'
+    ? (DOCUMENT_UPLOAD_REASONS['unsupported_file_type'] ?? TRY_AGAIN)
+    : TRY_AGAIN;
+}
+
 async function request(args: Record<string, string | null>): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const forged =
+    (await storedFileProblem('documents', args['p_evidence_path'] ?? null)) ??
+    (await storedFileProblem('photos', args['p_photo_path'] ?? null));
+  if (forged) return { ok: false, message: forged };
   const { error } = await (await db()).rpc('request_profile_change', args);
   if (error) return { ok: false, message: changeReason(error.message) };
   revalidatePath('/profile');
@@ -150,6 +188,8 @@ export async function requestDobChange(
   note: string,
 ): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const forged = await storedFileProblem('documents', evidencePath);
+  if (forged) return { ok: false, message: forged };
   const { error } = await (
     await db()
   ).rpc('request_dob_change', {

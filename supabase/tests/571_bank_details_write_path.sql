@@ -27,7 +27,10 @@ select isnt_empty(
   'the worker keeps a read-only self policy (§10.1 Payment information)');
 
 -- ---- staff ---------------------------------------------------------------
-select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+-- 20261012120900: the worker typed their password just now (amr), as the
+-- Staff App's re-sign-in before a bank save or a P45 request produces.
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated',
+  'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
 set local role authenticated;
 
 select is((select count(*)::int from bank_details where staff_id = :'staffa'), 1,

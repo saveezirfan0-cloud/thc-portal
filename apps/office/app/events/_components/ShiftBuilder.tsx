@@ -43,6 +43,7 @@ import {
   newRoleDraft,
   resolveRole,
   roleChanges,
+  seriesContextFor,
 } from '../draft';
 import type { ClientOption, ReferenceData, SavedEvent } from '../data';
 import type { EventInput } from '../actions';
@@ -80,6 +81,7 @@ function toInput(draft: EventDraft, id: string | null, ratesVisible: boolean): E
     notes: draft.notes,
     autoAssign: draft.autoAssign,
     requiredLanguages: draft.requiredLanguages,
+    duplicateOf: draft.duplicateOf,
     roles: draft.roles.map((role) => ({
       id: role.id,
       roleId: role.roleId,
@@ -92,6 +94,7 @@ function toInput(draft: EventDraft, id: string | null, ratesVisible: boolean): E
       dressCode: effectiveDressCode(role),
       autoAssign: role.autoAssign,
       requiredGender: role.requiredGender,
+      sameStaffAllDays: role.sameStaffAllDays,
       allocationPerHour: role.allocationPerHour,
     })),
   };
@@ -240,6 +243,8 @@ export function ShiftBuilder({
       if (result && 'error' in result) setError(result.error);
     });
   }
+
+  const seriesContext = seriesContextFor(draft, saved);
 
   const changesByKey = new Map<string, Set<string>>();
   for (const role of draft.roles) {
@@ -499,6 +504,7 @@ export function ShiftBuilder({
                 ratesVisible={ratesVisible}
                 booked={role.id ? (booked[role.id] ?? 0) : 0}
                 locked={readOnly}
+                series={seriesContext}
                 onChange={(patch) =>
                   patch.roleId !== undefined
                     ? pickRole(role.key, patch.roleId)

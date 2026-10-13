@@ -36,7 +36,6 @@ const person = (
   shiftId: `shift-${over.role}`,
   startsAt: '2026-09-19T06:00:00Z',
   endsAt: '2026-09-19T14:00:00Z',
-  photoPath: null,
   feedbackGiven: false,
   ...over,
 });

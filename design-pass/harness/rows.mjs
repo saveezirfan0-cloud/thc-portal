@@ -1014,7 +1014,7 @@ export const portalEvents = [
   ['e2', 'Summer Garden Party', '2026-08-14', 'completed'],
   ['e3', 'Charity Auction Evening', '2026-07-30', 'cancelled'],
 ].map(([id, title, d, status]) => ({
-  // The event page answers 404 to an id that is not a UUID (isEventId).
+  // The event page answers 404 to an id that is not a UUID (isUuid, ids.ts).
   id: portalEventId(id),
   title,
   venue_name: 'The Savoy, Strand',

@@ -23,6 +23,7 @@ import {
 import type { CompletionEvidenceForm, EvidenceFolder, StaffStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import { extractAfterResponse } from '../../lib/extract';
+import { checkStoredMedia } from '../_lib/stored-media';
 import type { ActionResult } from './types';
 
 /**
@@ -94,12 +95,19 @@ function refresh() {
   revalidatePath('/', 'layout');
 }
 
+/**
+ * The worker's sentence for a refusal. A code none of the tables names is
+ * logged here and reads as TRY_AGAIN: a raw database message is not a
+ * sentence, and it can name tables, constraints and values (security
+ * round 12.10, item 4).
+ */
 function reasonText(table: Record<string, string>, raw: string | undefined): string {
   if (!raw) return TRY_AGAIN;
   for (const [code, sentence] of Object.entries(table)) {
     if (raw === code || raw.includes(code)) return sentence;
   }
-  return raw;
+  console.error('[documents] unmapped refusal', { message: raw });
+  return TRY_AGAIN;
 }
 
 // ---------------------------------------------------------------------
@@ -196,6 +204,38 @@ async function discard(path: string | null) {
   }
 }
 
+/**
+ * The object's own first bytes must be what its name says (security round
+ * 12.10, item 5; app/_lib/stored-media.ts). The name's extension is the
+ * server's — `evidenceObjectPath()` built it from the file the worker
+ * picked — while the Content-Type Storage recorded is whatever the browser
+ * sent, so a page labelled `application/pdf` would otherwise reach the
+ * office's viewer. Refused and discarded on a mismatch; a read that fails
+ * is "try again", never a pass.
+ *
+ * A path outside the caller's own folder is not read with the service key
+ * at all: the RPC refuses it (`invalid_path`), as it always has.
+ */
+async function storedFileProblem(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  const worker = await me();
+  if (!worker || !path.startsWith(`${worker.staffId}/`)) return null;
+  let admin: SupabaseClient;
+  try {
+    admin = createAdminClient() as unknown as SupabaseClient;
+  } catch {
+    return TRY_AGAIN;
+  }
+  const verdict = await checkStoredMedia(admin, BUCKET, path);
+  if (verdict === 'match') return null;
+  await discard(path);
+  if (verdict === 'mismatch') {
+    console.warn('[documents] stored bytes do not match the file type', { path });
+    return DOCUMENT_UPLOAD_REASONS['unsupported_file_type']!;
+  }
+  return TRY_AGAIN;
+}
+
 type RpcAnswer = { ok?: boolean; reason?: string; documentId?: string } & Record<string, unknown>;
 
 async function rpc(fn: string, args: Record<string, unknown>) {
@@ -218,6 +258,8 @@ export async function finishDocumentUpload(
   shareCode: string | null,
 ): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const forged = await storedFileProblem(path);
+  if (forged) return { ok: false, message: forged };
   const { answer, error } = await rpc('submit_document_upload', {
     p_doc_type: docType,
     p_file_path: path,
@@ -263,6 +305,8 @@ export async function finishShareCode(
       message: DOCUMENT_UPLOAD_REASONS[typed === '' ? 'dob_required' : 'dob_invalid']!,
     };
   }
+  const forged = await storedFileProblem(path);
+  if (forged) return { ok: false, message: forged };
   const { answer, error } = await rpc('submit_share_code_with_dob', {
     p_share_code: shareCode,
     p_dob: typed,
@@ -322,6 +366,8 @@ export async function finishCompletionLetter(input: {
     await discard(input.path);
     return { ok: false, message: COMPLETION_UPLOAD_REASONS['completion_date_required']! };
   }
+  const forged = await storedFileProblem(input.path);
+  if (forged) return { ok: false, message: forged };
   const { answer, error } = await rpc('submit_completion_letter', {
     p_file_path: input.path,
     p_completion_date: input.completionDate,
@@ -357,6 +403,8 @@ export async function signOptOut(
     await discard(signedCopyPath);
     return { ok: false, message: OPT_OUT_REASONS['invalid_notice_period']! };
   }
+  const forged = await storedFileProblem(signedCopyPath);
+  if (forged) return { ok: false, message: forged };
   const { answer, error } = await rpc('sign_wtr_optout', {
     p_signed_copy_path: signedCopyPath,
     p_notice_days: noticeDays,

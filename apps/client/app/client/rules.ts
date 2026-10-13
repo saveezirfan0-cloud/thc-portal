@@ -47,7 +47,15 @@ export interface RoleSection {
   confirmed: number;
 }
 
-/** One row of `client_lineup_v`. */
+/**
+ * One row of `client_lineup_v`, as the browser receives it.
+ *
+ * Deliberately WITHOUT the view's `photo_path`: that path's first segment is
+ * the worker's `staff.id` (the photos bucket keys objects by owner), an
+ * internal id the customer has no use for. The server reads it into
+ * `LineupRecord` (data.ts), signs the photo, and hands over only the signed
+ * URL keyed by `bookingId` (photos.ts `presentLineup`).
+ */
 export interface LineupRow {
   bookingId: string;
   eventId: string;
@@ -57,7 +65,6 @@ export interface LineupRow {
   startsAt: string;
   endsAt: string;
   name: string;
-  photoPath: string | null;
   sortKey: string;
   feedbackGiven: boolean;
   /** The stars the customer gave (1–5), once they have; null before. */
@@ -298,12 +305,35 @@ export function eventsPanelTitle(company: string | null | undefined): string {
 }
 
 /**
+ * The longest comment a customer may leave (§11.5). The textarea stops at
+ * it, the server action refuses past it before the RPC, and
+ * `submit_client_feedback()` refuses past it again — the last is the one
+ * that holds, the first two only spare the customer a round trip.
+ */
+export const FEEDBACK_TEXT_MAX = 2000;
+
+export const FEEDBACK_TOO_LONG = `Keep the comment to ${FEEDBACK_TEXT_MAX.toLocaleString('en-GB')} characters or fewer.`;
+
+/**
+ * A comment is fine at or under the limit; it is measured after trimming,
+ * in code points as Postgres's char_length counts them (an emoji is one).
+ */
+export function feedbackTextTooLong(text: string): boolean {
+  return [...text.trim()].length > FEEDBACK_TEXT_MAX;
+}
+
+/**
  * The customer's sentence for a refused `submit_client_feedback()` (§11.5).
  *
  * The RPC raises SQLSTATE 22023 for two different things: a rating outside
  * 1–5 ("Rating must be between 1 and 5") and an event that has not started
  * ("Feedback opens once the event has started"). Keyed on the code alone,
  * a bad rating read as "not started yet", so the message decides which.
+ *
+ * A comment over the limit may come back as 22023 ("… too long" / "… 2000
+ * characters"), 22001 (string_data_right_truncation) or 23514 (a check
+ * constraint on the column); all three read as the length sentence. Nothing
+ * here ever returns the database's own message.
  */
 export function feedbackErrorMessage(error: {
   code?: string | null;
@@ -314,7 +344,14 @@ export function feedbackErrorMessage(error: {
     case '22023':
       if (message.includes('rating')) return 'Choose a rating between 1 and 5 stars.';
       if (message.includes('started')) return 'Feedback opens once the event has started.';
+      if (mentionsLength(message)) return FEEDBACK_TOO_LONG;
       return 'That could not be saved.';
+    case '22001':
+      return FEEDBACK_TOO_LONG;
+    case '23514':
+      return mentionsLength(message) || message.includes('text')
+        ? FEEDBACK_TOO_LONG
+        : 'That could not be saved.';
     case '23505':
       return 'Feedback has already been left for this person on this event.';
     case '42501':
@@ -322,6 +359,15 @@ export function feedbackErrorMessage(error: {
     default:
       return 'That could not be saved.';
   }
+}
+
+function mentionsLength(message: string): boolean {
+  return (
+    message.includes('long') ||
+    message.includes('length') ||
+    message.includes('characters') ||
+    message.includes(String(FEEDBACK_TEXT_MAX))
+  );
 }
 
 /**

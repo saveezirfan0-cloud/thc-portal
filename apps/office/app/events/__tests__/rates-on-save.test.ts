@@ -91,6 +91,7 @@ function section(id: string | null, rates: { chargeRate: number | null; payRate:
     dressCode: '',
     autoAssign: true,
     requiredGender: null,
+    sameStaffAllDays: false,
     allocationPerHour: 13,
   };
 }

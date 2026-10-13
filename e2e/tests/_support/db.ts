@@ -67,51 +67,6 @@ function describe(cause: unknown): string {
 }
 
 // ---------------------------------------------------------------------
-// The Client Portal's sign-in throttle
-// ---------------------------------------------------------------------
-
-/** Hosts this file will delete rows on: the local stack, never a project. */
-const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-
-function databaseIsLocal(): boolean {
-  try {
-    return LOCAL_HOSTS.has(new URL(DATABASE_URL).hostname);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Empties the Client Portal's /login counters (ADR-0115,
- * 20261012120200_client_auth_throttles.sql) so a spec's sign-in is never
- * refused for the ones before it.
- *
- * Every row, not one email's: the rows are HMACs under the service key, and
- * the per-caller key — every spec signs in from 127.0.0.1 — would fill at
- * 30 just the same. Only `login`; the reset-email counters are left alone.
- *
- * Guarded twice: it runs only when DATABASE_URL names this machine (an
- * E2E_DATABASE_URL pointing anywhere else is left untouched) and only when
- * that database answers — no stack, nothing to clear, and the caller's
- * sign-in proceeds. A database without the migration yet is skipped too.
- */
-export function clearSignInThrottle(): void {
-  if (!databaseIsLocal() || databaseUnreachable() !== null) return;
-  try {
-    run(`
-      do $$
-      begin
-        if to_regclass('private.auth_attempt_hits') is not null then
-          delete from private.auth_attempt_hits where action = 'login';
-        end if;
-      end $$;
-    `);
-  } catch (cause) {
-    console.warn(`[e2e] could not clear the sign-in throttle: ${describe(cause)}`);
-  }
-}
-
-// ---------------------------------------------------------------------
 // A candidate, made the way the pipeline makes one
 // ---------------------------------------------------------------------
 

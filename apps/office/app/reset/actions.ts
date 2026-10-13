@@ -3,8 +3,9 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
+import { readRecoverySession } from '@thc/db/recovery';
 import { createClient } from '@thc/db/server';
-import { NOT_A_RESET_SESSION, isRecoverySession } from './recovery';
+import { USE_ACCOUNT_SCREEN } from './copy';
 
 /**
  * A3 Set new password — §10.2, `wireframes/public/activate.html` (reset,
@@ -37,17 +38,23 @@ export async function setPassword(
   }
 
   const supabase = createClient(await cookies());
-  // Only a session an emailed reset link made may set a password without
-  // the current one (security review 12.10). Any other signed-in session —
-  // a password sign-in on a desk left unlocked — is refused and sent to
-  // My profile → Password, which asks for the current password. Verified claims
-  // (getClaims checks the token), not the cookie's say-so.
-  const { data, error: claimsError } = await supabase.auth.getClaims();
-  const claims = data?.claims;
-  if (claimsError || !claims?.sub) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return 'This link has expired or has already been used. Request a new one from the sign-in screen.';
   }
-  if (!isRecoverySession(claims)) return NOT_A_RESET_SESSION;
+
+  // No current password is asked for here, so the session itself must be
+  // the proof: made by a reset link, in the last 15 minutes (verified `amr`
+  // claims, packages/db/src/recovery.ts). A session from a password sign-in
+  // — or a borrowed device that is simply signed in — changes the password
+  // on the screen that asks for the current one.
+  const recovery = await readRecoverySession(supabase);
+  if (recovery.state === 'none') {
+    return 'This link has expired or has already been used. Request a new one from the sign-in screen.';
+  }
+  if (recovery.state !== 'recent') return USE_ACCOUNT_SCREEN;
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
@@ -61,7 +68,7 @@ export async function setPassword(
   // Scope 'others': keep this session, drop the rest.
   await supabase.auth.signOut({ scope: 'others' });
 
-  if (claims.app_metadata?.['role'] !== 'admin') {
+  if (user.app_metadata?.['role'] !== 'admin') {
     await supabase.auth.signOut({ scope: 'local' });
     redirect('/login');
   }

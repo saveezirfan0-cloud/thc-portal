@@ -1,9 +1,7 @@
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { AuthCard } from '@thc/ui';
-import { RESET_SENT_COOKIE, sentAddress } from './flash';
+import { shownEmail } from '@thc/db/recovery';
 
-export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Check your inbox · THC Client Portal' };
 
 const OFFICE = 'admin@thehospitalitycompany.co.uk';
@@ -13,12 +11,10 @@ const OFFICE = 'admin@thehospitalitycompany.co.uk';
  *
  * "If … has an account" is load-bearing: this screen is shown whether or
  * not the address exists (§1.7, no account enumeration).
- *
- * The address comes from A1's flash cookie (./flash.ts), never the URL, and
- * is shown only if it parses as an email; otherwise "that address".
  */
-export default async function Page() {
-  const to = sentAddress((await cookies()).get(RESET_SENT_COOKIE)?.value);
+export default async function Page({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
+  // Only ever an address: `?to=` is anybody's to write (shownEmail).
+  const to = shownEmail((await searchParams).to);
 
   return (
     <AuthCard product="Client Portal" heading="Check your inbox">
