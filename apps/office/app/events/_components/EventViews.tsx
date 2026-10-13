@@ -54,7 +54,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
   // `card-rows`: below 760px each event is a card, titled by the event, with
   // every other column printed against its `data-label`.
   return (
-    <table className="tbl card-rows">
+    <table className="tbl card-rows ev-list">
       <thead>
         <tr>
           <th>Date</th>
@@ -64,8 +64,9 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
           <th>Window (UK time)</th>
           <th>Roles · headcount (+buffer)</th>
           <th>Fill</th>
-          <th>Status</th>
-          <th>PO</th>
+          {/* PO under the status, as the venue sits under the client: a
+              column of its own pushed the list past a laptop's width. */}
+          <th>Status · PO</th>
         </tr>
       </thead>
       <tbody>
@@ -74,7 +75,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
           const open = formatOpen(row.fill);
           return (
             <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
-              <td data-label="Date">
+              <td data-label="Date" className="ev-date">
                 <b className={row.date === today ? 'cyan' : undefined}>
                   {formatDayShort(row.date)}
                 </b>
@@ -102,11 +103,12 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
               </td>
               <td
                 data-label="Window (UK time)"
-                className={classes('mono', 'sm', cancelled && 'muted')}
+                className={classes('mono', 'sm', 'ev-window', cancelled && 'muted')}
               >
                 {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
                 {row.windowIso ? (
                   <ScheduledWindow
+                    separator="–"
                     startsAt={row.windowIso.startsAt}
                     endsAt={row.windowIso.endsAt}
                   />
@@ -119,9 +121,12 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 <div className="roles">
                   {row.roles.map((role, index) => (
                     <div className="r" key={`${row.id}-${index}`}>
-                      <span className="chip">{role.roleName}</span>
+                      <span className="chip" title={role.roleName}>
+                        {role.roleName}
+                      </span>
                       <ScheduledWindow
                         className="mono win"
+                        separator="–"
                         startsAt={role.startsAt}
                         endsAt={role.endsAt}
                       />
@@ -133,7 +138,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
                 </div>
               </td>
-              <td data-label="Fill">
+              <td data-label="Fill" className="ev-fill">
                 {cancelled ? (
                   // §3.3: only a cancellation BEFORE the day is excluded; on
                   // the day the scheduled hours are billed and paid in full.
@@ -152,11 +157,11 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   </>
                 )}
               </td>
-              <td data-label="Status">
+              <td data-label="Status · PO" className="ev-status">
                 <StatusPill status={row.status} />
-              </td>
-              <td data-label="PO" className={classes('mono', 'sm', !row.poNumber && 'muted')}>
-                {row.poNumber || '—'}
+                <span className={classes('sub', 'mono', !row.poNumber && 'muted')}>
+                  {row.poNumber ? `PO ${row.poNumber}` : 'No PO'}
+                </span>
               </td>
             </tr>
           );

@@ -557,6 +557,29 @@ table.tbl {
 .tbl tr.violation td:first-child {
   border-left: 3px solid var(--coral-ink);
 }
+/* A table wider than its card scrolls inside the card instead of being
+   cut off by it (the card clips its corners, so it clips its content).
+   At every width, not only on a tablet: on a laptop the events list and
+   the clients list ran past the card's right edge with Fill, Status, PO
+   and "Added by" cut off and no way to reach them. */
+:is(.panel, .panel-b):has(> table.tbl),
+.table-scroll {
+  overflow-x: auto;
+}
+/* A table that scrolls has room to give each cell a readable measure.
+   Without a floor the browser squeezed the text columns to fit the card
+   instead — an event title five lines tall beside a date on three, and
+   "Breaks: unpaid · Buffer: strict" one word a line — and the reader
+   scrolled a table that was still cramped. */
+:is(.panel, .panel-b, .table-scroll) > table.tbl :is(td, th):not(:empty) {
+  min-width: 6.5rem;
+}
+/* …except the avatar cell, which is the avatar's width, not a column of
+   text (the users table spent 104px on a 28px avatar at 820px), and a
+   number, which is a few digits under a short header. */
+:is(.panel, .panel-b, .table-scroll) > table.tbl :is(td, th):is(.cell-lead, .num) {
+  min-width: 0;
+}
 
 /* ---------------------------------------------------------------------
    5 · BUTTONS
@@ -2594,26 +2617,10 @@ textarea.input {
     flex-wrap: wrap;
     min-width: 0;
   }
-  /* A table wider than its card scrolls inside the card instead of being
-     cut off by it (the card clips its corners, so it clips its content). */
-  :is(.panel, .panel-b):has(> table.tbl),
-  .table-scroll {
-    overflow-x: auto;
-  }
+  /* The scroller and the cell floor are in §4 (every width); here the
+     table also keeps a floor of its own. */
   :is(.panel, .panel-b) > table.tbl {
     min-width: 720px;
-  }
-  /* A table that scrolls has room to give each cell a readable measure.
-     Without a floor the browser squeezed the text columns to fit the
-     minimum width instead — an event title five lines tall beside a date
-     on one — and the reader scrolled a table that was still cramped. */
-  :is(.panel, .panel-b, .table-scroll) > table.tbl :is(td, th):not(:empty) {
-    min-width: 6.5rem;
-  }
-  /* …except the avatar cell, which is the avatar's width, not a column of
-     text (the users table spent 104px on a 28px avatar at 820px). */
-  :is(.panel, .panel-b, .table-scroll) > table.tbl td.cell-lead {
-    min-width: 0;
   }
   /* A panel header's title and its controls — a note, a search, a button —
      wrap under each other instead of squeezing the button until its label
