@@ -1004,6 +1004,39 @@ export function roleBlockOpen(
   return now.getTime() <= new Date(section.endsAt).getTime();
 }
 
+/** One dress code on the event and the roles that wear it (ADR-0128). */
+export interface DressCodeGroup {
+  dressCode: string;
+  roles: string[];
+}
+
+/**
+ * The event's dress codes, each once (ADR-0128). The rate card usually gives
+ * every role of an event the same long dress code, so the board shows it
+ * once in the Event panel rather than in every role header. Groups follow
+ * the running order (first section to use each code); a role split across
+ * two sections is named once; a section with no dress code is left out.
+ * `allRoles` is true when one dress code covers every section.
+ */
+export function dressCodeSummary(
+  sections: ReadonlyArray<{ roleName: string; dressCode: string }>,
+): { groups: DressCodeGroup[]; allRoles: boolean } {
+  const groups: DressCodeGroup[] = [];
+  for (const section of sections) {
+    const dressCode = section.dressCode.trim();
+    if (!dressCode) continue;
+    let group = groups.find((g) => g.dressCode === dressCode);
+    if (!group) {
+      group = { dressCode, roles: [] };
+      groups.push(group);
+    }
+    if (!group.roles.includes(section.roleName)) group.roles.push(section.roleName);
+  }
+  const allRoles =
+    groups.length === 1 && sections.every((s) => s.dressCode.trim() === groups[0]!.dressCode);
+  return { groups, allRoles };
+}
+
 // ---------------------------------------------------------------------
 // Offer up a shift (ADR-0046, docs/19 §4) — what the board shows
 // ---------------------------------------------------------------------
