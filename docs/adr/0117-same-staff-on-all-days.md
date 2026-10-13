@@ -1,4 +1,4 @@
-# ADR-0116 · Same staff on all days (slice 1: the requirement and who may be invited)
+# ADR-0117 · Same staff on all days (slice 1: the requirement and who may be invited)
 
 **Status:** Accepted for slice 1 · **Decisions marked PROVISIONAL await the client's answers** · Deliberately changes §3.2 · Builds on ADR-0043, ADR-0079, RULE-18, RULE-20 · Supersedes part of ADR-0043 (see Consequences) · **Request:** Sam Barrington-Wells (client's director), 12.10.2026
 

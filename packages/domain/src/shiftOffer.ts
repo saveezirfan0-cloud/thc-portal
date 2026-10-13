@@ -71,7 +71,7 @@ export const TAKE_OFFER_REFUSALS = [
   'overlap',
   'rtw_expired',
   'hours_limit',
-  // ADR-0116: a same-staff-all-days role and another day the taker cannot do.
+  // ADR-0117: a same-staff-all-days role and another day the taker cannot do.
   'not_available_all_days',
   'already_had_booking',
   'not_yet',

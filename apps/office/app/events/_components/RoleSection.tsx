@@ -38,7 +38,7 @@ function signedPence(pence: number): string {
   return `${sign}£${(Math.abs(pence) / 100).toFixed(2)}/h`;
 }
 
-/** The line under the "Same staff on all days" switch (ADR-0116). */
+/** The line under the "Same staff on all days" switch (ADR-0117). */
 export function sameStaffHint(on: boolean, series: SeriesContext, roleName: string): string {
   if (!on) {
     return 'Only when the client wants the same people on every day of a multi-day job: switch it on, save, then Duplicate to add the next day';
@@ -68,7 +68,7 @@ export interface RoleSectionProps {
   changed: Set<string>;
   original: RoleDraft | undefined;
   locked: boolean;
-  /** ADR-0116: is this event one day of a multi-day job (or a Duplicate of one)? */
+  /** ADR-0117: is this event one day of a multi-day job (or a Duplicate of one)? */
   series: SeriesContext;
   /** ADR-0061: false for an office role without finance — no rate fields, no margin. */
   ratesVisible: boolean;
@@ -397,7 +397,7 @@ export function RoleSection({
             <option value="F">{REQUIRED_GENDER_LABEL.F}</option>
           </Select>
 
-          {/* ADR-0116: the client wants the same people on every day of a
+          {/* ADR-0117: the client wants the same people on every day of a
               multi-day job. Per ROLE; a hard gate in auto_assign_candidates
               against every other day of the job that also asks for it. */}
           <div className="field">

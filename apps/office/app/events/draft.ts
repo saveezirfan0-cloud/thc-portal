@@ -75,7 +75,7 @@ export interface RoleDraft {
    */
   requiredGender: RequiredGender;
   /**
-   * ADR-0116: the client wants the SAME staff on every day of this job for
+   * ADR-0117: the client wants the SAME staff on every day of this job for
    * this role. Auto-assign, Radar, Accept and a manual invite then offer the
    * role only to someone who can do every other day that also asks for it
    * (`auto_assign_candidates`). Per role, off by default; Duplicate keeps it.
@@ -109,7 +109,7 @@ export interface EventDraft {
    */
   requiredLanguages: string[];
   /**
-   * ADR-0116: the event this one is a Duplicate of, or null. Saving links
+   * ADR-0117: the event this one is a Duplicate of, or null. Saving links
    * the two as the days of one multi-day job (`link_event_series`) — the
    * staff are still not copied (§3.2).
    */
@@ -273,7 +273,7 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
  *     booked on the original — confirmed, invited or applied — comes along;
  *   * leaves the DATE empty: a day is the one thing a duplicate must change,
  *     and Save stays disabled until the manager sets it;
- *   * keeps each section's "Same staff on all days" (ADR-0116) and links the
+ *   * keeps each section's "Same staff on all days" (ADR-0117) and links the
  *     clone to the original as another day of one job on save — the staff
  *     are still not copied, only who may be invited is constrained;
  *   * starts with auto-assign ON at event and role level, the §3.4 default
@@ -305,7 +305,7 @@ export function draftFromSaved(
       dressCodeOther: section.dressCode && !onList ? section.dressCode : '',
       autoAssign: duplicate ? true : section.autoAssign,
       requiredGender: section.requiredGender,
-      // ADR-0116: the client's ask, not the day's - the clone keeps it.
+      // ADR-0117: the client's ask, not the day's - the clone keeps it.
       sameStaffAllDays: section.sameStaffAllDays,
       allocationPerHour: section.allocationPerHour,
       // Whatever is stored is the manager's choice; the default never
@@ -406,7 +406,7 @@ export function reconfirmPlan(
 }
 
 // ---------------------------------------------------------------------
-// ADR-0116 — what the builder says about the days of a multi-day job
+// ADR-0117 — what the builder says about the days of a multi-day job
 // ---------------------------------------------------------------------
 
 /**

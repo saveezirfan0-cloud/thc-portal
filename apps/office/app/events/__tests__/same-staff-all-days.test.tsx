@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TimeFormatProvider } from '@thc/ui';
 
 /**
- * ADR-0116 in the Shift Builder: the per-role "Same staff on all days"
+ * ADR-0117 in the Shift Builder: the per-role "Same staff on all days"
  * switch, what Duplicate carries, that the flag is a silent edit, and that
  * saving a Duplicate links the days (`link_event_series`) BEFORE the sections
  * and the first auto-assign round.
