@@ -591,10 +591,11 @@ where it would need one. Ticked when the key exists and the work can resume.
       it E1/E2/E3 end to end (§2.4).
 - [ ] **Mapbox token** — the Venues map draws its own tiles today (ADR-0005), so this is
       only needed for forward/reverse geocoding.
-- [ ] **`supabase_admin`, or Supabase exposing it** — blocks closing the
-      `spatial_ref_sys` write hole for real (ADR-0010). Recorded as a known gap in the
-      pgTAP suite rather than hidden; see the ADR for why it is survivable today and the
-      one change that would stop it being so.
+- [ ] **`supabase_admin`, or Supabase exposing it** — the `spatial_ref_sys` write hole
+      (ADR-0010) is closed since 13.10.2026 by a statement trigger (ADR-0131). What is
+      left is the RLS switch itself, which only the owner can flip, and with it the
+      advisor's `rls_disabled_in_public` finding and the weekly security email. Ask
+      Supabase support to run ADR-0131's three statements as `supabase_admin`.
 - [ ] **Vercel plan** — the free tier's 100 deployments/day was exhausted on 21.09 by
       parallel sessions, so preview deployments failed for the rest of the day
       (`api-deployments-free-per-day`). Does not block CI or merging, only previews.

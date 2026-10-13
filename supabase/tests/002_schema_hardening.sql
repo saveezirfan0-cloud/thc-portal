@@ -14,7 +14,7 @@
 -- Scope refs: §1.7 security, §3.4/§4.4 (the cap functions), §8 (outbox).
 -- =====================================================================
 begin;
-select plan(7);
+select plan(12);
 
 -- ---------------------------------------------------------------------
 -- 1. EVERY function this repo owns in `public` pins its search_path.
@@ -139,18 +139,27 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------
--- 5-7. spatial_ref_sys: the read survives, the write is a KNOWN GAP.
+-- 5-12. spatial_ref_sys: the read survives, every API write is refused.
 --
 --    The read must survive for anon whatever else happens here: PostGIS
 --    reads this table as whoever is connected, including an anon session
 --    on the public /apply page, so a deny-all would break coordinate work
---    rather than secure it. Assertion 5 is the one that still guards
---    something we control.
+--    rather than secure it.
 --
---    Assertions 6 and 7 were written to prove the write had been taken
---    away. It had not, and it cannot be from here — see the block above
---    them and ADR-0010. They now record the gap instead, which is why they
---    read as lives_ok and "can still delete" rather than as protections.
+--    The write is closed by 20261013210000's statement trigger (ADR-0131),
+--    not by RLS. On Supabase supabase_admin owns the table and granted
+--    anon/authenticated/service_role full DML on it; only the owner can
+--    enable RLS or revoke those grants (ADR-0010), but postgres holds the
+--    TRIGGER privilege and that is enough. Until 13.10.2026 assertions 6
+--    and 7 were lives_ok "KNOWN GAP" records that anon COULD insert and
+--    delete here; the hole is closed, so they assert the refusal now, and
+--    the local harness's two expected failures (docs/14) are gone.
+--
+--    Every refusal is 42501 in every environment: the trigger's on
+--    Supabase, and locally (postgres owns PostGIS there, so 20260921123503
+--    also turned RLS on) the trigger fires first, before any row is read.
+--    The DELETE deliberately matches no row: a statement trigger still
+--    fires, which is what makes it cover TRUNCATE and empty matches too.
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', '', true);
 set local role anon;
@@ -158,34 +167,55 @@ set local role anon;
 select is((select count(*)::int from spatial_ref_sys where srid = 4326), 1,
   'anon still reads spatial_ref_sys: SRID 4326 has to resolve or every geography column stops working');
 
--- KNOWN GAP. These two used to assert that anon cannot write this table.
--- They asserted an outcome that needs supabase_admin: `create extension
--- postgis` in 0001 makes supabase_admin the owner and the grantor of the
--- default privileges, and only the grantor can revoke them. The hardening
--- migration's own `enable row level security` takes its degradation branch
--- on Supabase and changes nothing, so both assertions failed in CI and on
--- the live project, and main was red on them for over an hour.
---
--- They now assert the state that actually holds, so the suite tells the
--- truth instead of asserting an aspiration. What makes this survivable
--- rather than merely tolerated: every geography column in the schema is
--- 4326 and nothing calls ST_Transform, so PostGIS does not read this table
--- during our geofence maths — a forged or deleted SRID cannot move a
--- check-in radius. That is the argument, and it is the thing to re-check
--- if a future migration ever introduces a second SRID.
---
--- Closing it for real needs supabase_admin, so it belongs in project setup
--- (docs/04-setup-github-vercel-supabase.md), not in a migration. When it is
--- closed, these two assertions fail and whoever closed it flips them back —
--- which is the point of writing the gap down as a test rather than a TODO.
-select lives_ok(
+select throws_ok(
   $$ insert into spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text)
      values (998000, 'forged', 998000, 'GEOGCS["forged"]', '+proj=longlat') $$,
-  'KNOWN GAP: anon can still insert a forged projection into spatial_ref_sys (needs supabase_admin to close)');
+  '42501', null,
+  'ADR-0131: anon cannot insert a forged projection into spatial_ref_sys');
 
-with d as (delete from spatial_ref_sys where srid = 998000 returning 1)
-  select is((select count(*)::int from d), 1,
-    'KNOWN GAP: anon can still delete from spatial_ref_sys; survivable only because every geography column here is 4326 and nothing calls ST_Transform');
+select throws_ok(
+  $$ delete from spatial_ref_sys where srid = 998000 $$,
+  '42501', null,
+  'ADR-0131: anon cannot delete from spatial_ref_sys, even a statement that matches no row');
+
+select throws_ok(
+  $$ update spatial_ref_sys set proj4text = '+proj=longlat' where srid = 4326 $$,
+  '42501', null,
+  'ADR-0131: anon cannot rewrite SRID 4326 in spatial_ref_sys');
+
+select throws_ok(
+  $$ truncate spatial_ref_sys $$,
+  '42501', null,
+  'ADR-0131: anon cannot truncate spatial_ref_sys');
+
+reset role;
+set local role authenticated;
+select throws_ok(
+  $$ delete from spatial_ref_sys where srid = 998000 $$,
+  '42501', null,
+  'ADR-0131: a signed-in session cannot delete from spatial_ref_sys');
+
+reset role;
+set local role service_role;
+select throws_ok(
+  $$ delete from spatial_ref_sys where srid = 998000 $$,
+  '42501', null,
+  'ADR-0131: the service role cannot delete from spatial_ref_sys either — nothing in this system writes it');
+
+-- The trigger itself, pinned by shape, so a later migration cannot quietly
+-- swap it for a row trigger (which would miss TRUNCATE and empty matches).
+reset role;
+select is(
+  (select count(*)::int from pg_trigger t
+    where t.tgrelid = 'public.spatial_ref_sys'::regclass
+      and t.tgname = 'spatial_ref_sys_read_only'
+      and t.tgfoid = 'public.spatial_ref_sys_read_only_guard()'::regprocedure
+      and t.tgenabled = 'O'
+      and (t.tgtype & 1) = 0       -- per statement
+      and (t.tgtype & 2) = 2       -- before
+      and (t.tgtype & 60) = 60),   -- insert, delete, update, truncate
+  1,
+  'ADR-0131: spatial_ref_sys carries the BEFORE INSERT/UPDATE/DELETE/TRUNCATE statement trigger');
 
 reset role;
 select * from finish();

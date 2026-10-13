@@ -128,12 +128,15 @@ select bag_eq(
 --       enable row-level security on it. Neither `postgres` nor the SQL
 --       editor can, and Supabase does not expose supabase_admin."
 --
---    KNOWN GAP, and a real one: anon retains write privileges on the SRID
---    lookup table on every Supabase project using PostGIS. It is survivable
---    here only because our geography columns are all 4326 and nothing in
---    the schema calls ST_Transform, so the geofence maths never reads this
---    table at query time. Closing it needs supabase_admin and therefore
---    belongs in project setup (docs/04), not in a migration.
+--    KNOWN GAP in the RLS switch only: anon still holds write grants on
+--    the SRID lookup table on every Supabase project using PostGIS, and
+--    only supabase_admin can enable RLS or revoke them. Since
+--    20261013210000 (ADR-0131) the WRITE is closed anyway, by a statement
+--    trigger postgres may create (it holds TRIGGER on the table), and
+--    002 assertions 6-12 assert the refusal. The exemption stays because
+--    relrowsecurity is still false there, and so does the advisor's
+--    rls_disabled_in_public finding, until Supabase support runs ADR-0131's
+--    three statements as supabase_admin.
 --
 --    The exemption is spelled as an explicit name rather than a wider
 --    filter so that the next table arriving without RLS still fails here.

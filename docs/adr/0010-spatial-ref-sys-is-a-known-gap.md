@@ -1,6 +1,8 @@
 # ADR-0010 · `spatial_ref_sys` is a known gap, not a passing test
 
-**Status:** Accepted, 21.09.2026. Reverses the premise of the `spatial_ref_sys` work in
+**Status:** Accepted, 21.09.2026; **amended by ADR-0131 (13.10.2026)**: the write hole is
+closed by a statement trigger (`postgres` holds TRIGGER on the table), so `002` assertions 6
+and 7 now assert the refusal. RLS itself still needs `supabase_admin`, as below. Reverses the premise of the `spatial_ref_sys` work in
 `20260921123503_db_hardening.sql` and the four assertions it added to
 `supabase/tests/001_rls_guard.sql` (2, 9) and `supabase/tests/002_schema_hardening.sql`
 (6, 7). Confirms in a decision what
