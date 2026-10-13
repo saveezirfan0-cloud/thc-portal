@@ -14,8 +14,9 @@
  * Beyond §8 the register carries four more families, each in its own list:
  * the completion letter requirement's CL codes (REQUIREMENT_CODES), two
  * extensions §8 should have named (EXTENSION_CODES), and the Staff App
- * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), and the
- * onboarding chasers OC (CHASER_CODES, ADR-0071).
+ * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), the
+ * onboarding chasers OC (CHASER_CODES, ADR-0071), and the invite-list
+ * reminder IR1 (INVITE_CODES, ADR-0122).
  *
  * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
  * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
@@ -106,6 +107,24 @@ const OFFICE_AND_PAYROLL = [
   'admin@thehospitalitycompany.co.uk',
   'thc_payroll@topsourceworldwide.com',
 ] as const;
+
+/**
+ * IR1's words after the greeting (ADR-0122), the owner's email of
+ * 13.10.2026 laid out as register copy. `{applyLink}` is the button.
+ */
+const INVITE_REMINDER_BODY =
+  "This is your daily reminder: we haven't yet received your registration on our new Staff App.\n\n" +
+  'The AXLR8 Staff App will stop working very soon. After that, every shift is offered, confirmed and checked in through the new THC Staff App only. So that we can keep offering you shifts and make sure you are paid correctly, please complete these steps before AXLR8 stops working:\n\n' +
+  '1. Apply: enter your name, email, mobile number and age on the application page. Please use this email address, so we can match you to your existing record.\n' +
+  "2. Record your video interview: Willo will email you the link. Check your spam or junk folder if you can't see it.\n" +
+  "3. Set your password and install the app: we'll email you a password link once your interview is approved.\n" +
+  '4. Complete your profile: 11 short steps, about 20 to 30 minutes, including your bank details, HMRC starter checklist and Right to Work check. Once your documents are verified, your shifts unlock.\n\n' +
+  'Apply here: {applyLink}\n\n' +
+  "WhatsApp shift messages are stopping. Going forward you won't receive a WhatsApp message to attend a shift: you'll need to confirm and re-confirm your shifts in the Staff App.\n\n" +
+  "Have these ready: passport or EU / EEA ID card, share code (if you're not British or Irish), NI number, two referees' contact details, bank details, and a selfie.\n\n" +
+  "Need help? Just reply to this email and we'll get you sorted. You'll get this reminder each day until you've applied.\n\n" +
+  'Thank you for getting this done.\n\n' +
+  'Best wishes,\nThe Hospitality Company';
 
 export const TEMPLATES = {
   // ────────────────────────────────────────────────────────────────────────
@@ -963,6 +982,32 @@ export const TEMPLATES = {
     // would replace a candidate's N8 re-upload notification.
     tag: 'OC3',
   },
+
+  // The daily reminder to THC's own staff who were invited onto the new app
+  // and have not applied yet (ADR-0122): every `thc` row left on the invite
+  // list (ADR-0107), whose email nobody in the system holds. Queued by
+  // invite_roster_reminders() once a UK day from the hourly onboarding-chasers
+  // job, key `IR1:roster:<row id>:<UK date>`; it stops when they apply (the
+  // row is consumed) or the office removes them from the list. `named`
+  // carries the first name the sheet gives, `unnamed` is for a row without one.
+  IR1: {
+    code: 'IR1',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Reminder: please complete your registration on the new THC Staff App',
+    variants: {
+      named: {
+        title: '{name}, reminder: please complete your registration on the new THC Staff App',
+        body: `Hi {name},\n\n${INVITE_REMINDER_BODY}`,
+      },
+      unnamed: {
+        body: `Hi there,\n\n${INVITE_REMINDER_BODY}`,
+      },
+    },
+    trigger:
+      'Somebody on the THC invite list (/staff/roster, ADR-0107) who has not applied with that email yet (invite_roster_reminders). Not in §8: an addition to scope v1.6, ADR-0122',
+    timing: 'daily, once a UK day between 10:00 and 18:00, until they apply',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -1083,6 +1128,13 @@ export const MESSAGE_CODES = ['OM1', 'OM2'] as const satisfies readonly Template
  * stopping: `first`, `second`, then `repeat` every day after.
  */
 export const CHASER_CODES = ['OC1', 'OC2', 'OC3'] as const satisfies readonly TemplateCode[];
+
+/**
+ * The invite-list reminder (ADR-0122): IR1, daily to THC staff invited onto
+ * the new app who have not applied yet. Before an application there is no
+ * candidate, so it is not one of the onboarding chasers above.
+ */
+export const INVITE_CODES = ['IR1'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

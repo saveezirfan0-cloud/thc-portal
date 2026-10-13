@@ -49,6 +49,8 @@ export const EMAIL_PRESENTATION = {
     eyebrow: 'Set up your account',
     buttons: { link: 'Set your password', installLink: 'Get the THC Staff App' },
   },
+  // ADR-0122: the daily reminder to THC staff not yet on the new app.
+  IR1: { eyebrow: 'Daily reminder', buttons: { applyLink: 'Register now' } },
   CL3: { eyebrow: 'Completion letter' },
   CL4: { eyebrow: 'Right to work' },
   CL5: { eyebrow: '48-hour opt-out' },

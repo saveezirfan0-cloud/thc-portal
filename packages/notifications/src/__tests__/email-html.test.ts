@@ -69,6 +69,7 @@ const SAMPLE: Record<string, string> = {
   declaredAt: '29/09/2026 10:40',
   link: 'https://staff.thehospitalitycompany.co.uk/auth/confirm?token_hash=abc123&type=invite',
   installLink: 'https://staff.thehospitalitycompany.co.uk/install',
+  applyLink: 'https://staff.thehospitalitycompany.co.uk/apply',
   app: 'Back Office',
   event: 'Gala Dinner',
   client: 'Leonardo Hotel St Pauls',
@@ -475,6 +476,16 @@ describe('every register email has HTML (ADR-0073)', () => {
       'href="https://staff.thehospitalitycompany.co.uk/auth/confirm?token_hash=abc123&amp;type=invite"',
     );
     expect(m.html).toContain('Set your password to start onboarding:');
+  });
+
+  it('draws the IR1 apply link as the Register now button, with the URL printed under it', () => {
+    const m = email('IR1', undefined, 'named');
+    expect(m.subject).toBe(
+      'Amara Kovač, reminder: please complete your registration on the new THC Staff App',
+    );
+    expect(m.html).toContain('>Register now</a>');
+    expect(m.html).toContain('href="https://staff.thehospitalitycompany.co.uk/apply"');
+    expect(m.html).toContain('>Daily reminder</p>');
   });
 
   it('never makes a button, or a link, of a URL that is not http(s)', () => {

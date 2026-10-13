@@ -145,6 +145,11 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
     channel: 'email',
     items: [
       {
+        code: 'IR1',
+        label: 'Daily reminder to apply (THC invite list)',
+        when: 'Someone on the THC list on Staff → Invite list has not applied yet',
+      },
+      {
         code: 'OC1',
         label: 'Video interview reminder',
         when: 'A candidate has not done their Willo interview',

@@ -10,6 +10,11 @@
  * only GoTrue's admin API can make, so that part is here — in the order
  * `runChaserSweep` (packages/db/src/chasers.ts, held by vitest) fixes.
  *
+ * The same run then queues IR1, the daily reminder to everyone on the THC
+ * invite list who has not applied yet (ADR-0122, 20261013160000;
+ * `invite_roster_reminders()`, pgTAP 811), with `<STAFF_APP_URL>/apply` as
+ * its button.
+ *
  * Secrets (supabase secrets set …; never in code): STAFF_APP_URL — the
  * Staff App origin the link points at, the same one willo-webhook uses.
  * Without it no link is minted and every OC2 is counted as failed in
@@ -50,6 +55,16 @@ Deno.serve((request) =>
         level === 'error' ? console.error(message, detail) : console.log(message, detail),
     });
 
-    return { ...result };
+    // ADR-0122: the daily IR1 reminder to THC invite-list rows not yet
+    // applied. Queued after the sweep, so a failure here (job_runs shows it)
+    // never holds an OC reminder back. The button is the ordinary /apply
+    // link; with no STAFF_APP_URL the SQL queues nothing and says so.
+    const { data: invites, error: invitesError } = await db.rpc('invite_roster_reminders', {
+      p_now: now,
+      p_apply_link: origin ? `${origin.replace(/\/+$/, '')}/apply` : null,
+    });
+    if (invitesError) throw new Error(`invite_roster_reminders: ${invitesError.message}`);
+
+    return { ...result, invites };
   }),
 );
