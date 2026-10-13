@@ -93,7 +93,7 @@ export interface BoardSection {
   autoAssign: boolean;
   /** ADR-0079: the gender the client asked for on this role, or null for anyone. */
   requiredGender: 'M' | 'F' | null;
-  /** ADR-0116: the client wants the same staff on every day of this job for this role. */
+  /** ADR-0117: the client wants the same staff on every day of this job for this role. */
   sameStaffAllDays: boolean;
   allocationPerHour: number;
   confirmed: BoardBooking[];
@@ -141,7 +141,7 @@ export interface BoardEvent {
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
   /**
-   * ADR-0116: "Day 2 of 3" when this event is one day of a multi-day job
+   * ADR-0117: "Day 2 of 3" when this event is one day of a multi-day job
    * (`events.series_id`) with other live days; null when it stands alone.
    */
   seriesLabel: string | null;
@@ -246,7 +246,7 @@ export async function loadBoard(
   if (!eventRow) return { event: null, problem: null };
   const event = eventRow as Record<string, string | boolean | null>;
 
-  // ADR-0116: "Day 2 of 3", read live with the page. Only a context line, so a
+  // ADR-0117: "Day 2 of 3", read live with the page. Only a context line, so a
   // failed read drops it rather than the board.
   let seriesLabel: string | null = null;
   if (event['series_id']) {

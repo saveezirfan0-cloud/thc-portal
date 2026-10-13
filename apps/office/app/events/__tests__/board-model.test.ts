@@ -393,7 +393,7 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
 
 // ---------------------------------------------------------------------
 
-describe('Not available all days — a same-staff role (ADR-0116)', () => {
+describe('Not available all days — a same-staff role (ADR-0117)', () => {
   const none = new Set<string>();
 
   it('lists a worker the other days refuse under Unavailable, with why, after Do not return', () => {

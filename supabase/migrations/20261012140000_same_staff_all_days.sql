@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261012140000 · "Same staff on all days" (ADR-0116)
+-- Migration 20261012140000 · "Same staff on all days" (ADR-0117)
 --
 -- A deliberate change to Scope §3.2. "Multi-day = separate events created
 -- via Duplicate (the clone copies the roles, NOT the staff)" still holds:
@@ -64,7 +64,7 @@
 -- they have no availability-calendar entry over it, and the PROJECTED hours
 -- of all the series' days together fit their weekly cap (RULE-20).
 --
--- NOT ENFORCED (PROVISIONAL, awaiting the client - ADR-0116): one Accept
+-- NOT ENFORCED (PROVISIONAL, awaiting the client - ADR-0117): one Accept
 -- booking every day; withdrawing or cancelling one day cascading to the
 -- others; the worker being told "all 3 days"; a per-event switch. A worker
 -- who DECLINED a sibling day is not gated (only self-cancel is).
@@ -82,7 +82,7 @@ alter table public.events
   add column if not exists series_id uuid;
 
 comment on column public.events.series_id is
-  'ADR-0116: links the days of one multi-day job. Set on BOTH events by link_event_series() when a Duplicate of an event with a "Same staff on all days" role is saved (a new random uuid when the source had none, else the source''s). Null = a single-day event. Not under the §3.2 edit lock; never exposed to the client portal.';
+  'ADR-0117: links the days of one multi-day job. Set on BOTH events by link_event_series() when a Duplicate of an event with a "Same staff on all days" role is saved (a new random uuid when the source had none, else the source''s). Null = a single-day event. Not under the §3.2 edit lock; never exposed to the client portal.';
 
 create index if not exists events_series_idx
   on public.events (series_id) where series_id is not null;
@@ -91,7 +91,7 @@ alter table public.shift_requirements
   add column if not exists same_staff_all_days boolean not null default false;
 
 comment on column public.shift_requirements.same_staff_all_days is
-  'ADR-0116: the client wants the SAME staff on every day of this job for this role. A worker may be invited to a section with this on only if they pass the hard gates, the availability calendar and the projected weekly hours for every sibling section (same series, same role, flag on, within 14 days) - gate not_available_all_days. Off by default; per role, not per event. A silent edit (nobody booked is re-asked or removed); not under the §3.2 edit lock, like required_gender.';
+  'ADR-0117: the client wants the SAME staff on every day of this job for this role. A worker may be invited to a section with this on only if they pass the hard gates, the availability calendar and the projected weekly hours for every sibling section (same series, same role, flag on, within 14 days) - gate not_available_all_days. Off by default; per role, not per event. A silent edit (nobody booked is re-asked or removed); not under the §3.2 edit lock, like required_gender.';
 
 -- 20261001203000 replaced SELECT on this table with SELECT on every column
 -- but the two rates; a column added since needs its own grant (753 asserts
@@ -142,7 +142,7 @@ as $$
 $$;
 
 comment on function public.series_siblings(uuid) is
-  'ADR-0116: the sections a "Same staff on all days" section must also be fillable on - other events of the same series and client, same role, flag on, not cancelled, not yet ended, starting within 14 days of this section. Empty when the section is not flagged or not in a series. Mirrors seriesSiblings() in packages/domain/src/series.ts.';
+  'ADR-0117: the sections a "Same staff on all days" section must also be fillable on - other events of the same series and client, same role, flag on, not cancelled, not yet ended, starting within 14 days of this section. Empty when the section is not flagged or not in a series. Mirrors seriesSiblings() in packages/domain/src/series.ts.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The series' hours, projected, against the weekly cap
@@ -202,7 +202,7 @@ as $$
 $$;
 
 comment on function public.series_hours_blocked(uuid, uuid) is
-  'ADR-0116: would the hours of this section PLUS every flagged sibling, projected together per Mon-Sun cap week, be blocked by the rota guard (RULE-20)? The worker''s other bookings count; the series'' own sections are counted once, as projected. Three 8 h days in a student-visa term week are blocked though each fits alone. A warn verdict (Working Time 48 in warn mode) does not block, exactly as weekly_cap_would_breach(). Mirrors seriesHoursBlocked() in packages/domain/src/series.ts.';
+  'ADR-0117: would the hours of this section PLUS every flagged sibling, projected together per Mon-Sun cap week, be blocked by the rota guard (RULE-20)? The worker''s other bookings count; the series'' own sections are counted once, as projected. Three 8 h days in a student-visa term week are blocked though each fits alone. A warn verdict (Working Time 48 in warn mode) does not block, exactly as weekly_cap_would_breach(). Mirrors seriesHoursBlocked() in packages/domain/src/series.ts.';
 
 -- ---------------------------------------------------------------------
 -- 4 · The section's own pool, with a worker filter
@@ -220,7 +220,7 @@ create or replace function public.auto_assign_candidates_pool(
   -- escalation_radius_miles() of the venue. Default false = the ordinary
   -- pool, unchanged, for every caller that existed before 20260927140100.
   p_escalation boolean default false,
-  -- 20261012140000 (ADR-0116): judge only these workers. Null = the whole
+  -- 20261012140000 (ADR-0117): judge only these workers. Null = the whole
   -- pool, as before. A caller that reads the pool to judge ONE worker
   -- passes array[that worker] and pays for one row, not a thousand; the
   -- gates are the same expressions either way.
@@ -345,7 +345,7 @@ $$;
 
 
 comment on function public.auto_assign_candidates_pool(uuid, boolean, uuid[]) is
-  'The section''s OWN §3.3/§3.4 pool (the body of auto_assign_candidates as of 20261008120000), with no knowledge of series, optionally restricted to named workers (p_only: a caller that judges ONE worker passes array[worker] and pays for one row). Call auto_assign_worker_gate() for one worker and auto_assign_candidates() for a list; both add the "Same staff on all days" gate (ADR-0116). A new gate on the section itself belongs HERE. EXECUTE stays granted to authenticated and service_role - never to anon or PUBLIC - because the invoker wrappers run as the caller: the event board calls auto_assign_candidates() as an office (admin) session and that must reach this function. Gates: wrong_role, male_only / female_only / gender_not_recorded (ADR-0079), languages_not_recorded / language_not_spoken (ADR-0080), do_not_return, blocked, self_cancelled, booked_elsewhere, rtw_expired, hours_limit, and - only with p_escalation - outside_radius.';
+  'The section''s OWN §3.3/§3.4 pool (the body of auto_assign_candidates as of 20261008120000), with no knowledge of series, optionally restricted to named workers (p_only: a caller that judges ONE worker passes array[worker] and pays for one row). Call auto_assign_worker_gate() for one worker and auto_assign_candidates() for a list; both add the "Same staff on all days" gate (ADR-0117). A new gate on the section itself belongs HERE. EXECUTE stays granted to authenticated and service_role - never to anon or PUBLIC - because the invoker wrappers run as the caller: the event board calls auto_assign_candidates() as an office (admin) session and that must reach this function. Gates: wrong_role, male_only / female_only / gender_not_recorded (ADR-0079), languages_not_recorded / language_not_spoken (ADR-0080), do_not_return, blocked, self_cancelled, booked_elsewhere, rtw_expired, hours_limit, and - only with p_escalation - outside_radius.';
 
 revoke execute on function public.auto_assign_candidates_pool(uuid, boolean, uuid[]) from public, anon;
 grant  execute on function public.auto_assign_candidates_pool(uuid, boolean, uuid[]) to authenticated, service_role;
@@ -386,7 +386,7 @@ as $$
 $$;
 
 comment on function public.series_gate_for(uuid, uuid) is
-  'ADR-0116: not_available_all_days when this ONE worker fails a hard gate (the pool''s own, evaluated for them alone), has a calendar entry, or exceeds the projected weekly hours on any sibling of this flagged section; null otherwise and when there are no siblings. Costs a few single-row lookups per sibling - never a pool scan. What invite_worker, Accept, apply, take and Radar ask. Mirrors seriesGate() in packages/domain/src/series.ts.';
+  'ADR-0117: not_available_all_days when this ONE worker fails a hard gate (the pool''s own, evaluated for them alone), has a calendar entry, or exceeds the projected weekly hours on any sibling of this flagged section; null otherwise and when there are no siblings. Costs a few single-row lookups per sibling - never a pool scan. What invite_worker, Accept, apply, take and Radar ask. Mirrors seriesGate() in packages/domain/src/series.ts.';
 
 -- ONE worker: the pool's row (gate, qualified, booking_status) with the
 -- series gate applied when the pool has no gate of its own. No row = not a
@@ -409,7 +409,7 @@ as $$
 $$;
 
 comment on function public.auto_assign_worker_gate(uuid, uuid, boolean) is
-  'ADR-0116: what a caller that judges ONE worker reads - that worker''s row of the section''s pool (one row, not a scan) with not_available_all_days when the pool has no gate of its own and a sibling day refuses them. Zero rows when the pool has none (a leaver, a removed account, a non-worker). invite_worker, accept_invite, apply_to_shift, accept_application, take_offered_shift and staff_open_offers read this.';
+  'ADR-0117: what a caller that judges ONE worker reads - that worker''s row of the section''s pool (one row, not a scan) with not_available_all_days when the pool has no gate of its own and a sibling day refuses them. Zero rows when the pool has none (a leaver, a removed account, a non-worker). invite_worker, accept_invite, apply_to_shift, accept_application, take_offered_shift and staff_open_offers read this.';
 
 revoke execute on function public.auto_assign_worker_gate(uuid, uuid, boolean) from public, anon;
 grant  execute on function public.auto_assign_worker_gate(uuid, uuid, boolean) to authenticated, service_role;
@@ -493,7 +493,7 @@ as $$
 $$;
 
 comment on function public.auto_assign_candidates(uuid, boolean) is
-  'The §3.3/§3.4 pool for one role section as a LIST: auto_assign_candidates_pool() plus, since 20261012140000 (ADR-0116), the gate not_available_all_days on a section marked "Same staff on all days" - a worker who fails a hard gate, has a calendar entry, or would exceed their weekly cap (projected over all the series'' days together) on ANY sibling section. The section''s own gate always wins; the series gate is the last. For the event board, the auto-assign rounds and the wave checks. A caller that judges ONE worker must read auto_assign_worker_gate() instead: this function costs one pool scan per sibling day, and authenticated runs under statement_timeout = 8 s. Do not redefine this function to add a gate: add it to auto_assign_candidates_pool().';
+  'The §3.3/§3.4 pool for one role section as a LIST: auto_assign_candidates_pool() plus, since 20261012140000 (ADR-0117), the gate not_available_all_days on a section marked "Same staff on all days" - a worker who fails a hard gate, has a calendar entry, or would exceed their weekly cap (projected over all the series'' days together) on ANY sibling section. The section''s own gate always wins; the series gate is the last. For the event board, the auto-assign rounds and the wave checks. A caller that judges ONE worker must read auto_assign_worker_gate() instead: this function costs one pool scan per sibling day, and authenticated runs under statement_timeout = 8 s. Do not redefine this function to add a gate: add it to auto_assign_candidates_pool().';
 
 revoke execute on function public.auto_assign_candidates(uuid, boolean) from public, anon;
 grant  execute on function public.auto_assign_candidates(uuid, boolean) to authenticated, service_role;
@@ -580,14 +580,14 @@ $$;
 -- ADR-0043 said the availability calendar never gates a manual invite, an
 -- Accept, an apply or a take. That still holds for the section's OWN day.
 -- For another day of a same-staff-all-days job it no longer does: it is the
--- gate not_available_all_days (ADR-0116). The old comments are not edited
+-- gate not_available_all_days (ADR-0117). The old comments are not edited
 -- (applied migrations); the notes are appended here.
 -- ---------------------------------------------------------------------
 do $$
 declare
   r record;
   v_note constant text :=
-    ' SUPERSEDED FOR SERIES SIBLINGS by 20261012140000 (ADR-0116): on a section marked "Same staff on all days", a worker who fails a hard gate, has a calendar entry or exceeds the projected weekly hours on another day of the job is refused not_available_all_days, for every source (a manual invite, an Accept, an apply and a take included).';
+    ' SUPERSEDED FOR SERIES SIBLINGS by 20261012140000 (ADR-0117): on a section marked "Same staff on all days", a worker who fails a hard gate, has a calendar entry or exceeds the projected weekly hours on another day of the job is refused not_available_all_days, for every source (a manual invite, an Accept, an apply and a take included).';
 begin
   for r in
     select * from (values
@@ -598,9 +598,9 @@ begin
       ('public.take_offered_shift(uuid)'::regprocedure, v_note),
       ('public.staff_unavailable(uuid, timestamptz, timestamptz)'::regprocedure, v_note),
       ('public.staff_open_shifts(uuid)'::regprocedure,
-       ' Since 20261012140000 (ADR-0116) a section marked "Same staff on all days" is left off the Radar of a worker another day of the job refuses (series_gate_for, one worker, no sibling pool).'),
+       ' Since 20261012140000 (ADR-0117) a section marked "Same staff on all days" is left off the Radar of a worker another day of the job refuses (series_gate_for, one worker, no sibling pool).'),
       ('public.staff_open_offers(uuid)'::regprocedure,
-       ' Since 20261012140000 (ADR-0116) a section marked "Same staff on all days" is left off the Radar of a worker another day of the job refuses (auto_assign_worker_gate).')
+       ' Since 20261012140000 (ADR-0117) a section marked "Same staff on all days" is left off the Radar of a worker another day of the job refuses (auto_assign_worker_gate).')
     ) x(fn, note)
   loop
     execute format('comment on function %s is %L', r.fn,
@@ -688,7 +688,7 @@ begin
 end $$;
 
 comment on function public.link_event_series(uuid, uuid) is
-  'ADR-0116: Duplicate links the days of a multi-day job (only when the source has a "Same staff on all days" role - the caller decides). Sets events.series_id on BOTH the source and the clone - the source''s own when it has one, else a new random uuid. Office logins only (a viewer is refused by the read-only guard); one client; idempotent; refuses a clone already in another series and a clone that is not new (created over an hour ago, or with anybody booked). Staff are still not copied (§3.2).';
+  'ADR-0117: Duplicate links the days of a multi-day job (only when the source has a "Same staff on all days" role - the caller decides). Sets events.series_id on BOTH the source and the clone - the source''s own when it has one, else a new random uuid. Office logins only (a viewer is refused by the read-only guard); one client; idempotent; refuses a clone already in another series and a clone that is not new (created over an hour ago, or with anybody booked). Staff are still not copied (§3.2).';
 
 revoke execute on function public.link_event_series(uuid, uuid) from public, anon;
 grant  execute on function public.link_event_series(uuid, uuid) to authenticated, service_role;

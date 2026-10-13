@@ -25,7 +25,7 @@ const section = (page: Page, index = 0) => page.locator('.rolesec').nth(index);
 
 /**
  * The auto-assign track is what a person clicks; the checkbox is hidden. A role
- * section also holds the "Same staff on all days" switch (ADR-0116), so leave
+ * section also holds the "Same staff on all days" switch (ADR-0117), so leave
  * that one out rather than match every switch in the scope.
  */
 const autoAssign = (scope: Locator) =>

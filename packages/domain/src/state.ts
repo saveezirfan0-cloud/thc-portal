@@ -272,7 +272,7 @@ export const APPLICATION_ACCEPT_REFUSALS = [
   'booked_elsewhere',
   'rtw_expired',
   'hours_limit',
-  // ADR-0116: a "Same staff on all days" role and another day the worker cannot do.
+  // ADR-0117: a "Same staff on all days" role and another day the worker cannot do.
   'not_available_all_days',
 ] as const;
 

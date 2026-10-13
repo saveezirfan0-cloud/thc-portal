@@ -31,7 +31,7 @@
 -- queued, so a Payroll ID set by the office mid-run switches the next one.
 --
 -- onboarding_chasers() is restated from 20261001212000 but for the OC1
--- payload's `variant`. pgTAP: supabase/tests/804_oc1_existing_staff.sql.
+-- payload's `variant`. pgTAP: supabase/tests/805_oc1_existing_staff.sql.
 -- =====================================================================
 
 -- Is this candidate somebody who already works with us, being brought onto

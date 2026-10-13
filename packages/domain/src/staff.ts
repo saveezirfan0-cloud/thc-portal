@@ -339,7 +339,7 @@ export type AcceptRefusal =
   | 'language_not_spoken'
   | 'languages_not_recorded'
   /**
-   * ADR-0116: the role asks for the same staff on every day of a job, and
+   * ADR-0117: the role asks for the same staff on every day of a job, and
    * another day of it no longer works for the worker. The invitation is left
    * live (never withdrawn); Accept refuses.
    */
@@ -414,7 +414,7 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
     title: 'This shift isn’t available to you yet',
     body: 'This event needs staff who speak a language besides English, and we don’t have your languages on file. Please contact the office.',
   },
-  // ADR-0116: the client asked for the same people on every day of the job.
+  // ADR-0117: the client asked for the same people on every day of the job.
   not_available_all_days: {
     title: 'This job needs you free for every day of it.',
     body: 'The client asked for the same people on every day of this job, and one of the other days doesn’t work for you: a booking, a day you marked unavailable, or your weekly hours limit. Please contact the office if you think this is wrong.',
@@ -493,7 +493,7 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
   // ADR-0080. Radar does not list the shift to them; this is the race.
   language_not_spoken: ACCEPT_REFUSAL_COPY.language_not_spoken,
   languages_not_recorded: ACCEPT_REFUSAL_COPY.languages_not_recorded,
-  // ADR-0116. Radar does not list the section to them; this is the race.
+  // ADR-0117. Radar does not list the section to them; this is the race.
   not_available_all_days: ACCEPT_REFUSAL_COPY.not_available_all_days,
 };
 
