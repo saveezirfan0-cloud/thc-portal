@@ -34,6 +34,20 @@ describe('the rate card (§9.7, client-card.html)', () => {
     expect(html).not.toContain('Waiting Staff · base');
   });
 
+  it('opens the edit from the charge rate itself, so a long dress code cannot hide it', () => {
+    const long: RateCardRow = {
+      ...ROW,
+      dress_codes: [
+        'Plain BLACK Collared Long Sleeve Shirt (clean and pressed); Plain Black Trousers (not jeans/denim/cargo); Plain Black Socks (not white socks); Black Leather Polishable Shoes (no trainers)',
+      ],
+    };
+    const html = renderToStaticMarkup(<RateCard clientId="c1" rows={[long]} roles={ROLES} />);
+    expect(html).toMatch(
+      /<button[^>]*aria-label="Edit charge rate for Waiting Staff"[^>]*>£22\.97<\/button>/,
+    );
+    expect(html).toContain('class="dcs-cell"');
+  });
+
   it('shows the empty state until a role is picked, and no draft row is saved by itself', () => {
     const html = renderToStaticMarkup(<RateCard clientId="c1" rows={[]} roles={ROLES} />);
     expect(html).toContain('No roles on this rate card');
