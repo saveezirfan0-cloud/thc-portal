@@ -42,7 +42,7 @@ export interface RoleSectionInput {
   autoAssign: boolean;
   /** ADR-0079: book only this gender on the section; null for anyone. */
   requiredGender: 'M' | 'F' | null;
-  /** ADR-0116: only people who can do every other day that also asks for it. */
+  /** ADR-0117: only people who can do every other day that also asks for it. */
   sameStaffAllDays: boolean;
   allocationPerHour: number;
 }
@@ -60,7 +60,7 @@ export interface EventInput {
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
   /**
-   * ADR-0116: the event this one was Duplicated from (create only). Saving
+   * ADR-0117: the event this one was Duplicated from (create only). Saving
    * links the two as days of one multi-day job when the original has a "Same
    * staff on all days" role; the staff are not copied either way.
    */
@@ -155,7 +155,7 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
     .single();
   if (error || !event) return { error: error?.message ?? 'The event could not be saved.' };
 
-  // ADR-0116: a Duplicate of an event that has a "Same staff on all days" role
+  // ADR-0117: a Duplicate of an event that has a "Same staff on all days" role
   // is another day of the same job. Any other Duplicate ("copy last week's
   // event") is just a copy and joins no series. Linked BEFORE the sections
   // and the first auto-assign round, so that round already sees the series.

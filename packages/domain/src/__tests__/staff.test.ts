@@ -386,7 +386,7 @@ describe('refusal copy', () => {
     expect(APPLY_REFUSAL_COPY.full.title).toBe('Sorry, this shift is now full');
   });
 
-  // ADR-0116: a role that needs the same people on every day of a job.
+  // ADR-0117: a role that needs the same people on every day of a job.
   it('tells a worker a same-staff job needs them free for every day, on Accept and on Radar alike', () => {
     expect(ACCEPT_REFUSAL_COPY.not_available_all_days.title).toBe(
       'This job needs you free for every day of it.',

@@ -220,7 +220,7 @@ export interface SavedRoleSection {
   autoAssign: boolean;
   /** ADR-0079: the gender the client asked for on this role, or null for anyone. */
   requiredGender: 'M' | 'F' | null;
-  /** ADR-0116: the client wants the same staff on every day of this job for this role. */
+  /** ADR-0117: the client wants the same staff on every day of this job for this role. */
   sameStaffAllDays: boolean;
   allocationPerHour: number;
   /** Confirmed bookings on THIS role section — who re-confirms if it moves. */
@@ -248,7 +248,7 @@ export interface SavedEvent {
   requiredLanguages: string[];
   cancelledAt: string | null;
   /**
-   * ADR-0116: every event of the multi-day job this one belongs to (itself
+   * ADR-0117: every event of the multi-day job this one belongs to (itself
    * included), by date; empty when it stands alone. `seriesPosition()` turns
    * it into "Day 2 of 3".
    */
@@ -359,7 +359,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
     }
   }
 
-  // ADR-0116: the other days of the multi-day job, for "Day 2 of 3". A failed
+  // ADR-0117: the other days of the multi-day job, for "Day 2 of 3". A failed
   // read here only drops that line - it must not fail the whole event.
   const seriesDays: SeriesMember[] = [];
   if (event.series_id) {

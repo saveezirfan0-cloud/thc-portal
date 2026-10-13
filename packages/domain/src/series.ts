@@ -1,5 +1,5 @@
 /**
- * "Same staff on all days" — ADR-0116, a deliberate change to Scope §3.2.
+ * "Same staff on all days" — ADR-0117, a deliberate change to Scope §3.2.
  *
  * §3.2 says "Multi-day = separate events created via Duplicate (the clone
  * copies the roles, NOT the staff)". That still holds: nobody is copied. What
@@ -23,7 +23,7 @@
  * Accept all say the same thing; pgTAP 804 holds the SQL to the scenarios in
  * `series.vectors.json`, which this module's tests run too.
  *
- * What is NOT here, because the client has not answered yet (ADR-0116,
+ * What is NOT here, because the client has not answered yet (ADR-0117,
  * PROVISIONAL): one Accept booking every day, cancelling one day cascading to
  * the others, the worker being told "all 3 days", and a per-event switch.
  */
@@ -37,7 +37,7 @@ import { type RotaGuardInput, type RotaGuardMode, rotaGuardVerdict } from './rot
  */
 export const NOT_AVAILABLE_ALL_DAYS = 'not_available_all_days' as const;
 
-/** How far apart two days of one series may start (ADR-0116). */
+/** How far apart two days of one series may start (ADR-0117). */
 export const SERIES_WINDOW_DAYS = 14;
 
 /** The switch's label on the role section, and the chip on the board. */

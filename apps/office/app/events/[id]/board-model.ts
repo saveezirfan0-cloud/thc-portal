@@ -385,7 +385,7 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
     detail: 'marked Do not return at this client',
     tone: 'coral',
   },
-  // ADR-0116: a role that asks for the same staff on every day of the job,
+  // ADR-0117: a role that asks for the same staff on every day of the job,
   // and a worker who fails a hard gate, has marked another day unavailable or
   // would be over their weekly hours across all the days together.
   not_available_all_days: {
