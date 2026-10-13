@@ -282,7 +282,7 @@ export function maskNi(ni: string | null): string | null {
 /**
  * "40-••-•• · ••••3310" — the preview masks bank details as the staff profile
  * does (first pair of the sort code, last four of the account); the CSV
- * carries them in full (ADR-0129).
+ * carries them in full (ADR-0130).
  */
 export function maskBank(sortCode: string | null, account: string | null): string | null {
   const sort = sortCode?.replace(/[^0-9]/g, '') ?? '';

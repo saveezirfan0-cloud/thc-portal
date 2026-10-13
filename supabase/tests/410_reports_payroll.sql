@@ -58,7 +58,7 @@ insert into hmrc_checklists (staff_id, q1_other_job, q2_pension, q3_since_6_apri
   (:'w2', false, false, true,  'A', 'none',  true,  true),
   (:'w3', false, false, false, 'B', 'plan5', true,  true);
 
--- ADR-0129: the New Starter report carries bank details. W1 has given them;
+-- ADR-0130: the New Starter report carries bank details. W1 has given them;
 -- W7 had (the removal below must leave none on the report).
 insert into bank_details (staff_id, account_holder, sort_code, account_number) values
   (:'w1', 'Tom Reid',        '404784', '07313310'),
@@ -336,7 +336,7 @@ select is((select row(staff_name, date_of_birth, gender)::text from ns where sta
   'W7: the removed worker is anonymised, with no date of birth and the gender wiped by the removal trigger');
 select is((select row(bank_account_holder, bank_sort_code, bank_account_number)::text from ns where staff_id = :'w1'),
   row('Tom Reid', '40-47-84', '07313310')::text,
-  'W1: bank details in full, the sort code written 40-47-84 (ADR-0129)');
+  'W1: bank details in full, the sort code written 40-47-84 (ADR-0130)');
 select is((select row(bank_account_holder, bank_sort_code, bank_account_number)::text from ns where staff_id = :'w2'),
   row(null::text, null::text, null::text)::text,
   'W2: no bank details given yet reads blank, and W2 is still on the report');

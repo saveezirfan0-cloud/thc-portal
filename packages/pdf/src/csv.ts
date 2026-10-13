@@ -145,7 +145,7 @@ export function payrollCsv(rows: readonly PayrollCsvRow[]): string {
  * Confirmed 28.07.2026: Staff · Employee ID · NI Number · Home address ·
  * Postcode · Country · Date of birth · Gender (M/F) · First shift date ·
  * HMRC Statement (A/B/C) · Student Loan. No role, no salutation.
- * 13.10.2026 (ADR-0129): the worker's bank details follow — Account holder ·
+ * 13.10.2026 (ADR-0130): the worker's bank details follow — Account holder ·
  * Sort code · Account number — so payroll sets a starter up from one file.
  */
 export const NEW_STARTER_CSV_COLUMNS = [

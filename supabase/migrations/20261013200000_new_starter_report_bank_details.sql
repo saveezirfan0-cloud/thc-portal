@@ -1,5 +1,5 @@
 -- =====================================================================
--- Bank details on the New Starter (HMRC) report (§9.9 Tab 3, ADR-0129)
+-- Bank details on the New Starter (HMRC) report (§9.9 Tab 3, ADR-0130)
 --
 -- THC, 13.10.2026: "On the New Starter HMRC report, staff bank details
 -- should also feature." Payroll sets a new starter up from this one file,
@@ -99,7 +99,7 @@ begin
 end $$;
 
 comment on function public.new_starter_report(date) is
-  '§9.9 Tab 3: the people whose first paid shift fell in the Mon–Sun week before the picked date''s week, with the HMRC columns (Staff · Employee ID · NI · address · postcode · country · DOB · gender · first shift · statement · student loan) and their bank details (account holder · sort code · account number, ADR-0129). Role and salutation are deliberately absent. Owner and manager only (assert_finance_caller).';
+  '§9.9 Tab 3: the people whose first paid shift fell in the Mon–Sun week before the picked date''s week, with the HMRC columns (Staff · Employee ID · NI · address · postcode · country · DOB · gender · first shift · statement · student loan) and their bank details (account holder · sort code · account number, ADR-0130). Role and salutation are deliberately absent. Owner and manager only (assert_finance_caller).';
 
 create function public.new_starter_report_rows(p_send bigint)
 returns table (
@@ -118,7 +118,7 @@ begin
 end $$;
 
 comment on function public.new_starter_report_rows(bigint) is
-  'ADR-0091 step 2: the CSV rows for a prepared New Starter (HMRC) send — the workers recorded against it, with the §9.9 Tab 3 columns and their bank details (ADR-0129).';
+  'ADR-0091 step 2: the CSV rows for a prepared New Starter (HMRC) send — the workers recorded against it, with the §9.9 Tab 3 columns and their bank details (ADR-0130).';
 
 revoke execute on function public.new_starter_report(date) from public, anon;
 grant execute on function public.new_starter_report(date) to authenticated, service_role;
