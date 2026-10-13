@@ -31,7 +31,14 @@ type BufferFilter = 'all' | 'paid' | 'strict';
 /** The Rate-card-role filter's value for clients with an empty rate card. */
 const NO_RATE_CARD = '\u0000none';
 
-const PAGE_SIZE = 8;
+/**
+ * The pager's sizes. The wireframe draws a fixed 8; the office asked to pick
+ * how many rows a page holds (ADR-0124). 25 by default fits today's
+ * directory on one page.
+ */
+export const PAGE_SIZES = [10, 25, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZES)[number];
+const DEFAULT_PAGE_SIZE: PageSize = 25;
 
 /**
  * /clients — the client directory (§9.7).
@@ -50,6 +57,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('name');
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
   const [breaks, setBreaks] = useState<PolicyFilter>('all');
   const [buffer, setBuffer] = useState<BufferFilter>('all');
   const [role, setRole] = useState('');
@@ -110,9 +118,9 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
     return sorted;
   }, [clients, query, breaks, buffer, role, added, sort]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pages - 1);
-  const shown = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  const shown = filtered.slice(current * pageSize, current * pageSize + pageSize);
 
   const close = () => setEditing(null);
   const saved = () => {
@@ -336,10 +344,14 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
             </table>
           )}
         </div>
-        {filtered.length > PAGE_SIZE ? (
+        {/*
+          The pager shows once the list outgrows the smallest size, so the
+          size can still be changed while everything fits on one page.
+        */}
+        {filtered.length > PAGE_SIZES[0] ? (
           <div className="panel-h pager">
             <span className="muted sm">
-              Showing {current * PAGE_SIZE + 1}–{current * PAGE_SIZE + shown.length} of{' '}
+              Showing {current * pageSize + 1}–{current * pageSize + shown.length} of{' '}
               {filtered.length}
             </span>
             <div className="right">
@@ -362,6 +374,21 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
               >
                 Next ›
               </Button>
+              <Select
+                value={String(pageSize)}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value) as PageSize);
+                  setPage(0);
+                }}
+                aria-label="Rows per page"
+                style={{ height: 28, width: 110 }}
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size} / page
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
         ) : null}
