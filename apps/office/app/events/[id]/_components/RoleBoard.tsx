@@ -136,14 +136,20 @@ export function RoleBoard({
               </span>
             </span>
           </span>
+          {/* The role's own window (RULE-18), set large beside the fill so
+              a manager finds the start and finish first on a busy day. */}
+          <span className="role-win">
+            <ScheduledWindow
+              className="win rw-time"
+              lineClass="l2"
+              startsAt={section.startsAt}
+              endsAt={section.endsAt}
+            />
+            <span className="rw-meta">
+              UK time · {formatHours(sectionHours({ startsAt, endsAt }))}
+            </span>
+          </span>
           <span className="mono sm">{roleBoardHeader(counts)}</span>
-          <ScheduledWindow
-            className="win mono sm"
-            lineClass="l2"
-            startsAt={section.startsAt}
-            endsAt={section.endsAt}
-            suffix={`UK time · ${formatHours(sectionHours({ startsAt, endsAt }))}`}
-          />
           {section.dressCode ? (
             <span className="sm muted">
               Dress code: <b>{section.dressCode}</b>
