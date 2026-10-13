@@ -231,7 +231,8 @@ OC chasers.
 
 - **Once a UK day**, on the first onboarding-chasers run inside
   `settings.invite_roster_reminders` from/until (10:00–18:00 by default).
-  Key `IR1:roster:<row id>:<UK date>`. It stops when the row is consumed (they
+  Key `IR1:email:<md5 of address>:<UK date>`, each row due two seconds
+  after the last so other sends are not held behind ~900 of them. It stops when the row is consumed (they
   apply) or removed on `/staff/roster`.
 - **Not SpudBros**, and not a kept row whose person applied under the listed
   email (a name mismatch, or a Payroll ID held elsewhere).

@@ -19,7 +19,7 @@ import { EMAIL_PRESENTATION } from '../email-layouts';
 import { INVITE_REMINDER_LOGO } from '../email-invite-reminder';
 import { inlineLogoAttachment } from '../email-logo';
 import type { EmailMessage, OutboxRow } from '../outbox';
-import { messageFor } from '../outbox';
+import { UnsendableRow, messageFor } from '../outbox';
 import type { Template, TemplateCode } from '../templates';
 import { TEMPLATES } from '../templates';
 
@@ -589,7 +589,8 @@ describe("IR1 — the owner's own design (ADR-0122)", () => {
     const { html } = ir1({ name: '<b>Amara</b>' });
     expect(html).not.toContain('<b>Amara</b>');
     expect(html).toContain('Hi &lt;b&gt;Amara&lt;/b&gt;,');
-    expect(() => ir1({ applyLink: 'javascript:alert(1)' })).toThrow(/http\(s\) applyLink/);
+    expect(() => ir1({ applyLink: 'javascript:alert(1)' })).toThrow(UnsendableRow);
+    expect(() => ir1({ applyLink: '' })).toThrow(/http\(s\) applyLink/);
   });
 
   it('names the reply-to it is given in the footer', () => {

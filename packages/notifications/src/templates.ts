@@ -971,7 +971,8 @@ export const TEMPLATES = {
   // and have not applied yet (ADR-0122): every `thc` row left on the invite
   // list (ADR-0107), whose email nobody in the system holds. Queued by
   // invite_roster_reminders() once a UK day from the hourly onboarding-chasers
-  // job, key `IR1:roster:<row id>:<UK date>`; it stops when they apply (the
+  // job, key `IR1:email:<md5 of address>:<UK date>`, paced two seconds
+  // apart so other sends are not held behind them; it stops when they apply (the
   // row is consumed) or the office removes them from the list. `named`
   // carries the first name the sheet gives, `unnamed` is for a row without one.
   IR1: {

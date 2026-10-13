@@ -13,7 +13,7 @@
 --      is queued.
 -- =====================================================================
 begin;
-select plan(24);
+select plan(28);
 \ir _shared/fixtures.psql
 
 \set s_here '81100000-0000-4000-8000-000000000001'
@@ -85,8 +85,8 @@ select ok(not exists (select 1 from notification_outbox where template = 'IR1' a
   'somebody who applied with the listed email is not, whatever the case or spaces');
 select is(
   (select key from notification_outbox where template = 'IR1' and recipient_emails = array['ivy@ir1.test']),
-  'IR1:roster:' || (select id from invite_roster where email = 'ivy@ir1.test') || ':2026-10-14',
-  'keyed on the list row and the UK day');
+  'IR1:email:' || md5('ivy@ir1.test') || ':2026-10-14',
+  'keyed on the address and the UK day');
 select is(
   (select payload - 'at' from notification_outbox where template = 'IR1' and recipient_emails = array['ivy@ir1.test']),
   jsonb_build_object('variant', 'named', 'name', 'Ivy', 'applyLink', :'link', 'day', '2026-10-14'),
@@ -98,6 +98,14 @@ select ok(
   (select bool_and(channel = 'email' and recipient_staff_id is null) from notification_outbox where template = 'IR1'),
   'an email to the listed address, with no staff record behind it');
 
+-- Paced: two seconds apart, in address order, from the run's own time, so
+-- a notification queued a minute later is due before most of them.
+select is(
+  (select array_agg(send_after - timestamptz '2026-10-14 10:07+01' order by recipient_emails[1])
+     from notification_outbox where template = 'IR1'),
+  array[interval '0 seconds', interval '2 seconds', interval '4 seconds'],
+  'the rows are due two seconds apart, not all at once');
+
 -- =====================================================================
 -- C · once a UK day
 -- =====================================================================
@@ -105,6 +113,17 @@ select is((invite_roster_reminders(timestamptz '2026-10-14 17:07+01', :'link') -
   'later the same day: nothing more');
 select is((invite_roster_reminders(timestamptz '2026-10-15 10:07+01', :'link') ->> 'ir1')::int, 3,
   'the next day: one each again');
+
+-- The office removes Gus and loads him again the same day: still one email.
+delete from invite_roster where email = 'gone@ir1.test';
+insert into invite_roster (email, first_name, last_name, payroll_id, grp) values
+  ('gone@ir1.test', 'Gus', 'Gone', '9105', 'thc');
+select is((invite_roster_reminders(timestamptz '2026-10-15 15:07+01', :'link') ->> 'ir1')::int, 0,
+  'removed and loaded again the same day: no second email');
+select is((select count(*)::int from notification_outbox
+            where template = 'IR1' and recipient_emails = array['gone@ir1.test']
+              and payload ->> 'day' = '2026-10-15'), 1,
+  'Gus has exactly one for the 15th');
 
 -- They apply: the row is consumed, and the reminders stop.
 delete from invite_roster where email = 'ivy@ir1.test';
@@ -114,6 +133,10 @@ select ok(not exists (select 1 from notification_outbox
                        where template = 'IR1' and recipient_emails = array['ivy@ir1.test']
                          and payload ->> 'day' = '2026-10-16'),
   'and it is Ivy who dropped out');
+
+select is(
+  (select min(send_after) from notification_outbox where template = 'IR1' and payload ->> 'day' = '2026-10-16'),
+  timestamptz '2026-10-16 10:07+01', 'each day''s pacing starts at that run');
 
 -- The clocks go back on 25 October: 10:07 UK is 10:07Z, and still day one of the 26th.
 select is((invite_roster_reminders(timestamptz '2026-10-26 10:07Z', :'link') ->> 'day'),

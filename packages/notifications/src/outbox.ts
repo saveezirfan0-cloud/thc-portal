@@ -10,6 +10,7 @@
  * can be tested with nothing.
  */
 
+import { isHttpUrl } from './email-html.ts';
 import { templateEmailHtml } from './email-layouts.ts';
 import { DEFAULT_SENDER_ADDRESSES } from './senders.ts';
 import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
@@ -165,6 +166,11 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
   const to = entry.recipients ?? row.recipient_emails;
   if (!to || to.length === 0) {
     throw new UnsendableRow(`${row.template} is an email with no recipient`);
+  }
+  // IR1's button is its whole point (ADR-0122): without an http(s) link the
+  // row is wrong, not late, so it fails once rather than retrying.
+  if (row.template === 'IR1' && !isHttpUrl(values.applyLink ?? '')) {
+    throw new UnsendableRow('IR1 needs an http(s) applyLink in its payload');
   }
   const subject = render(heading, values);
   const text = render(copy, values);

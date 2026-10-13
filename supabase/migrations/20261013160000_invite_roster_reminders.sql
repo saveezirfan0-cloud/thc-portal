@@ -19,7 +19,8 @@
 -- When: once per UK calendar day, on the first run of the hourly
 -- onboarding-chasers job inside settings.invite_roster_reminders from/until
 -- (10:00–18:00 UK by default — the same daytime as OC1–OC3). The key
--- `IR1:roster:<row id>:<UK date>` makes it one a day whatever the job does.
+-- `IR1:email:<md5 of the address>:<UK date>` makes it one a day whatever the
+-- job does, even if the office removes and reloads somebody that day.
 -- A missed day (the job paused, a deploy) is not caught up.
 --
 -- Until: they apply (the row is consumed, so nothing is queued the next
@@ -31,8 +32,9 @@
 -- link nothing is queued and the run says why: a reminder without its
 -- button is worse than none.
 --
--- The drain sends 40 a minute, so a full list goes out in about 25
--- minutes of the first run.
+-- Paced two seconds apart (30 a minute, the drain's rate being 40), so a
+-- full list goes out over about half an hour and every other notification
+-- queued meanwhile still goes on time.
 --
 -- pgTAP: supabase/tests/811_invite_roster_reminders.sql.
 -- =====================================================================
@@ -111,20 +113,32 @@ begin
     return jsonb_build_object('skipped', 'no apply link (STAFF_APP_URL is not set or not an origin)');
   end if;
 
-  with ins as (
-    insert into notification_outbox (key, channel, template, recipient_emails, payload)
-    select 'IR1:roster:' || r.id || ':' || v_day,
-           'email', 'IR1', array[r.email],
-           case when coalesce(btrim(r.first_name), '') <> ''
-                then jsonb_build_object('variant', 'named', 'name', btrim(r.first_name))
-                else jsonb_build_object('variant', 'unnamed')
-           end
-           || jsonb_build_object('applyLink', v_link, 'day', v_day, 'at', p_now)
+  -- Paced, two seconds apart: the drain claims by send_after and sends 40 a
+  -- minute, so ~900 rows all due at once would hold every later send (an N9
+  -- "time to check in", an invitation) behind them for ~22 minutes. Spread
+  -- at 30 a minute, anything queued meanwhile is due before most of them.
+  -- Keyed on the address, not the row: a row removed and loaded again the
+  -- same day is still one email that day.
+  with due as (
+    select r.*, row_number() over (order by r.email) - 1 as n
       from invite_roster r
      where r.grp = 'thc'
        and not exists (select 1 from staff s
                         where lower(btrim(s.email)) = r.email
                           and s.removed_at is null)
+       and not exists (select 1 from notification_outbox o
+                        where o.key = 'IR1:email:' || md5(r.email) || ':' || v_day)
+  ), ins as (
+    insert into notification_outbox (key, channel, template, recipient_emails, payload, send_after)
+    select 'IR1:email:' || md5(d.email) || ':' || v_day,
+           'email', 'IR1', array[d.email],
+           case when coalesce(btrim(d.first_name), '') <> ''
+                then jsonb_build_object('variant', 'named', 'name', btrim(d.first_name))
+                else jsonb_build_object('variant', 'unnamed')
+           end
+           || jsonb_build_object('applyLink', v_link, 'day', v_day, 'at', p_now),
+           p_now + d.n * interval '2 seconds'
+      from due d
     on conflict (key) do nothing
     returning 1
   ) select count(*) into v_n from ins;
