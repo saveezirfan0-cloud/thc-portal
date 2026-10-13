@@ -9557,6 +9557,9 @@ export type Database = {
       new_starter_report: {
         Args: { p_date: string };
         Returns: {
+          bank_account_holder: string;
+          bank_account_number: string;
+          bank_sort_code: string;
           country: string;
           date_of_birth: string;
           employee_id: number;
@@ -9578,6 +9581,9 @@ export type Database = {
       new_starter_rows: {
         Args: { p_staff: string[] };
         Returns: {
+          bank_account_holder: string;
+          bank_account_number: string;
+          bank_sort_code: string;
           country: string;
           date_of_birth: string;
           employee_id: number;

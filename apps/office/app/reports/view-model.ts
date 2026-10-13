@@ -279,6 +279,19 @@ export function maskNi(ni: string | null): string | null {
   return `${'●'.repeat(Math.max(clean.length - 2, 0))}${clean.slice(-2)}`;
 }
 
+/**
+ * "40-••-•• · ••••3310" — the preview masks bank details as the staff profile
+ * does (first pair of the sort code, last four of the account); the CSV
+ * carries them in full (ADR-0128).
+ */
+export function maskBank(sortCode: string | null, account: string | null): string | null {
+  const sort = sortCode?.replace(/[^0-9]/g, '') ?? '';
+  const acct = account?.replace(/[^0-9]/g, '') ?? '';
+  if (!sort && !acct) return null;
+  const parts = [sort ? `${sort.slice(0, 2)}-••-••` : null, acct ? `••••${acct.slice(-4)}` : null];
+  return parts.filter(Boolean).join(' · ');
+}
+
 /** "Mon 8 – Sun 14 Sep" for a period. */
 export function periodLabel(from: string, to: string): string {
   const a = new Date(`${from}T00:00:00Z`);

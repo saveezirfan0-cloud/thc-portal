@@ -22,7 +22,7 @@
 -- dashboard.
 -- =====================================================================
 begin;
-select plan(102);
+select plan(105);
 \ir _shared/fixtures.psql
 
 \set r_wait '41000000-0000-4000-8000-000000000001'
@@ -57,6 +57,12 @@ insert into hmrc_checklists (staff_id, q1_other_job, q2_pension, q3_since_6_apri
   (:'w1', false, false, false, 'B', 'plan2', false, true),
   (:'w2', false, false, true,  'A', 'none',  true,  true),
   (:'w3', false, false, false, 'B', 'plan5', true,  true);
+
+-- ADR-0128: the New Starter report carries bank details. W1 has given them;
+-- W7 had (the removal below must leave none on the report).
+insert into bank_details (staff_id, account_holder, sort_code, account_number) values
+  (:'w1', 'Tom Reid',        '404784', '07313310'),
+  (:'w7', 'Grace Lindqvist', '201234', '55558812');
 
 -- One event + one section per shift. Charge: Waiting £22.97, Bar £24.50, Host £26.00.
 create function pg_temp.section(p_title text, p_role uuid, p_start timestamptz, p_hours numeric,
@@ -328,6 +334,15 @@ select is((select student_loan from ns where staff_id = :'w3'), 'Plan 5 + Postgr
 select is((select row(staff_name, date_of_birth, gender)::text from ns where staff_id = :'w7'),
   row('Deleted account #91007', null::date, null::text)::text,
   'W7: the removed worker is anonymised, with no date of birth and the gender wiped by the removal trigger');
+select is((select row(bank_account_holder, bank_sort_code, bank_account_number)::text from ns where staff_id = :'w1'),
+  row('Tom Reid', '40-47-84', '07313310')::text,
+  'W1: bank details in full, the sort code written 40-47-84 (ADR-0128)');
+select is((select row(bank_account_holder, bank_sort_code, bank_account_number)::text from ns where staff_id = :'w2'),
+  row(null::text, null::text, null::text)::text,
+  'W2: no bank details given yet reads blank, and W2 is still on the report');
+select is((select row(bank_account_holder, bank_sort_code, bank_account_number)::text from ns where staff_id = :'w7'),
+  row(null::text, null::text, null::text)::text,
+  'W7: the removed worker carries no bank details');
 select is((select count(*)::int from ns where staff_id = :'w6'), 0,
   'W6: a no-show never "actually worked" and is not a new starter');
 
