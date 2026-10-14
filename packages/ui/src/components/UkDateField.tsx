@@ -6,7 +6,7 @@ import { UK_DATE_PLACEHOLDER, readUkDate, typeUkDate, ukDateText } from './ukdat
 
 export interface UkDateFieldProps {
   /** The field's name for people. Visible unless `labelHidden`. */
-  label: string;
+  label: ReactNode;
   /**
    * Keep the label for a screen reader only — for a filter row whose
    * placeholder and neighbours already say what the box is ("Added from").
