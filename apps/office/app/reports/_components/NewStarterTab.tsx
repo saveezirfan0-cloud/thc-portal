@@ -6,6 +6,7 @@ import {
   employeeId,
   exportHref,
   formatUkStamp,
+  maskBank,
   maskNi,
   newStarterPeriod,
   periodLabel,
@@ -107,18 +108,20 @@ export function NewStarterTab({
                 <th>First shift date</th>
                 <th>HMRC Statement</th>
                 <th>Student Loan</th>
+                <th>Bank details</th>
               </tr>
             </thead>
             <tbody>
               {starters.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="muted">
+                  <td colSpan={12} className="muted">
                     No new starters worked a shift in {periodLabel(period.from, period.to)}.
                   </td>
                 </tr>
               ) : (
                 starters.map((s, index) => {
                   const masked = maskNi(s.ni_number);
+                  const bank = maskBank(s.bank_sort_code, s.bank_account_number);
                   return (
                     <tr key={s.staff_id}>
                       <td>
@@ -155,6 +158,16 @@ export function NewStarterTab({
                         )}
                       </td>
                       <td className="sm">{s.student_loan ?? '—'}</td>
+                      <td className="sm">
+                        {s.bank_account_holder ?? (bank ? null : <span className="muted">—</span>)}
+                        {bank ? <span className="sub mono rp-nowrap">{bank}</span> : null}
+                        {bank && index === 0 ? (
+                          <span className="sub">full details in the CSV</span>
+                        ) : null}
+                        {!bank && !s.removed ? (
+                          <span className="sub">not given yet — blank in the CSV</span>
+                        ) : null}
+                      </td>
                     </tr>
                   );
                 })

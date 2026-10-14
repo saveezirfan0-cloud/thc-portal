@@ -3,6 +3,7 @@ import {
   exportHref,
   formatUkStamp,
   lastWeek,
+  maskBank,
   maskNi,
   newStarterPeriod,
   parseReportView,
@@ -149,6 +150,12 @@ describe('figures', () => {
   it('masks the NI number on screen, keeping the last two characters', () => {
     expect(maskNi('QQ 12 34 56 A')).toBe('●●●●●●●6A');
     expect(maskNi(null)).toBeNull();
+  });
+
+  it('masks bank details as the staff profile does; the CSV carries them in full', () => {
+    expect(maskBank('40-47-84', '07313310')).toBe('40-••-•• · ••••3310');
+    expect(maskBank('404784', null)).toBe('40-••-••');
+    expect(maskBank(null, null)).toBeNull();
   });
 
   it('labels a period the way the wireframe does', () => {

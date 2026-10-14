@@ -44,6 +44,44 @@ export function roleBoardHeader(counts: RoleBoardCounts): string {
 }
 
 /**
+ * The role section's fill badge — "0 / 2 filled · 2 to fill" — set large at
+ * the front of the header so a manager reads how far each role is from its
+ * requested headcount at a glance, before the detail line.
+ *
+ * Same rule as the header: CONFIRMED against HEADCOUNT, never headcount +
+ * buffer, so a role reads "Full" the moment its headcount is confirmed and
+ * buffer seats taken beyond it are named, not added. Amber while short,
+ * green once full — the tones the events list uses for the same fill.
+ */
+export interface RoleFill {
+  confirmed: number;
+  headcount: number;
+  open: number;
+  full: boolean;
+  tone: 'green' | 'amber';
+  /** "2 to fill", "1 to fill", "Full", "Full · +1 buffer". */
+  gap: string;
+  /** 0–100, capped: the bar never runs past full on buffer seats. */
+  percent: number;
+}
+
+export function roleFill(counts: RoleBoardCounts): RoleFill {
+  const open = openSlots(counts);
+  const full = open === 0;
+  const extra = Math.max(0, counts.confirmed - counts.headcount);
+  return {
+    confirmed: counts.confirmed,
+    headcount: counts.headcount,
+    open,
+    full,
+    tone: full ? 'green' : 'amber',
+    gap: full ? (extra > 0 ? `Full · +${extra} buffer` : 'Full') : `${open} to fill`,
+    percent:
+      counts.headcount === 0 ? 100 : Math.min(100, (counts.confirmed / counts.headcount) * 100),
+  };
+}
+
+/**
  * Whether Invited and Potential pool are shown for this role at all (§3.3).
  *
  * They are hidden ENTIRELY — not rendered empty — once the role is confirmed

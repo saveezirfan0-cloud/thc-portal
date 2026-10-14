@@ -185,19 +185,32 @@ describe('New Starter CSV (§9.9 Tab 3)', () => {
     first_shift_date: '2026-09-10',
     hmrc_statement: 'B',
     student_loan: 'Plan 2',
+    bank_account_holder: 'Chen Wei',
+    bank_sort_code: '40-47-84',
+    bank_account_number: '07313310',
   };
 
-  it('has exactly the confirmed columns — no role, no salutation', () => {
+  it('has exactly the confirmed columns, bank details last — no role, no salutation', () => {
     expect(lines(newStarterCsv([]))[0]).toBe(
-      'Staff,Employee ID,NI Number,Home address,Postcode,Country,Date of birth,Gender,First shift date,HMRC Statement,Student Loan',
+      'Staff,Employee ID,NI Number,Home address,Postcode,Country,Date of birth,Gender,First shift date,HMRC Statement,Student Loan,Account holder,Sort code,Account number',
     );
     expect(NEW_STARTER_CSV_COLUMNS).not.toContain('Role');
   });
 
-  it('writes the full NI number, quotes the comma-bearing address and uses DD/MM/YYYY', () => {
+  it('writes the full NI number and bank details, quotes the comma-bearing address and uses DD/MM/YYYY', () => {
     expect(lines(newStarterCsv([chen]))[1]).toBe(
-      'Chen Wei,THC-00960,QQ123456A,"Flat 4, 12 Exhibition Rd, London",SW7 2HE,United Kingdom,21/11/2003,M,10/09/2026,B,Plan 2',
+      'Chen Wei,THC-00960,QQ123456A,"Flat 4, 12 Exhibition Rd, London",SW7 2HE,United Kingdom,21/11/2003,M,10/09/2026,B,Plan 2,Chen Wei,40-47-84,07313310',
     );
+  });
+
+  it('leaves bank details blank for a starter who has not given them yet', () => {
+    const row = {
+      ...chen,
+      bank_account_holder: null,
+      bank_sort_code: null,
+      bank_account_number: null,
+    };
+    expect(lines(newStarterCsv([row]))[1]).toMatch(/,Plan 2,,,$/);
   });
 
   it('leaves a missing NI number blank rather than inventing one', () => {
