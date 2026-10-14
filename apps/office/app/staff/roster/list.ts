@@ -134,11 +134,11 @@ export function bySurname(a: RosterEntry, b: RosterEntry): number {
   return 0;
 }
 
-const BOM = '﻿';
+const BOM = '\uFEFF';
 const EOL = '\r\n';
 
-/** `2026-10-08` in Europe/London. */
-function ukDate(iso: string | null): string {
+/** `2026-10-08` in Europe/London (§1.8), for the screen's Loaded column and the CSV. */
+export function ukDate(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';

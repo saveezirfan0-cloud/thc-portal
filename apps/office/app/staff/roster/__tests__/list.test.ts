@@ -121,7 +121,7 @@ describe('the invite list CSV', () => {
       index,
     );
     const csv = rosterCsv(shown.sort(bySurname), index, report);
-    expect(csv.startsWith('﻿First name,Last name,Email,Payroll ID,Group,Status,')).toBe(true);
+    expect(csv.startsWith('\uFEFFFirst name,Last name,Email,Payroll ID,Group,Status,')).toBe(true);
     const lines = csv.slice(1).split('\r\n');
     expect(lines).toHaveLength(4);
     expect(lines[1]).toBe(

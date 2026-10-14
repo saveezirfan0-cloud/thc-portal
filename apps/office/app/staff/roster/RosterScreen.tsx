@@ -22,6 +22,7 @@ import {
   rosterExportHref,
   rosterIndex,
   standingCounts,
+  ukDate,
 } from './list';
 import type { RosterIndex } from './list';
 
@@ -76,6 +77,13 @@ export function RosterScreen({
   };
 
   const remove = (ids: string[] | null) => {
+    if (
+      ids === null &&
+      !window.confirm(
+        `Clear the whole invite list? All ${waiting.length} rows are removed, whatever the filter shows, and nobody on it is matched when they apply.`,
+      )
+    )
+      return;
     setFailure(null);
     start(async () => {
       const result = await removeRosterEntries(ids);
@@ -124,7 +132,10 @@ export function RosterScreen({
   const spud = waiting.filter((row) => row.grp === 'spudbros').length;
   const index = rosterIndex(reminders);
   const [url, setUrl] = useListQuery(ROSTER_QUERY);
-  const filter = parseRosterFilter(url);
+  // Without the report nobody can be told apart by status, so the Status
+  // filter and the export (which needs it too) are not offered.
+  const parsed = parseRosterFilter(url);
+  const filter = reminders ? parsed : { ...parsed, status: 'all' as const };
   const shown = filterRoster(waiting, filter, index);
   const counts = standingCounts(waiting, filter.grp, index);
   const filtered = filter.grp !== 'all' || filter.status !== 'all' || filter.q !== '';
@@ -215,23 +226,25 @@ export function RosterScreen({
                 <option value="spudbros">{GROUP_LABEL.spudbros}</option>
                 <option value="thc">{GROUP_LABEL.thc}</option>
               </Select>
-              <Select
-                aria-label="Status"
-                value={filter.status}
-                onChange={(event) => setUrl({ status: event.target.value })}
-                style={{ width: 230 }}
-              >
-                <option value="all">Any status ({counts.all})</option>
-                <option value="waiting">
-                  {STANDING_LABEL.waiting} ({counts.waiting})
-                </option>
-                <option value="match">
-                  {STANDING_LABEL.match} ({counts.match})
-                </option>
-                <option value="applied">
-                  {STANDING_LABEL.applied} ({counts.applied})
-                </option>
-              </Select>
+              {reminders ? (
+                <Select
+                  aria-label="Status"
+                  value={filter.status}
+                  onChange={(event) => setUrl({ status: event.target.value })}
+                  style={{ width: 230 }}
+                >
+                  <option value="all">Any status ({counts.all})</option>
+                  <option value="waiting">
+                    {STANDING_LABEL.waiting} · no possible match ({counts.waiting})
+                  </option>
+                  <option value="match">
+                    {STANDING_LABEL.match} ({counts.match})
+                  </option>
+                  <option value="applied">
+                    {STANDING_LABEL.applied} ({counts.applied})
+                  </option>
+                </Select>
+              ) : null}
               <SearchInput
                 aria-label="Search the invite list"
                 placeholder="Search name, email, Payroll ID"
@@ -239,12 +252,12 @@ export function RosterScreen({
                 onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
               />
               <div className="right">
-                {shown.length > 0 ? (
+                {shown.length > 0 && reminders ? (
                   <a
                     className="btn ghost sm"
                     href={rosterExportHref(filter)}
                     download
-                    title="Download what is shown as a spreadsheet (CSV, opens in Excel)"
+                    aria-label={`Export CSV of the ${shown.length} rows shown, a spreadsheet that opens in Excel`}
                   >
                     Export CSV ({shown.length})
                   </a>
@@ -257,7 +270,7 @@ export function RosterScreen({
               </div>
             </div>
             {filtered ? (
-              <p className="muted sm">
+              <p className="muted sm" role="status">
                 Showing {shown.length} of {waiting.length}.{' '}
                 <Button
                   size="sm"
@@ -301,7 +314,7 @@ export function RosterScreen({
                         <td className="sm">
                           <ReminderCell row={row} reminders={reminders} index={index} />
                         </td>
-                        <td className="sm muted">{row.loaded_at.slice(0, 10)}</td>
+                        <td className="sm muted">{ukDate(row.loaded_at)}</td>
                         {canEdit ? (
                           <td className="cell-actions">
                             <Button
