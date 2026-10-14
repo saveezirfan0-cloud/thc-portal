@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Button, Pill } from '@thc/ui';
+import { Button, Pill, toast } from '@thc/ui';
 import { formatLanguages, normaliseLanguages } from '@thc/domain';
 import { LanguagePicker } from '../../_components/LanguagePicker';
+import { useSavedFlash } from '../../_lib/useSavedFlash';
 import { saveLanguages } from './actions';
 
 /**
@@ -38,6 +39,8 @@ export function LanguagesField({
   }
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // ADR-0137 §1: a field that saves on change says that it did.
+  const [saved, flashSaved] = useSavedFlash();
 
   if (shown === undefined || removed) return <span className="muted">—</span>;
 
@@ -46,8 +49,11 @@ export function LanguagesField({
     setFailure(null);
     start(async () => {
       const result = await saveLanguages(staffId, value);
-      if (result.ok) setShown(value);
-      else setFailure(result.message);
+      if (result.ok) {
+        setShown(value);
+        flashSaved();
+        toast('Languages saved', { tone: 'green' });
+      } else setFailure(result.message);
     });
   };
 
@@ -81,6 +87,17 @@ export function LanguagesField({
             </>
           ) : null}
         </>
+      ) : null}
+      {pending ? (
+        <span className="muted sm saved-note" role="status">
+          {' '}
+          Saving…
+        </span>
+      ) : saved ? (
+        <span className="saved-note" role="status">
+          {' '}
+          <Pill tone="green">Saved</Pill>
+        </span>
       ) : null}
       {failure ? (
         <>

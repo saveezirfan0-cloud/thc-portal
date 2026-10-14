@@ -15,9 +15,11 @@ import {
   Tabs,
   Textarea,
   TileGrid,
+  toast,
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { RecordHistory } from '../../_components/history/RecordHistory';
+import { useConfirm } from '../../_components/useConfirm';
 import { oneOf, useListQuery } from '../../_lib/listQuery';
 import {
   RTW_LABEL,
@@ -148,6 +150,8 @@ export function ProfileScreen({
   );
   const unheld = data.roles.filter((role) => !profile.role_names.includes(role.name));
 
+  // ADR-0137 §1: a role chip's × used to remove on the click.
+  const confirm = useConfirm();
   const run = (
     work: () => Promise<{ ok: true } | { ok: false; message: string }>,
     after?: () => void,
@@ -269,7 +273,18 @@ export function ProfileScreen({
                           aria-label={`Remove ${name}`}
                           title="Also removes this worker’s client qualifications for this role — except any marked Do not return, which the database keeps"
                           disabled={pending}
-                          onClick={() => run(() => removeRole(profile.id, role.id))}
+                          onClick={() =>
+                            confirm.ask({
+                              title: `Remove ${name} from ${profile.display_name}?`,
+                              body: `They stop being offered ${name} shifts, and their client qualifications for ${name} go with it — except any marked Do not return, which stay. Add the role again to offer it again; the qualifications come back only by hand or after a clean shift.`,
+                              confirm: 'Remove role',
+                              onConfirm: () =>
+                                run(
+                                  () => removeRole(profile.id, role.id),
+                                  () => toast(`${name} removed`, { tone: 'green' }),
+                                ),
+                            })
+                          }
                         >
                           ×
                         </button>
@@ -708,6 +723,7 @@ export function ProfileScreen({
           />
         </div>
       </Modal>
+      {confirm.dialog}
     </OfficeShell>
   );
 }

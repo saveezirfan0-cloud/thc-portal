@@ -14,6 +14,7 @@ import {
   Switch,
   TableScroll,
   Textarea,
+  toast,
 } from '@thc/ui';
 import {
   employeeId,
@@ -24,6 +25,7 @@ import {
 } from '../../staff/staff';
 import { qualifyStaff, revokeQualification, setDoNotReturn } from './actions';
 import { grantedHow, groupByRole } from './card';
+import { useConfirm } from '../../_components/useConfirm';
 import type { QualifiedStaffRow, RateCardRow, StaffOption } from './types';
 
 /**
@@ -115,6 +117,8 @@ export function QualifiedStaff({
     });
   };
 
+  // ADR-0137 §1: Remove used to happen on the click.
+  const confirm = useConfirm();
   const closeAdding = () => {
     setAdding(false);
     setDialogProblem(null);
@@ -326,7 +330,16 @@ export function QualifiedStaff({
                                     : `Removes ${group.role} only. A later clean shift here may re-grant it.`
                                 }
                                 onClick={() =>
-                                  run(() => revokeQualification(clientId, qualificationId))
+                                  confirm.ask({
+                                    title: `Remove ${row.display_name} as ${group.role}?`,
+                                    body: `They stop being first choice (Wave 1) for ${group.role} at this client. A later clean shift here may grant it again automatically; to keep them away, switch Do not return on instead.`,
+                                    confirm: 'Remove qualification',
+                                    onConfirm: () =>
+                                      run(
+                                        () => revokeQualification(clientId, qualificationId),
+                                        () => toast('Qualification removed', { tone: 'green' }),
+                                      ),
+                                  })
                                 }
                               >
                                 Remove
@@ -354,6 +367,7 @@ export function QualifiedStaff({
         </span>
       </div>
 
+      {confirm.dialog}
       <Modal
         open={adding}
         title="Add qualified staff"

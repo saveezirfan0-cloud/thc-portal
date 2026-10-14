@@ -94,3 +94,20 @@
     min-height: var(--tap-min);
   }
 }
+
+/* The staff pay rate itself opens the role's edit — the header's ✎
+   (release audit L8), drawn as the client card's charge rate is. */
+.rate-open {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--line);
+}
+.rate-open:hover,
+.rate-open:focus-visible {
+  color: var(--cyan-ink);
+  border-bottom-color: currentColor;
+}

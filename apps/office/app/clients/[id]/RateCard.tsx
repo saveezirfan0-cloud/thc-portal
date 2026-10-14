@@ -13,8 +13,10 @@ import {
   Panel,
   Select,
   TableScroll,
+  toast,
 } from '@thc/ui';
 import { DRESS_CODE_MAX, lengthHint } from '../../_lib/length';
+import { useConfirm } from '../../_components/useConfirm';
 import { finalPence, toPence } from '../../roles/money';
 import { addRole, removeRole, updateRole } from './actions';
 import {
@@ -117,6 +119,8 @@ function EditableRateCard({
     save: () => void;
   } | null>(null);
   const [pending, start] = useTransition();
+  // ADR-0137 §1: Remove used to happen on the click.
+  const confirm = useConfirm();
 
   const unlisted = roles.filter(
     (role) => !rows.some((row) => row.role_id === role.id) && role.id !== draft?.id,
@@ -362,7 +366,25 @@ function EditableRateCard({
                             ? `${row.section_count} built role sections keep the rate they were built with — this only removes the role from the next event's options`
                             : undefined
                         }
-                        onClick={() => run(() => removeRole(clientId, row.id))}
+                        onClick={() =>
+                          confirm.ask({
+                            title: `Remove ${row.role_name} from this rate card?`,
+                            body: `Its charge rate and dress codes for this client go.${
+                              row.section_count > 0
+                                ? ` The ${row.section_count} role sections already built keep the rates they were built with.`
+                                : ''
+                            } The next event for this client cannot use ${row.role_name} until it is added back here.`,
+                            confirm: 'Remove role',
+                            onConfirm: () =>
+                              run(
+                                () => removeRole(clientId, row.id),
+                                () =>
+                                  toast(`${row.role_name} removed from the rate card`, {
+                                    tone: 'green',
+                                  }),
+                              ),
+                          })
+                        }
                       >
                         Remove
                       </Button>
@@ -375,6 +397,7 @@ function EditableRateCard({
         </TableScroll>
       )}
 
+      {confirm.dialog}
       <Modal
         open={loss !== null}
         title="This charge rate loses money"

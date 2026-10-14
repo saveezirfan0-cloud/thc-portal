@@ -125,7 +125,18 @@ export function RolesScreen({
                       </td>
                       <td className="sm muted desc">{role.description ?? '—'}</td>
                       <td data-label="Staff pay rate" className="money">
-                        {formatPounds(toPence(role.pay_rate))}
+                        {/* Release audit L8: the ✎ in the header promised the
+                            figure opens the edit; now it does, as the client
+                            card's charge rate does. */}
+                        <button
+                          type="button"
+                          className="rate-open"
+                          title="Edit staff pay rate"
+                          aria-label={`Edit staff pay rate for ${role.name}`}
+                          onClick={() => setEditing(role)}
+                        >
+                          {formatPounds(toPence(role.pay_rate))}
+                        </button>
                       </td>
                       <td data-label="Holiday +12.07%" className="money hol">
                         {formatAddition(toPence(role.holiday_rate))}

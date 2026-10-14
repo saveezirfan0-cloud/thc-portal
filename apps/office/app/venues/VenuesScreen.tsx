@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Select, TableScroll, Tabs } from '@thc/ui';
+import { Button, EmptyState, Note, Panel, Select, TableScroll, Tabs, toast } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { Pager } from '../_components/Pager';
 import {
@@ -148,9 +148,11 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     setDeleting(null);
   };
 
-  const saved = () => {
+  // ADR-0137 §1 (release audit L10): a list edit says that it worked.
+  const saved = (message: string) => () => {
     close();
     router.refresh();
+    toast(message, { tone: 'green' });
   };
 
   return (
@@ -391,12 +393,17 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           venue={editing === 'new' ? null : editing}
           venueTypes={venueTypes}
           onClose={close}
-          onSaved={saved}
+          onSaved={saved(editing === 'new' ? 'Venue created' : 'Venue saved')}
         />
       ) : null}
 
       {deleting ? (
-        <DeleteVenueModal key={deleting.id} venue={deleting} onClose={close} onDeleted={saved} />
+        <DeleteVenueModal
+          key={deleting.id}
+          venue={deleting}
+          onClose={close}
+          onDeleted={saved('Venue deleted')}
+        />
       ) : null}
     </>
   );

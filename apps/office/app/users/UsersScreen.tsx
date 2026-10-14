@@ -540,7 +540,9 @@ function LinkModal({
   return (
     <Modal
       open
-      title={emailed ? 'Login ready — invitation emailed' : 'Login ready — send the link'}
+      // Release audit m9: the outbox is a queue — "emailed" claimed a send
+      // that had not happened yet (ADR-0137 §1).
+      title={emailed ? 'Login ready — invitation queued' : 'Login ready — send the link'}
       onClose={onClose}
       footer={
         <Button tone="primary" onClick={onClose}>
@@ -555,7 +557,8 @@ function LinkModal({
         </p>
         {emailed ? (
           <Alert tone="green">
-            Emailed to {email}. You can also copy the link and send it another way.
+            The invitation to {email} is queued and goes out within a few minutes. You can also copy
+            the link and send it another way.
           </Alert>
         ) : (
           <Alert tone="amber">

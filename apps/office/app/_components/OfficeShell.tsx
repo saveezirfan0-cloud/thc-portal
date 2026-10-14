@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
+import { Content, Logo, ModeSwitch, Shell, SignOut, Toaster, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { NAV_ICONS } from './navIcons';
 import { OfficeSidebar } from './OfficeSidebar';
@@ -169,6 +169,8 @@ export function OfficeShell({
         </Suspense>
         {children}
       </Content>
+      {/* Receipts for saved edits and the Undo of a remove (ADR-0137). */}
+      <Toaster />
     </Shell>
   );
 }

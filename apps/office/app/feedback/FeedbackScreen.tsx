@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactNode } from 'react';
-import { Alert, Button, EmptyState, Pill, SegToggle, Tabs, useTimeFormat } from '@thc/ui';
+import { Alert, Button, EmptyState, Pill, SegToggle, Tabs, toast, useTimeFormat } from '@thc/ui';
 import { markRead } from './actions';
 import { DeleteFeedbackModal, EditFeedbackModal } from './_components/FeedbackDialogs';
 import { OfficeFeedbackForm } from './_components/OfficeFeedbackForm';
@@ -231,8 +231,11 @@ function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => 
     setProblem(null);
     start(async () => {
       const result = await markRead(entry.id);
-      if (result.ok) router.refresh();
-      else setProblem(result.message);
+      if (result.ok) {
+        router.refresh();
+        // Release audit L10: it now counts toward the rating — say so.
+        toast('Marked as read — it now counts toward the rating', { tone: 'green' });
+      } else setProblem(result.message);
     });
   };
 

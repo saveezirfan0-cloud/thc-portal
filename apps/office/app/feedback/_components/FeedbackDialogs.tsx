@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Modal } from '@thc/ui';
+import { Alert, Button, Modal, toast } from '@thc/ui';
 import { deleteFeedback, updateOfficeFeedback, workerEvents } from '../actions';
 import {
   OFFICE_TEXT_MAX,
@@ -81,6 +81,7 @@ export function EditFeedbackModal({
       }
       onClose();
       router.refresh();
+      toast('Feedback saved', { tone: 'green' });
     });
   };
 
@@ -186,6 +187,7 @@ export function DeleteFeedbackModal({
       }
       onClose();
       router.refresh();
+      toast('Feedback deleted', { tone: 'green' });
     });
   };
 
