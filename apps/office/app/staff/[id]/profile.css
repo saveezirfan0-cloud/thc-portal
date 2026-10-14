@@ -162,9 +162,16 @@
   opacity: 0.7;
 }
 
-/* The do-not-return row, so a bar is legible at a glance. */
+/* The do-not-return row, so a bar is legible at a glance — on the cells
+   that stay put while the table scrolls sideways too. */
 .tbl tr.barred td {
   background: var(--coral-dim);
+}
+.tbl tr.barred {
+  --pin-bg: linear-gradient(var(--coral-dim), var(--coral-dim)), var(--panel);
+}
+.tbl td.cell-actions.dnr {
+  text-align: left;
 }
 
 .two {

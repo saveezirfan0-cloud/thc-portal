@@ -1,7 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { Alert, EmptyState, Note, Panel, Pill, ScheduledWindow, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  EmptyState,
+  Note,
+  Panel,
+  Pill,
+  ScheduledWindow,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import { addedOn, availabilityLength, availabilityRepeats, availabilityWhen } from './additions';
 import type { AvailabilityRow } from './types';
 
@@ -45,52 +54,54 @@ export function Availability({
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>When (UK)</th>
-                  <th>Length</th>
-                  <th>Repeats</th>
-                  <th>Overlaps a booking</th>
-                  <th>Added</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const repeats = availabilityRepeats(row);
-                  return (
-                    <tr key={row.id}>
-                      <td className="cell-title">{availabilityWhen(row, format)}</td>
-                      <td data-label="Length" className="mono sm">
-                        {availabilityLength(row)}
-                      </td>
-                      <td data-label="Repeats">{repeats ?? <span className="muted">—</span>}</td>
-                      <td data-label="Overlaps a booking" className="cell-wide">
-                        {row.bookings.length === 0 ? (
-                          <span className="muted">—</span>
-                        ) : (
-                          row.bookings.map((booking) => (
-                            <div key={booking.bookingId}>
-                              <Link href={`/events/${booking.eventId}`}>
-                                {booking.eventTitle} · {booking.roleName} ·{' '}
-                                <ScheduledWindow
-                                  startsAt={booking.startsAt}
-                                  endsAt={booking.endsAt}
-                                />
-                              </Link>{' '}
-                              <Pill tone="green">Confirmed</Pill>
-                            </div>
-                          ))
-                        )}
-                      </td>
-                      <td data-label="Added" className="mono sm">
-                        {addedOn(row.created_at)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <TableScroll label="Availability">
+              <table className="tbl card-rows">
+                <thead>
+                  <tr>
+                    <th>When (UK)</th>
+                    <th>Length</th>
+                    <th>Repeats</th>
+                    <th>Overlaps a booking</th>
+                    <th>Added</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const repeats = availabilityRepeats(row);
+                    return (
+                      <tr key={row.id}>
+                        <td className="cell-title">{availabilityWhen(row, format)}</td>
+                        <td data-label="Length" className="mono sm">
+                          {availabilityLength(row)}
+                        </td>
+                        <td data-label="Repeats">{repeats ?? <span className="muted">—</span>}</td>
+                        <td data-label="Overlaps a booking" className="cell-wide">
+                          {row.bookings.length === 0 ? (
+                            <span className="muted">—</span>
+                          ) : (
+                            row.bookings.map((booking) => (
+                              <div key={booking.bookingId}>
+                                <Link href={`/events/${booking.eventId}`}>
+                                  {booking.eventTitle} · {booking.roleName} ·{' '}
+                                  <ScheduledWindow
+                                    startsAt={booking.startsAt}
+                                    endsAt={booking.endsAt}
+                                  />
+                                </Link>{' '}
+                                <Pill tone="green">Confirmed</Pill>
+                              </div>
+                            ))
+                          )}
+                        </td>
+                        <td data-label="Added" className="mono sm">
+                          {addedOn(row.created_at)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </Panel>

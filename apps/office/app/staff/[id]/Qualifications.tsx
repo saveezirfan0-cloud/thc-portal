@@ -104,7 +104,7 @@ export function Qualifications({
             Not cleared at any client yet. A clean shift adds the first entry by itself.
           </div>
         ) : (
-          <TableScroll>
+          <TableScroll label="Client qualification" minWidth="44rem">
             {/* `card-rows`: below 760px each entry is a card titled by the
                 client, every other cell naming its column. */}
             <table className="tbl card-rows">
@@ -115,8 +115,8 @@ export function Qualifications({
                   <th>Granted by</th>
                   <th>Date</th>
                   <th>Note (internal)</th>
-                  <th>Do not return</th>
-                  <th />
+                  <th className="cell-actions">Do not return</th>
+                  <th className="cell-actions" aria-label="Remove" />
                 </tr>
               </thead>
               <tbody>
@@ -147,7 +147,7 @@ export function Qualifications({
                     <td data-label="Note (internal)" className="sm">
                       {row.note ?? <span className="muted">—</span>}
                     </td>
-                    <td data-label="Do not return">
+                    <td data-label="Do not return" className="cell-actions dnr">
                       <Switch
                         checked={row.do_not_return}
                         disabled={pending || profile.removed}

@@ -177,17 +177,17 @@ function EditableRateCard({
           </p>
         </div>
       ) : (
-        <TableScroll>
-          <table className="tbl">
+        <TableScroll label="Rate card" minWidth="48rem">
+          <table className="tbl card-rows">
             <thead>
               <tr>
-                <th>Role</th>
+                <th className="col-m">Role</th>
                 <th className="right-align">Charge rate ✎</th>
                 <th className="right-align">Base pay</th>
                 <th className="right-align">Final pay (×1.1207)</th>
                 <th className="right-align">Margin</th>
                 <th>Dress codes for this client</th>
-                <th />
+                <th className="cell-actions" aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -243,10 +243,10 @@ function EditableRateCard({
                   />
                 ) : (
                   <tr key={row.id}>
-                    <td>
+                    <td className="cell-title">
                       <b>{row.role_name}</b>
                     </td>
-                    <td className="right-align mono">
+                    <td data-label="Charge rate" className="right-align mono">
                       {/* The ✎ in the header promises the figure itself opens
                           the edit — the row's Edit button sits after the dress
                           codes, which a long one can push out of sight. The
@@ -262,19 +262,26 @@ function EditableRateCard({
                         {gbp(row.charge_rate)}
                       </button>
                     </td>
-                    <td className="right-align mono">{gbp(row.base_pay_rate)}</td>
-                    <td className="right-align mono">{gbp(row.final_pay_rate)}</td>
-                    <td className={`right-align mono ${marginTone(row.margin_pct)}`}>
+                    <td data-label="Base pay" className="right-align mono">
+                      {gbp(row.base_pay_rate)}
+                    </td>
+                    <td data-label="Final pay" className="right-align mono">
+                      {gbp(row.final_pay_rate)}
+                    </td>
+                    <td
+                      data-label="Margin"
+                      className={`right-align mono ${marginTone(row.margin_pct)}`}
+                    >
                       {(row.margin_per_hour ?? 0) >= 0 ? '+' : ''}
                       {gbp(row.margin_per_hour)}/h
                       <span className="sub muted">
                         {row.margin_pct === null ? '—' : `${row.margin_pct}%`}
                       </span>
                     </td>
-                    <td className="dcs-cell">
+                    <td data-label="Dress codes" className="dcs-cell">
                       <DressCodeList codes={row.dress_codes} />
                     </td>
-                    <td className="right-align">
+                    <td className="right-align cell-actions">
                       <Button size="sm" onClick={() => open(row)} disabled={pending}>
                         Edit
                       </Button>
@@ -334,21 +341,21 @@ function RateCardWithoutRates({ rows }: { rows: RateCardRow[] }) {
           <p>An owner or manager adds roles, charge rates and dress codes here.</p>
         </div>
       ) : (
-        <TableScroll>
-          <table className="tbl">
+        <TableScroll label="Rate card">
+          <table className="tbl card-rows">
             <thead>
               <tr>
-                <th>Role</th>
+                <th className="col-l">Role</th>
                 <th>Dress codes for this client</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td>
+                  <td className="cell-title">
                     <b>{row.role_name}</b>
                   </td>
-                  <td>
+                  <td data-label="Dress codes">
                     <DressCodeList codes={row.dress_codes} />
                   </td>
                 </tr>
@@ -439,10 +446,10 @@ function EditingRow({
   const suggestions = dressCodeSuggestions(library, codes, codeDraft);
   return (
     <tr>
-      <td>
+      <td className="cell-title">
         <b>{roleName}</b>
       </td>
-      <td className="rate-edit">
+      <td data-label="Charge rate" className="rate-edit">
         <InputRow>
           <Addon leading>£</Addon>
           <Input
@@ -455,10 +462,16 @@ function EditingRow({
           />
         </InputRow>
       </td>
-      <td className="right-align mono">{basePay}</td>
-      <td className="right-align mono">{finalPay}</td>
-      <td className="right-align muted sm">saved on Save</td>
-      <td className="dcs-cell">
+      <td data-label="Base pay" className="right-align mono">
+        {basePay}
+      </td>
+      <td data-label="Final pay" className="right-align mono">
+        {finalPay}
+      </td>
+      <td data-label="Margin" className="right-align muted sm">
+        saved on Save
+      </td>
+      <td data-label="Dress codes" className="dcs-cell">
         <div className="dcs dcs-edit">
           {codes.map((code) => (
             <Chip key={code}>
@@ -512,7 +525,7 @@ function EditingRow({
           </div>
         ) : null}
       </td>
-      <td className="right-align">
+      <td className="right-align cell-actions">
         <Button size="sm" tone="ghost" onClick={onCancel}>
           Cancel
         </Button>

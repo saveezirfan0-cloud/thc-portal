@@ -159,18 +159,18 @@ export function QualifiedStaff({
                 ) : null}
               </button>
               {collapsed[group.role] ? null : (
-                <TableScroll>
-                  <table className="tbl">
+                <TableScroll label={`Qualified staff · ${group.role}`} minWidth="44rem">
+                  <table className="tbl card-rows">
                     <thead>
                       <tr>
-                        <th>Worker</th>
+                        <th className="col-l">Worker</th>
                         <th>Role(s) at this client</th>
                         <th>Rating</th>
                         <th>Show-rate</th>
                         <th>How granted</th>
-                        <th>Date</th>
-                        <th>Do not return</th>
-                        <th />
+                        <th className="col-s">Date</th>
+                        <th className="cell-actions">Do not return</th>
+                        <th className="cell-actions" aria-label="Remove" />
                       </tr>
                     </thead>
                     <tbody>
@@ -187,7 +187,7 @@ export function QualifiedStaff({
                             key={`${row.staff_id}-${group.role}`}
                             className={row.do_not_return ? 'barred' : undefined}
                           >
-                            <td>
+                            <td className="cell-title">
                               <div className="person">
                                 <Avatar
                                   name={row.display_name}
@@ -202,7 +202,7 @@ export function QualifiedStaff({
                                 </div>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Role(s) at this client">
                               {/*
                                 Collapsed to one button (ADR-0125): a worker
                                 cleared for eighteen roles otherwise fills
@@ -220,7 +220,7 @@ export function QualifiedStaff({
                                 {row.role_names.length === 1 ? 'role' : 'roles'}
                               </button>
                             </td>
-                            <td>
+                            <td data-label="Rating">
                               {/*
                                 `.rating` is display:inline-flex in the
                                 design system, so it goes on a span — on
@@ -230,13 +230,17 @@ export function QualifiedStaff({
                                 ★ {formatRating(row.rating)}
                               </span>
                             </td>
-                            <td className="mono">{formatShowRate(row.reliability)}</td>
-                            <td className="sm">
+                            <td data-label="Show-rate" className="mono">
+                              {formatShowRate(row.reliability)}
+                            </td>
+                            <td data-label="How granted" className="sm">
                               {grantedHow(row)}
                               {row.notes ? <span className="sub">{row.notes}</span> : null}
                             </td>
-                            <td className="mono sm">{formatUkDate(row.last_granted_at)}</td>
-                            <td>
+                            <td data-label="Date" className="mono sm">
+                              {formatUkDate(row.last_granted_at)}
+                            </td>
+                            <td data-label="Do not return" className="cell-actions dnr">
                               <Switch
                                 checked={row.do_not_return}
                                 disabled={pending}
@@ -251,7 +255,7 @@ export function QualifiedStaff({
                                 }}
                               />
                             </td>
-                            <td className="right-align">
+                            <td className="right-align cell-actions">
                               <Button
                                 size="sm"
                                 tone="ghost"

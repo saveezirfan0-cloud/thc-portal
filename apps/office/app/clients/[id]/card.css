@@ -167,9 +167,24 @@
   white-space: nowrap;
 }
 
-/* A barred worker, so the gate is legible without reading the toggle. */
+/* A barred worker, so the gate is legible without reading the toggle —
+   on the cells that stay put while the table scrolls sideways too. */
 .tbl tr.barred td {
   background: var(--coral-dim);
+}
+.tbl tr.barred {
+  --pin-bg: linear-gradient(var(--coral-dim), var(--coral-dim)), var(--panel);
+}
+/* The Do-not-return switch sits on the left of its cell, under its header. */
+.tbl td.cell-actions.dnr {
+  text-align: left;
+}
+/* "N roles" is a finger target on a touch screen (release audit m14). */
+@media (pointer: coarse) {
+  .roles-btn {
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+  }
 }
 
 /* The margin column carries meaning, so it carries colour. */
