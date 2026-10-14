@@ -153,3 +153,9 @@ After a good event the customer wants the same people next time. Today that is a
   - pgTAP 833: the quiet hours in BST and GMT; fully confirmed fires once and never says "3 of 2"; withdrawn and revived; a change after D1 fires; the hourly and overnight debounce; not after the start; both switches, with withdrawal and the audit row; the cancelled event withdrawn and silent; recipients from the event or the card.
   - 606 holds `client_account_v`'s four columns.
   - `drain.test.ts`: the link, the hostile payload link, the hold, and a bad event id.
+
+## 4 · Hardening: feedback only on the line-up the customer is shown
+
+ADR-0134 §1 left `submit_client_feedback()` unchanged, on the grounds that "a booking id outside the trimmed set never reaches the browser". The function still accepted such an id, though. A stale tab from before the trim, or an id learned some other way, let the customer rate a buffer worker they were never shown.
+
+`20261014170300_client_feedback_within_lineup.sql` restates the function with one more condition in its single refusal: the booking must be on the caller's line-up as `client_lineup_v` returns it, read with the event filter. A booking past the headcount that has not already been rated answers **"That booking is not on your line-up"** (42501), the same sentence as an unknown, unconfirmed, cancelled or foreign booking. A worker the customer already rated stays in the view, so a second entry still answers "already left" (23505). `client_request_worker()` (§2) applies the same check. pgTAP 834; 160, 792 and 810 are unchanged and pass.
