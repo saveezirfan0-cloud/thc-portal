@@ -148,6 +148,12 @@
 :root[data-style='warm'] .input-row .addon {
   padding: 0 var(--sp-14);
 }
+/* A figure field in the UI font: no mono tracking, the size of its
+   neighbours (components.css `.input.mono`). */
+:root[data-style='warm'] .input.mono {
+  letter-spacing: normal;
+  font-size: var(--fs-14);
+}
 /* The search glyph has to clear the cap too, and this rule has to restate
    the left padding because the one above outranks `.search .input`. */
 :root[data-style='warm'] .search .input {

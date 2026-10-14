@@ -196,8 +196,9 @@ describe('2/11 Home address', () => {
     expect(html).toContain('Which languages do you speak?');
     expect(html).toContain('>English<');
     expect(html).toContain('Spanish');
-    // English cannot be removed; Spanish can.
-    expect(html.match(/aria-label="Remove"/g)?.length).toBe(1);
+    // English cannot be removed; Spanish can — and its × says so (@thc/ui
+    // names a chip's remove after the chip, release audit 14.10.2026).
+    expect(html.match(/aria-label="Remove [^"]+"/g)).toEqual(['aria-label="Remove Spanish"']);
     expect(html).toContain('Add another language…');
   });
 

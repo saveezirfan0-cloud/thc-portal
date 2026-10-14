@@ -21,6 +21,7 @@ import { AutoRefresh } from '../../_components/AutoRefresh';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
+import { formatDayLong } from '../calendar';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
 import { currentTimeFormat } from '../../_lib/timeFormat';
@@ -218,12 +219,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 <span className="k">PO number</span>
                 <span className="v">{event.poNumber || '—'}</span>
               </span>
-              <Pill tone={fill.open === 0 ? 'green' : 'amber'}>{formatEventFill(fill)}</Pill>
+              {/* A cancelled event needs nobody: its fill is a record, not an
+                  amber "needs action" (release audit p8). */}
+              <Pill tone={status === 'cancelled' ? 'neutral' : fill.open === 0 ? 'green' : 'amber'}>
+                {formatEventFill(fill)}
+              </Pill>
               {/* ADR-0080: auto-assign, Radar and Accept book only staff who speak these. */}
               {languagesLabel ? <Pill tone="cyan">{languagesLabel}</Pill> : null}
               {/* ADR-0117: one day of a multi-day job. */}
               {event.seriesLabel ? <Pill tone="cyan">{event.seriesLabel}</Pill> : null}
-              {open ? <span className="muted sm">{open}</span> : null}
+              {open && status !== 'cancelled' ? <span className="muted sm">{open}</span> : null}
               {/* §3.4: purple, default ON; both switches must be on for a round. */}
               <AutoAssignSwitch
                 eventId={event.id}
@@ -254,7 +259,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                   <span className="mono">—</span>
                 )}
                 <span className="muted xs">
-                  {event.date} · earliest role start → latest role end
+                  {formatDayLong(event.date)} · earliest role start → latest role end
                 </span>
               </Field>
             </div>

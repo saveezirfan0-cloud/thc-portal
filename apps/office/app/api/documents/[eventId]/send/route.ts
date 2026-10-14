@@ -42,7 +42,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     return Response.json({ error: 'This environment has no Supabase project.' }, { status: 503 });
 
   const result = await generateDocument(eventId, kind, 'required');
-  if (!result.ok) return Response.json({ error: result.message }, { status: result.status });
+  if (!result.ok) {
+    // The manager reads a sentence; the log keeps Storage's own words
+    // (release audit p9).
+    if (result.detail)
+      console.error('[documents] send failed', { eventId, kind, detail: result.detail });
+    return Response.json({ error: result.message }, { status: result.status });
+  }
 
   const db = await documentsDb();
   const queued = await db.rpc('queue_event_document_email', { p_document: result.documentId! });

@@ -107,17 +107,39 @@ export function Topbar({ title, crumbs, timezone, actions, lead }: TopbarProps) 
   );
 }
 
+/** Where "Skip to content" lands: the one `<main>` a `Content` draws. */
+export const MAIN_ID = 'main';
+
+/**
+ * The Back Office frame: sidebar, then the column with the top bar and the
+ * page. The first thing a keyboard reaches is "Skip to content" — out of
+ * sight until focused — so a manager does not Tab through the whole menu
+ * (18 stops, release audit 14.10.2026) on every page to reach its first
+ * control (WCAG 2.4.1).
+ */
 export function Shell({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
   return (
     <div className="shell">
+      <a className="skip-link" href={`#${MAIN_ID}`}>
+        Skip to content
+      </a>
       {sidebar}
       <div className="main">{children}</div>
     </div>
   );
 }
 
+/**
+ * The page's content well, and its `<main>` landmark — one per page. It
+ * takes focus from the skip link (`tabIndex={-1}`), so the next Tab starts
+ * inside the page rather than back at the top of the menu.
+ */
 export function Content({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={clsx('content', className)}>{children}</div>;
+  return (
+    <main id={MAIN_ID} tabIndex={-1} className={clsx('content', className)}>
+      {children}
+    </main>
+  );
 }
 
 /** The signed-in user, right-aligned in the top bar: avatar + name. */

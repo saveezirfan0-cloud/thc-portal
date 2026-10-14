@@ -2,7 +2,7 @@
 
 import { Avatar, Pill, TableScroll, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
-import { statusLabel, breaksCell, statusTone } from './status';
+import { arrivalLine, statusLabel, breaksCell, statusTone } from './status';
 import type { MonitorRow } from './types';
 import { useViewerZone } from './useViewerZone';
 
@@ -92,6 +92,8 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
                     Location unverified
                   </Pill>
                 ) : null}
+                {/* checkin.html's second line: on site, and how late. */}
+                {row.checkInAt ? <span className="sub">{arrivalLine(row)}</span> : null}
               </td>
               <td data-label="Breaks" className="mono sm">
                 {breaksCell(row, local)}

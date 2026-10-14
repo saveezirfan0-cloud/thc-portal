@@ -252,25 +252,28 @@ export function StaffScreen({
           removed
         </>
       }
+      // In the top bar, not a band of their own above the status tabs that
+      // was empty but for two links on the right (release audit L19).
+      actions={
+        <span className="row staff-requests-link">
+          {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
+          <Link
+            href="/staff/requests"
+            className="btn sm ghost"
+            {...(pendingRequests === null
+              ? { title: 'The pending count could not be read — open the queue to see it.' }
+              : {})}
+          >
+            Change requests ({pendingRequests ?? '?'})
+          </Link>
+          {/* ADR-0107: who is SpudBros Express, and each person's Payroll ID. */}
+          <Link href="/staff/roster" className="btn sm ghost">
+            Invite list
+          </Link>
+        </span>
+      }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
-
-      {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
-      <div className="staff-requests-link">
-        <Link
-          href="/staff/requests"
-          className="btn sm ghost"
-          {...(pendingRequests === null
-            ? { title: 'The pending count could not be read — open the queue to see it.' }
-            : {})}
-        >
-          Change requests ({pendingRequests ?? '?'})
-        </Link>
-        {/* ADR-0107: who is SpudBros Express, and each person's Payroll ID. */}
-        <Link href="/staff/roster" className="btn sm ghost">
-          Invite list
-        </Link>
-      </div>
 
       <div className="toolbar filters">
         <SegToggle

@@ -3,9 +3,12 @@
  * wireframes/backoffice/staff.html. Tokens only (CLAUDE.md).
  */
 
-/* ADR-0045: "Change requests (N)" above the directory, right-aligned. */
+/* ADR-0045: "Change requests (N)" and the invite list, in the top bar's
+   actions (release audit L19: a band of their own sat empty above the
+   status tabs). */
 .staff-requests-link {
-  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 

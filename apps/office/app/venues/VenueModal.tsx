@@ -18,6 +18,9 @@ import {
 import type { LatLng } from './geo';
 import type { Venue, VenueType } from './types';
 
+/** A typed address (only when the lookup fails): a long street line, not an essay. */
+const ADDRESS_MAX = 200;
+
 export interface VenueModalProps {
   /** Null creates; a venue edits it, pre-filled with its pin, address and radius. */
   venue: Venue | null;
@@ -41,7 +44,9 @@ interface Pin {
  *   · the radius is moved only with the slider — not typed, and the circle
  *     is not dragged;
  *   · the address comes from the pin by reverse geocoding and is read-only,
- *     with the coordinates printed underneath as plain text.
+ *     with the coordinates printed underneath as plain text — unless the
+ *     lookup cannot answer (offline, the service down), when it may be
+ *     typed so the venue can still be created (ADR-0138).
  *
  * The search above the map (ADR-0101) is a faster way to put the pin
  * somewhere: a postcode or street address finds the site and picking a
@@ -187,7 +192,8 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
     [pin, radius],
   );
 
-  const ready = name.trim().length > 0 && pin !== null && pin.address.length > 0 && !!venueType;
+  const ready =
+    name.trim().length > 0 && pin !== null && pin.address.trim().length > 0 && !!venueType;
 
   const save = () => {
     if (!pin) return;
@@ -195,7 +201,7 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
     startSaving(async () => {
       const draft = {
         name: name.trim(),
-        address: pin.address,
+        address: pin.address.trim(),
         lat: pin.point.lat,
         lng: pin.point.lng,
         venue_type: venueType,
@@ -375,25 +381,51 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
         </div>
 
         <div className="grid c2">
-          <Input
-            label={
-              <>
-                Address <span className="muted">· from the pin, read-only</span>
-              </>
-            }
-            value={pin?.address ?? ''}
-            readOnly
-            className="readonly"
-            // The lookup's progress is status, not a value: putting it in
-            // `value` would read back as the venue's address.
-            placeholder={
-              lookup === 'working' ? 'Looking up the address…' : 'Drop the pin to fill this in'
-            }
-            hint={
-              lookup === 'working' ? 'Looking up the address…' : 'Reverse geocoding — not typed.'
-            }
-            error={lookup === 'failed' ? lookupMessage : undefined}
-          />
+          {lookup === 'failed' && pin ? (
+            // The lookup could not answer (offline, the service down, a pin
+            // with no address): the pin stands and the manager types the
+            // address instead, rather than a Create that stays disabled
+            // forever (release audit m6, ADR-0138).
+            <Input
+              label={
+                <>
+                  Address <span className="coral">*</span>{' '}
+                  <span className="muted">· the lookup did not answer — type it</span>
+                </>
+              }
+              value={pin.address}
+              maxLength={ADDRESS_MAX}
+              onChange={(event) => setPin({ point: pin.point, address: event.target.value })}
+              placeholder="e.g. 49 Brook Street, London W1K 4HR"
+              aria-required="true"
+              {...(pin.address.trim()
+                ? {
+                    hint: 'Typed by hand — the pin stays where you dropped it. Move the pin to look it up again.',
+                  }
+                : {
+                    error: `${lookupMessage ?? 'The address lookup did not answer.'} Type the address as it should appear on events, or move the pin to try again.`,
+                  })}
+            />
+          ) : (
+            <Input
+              label={
+                <>
+                  Address <span className="muted">· from the pin, read-only</span>
+                </>
+              }
+              value={pin?.address ?? ''}
+              readOnly
+              className="readonly"
+              // The lookup's progress is status, not a value: putting it in
+              // `value` would read back as the venue's address.
+              placeholder={
+                lookup === 'working' ? 'Looking up the address…' : 'Drop the pin to fill this in'
+              }
+              hint={
+                lookup === 'working' ? 'Looking up the address…' : 'Reverse geocoding — not typed.'
+              }
+            />
+          )}
           <div className="field">
             <span className="label">Coordinates</span>
             <div className="input readonly mono coords">

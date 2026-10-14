@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { type TimeFormat, UK_ZONE, clockLabel, formatDateTimeIn, isEmail } from '@thc/domain';
+import { type TimeFormat, clockLabel, isEmail } from '@thc/domain';
+import { auditStamp } from '../activity/view-model';
 import {
   Alert,
   Avatar,
@@ -90,8 +91,9 @@ function Feedback({ result }: { result: AccountResult | null }) {
 }
 
 /** Audit-style stamps are UK only (§1.8). */
+/** A sign-in is an audit stamp: UK, dd.mm.yyyy HH:mm (§1.8), as the activity log writes it. */
 function ukStamp(iso: string | null, format: TimeFormat): string {
-  return iso ? `${formatDateTimeIn(new Date(iso), UK_ZONE, format)} (UK time)` : '—';
+  return iso ? `${auditStamp(iso, format)} (UK time)` : '—';
 }
 
 function Header({ account }: { account: MyAccount }) {

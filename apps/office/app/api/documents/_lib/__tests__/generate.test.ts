@@ -27,7 +27,7 @@ const adminClient = () => ({
   },
 });
 
-const { generateDocument } = await import('../generate');
+const { generateDocument, STORAGE_FAILED_MESSAGE } = await import('../generate');
 type Db = NonNullable<Parameters<typeof generateDocument>[3]>['db'];
 
 const EVENT_ID = '0b5c3e0e-1c0a-4d6e-9a43-3f1d2b7c9a01';
@@ -202,6 +202,26 @@ describe('generateDocument and name badges (ADR-0081)', () => {
     });
     expect(result.ok).toBe(false);
     expect(rpcs(db)).toEqual(['event_document_data']);
+    // The manager reads a sentence; Storage's own words go to the log and
+    // the job's retry record only (release audit p9).
+    expect(result).toMatchObject({
+      message: STORAGE_FAILED_MESSAGE,
+      detail: 'Storage refused the name badges PDF: bucket full',
+    });
+    if (!result.ok) expect(result.message).not.toMatch(/Storage|bucket/);
+  });
+
+  it('a Send whose sheet Storage refuses says so in words, not Storage’s', async () => {
+    refuseUpload = '/allocation/';
+    const result = await generateDocument(EVENT_ID, 'allocation', 'required', {
+      db: fakeDb(true) as unknown as Db,
+    });
+    expect(result).toEqual({
+      ok: false,
+      status: 502,
+      message: STORAGE_FAILED_MESSAGE,
+      detail: 'Storage refused the PDF: bucket full',
+    });
   });
 
   it('a Download still hands over the sheet when the badges cannot be attached', async () => {

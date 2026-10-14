@@ -1,4 +1,12 @@
-export { HOME_PATH, ROLES, isRole, wrongAppBody } from './roles';
+export {
+  HOME_PATH,
+  ROLES,
+  WRONG_APP_PATH,
+  WRONG_APP_ROLE_HEADER,
+  isRole,
+  wrongAppCopy,
+  wrongAppRole,
+} from './roles';
 export type { Role } from './roles';
 export { isSafeRelativePath, safeNextPath, safeRelativePath } from './redirect';
 export { appOrigin, recoveryRedirect, staffAppOrigin } from './origin';

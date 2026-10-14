@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import {
   Alert,
   Avatar,
@@ -141,6 +141,15 @@ export function ProfileScreen({
   const [resent, setResent] = useState(false);
 
   const actionable = isActionable(profile.status);
+  const whyId = useId();
+  const blockWhy =
+    profile.status !== 'blocked' && actionable && !canBlock(profile.status)
+      ? 'Block is off: only a compliant worker can be blocked — a leaver or candidate is not.'
+      : null;
+  const resetWhy =
+    !profile.removed && !canReset(profile.status)
+      ? 'Reset to candidate is only for a blocked, rejected or inactive profile.'
+      : null;
   const banner = blockBanner(profile);
   const hours = hoursThisWeek(profile);
   const capWhy = capReason(
@@ -363,11 +372,7 @@ export function ProfileScreen({
                   // §2.12: only a compliant worker can be blocked; someone who
                   // left, was rejected or is still a candidate cannot (§9.6).
                   disabled={!actionable || !canBlock(profile.status) || pending}
-                  title={
-                    actionable && !canBlock(profile.status)
-                      ? 'Only a compliant worker can be blocked — a leaver or candidate is not'
-                      : undefined
-                  }
+                  aria-describedby={blockWhy ? `${whyId}-block` : undefined}
                   onClick={() => setDialog('block')}
                 >
                   Block
@@ -376,7 +381,7 @@ export function ProfileScreen({
               <Button
                 size="sm"
                 disabled={!canReset(profile.status) || pending}
-                title="Only on a blocked, rejected or inactive profile"
+                aria-describedby={resetWhy ? `${whyId}-reset` : undefined}
                 onClick={() => setDialog('reset')}
               >
                 Reset to candidate
@@ -390,6 +395,16 @@ export function ProfileScreen({
                 Remove (GDPR)
               </Button>
             </div>
+            {/* Why a button is greyed out, said on the screen — a tooltip
+                reaches neither a keyboard nor a touch screen (release audit
+                14.10.2026). */}
+            {blockWhy || resetWhy ? (
+              <span className="muted xs acts-why">
+                {blockWhy ? <span id={`${whyId}-block`}>{blockWhy}</span> : null}
+                {blockWhy && resetWhy ? ' ' : null}
+                {resetWhy ? <span id={`${whyId}-reset`}>{resetWhy}</span> : null}
+              </span>
+            ) : null}
             {profile.removed ? (
               <span className="muted xs">
                 Removed: personal data anonymised. The record stays open with its non-personal
@@ -399,7 +414,9 @@ export function ProfileScreen({
           </div>
         </div>
 
-        <TileGrid columns={5}>
+        {/* Compact: two to a row on a phone, not five full-width cards
+            (~1,300 px) before the tabs (release audit P3). */}
+        <TileGrid columns={5} compact>
           <KpiTile
             label="Shifts worked"
             value={profile.shifts_worked}

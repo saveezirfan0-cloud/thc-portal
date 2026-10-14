@@ -78,7 +78,8 @@ function open() {
   const resolve = () =>
     [...document.body.querySelectorAll('button')].find((b) => b.textContent === 'Resolve')!;
   return {
-    date: () => q<HTMLInputElement>('input[aria-label="Date"]'),
+    // The date is typed dd/mm/yyyy (UkDateField, ADR-0138).
+    date: () => q<HTMLInputElement>('.ukd input[type="text"]'),
     time: () => q<HTMLInputElement>('input[aria-label="Time"]'),
     note: () => q<HTMLTextAreaElement>('textarea'),
     resolve,
@@ -106,7 +107,7 @@ describe('Resolve a No-show before the section has ended', () => {
     setValue(d.note(), 'Arrived late, agreed by phone.');
     setValue(d.time(), '18:30');
     expect(d.resolve().disabled).toBe(true); // time, no date
-    setValue(d.date(), '2026-09-17');
+    setValue(d.date(), '17/09/2026');
     expect(d.resolve().disabled).toBe(false); // both
     setValue(d.time(), '');
     expect(d.resolve().disabled).toBe(true); // date, no time
@@ -124,7 +125,7 @@ describe('Resolve a No-show before the section has ended', () => {
   it('sends the typed arrival as one UK wall-clock instant when both are valid', async () => {
     const d = open();
     setValue(d.note(), 'Arrived late, agreed by phone.');
-    setValue(d.date(), '2026-09-17');
+    setValue(d.date(), '17/09/2026');
     setValue(d.time(), '7:30 pm');
     expect(d.resolve().disabled).toBe(false);
     await act(async () => d.resolve().click());

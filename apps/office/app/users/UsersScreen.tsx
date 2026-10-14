@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import type { ReactNode } from 'react';
-import { type TimeFormat, UK_ZONE, formatDateTimeIn } from '@thc/domain';
+import type { TimeFormat } from '@thc/domain';
+import { auditStamp } from '../activity/view-model';
 import {
   Alert,
   Avatar,
@@ -84,8 +85,9 @@ const ACCESS_NOTE: Record<Tab, string> = {
     'Staff App: only their own onboarding, documents, invites, shifts and check-in. Created when a candidate is accepted in Onboarding; closed by Block or Remove on the staff profile.',
 };
 
+/** A sign-in is an audit stamp: UK, dd.mm.yyyy HH:mm (§1.8), as the activity log writes it. */
 function ukStamp(iso: string | null, format: TimeFormat): string {
-  return iso ? formatDateTimeIn(new Date(iso), UK_ZONE, format) : 'Never';
+  return iso ? auditStamp(iso, format) : 'Never';
 }
 
 function statusOf(account: AccountRow): { tone: 'green' | 'amber' | 'neutral'; label: string } {
@@ -238,28 +240,32 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
         ) : null}
       </Panel>
 
-      <Panel title="Office roles">
-        <p className="sm muted users-plain">
-          Each Back Office login has an office role, and the database enforces it — a page hidden
-          from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
-          {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager} <b>Scheduler</b>
-          : {OFFICE_ROLE_SUMMARY.scheduler} <b>Viewer</b>: {OFFICE_ROLE_SUMMARY.viewer} New logins
-          are managers unless you choose otherwise. Nobody can change their own role, and there is
-          always at least one working owner. Role changes are in the{' '}
-          <Link href="/activity">activity log</Link> under the owner’s name.
-        </p>
-        <p className="sm muted users-plain">
-          <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
-          codes come from. Check it is really them first — by phone, not by email — because a
-          password without the phone is exactly what two-step keeps out. It signs them out
-          everywhere; they sign in with their password and set two-step up again on My profile.
-        </p>
-        <p className="sm muted users-plain">
-          A scheduler sees no pay or charge rates, margins, payroll or reports anywhere — the
-          database refuses them, not just the screens. A role section they add carries the catalogue
-          rates.
-        </p>
-      </Panel>
+      {/* About Back Office logins only, so on their tab only — it read as a
+          rule for Client Portal accounts on theirs (release audit). */}
+      {tab === 'admin' ? (
+        <Panel title="Office roles">
+          <p className="sm muted users-plain">
+            Each Back Office login has an office role, and the database enforces it — a page hidden
+            from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
+            {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager}{' '}
+            <b>Scheduler</b>: {OFFICE_ROLE_SUMMARY.scheduler} <b>Viewer</b>:{' '}
+            {OFFICE_ROLE_SUMMARY.viewer} New logins are managers unless you choose otherwise. Nobody
+            can change their own role, and there is always at least one working owner. Role changes
+            are in the <Link href="/activity">activity log</Link> under the owner’s name.
+          </p>
+          <p className="sm muted users-plain">
+            <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
+            codes come from. Check it is really them first — by phone, not by email — because a
+            password without the phone is exactly what two-step keeps out. It signs them out
+            everywhere; they sign in with their password and set two-step up again on My profile.
+          </p>
+          <p className="sm muted users-plain">
+            A scheduler sees no pay or charge rates, margins, payroll or reports anywhere — the
+            database refuses them, not just the screens. A role section they add carries the
+            catalogue rates.
+          </p>
+        </Panel>
+      ) : null}
 
       {inviting ? (
         <InviteModal

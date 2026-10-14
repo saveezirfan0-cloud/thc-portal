@@ -18,6 +18,7 @@ import {
   Panel,
   Pill,
   Textarea,
+  UkDateField,
   useTimeFormat,
 } from '@thc/ui';
 import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
@@ -73,6 +74,7 @@ import {
   stageAge,
   stageEnteredAt,
   studentLoanLabel,
+  verifiedTally,
 } from './view-model';
 import type { Period } from './view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
@@ -1275,13 +1277,13 @@ function DocumentLine({
           ) : actionable ? (
             <>
               {rule ? (
-                <input
-                  className="input mono"
-                  type="date"
-                  aria-label={`${rule.label} — confirm against the document`}
-                  title={rule.hint}
+                <UkDateField
+                  className="doc-expiry"
+                  label={`${rule.label} — confirm against the document`}
+                  labelHidden
+                  hint={rule.hint}
                   value={expiry}
-                  onChange={(event) => setExpiry(event.target.value)}
+                  onChange={setExpiry}
                 />
               ) : null}
               <Button
@@ -1390,7 +1392,12 @@ function ShareCodeCard({
       <div className="grow stack">
         <div className="row wrap">
           <b>gov.uk right-to-work report</b>
-          <Pill tone={manual ? 'coral' : pill.tone}>{manual ? 'Manual review' : pill.label}</Pill>
+          {/* One "manual review", not two: the pill is the document's state
+              (amber "Under review" — needs action, not danger) and the tag
+              beside it says why (release audit P2). */}
+          <Pill tone={manual ? REVIEW_PILL[doc.review_status].tone : pill.tone}>
+            {manual ? REVIEW_PILL[doc.review_status].label : pill.label}
+          </Pill>
           <span className={manual ? 'ai manual' : 'ai hi'}>
             {manual
               ? 'needs manual review'
@@ -1419,13 +1426,14 @@ function ShareCodeCard({
           ) : typing ? (
             <span className="stack">
               <span className="row wrap">
-                <input
-                  className="input mono"
-                  type="date"
-                  aria-label="Right to work until, from the gov.uk report"
+                {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+                <UkDateField
+                  className="rtw-until"
+                  label="Right to work until, from the gov.uk report"
+                  labelHidden
                   value={noTimeLimit ? '' : until}
                   disabled={noTimeLimit}
-                  onChange={(event) => setUntil(event.target.value)}
+                  onChange={setUntil}
                 />
                 <span className="muted sm">
                   read off the report — becomes the expiry used for reminders and the last day they
@@ -1622,22 +1630,21 @@ function TermDates({
             <div className="period" key={index}>
               <span className="mono muted">{index + 1}</span>
               <span>Holiday {index + 1}</span>
-              <input
-                className="input mono"
-                type="date"
-                aria-label={`Period ${index + 1} from`}
+              {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+              <UkDateField
+                label={`Period ${index + 1} from`}
+                labelHidden
                 value={period.from}
                 disabled={!editable}
-                onChange={(event) => update(index, { from: event.target.value })}
+                onChange={(from) => update(index, { from })}
               />
               <span className="muted">→</span>
-              <input
-                className="input mono"
-                type="date"
-                aria-label={`Period ${index + 1} to`}
+              <UkDateField
+                label={`Period ${index + 1} to`}
+                labelHidden
                 value={period.to}
                 disabled={!editable}
-                onChange={(event) => update(index, { to: event.target.value })}
+                onChange={(to) => update(index, { to })}
               />
               {index < aiCount && badge ? (
                 <span className={`ai ${badge.tone}`}>{badge.label}</span>
@@ -1994,6 +2001,7 @@ function ClientQualification({
                           {everyRole ? (
                             <Chip
                               title={held.map((role) => role.name).join(' · ')}
+                              removeLabel={`Remove ${group.client_name} · all roles`}
                               onRemove={
                                 readOnly || busy
                                   ? undefined
@@ -2015,6 +2023,7 @@ function ClientQualification({
                               ) : (
                                 <Chip
                                   key={q.id}
+                                  removeLabel={`Remove ${group.client_name} · ${q.role_name}`}
                                   onRemove={readOnly || busy ? undefined : () => onRevoke([q.id])}
                                 >
                                   {q.role_name}
@@ -2087,10 +2096,7 @@ function DocumentsPhase({
         data.profile.weekly_cap_until,
       )
     : '—';
-  const verifiedItems =
-    row.docs_verified +
-    (row.declaration_answer === true && row.declaration_status === 'verified' ? 1 : 0);
-  const totalItems = row.docs_total + (row.declaration_answer === true ? 1 : 0);
+  const { verified: verifiedItems, total: totalItems } = verifiedTally(row);
 
   return (
     <>

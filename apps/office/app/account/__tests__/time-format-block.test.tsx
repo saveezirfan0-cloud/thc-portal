@@ -72,7 +72,7 @@ describe('My profile · Time format (ADR-0085)', () => {
 
   it('writes the "last signed in" stamp on the chosen clock, still labelled UK time', () => {
     // 17:30Z on 5 October is 18:30 in London (BST).
-    expect(render('24h')).toContain('Last signed in 05 Oct, 18:30 (UK time)');
-    expect(render('12h')).toContain('Last signed in 05 Oct, 6:30 pm (UK time)');
+    expect(render('24h')).toContain('Last signed in 05.10.2026 18:30 (UK time)');
+    expect(render('12h')).toContain('Last signed in 05.10.2026 6:30 pm (UK time)');
   });
 });

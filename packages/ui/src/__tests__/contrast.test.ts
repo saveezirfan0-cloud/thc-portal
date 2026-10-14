@@ -73,14 +73,54 @@ describe('every text tone clears AA on every ground it is drawn on', () => {
   it('holds on the fluid dark grounds', () => {
     const dark = ":root[data-style='warm'][data-theme='dark']";
     const grounds = (['--bg', '--panel', '--panel-2'] as const).map((n) => token(dark, n));
-    // The dark accents live in the base block; only the grounds move.
-    const inks = (
-      ['--text', '--muted', '--cyan', '--purple', '--green', '--amber', '--coral'] as const
-    ).map((n) => token(':root', n));
+    // The dark accents live in the base block; the grounds move, and the
+    // muted grey is a step lighter (release audit 14.10.2026).
+    const inks = [
+      token(dark, '--muted'),
+      ...(['--text', '--cyan', '--purple', '--green', '--amber', '--coral'] as const).map((n) =>
+        token(':root', n),
+      ),
+    ];
 
     for (const ground of grounds) {
       for (const ink of inks) {
         expect(contrast(ink, ground), `${ink} on ${ground}`).toBeGreaterThanOrEqual(AA);
+      }
+    }
+  });
+
+  it('keeps small muted text at 4.5:1 on the accent tints over the card', () => {
+    // The PO number chip, the board's "your time" line and a week chip's
+    // client line are muted text on a 12% accent tint; #7a6b5c measured
+    // 4.36–4.48:1 there (release audit 14.10.2026).
+    const rgba = (value: string): [number, number, number, number] => {
+      const m = /rgba\(([^)]+)\)/.exec(value);
+      expect(m, value).not.toBeNull();
+      const [r, g, b, a] = m![1]!.split(',').map((x) => parseFloat(x));
+      return [r!, g!, b!, a!];
+    };
+    const blend = (tint: string, groundHex: string): string => {
+      const [r, g, b, a] = rgba(tint);
+      const ground = groundHex.replace('#', '');
+      const mix = [r, g, b].map((c, i) =>
+        Math.round(c * a + parseInt(ground.slice(i * 2, i * 2 + 2), 16) * (1 - a)),
+      );
+      return '#' + mix.map((c) => c.toString(16).padStart(2, '0')).join('');
+    };
+    const themes: [string, string, string][] = [
+      ['light', ":root[data-theme='light']", ":root[data-theme='light']"],
+      ['fluid dark', ":root[data-style='warm'][data-theme='dark']", ':root'],
+    ];
+    for (const [name, grounds, tints] of themes) {
+      const muted = token(grounds, '--muted');
+      for (const ground of ['--bg', '--panel'] as const) {
+        for (const tint of ['--cyan-dim', '--amber-dim', '--coral-dim'] as const) {
+          const under = blend(token(tints, tint), token(grounds, ground));
+          expect(
+            contrast(muted, under),
+            `${name}: ${muted} on ${tint} over ${ground}`,
+          ).toBeGreaterThanOrEqual(AA);
+        }
       }
     }
   });

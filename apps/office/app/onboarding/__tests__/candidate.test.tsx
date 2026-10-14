@@ -505,7 +505,8 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     expect(html).toContain('Search 1 clients to add');
     expect(html).not.toContain('already cleared');
     // Grand Hotel appears once (under Cleared at), Plaza Bar is still on offer.
-    expect(html.match(/Grand Hotel/g) ?? []).toHaveLength(1);
+    // (The chip's × is named after it too, so accessible names are left out.)
+    expect(html.replace(/aria-label="[^"]*"/g, '').match(/Grand Hotel/g) ?? []).toHaveLength(1);
     expect(html).toContain('Plaza Bar');
   });
 

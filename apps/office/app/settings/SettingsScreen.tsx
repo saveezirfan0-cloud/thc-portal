@@ -242,15 +242,18 @@ function Block({
   title,
   sub,
   actions,
+  className,
   children,
 }: {
   title: ReactNode;
   sub: ReactNode;
   actions?: ReactNode;
+  /** `settings-wide`: across every column (the radii table). */
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <Panel title={title} {...(actions ? { actions } : {})}>
+    <Panel title={title} {...(actions ? { actions } : {})} {...(className ? { className } : {})}>
       <p className="sm muted">{sub}</p>
       {children}
     </Panel>
@@ -619,6 +622,7 @@ function ClientPortalBlock({ phone }: { phone: string }) {
 function RadiiBlock({ types }: { types: SettingsData['venueTypes'] }) {
   return (
     <Block
+      className="settings-wide"
       title="Standard geofence radii by venue type"
       sub="These pre-fill the slider when a venue is created. Changing one never moves an existing venue or a scheduled event."
     >

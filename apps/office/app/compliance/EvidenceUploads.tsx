@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@thc/db/browser';
 import { COMPLETION_EVIDENCE_FORM_LABELS, evidenceFileProblem } from '@thc/domain';
 import type { CompletionEvidenceForm } from '@thc/domain';
-import { Alert, Button, Input, Select } from '@thc/ui';
+import { Alert, Button, Input, Select, UkDateField } from '@thc/ui';
 import {
   attachRtwReport,
   setBelowDegreeLevel,
@@ -150,11 +150,10 @@ export function CompletionLetterUpload({ staffId }: { staffId: string }) {
           </option>
         ))}
       </Select>
-      <Input
-        type="date"
+      <UkDateField
         label="Course completion date on the document"
         value={date}
-        onChange={(event) => setDate(event.target.value)}
+        onChange={setDate}
         hint="As the document states it. It is confirmed again on Approve."
       />
       <Input

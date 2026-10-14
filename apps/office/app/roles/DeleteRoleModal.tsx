@@ -35,6 +35,32 @@ export function DeleteRoleModal({ role, onClose, onDeleted }: DeleteRoleModalPro
     });
   };
 
+  // Checked first, then the right dialog (release audit P2): a role in use
+  // gets "can't be deleted yet" and a Close, never "Are you sure?" above a
+  // greyed-out Delete.
+  if (inUse) {
+    return (
+      <Modal
+        open
+        title="This role can’t be deleted yet"
+        onClose={onClose}
+        footer={
+          <Button tone="primary" onClick={onClose}>
+            Close
+          </Button>
+        }
+      >
+        <div className="row">
+          <Pill>{role.name}</Pill>
+        </div>
+        <Alert tone="amber">
+          <b>{role.name} is in use.</b> {describeUse(role)} Remove it from those rate cards first;
+          past events keep their own copy of the rate.
+        </Alert>
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       open
@@ -45,7 +71,7 @@ export function DeleteRoleModal({ role, onClose, onDeleted }: DeleteRoleModalPro
           <Button tone="ghost" onClick={onClose} disabled={deleting}>
             Cancel
           </Button>
-          <Button tone="danger" solid onClick={confirm} disabled={inUse || deleting}>
+          <Button tone="danger" solid onClick={confirm} disabled={deleting}>
             {deleting ? 'Deleting…' : 'Delete role'}
           </Button>
         </>
@@ -61,16 +87,9 @@ export function DeleteRoleModal({ role, onClose, onDeleted }: DeleteRoleModalPro
         Are you sure you want to delete <b>{role.name}</b>? This action cannot be undone.
       </p>
 
-      {inUse ? (
-        <Alert tone="amber">
-          <b>In use — it cannot be deleted yet.</b> {describeUse(role)} Remove it from those rate
-          cards first; past events keep their own copy of the rate.
-        </Alert>
-      ) : (
-        <Alert tone="cyan">
-          Not on any client&rsquo;s rate card and not used on any event — safe to delete.
-        </Alert>
-      )}
+      <Alert tone="cyan">
+        Not on any client&rsquo;s rate card and not used on any event — safe to delete.
+      </Alert>
     </Modal>
   );
 }

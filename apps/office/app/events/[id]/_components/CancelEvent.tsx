@@ -54,9 +54,13 @@ export function CancelEvent({ eventId, affected }: { eventId: string; affected: 
       >
         <div className="stack">
           {error ? <Alert tone="coral">{error}</Alert> : null}
+          {/* ADR-0099: a cancelled event leaves the Scheduling list and
+              calendar, but is never deleted — the copy said it stayed there,
+              greyed out (release audit m4). */}
           <Alert tone="amber">
-            The event stays on the list and the calendar, greyed out, for the record — it is never
-            deleted. {affected} {affected === 1 ? 'person' : 'people'} still attached to it{' '}
+            The event leaves the Scheduling list and calendar. It is never deleted: this page, its
+            history and the reports keep it for the record. {affected}{' '}
+            {affected === 1 ? 'person' : 'people'} still attached to it{' '}
             {affected === 1 ? 'is' : 'are'} notified (N12), their bookings move to cancelled, open
             invitations are withdrawn, and auto-assign stops for this event immediately.
           </Alert>
@@ -66,7 +70,7 @@ export function CancelEvent({ eventId, affected }: { eventId: string; affected: 
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="e.g. Client cancelled — event postponed to Q1"
-            hint="Required. Shown on the event in the list and the calendar."
+            hint="Required. Shown on this event’s page, at the top, for the record."
           />
           <span className="muted xs">
             A cancellation before the day of the event contributes no margin, revenue or payroll. If

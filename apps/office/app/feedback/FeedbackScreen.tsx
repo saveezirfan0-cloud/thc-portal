@@ -162,36 +162,38 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
             does not affect the rating. &ldquo;Mark as read&rdquo; exists only on this tab.
           </Alert>
 
-          <div
-            className="fb-list"
-            role="list"
-            aria-label="Client feedback"
-            style={gridTracks(clientColumns)}
-          >
-            <div className="fbhead" aria-hidden="true">
-              {clientColumns.visible.map((column) => (
-                <span key={column.id} className="label">
-                  {column.label}
-                </span>
-              ))}
-            </div>
-            {data.entries.length === 0 ? (
-              <EmptyState>
-                {query.q || query.clientId || query.status !== 'all'
-                  ? 'No client feedback matches these filters.'
-                  : 'No client feedback yet. It arrives from the Client Portal once an event has started.'}
-              </EmptyState>
-            ) : (
-              data.entries.map((entry) => (
+          {/* Nothing to list: the empty card alone — no column heads over
+              it and no pager under it (release audit L19). */}
+          {data.entries.length === 0 ? (
+            <EmptyState>
+              {query.q || query.clientId || query.status !== 'all'
+                ? 'No client feedback matches these filters.'
+                : 'No client feedback yet. It arrives from the Client Portal once an event has started.'}
+            </EmptyState>
+          ) : (
+            <div
+              className="fb-list"
+              role="list"
+              aria-label="Client feedback"
+              style={gridTracks(clientColumns)}
+            >
+              <div className="fbhead" aria-hidden="true">
+                {clientColumns.visible.map((column) => (
+                  <span key={column.id} className="label">
+                    {column.label}
+                  </span>
+                ))}
+              </div>
+              {data.entries.map((entry) => (
                 <ClientRow
                   key={entry.id}
                   entry={entry}
                   columns={clientColumns}
                   onDelete={() => setDeleting(entry)}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -221,27 +223,27 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
             </div>
           </div>
 
-          <div
-            className="fb-list"
-            role="list"
-            aria-label="Office feedback"
-            style={gridTracks(officeColumns)}
-          >
-            <div className="fbhead" aria-hidden="true">
-              {officeColumns.visible.map((column) => (
-                <span key={column.id} className="label">
-                  {column.label}
-                </span>
-              ))}
-            </div>
-            {data.entries.length === 0 ? (
-              <EmptyState>
-                {query.q || query.authorId
-                  ? 'No office feedback matches these filters.'
-                  : 'No office feedback yet. Use the form above when a compliment or a complaint arrives by phone.'}
-              </EmptyState>
-            ) : (
-              data.entries.map((entry) => (
+          {data.entries.length === 0 ? (
+            <EmptyState>
+              {query.q || query.authorId
+                ? 'No office feedback matches these filters.'
+                : 'No office feedback yet. Use the form above when a compliment or a complaint arrives by phone.'}
+            </EmptyState>
+          ) : (
+            <div
+              className="fb-list"
+              role="list"
+              aria-label="Office feedback"
+              style={gridTracks(officeColumns)}
+            >
+              <div className="fbhead" aria-hidden="true">
+                {officeColumns.visible.map((column) => (
+                  <span key={column.id} className="label">
+                    {column.label}
+                  </span>
+                ))}
+              </div>
+              {data.entries.map((entry) => (
                 <OfficeRow
                   key={entry.id}
                   entry={entry}
@@ -249,29 +251,33 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
                   onEdit={() => setEditing(entry)}
                   onDelete={() => setDeleting(entry)}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
-      <div className="row fb-pager">
-        <span className="muted sm">{info.label}</span>
-        <div className="ml-auto row">
-          <PageLink disabled={info.page <= 1} href={hrefFor(query, { page: info.page - 1 })}>
-            ‹ Prev
-          </PageLink>
-          <span className="mono sm">
-            {info.page} / {info.pages}
-          </span>
-          <PageLink
-            disabled={info.page >= info.pages}
-            href={hrefFor(query, { page: info.page + 1 })}
-          >
-            Next ›
-          </PageLink>
+      {/* A pager under "nothing to show" pages nothing; past the last page
+          (a stale link) it stays, so Prev is the way back. */}
+      {data.entries.length === 0 && info.page <= 1 ? null : (
+        <div className="row fb-pager">
+          <span className="muted sm">{info.label}</span>
+          <div className="ml-auto row">
+            <PageLink disabled={info.page <= 1} href={hrefFor(query, { page: info.page - 1 })}>
+              ‹ Prev
+            </PageLink>
+            <span className="mono sm">
+              {info.page} / {info.pages}
+            </span>
+            <PageLink
+              disabled={info.page >= info.pages}
+              href={hrefFor(query, { page: info.page + 1 })}
+            >
+              Next ›
+            </PageLink>
+          </div>
         </div>
-      </div>
+      )}
 
       {editing ? <EditFeedbackModal entry={editing} onClose={() => setEditing(null)} /> : null}
       {deleting ? <DeleteFeedbackModal entry={deleting} onClose={() => setDeleting(null)} /> : null}

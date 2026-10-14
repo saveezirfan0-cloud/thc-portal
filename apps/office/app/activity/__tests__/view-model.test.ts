@@ -167,3 +167,17 @@ describe('account rules', () => {
     expect(explainAccountError('something new')).toMatch(/did not save/);
   });
 });
+
+describe('an emailed invitation or activation link in the log (release audit m7)', () => {
+  it('says the email was queued, never the raw outbox key', () => {
+    const lines = describeRow({
+      data: {
+        outboxKey: 'E11:invite:3f1d2b7c-9a01-4d6e-9a43-0b5c3e0e1c0a:1',
+        n: 1,
+        email: 'a@b.example',
+      },
+    });
+    expect(lines).toEqual(['Email queued', 'Send no.: 1', 'Email: a@b.example']);
+    expect(lines.join(' ')).not.toContain('E11:');
+  });
+});

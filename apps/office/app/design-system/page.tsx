@@ -56,6 +56,7 @@ import {
   Topbar,
   UserChip,
   WizardHeader,
+  WrongApp,
 } from '@thc/ui';
 import { ColumnsPreview, InteractiveControls, Overlays } from './Interactive';
 import './design-system.css';
@@ -748,6 +749,15 @@ export default function Page() {
                 Activate my account
               </Button>
             </AuthCard>
+          </div>
+          {/* ADR-0138: an account opening an app its role has no business in
+              gets the same card, with sign-out as the only way on. */}
+          <div className="ds-grid-2 ds-auth mt-8">
+            <WrongApp
+              product="Client Portal"
+              title="This account is not for the Client Portal"
+              body="You are signed in to a Back Office account. Sign out and use the account for this app."
+            />
           </div>
         </Panel>
 

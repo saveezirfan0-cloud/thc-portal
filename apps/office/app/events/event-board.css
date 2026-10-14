@@ -339,6 +339,20 @@
 .role-fill.green .rf-bar > span {
   background: var(--green-solid);
 }
+/* A cancelled event's roles: a record, not a call to action. */
+.role-fill.neutral {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+.role-fill.neutral .rf-num {
+  color: var(--muted);
+}
+.role-fill.neutral .rf-bar {
+  background: var(--line);
+}
+.role-fill.neutral .rf-bar > span {
+  background: var(--muted);
+}
 /* The role's window: "07:00 – 16:00" large, "UK time · 9 h" beside it and,
    outside the UK, "your time" under the times (§1.8, RULE-18). */
 .role-win {

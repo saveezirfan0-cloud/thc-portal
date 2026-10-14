@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Modal, Note, Select } from '@thc/ui';
+import { Alert, Button, Modal, Note, Select, UkDateField } from '@thc/ui';
 import { RTW_LABEL } from '../staff';
 import { changeRtwBranch } from './actions';
 
@@ -126,11 +126,10 @@ export function RtwBranchChange({
             ))}
           </Select>
           {next === 'uk_irish' ? null : (
-            <Input
-              type="date"
+            <UkDateField
               label="Right to work until"
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={setDate}
               hint={
                 settled
                   ? 'Leave blank for settled status (no time limit). Pre-settled status has an end date: enter it.'

@@ -16,18 +16,25 @@ export function Switch({
   label,
   disabled,
   tone = 'purple',
+  name,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: string;
   disabled?: boolean;
   tone?: 'purple' | 'plain';
+  /**
+   * The accessible name where the visible label repeats on every role
+   * ("Auto-assign"): "Auto-assign · Role 2 · Bar Staff".
+   */
+  name?: string;
 }) {
   return (
     <label className={`switch${tone === 'purple' ? ' purple' : ''}${checked ? ' on' : ''}`}>
       <input
         type="checkbox"
         className="sb-sr-only"
+        aria-label={name}
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}

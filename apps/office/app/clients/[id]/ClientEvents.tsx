@@ -52,7 +52,7 @@ export function ClientEvents({
     <Panel
       title={
         <>
-          <span className="blk-n">4</span> Events · this client
+          <span className="blk-n">6</span> Events · this client
         </>
       }
       actions={

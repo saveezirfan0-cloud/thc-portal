@@ -76,25 +76,24 @@ export function PayrollIdField({
           </Button>
         </>
       ) : (
-        <>
+        // A real gap between the value and its button: a bare space read
+        // as "AUDIT-1Edit" (release audit P1).
+        <span className="row" style={{ display: 'inline-flex', gap: 'var(--sp-8)' }}>
           {shown ? <b className="mono">{shown}</b> : <span className="muted">not set</span>}
           {editable ? (
-            <>
-              {' '}
-              <Button
-                size="sm"
-                tone="outline"
-                onClick={() => {
-                  setDraft(shown ?? '');
-                  setFailure(null);
-                  setEditing(true);
-                }}
-              >
-                {shown ? 'Edit' : 'Set'}
-              </Button>
-            </>
+            <Button
+              size="sm"
+              tone="outline"
+              onClick={() => {
+                setDraft(shown ?? '');
+                setFailure(null);
+                setEditing(true);
+              }}
+            >
+              {shown ? 'Edit' : 'Set'}
+            </Button>
           ) : null}
-        </>
+        </span>
       )}
       {failure ? (
         <>

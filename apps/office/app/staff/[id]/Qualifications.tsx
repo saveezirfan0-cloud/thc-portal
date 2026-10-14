@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import {
   Alert,
   Button,
@@ -56,6 +56,7 @@ export function Qualifications({
   // §9.6: "then one or more of that worker's roles" — a set, not a pick.
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const rolesId = useId();
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   // Release audit B1: a refusal from inside a dialog is shown IN the
@@ -277,19 +278,24 @@ export function Qualifications({
         }
       >
         {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
-        <div className="field">
-          <span className="label">Client</span>
-          <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
-            <option value="">Choose a client…</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="field">
-          <span className="label">Role(s)</span>
+        {/* Named controls (release audit 14.10.2026): the label is the
+            field's own, not a loose span beside it. */}
+        <Select
+          label="Client"
+          value={clientId}
+          onChange={(event) => setClientId(event.target.value)}
+        >
+          <option value="">Choose a client…</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </Select>
+        <div className="field" role="group" aria-labelledby={`${rolesId}-label`}>
+          <span className="label" id={`${rolesId}-label`}>
+            Role(s)
+          </span>
           {held.length === 0 ? (
             <span className="muted sm">
               This worker holds no role yet — add one on the Overview.
@@ -316,14 +322,12 @@ export function Qualifications({
             is a row auto-assign never reads.
           </span>
         </div>
-        <div className="field">
-          <span className="label">Note (internal, optional)</span>
-          <Textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="e.g. Client asked for her on the front desk"
-          />
-        </div>
+        <Textarea
+          label="Note (internal, optional)"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="e.g. Client asked for her on the front desk"
+        />
       </Modal>
 
       <Modal
@@ -359,20 +363,23 @@ export function Qualifications({
           either wave, the shift will never appear on their Radar, and they cannot be invited
           manually to this client.
         </Alert>
-        <div className="field">
-          <span className="label">
-            Reason <span className="coral">*</span>
-          </span>
-          <Textarea
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="e.g. Client complaint 02.09.2026, service attitude"
-          />
-          <span className="hint">
-            Shown under Unavailable → Do not return on this client&rsquo;s events. It is kept if the
-            flag is ever switched off, because it is what the next decision rests on.
-          </span>
-        </div>
+        <Textarea
+          label={
+            <>
+              Reason <span className="coral">*</span>
+            </>
+          }
+          aria-required="true"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="e.g. Client complaint 02.09.2026, service attitude"
+          hint={
+            <>
+              Shown under Unavailable → Do not return on this client&rsquo;s events. It is kept if
+              the flag is ever switched off, because it is what the next decision rests on.
+            </>
+          }
+        />
       </Modal>
       {confirm.dialog}
     </div>

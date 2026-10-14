@@ -428,6 +428,17 @@ on conflict (id) do update set
   expiry_date = excluded.expiry_date, review_status = excluded.review_status,
   needs_manual_review = excluded.needs_manual_review, ai_confidence = excluded.ai_confidence;
 
+-- A verified document was verified at some moment: every reader that asks
+-- "when" (the Student view's "verified letter on file", the Radar's
+-- verifier, the Documents tab's stamp) reads reviewed_at. Verified with it
+-- NULL, Amara's term letter was in date on the Radar and missing on
+-- /staff?view=student (release audit L11). reviewed_by is set with the dev
+-- logins below, where the office profile exists.
+update compliance_docs
+   set reviewed_at = coalesce(reviewed_at, uploaded_at)
+ where id::text like '62000000-0000-4000-8000-%'
+   and review_status = 'verified';
+
 -- A verified term letter carries the ranges it was verified with (verify copies
 -- them onto the worker too), and the letter expires on the last of them
 -- (ADR-0103) — here 19.09.2027, so the Radar shows a letter that is in date.
@@ -553,4 +564,43 @@ begin
    where id = '20000000-0000-4000-8000-000000000002';
   update staff set user_id = '10000000-0000-4000-8000-000000000006'
    where id = '20000000-0000-4000-8000-000000000001';
+
+  -- Who verified the seeded documents (reviewed_at is set above): the
+  -- office's dev login, so the Radar and the Documents tab name someone.
+  update compliance_docs set reviewed_by = '10000000-0000-4000-8000-000000000001'
+   where id::text like '62000000-0000-4000-8000-%'
+     and review_status = 'verified' and reviewed_by is null;
+
+  -- A rating is the mean of the worker's counted feedback (§9.10,
+  -- recompute_staff_rating), so each seeded rating comes with the office
+  -- feedback that makes it — a "4.4 from 0 counted entries" (release audit
+  -- m11) was a number nothing could reproduce, and the first entry anyone
+  -- added replaced it. For a rating f.t: n entries (1, 2, 5 or 10, the
+  -- fewest whose mean can be exactly f.t), the first t·n/10 of them f+1
+  -- stars, the rest f. The trigger lands staff.rating on the same figure.
+  -- Not tied to an event; idempotent by id.
+  insert into feedback (id, author_kind, author_id, staff_id, event_id, rating, text, created_at)
+  select md5('seed-rating:' || s.id::text || ':' || g.i)::uuid,
+         'office', '10000000-0000-4000-8000-000000000001', s.id, null,
+         v.stars,
+         case v.stars
+           when 5 then 'Excellent shift — the client asked for them again.'
+           when 4 then 'A good shift, nothing to raise.'
+           else 'Late to the briefing; the work itself was fine.'
+         end,
+         now() - make_interval(days => 7 * g.i)
+    from staff s
+    cross join lateral (select floor(s.rating)::int as whole,
+                               round((s.rating - floor(s.rating)) * 10)::int as tenths) r
+    cross join lateral (select case when r.tenths = 0 then 1
+                                    when r.tenths = 5 then 2
+                                    when r.tenths % 2 = 0 then 5
+                                    else 10 end as n) c
+    cross join lateral generate_series(1, c.n) g(i)
+    cross join lateral (select case when g.i <= r.tenths * c.n / 10
+                                    then r.whole + 1 else r.whole end as stars) v
+   where s.id::text like '20000000-0000-4000-8000-%'
+     and s.rating is not null
+     and s.removed_at is null
+  on conflict (id) do nothing;
 end $$;

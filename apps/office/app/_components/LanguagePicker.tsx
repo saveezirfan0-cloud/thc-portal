@@ -71,7 +71,9 @@ export function LanguagePicker({
           <select
             id={`${id}-add`}
             className="input"
-            style={{ height: 32, width: 190 }}
+            // Never wider than the cell it sits in: at 1024 the profile's
+            // value column is narrower than 190px (release audit m4).
+            style={{ height: 32, width: 190, maxWidth: '100%' }}
             aria-label={label ? undefined : 'Add a language'}
             value=""
             onChange={(event) => {
