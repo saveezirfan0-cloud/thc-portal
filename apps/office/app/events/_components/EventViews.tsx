@@ -41,7 +41,7 @@ const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boole
 
 /**
  * "13 of 17" for a live event. Green when full; red and flashing while it is
- * still short and not over (ADR-0131); amber for a short event that has ended.
+ * still short and not over (ADR-0132); amber for a short event that has ended.
  */
 function FillPill({ row }: { row: EventRow }) {
   const alert = isShortStaffed(row);
