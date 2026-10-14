@@ -145,6 +145,8 @@ export function payrollCsv(rows: readonly PayrollCsvRow[]): string {
  * Confirmed 28.07.2026: Staff · Employee ID · NI Number · Home address ·
  * Postcode · Country · Date of birth · Gender (M/F) · First shift date ·
  * HMRC Statement (A/B/C) · Student Loan. No role, no salutation.
+ * 13.10.2026 (ADR-0130): the worker's bank details follow — Account holder ·
+ * Sort code · Account number — so payroll sets a starter up from one file.
  */
 export const NEW_STARTER_CSV_COLUMNS = [
   'Staff',
@@ -158,6 +160,9 @@ export const NEW_STARTER_CSV_COLUMNS = [
   'First shift date',
   'HMRC Statement',
   'Student Loan',
+  'Account holder',
+  'Sort code',
+  'Account number',
 ] as const;
 
 export interface NewStarterCsvRow {
@@ -172,6 +177,10 @@ export interface NewStarterCsvRow {
   first_shift_date: string | null;
   hmrc_statement: string | null;
   student_loan: string | null;
+  bank_account_holder: string | null;
+  /** "40-47-84" — formatted by new_starter_rows(). */
+  bank_sort_code: string | null;
+  bank_account_number: string | null;
 }
 
 export function newStarterCsvRows(rows: readonly NewStarterCsvRow[]): string[][] {
@@ -188,6 +197,10 @@ export function newStarterCsvRows(rows: readonly NewStarterCsvRow[]): string[][]
     ukDateFromIsoDate(row.first_shift_date),
     textCell(row.hmrc_statement),
     textCell(row.student_loan),
+    // Full, unmasked, as the NI number: payroll pays into this account.
+    textCell(row.bank_account_holder),
+    textCell(row.bank_sort_code),
+    textCell(row.bank_account_number),
   ]);
 }
 
