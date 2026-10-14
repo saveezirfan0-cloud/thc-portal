@@ -432,8 +432,11 @@ begin
     left join auth.users u      on u.id = q.requested_by
    where q.id = v_id;
 
-  insert into notification_outbox (key, channel, template, payload)
-  values ('CP1:request:' || v_id::text, 'email', 'CP1', v_payload)
+  -- The register's own address on the row too, as E10 and CR3 write it,
+  -- so /inbox shows who it went to.
+  insert into notification_outbox (key, channel, template, recipient_emails, payload)
+  values ('CP1:request:' || v_id::text, 'email', 'CP1',
+          array['admin@thehospitalitycompany.co.uk'], v_payload)
   on conflict (key) do nothing;
 
   return jsonb_build_object('id', v_id, 'already', false);

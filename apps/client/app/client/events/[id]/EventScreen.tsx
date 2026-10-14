@@ -478,7 +478,7 @@ export function EventScreen({
                                   requestButtons.current.set(p.bookingId, el);
                                 }}
                                 type="button"
-                                className="btn sm ghost req"
+                                className="btn sm req"
                                 aria-label={`Request ${p.name} again`}
                                 onClick={() => setRequesting(p)}
                               >

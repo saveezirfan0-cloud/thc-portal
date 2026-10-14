@@ -171,7 +171,7 @@ update staff set removed_at = null where id = :'s4';
 select is((select count(*)::int from client_worker_requests where client_id = :'clienta'), 1,
   'one row in all, after one request, one repeat and seven refusals');
 select results_eq(
-  $$ select template, channel::text, recipient_emails is null, payload ->> 'name', payload ->> 'client',
+  $$ select template, channel::text, recipient_emails = array['admin@thehospitalitycompany.co.uk'], payload ->> 'name', payload ->> 'client',
             payload ->> 'clientNote', payload ->> 'employeeId'
        from notification_outbox
       where key = 'CP1:request:' || (select id::text from client_worker_requests

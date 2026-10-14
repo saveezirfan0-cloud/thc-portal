@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Alert, Button, Panel, Pill, TableScroll, useTimeFormat } from '@thc/ui';
-import { formatUkDate } from '../../staff/staff';
+import { employeeId, formatUkDate } from '../../staff/staff';
 import { formatUkStamp } from '../../staff/[id]/profile';
 import { markRequestHandled } from './actions';
 import type { WorkerRequestRow } from './types';
@@ -88,7 +88,7 @@ export function WorkerRequests({
                         </Link>
                       )}
                       {row.employee_id !== null ? (
-                        <span className="sub mono">ID {row.employee_id}</span>
+                        <span className="sub mono">{employeeId(row.employee_id)}</span>
                       ) : null}
                     </td>
                     <td data-label="Asked from" className="sm">

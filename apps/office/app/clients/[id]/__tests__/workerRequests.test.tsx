@@ -36,6 +36,7 @@ describe('Requests from the Client Portal (ADR-0135 §2)', () => {
     const html = renderToStaticMarkup(<WorkerRequests clientId="c1" rows={[row()]} canWrite />);
     expect(html).toContain('href="/staff/s1"');
     expect(html).toContain('Aisha Bello');
+    expect(html).toContain('THC-10231');
     expect(html).toContain('href="/events/e1"');
     expect(html).toContain('Waiting Staff · 19.09.2026');
     expect(html).toContain('Brilliant with the VIP table');
