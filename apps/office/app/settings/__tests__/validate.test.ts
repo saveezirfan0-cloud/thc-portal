@@ -3,6 +3,7 @@ import { DEFAULT_WEIGHTS, parseWeights, score } from '@thc/domain';
 import {
   SHIPPED_WEIGHTS,
   readWeights,
+  validateClientPortalPhone,
   validateEscalationRadius,
   validateGap,
   validateRadius,
@@ -241,5 +242,29 @@ describe('the Willo review link template (§2.4)', () => {
   it('refuses a non-URL and a plain http link', () => {
     expect(validateWilloReviewUrlTemplate('willo {id}')).toMatch(/not a valid URL/);
     expect(validateWilloReviewUrlTemplate('http://app.willo.video/{id}')).toMatch(/https/);
+  });
+});
+
+describe('the Client Portal phone number (ADR-0134 N1)', () => {
+  it('allows blank, which hides the line on the portal', () => {
+    expect(validateClientPortalPhone('')).toBeNull();
+    expect(validateClientPortalPhone('   ')).toBeNull();
+  });
+
+  it('allows a number as people write it', () => {
+    for (const ok of [
+      '020 7946 0000',
+      '+44 (0)20 7946 0000',
+      '+44 20 7946 0000',
+      '07700-900-123',
+    ]) {
+      expect(validateClientPortalPhone(ok), ok).toBeNull();
+    }
+  });
+
+  it('refuses words, too few or too many digits', () => {
+    expect(validateClientPortalPhone('call the office')).toMatch(/Enter a phone number/);
+    expect(validateClientPortalPhone('020 7946')).toMatch(/10 to 15 digits/);
+    expect(validateClientPortalPhone('+44 20 7946 0000 1234')).toMatch(/10 to 15 digits/);
   });
 });

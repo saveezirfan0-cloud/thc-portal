@@ -326,7 +326,7 @@ export function FeedbackModal({
  * five identical stars in light mode, where --muted and the amber ink are
  * barely 1.2:1 apart.
  */
-function StarIcon() {
+export function StarIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M12 2.8l2.83 5.73 6.33.92-4.58 4.46 1.08 6.3L12 17.24l-5.66 2.97 1.08-6.3-4.58-4.46 6.33-.92z" />

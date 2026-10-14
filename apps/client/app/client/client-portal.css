@@ -1343,3 +1343,379 @@ a.btn[aria-busy='true']:hover {
     display: inline;
   }
 }
+
+/* ---- round 3 (ADR-0134) ---- */
+
+/* N1 · "Call THC · 020 7946 0000": the number in the figures' face, never
+   broken across lines. */
+.call-thc .num {
+  font-family: var(--font-num);
+  white-space: nowrap;
+}
+
+/* N3 · "Timesheets go to": long addresses break anywhere rather than push
+   the meta grid wider than the card. */
+.meta .v.recipients {
+  overflow-wrap: anywhere;
+}
+
+.meta .v.recipients .addr {
+  display: block;
+}
+
+/* On a phone the meta grid is two narrow columns: an address needs the
+   card's whole width to stay on one line. */
+@media (max-width: 820px) {
+  .meta > .meta-recipients {
+    grid-column: 1 / -1;
+  }
+}
+
+/* N2 · a role's dress code, one quiet line at the top of its panel. */
+.role-dress {
+  margin: 0;
+  padding: var(--sp-10) var(--sp-20);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+
+.role-dress .k {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+  margin-right: var(--sp-8);
+}
+
+/* N8 · the first-visit welcome: a card like the event header, the three
+   lines beside "Got it"; on a phone the button takes its own line. */
+.cp-welcome {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-16);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-16) var(--sp-20);
+}
+
+.cp-welcome-b {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.cp-welcome h2 {
+  font-size: var(--fs-16);
+  margin: 0 0 var(--sp-8);
+}
+
+.cp-welcome ul {
+  margin: 0;
+  padding-left: 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  font-size: var(--fs-14);
+}
+
+.cp-welcome > .btn {
+  flex: none;
+}
+
+@media (max-width: 760px) {
+  .cp-welcome {
+    flex-direction: column;
+    padding: var(--sp-14) var(--sp-16);
+  }
+
+  .cp-welcome > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* N5 · "On the line-up: Priya Shah" under a row the search found by a
+   person. */
+.ev-match {
+  color: var(--cyan-ink);
+}
+
+.ecard .ev-match {
+  display: block;
+  font-size: var(--fs-12);
+}
+
+/* N7 + N4 · the row under the list: every upcoming event to the calendar,
+   and the feedback already given. */
+.ev-foot {
+  gap: var(--sp-8);
+}
+
+/* P4 · "Rate everyone (12)" under the feedback banner. */
+.rate-all-row {
+  gap: var(--sp-12);
+  align-items: center;
+}
+
+.rate-all-intro {
+  margin: 0;
+}
+
+.rate-all-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+}
+
+.rate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'who pick more'
+    'comment comment comment'
+    'note note note';
+  align-items: center;
+  column-gap: var(--sp-14);
+  padding: var(--sp-10) var(--sp-14);
+}
+
+.rate-row + .rate-row {
+  border-top: 1px solid var(--line);
+}
+
+.rate-who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-width: 0;
+}
+
+.rate-who .n {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: var(--fs-14);
+}
+
+.rate-who .s {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.rate-pick {
+  grid-area: pick;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rate-pick .stars-row {
+  margin-top: 0;
+}
+
+.rate-pick .hint {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.rate-more {
+  grid-area: more;
+  justify-self: end;
+}
+
+.rate-comment {
+  grid-area: comment;
+  margin-top: var(--sp-8);
+}
+
+.rate-error,
+.rate-progress {
+  grid-area: note;
+  margin: var(--sp-6) 0 0;
+}
+
+.rate-error {
+  color: var(--coral-ink);
+}
+
+.rate-done {
+  color: var(--green-ink);
+  font-weight: 600;
+  font-size: var(--fs-13);
+  white-space: nowrap;
+}
+
+/* A row already sent reads as done: the stars stay, quieter. */
+.rate-row.sent .rate-pick {
+  opacity: 0.7;
+}
+
+/* Phone: the comment button beside the name, the five stars on their own
+   line under it — five finger-sized targets need the row's whole width. */
+@media (max-width: 760px) {
+  .rate-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'who more'
+      'pick pick'
+      'comment comment'
+      'note note';
+    row-gap: var(--sp-6);
+  }
+
+  .rate-pick {
+    align-items: flex-start;
+  }
+}
+
+/* N4 · "Feedback you've given": the table from 768px, cards below, as the
+   list does. */
+.fbh-table {
+  overflow-x: auto;
+}
+
+.fbh-table .fbh-text {
+  max-width: 420px;
+  white-space: normal;
+}
+
+.fbh-table .fbh-sent {
+  white-space: nowrap;
+}
+
+.fbh-stars {
+  color: var(--amber-ink);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.fbh-stars .off {
+  color: var(--muted);
+}
+
+.fbh-text q {
+  quotes: '“' '”';
+  overflow-wrap: anywhere;
+}
+
+.fbh-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-14);
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.fbh-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  align-items: baseline;
+}
+
+.page-head .back-link {
+  display: inline-block;
+  margin-bottom: var(--sp-6);
+}
+
+@media (max-width: 767px) {
+  .fbh-table {
+    display: none;
+  }
+
+  .fbh-cards {
+    display: flex;
+  }
+
+  .fbh-panel {
+    background: none;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .fbh-panel > .panel-h {
+    padding: 0 calc(var(--sp-4) / 2) var(--sp-4);
+    border-bottom: 0;
+  }
+
+  .fbh-panel .fbh-cards {
+    padding: 0;
+  }
+}
+
+/* Finger-sized targets on a touch tablet (§1.2, CW-08) for the round's new
+   controls; the phone's are full-width or already 44px. */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .rate-all-row .btn,
+  .cp-welcome .btn,
+  .page-head a.back-link,
+  .fbh-panel a {
+    min-height: var(--tap-min);
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* N6 · "Print line-up": the event's header, its windows, dress codes and
+   every face and name by role on paper; no bar, no buttons, no banners.
+   PrintButton puts the light appearance on <html> while printing. */
+@media print {
+  .skip-link,
+  .ctop,
+  .cp-welcome,
+  .alert,
+  .ehead .actions,
+  .ehead .back-link,
+  .ehead .sep,
+  .rate-all-row,
+  .wrow .fb,
+  .modal-back {
+    display: none !important;
+  }
+
+  .cwrap {
+    max-width: none;
+    padding: 0;
+    gap: var(--sp-12);
+  }
+
+  .ehead,
+  .panel {
+    box-shadow: none;
+  }
+
+  .ehead {
+    break-inside: avoid;
+  }
+
+  .role-panel > .panel-h,
+  .role-dress {
+    break-after: avoid;
+  }
+
+  .wrow {
+    break-inside: avoid;
+  }
+
+  .wgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .epage a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

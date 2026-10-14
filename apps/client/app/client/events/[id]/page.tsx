@@ -1,16 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { cache } from 'react';
-import { Alert, PageHead } from '@thc/ui';
-import { loadEvent } from '../../data';
-import { loadArrivals } from '../../arrivals';
-import { DOCUMENTS_UNAVAILABLE, loadDocuments } from '../../documents';
+import { Suspense, cache } from 'react';
+import { loadEventRow } from '../../data';
 import { isUuid } from '../../ids';
-import { presentLineup } from '../../photos';
 import { AutoRefresh } from '../../../_components/AutoRefresh';
 import { DocNotice } from './DocNotice';
-import { EventScreen } from './EventScreen';
+import { EventBody, EventSkeleton, LoadFailed } from './EventBody';
 
 /**
  * §11.2 · one event, read-only.
@@ -23,15 +18,25 @@ import { EventScreen } from './EventScreen';
  * An id that is not a uuid is not-found before any query, and a failed
  * query shows the generic `LOAD_FAILED` copy: the database's own message
  * goes to the server log, never to the customer.
+ *
+ * Loading (ADR-0134 N9). There is still no `loading.tsx` here: a route
+ * `loading.tsx` wraps the whole page in a Suspense boundary, so the shell —
+ * and its 200 — would be sent before `notFound()` could answer 404
+ * (docs/08). Instead the page reads the event's own row first (one indexed
+ * read, `loadEventRow`) and decides between itself and the 404 before
+ * anything streams; only then does a Suspense boundary inside the page show
+ * the event's name over a skeleton while the line-up, its photos, the
+ * documents and the arrival counts load (`EventBody`). On slow venue Wi-Fi
+ * the customer sees which event they opened at once.
  */
 export const dynamic = 'force-dynamic';
 
 /**
- * One read per request: the tab title and the page are both drawn from it.
- * `cache` holds for the render of one request only, so nothing is shared
- * between customers or between refreshes.
+ * One read of the event row per request: the tab title and the page are
+ * both drawn from it. `cache` holds for the render of one request only, so
+ * nothing is shared between customers or between refreshes.
  */
-const readEvent = cache(loadEvent);
+const readEventRow = cache(loadEventRow);
 
 /** The not-found card's own title (not-found.tsx), for an id that is not this customer's. */
 const NOT_FOUND_TITLE = 'Not found · THC Client Portal';
@@ -49,7 +54,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   if (!isUuid(id)) return { title: NOT_FOUND_TITLE };
-  const { event, problem } = await readEvent(id);
+  const { event, problem } = await readEventRow(id);
   if (problem) return { title: 'Event details · THC Client Portal' };
   return { title: event ? `${event.title} · THC Client Portal` : NOT_FOUND_TITLE };
 }
@@ -82,26 +87,11 @@ export default async function ClientEventPage({
   if (!isUuid(id)) notFound();
   const notice = docNotice((await searchParams)?.doc);
 
-  const { event, sections, lineup, problem } = await readEvent(id);
+  const { event, problem } = await readEventRow(id);
 
-  if (problem) {
-    return (
-      <div className="stack" style={{ gap: 16 }}>
-        <Link className="sm" href="/client">
-          ← Your events
-        </Link>
-        <PageHead title="Event details" />
-        <Alert tone="amber">{problem}</Alert>
-      </div>
-    );
-  }
+  if (problem) return <LoadFailed title="Event details" problem={problem} />;
+  // Decided before the Suspense boundary below, so the answer is a real 404.
   if (!event) notFound();
-
-  const [shown, documents, arrivals] = await Promise.all([
-    presentLineup(lineup),
-    loadDocuments(event.id),
-    loadArrivals([event.id]),
-  ]);
 
   return (
     <>
@@ -117,16 +107,9 @@ export default async function ClientEventPage({
             : null
         }
       />
-      {documents.unavailable ? <Alert tone="amber">{DOCUMENTS_UNAVAILABLE}</Alert> : null}
-      <EventScreen
-        event={event}
-        sections={sections}
-        lineup={shown.lineup}
-        photos={shown.photos}
-        documents={documents.documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
-        arrivals={arrivals[event.id]}
-        now={new Date().toISOString()}
-      />
+      <Suspense fallback={<EventSkeleton event={event} />}>
+        <EventBody event={event} />
+      </Suspense>
     </>
   );
 }

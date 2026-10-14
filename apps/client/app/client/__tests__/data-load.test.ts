@@ -55,7 +55,8 @@ vi.mock('@thc/db/server', () => ({
   }),
 }));
 
-const { LIST_LIMITS, LOAD_FAILED, loadEvent, loadEventList } = await import('../data');
+const { HISTORY_LIMIT, LIST_LIMITS, LOAD_FAILED, loadEvent, loadEventList, loadFeedbackHistory } =
+  await import('../data');
 
 const EV = '80000000-0000-4000-8000-000000000001';
 const LEAK = 'permission denied for view client_lineup_v (SQLSTATE 42501)';
@@ -163,7 +164,7 @@ describe('loadEventList', () => {
 describe('loadEvent', () => {
   it('treats a non-UUID id as not found, without a query', async () => {
     const out = await loadEvent('not-a-uuid');
-    expect(out).toEqual({ event: null, sections: [], lineup: [], problem: null });
+    expect(out).toEqual({ event: null, sections: [], lineup: [], thcPhone: null, problem: null });
     expect(state.tables).toEqual([]);
   });
 
@@ -369,5 +370,149 @@ describe('loadEventList · a bounded read (R1)', () => {
     expect((await loadEventList({ now: NOW })).unlinked).toBe(false);
     state.results = { client_company_v: { data: null, error: { message: 'boom' } } };
     expect((await loadEventList({ now: NOW })).unlinked).toBe(false);
+  });
+});
+
+describe('loadEvent · round 3 additions (ADR-0134 N1–N3)', () => {
+  it("asks the event page for the recipients and the dress codes, and reads THC's phone", async () => {
+    state.results = {
+      client_events_v: {
+        data: {
+          ...eventRow,
+          status: 'upcoming',
+          timesheet_recipients: ['a@x.test', ' ', 'b@y.test'],
+        },
+        error: null,
+      },
+      client_role_sections_v: {
+        data: [
+          {
+            shift_id: 's1',
+            event_id: EV,
+            role: 'Waiting Staff',
+            starts_at: '2026-10-20T16:00:00Z',
+            ends_at: '2026-10-20T22:30:00Z',
+            headcount: 4,
+            confirmed: 4,
+            dress_code: 'Black tie',
+          },
+        ],
+        error: null,
+      },
+      client_portal_contact_v: { data: { phone: ' 020 7946 0000 ' }, error: null },
+    };
+    const out = await loadEvent(EV);
+    const selects = Object.fromEntries(
+      state.queries.map((q) => [q.table, String(q.calls.find((c) => c[0] === 'select')?.[1])]),
+    );
+    expect(selects.client_events_v).toContain('timesheet_recipients');
+    expect(selects.client_role_sections_v).toContain('dress_code');
+    expect(selects.client_portal_contact_v).toBe('phone');
+    expect(out.event?.timesheetRecipients).toEqual(['a@x.test', 'b@y.test']);
+    expect(out.sections[0]?.dressCode).toBe('Black tie');
+    expect(out.thcPhone).toBe('020 7946 0000');
+  });
+
+  it('never asks the list for either: what the list does not draw, it is not sent', async () => {
+    state.results = { client_events_v: { data: [eventRow], error: null } };
+    await loadEventList();
+    for (const q of state.queries) {
+      const columns = String(q.calls.find((c) => c[0] === 'select')?.[1] ?? '');
+      expect(columns).not.toContain('timesheet_recipients');
+      expect(columns).not.toContain('dress_code');
+    }
+    expect(state.tables).not.toContain('client_portal_contact_v');
+  });
+
+  it('a failed phone read hides the number and keeps the page, logging the detail', async () => {
+    state.results = {
+      client_events_v: { data: eventRow, error: null },
+      client_portal_contact_v: { data: null, error: { message: LEAK, code: '42501' } },
+    };
+    const out = await loadEvent(EV);
+    expect(out.problem).toBeNull();
+    expect(out.event?.title).toBe('Gala Dinner');
+    expect(out.thcPhone).toBeNull();
+    expect(JSON.stringify(logged)).toContain('THC phone');
+  });
+
+  it('an empty number, or no row (an unlinked login), is no number', async () => {
+    state.results = {
+      client_events_v: { data: eventRow, error: null },
+      client_portal_contact_v: { data: { phone: null }, error: null },
+    };
+    expect((await loadEvent(EV)).thcPhone).toBeNull();
+    state.results.client_portal_contact_v = { data: null, error: null };
+    expect((await loadEvent(EV)).thcPhone).toBeNull();
+  });
+});
+
+describe('loadFeedbackHistory (ADR-0134 N4)', () => {
+  const entry = (n: number, over: Record<string, unknown> = {}) => ({
+    booking_id: `b${n}`,
+    event_id: EV,
+    role: 'Waiting Staff',
+    name: `Worker ${n}`,
+    feedback_rating: 4,
+    feedback_sent_at: `2026-10-0${n}T20:00:00Z`,
+    feedback_text: `Comment ${n}`,
+    ...over,
+  });
+
+  it("reads the customer's own entries, newest first, bounded, and names each event", async () => {
+    state.answer = (q) =>
+      q.table === 'client_lineup_v'
+        ? { data: [entry(2), entry(1, { feedback_text: '  ' })], error: null }
+        : q.table === 'client_events_v'
+          ? {
+              data: [
+                {
+                  id: EV,
+                  title: 'Gala Dinner',
+                  venue_name: 'Leonardo',
+                  starts_at: '2026-10-01T16:00:00Z',
+                },
+              ],
+              error: null,
+            }
+          : undefined;
+    const out = await loadFeedbackHistory();
+    const lineup = state.queries.find((q) => q.table === 'client_lineup_v')!;
+    expect(lineup.calls).toContainEqual(['eq', 'feedback_given', true]);
+    expect(lineup.calls).toContainEqual(['order', 'feedback_sent_at', { ascending: false }]);
+    expect(lineup.calls).toContainEqual(['limit', HISTORY_LIMIT + 1]);
+    expect(String(lineup.calls.find((c) => c[0] === 'select')?.[1])).toContain('feedback_text');
+    // No photo path: the history draws no faces.
+    expect(String(lineup.calls.find((c) => c[0] === 'select')?.[1])).not.toContain('photo_path');
+    expect(out.problem).toBeNull();
+    expect(out.truncated).toBe(false);
+    expect(out.entries.map((e) => [e.name, e.eventTitle, e.rating, e.text])).toEqual([
+      ['Worker 2', 'Gala Dinner', 4, 'Comment 2'],
+      ['Worker 1', 'Gala Dinner', 4, null],
+    ]);
+  });
+
+  it('says when there are more than it keeps', async () => {
+    const many = Array.from({ length: HISTORY_LIMIT + 1 }, (_, i) =>
+      entry(1, { booking_id: `b${i}` }),
+    );
+    state.answer = (q) =>
+      q.table === 'client_lineup_v'
+        ? { data: many, error: null }
+        : {
+            data: [{ id: EV, title: 'G', venue_name: 'V', starts_at: '2026-10-01T16:00:00Z' }],
+            error: null,
+          };
+    const out = await loadFeedbackHistory();
+    expect(out.truncated).toBe(true);
+    expect(out.entries).toHaveLength(HISTORY_LIMIT);
+  });
+
+  it('a failed read is the customer sentence, the detail in the log', async () => {
+    state.results = { client_lineup_v: { data: null, error: { message: LEAK, code: '42501' } } };
+    const out = await loadFeedbackHistory();
+    expect(out.problem).toBe(LOAD_FAILED.feedback);
+    expect(out.entries).toEqual([]);
+    expect(JSON.stringify(logged)).toContain('feedback history');
   });
 });

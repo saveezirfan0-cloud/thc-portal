@@ -10,6 +10,7 @@ import type { EventArrivals } from '../../arrivals';
 import { DocumentLink } from '../../DocumentLink';
 import { EventWindow } from '../../EventWindow';
 import { OFFICE_EMAIL } from '../../account/copy';
+import { recipientsLine, telHref } from '../../contact';
 import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
   arrivalsWithinHeadcount,
@@ -29,8 +30,12 @@ import {
   statusTone,
 } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
+import type { ClientEvent } from '../../data';
 import { CalendarButton } from './CalendarButton';
 import { FeedbackModal } from './FeedbackModal';
+import { PrintButton } from './PrintButton';
+import { RateEveryone } from './RateEveryone';
+import { RATE_ALL_FROM, stillToRate } from './rate-all';
 
 /**
  * §11.2 · the event page.
@@ -65,8 +70,10 @@ export function EventScreen({
   now,
   documents = [],
   arrivals,
+  thcPhone = null,
 }: {
-  event: PortalEvent;
+  /** With `timesheetRecipients` when the page read them (ADR-0134 N3). */
+  event: PortalEvent & Pick<ClientEvent, 'timesheetRecipients'>;
   sections: RoleSection[];
   lineup: LineupRow[];
   /** Signed photo URLs keyed by `bookingId` (photos.ts); never a Storage path. */
@@ -76,6 +83,8 @@ export function EventScreen({
   documents?: IssuedDocument[];
   /** On-the-day check-in counts (ADR-0053); counts only, never who. */
   arrivals?: EventArrivals;
+  /** THC's on-the-day phone number (ADR-0134 N1); no link when null. */
+  thcPhone?: string | null;
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
   // Sent from this page and not yet re-read: the row says "✓ Feedback sent"
@@ -118,6 +127,12 @@ export function EventScreen({
     documents.map((d) => d.kind),
   );
   const timesheet = completed ? documents.find((d) => d.kind === 'signout') : undefined;
+  const call = telHref(thcPhone);
+  // "Rate everyone" (ADR-0134 P4): once feedback is open, for two or more
+  // still to rate on the visible line-up.
+  const toRate = open && !cancelled ? stillToRate(lineup, sentHere) : [];
+  // A cancelled event has no documents (§3.3), so nobody to send them to.
+  const recipients = cancelled ? [] : recipientsLine(event.timesheetRecipients);
 
   return (
     <div className="stack epage">
@@ -127,7 +142,8 @@ export function EventScreen({
             ← Your events
           </Link>
           <span className="muted sm">
-            · <AsOf now={now} />
+            <span className="sep">· </span>
+            <AsOf now={now} />
           </span>
         </div>
 
@@ -179,11 +195,21 @@ export function EventScreen({
             {/* ADR-0050: an .ics built in the browser; none when cancelled,
                 and none once the event is over — nothing left to attend. */}
             {ended ? null : <CalendarButton event={event} />}
+            {/* ADR-0134 N6: the line-up on paper for the door, before the
+                PDF is issued. Nothing to print for a cancelled event. */}
+            {cancelled ? null : <PrintButton />}
             {/* A question about this event goes to the office, with the
                 event already named in the subject. */}
             <a className="btn ghost" href={contactHref(event)}>
               Contact THC about this event
             </a>
+            {/* "Who do I call at 07:30?" (ADR-0134 N1): the number the
+                office set on /settings, none until it has. */}
+            {call ? (
+              <a className="btn ghost call-thc" href={call} aria-label={`Call THC on ${thcPhone}`}>
+                Call THC · <span className="num">{thcPhone}</span>
+              </a>
+            ) : null}
           </div>
         </div>
 
@@ -217,6 +243,34 @@ export function EventScreen({
               </div>
             </div>
           ) : null}
+          {recipients.length > 0 ? (
+            <div className="meta-recipients">
+              <div className="k">Timesheets go to</div>
+              <div className="v recipients">
+                {/* ADR-0089 via ADR-0134 N3: the event's own list, or the
+                    addresses on the client card. */}
+                {/* One per line, breaking after the "@" before anywhere
+                    else, so "leonardo-stpauls.example" stays whole. */}
+                {recipients.map((address) => {
+                  const at = address.indexOf('@');
+                  return (
+                    <span key={address} className="addr">
+                      {at > 0 ? (
+                        <>
+                          {address.slice(0, at + 1)}
+                          <wbr />
+                          {address.slice(at + 1)}
+                        </>
+                      ) : (
+                        address
+                      )}
+                    </span>
+                  );
+                })}
+                <span className="sub">for this event · ask THC to change who receives them</span>
+              </div>
+            </div>
+          ) : null}
           <div>
             <div className="k">Your on-site contact</div>
             <div className="v">
@@ -239,6 +293,22 @@ export function EventScreen({
         ) : (
           <FeedbackLocked startsAt={event.startsAt} now={at} />
         )}
+
+        {toRate.length >= RATE_ALL_FROM ? (
+          <div className="row wrap rate-all-row">
+            <RateEveryone
+              eventId={event.id}
+              eventTitle={event.title}
+              eventDate={ukDateShort(event.startsAt)}
+              people={toRate}
+              photos={photos}
+              onSent={(ids) => setSentHere((prev) => new Set([...prev, ...ids]))}
+            />
+            <span className="sm muted">
+              Or one at a time with &ldquo;Leave feedback&rdquo; beside each person.
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {cancelled
@@ -256,8 +326,8 @@ export function EventScreen({
               actions={
                 <>
                   {/* Held to the headcount: a section carrying THC's buffer
-                      reads "4 of 4", never "6 of 4"; the line-up below still
-                      lists everyone confirmed. */}
+                      reads "4 of 4", never "6 of 4", and the line-up below
+                      stops at the headcount too (client_lineup_v, ADR-0134). */}
                   <Pill tone={sectionTone(group, completed)}>
                     {sectionCountLabel(group, completed)}
                   </Pill>
@@ -271,6 +341,13 @@ export function EventScreen({
               }
               flush
             >
+              {/* The role's dress code, from the customer's own rate card
+                  (ADR-0134 N2). */}
+              {group.dressCode ? (
+                <p className="role-dress sm">
+                  <span className="k">Dress code</span> {group.dressCode}
+                </p>
+              ) : null}
               {group.people.length === 0 ? (
                 // A section nobody has confirmed on yet still shows its role
                 // and window, and says so in one line.

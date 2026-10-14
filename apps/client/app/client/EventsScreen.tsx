@@ -20,6 +20,8 @@ import {
 import { needsDualZone, ukToday } from '@thc/domain';
 import { AsOf } from '../_components/AsOf';
 import { Arrivals } from './ArrivalsPill';
+import { CalendarAllButton } from './CalendarAllButton';
+import { WelcomePanel } from './WelcomePanel';
 import type { ArrivalsByEvent } from './arrivals';
 import { DocumentLink } from './DocumentLink';
 import { EventWindow } from './EventWindow';
@@ -40,6 +42,7 @@ import {
   filterByTab,
   filtersActive,
   isRemoved,
+  lineupNames,
   listQuery,
   listStateFromParams,
   momentIn,
@@ -48,6 +51,7 @@ import {
   rangeReversed,
   roleBreakdown,
   sortForTab,
+  staffMatching,
   statusTone,
   tabCounts,
   timesheetStatus,
@@ -150,7 +154,14 @@ export function EventsScreen({
   const next = useMemo(() => nextUp(events, at), [events, at]);
 
   const inTab = useMemo(() => filterByTab(events, tab, at), [events, tab, at]);
-  const rows = useMemo(() => sortForTab(applyFilters(inTab, filters), tab), [inTab, filters, tab]);
+  // "Which events was Priya on?" (ADR-0134 N5): the search also reads the
+  // names on each loaded line-up — the window read, never further.
+  const names = useMemo(() => lineupNames(lineup), [lineup]);
+  const rows = useMemo(
+    () => sortForTab(applyFilters(inTab, filters, names), tab),
+    [inTab, filters, names, tab],
+  );
+  const staffFor = (id: string) => staffMatching(names.get(id), filters.query);
   const filtering = filtersActive(filters);
   const reversed = rangeReversed(filters);
   const empty = emptyReason(events.length, inTab.length, rows.length, reversed);
@@ -201,14 +212,17 @@ export function EventsScreen({
         </div>
       </div>
 
+      {/* First visit on this device only (ADR-0134 N8). */}
+      <WelcomePanel />
+
       {next ? <NextUp {...next} now={at} fill={fillOf(sectionsFor(next.event.id))} /> : null}
 
       {/* The shared .toolbar phone rules (packages/ui) give the search its
           own line and let the filters share the next one. */}
       <div className="toolbar ev-filters">
         <SearchInput
-          label="Search events"
-          placeholder="Search events"
+          label="Search events or staff"
+          placeholder="Search events or staff"
           value={filters.query}
           onChange={(e) => set({ query: e.currentTarget.value })}
           className="ev-search"
@@ -279,6 +293,7 @@ export function EventsScreen({
             range={reversed ? { from: filters.from, to: filters.to } : undefined}
             onSwapDates={() => set({ from: filters.to, to: filters.from })}
             older={olderHref && loaded ? { since: loaded.since, href: olderHref } : undefined}
+            searching={filters.query.trim() !== ''}
           />
         ) : (
           <>
@@ -330,6 +345,7 @@ export function EventsScreen({
                         <td>
                           <b>{cancelled ? <s>{e.title}</s> : e.title}</b>
                           <span className="sub">{e.poNumber ? `PO ${e.poNumber}` : 'PO —'}</span>
+                          <StaffMatch names={staffFor(e.id)} />
                           {cancelled && e.cancelledAt ? (
                             <span className="sub">cancelled {ukDayMonth(e.cancelledAt)}</span>
                           ) : null}
@@ -424,6 +440,7 @@ export function EventsScreen({
                       </span>
                     </div>
                     <div className="t">{cancelled ? <s>{e.title}</s> : e.title}</div>
+                    <StaffMatch names={staffFor(e.id)} />
                     <div className="m">
                       {e.venueName}, {e.venueAddress} · {e.poNumber ? `PO ${e.poNumber}` : 'PO —'}
                       {cancelled && e.cancelledAt
@@ -462,6 +479,15 @@ export function EventsScreen({
           </>
         )}
       </Panel>
+
+      {/* ADR-0134 N7 and N4: every upcoming event in one calendar file, and
+          the feedback the customer has left, both a click from the list. */}
+      <div className="row wrap ev-foot">
+        <CalendarAllButton events={events} now={now} />
+        <Link className="btn ghost sm" href="/client/feedback">
+          Feedback you&rsquo;ve given
+        </Link>
+      </div>
 
       {/* The list reads a recent window of past events (window.ts); older
           ones are a page further back, never silently missing. */}
@@ -558,6 +584,7 @@ export function EmptyList({
   range,
   onSwapDates,
   older,
+  searching = false,
 }: {
   reason: 'none' | 'tab' | 'filters' | 'range';
   tab: Tab;
@@ -570,6 +597,8 @@ export function EmptyList({
   onSwapDates?: () => void;
   /** Past events exist before the window read (window.ts): where they are. */
   older?: { since: string; href: string };
+  /** The search box is in use: older history may hold who they are looking for. */
+  searching?: boolean;
 }) {
   // The dates contradict each other: say so, and offer the obvious fix,
   // rather than "No events match your filters".
@@ -635,13 +664,32 @@ export function EmptyList({
               ? '1 event in this tab is hidden by your search and filters.'
               : `${hidden} events in this tab are hidden by your search and filters.`}
           </p>
-          <Button size="sm" className="mt-16" onClick={onClearFilters}>
-            Clear filters
-          </Button>
+          <div className="row wrap mt-16 ev-empty-actions">
+            <Button size="sm" onClick={onClearFilters}>
+              Clear filters
+            </Button>
+            {/* "Which events was Priya on?" reaches only the events read
+                (ADR-0134 N5): older ones are a page further back. */}
+            {searching && older ? (
+              <Link className="btn ghost sm" href={older.href} scroll={false}>
+                Search older events too
+              </Link>
+            ) : null}
+          </div>
         </EmptyState>
       )}
     </div>
   );
+}
+
+/**
+ * "On the line-up: Priya Shah" under an event the search found by a worker
+ * (ADR-0134 N5), so a row matched on a person says who. Nothing when the
+ * search did not match anyone on it.
+ */
+function StaffMatch({ names }: { names: string[] }) {
+  if (names.length === 0) return null;
+  return <span className="sub ev-match">On the line-up: {names.join(', ')}</span>;
 }
 
 /**

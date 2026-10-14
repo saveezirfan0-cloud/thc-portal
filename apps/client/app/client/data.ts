@@ -41,6 +41,7 @@ export const LOAD_FAILED = {
   tooMany:
     'You have more events in this date range than we can show at once. Choose a shorter range with From and To.',
   event: 'We could not load this event just now. Refresh the page to try again.',
+  feedback: 'We could not load your feedback just now. Refresh the page to try again.',
   noProject: "The portal isn't connected yet. Please contact THC.",
 } as const;
 
@@ -54,13 +55,16 @@ function logFailure(what: string, error: { message?: string; code?: string } | n
   console.error(`[client] ${what} failed`, { code: error?.code, message: error?.message });
 }
 
+// The event page's header also says who the timesheets go to (ADR-0134 N3).
 const EVENT_COLUMNS =
-  'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status, cancelled_at';
+  'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status, cancelled_at, timesheet_recipients';
 // The list renders no on-site contact (that is §11.2's, the event page), so
 // it never asks for one: what the browser is not shown, it is not sent.
 const LIST_EVENT_COLUMNS =
   'id, title, venue_name, venue_address, event_date, po_number, starts_at, ends_at, status, cancelled_at';
-const SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
+const LIST_SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
+// The event page draws each role's dress code (ADR-0134 N2); the list does not.
+const SECTION_COLUMNS = `${LIST_SECTION_COLUMNS}, dress_code`;
 const LINEUP_COLUMNS =
   'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given, feedback_rating, feedback_sent_at';
 
@@ -69,7 +73,15 @@ const LINEUP_COLUMNS =
  * "cancelled <date>" under a greyed row (20261013100300). Null unless
  * `status` is `cancelled`.
  */
-export type ClientEvent = PortalEvent & { cancelledAt: string | null };
+export type ClientEvent = PortalEvent & {
+  cancelledAt: string | null;
+  /**
+   * Who THC emails this event's timesheets to (`client_events_v
+   * .timesheet_recipients`, ADR-0089: the event's own list, else the client
+   * card's). Read on the event page only; absent on the list.
+   */
+  timesheetRecipients?: string[];
+};
 
 /**
  * `LineupRow` plus the customer's OWN feedback entry for that worker on that
@@ -100,6 +112,13 @@ function toEvent(r: Row): ClientEvent {
     endsAt: r.ends_at,
     status: r.status,
     cancelledAt: r.cancelled_at ?? null,
+    ...(Array.isArray(r.timesheet_recipients)
+      ? {
+          timesheetRecipients: (r.timesheet_recipients as unknown[]).filter(
+            (a): a is string => typeof a === 'string' && a.trim() !== '',
+          ),
+        }
+      : {}),
   };
 }
 
@@ -112,6 +131,7 @@ function toSection(r: Row): RoleSection {
     endsAt: r.ends_at,
     headcount: r.headcount,
     confirmed: r.confirmed,
+    ...(r.dress_code !== undefined ? { dressCode: r.dress_code ?? null } : {}),
   };
 }
 
@@ -328,7 +348,7 @@ export async function loadEventList(
     readForEvents(ids, (chunk, from, to) =>
       supabase
         .from('client_role_sections_v')
-        .select(SECTION_COLUMNS)
+        .select(LIST_SECTION_COLUMNS)
         .in('event_id', chunk)
         .order('event_id', { ascending: true })
         .order('starts_at', { ascending: true })
@@ -378,31 +398,78 @@ export interface EventPageData {
   event: ClientEvent | null;
   sections: RoleSection[];
   lineup: LineupRecord[];
+  /**
+   * THC's on-the-day phone number (`client_portal_contact_v`, ADR-0134 N1);
+   * null while the office has not set one, or when it could not be read —
+   * the page then simply has no "Call THC" link.
+   */
+  thcPhone: string | null;
   /** A customer sentence when the event could not be read; never the DB's message. */
   problem: string | null;
 }
 
+/** No event to show: fresh arrays each time, so no caller shares one. */
+function noEvent(problem: string | null): EventPageData {
+  return { event: null, sections: [], lineup: [], thcPhone: null, problem };
+}
+
+/** The event row alone: what decides between the page and its 404. */
+export interface EventRowData {
+  event: ClientEvent | null;
+  problem: string | null;
+}
+
+/** Everything under the event's header: sections, line-up, THC's phone. */
+export type EventDetailsData = Omit<EventPageData, 'event'>;
+
 /**
- * §11.2 · one event.
+ * §11.2 · the event's own row, read first and on its own (ADR-0134 N9).
+ *
+ * The page decides between itself and a 404 on this one indexed read
+ * before anything is streamed, so a wrong id still answers 404 while the
+ * line-up and its photos load under a skeleton (page.tsx).
  *
  * A wrong id returns `event: null` and the page renders not-found. It is
  * not an authorisation decision the screen is making: the view returned no
  * row because the predicate said so, which is the same answer another
- * customer's event gives.
- *
- * An id that is not a uuid is the same answer, without asking: no event
- * could have it, and asking would only earn Postgres's 22P02.
+ * customer's event gives. An id that is not a uuid is the same answer,
+ * without asking: no event could have it, and asking would only earn
+ * Postgres's 22P02.
  */
-export async function loadEvent(id: string): Promise<EventPageData> {
-  if (!supabaseConfigured()) {
-    return { event: null, sections: [], lineup: [], problem: LOAD_FAILED.noProject };
+export async function loadEventRow(id: string): Promise<EventRowData> {
+  if (!supabaseConfigured()) return { event: null, problem: LOAD_FAILED.noProject };
+  if (!isUuid(id)) return { event: null, problem: null };
+
+  const supabase = createClient(await cookies()) as any;
+  const event = await supabase
+    .from('client_events_v')
+    .select(EVENT_COLUMNS)
+    .eq('id', id)
+    .maybeSingle();
+  if (event.error) {
+    logFailure('event page', event.error);
+    return { event: null, problem: LOAD_FAILED.event };
   }
-  if (!isUuid(id)) return { event: null, sections: [], lineup: [], problem: null };
+  return { event: event.data ? toEvent(event.data) : null, problem: null };
+}
+
+/**
+ * §11.2 · the rest of the page: the role sections, the line-up (at most
+ * each section's headcount, ADR-0134 §1) and THC's on-the-day phone.
+ */
+export async function loadEventDetails(id: string): Promise<EventDetailsData> {
+  const none = (problem: string | null): EventDetailsData => ({
+    sections: [],
+    lineup: [],
+    thcPhone: null,
+    problem,
+  });
+  if (!supabaseConfigured()) return none(LOAD_FAILED.noProject);
+  if (!isUuid(id)) return none(null);
 
   const supabase = createClient(await cookies()) as any;
 
-  const [event, sections, lineup] = await Promise.all([
-    supabase.from('client_events_v').select(EVENT_COLUMNS).eq('id', id).maybeSingle(),
+  const [sections, lineup, contact] = await Promise.all([
     supabase
       .from('client_role_sections_v')
       .select(SECTION_COLUMNS)
@@ -415,18 +482,136 @@ export async function loadEvent(id: string): Promise<EventPageData> {
       .eq('event_id', id)
       .order('sort_key', { ascending: true })
       .order('booking_id', { ascending: true }),
+    // One row for a linked client user (ADR-0134 N1).
+    supabase.from('client_portal_contact_v').select('phone').maybeSingle(),
   ]);
 
-  const failed = [event, sections, lineup].find((r) => r.error);
+  const failed = [sections, lineup].find((r) => r.error);
   if (failed?.error) {
     logFailure('event page', failed.error);
-    return { event: null, sections: [], lineup: [], problem: LOAD_FAILED.event };
+    return none(LOAD_FAILED.event);
   }
+  // The number is an aid, not the page: failing to read it withholds nothing.
+  if (contact?.error) logFailure('THC phone', contact.error);
+  const phone = contact?.error ? null : contact?.data?.phone;
 
   return {
-    event: event.data ? toEvent(event.data) : null,
     sections: (sections.data ?? []).map(toSection),
     lineup: (lineup.data ?? []).map(toLineup),
+    thcPhone: typeof phone === 'string' && phone.trim() !== '' ? phone.trim() : null,
     problem: null,
   };
+}
+
+/**
+ * §11.2 · one event, whole: `loadEventRow` and `loadEventDetails` together.
+ * Either failing is the page's one customer sentence.
+ */
+export async function loadEvent(id: string): Promise<EventPageData> {
+  if (!supabaseConfigured()) return noEvent(LOAD_FAILED.noProject);
+  if (!isUuid(id)) return noEvent(null);
+
+  const [row, details] = await Promise.all([loadEventRow(id), loadEventDetails(id)]);
+  const problem = row.problem ?? details.problem;
+  if (problem) return noEvent(problem);
+  return { event: row.event, ...details };
+}
+
+/** One entry of "Feedback you've given" (ADR-0134 N4): the customer's own. */
+export interface FeedbackEntry {
+  bookingId: string;
+  eventId: string;
+  eventTitle: string;
+  venueName: string;
+  /** The event window's start (ISO): the UK date printed beside it. */
+  eventStartsAt: string;
+  /** The worker's name, or "Deleted account #id" (§1.7). */
+  name: string;
+  role: string;
+  /** The customer's stars, 1–5. */
+  rating: number | null;
+  /** When the customer sent it (ISO). */
+  sentAt: string | null;
+  /** The customer's own comment; null when they left none, or the worker was removed. */
+  text: string | null;
+}
+
+export interface FeedbackHistoryData {
+  entries: FeedbackEntry[];
+  /** More entries than one read keeps: the page says it shows the latest. */
+  truncated: boolean;
+  problem: string | null;
+}
+
+/** The latest entries one read keeps (and one more, to notice there are more). */
+export const HISTORY_LIMIT = 500;
+
+const HISTORY_COLUMNS =
+  'booking_id, event_id, role, name, feedback_rating, feedback_sent_at, feedback_text';
+
+/**
+ * "Feedback you've given" (ADR-0134 N4): every entry the customer has left,
+ * newest first, from `client_lineup_v`'s feedback columns — the customer's
+ * OWN entries only (author_kind = client), so the office's never appear —
+ * with each event's name, venue and date from `client_events_v`. A worker
+ * the customer rated stays on the line-up whatever their seat (ADR-0134
+ * §1), so no entry is lost to the headcount trim.
+ */
+export async function loadFeedbackHistory(): Promise<FeedbackHistoryData> {
+  if (!supabaseConfigured()) {
+    return { entries: [], truncated: false, problem: LOAD_FAILED.noProject };
+  }
+  const supabase = createClient(await cookies()) as any;
+
+  const rated = await supabase
+    .from('client_lineup_v')
+    .select(HISTORY_COLUMNS)
+    .eq('feedback_given', true)
+    .order('feedback_sent_at', { ascending: false })
+    .order('booking_id', { ascending: true })
+    .limit(HISTORY_LIMIT + 1);
+  if (rated.error) {
+    logFailure('feedback history', rated.error);
+    return { entries: [], truncated: false, problem: LOAD_FAILED.feedback };
+  }
+  const rows: Row[] = uniqueBy(rated.data ?? [], 'booking_id');
+  const truncated = rows.length > HISTORY_LIMIT;
+  const kept = rows.slice(0, HISTORY_LIMIT);
+
+  const ids = [...new Set(kept.map((r) => r.event_id as string))];
+  const events = await readForEvents(ids, (chunk, from, to) =>
+    supabase
+      .from('client_events_v')
+      .select('id, title, venue_name, starts_at')
+      .in('id', chunk)
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+  if (events.error) {
+    logFailure('feedback history', events.error);
+    return { entries: [], truncated: false, problem: LOAD_FAILED.feedback };
+  }
+  const byId = new Map(events.rows.map((e) => [e.id as string, e]));
+
+  const entries = kept.flatMap((r): FeedbackEntry[] => {
+    const event = byId.get(r.event_id);
+    if (!event) return [];
+    const text = typeof r.feedback_text === 'string' ? r.feedback_text.trim() : '';
+    return [
+      {
+        bookingId: r.booking_id,
+        eventId: r.event_id,
+        eventTitle: event.title,
+        venueName: event.venue_name,
+        eventStartsAt: event.starts_at,
+        name: r.name,
+        role: r.role,
+        rating: typeof r.feedback_rating === 'number' ? r.feedback_rating : null,
+        sentAt: r.feedback_sent_at ?? null,
+        text: text === '' ? null : text,
+      },
+    ];
+  });
+
+  return { entries, truncated, problem: null };
 }

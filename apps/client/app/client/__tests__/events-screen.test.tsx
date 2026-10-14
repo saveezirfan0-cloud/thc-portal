@@ -280,7 +280,7 @@ describe('the filters (ADR-0049)', () => {
     ).toHaveLength(2);
     expect(markup).toContain('>From (UK date)</label>');
     expect(markup).toContain('>To (UK date)</label>');
-    expect(markup).toContain('placeholder="Search events"');
+    expect(markup).toContain('placeholder="Search events or staff"');
   });
 
   it('offers a venue select only when there is more than one venue', () => {

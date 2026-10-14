@@ -466,11 +466,12 @@ select bag_eq(
                            and d.deptype = 'e') $$,
   $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
             ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
+            ('client_portal_contact_v'),
             ('client_role_sections_v'), ('event_windows'), ('feedback_authors_v'),
             ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'the owner-rights views in public are exactly these seventeen (ADR-0004; the three rate views ADR-0061); a new one is a reviewed addition'
+  'the owner-rights views in public are exactly these eighteen (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text
@@ -485,10 +486,11 @@ select bag_eq(
                            and d.deptype = 'e') $$,
   $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
             ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
+            ('client_portal_contact_v'),
             ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'fourteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
+  'fifteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();

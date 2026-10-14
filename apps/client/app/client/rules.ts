@@ -45,6 +45,11 @@ export interface RoleSection {
   endsAt: string;
   headcount: number;
   confirmed: number;
+  /**
+   * The section's dress code, as the office picked it from the client's own
+   * rate card (ADR-0134 N2); read on the event page only, null when none.
+   */
+  dressCode?: string | null;
 }
 
 /**
@@ -105,13 +110,16 @@ export function listFaces<T extends Pick<LineupRow, 'eventId' | 'sortKey'>>(
  * One section's share of "N of M confirmed": its confirmed workers, never
  * more than the headcount booked.
  *
- * `client_role_sections_v.confirmed` counts every confirmed booking on the
- * section, and that includes THC's buffer once the buffer is filled — six
- * confirmed on a Waiting Staff section of four. The customer booked four;
- * the two extra are THC's insurance and stay internal (§3.2, the wireframe:
- * "N counts confirmed workers only … buffer slots are internal and never
- * shown"). So a section counts at most its headcount, and an over-filled
- * section can never make up for an empty one.
+ * Six confirmed on a Waiting Staff section of four is THC's buffer at work;
+ * the customer booked four, and the two extra are THC's insurance and stay
+ * internal (§3.2, the wireframe: "N counts confirmed workers only … buffer
+ * slots are internal and never shown"). Since 20261014140000 (ADR-0134)
+ * `client_role_sections_v.confirmed` is already held to the headcount and
+ * `client_lineup_v` returns at most that many people per section, so the
+ * buffer never reaches the browser; this cap stays as the second guard
+ * (a portal deployed ahead of the migration, a test fixture), and it is a
+ * no-op on what the views now return. An over-filled section can never
+ * make up for an empty one.
  */
 export function cappedConfirmed(section: Pick<RoleSection, 'confirmed' | 'headcount'>): number {
   return Math.max(0, Math.min(section.confirmed, section.headcount));
@@ -143,14 +151,16 @@ export function fillOf(sections: readonly RoleSection[]): {
 /**
  * "N of M arrived" (ADR-0053) on the same footing as "N of M confirmed".
  *
- * `client_arrivals_v` counts every confirmed booking on a section, buffer
- * included, and every check-in. Shown as it came, a section of four with
- * six confirmed read "5 of 6 arrived" — THC's over-booking again. Each
- * section is held to its headcount (from `client_role_sections_v`): at most
- * that many confirmed, and at most that many arrived (under the strict
- * buffer policy only the first `headcount` check-ins work, RULE-15). The
- * event's total is re-added from the capped sections. A section the
- * sections read did not return keeps its own figures.
+ * A section of four with six confirmed once read "5 of 6 arrived" — THC's
+ * over-booking again. Each section is held to its headcount (from
+ * `client_role_sections_v`): at most that many confirmed, and at most that
+ * many arrived (under the strict buffer policy only the first `headcount`
+ * check-ins work, RULE-15). Since 20261014140000 (ADR-0134)
+ * `client_arrivals_v` applies the same cap itself — the checked-in take the
+ * line-up's seats first, so its `arrived` is the arrivals among the faces
+ * shown — and this is the second guard. The event's total is re-added from
+ * the capped sections. A section the sections read did not return keeps
+ * its own figures.
  */
 export function arrivalsWithinHeadcount<
   T extends {
@@ -297,6 +307,8 @@ export interface LineupGroup {
   confirmed: number;
   /** The headcount booked for the section; null for a row with no section. */
   headcount: number | null;
+  /** The section's dress code (ADR-0134 N2); null when none or not read. */
+  dressCode: string | null;
   people: LineupRow[];
 }
 
@@ -333,6 +345,7 @@ export function groupBySection(
         endsAt: from.endsAt,
         confirmed: people.length,
         headcount: section ? section.headcount : null,
+        dressCode: section?.dressCode?.trim() || null,
         people: [...people].sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
       };
     })
@@ -367,9 +380,11 @@ export function sectionTone(
  * The words on a role section's pill: "4 of 4 confirmed" (or "worked" once
  * the event is over), the confirmed count held to the headcount
  * (`cappedConfirmed`) so a section carrying THC's buffer never reads "6 of
- * 4". The line-up under it still lists everyone confirmed — they are who is
- * coming — only the count is the customer's booking. A row with no section
- * (no headcount to compare) says what it has: "2 confirmed".
+ * 4". The line-up under it is held to the headcount too, in the view
+ * (ADR-0134); the one exception is a worker the customer has already rated,
+ * who stays visible past the headcount — and the pill still reads the
+ * booking, "4 of 4". A row with no section (no headcount to compare) says
+ * what it has: "2 confirmed".
  */
 export function sectionCountLabel(
   group: Pick<LineupGroup, 'confirmed' | 'headcount'>,
@@ -701,9 +716,31 @@ export function documentPendingLine(
   if (kind === 'signout') return 'Completed Timesheet not issued yet';
   const before = event.status === 'upcoming' && ukToday(new Date(event.startsAt)) > ukToday(now);
   return before
-    ? 'Allocation Timesheet: sent the day before, once every role is confirmed'
+    ? `Allocation Timesheet: ${ALLOCATION_TIMING}`
     : 'Allocation Timesheet not issued yet';
 }
+
+/**
+ * When the Allocation Timesheet goes out, in the words round 2 settled
+ * (ADR-0133, ADR-0088: the day before, once every role is fully confirmed;
+ * the hour is an office setting, so it is not promised). One phrase for the
+ * list's quiet line and the welcome panel.
+ */
+export const ALLOCATION_TIMING = 'sent the day before, once every role is confirmed';
+
+/**
+ * The first-visit welcome on the list (ADR-0134 N8): what the customer will
+ * see, when the timesheets arrive, and how feedback works — three lines.
+ * Nothing about money, and nothing about how THC chooses who to book.
+ */
+export const WELCOME = {
+  title: 'Welcome to your Client Portal',
+  lines: [
+    'Every event THC is staffing for you, with the people confirmed for each role — by name and photo.',
+    `Timesheets: the Allocation Timesheet is ${ALLOCATION_TIMING}; the Completed Timesheet follows after the event. Both are emailed to your timesheet contacts and can be downloaded here.`,
+    "Feedback opens once an event has started: give each person stars and, if you like, a comment. One entry per person per event, read by THC's office — not by the worker.",
+  ],
+} as const;
 
 /**
  * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0049).
@@ -819,7 +856,57 @@ function searchMatches(e: PortalEvent, needle: string): boolean {
 }
 
 /**
+ * A name as the search compares it: lower case, accents off, one space
+ * between words — so "zoe" finds "Zoë" and "priya  shah" finds "Priya Shah".
+ */
+export function foldName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * The confirmed line-up's names per event, for "which events was Priya
+ * on?" (ADR-0134 N5). Only what the list already holds: the events in the
+ * window read (window.ts), each line-up already held to its headcount by
+ * `client_lineup_v` — so the search reaches exactly the people the
+ * customer can see, and "Show older events" widens it with the window. A
+ * removed worker's "Deleted account #id" is not a name to search for.
+ */
+export function lineupNames(
+  lineup: readonly Pick<LineupRow, 'eventId' | 'name'>[],
+): Map<string, string[]> {
+  const byEvent = new Map<string, string[]>();
+  for (const row of lineup) {
+    if (isRemoved(row)) continue;
+    const list = byEvent.get(row.eventId);
+    if (list) {
+      if (!list.includes(row.name)) list.push(row.name);
+    } else byEvent.set(row.eventId, [row.name]);
+  }
+  return byEvent;
+}
+
+/**
+ * The names on one event's line-up that the search box matches, in the
+ * line-up's order; empty when the box is empty or nobody matches. The row
+ * says who ("On the line-up: Priya Shah") so a match on a person is never
+ * a mystery row.
+ */
+export function staffMatching(names: readonly string[] | undefined, query: string): string[] {
+  const needle = foldName(query);
+  if (needle === '' || !names) return [];
+  return names.filter((n) => foldName(n).includes(needle));
+}
+
+/**
  * The search, venue and date range, combined (ADR-0049).
+ *
+ * The search also finds an event by a worker on its line-up (ADR-0134 N5)
+ * when `names` (`lineupNames`) is given.
  *
  * The day an event is filed under is the UK calendar day it starts on, the
  * day the list's Date column prints (`ukDateShort`), evaluated in
@@ -830,10 +917,19 @@ function searchMatches(e: PortalEvent, needle: string): boolean {
  * than being silently swapped; the empty state then says the dates are the
  * wrong way round (`rangeReversed`, `emptyReason` 'range').
  */
-export function applyFilters(events: readonly PortalEvent[], f: EventFilters): PortalEvent[] {
+export function applyFilters(
+  events: readonly PortalEvent[],
+  f: EventFilters,
+  names?: ReadonlyMap<string, readonly string[]>,
+): PortalEvent[] {
   const needle = f.query.trim().toLowerCase();
   return events.filter((e) => {
-    if (needle !== '' && !searchMatches(e, needle)) return false;
+    if (
+      needle !== '' &&
+      !searchMatches(e, needle) &&
+      staffMatching(names?.get(e.id), needle).length === 0
+    )
+      return false;
     if (f.venue !== '' && e.venueName !== f.venue) return false;
     if (f.from === '' && f.to === '') return true;
     const day = ukToday(new Date(e.startsAt));
