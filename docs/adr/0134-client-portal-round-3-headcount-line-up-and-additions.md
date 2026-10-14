@@ -59,7 +59,7 @@ All three come from `20261014140100_client_portal_phone_dress_code_recipients.sq
   - **The comment is withheld once the worker is removed** (§1.7). GDPR removal keeps feedback text verbatim for the office to redact by hand (`20260921190118`), and a comment naming the person would undo the "Deleted account #id" the line-up shows. The stars stay, and the page says "Comment not shown — account removed".
   - The list and the event page do not ask for the column, so a comment is never shipped where it is not shown.
 - pgTAP `817`: the customer's own words only, never the office's or another customer's; null without a comment; withheld for a removed worker; the view's shape is kept.
-- The page has a route `loading.tsx`. It has no 404 of its own, so the event page's reason for having none (N9) does not apply.
+- The page has a route `loading.tsx`. That is allowed by `apps/office/app/__tests__/boundaries.test.tsx` (which also guards this app): the page reads no `searchParams`, and nothing at or below it calls `notFound()`.
 
 ### N5 · Search by worker name
 - The list's search ("Search events or staff") also matches the names on each loaded line-up (`lineupNames`, `staffMatching`). The match ignores case and accents and treats any run of spaces as one, so "zoe" finds "Zoë".
@@ -91,6 +91,11 @@ All three come from `20261014140100_client_portal_phone_dress_code_recipients.sq
 - **The page now reads the event's own row first** (`loadEventRow`, one indexed read, also used by the tab title) and decides between itself and the 404 before anything streams.
 - Only then does a Suspense boundary inside the page stream `EventBody` (sections, line-up, phone, photos, documents, arrivals). Its fallback is `EventSkeleton`: the real event name and venue over the header's shape and two role panels of faces, announced once as busy.
 - `loadEvent` remains as the two reads together. pgTAP is unaffected. The e2e "another customer's event is 404" check passes against the built server.
+- **Why an in-page Suspense is safe here and not on the list (ADR-0109).** Behind a loading boundary or in-page Suspense, a navigation that changes only the query string freezes on the old state. For that reason the list has neither (its `(list)/loading.tsx` was removed in ad9d6333). The event page has no such navigation:
+  - `?doc=` arrives by a full browser navigation (a plain `<a>` to the document route, which answers 303) and leaves by `history.replaceState`;
+  - its only router calls are `refresh()`.
+
+  The client's `boundaries.test.tsx` pins three things: no `loading.tsx` and no Suspense on the list; no `router.push`/`replace` and no query-only `<Link>` in `events/[id]`; and every `notFound()` before the `<Suspense>`. A control that navigates the event page by query would need the boundary taken out first.
 
 ### P4 · Rate everyone in one pass
 - **When it is offered.** On a started or finished event with two or more people still to rate (`stillToRate`: not rated, not sent from this page, not a removed account), "Rate everyone (N)" sits under the feedback banner. The per-person "Leave feedback" stays.
