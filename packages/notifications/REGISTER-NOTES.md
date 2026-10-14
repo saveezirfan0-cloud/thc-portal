@@ -213,8 +213,21 @@ rule: **email until the account exists, push in the app after.**
   ADR-0107, or carrying a Payroll ID) gets OC1's `existing_first`,
   `existing_second` and `existing_repeat` wording: the Willo interview is
   part of getting set up on the new Staff App, and everyone does it, even people
-  who already work with us. Subject `Your Willo interview for our new Staff
-  App`, then `Reminder: your Willo interview for the new app`.
+  who already work with us. Subjects `Action required: your Willo interview
+  for our new Staff App`, `Action required: your Willo interview is still not
+  done`, then `Reminder: your Willo interview for the new app is overdue`.
+- **Firmer for existing staff** (owner, 14.10.2026). Every existing_* rung
+  says, word for word: "Without clicking the link in Willo's email, actually
+  taking the online interview and fully onboarding on the new Staff App, we
+  will be unable to offer you any more shifts going forwards." A new
+  applicant's wording is unchanged: they have no shifts to lose.
+- **The one-off notice** (owner, 14.10.2026; 20261014190000). OC1's
+  `existing_notice`, subject `Important: complete your Willo interview to
+  keep getting shifts`, sent once at deploy by `oc1_existing_staff_notice()`
+  to every existing member of staff the daily run chases (registered, Willo
+  invitation sent, interview not done). Key `OC1:notice:<staff id>`, outside
+  the ladder's keys, so it is not a rung; inside the chasers' UK daytime,
+  two seconds apart.
 - **No Willo link in OC1.** Willo sends the interview invitation (E1) and
   nothing stores its URL, so OC1 points the candidate at that email.
 
@@ -238,6 +251,10 @@ OC chasers.
   email (a name mismatch, or a Payroll ID held elsewhere).
 - **`{applyLink}`** is `<STAFF_APP_URL>/apply`, passed by the job; the SQL
   queues nothing without it.
+- **Firmer** (owner, 14.10.2026): the Action required panel ends "Without
+  clicking the link below, actually taking the online interview and fully
+  onboarding, we will be unable to offer you any more shifts going forwards."
+  (`INVITE_REMINDER_COPY.warning`, in the text and the HTML).
 - **The owner's own dark design**, the one exception to THC Light
   (`email-invite-reminder.ts`). Its words are in `invite-reminder-copy.ts`,
   which builds the plain text as well.

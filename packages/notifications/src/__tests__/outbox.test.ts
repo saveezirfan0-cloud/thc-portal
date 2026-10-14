@@ -407,10 +407,30 @@ describe('onboarding chasers (ADR-0071)', () => {
         payload: { name: 'Ivy', variant: 'existing_first' },
       }),
     );
-    expect(msg.kind === 'email' && msg.subject).toBe('Your Willo interview for our new Staff App');
+    expect(msg.kind === 'email' && msg.subject).toBe(
+      'Action required: your Willo interview for our new Staff App',
+    );
     expect(msg.body).toContain('Hi Ivy,');
     expect(msg.body).toContain('new Staff App');
     expect(msg.body).toContain('even if you already work with us');
+    expect(msg.body).toContain('we will be unable to offer you any more shifts going forwards');
+    expect(msg.body).not.toMatch(/\{\w+\}/);
+  });
+
+  it('renders the one-off notice of 14.10.2026 from its own key', () => {
+    const msg = messageFor(
+      email({
+        template: 'OC1',
+        key: 'OC1:notice:s-1',
+        recipient_emails: ['ivy@example.com'],
+        payload: { name: 'Ivy', variant: 'existing_notice' },
+      }),
+    );
+    expect(msg.kind === 'email' && msg.subject).toBe(
+      'Important: complete your Willo interview to keep getting shifts',
+    );
+    expect(msg.body).toContain('Hi Ivy,');
+    expect(msg.body).toContain('we will be unable to offer you any more shifts going forwards');
     expect(msg.body).not.toMatch(/\{\w+\}/);
   });
 

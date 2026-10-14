@@ -1170,6 +1170,11 @@ describe('onboarding chasers (ADR-0071)', () => {
   const RUNGS = ['first', 'second', 'repeat'];
   /** OC1's wording for existing staff moving onto the new app (20261012123000). */
   const EXISTING_RUNGS = ['existing_first', 'existing_second', 'existing_repeat'];
+  /** The one-off notice of 14.10.2026 (20261014190000). */
+  const EXISTING_ALL = [...EXISTING_RUNGS, 'existing_notice'];
+  /** The owner's words of 14.10.2026, in every OC1 email to existing staff. */
+  const NO_MORE_SHIFTS =
+    "Without clicking the link in Willo's email, actually taking the online interview and fully onboarding on the new Staff App, we will be unable to offer you any more shifts going forwards.";
 
   it('says why each exists, on the entry itself', () => {
     for (const code of CHASER_CODES) {
@@ -1179,15 +1184,15 @@ describe('onboarding chasers (ADR-0071)', () => {
     }
   });
 
-  it('has a first, a second and a repeating wording (OC1 also the existing_* three), and nothing else', () => {
+  it('has a first, a second and a repeating wording (OC1 also the existing_* three and the notice), and nothing else', () => {
     for (const code of CHASER_CODES) {
-      const expected = code === 'OC1' ? [...RUNGS, ...EXISTING_RUNGS] : RUNGS;
+      const expected = code === 'OC1' ? [...RUNGS, ...EXISTING_ALL] : RUNGS;
       expect(Object.keys(TEMPLATES[code].variants), code).toEqual(expected);
     }
   });
 
   it('tells existing staff the Willo interview is part of getting set up on the new app, in every OC1 rung', () => {
-    for (const rung of EXISTING_RUNGS) {
+    for (const rung of EXISTING_ALL) {
       const text = body('OC1', rung);
       expect(text, rung).toContain('{name}');
       expect(text, rung).toContain('Willo');
@@ -1199,7 +1204,21 @@ describe('onboarding chasers (ADR-0071)', () => {
     }
     expect(body('OC1', 'existing_first')).toContain('Search your inbox for "Willo"');
     expect(body('OC1', 'existing_repeat')).toContain("Reply to this email and we'll help.");
-    expect(title('OC1', 'existing_repeat')).toBe('Reminder: your Willo interview for the new app');
+    expect(title('OC1', 'existing_repeat')).toBe(
+      'Reminder: your Willo interview for the new app is overdue',
+    );
+  });
+
+  it('warns existing staff, every time, that without the interview and onboarding there are no more shifts', () => {
+    for (const rung of EXISTING_ALL) expect(body('OC1', rung), rung).toContain(NO_MORE_SHIFTS);
+    // A new applicant has never had a shift: they are not told they will lose them.
+    for (const rung of RUNGS) expect(body('OC1', rung), rung).not.toContain('any more shifts');
+    expect(title('OC1', 'existing_notice')).toBe(
+      'Important: complete your Willo interview to keep getting shifts',
+    );
+    expect(body('OC1', 'existing_notice')).toContain(
+      "You've registered on our new Staff App, but you haven't taken your Willo video interview yet.",
+    );
   });
 
   it('emails before sign-up from admin@, to the candidate the row names', () => {
@@ -1321,6 +1340,8 @@ describe('IR1 — invited, not applied yet (ADR-0122)', () => {
       'Willo will email you the link',
       'WhatsApp shift messages are stopping',
       "You'll receive this reminder each day until you've applied.",
+      // The owner's firmer line of 14.10.2026.
+      'Without clicking the link below, actually taking the online interview and fully onboarding, we will be unable to offer you any more shifts going forwards.',
     ]) {
       expect(rest('named'), words).toContain(words);
     }
