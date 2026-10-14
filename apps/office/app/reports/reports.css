@@ -198,6 +198,11 @@
     width: auto;
     min-width: 0;
   }
+  /* A typed UK date (UkDateField) is a field round its input. */
+  .daterange .ukd {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
   .rp-toolbar .right {
     margin-left: 0;
     flex-wrap: wrap;

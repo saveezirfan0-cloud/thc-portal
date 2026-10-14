@@ -1,4 +1,4 @@
-import { Alert, Avatar, Panel, Pill, TableScroll } from '@thc/ui';
+import { Alert, Avatar, Panel, Pill, TableScroll, UkDateField } from '@thc/ui';
 import type { TimeFormat } from '@thc/domain';
 import type { NewStarter } from '../data';
 import {
@@ -41,13 +41,15 @@ export function NewStarterTab({
       <div className="rp-toolbar filters">
         <form method="get" action="/reports" className="daterange">
           <input type="hidden" name="tab" value="newstarter" />
-          <span className="label">Pick a date</span>
-          <input
-            className="input"
-            type="date"
+          <span className="label" aria-hidden="true">
+            Pick a date
+          </span>
+          {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+          <UkDateField
+            label="Pick a date (UK date)"
+            labelHidden
             name="date"
             defaultValue={view.date}
-            aria-label="Pick a date"
             required
           />
           <button type="submit" className="btn sm">

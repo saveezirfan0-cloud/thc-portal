@@ -13,6 +13,7 @@ import {
   Select,
   Textarea,
   TimeField,
+  UkDateField,
   useTimeFormat,
   useUnsavedChanges,
 } from '@thc/ui';
@@ -23,10 +24,12 @@ import {
   forecastEvent,
   formatLanguages,
   formatTimeIn,
+  isRealIsoDate,
   ukInputLabel,
   ukToday,
 } from '@thc/domain';
 import { LanguagePicker } from '../../_components/LanguagePicker';
+import { formatDayLong } from '../calendar';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
 import { ClientPolicies, SummaryPanel } from './SummaryPanel';
@@ -316,7 +319,10 @@ export function ShiftBuilder({
         {mode === 'edit' && !readOnly ? (
           <Alert>
             <b>
-              Editing {draft.title} · {draft.date}
+              {/* "Thu 22 Oct 2026", as event dates are written (§1.8), never
+                  the ISO "2026-10-22" (release audit p3). */}
+              Editing {draft.title} ·{' '}
+              {isRealIsoDate(draft.date) ? formatDayLong(draft.date) : draft.date}
               {draft.poNumber ? ` · PO ${draft.poNumber}` : ''}.
             </b>{' '}
             Allowed up to the event&rsquo;s start. Every field — venue, date and time, headcount,
@@ -454,19 +460,18 @@ export function ShiftBuilder({
         >
           <div className="stack">
             <div className="f3">
-              <Input
+              {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+              <UkDateField
                 label={
                   <>
                     Date <span className="coral">*</span>
                   </>
                 }
-                type="date"
-                mono
                 value={draft.date}
                 disabled={readOnly}
-                error={pastDate ?? undefined}
+                error={pastDate}
                 min={mode === 'new' ? ukToday() : undefined}
-                onChange={(e) => setDraft((c) => ({ ...c, date: e.target.value }))}
+                onChange={(date) => setDraft((c) => ({ ...c, date }))}
               />
               <TimeField
                 label={
