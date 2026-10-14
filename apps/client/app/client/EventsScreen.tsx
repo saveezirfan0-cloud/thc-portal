@@ -15,6 +15,7 @@ import {
   SearchInput,
   SegToggle,
   Select,
+  UkDateField,
   useViewerZone,
 } from '@thc/ui';
 import { needsDualZone, ukToday } from '@thc/domain';
@@ -25,7 +26,6 @@ import { WelcomePanel } from './WelcomePanel';
 import type { ArrivalsByEvent } from './arrivals';
 import { DocumentLink } from './DocumentLink';
 import { EventWindow } from './EventWindow';
-import { UkDateField } from './UkDateField';
 import { reversedRangeText } from './ukdate';
 import { ukDateShort, ukDayMonth } from './format';
 import {
