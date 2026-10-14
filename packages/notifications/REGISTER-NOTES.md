@@ -258,3 +258,14 @@ None is `mandatory`.
 | CR2 | push · worker → `/shifts/{bookingId}` | `For your shift today` | `{message}` — the client's words, as the office wrote them on the role | 07:00 UK on the day, or three hours before an early start, never before the UK day begins, until acknowledged (`client_kit_reminder_tick`, every minute with booking-tick) · `booking_reminder_key('CR2', …)` as N6/N7 |
 | CR3 | email · admin@ only (from admin@) | `Client quiz not passed — {name}, Employee ID {employeeId}` | who, which client and quiz, the attempts, their best, the roles it covers, and "They stay booked" with where to reset | on the failed last attempt, once · `CR3:quiz:<quiz>:<staff>:<attempt>` |
 
+
+## Client Portal additions (ADR-0135)
+
+The product owner's approval of 14.10.2026 ("Request again / notifications",
+docs/20 Part B, P1 and P3). `CP` codes, so none can collide with an N- or
+E-number THC assigns to §8 later. They sit in `CLIENT_PORTAL_CODES`; each
+`trigger` names ADR-0135 and says "Not in §8". None is `mandatory`.
+
+| Code | Channel · to | Title / subject | Body | When · key |
+| --- | --- | --- | --- | --- |
+| CP1 | email · admin@ only (from admin@) | `Client asked for a worker again — {name} · {client}` | which client asked for whom (name, Employee ID), after which event, date and role, the client's own note (`{clientNote}`, "(no note)" without one), who pressed it and when (UK), and "This is a request, not a booking" with where to mark it handled | on "Request again" in the portal, once per request (`client_request_worker`, 20261014170100) · `CP1:request:<id>`; one open request per client and worker, at most 20 a day per client |

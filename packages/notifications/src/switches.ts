@@ -104,6 +104,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         warning: 'The office is not told when a worker runs out of attempts at a client’s quiz.',
       },
       {
+        code: 'CP1',
+        label: 'Client asked for a worker again',
+        when: 'A client presses “Request again” in the Client Portal',
+        warning:
+          'The office is not emailed when a client asks for a worker again; the request still shows on the client card.',
+      },
+      {
         code: 'RC1',
         label: 'Profile change requested',
         when: 'A worker asks to change name, photo or date of birth',

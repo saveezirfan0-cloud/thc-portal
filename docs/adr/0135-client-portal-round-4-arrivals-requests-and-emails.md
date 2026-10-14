@@ -47,3 +47,57 @@ ADR-0053 gave the customer "11 of 13 arrived" during the event and nothing per p
 ### Consequences
 - `client_lineup_v` has been restated again (`050`, `831`). `815`, `817` and `809` still hold its other columns and their rules.
 - ADR-0053's last paragraph ("a future request … needs its own ADR") is answered by this section. `client_arrivals_v` is unchanged.
+
+## 2 · "Request this person again"
+
+### Context
+After a good event the customer wants the same people next time. Today that is an email nobody files. §11.1 says the portal is read-only. A request is a message to THC, not an edit of anything THC holds, so the product owner approved it as one recorded exception (P1).
+
+### Decision
+- **Where.** On a finished event (by the clock as well as the status, and never when cancelled), every person on the line-up except a removed account gets **"Request again"** beside "Leave feedback".
+  - It opens a small dialog: the face, the role and event, and one sentence saying it books nobody and changes nothing on this event.
+  - There is an optional **note to THC** of at most 500 characters, counted as the database counts them.
+  - **Send request to THC** sends it.
+- **One write path: `client_request_worker(p_booking_id, p_note)`** (`20261014170100_client_worker_requests.sql`). It is SECURITY DEFINER and granted to authenticated only. It refuses, in this order:
+  1. anyone but a client login (42501);
+  2. a note over 500 (22023 `request_note_too_long`);
+  3. a booking that is not on the caller's visible line-up, or is on a cancelled event: one sentence for all of them (42501). The function reads `client_lineup_v` itself, so tenancy, the confirmed status and ADR-0134's headcount trim are the view's own rules, and a buffer worker the customer never saw cannot be asked for;
+  4. an event not yet finished (22023 `request_after_event`);
+  5. a GDPR-removed worker (22023 `worker_removed`).
+- **What it writes.**
+  - An open request for the same client and worker answers `{already: true}` and writes nothing. The dialog then says **"Already requested — THC has it."**
+  - Otherwise it writes **one `client_worker_requests` row** and queues **CP1** through `notification_outbox` (key `CP1:request:<id>`).
+  - It refuses a 21st request from the same company within 24 hours (P0001 `request_limit_reached`).
+  - The dedupe and the count run under a per-client advisory lock.
+  - It never touches bookings, client qualifications or any staffing state (pgTAP 832 counts both tables before and after).
+- **The table.** `client_worker_requests`:
+  - RLS on, `admin_read` only, no client or staff policy (ADR-0026; `001_rls_guard` now lists 61 tables);
+  - the `office_read_only` guard (ADR-0060);
+  - a partial unique index for one open request per client and worker.
+- **What the customer sees afterwards.**
+  - `client_lineup_v.worker_requested` is true while an open request exists for that worker, so every row of theirs, on any event, reads **"✓ Requested"** (`aria-disabled`, named for the person).
+  - The open requests are listed under **"People you've asked for again"** on `/client/feedback`: name, role, the event it was asked from, the date and the customer's own note.
+  - That list reads a new owner-rights view, **`client_worker_requests_v`**:
+    - named columns, no staff id;
+    - `client_portal_visible()` in its body;
+    - SELECT to authenticated only;
+    - the name reads "Deleted account #id" and the note is withheld once the worker is removed, as `feedback_text` is.
+  - `001_rls_guard` now pins nineteen owner-rights views (sixteen selectable), and `docs/14-handover.md` counts 16.
+- **CP1, to the office** (`packages/notifications`, `CLIENT_PORTAL_CODES`):
+  - an email to admin@ from admin@, like every office notice;
+  - subject: "Client asked for a worker again — {name} · {client}";
+  - it names the worker and their Employee ID, the event, its date and the role, the client's note, who pressed it (portal name and sign-in email) and when (UK);
+  - it ends "This is a request, not a booking";
+  - it is listed in `/inbox` (`OFFICE_INBOX`) and can be switched off on `/settings → Notifications`, while the request still reaches the client card.
+- **The office's side: the client card.** This was the lowest-friction place: the office already decides there who is qualified for this client. A **Requests from the Client Portal** block sits before Events:
+  - open requests first, then the latest handled;
+  - the worker (linked to their profile), the event and role, the note, who asked and when;
+  - **Mark handled** (`mark_client_worker_request_handled`: admin only, a viewer refused by the read-only guard, idempotent).
+  - Handling is audited by an AFTER UPDATE trigger in the shape of 20261014093200. The action is `client.worker_request_handled`, filed under the client so it appears in the card's History, with ids only in `data`.
+  - The office reads through `clients_worker_requests_v` (security_invoker, so the admin's own policies apply).
+  - Once handled, the request leaves the customer's list, and the customer may ask again.
+
+### Consequences
+- The client role's writes are now two RPCs (`submit_client_feedback`, `client_request_worker`) plus its own password. It still holds no table policy.
+- `client_lineup_v` is restated with `worker_requested` (`050`, `832`).
+- A worker removed after a request: the open request stays for the office to close, shown as "Deleted account #id". The note is kept verbatim for the office, as feedback text is (§1.7).

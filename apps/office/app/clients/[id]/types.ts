@@ -121,6 +121,28 @@ export interface QuizResultRow {
   total: number | null;
 }
 
+/**
+ * One "Request this person again" from the Client Portal (ADR-0135 §2):
+ * `clients_worker_requests_v`, read under the admin's own policies.
+ */
+export interface WorkerRequestRow {
+  id: string;
+  client_id: string;
+  staff_id: string;
+  /** The worker's name, or "Deleted account #id" (§1.7). */
+  worker_name: string;
+  employee_id: number | null;
+  worker_removed: boolean;
+  event_id: string | null;
+  event_title: string | null;
+  event_date: string | null;
+  role: string | null;
+  note: string | null;
+  requested_by_name: string | null;
+  created_at: string;
+  handled_at: string | null;
+}
+
 export interface ClientCardData {
   client: Client | null;
   /** `clients.name_badges` (ADR-0081): badges go with every Allocation Timesheet. */
@@ -132,6 +154,8 @@ export interface ClientCardData {
   /** ADR-0110: per role, the quiz and the kit message; and who has sat the quiz. */
   requirements: ShiftRequirementRow[];
   quizResults: QuizResultRow[];
+  /** ADR-0135 §2: "Request again" messages from the Client Portal, open first. */
+  workerRequests: WorkerRequestRow[];
   events: ClientEventRow[];
   roles: RoleOption[];
   staff: StaffOption[];

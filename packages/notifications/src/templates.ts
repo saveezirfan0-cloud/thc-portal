@@ -15,8 +15,9 @@
  * the completion letter requirement's CL codes (REQUIREMENT_CODES), two
  * extensions §8 should have named (EXTENSION_CODES), and the Staff App
  * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), the
- * onboarding chasers OC (CHASER_CODES, ADR-0071), and the invite-list
- * reminder IR1 (INVITE_CODES, ADR-0122).
+ * onboarding chasers OC (CHASER_CODES, ADR-0071), the invite-list
+ * reminder IR1 (INVITE_CODES, ADR-0122), and the Client Portal additions
+ * CP (CLIENT_PORTAL_CODES, ADR-0135).
  *
  * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
  * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
@@ -993,6 +994,27 @@ export const TEMPLATES = {
       'Somebody on the THC invite list (/staff/roster, ADR-0107) who has not applied with that email yet (invite_roster_reminders). Not in §8: an addition to scope v1.6, ADR-0122',
     timing: 'daily, once a UK day between 10:00 and 18:00, until they apply',
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // CLIENT PORTAL ADDITIONS (ADR-0135, approved by the product owner on
+  // 14.10.2026). `CP` codes, so none can collide with an N- or E-number THC
+  // assigns to §8 later. CP1 tells the office a customer asked for a worker
+  // again from the portal — a message, never a booking. Queued by
+  // client_request_worker() (20261014170100), key `CP1:request:<id>`, once
+  // per request; at most one open request per client and worker.
+  // ────────────────────────────────────────────────────────────────────────
+  CP1: {
+    code: 'CP1',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Client asked for a worker again — {name} · {client}',
+    body: '{client} would like {name} (Employee ID {employeeId}) on their events again. They asked from the Client Portal after {event} on {date}, where {name} worked as {role}.\n\nNote from the client: {clientNote}\n\nRequested by: {requestedBy}\nRequested: {requestedAt} (UK time)\n\nThis is a request, not a booking: nothing has been booked or changed. Invite them from the event board where they fit, then mark the request handled on the client card (Requests from the Client Portal).',
+    trigger:
+      'A Client Portal login presses "Request again" on a worker from a finished event (client_request_worker). Not in §8: an addition to scope v1.6, ADR-0135',
+    timing:
+      'immediately, once per request; one open request per client and worker, at most 20 a day per client',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -1120,6 +1142,12 @@ export const CHASER_CODES = ['OC1', 'OC2', 'OC3'] as const satisfies readonly Te
  * candidate, so it is not one of the onboarding chasers above.
  */
 export const INVITE_CODES = ['IR1'] as const satisfies readonly TemplateCode[];
+
+/**
+ * Client Portal additions (ADR-0135): CP1 tells the office a customer asked
+ * for a worker again. Not §8's; approved by the product owner on 14.10.2026.
+ */
+export const CLIENT_PORTAL_CODES = ['CP1'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

@@ -87,6 +87,70 @@ export interface LineupRow {
   arrivalStatus?: ArrivalStatus | null;
   /** The first check-in of an arrived row (ISO), shown viewer-local (§1.8). */
   arrivedAt?: string | null;
+  /**
+   * The customer has an open "Request again" for this worker (ADR-0135 §2),
+   * from this event or another; the row reads "✓ Requested".
+   */
+  workerRequested?: boolean;
+}
+
+/** The longest note a "Request again" carries to THC (client_request_worker). */
+export const REQUEST_NOTE_MAX = 500;
+
+/**
+ * "Request again" copy (ADR-0135 §2). A message to THC, never a booking:
+ * the words say so wherever the button is.
+ */
+export const REQUEST_COPY = {
+  button: 'Request again',
+  done: '✓ Requested',
+  hint: `Optional · up to ${REQUEST_NOTE_MAX} characters · seen by The Hospitality Company office, not by the worker.`,
+  explain:
+    'This asks THC to offer them your future events where they are free. It does not book anyone, and nothing changes on this event.',
+  sent: 'Sent to THC. They will see it when they plan your next events.',
+  already: 'Already requested — THC has it.',
+  tooLong: `Keep the note to ${REQUEST_NOTE_MAX} characters or fewer.`,
+  failed: 'Your request could not be sent. Check your connection and try again.',
+  notVisible:
+    'That person is not on this event’s line-up any more, so they cannot be requested from here.',
+  notYet: 'You can ask for someone again once the event has finished.',
+  removed: 'This person is no longer on our books, so they cannot be requested.',
+  limit:
+    'You have sent a lot of requests today. Try again tomorrow, or email the office if it is urgent.',
+  signedOut: 'You’ve been signed out — sign in again to send this request.',
+} as const;
+
+/**
+ * Whether a note is over the limit, counted as the database counts it
+ * (`char_length`, one per character, so an emoji is one) after trimming.
+ */
+export function requestNoteTooLong(note: string): boolean {
+  return [...note.trim()].length > REQUEST_NOTE_MAX;
+}
+
+/**
+ * Whether "Request again" is offered on an event: once it has finished, by
+ * the clock as well as the view's status, and never when cancelled. The
+ * database decides again (client_request_worker), so this only spares the
+ * customer a refusal.
+ */
+export function requestOffered(event: Pick<PortalEvent, 'status' | 'endsAt'>, now: Date): boolean {
+  if (event.status === 'cancelled') return false;
+  return eventEnded(event, now);
+}
+
+/** The database's refusal of a request, in the customer's words; never the raw text. */
+export function requestErrorMessage(error: {
+  code?: string | null;
+  message?: string | null;
+}): string {
+  const message = (error.message ?? '').toLowerCase();
+  if (message.includes('request_note_too_long')) return REQUEST_COPY.tooLong;
+  if (message.includes('request_after_event')) return REQUEST_COPY.notYet;
+  if (message.includes('worker_removed')) return REQUEST_COPY.removed;
+  if (message.includes('request_limit_reached')) return REQUEST_COPY.limit;
+  if (error.code === '42501') return REQUEST_COPY.notVisible;
+  return REQUEST_COPY.failed;
 }
 
 /** `client_lineup_v.arrival_status` (ADR-0135 §1). */

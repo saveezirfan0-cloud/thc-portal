@@ -201,7 +201,7 @@ describe('where the columns are asked for', () => {
 
   it('the event page reads arrival_status and arrived_at; the list does not', () => {
     expect(data).toMatch(
-      /EVENT_LINEUP_COLUMNS = `\$\{LINEUP_COLUMNS\}, arrival_status, arrived_at`/,
+      /EVENT_LINEUP_COLUMNS = `\$\{LINEUP_COLUMNS\}, arrival_status, arrived_at[,`]/,
     );
     const list = data.slice(data.indexOf('export async function loadEventList'));
     const listBody = list.slice(0, list.indexOf('export interface EventPageData'));

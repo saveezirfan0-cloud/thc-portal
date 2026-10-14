@@ -15,8 +15,11 @@ import { isUuid } from '../../ids';
 import {
   FEEDBACK_SIGNED_OUT,
   FEEDBACK_TOO_LONG,
+  REQUEST_COPY,
   feedbackErrorMessage,
   feedbackTextTooLong,
+  requestErrorMessage,
+  requestNoteTooLong,
 } from '../../rules';
 
 /**
@@ -114,4 +117,57 @@ export async function leaveFeedback(
   // client_lineup_v rather than screen state, so the page is re-read.
   revalidatePath(`/client/events/${eventId}`);
   return { ok: true };
+}
+
+export type RequestResult =
+  | {
+      ok: true;
+      /** THC already had an open request for this person: nothing new was sent. */
+      already: boolean;
+    }
+  | { ok: false; error: string; signedOut?: true };
+
+/**
+ * ADR-0135 §2 · "Request this person again" — a message to THC, never a
+ * booking. Every rule is `client_request_worker()`'s: the booking on the
+ * caller's visible line-up, the event finished and not cancelled, the worker
+ * not removed, one open request per worker, 20 a day per company, and the
+ * CP1 email to the office. This action checks the shape and the note's
+ * length, carries the call under the caller's own session, and turns a
+ * refusal into a sentence.
+ */
+export async function requestAgain(
+  eventId: string,
+  bookingId: string,
+  note: string,
+): Promise<RequestResult> {
+  if (!supabaseConfigured()) {
+    return { ok: false, error: "The portal isn't connected yet. Please contact THC." };
+  }
+  if (!isUuid(eventId) || !isUuid(bookingId) || typeof note !== 'string') {
+    return { ok: false, error: REQUEST_COPY.failed };
+  }
+  const text = note.trim();
+  if (requestNoteTooLong(text)) return { ok: false, error: REQUEST_COPY.tooLong };
+
+  const supabase = createClient(await cookies()) as any;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return { ok: false, error: REQUEST_COPY.signedOut, signedOut: true };
+
+  const { data, error } = await supabase.rpc('client_request_worker', {
+    p_booking_id: bookingId,
+    p_note: text === '' ? null : text,
+  });
+  if (error) {
+    console.error('[client] client_request_worker refused', {
+      code: error.code,
+      message: error.message,
+    });
+    return { ok: false, error: requestErrorMessage(error) };
+  }
+
+  // "✓ Requested" is a column of client_lineup_v, so the page is re-read.
+  revalidatePath(`/client/events/${eventId}`);
+  revalidatePath('/client/feedback');
+  return { ok: true, already: data?.already === true };
 }

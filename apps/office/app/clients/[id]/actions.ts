@@ -45,6 +45,7 @@ const CARD_WORDING = {
     unknown_rate_card_row: 'That rate card row no longer exists. Refresh the page.',
     unknown_qualification: 'That qualification no longer exists. Refresh the page.',
     quiz_not_found: 'That quiz no longer exists. Refresh the page.',
+    unknown_worker_request: 'That request no longer exists. Refresh the page.',
   },
   log: '[client card]',
 };
@@ -171,6 +172,11 @@ export async function setDoNotReturn(
  */
 export async function setNameBadges(clientId: string, on: boolean): Promise<ActionResult> {
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
+}
+
+/** ADR-0135 §2: a Client Portal "Request again" is dealt with (audited). */
+export async function markRequestHandled(clientId: string, id: string): Promise<ActionResult> {
+  return callRpc('mark_client_worker_request_handled', { p_id: id }, clientId);
 }
 
 /**

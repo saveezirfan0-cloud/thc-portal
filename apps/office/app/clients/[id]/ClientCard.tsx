@@ -11,6 +11,7 @@ import { NameBadges } from './NameBadges';
 import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
 import { ShiftRequirements } from './ShiftRequirements';
+import { WorkerRequests } from './WorkerRequests';
 import { marginTone, newEventHref } from './card';
 import type { Client } from '../types';
 import type { ClientCardData } from './types';
@@ -176,6 +177,9 @@ export function ClientCard({
           results={data.quizResults}
           canWrite={canWrite}
         />
+
+        {/* ADR-0135 §2: the customer's "Request again" messages. */}
+        <WorkerRequests clientId={client.id} rows={data.workerRequests} canWrite={canWrite} />
 
         <ClientEvents rows={data.events} ratesVisible={ratesVisible} />
 

@@ -7,7 +7,7 @@ import type { FeedbackHistoryData } from '../data';
  * · sent date · your comment, newest first, read-only; an empty state, a
  * failed read, and a removed worker whose comment is withheld (§1.7).
  */
-const state = vi.hoisted(() => ({ data: null as unknown }));
+const state = vi.hoisted(() => ({ data: null as unknown, requests: [] as unknown[] }));
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -19,6 +19,8 @@ vi.mock('next/link', () => ({
 vi.mock('../data', () => ({
   HISTORY_LIMIT: 500,
   loadFeedbackHistory: async () => state.data,
+  // ADR-0135 §2: the open "Request again" messages above the entries.
+  loadOpenRequests: async () => state.requests,
 }));
 
 const Page = (await import('../feedback/page')).default;
@@ -103,5 +105,40 @@ describe('the page', () => {
   it('says when it shows only the latest entries', async () => {
     state.data = { entries, truncated: true, problem: null };
     expect(await render()).toContain('Showing your latest 500 entries');
+  });
+});
+
+describe('People you’ve asked for again (ADR-0135 §2)', () => {
+  beforeEach(() => {
+    state.data = { entries: [], truncated: false, problem: null };
+  });
+
+  it('is not drawn while there is no open request', async () => {
+    state.requests = [];
+    const html = renderToStaticMarkup(await Page());
+    expect(html).not.toContain('asked for again');
+  });
+
+  it('lists each open request: who, from which event, when, and the note', async () => {
+    state.requests = [
+      {
+        id: 'r1',
+        eventId: EV,
+        eventTitle: 'Lunch Service',
+        eventStartsAt: '2026-09-30T10:00:00Z',
+        name: 'Aisha Bello',
+        role: 'Waiting Staff',
+        note: 'Please send her again',
+        requestedAt: '2026-10-01T09:00:00Z',
+      },
+    ];
+    const html = renderToStaticMarkup(await Page());
+    expect(html).toContain('People you’ve asked for again');
+    expect(html).toContain('1 open');
+    expect(html).toContain('Aisha Bello');
+    expect(html).toContain(`href="/client/events/${EV}"`);
+    expect(html).toContain('Please send her again');
+    expect(html).toContain('They are not bookings');
+    state.requests = [];
   });
 });

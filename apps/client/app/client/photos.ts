@@ -142,6 +142,8 @@ export function publicLineup(rows: readonly LineupRecord[]): ClientLineupRow[] {
     ...(r.arrivalStatus !== undefined
       ? { arrivalStatus: r.arrivalStatus, arrivedAt: r.arrivedAt ?? null }
       : {}),
+    // ADR-0135 §2: "✓ Requested", on the event page only.
+    ...(r.workerRequested !== undefined ? { workerRequested: r.workerRequested } : {}),
   }));
 }
 
