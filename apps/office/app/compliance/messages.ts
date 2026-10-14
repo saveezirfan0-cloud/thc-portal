@@ -1,3 +1,5 @@
+import { explainDbError } from '../_lib/dbError';
+
 /**
  * What each refusal from the review RPCs means to the manager. The database
  * raises tokens (`not_pending: verified`, `already_expired: 2026-09-01`) so
@@ -110,7 +112,9 @@ export function reviewErrorMessage(raw: string): string {
     const match = pattern.exec(raw);
     if (match) return message.replace('$1', ukDate(match[1]));
   }
-  return raw;
+  // Release audit D-M5: anything else is never shown raw — our own raised
+  // sentences are kept, Postgres's templates become a sentence (_lib/dbError).
+  return explainDbError(raw, { log: '[compliance]' });
 }
 
 function ukDate(iso: string | undefined): string {

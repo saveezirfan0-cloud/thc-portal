@@ -17,6 +17,34 @@
   overflow-wrap: anywhere;
 }
 
+/* A long Details entry folds and opens in place (ActivityDetails). */
+.activity-more > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.activity-more > summary::-webkit-details-marker {
+  display: none;
+}
+.activity-more-cue {
+  color: var(--cyan-ink);
+  white-space: nowrap;
+}
+.activity-more > summary:hover .activity-more-cue {
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+.activity-more-close,
+.activity-more[open] .activity-more-open,
+.activity-more[open] .activity-more-preview {
+  display: none;
+}
+.activity-more[open] .activity-more-close {
+  display: inline;
+}
+.activity-more-full {
+  display: block;
+}
+
 /* The actor filters the log to that person: a name, not a control. */
 .activity-who .linkish {
   display: inline-flex;

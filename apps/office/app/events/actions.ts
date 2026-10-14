@@ -14,6 +14,7 @@ import {
 } from '@thc/domain';
 import { LIVE_BOOKING_STATUSES } from './data';
 import { planReconfirmations, reconfirmOutboxRows } from './reconfirm';
+import { explainDbError } from '../_lib/dbError';
 
 /**
  * Saving an event — Scope §3.2, §3.5.
@@ -69,6 +70,35 @@ export interface EventInput {
 }
 
 export type SaveResult = { error: string } | { ok: true; id: string };
+
+/**
+ * Release audit D-M5: the database's refusal as a sentence. The Shift
+ * Builder's own rules raise sentences (the 4-hour floor, the edit lock),
+ * which are kept; constraint and policy text is not shown.
+ */
+function refusal(error: {
+  code?: string | null;
+  message: string;
+  details?: string | null;
+}): string {
+  return explainDbError(error, {
+    codes: {
+      read_only: 'Your login is read-only, so this cannot be changed.',
+      event_started_editing_locked: 'This event has started. Editing is locked.',
+      // shift_times_rota_guard: new times re-checked for everyone booked.
+      rota_guard_rtw_expired:
+        'The new times would put a booked worker past their right-to-work expiry. Withdraw them on the event board first, or keep the times.',
+      rota_guard_visa_cap:
+        'The new times would take a booked worker over their Student visa weekly limit. Withdraw them on the event board first, or keep the times.',
+      rota_guard_wtr_cap:
+        'The new times would take a booked worker over the 48-hour weekly limit. Withdraw them on the event board first, or keep the times.',
+    },
+    check:
+      'One of the role sections is not allowed as entered. Check the times, headcount and buffer.',
+    generic: 'The event could not be saved. Refresh the page and try again.',
+    log: '[events]',
+  });
+}
 
 const NO_SUPABASE =
   'This environment has no Supabase project, so the event cannot be saved (docs/04-setup-github-vercel-supabase.md).';
@@ -150,10 +180,14 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
       auto_assign: input.autoAssign,
       // English is always in it; the database's CHECK holds the same.
       required_languages: normaliseLanguages(input.requiredLanguages),
+      // Release audit D-M1: a Duplicate says what it was made from, so the
+      // activity log reads "Duplicated event" (20261014093200). created_by
+      // is not sent: the database fills it from the session (auth.uid()).
+      ...(input.duplicateOf ? { duplicated_from: input.duplicateOf } : {}),
     })
     .select('id')
     .single();
-  if (error || !event) return { error: error?.message ?? 'The event could not be saved.' };
+  if (error || !event) return { error: error ? refusal(error) : 'The event could not be saved.' };
 
   // ADR-0117: a Duplicate of an event that has a "Same staff on all days" role
   // is another day of the same job. Any other Duplicate ("copy last week's
@@ -170,7 +204,7 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
       .limit(1);
     if (flagError) {
       await supabase.from('events').delete().eq('id', event.id);
-      return { error: `The original event could not be read: ${flagError.message}` };
+      return { error: `The original event could not be read. ${refusal(flagError)}` };
     }
     if ((flagged ?? []).length > 0) {
       const { error: linkError } = await supabase.rpc('link_event_series', {
@@ -179,7 +213,7 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
       });
       if (linkError && !linkError.message.includes('series_other_client')) {
         await supabase.from('events').delete().eq('id', event.id);
-        return { error: `The days of this job could not be linked: ${linkError.message}` };
+        return { error: `The days of this job could not be linked. ${refusal(linkError)}` };
       }
     }
   }
@@ -191,7 +225,7 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
     // An event with no role sections has no window and no status. Roll it back
     // rather than leave one stranded on the calendar.
     await supabase.from('events').delete().eq('id', event.id);
-    return { error: sectionError.message };
+    return { error: refusal(sectionError) };
   }
 
   await firstAutoAssignRound(supabase, event.id);
@@ -280,7 +314,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
       required_languages: normaliseLanguages(input.requiredLanguages),
     })
     .eq('id', input.id);
-  if (error) return { error: error.message };
+  if (error) return { error: refusal(error) };
 
   const keep = new Set(input.roles.map((role) => role.id).filter(Boolean) as string[]);
   const removed = before.map((s) => s.id).filter((id) => !keep.has(id));
@@ -317,7 +351,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
       .update(sectionRow(eventId, input.date, role))
       .eq('id', role.id)
       .eq('event_id', eventId);
-    if (updateError) return { error: updateError.message };
+    if (updateError) return { error: refusal(updateError) };
   }
   // A section with no stored row — new in the builder, or one that
   // disappeared under it — is inserted, as the upsert used to.
@@ -326,7 +360,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     const { error: insertError } = await supabase
       .from('shift_requirements')
       .insert(added.map((role) => sectionRow(eventId, input.date, role)));
-    if (insertError) return { error: insertError.message };
+    if (insertError) return { error: refusal(insertError) };
   }
 
   const notifyFailed = await flagReconfirmations(supabase, input, before, {

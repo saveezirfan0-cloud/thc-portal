@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { type DbError, explainDbError } from '../_lib/dbError';
 import { supabaseConfigured } from './data';
 import { validateClient } from './validate';
 import type { ActionResult, ClientDraft } from './types';
@@ -23,13 +24,20 @@ const NOT_CONFIGURED =
 type RpcArguments = Record<string, string | number | boolean | string[] | null>;
 
 interface RpcClient {
-  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
+  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: DbError | null }>;
 }
+
+/** Release audit D-M5: the database's words, as a sentence (`_lib/dbError`). */
+const CLIENT_WORDING = {
+  unique: 'A client with that name already exists.',
+  codes: { unknown_client: 'That client no longer exists. Refresh the page.' },
+  log: '[clients]',
+};
 
 async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { error } = await supabase.rpc(fn, args);
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: explainDbError(error, CLIENT_WORDING) };
 
   revalidatePath('/clients');
   // The Edit dialog is opened from the client card too (§9.7), so the

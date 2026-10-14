@@ -10,6 +10,9 @@ import {
   DECLINE_NOTE_MAX,
   OPEN_TO_POOL_CONFIRM,
   declineNoteCounter,
+  withdrawConfirmLabel,
+  withdrawConfirmPrompt,
+  withdrawGuard,
 } from '../board-model';
 
 type Result = { error: string } | { ok: true; warning?: string };
@@ -19,6 +22,8 @@ interface Pending {
   warning: string;
   confirmLabel: string;
   action: () => Promise<Result>;
+  /** A Withdraw: one at a time across the board (`withdrawGuard`). */
+  guarded?: boolean;
 }
 
 /**
@@ -35,10 +40,17 @@ interface Pending {
  * "No show" is offered only from the section's start until two weeks after
  * its end (`canMarkNoShow`, §3.3) — before the start there is nothing to
  * miss. The server action refuses outside that window too.
+ *
+ * Withdraw on a CONFIRMED worker asks first, naming them and saying they
+ * will be told (release audit E-M5): it cannot be undone and N10b goes at
+ * once. An invitation is still withdrawn in one click. Either way only one
+ * Withdraw runs at a time on the board, so a double-click cannot take off
+ * the next person when the list closes up.
  */
 export function BookingActions({
   eventId,
   bookingId,
+  workerName = 'this worker',
   noShow,
   confirmed,
   payrollExported,
@@ -48,6 +60,8 @@ export function BookingActions({
 }: {
   eventId: string;
   bookingId: string;
+  /** Named in the Withdraw confirm (release audit E-M5). */
+  workerName?: string;
   noShow: boolean;
   confirmed: boolean;
   payrollExported: boolean;
@@ -65,11 +79,16 @@ export function BookingActions({
   // other question on the board (never a browser prompt).
   const [declining, setDeclining] = useState<string | null>(null);
 
-  const run = (action: () => Promise<Result>) => {
+  const run = (action: () => Promise<Result>, guarded = false) => {
+    if (guarded && !withdrawGuard.tryStart()) return;
     setError(null);
     startTransition(async () => {
-      const result = await action();
-      if ('error' in result) setError(result.error);
+      try {
+        const result = await action();
+        if ('error' in result) setError(result.error);
+      } finally {
+        if (guarded) withdrawGuard.finish();
+      }
     });
   };
 
@@ -149,7 +168,17 @@ export function BookingActions({
           size="sm"
           tone="ghost"
           disabled={running}
-          onClick={() => run(() => withdraw(eventId, bookingId))}
+          onClick={() =>
+            confirmed
+              ? setPending({
+                  title: withdrawConfirmLabel(workerName),
+                  warning: withdrawConfirmPrompt(workerName),
+                  confirmLabel: withdrawConfirmLabel(workerName),
+                  action: () => withdraw(eventId, bookingId),
+                  guarded: true,
+                })
+              : run(() => withdraw(eventId, bookingId), true)
+          }
         >
           {confirmed ? 'Withdraw' : 'Withdraw invite'}
         </Button>
@@ -166,9 +195,9 @@ export function BookingActions({
               tone="primary"
               disabled={running}
               onClick={() => {
-                const action = pending?.action;
+                const next = pending;
                 setPending(null);
-                if (action) run(action);
+                if (next) run(next.action, next.guarded === true);
               }}
             >
               {pending?.confirmLabel ?? 'Confirm'}

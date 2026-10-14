@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../../_lib/sessionRole';
+import { NOT_ALLOWED, explainDbError } from '../../_lib/dbError';
 import { createAdminClient } from '@thc/db/admin';
 import { validateEmergencyContact } from '@thc/domain';
 import type { EmergencyContactInput } from '@thc/domain';
@@ -55,7 +56,10 @@ interface RpcClient {
  * as a generic line.
  */
 const STAFF_CODES: Readonly<Record<string, string>> = {
-  not_authorised: 'Only the office can do this.',
+  // Release audit B1: this used to read "Only the office can do this." —
+  // to an owner, whose write had been refused by a policy, not by who they
+  // are. The sentence now says what is true for any login that sees it.
+  not_authorised: NOT_ALLOWED,
   read_only: READ_ONLY_MESSAGE,
   unknown_staff: 'This worker could not be found. Refresh the page.',
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
@@ -91,10 +95,10 @@ function staffErrorMessage(raw: string): string {
   if (known) return known;
   const sentence = STAFF_SENTENCES.find(([start]) => raw.startsWith(start));
   if (sentence) return sentence[1];
-  // RLS on the security-invoker RPCs: the caller is not the office.
-  if (/row-level security|permission denied/i.test(raw)) return STAFF_CODES['not_authorised']!;
-  console.error('[staff] unmapped database refusal', { message: raw });
-  return STAFF_GENERIC;
+  // Anything else: an RLS refusal, a constraint, or one of our own raised
+  // sentences — put into words by the shared mapper, and logged when the
+  // database's text is not shown (release audit D-M5).
+  return explainDbError(raw, { unique: STAFF_GENERIC, generic: STAFF_GENERIC, log: '[staff]' });
 }
 
 /** An action's result with any database refusal put into words (staffErrorMessage). */
@@ -290,7 +294,7 @@ const EMERGENCY_MESSAGES: Record<string, string> = {
   bad_name: 'Enter their name (up to 100 characters).',
   bad_relationship: 'Say who they are to the worker, for example Parent (up to 40 characters).',
   staff_removed: 'This worker was removed under GDPR; nothing personal can be added back.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
 };
 
 function emergencyMessage(result: ActionResult): ActionResult {
@@ -376,7 +380,7 @@ export async function clearPayRate(staffId: string): Promise<ActionResult> {
 const GENDER_MESSAGES: Readonly<Record<string, string>> = {
   gender_m_or_f: 'Choose Male or Female.',
   unknown_staff: 'This worker could not be found. Refresh the page.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   read_only: 'Your login is read-only, so this cannot be changed.',
 };
@@ -406,7 +410,7 @@ const RTW_BRANCHES: readonly string[] = [
 const RTW_BRANCH_MESSAGES: Readonly<Record<string, string>> = {
   unknown_staff: 'This worker could not be found. Refresh the page.',
   branch_required: 'Choose a branch.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
   read_only: 'Your login is read-only, so this cannot be changed.',
   'not_reviewable: removed':
     'This worker was removed under GDPR; nothing about them is recorded now.',
@@ -452,7 +456,7 @@ const SCHEDULING_MESSAGES: Readonly<Record<string, string>> = {
   has_upcoming_shifts:
     'This worker still has an upcoming invitation or booking. Cancel or move it first, then mark them as onboarding only.',
   unknown_staff: 'This worker could not be found. Refresh the page.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   read_only: 'Your login is read-only, so this cannot be changed.',
 };
@@ -483,7 +487,7 @@ const PAYROLL_ID_MESSAGES: Readonly<Record<string, string>> = {
   payroll_id_shape: 'Use letters, digits or a hyphen only, up to 20 characters.',
   payroll_id_taken: 'Another worker already has this Payroll ID.',
   unknown_staff: 'This worker could not be found. Refresh the page.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   read_only: 'Your login is read-only, so this cannot be changed.',
 };
@@ -513,7 +517,7 @@ export async function savePayrollId(
 const LANGUAGES_MESSAGES: Readonly<Record<string, string>> = {
   unknown_language: 'Choose languages from the list.',
   unknown_staff: 'This worker could not be found. Refresh the page.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   read_only: 'Your login is read-only, so this cannot be changed.',
 };
@@ -549,7 +553,7 @@ const REJECT_SELFIE_MESSAGES: Readonly<Record<string, string>> = {
     'This person has left, been rejected or been removed, so there is no photo to reject.',
   no_photo:
     'There is no profile selfie to reject — it may have been rejected already. Refresh the page.',
-  not_authorised: 'Only the office can do this.',
+  not_authorised: NOT_ALLOWED,
   read_only: 'Your login is read-only, so this cannot be changed.',
 };
 

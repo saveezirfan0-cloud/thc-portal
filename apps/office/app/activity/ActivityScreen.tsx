@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import {
   Alert,
   Avatar,
@@ -17,7 +16,8 @@ import {
 import { OfficeShell } from '../_components/OfficeShell';
 import { actionLabel, entityHref, entityLabel } from '../_lib/accounts';
 import type { ActivityFilters, ActivityPageData } from './data';
-import { EXPORT_CAP, PERIODS, actorName, describe, exportHref } from './view-model';
+import { ActivityDetails } from './ActivityDetails';
+import { EXPORT_CAP, PERIODS, actorName, auditStamp, describe, exportHref } from './view-model';
 import '../account/account.css';
 import './activity.css';
 
@@ -160,7 +160,7 @@ export function ActivityScreen({
                   return (
                     <tr key={row.id}>
                       <td data-label="When" className="mono sm activity-when">
-                        {formatDateTimeIn(new Date(row.at), UK_ZONE, format)}
+                        {auditStamp(row.at, format)}
                       </td>
                       <td data-label="Who" className="activity-who">
                         {row.actor ? (
@@ -189,7 +189,7 @@ export function ActivityScreen({
                         )}
                       </td>
                       <td data-label="Details" className="sm muted activity-details">
-                        {details.length ? details.join(' · ') : '—'}
+                        <ActivityDetails lines={details} />
                       </td>
                     </tr>
                   );

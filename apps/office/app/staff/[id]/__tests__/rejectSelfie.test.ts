@@ -58,7 +58,7 @@ describe('rejectSelfie', () => {
   it.each([
     ['no_photo', 'no profile selfie to reject'],
     ['not_active', 'has left, been rejected or been removed'],
-    ['not_authorised', 'Only the office can do this.'],
+    ['not_authorised', 'not allowed to make this change'],
     ['read_only', 'read-only'],
     ['staff_not_found', 'could not be found'],
   ])('explains %s', async (code, words) => {

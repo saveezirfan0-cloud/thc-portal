@@ -9,6 +9,7 @@ import { supabaseConfigured } from '../staff/data';
 import { periodToRange, periodsProblem } from './view-model';
 import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
+import { explainDbError } from '../_lib/dbError';
 import type { AcceptRpc, AdminAuth, ResendRpc } from './activation';
 import type { Period } from './view-model';
 import type { ActionResult } from './types';
@@ -173,7 +174,7 @@ export async function acceptCandidate(
     .select('id, email, user_id, status')
     .eq('id', staffId)
     .maybeSingle<{ id: string; email: string; user_id: string | null; status: string }>();
-  if (readError) return { ok: false, message: readError.message };
+  if (readError) return { ok: false, message: explainDbError(readError, { log: '[onboarding]' }) };
   if (!candidate)
     return { ok: false, message: 'This candidate no longer exists — refresh the page.' };
   // Checked here as well as in the database so that a stale card does not
@@ -479,14 +480,22 @@ export async function documentLink(
     .select('file_path, gov_report_path')
     .eq('id', docId)
     .maybeSingle<{ file_path: string | null; gov_report_path: string | null }>();
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: explainDbError(error, { log: '[onboarding]' }) };
   const path = which === 'file' ? data?.file_path : data?.gov_report_path;
   if (!path) return { ok: false, message: 'There is no file on this document.' };
 
   const { data: signed, error: signError } = await createAdminClient()
     .storage.from('documents')
     .createSignedUrl(path, 60);
-  if (signError || !signed)
-    return { ok: false, message: signError?.message ?? 'Could not open the file.' };
+  if (signError || !signed) {
+    // Storage's own text ("Object not found", a bucket name) is not for the screen.
+    if (signError)
+      console.error('[onboarding] document link not signed', { message: signError.message });
+    return {
+      ok: false,
+      message:
+        'The file could not be opened. Refresh the page and try again — if it keeps happening, tell a developer.',
+    };
+  }
   return { ok: true, url: signed.signedUrl };
 }

@@ -56,6 +56,9 @@ export function Qualifications({
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  // Release audit B1: a refusal from inside a dialog is shown IN the
+  // dialog, not above the panel behind it.
+  const [dialogProblem, setDialogProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   // §9.6: an entry names "a client and ONE OF THAT WORKER'S ROLES", so the
@@ -66,13 +69,25 @@ export function Qualifications({
   const run = (
     work: () => Promise<{ ok: true } | { ok: false; message: string }>,
     after: () => void,
+    where: 'panel' | 'dialog' = 'panel',
   ) => {
     setProblem(null);
+    setDialogProblem(null);
     start(async () => {
       const result = await work();
       if (result.ok) after();
+      else if (where === 'dialog') setDialogProblem(result.message);
       else setProblem(result.message);
     });
+  };
+
+  const closeAdding = () => {
+    setAdding(false);
+    setDialogProblem(null);
+  };
+  const closeBarring = () => {
+    setBarring(null);
+    setDialogProblem(null);
   };
 
   return (
@@ -90,7 +105,10 @@ export function Qualifications({
             <Button
               size="sm"
               tone="primary"
-              onClick={() => setAdding(true)}
+              onClick={() => {
+                setDialogProblem(null);
+                setAdding(true);
+              }}
               disabled={profile.removed}
             >
               + Add client
@@ -157,6 +175,7 @@ export function Qualifications({
                             // Switching it ON opens the reason dialog: an
                             // unexplained bar is one nobody can decide to lift.
                             setReason('');
+                            setDialogProblem(null);
                             setBarring(row);
                           } else {
                             run(
@@ -211,10 +230,10 @@ export function Qualifications({
       <Modal
         open={adding}
         title="Add a client qualification"
-        onClose={() => setAdding(false)}
+        onClose={closeAdding}
         footer={
           <>
-            <Button tone="ghost" onClick={() => setAdding(false)}>
+            <Button tone="ghost" onClick={closeAdding}>
               Cancel
             </Button>
             <Button
@@ -238,6 +257,7 @@ export function Qualifications({
                     setRoleIds([]);
                     setNote('');
                   },
+                  'dialog',
                 )
               }
             >
@@ -246,6 +266,7 @@ export function Qualifications({
           </>
         }
       >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
         <div className="field">
           <span className="label">Client</span>
           <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
@@ -298,10 +319,10 @@ export function Qualifications({
       <Modal
         open={barring !== null}
         title={barring ? `Do not return · ${barring.client_name}` : ''}
-        onClose={() => setBarring(null)}
+        onClose={closeBarring}
         footer={
           <>
-            <Button tone="ghost" onClick={() => setBarring(null)}>
+            <Button tone="ghost" onClick={closeBarring}>
               Cancel
             </Button>
             <Button
@@ -313,6 +334,7 @@ export function Qualifications({
                 run(
                   () => setDoNotReturn(profile.id, barring.id, true, reason),
                   () => setBarring(null),
+                  'dialog',
                 )
               }
             >
@@ -321,6 +343,7 @@ export function Qualifications({
           </>
         }
       >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
         <Alert tone="coral">
           This is a hard gate, not a preference. {profile.display_name} will not be invited in
           either wave, the shift will never appear on their Radar, and they cannot be invited

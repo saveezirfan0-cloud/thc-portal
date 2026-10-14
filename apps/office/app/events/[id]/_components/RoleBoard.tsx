@@ -236,6 +236,7 @@ export function RoleBoard({
                 <BookingActions
                   eventId={eventId}
                   bookingId={booking.bookingId}
+                  workerName={booking.name}
                   noShow={booking.noShow}
                   confirmed
                   payrollExported={payrollExported}
@@ -285,6 +286,7 @@ export function RoleBoard({
                   <BookingActions
                     eventId={eventId}
                     bookingId={booking.bookingId}
+                    workerName={booking.name}
                     noShow={false}
                     confirmed={false}
                     payrollExported={payrollExported}

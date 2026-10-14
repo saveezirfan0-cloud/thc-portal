@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { explainDbError } from '../../_lib/dbError';
 import { createAdminClient } from '@thc/db/admin';
 import { validateDecision } from '@thc/domain';
 import { supabaseConfigured } from '../data';
@@ -67,7 +68,7 @@ async function readRequest(
     .select('kind, staff_id, evidence_path')
     .eq('id', id)
     .maybeSingle<RequestFacts>();
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: explainDbError(error, { log: '[requests]' }) };
   // admin_read is the only policy: a session that is not the office's reads
   // no row, which is exactly "not found" from where it stands.
   if (!data) return { ok: false, message: decisionMessage('request_not_found') };
@@ -95,12 +96,15 @@ export async function decideChangeRequest(
     return { ok: false, message: decisionMessage('evidence_unchecked_dob') };
   }
 
-  const { data, error } = await (supabase as unknown as DecideRpc).rpc('office_decide_profile_change', {
-    p_id: id,
-    p_approve: approve,
-    // An approval stores no reason; a rejection's is shown to the worker.
-    p_reason: approve ? null : reason.trim(),
-  });
+  const { data, error } = await (supabase as unknown as DecideRpc).rpc(
+    'office_decide_profile_change',
+    {
+      p_id: id,
+      p_approve: approve,
+      // An approval stores no reason; a rejection's is shown to the worker.
+      p_reason: approve ? null : reason.trim(),
+    },
+  );
   if (error) return { ok: false, message: decisionMessage(error.message) };
 
   revalidatePath('/staff/requests');
@@ -141,6 +145,14 @@ export async function changeEvidenceLink(id: string): Promise<DecisionResult & {
   const { data: signed, error } = await createAdminClient()
     .storage.from('documents')
     .createSignedUrl(path, 60);
-  if (error || !signed) return { ok: false, message: error?.message ?? 'Could not open the file.' };
+  if (error || !signed) {
+    // Storage's own text is not for the screen (release audit D-M5).
+    if (error) console.error('[requests] evidence link not signed', { message: error.message });
+    return {
+      ok: false,
+      message:
+        'The file could not be opened. Refresh the page and try again — if it keeps happening, tell a developer.',
+    };
+  }
   return { ok: true, url: signed.signedUrl };
 }

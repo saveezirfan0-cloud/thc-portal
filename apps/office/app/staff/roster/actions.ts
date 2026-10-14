@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { explainDbError } from '../../_lib/dbError';
 import { supabaseConfigured } from '../data';
 import { parseRoster } from './parse';
 
@@ -64,7 +65,13 @@ export async function loadRoster(text: string): Promise<LoadResult> {
 
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { data, error } = await supabase.rpc('load_invite_roster', { p_rows: parsed.rows });
-  if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
+  if (error)
+    return {
+      ok: false,
+      message:
+        MESSAGES[error.message] ??
+        explainDbError(error, { codes: MESSAGES, log: '[invite roster]' }),
+    };
 
   revalidatePath('/staff/roster');
   revalidatePath('/staff');
@@ -85,7 +92,13 @@ export async function removeRosterEntries(ids: string[] | null): Promise<RemoveR
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { data, error } = await supabase.rpc('remove_invite_roster_entries', { p_ids: ids });
-  if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
+  if (error)
+    return {
+      ok: false,
+      message:
+        MESSAGES[error.message] ??
+        explainDbError(error, { codes: MESSAGES, log: '[invite roster]' }),
+    };
   revalidatePath('/staff/roster');
   return { ok: true, removed: Number(data ?? 0) };
 }
@@ -106,7 +119,13 @@ export async function linkRosterEntry(entryId: string, staffId: string): Promise
     p_entry: entryId,
     p_staff: staffId,
   });
-  if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
+  if (error)
+    return {
+      ok: false,
+      message:
+        MESSAGES[error.message] ??
+        explainDbError(error, { codes: MESSAGES, log: '[invite roster]' }),
+    };
   revalidatePath('/staff/roster');
   const result = (data ?? {}) as { payrollId?: string | null; spudbros?: string };
   return {
@@ -129,7 +148,13 @@ export async function setRemindersEnabled(enabled: boolean): Promise<ToggleResul
   const { data, error } = await supabase.rpc('set_invite_roster_reminders', {
     p_enabled: enabled,
   });
-  if (error) return { ok: false, message: MESSAGES[error.message] ?? error.message };
+  if (error)
+    return {
+      ok: false,
+      message:
+        MESSAGES[error.message] ??
+        explainDbError(error, { codes: MESSAGES, log: '[invite roster]' }),
+    };
   revalidatePath('/staff/roster');
   const result = (data ?? {}) as { enabled?: boolean; cancelled?: number };
   return { ok: true, enabled: result.enabled ?? enabled, cancelled: Number(result.cancelled ?? 0) };

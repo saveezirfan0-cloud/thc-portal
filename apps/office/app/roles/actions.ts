@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { type DbError, explainDbError } from '../_lib/dbError';
 import { supabaseConfigured } from './data';
 import { validateRole } from './validate';
 import type { ActionResult, RoleDraft } from './types';
@@ -25,13 +26,21 @@ const NOT_CONFIGURED =
 type RpcArguments = Record<string, string | number | null>;
 
 interface RpcClient {
-  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
+  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: DbError | null }>;
 }
+
+/** Release audit D-M5: the database's words, as a sentence (`_lib/dbError`). */
+const ROLE_WORDING = {
+  unique: 'A role with that name already exists.',
+  foreignKey:
+    'That role is still used by a rate card or a role section. Remove it from those first.',
+  log: '[roles]',
+};
 
 async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { error } = await supabase.rpc(fn, args);
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: explainDbError(error, ROLE_WORDING) };
 
   revalidatePath('/roles');
   return { ok: true };

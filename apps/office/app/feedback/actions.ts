@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { explainDbError } from '../_lib/dbError';
 import { supabaseConfigured } from './data';
 import { validateDraft } from './view-model';
 import type { ActionResult, EventOption, OfficeDraft, WorkerOption } from './types';
@@ -39,7 +40,9 @@ interface RpcClient {
 function message(error: { message: string; code?: string }): string {
   if (error.message === 'unknown_feedback') return 'That entry no longer exists.';
   if (error.message === 'unknown_staff') return 'That worker could not be found.';
-  return error.message;
+  // Release audit D-M5: our own sentences are kept ("A comment is
+  // required"); Postgres's wording is not shown (_lib/dbError).
+  return explainDbError(error, { log: '[feedback]' });
 }
 
 function staffIdOf(data: unknown): string | null {

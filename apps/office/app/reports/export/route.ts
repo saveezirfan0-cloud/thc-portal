@@ -1,5 +1,6 @@
 import { financialCsv, newStarterCsv, payrollCsv } from '@thc/pdf/csv';
 import { reportsDb, supabaseConfigured } from '../data';
+import { explainDbError } from '../../_lib/dbError';
 import type { FinanceRow, NewStarter, PayrollLine } from '../data';
 import { newStarterPeriod, parseReportView, todayInUk } from '../view-model';
 
@@ -65,9 +66,12 @@ export async function GET(request: Request) {
 
   if (error) {
     const forbidden = error.message.includes('admins_only');
-    return new Response(forbidden ? 'Reports are for the office only.' : error.message, {
-      status: forbidden ? 403 : 500,
-    });
+    return new Response(
+      forbidden ? 'Reports are for the office only.' : explainDbError(error, { log: '[reports]' }),
+      {
+        status: forbidden ? 403 : 500,
+      },
+    );
   }
 
   return new Response(csv, {
