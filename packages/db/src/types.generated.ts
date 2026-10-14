@@ -3001,6 +3001,7 @@ export type Database = {
           full_name: string;
           id: string;
           job_title: string | null;
+          list_columns: Json;
           office_role: Database['public']['Enums']['office_role'] | null;
           phone: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -3013,6 +3014,7 @@ export type Database = {
           full_name: string;
           id: string;
           job_title?: string | null;
+          list_columns?: Json;
           office_role?: Database['public']['Enums']['office_role'] | null;
           phone?: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -3025,6 +3027,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           job_title?: string | null;
+          list_columns?: Json;
           office_role?: Database['public']['Enums']['office_role'] | null;
           phone?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -9557,6 +9560,7 @@ export type Database = {
           worker_reason: string;
         }[];
       };
+      my_list_columns: { Args: never; Returns: Json };
       my_time_format: { Args: never; Returns: string };
       my_unavailability: {
         Args: { p_from?: string; p_to?: string };
@@ -10561,6 +10565,7 @@ export type Database = {
         Returns: Json;
       };
       set_invite_roster_reminders: { Args: { p_enabled: boolean }; Returns: Json };
+      set_my_list_columns: { Args: { p_columns: Json; p_list: string }; Returns: Json };
       set_my_time_format: { Args: { p_format: string }; Returns: string };
       set_staff_gender: {
         Args: { p_gender: string; p_staff: string };
