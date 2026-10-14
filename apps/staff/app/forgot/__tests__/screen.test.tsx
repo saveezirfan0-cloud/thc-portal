@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * A1 Forgot password and A2 Reset link sent against
@@ -16,6 +16,15 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../actions', () => ({ requestReset: vi.fn() }));
+
+const session = vi.hoisted(() => ({ email: null as string | null }));
+vi.mock('@thc/db/server', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: async () => ({ data: { user: session.email ? { email: session.email } : null } }),
+    },
+  }),
+}));
 
 const state = vi.hoisted(() => ({
   cookie: 'amara.k@example.com' as string | undefined,
@@ -43,8 +52,10 @@ vi.mock('next/navigation', () => ({
 const { default: ForgotPage } = await import('../page');
 const { default: SentPage } = await import('../sent/page');
 
+const signedOutA1 = renderToStaticMarkup(await ForgotPage());
+
 describe('A1 Forgot password (wireframes/staff/auth.html)', () => {
-  const markup = renderToStaticMarkup(<ForgotPage />);
+  const markup = signedOutA1;
 
   it('puts "‹ Back to sign in" first, above the copy — not under the small print', () => {
     const back = markup.indexOf('‹ Back to sign in');
@@ -66,6 +77,38 @@ describe('A1 Forgot password (wireframes/staff/auth.html)', () => {
       'The email comes from admin@thehospitalitycompany.co.uk. If you don’t see it, check spam — or contact the office.',
     );
     expect(markup).not.toContain('60 minutes');
+  });
+});
+
+describe('A1 reached signed in, from "Forgot password?" beside Current password (ADR-0113)', () => {
+  function signIn() {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
+    session.email = 'tom.r@example.com';
+  }
+  afterEach(() => {
+    session.email = null;
+    vi.unstubAllEnvs();
+  });
+
+  it('fills in the session’s own address and goes back to the app, not to sign in', async () => {
+    signIn();
+    const markup = renderToStaticMarkup(await ForgotPage());
+    expect(markup).toContain('value="tom.r@example.com"');
+    expect(markup).toMatch(/<div class="row"><a href="\/" class="sm">‹ Back<\/a>/);
+    expect(markup).not.toContain('Back to sign in');
+  });
+
+  it('A2 gives the installed app a way back too — and only when signed in', async () => {
+    signIn();
+    const markup = renderToStaticMarkup(await SentPage());
+    expect(markup).toMatch(/<div class="row"><a href="\/" class="sm">‹ Back<\/a>/);
+    expect(markup).not.toContain('Back to sign in');
+  });
+
+  it('signed out, fills in nothing', async () => {
+    const markup = renderToStaticMarkup(await ForgotPage());
+    expect(markup).not.toMatch(/name="email"[^>]*value=/);
   });
 });
 

@@ -70,5 +70,7 @@ export async function setPassword(
   // Scope 'others': keep this session, drop the rest.
   await supabase.auth.signOut({ scope: 'others' });
 
-  redirect('/shifts');
+  // The root, not /shifts: it sends a candidate who reset from inside the
+  // wizard back to the step they left (/onboarding), and a worker to Shifts.
+  redirect('/');
 }
