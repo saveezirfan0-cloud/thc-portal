@@ -35,6 +35,9 @@ export const INVITE_REMINDER_COPY = {
     accent: 'the following steps must be carried out below',
     rest: 'before AXLR8 stops working.',
   },
+  /** The owner's firmer line of 14.10.2026, inside the Action required panel. */
+  warning:
+    'Without clicking the link below, actually taking the online interview and fully onboarding, we will be unable to offer you any more shifts going forwards.',
   stepsTitle: 'The steps you must complete',
   steps: [
     {
@@ -84,7 +87,7 @@ export const INVITE_REMINDER_TEXT = [
   C.intro,
   `${C.stopping.lead} ${C.stopping.strong} ${C.stopping.rest}`,
   C.everyDay,
-  `${C.action.label}\n${C.action.lead} ${C.action.accent} ${C.action.rest}`,
+  `${C.action.label}\n${C.action.lead} ${C.action.accent} ${C.action.rest}\n\n${C.warning}`,
   `${C.stepsTitle}:`,
   ...C.steps.map(
     (s, i) =>

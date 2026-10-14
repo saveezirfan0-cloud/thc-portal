@@ -111,6 +111,14 @@ const OFFICE_AND_PAYROLL = [
   'thc_payroll@topsourceworldwide.com',
 ] as const;
 
+/**
+ * The owner's warning of 14.10.2026, word for word in every OC1 email to
+ * existing staff (the daily existing_* rungs and the one-off
+ * existing_notice, 20261014190000): no interview, no onboarding, no shifts.
+ */
+const OC1_NO_MORE_SHIFTS =
+  "Without clicking the link in Willo's email, actually taking the online interview and fully onboarding on the new Staff App, we will be unable to offer you any more shifts going forwards.";
+
 export const TEMPLATES = {
   // ────────────────────────────────────────────────────────────────────────
   // PUSH — Staffing App, Web Push in the PWA (§8, §10.5). Device-level: every
@@ -894,22 +902,33 @@ export const TEMPLATES = {
       // Existing staff being set up on the new app (invite list or a Payroll
       // ID — onboarding_chaser_existing_staff(), 20261012123000): the same
       // three rungs, telling them the interview is part of the move and
-      // that everyone does it, even people who already work with us.
+      // that everyone does it, even people who already work with us. Firmer
+      // since 14.10.2026 (owner): every rung says that without the interview
+      // and full onboarding we cannot offer them any more shifts.
       existing_first: {
-        title: 'Your Willo interview for our new Staff App',
-        body: 'Hi {name},\n\nEveryone who works with The Hospitality Company is being set up on our new Staff App. A short video interview with Willo is part of that, and everyone needs to do one, even if you already work with us. Yours is ready and waiting for you.\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone, whenever suits you.\n\nOnce you\'ve finished, we\'ll be in touch to get you set up in the app.',
+        title: 'Action required: your Willo interview for our new Staff App',
+        body: `Hi {name},\n\nEveryone who works with The Hospitality Company is being moved onto our new Staff App. A short video interview with Willo is part of that, and everyone must do one, even if you already work with us. Yours is ready and waiting for you.\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone, whenever suits you.\n\n${OC1_NO_MORE_SHIFTS}\n\nOnce you've finished, we'll be in touch to get you set up in the app.`,
       },
       existing_second: {
-        title: 'Your Willo interview for our new Staff App',
-        body: "Hi {name},\n\nJust a reminder that your Willo video interview is still waiting for you. It's part of getting set up on our new Staff App, and everyone needs to do it, even if you already work with us. Look for the invitation from Willo in your inbox, or in your spam folder. You can record your answers on your phone, whenever suits you.\n\nWe can't set you up in the new app until it's done.",
+        title: 'Action required: your Willo interview is still not done',
+        body: `Hi {name},\n\nYour Willo video interview has still not been done. It's part of moving onto our new Staff App, and everyone must do it, even if you already work with us. Find the invitation from Willo in your inbox, or in your spam folder, and record your answers on your phone today.\n\n${OC1_NO_MORE_SHIFTS}\n\nCan't find it? Reply to this email and we'll help.`,
       },
       existing_repeat: {
-        title: 'Reminder: your Willo interview for the new app',
-        body: "Hi {name},\n\nYour Willo video interview is still waiting for you. Everyone being set up on The Hospitality Company's new Staff App needs to complete it, including people who already work with us. Find the invitation from Willo in your inbox or spam folder and record your answers, whenever suits you.\n\nCan't find it? Reply to this email and we'll help.",
+        title: 'Reminder: your Willo interview for the new app is overdue',
+        body: `Hi {name},\n\nYou still haven't completed your Willo video interview. Everyone being moved onto The Hospitality Company's new Staff App must complete it, including people who already work with us.\n\n${OC1_NO_MORE_SHIFTS}\n\nFind the invitation from Willo in your inbox or spam folder and record your answers today. Can't find it? Reply to this email and we'll help.`,
+      },
+      // The one-off notice of 14.10.2026 (owner request; 20261014190000):
+      // sent once to every existing member of staff who has applied and been
+      // invited to Willo but not done the interview. Key
+      // `OC1:notice:<staff id>`, outside the daily ladder's keys, so it
+      // neither counts as a rung nor moves the daily run.
+      existing_notice: {
+        title: 'Important: complete your Willo interview to keep getting shifts',
+        body: `Hi {name},\n\nYou've registered on our new Staff App, but you haven't taken your Willo video interview yet.\n\nEveryone who works with The Hospitality Company is being moved onto the new Staff App, and everyone must take the interview and fully onboard, even if you already work with us.\n\n${OC1_NO_MORE_SHIFTS}\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone in a few minutes. Please do it today.\n\nCan't find it? Reply to this email and we'll help.`,
       },
     },
     trigger:
-      'A candidate in Interview requested whose Willo invitation (E1) went out and who has not completed the interview (onboarding_chasers); existing staff being set up on the new app (invite list or a Payroll ID) get the existing_* wording. Not in §8: an addition to scope v1.6, ADR-0071',
+      'A candidate in Interview requested whose Willo invitation (E1) went out and who has not completed the interview (onboarding_chasers); existing staff being set up on the new app (invite list or a Payroll ID) get the existing_* wording, and were sent existing_notice once on 14.10.2026 (20261014190000). Not in §8: an addition to scope v1.6, ADR-0071',
     timing:
       'daily from a day after the invitation or their last progress, until they do it; 10:00–18:00 UK',
   },
