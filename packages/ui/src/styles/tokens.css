@@ -253,6 +253,7 @@
   --r-check: 0; /* checkbox and radio boxes */
   --r-phone: 0;
   --r-frame: 0;
+  --r-band: 0; /* the rounded ends of a table header band */
   --r-logo: 50%; /* the one exception, both styles */
   --nav-bar: 3px; /* accent left bar on the active sidebar item */
 
@@ -263,6 +264,9 @@
   --btn-h-sm: 28px;
   --btn-h-lg: 50px;
   --input-h: 40px;
+  /* A list's filter row (search, selects, dates) is one height, the
+     button height, so a filter sits level with the button beside it. */
+  --filter-h: 36px;
   /* The smallest thing a finger can hit (§1.2, §10.1): every tappable
      control on the Staff App is at least this tall, including text links
      and the Show/Hide addon, which grow their hit area to it. Same in both
@@ -418,10 +422,12 @@
   --r-check: 8px;
   --r-phone: 44px;
   --r-frame: 32px;
+  --r-band: 14px;
   --nav-bar: 0px;
 
   --btn-h: 38px;
   --input-h: 42px;
+  --filter-h: 38px;
 }
 
 /* --- v2 dark: the spec's "Luminous Midnight" ------------------------

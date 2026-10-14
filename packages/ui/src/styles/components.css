@@ -46,11 +46,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The nav takes the height between the brand and the footer and scrolls
+   inside it when a short window cannot hold every item — it never runs
+   under the footer (the Back Office's "My profile" did at 900px tall). */
 .sidebar nav {
   padding: var(--sp-16) 0 0;
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 /* One active state, identical on every page: accent left bar + 8% accent
    fill + accent text (§1.6). */
@@ -64,7 +70,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-10);
-  padding: 11px var(--sp-18) 11px calc(var(--sp-18) - var(--nav-bar));
+  /* 9px, not 11px: sixteen items, three rules, the brand and the footer
+     fit a 1440 x 900 window with room to spare. */
+  padding: 9px var(--sp-18) 9px calc(var(--sp-18) - var(--nav-bar));
   color: var(--muted);
   border-left: var(--nav-bar) solid transparent;
   font-family: var(--font-body);
@@ -158,19 +166,37 @@
   display: flex;
   align-items: center;
   gap: var(--sp-16);
-  /* One line whenever it fits. When it does not (the event board's five
-     actions beside the appearance switch overflowed even at 1280px) the
-     actions wrap under the title instead of running off the edge. */
-  flex-wrap: wrap;
+  /* One row: the title, the crumbs, the zone note, the screen's actions and
+     the appearance switch, which never drops under the title (release
+     audit L14). What does not fit wraps INSIDE its own part — a long crumb
+     line or zone note onto a second line, the event board's five actions
+     into two rows beside the title (`.topbar .row` below). Below 760px the
+     bar is laid out as rows instead (section 11). */
+  flex-wrap: nowrap;
   row-gap: var(--sp-8);
   padding: var(--sp-10) var(--gutter);
   position: sticky;
   top: 0;
   z-index: 5;
 }
-.topbar > .row {
+/* A screen's actions may nest rows (the event board's document buttons);
+   every level wraps, or "Download Allocation Timesheet" ran off a phone. */
+.topbar .row {
   flex-wrap: wrap;
   min-width: 0;
+}
+.topbar > .row {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+/* The title may wrap between words, never inside one ("Clien / t"). */
+.topbar h1 {
+  flex: 0 1 auto;
+}
+/* A segmented control clips its track, which gives it no minimum width as
+   a flex item: in a crowded bar it shrank and cut "Dark" in half. */
+.topbar .seg {
+  flex-shrink: 0;
 }
 .topbar h1 {
   font-size: var(--fs-20);
@@ -184,6 +210,16 @@
 .topbar .crumbs b {
   color: var(--text);
   font-weight: 600;
+}
+/* A long crumb line wraps inside itself instead of pushing the zone note
+   and the appearance switch onto a second line under the title (Reports'
+   send-out line did at 1440px). */
+.topbar .crumbs {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.topbar .tz {
+  min-width: 0;
 }
 .topbar .spacer {
   flex: 1;
@@ -238,6 +274,12 @@
   display: flex;
   gap: var(--sp-8);
   align-items: center;
+}
+/* A list's filter row: every search, select and date in it is one height,
+   level with the buttons beside it. Put the class on the row; the inputs
+   read --input-h, and so does the search glyph that sits inside one. */
+.filters {
+  --input-h: var(--filter-h);
 }
 
 /* Wrapper spans exist only so a divider can sit above an item; they must not
@@ -512,6 +554,8 @@ table.tbl {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--fs-13);
+  /* The header row's ground: the card in scope, the band in warm. */
+  --tbl-head-bg: var(--panel);
 }
 .tbl th {
   font-family: var(--font-label);
@@ -557,28 +601,287 @@ table.tbl {
 .tbl tr.violation td:first-child {
   border-left: 3px solid var(--coral-ink);
 }
-/* A table wider than its card scrolls inside the card instead of being
-   cut off by it (the card clips its corners, so it clips its content).
-   At every width, not only on a tablet: on a laptop the events list and
-   the clients list ran past the card's right edge with Fill, Status, PO
-   and "Added by" cut off and no way to reach them. */
+/* A bare table wider than its card (one not wrapped in a `TableScroll`)
+   still scrolls inside the card instead of being cut off by it — the card
+   clips its corners, so it clips its content. */
 :is(.panel, .panel-b):has(> table.tbl),
 .table-scroll {
   overflow-x: auto;
 }
-/* A table that scrolls has room to give each cell a readable measure.
-   Without a floor the browser squeezed the text columns to fit the card
-   instead — an event title five lines tall beside a date on three, and
-   "Breaks: unpaid · Buffer: strict" one word a line — and the reader
-   scrolled a table that was still cramped. */
-:is(.panel, .panel-b, .table-scroll) > table.tbl :is(td, th):not(:empty) {
+
+/* ---- the table frame (`TableScroll`, ADR-0134) ----------------------
+   One frame for every list. The page is the only vertical scroller
+   (ADR-0096): the frame never scrolls up and down, so the header row is a
+   plain sticky row under the top bar. A table wider than its card scrolls
+   sideways inside `.tbl-scroll`; while it does, the frame is
+   `[data-overflow]` and
+
+     · the first column and a row's actions (`.cell-actions`, last) stay
+       pinned to the card's edges, so a row is always named and its Edit /
+       Delete / Remove are always reachable;
+     · a fade marks the side that has more;
+     · the scrollbar is `.tbl-hbar`, a twin that sticks to the bottom of the
+       window, so it is in reach without scrolling to the last row;
+     · the header is moved down by `--thead-shift` (set by the component),
+       because a sideways scroller is a scroll container in both axes and a
+       sticky row inside it would stick to it, not to the page.
+
+   Text wraps — a long unbroken email or reference breaks anywhere rather
+   than widening the table — and there is no blanket cell floor: a column
+   that needs a measure says so with a width hint (`.col-xs` … `.col-xl`),
+   and the table as a whole has `--tbl-min` before it scrolls. `.fixed`
+   takes column widths from those hints only, so they do not jump while a
+   search narrows the rows. */
+.tbl-frame {
+  position: relative;
+  --tbl-min: 36rem;
+}
+/* A card holding a frame clips its corners without becoming a scroll
+   container (`hidden` would be one, and the header would stick to it). */
+.panel:has(.tbl-frame) {
+  overflow: clip;
+}
+.tbl-scroll {
+  overflow-x: auto;
+}
+.tbl-frame[data-fit] > .tbl-scroll {
+  overflow-x: visible;
+}
+.tbl-frame[data-overflow] > .tbl-scroll {
+  scrollbar-width: none;
+}
+.tbl-frame[data-overflow] > .tbl-scroll::-webkit-scrollbar {
+  display: none;
+}
+.tbl-scroll:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: -2px;
+}
+.tbl-frame > .tbl-scroll > table.tbl {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: var(--tbl-min);
+}
+.tbl-frame.fixed > .tbl-scroll > table.tbl {
+  table-layout: fixed;
+}
+/* Wrapping. A word longer than its cell breaks rather than widening the
+   page. In a `.fixed` table the column widths do not come from the text,
+   so a long unbroken string (an email, a pasted reference) breaks anywhere.
+   In an auto table `anywhere` would also shrink every column to a letter
+   (an Employee ID read "THC- / 00412"), so words stay whole and one that
+   cannot fit makes the table scroll inside its frame — never the page. */
+.tbl-frame > .tbl-scroll > .tbl td {
+  overflow-wrap: break-word;
+}
+.tbl-frame.fixed > .tbl-scroll > .tbl td {
+  overflow-wrap: anywhere;
+}
+/* Snug cells: 12px either side, not 20, which on a nine-column list was
+   360px of the card. The row's ends keep the card's 20px edge (inside the
+   warm inset, the inset is part of it). */
+@media (min-width: 761px) {
+  .tbl-frame > .tbl-scroll > .tbl > * > tr > :is(th, td) {
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
+  }
+  .tbl-frame > .tbl-scroll > .tbl > * > tr > :is(th, td):first-child {
+    padding-left: calc(var(--sp-20) - var(--frame-pad, 0px));
+  }
+  .tbl-frame > .tbl-scroll > .tbl > * > tr > :is(th, td):last-child {
+    padding-right: calc(var(--sp-20) - var(--frame-pad, 0px));
+  }
+}
+.tbl-frame > .tbl-scroll > .tbl > thead > tr > th {
+  position: sticky;
+  top: var(--tbl-top, var(--topbar-h));
+  z-index: 2;
+  background: var(--tbl-head-bg);
+}
+/* While the table scrolls sideways its scroller is the header's sticky
+   container, which never scrolls vertically: `top` is 0 there (any offset
+   would push the header down inside the table) and the component moves it
+   down by --thead-shift instead. */
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > thead > tr > th {
+  top: 0;
+  transform: translateY(var(--thead-shift, 0px));
+}
+/* Pinned cells. Which cells: the first (or the first two with `pin={2}`)
+   and the trailing `.cell-actions` (one or two). They are opaque, painted
+   with --pin-bg so a row that tints itself (hover, expanded, a screen's
+   own "barred" or "picked") can say what its pinned cells look like
+   without out-ranking these selectors. */
+.tbl tr {
+  --pin-bg: var(--panel);
+}
+.tbl tr.clickable:hover {
+  --pin-bg: linear-gradient(var(--row-hover), var(--row-hover)), var(--panel);
+}
+.tbl tr.expand {
+  --pin-bg: var(--panel-2);
+}
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > * > tr > :first-child,
+.tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl > * > tr > :nth-child(2),
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > * > tr > .cell-actions:last-child,
+.tbl-frame[data-overflow]
+  > .tbl-scroll
+  > .tbl
+  > *
+  > tr
+  > .cell-actions:nth-last-child(2):has(+ .cell-actions) {
+  position: sticky;
+}
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > tbody > tr > :is(td:first-child, td.cell-actions),
+.tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl > tbody > tr > td:nth-child(2) {
+  z-index: 1;
+  background: var(--pin-bg);
+}
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > thead > tr > :is(:first-child, .cell-actions),
+.tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl > thead > tr > :nth-child(2) {
+  z-index: 3;
+}
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl tr > :first-child {
+  left: 0;
+}
+.tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl tr > :nth-child(2) {
+  left: var(--pin-lead, 0px);
+}
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl tr > .cell-actions:last-child {
+  right: 0;
+}
+/* A hairline where the scrolled columns pass under a pinned one, on the
+   side that has more (a pinned cell is sticky, so it anchors the line). */
+.tbl-frame[data-more-start] > .tbl-scroll > .tbl tr > :first-child:not(:only-child)::after,
+.tbl-frame.pin-2[data-more-start] > .tbl-scroll > .tbl tr > :nth-child(2)::after,
+.tbl-frame[data-more-end]
+  > .tbl-scroll
+  > .tbl
+  tr
+  > .cell-actions:is(
+    :last-child:not(.cell-actions + *),
+    :nth-last-child(2):has(+ .cell-actions)
+  )::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+.tbl-frame.pin-2[data-more-start] > .tbl-scroll > .tbl tr > :first-child::after {
+  content: none;
+}
+.tbl-frame[data-more-end] > .tbl-scroll > .tbl tr > .cell-actions::after {
+  right: auto;
+  left: 0;
+}
+.tbl-frame[data-overflow]
+  > .tbl-scroll
+  > .tbl
+  tr
+  > .cell-actions:nth-last-child(2):has(+ .cell-actions) {
+  right: var(--pin-end-1, 0px);
+}
+/* The fades: drawn over the scrolled columns, just inside the pinned ones. */
+.tbl-frame::before,
+.tbl-frame::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--sp-32);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.tbl-frame::before {
+  left: calc(var(--frame-pad, 0px) + var(--pin-start, 0px));
+  background: linear-gradient(to right, var(--panel), transparent);
+}
+.tbl-frame::after {
+  right: calc(var(--frame-pad, 0px) + var(--pin-end, 0px));
+  background: linear-gradient(to left, var(--panel), transparent);
+}
+.tbl-frame[data-more-start]::before,
+.tbl-frame[data-more-end]::after {
+  opacity: 1;
+}
+/* The scrollbar twin. Styled with the WebKit pseudo-elements so an
+   overlay scrollbar (macOS) is still drawn before anyone scrolls. */
+.tbl-hbar {
+  display: none;
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.tbl-hbar > div {
+  height: 1px;
+}
+.tbl-frame[data-overflow] > .tbl-hbar {
+  display: block;
+}
+.tbl-hbar::-webkit-scrollbar {
+  height: 12px;
+}
+.tbl-hbar::-webkit-scrollbar-track {
+  background: var(--panel-2);
+}
+.tbl-hbar::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border: 3px solid var(--panel-2);
+  border-radius: var(--r-pill);
+}
+@supports not selector(::-webkit-scrollbar) {
+  .tbl-hbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) var(--panel-2);
+  }
+}
+/* Column width hints. In a `.fixed` table they are the widths; otherwise
+   they are the least a column gets before the table scrolls. */
+.tbl :is(th, td).col-xs {
+  width: 4.5rem;
+  min-width: 4.5rem;
+}
+.tbl :is(th, td).col-s {
+  width: 6.5rem;
   min-width: 6.5rem;
 }
-/* …except the avatar cell, which is the avatar's width, not a column of
-   text (the users table spent 104px on a 28px avatar at 820px), and a
-   number, which is a few digits under a short header. */
-:is(.panel, .panel-b, .table-scroll) > table.tbl :is(td, th):is(.cell-lead, .num) {
-  min-width: 0;
+.tbl :is(th, td).col-m {
+  width: 9rem;
+  min-width: 9rem;
+}
+.tbl :is(th, td).col-l {
+  width: 12rem;
+  min-width: 12rem;
+}
+.tbl :is(th, td).col-xl {
+  width: 16rem;
+  min-width: 16rem;
+}
+/* A row's actions sit on one line at the cell's right edge. */
+.tbl td.cell-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.tbl th.cell-actions {
+  text-align: right;
+}
+/* A note under the buttons ("needs a date first") wraps under them. */
+.tbl td.cell-actions .sub {
+  white-space: normal;
+}
+@media (min-width: 761px) {
+  .tbl td.cell-actions > :is(.btn, a.btn) + :is(.btn, a.btn) {
+    margin-left: var(--sp-6);
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -1093,6 +1396,38 @@ table.tbl {
 .tabs .n.alert {
   background: var(--coral-solid);
   color: var(--on-coral);
+}
+/* A tab strip that scrolls sideways (tablet and phone, section 11) fades
+   out at the edge that has more tabs behind it, so a hidden tab reads as
+   "swipe for more" rather than not being there. The fade follows the
+   strip's own scroll position (a scroll-driven animation); a strip that
+   fits has no scroll timeline, so it is never faded. The mask only reads
+   alpha, so the opaque stop is the text colour. */
+@property --fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes edge-fade {
+  0% {
+    --fade-start: 0px;
+    --fade-end: var(--sp-32);
+  }
+  8% {
+    --fade-start: var(--sp-32);
+  }
+  92% {
+    --fade-end: var(--sp-32);
+  }
+  100% {
+    --fade-start: var(--sp-32);
+    --fade-end: 0px;
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -2645,6 +2980,20 @@ textarea.input {
     flex: 0 0 auto;
     white-space: nowrap;
   }
+  @supports (animation-timeline: scroll()) {
+    .tabs,
+    .seg:not(.block) {
+      mask-image: linear-gradient(
+        to right,
+        transparent,
+        var(--text) var(--fade-start),
+        var(--text) calc(100% - var(--fade-end)),
+        transparent
+      );
+      animation: edge-fade linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
 }
 @media (max-width: 760px) {
   /* Below the tablet break the sidebar is replaced by the phone tab bar
@@ -2746,8 +3095,13 @@ textarea.input {
   .toolbar :is(.right, .row) {
     flex-wrap: wrap;
   }
+  /* `min-width: 0`, or the row is as wide as its widest select's longest
+     option: a long client name made the Scheduling filter row 535px wide
+     inside a 350px toolbar, with Search and Status cut off. */
   .toolbar .right > .row {
     flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
   }
   .toolbar :is(.right, .row) > :is(.field, .input, select, .btn) {
     flex: 1 1 140px;
@@ -3054,10 +3408,14 @@ textarea.input {
     flex-wrap: wrap;
   }
 
-  /* A card-rows table is a stack of cards here, not a scroller: its cells
-     take the card's width, never the scrolling table's floor above. */
-  :is(.panel, .panel-b, .table-scroll) > table.tbl.card-rows :is(td, th):not(:empty) {
+  /* A card-rows table is a stack of cards here, not a scroller: it takes
+     the card's width, never the frame's floor. A frame's scrollbar twin
+     sticks above the phone tab bar, not under it. */
+  .tbl-frame > .tbl-scroll > table.tbl.card-rows {
     min-width: 0;
+  }
+  .tbl-hbar {
+    bottom: calc(var(--pnav-h) + env(safe-area-inset-bottom));
   }
 
   /* Every control is a finger target (§1.2, §10.1). The Back Office and

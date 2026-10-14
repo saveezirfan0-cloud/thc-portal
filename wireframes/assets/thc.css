@@ -222,6 +222,36 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl tr.expand td { background: var(--panel-2); }
 .tbl tr.violation td { border-left: 3px solid var(--coral); }
 
+/* .tbl-frame — the one table frame (mirror of packages/ui, ADR-0134). The page scrolls, never the card: the header row sticks under the top bar; a table wider than its card scrolls sideways inside .tbl-scroll with the first column and the row actions (.cell-actions) pinned, a fade on the side with more, and .tbl-hbar, a scrollbar twin stuck to the bottom of the window. The product's TableScroll sets [data-overflow] / [data-fit] / [data-more-start|end] and --thead-shift; a static wireframe shows the fitting state. Column hints .col-xs…xl; .fixed = widths from the hints only. */
+.tbl-frame { position: relative; --tbl-min: 36rem; }
+.panel:has(.tbl-frame) { overflow: clip; }
+.tbl-scroll { overflow-x: auto; }
+.tbl-frame[data-fit] > .tbl-scroll { overflow-x: visible; }
+.tbl-frame[data-overflow] > .tbl-scroll { scrollbar-width: none; }
+.tbl-scroll:focus-visible { outline: 2px solid var(--cyan-ink); outline-offset: -2px; }
+.tbl-frame > .tbl-scroll > table.tbl { border-collapse: separate; border-spacing: 0; min-width: var(--tbl-min); }
+.tbl-frame.fixed > .tbl-scroll > table.tbl { table-layout: fixed; }
+.tbl-frame > .tbl-scroll > .tbl td { overflow-wrap: break-word; } .tbl-frame.fixed > .tbl-scroll > .tbl td { overflow-wrap: anywhere; }
+.tbl-frame > .tbl-scroll > .tbl > thead > tr > th { position: sticky; top: var(--tbl-top, 64px); z-index: 2; background: var(--panel); }
+:root[data-style="warm"] .tbl-frame > .tbl-scroll > .tbl > thead > tr > th { background: var(--panel-2); }
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > thead > tr > th { top: 0; transform: translateY(var(--thead-shift, 0px)); }
+.tbl tr { --pin-bg: var(--panel); } .tbl tr.clickable:hover { --pin-bg: linear-gradient(var(--row-hover), var(--row-hover)), var(--panel); }
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > * > tr > :first-child, .tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl > * > tr > :nth-child(2), .tbl-frame[data-overflow] > .tbl-scroll > .tbl > * > tr > .cell-actions:last-child { position: sticky; z-index: 1; }
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl > tbody > tr > :is(td:first-child, td.cell-actions), .tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl > tbody > tr > td:nth-child(2) { background: var(--pin-bg); }
+.tbl-frame.pin-2[data-overflow] > .tbl-scroll > .tbl tr > :nth-child(2) { left: var(--pin-lead, 0px); }
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl tr > :first-child { left: 0; }
+.tbl-frame[data-overflow] > .tbl-scroll > .tbl tr > .cell-actions:last-child { right: 0; }
+.tbl-frame::before, .tbl-frame::after { content: ''; position: absolute; top: 0; bottom: 0; width: 32px; pointer-events: none; z-index: 4; opacity: 0; transition: opacity .15s; }
+.tbl-frame::before { left: var(--pin-start, 0px); background: linear-gradient(to right, var(--panel), transparent); }
+.tbl-frame::after { right: var(--pin-end, 0px); background: linear-gradient(to left, var(--panel), transparent); }
+.tbl-frame[data-more-start]::before, .tbl-frame[data-more-end]::after { opacity: 1; }
+.tbl-hbar { display: none; position: sticky; bottom: 0; z-index: 4; overflow-x: auto; overflow-y: hidden; background: var(--panel); border-top: 1px solid var(--line); }
+.tbl-frame[data-overflow] > .tbl-hbar { display: block; }
+.tbl :is(th, td).col-xs { width: 4.5rem; min-width: 4.5rem; } .tbl :is(th, td).col-s { width: 6.5rem; min-width: 6.5rem; } .tbl :is(th, td).col-m { width: 9rem; min-width: 9rem; } .tbl :is(th, td).col-l { width: 12rem; min-width: 12rem; } .tbl :is(th, td).col-xl { width: 16rem; min-width: 16rem; }
+.tbl td.cell-actions { white-space: nowrap; text-align: right; } .tbl th.cell-actions { text-align: right; }
+/* .filters — a list's filter row: every search, select and date in it is one height (the button height). */
+.filters { --input-h: var(--btn-h); }
+
 /* ---------------------------------------------------------------------
    5 · BUTTONS
    --------------------------------------------------------------------- */

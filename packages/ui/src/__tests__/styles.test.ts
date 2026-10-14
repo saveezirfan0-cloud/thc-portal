@@ -475,3 +475,124 @@ describe('a sent button', () => {
     expect(start).toBeGreaterThan(css.indexOf(".btn:disabled,\n.btn[aria-disabled='true']"));
   });
 });
+
+describe('the table frame (ADR-0134)', () => {
+  const css = stripComments(sheets['components.css']!);
+  const warm = stripComments(sheets['warm.css']!);
+  const wire = stripComments(
+    readFileSync(join(STYLES, '..', '..', '..', '..', 'wireframes', 'assets', 'thc.css'), 'utf8'),
+  );
+  const rule = (sheet: string, selector: string) => {
+    const start = sheet.indexOf(`${selector} {`);
+    expect(start, `missing ${selector}`).toBeGreaterThan(-1);
+    return sheet.slice(start, sheet.indexOf('}', start));
+  };
+
+  it('has no blanket cell floor — widths come from per-column hints', () => {
+    // `:is(td, th):not(:empty) { min-width: 6.5rem }` gave every cell a floor
+    // and made /users and Financial scroll sideways at 1440px.
+    expect(css).not.toMatch(/:not\(:empty\)\s*\{\s*min-width/);
+    for (const hint of ['col-xs', 'col-s', 'col-m', 'col-l', 'col-xl']) {
+      expect(css).toContain(`.tbl :is(th, td).${hint} {`);
+      expect(wire).toContain(`.tbl :is(th, td).${hint} {`);
+    }
+  });
+
+  it('never makes the card a second vertical scroller', () => {
+    // The page is the scroller (ADR-0096); PR #184's frame capped its height
+    // and scrolled both ways inside the card.
+    for (const selector of ['.tbl-frame', '.tbl-scroll']) {
+      const body = rule(css, selector);
+      expect(body, selector).not.toMatch(/max-height|overflow:\s*auto|overflow-y:\s*(auto|scroll)/);
+    }
+    // A panel around a frame clips its corners without becoming a scroll
+    // container, which would capture the sticky header.
+    expect(rule(css, '.panel:has(.tbl-frame)')).toMatch(/overflow:\s*clip/);
+  });
+
+  it('sticks the header row under the top bar and pins the row ends while scrolling sideways', () => {
+    const head = rule(css, '.tbl-frame > .tbl-scroll > .tbl > thead > tr > th');
+    expect(head).toMatch(/position:\s*sticky/);
+    expect(head).toMatch(/top:\s*var\(--tbl-top, var\(--topbar-h\)\)/);
+    expect(head).toMatch(/background:\s*var\(--tbl-head-bg\)/);
+    expect(css).toMatch(
+      /\[data-overflow\][^{]*th \{\s*top: 0;\s*transform: translateY\(var\(--thead-shift/,
+    );
+    expect(css).toMatch(/> \.cell-actions:last-child,[^{]*\{\s*position: sticky;/);
+    expect(css).toMatch(/background: var\(--pin-bg\)/);
+    expect(rule(css, '.tbl-frame[data-overflow] > .tbl-scroll > .tbl tr > :first-child')).toMatch(
+      /left:\s*0/,
+    );
+    expect(
+      rule(css, '.tbl-frame[data-overflow] > .tbl-scroll > .tbl tr > .cell-actions:last-child'),
+    ).toMatch(/right:\s*0/);
+  });
+
+  it('keeps its scrollbar in reach at the bottom of the window, above the phone tab bar', () => {
+    const bar = rule(css, '.tbl-hbar');
+    expect(bar).toMatch(/position:\s*sticky/);
+    expect(bar).toMatch(/bottom:\s*0/);
+    expect(css).toMatch(/\.tbl-hbar \{\s*bottom: calc\(var\(--pnav-h\)/);
+    expect(rule(css, '.tbl-frame[data-overflow] > .tbl-hbar')).toMatch(/display:\s*block/);
+  });
+
+  it('wraps a long unbroken string at every width, not only on a phone', () => {
+    // A word that cannot fit breaks in every frame; in a fixed table, whose
+    // widths do not come from the text, it breaks anywhere.
+    expect(rule(css, '.tbl-frame > .tbl-scroll > .tbl td')).toMatch(/overflow-wrap:\s*break-word/);
+    expect(rule(css, '.tbl-frame.fixed > .tbl-scroll > .tbl td')).toMatch(
+      /overflow-wrap:\s*anywhere/,
+    );
+    // Outside any media query: both come before the first one in the sheet.
+    expect(css.indexOf('.tbl-frame.fixed > .tbl-scroll > .tbl td {')).toBeLessThan(
+      css.indexOf('@media'),
+    );
+  });
+
+  it('draws the warm header band with rounded ends, from tokens', () => {
+    expect(warm).toMatch(/\.tbl th \{\s*border-bottom: 0;\s*background: var\(--tbl-head-bg\);/);
+    expect(warm).toMatch(/--tbl-head-bg:\s*var\(--panel-2\)/);
+    expect(warm).toMatch(/th:first-child \{\s*border-radius: var\(--r-band\) 0 0 var\(--r-band\);/);
+    expect(token(':root', '--r-band')).toBe('0');
+    expect(token(":root[data-style='warm']", '--r-band')).not.toBe('0');
+  });
+
+  it('is mirrored in the wireframes', () => {
+    for (const selector of [
+      '.tbl-frame {',
+      '.tbl-scroll {',
+      '.tbl-hbar {',
+      '.tbl-frame > .tbl-scroll > .tbl > thead > tr > th {',
+      '.filters {',
+    ]) {
+      expect(wire, selector).toContain(selector);
+    }
+  });
+});
+
+describe('filter rows (release audit L16)', () => {
+  it('are one height, the button height, set by a class on the row', () => {
+    expect(token(':root', '--filter-h')).toBe('36px');
+    expect(token(":root[data-style='warm']", '--filter-h')).toBe('38px');
+    expect(stripComments(sheets['components.css']!)).toMatch(
+      /\.filters \{\s*--input-h: var\(--filter-h\);/,
+    );
+  });
+});
+
+describe('the shell (release audit L13, L14, L12)', () => {
+  const css = stripComments(sheets['components.css']!);
+
+  it('lets the sidebar nav shrink and scroll rather than run under the footer', () => {
+    expect(css).toMatch(/\.sidebar nav \{[^}]*flex: 1 1 auto;[^}]*min-height: 0;/);
+  });
+
+  it('lets a long crumb line wrap before the appearance switch does', () => {
+    expect(css).toMatch(/\.topbar \.crumbs \{\s*flex: 1 1 14rem;\s*min-width: 0;/);
+  });
+
+  it('fades a scrolling tab strip at the edge with more', () => {
+    expect(css).toMatch(/animation-timeline: scroll\(self inline\)/);
+    expect(css).toMatch(/@keyframes edge-fade/);
+  });
+});

@@ -18,16 +18,10 @@ export type { AvatarGroupProps, AvatarProps } from './components/Avatar';
 export { PasswordRules } from './components/PasswordRules';
 export type { PasswordRuleState, PasswordRulesProps } from './components/PasswordRules';
 
-export {
-  Content,
-  PageHead,
-  Shell,
-  Sidebar,
-  TableScroll,
-  Topbar,
-  UserChip,
-} from './components/Shell';
+export { Content, PageHead, Shell, Sidebar, Topbar, UserChip } from './components/Shell';
 export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './components/Shell';
+export { TableScroll } from './components/Table';
+export type { TableScrollProps } from './components/Table';
 export { MenuButton } from './components/MenuButton';
 export type { MenuButtonProps } from './components/MenuButton';
 
