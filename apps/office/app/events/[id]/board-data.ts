@@ -12,6 +12,7 @@ import {
   seriesPositionLabel,
   showsUnderUnavailable,
 } from '@thc/domain';
+import { signStaffPhotos } from '../../_lib/photos';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
   type BoardOffer,
@@ -170,6 +171,7 @@ interface StaffRow {
   last_name: string;
   removed_at: string | null;
   employee_id: number | null;
+  photo_path: string | null;
 }
 
 /**
@@ -442,7 +444,7 @@ export async function loadBoard(
     selectIn<StaffRow>(
       supabase,
       'staff',
-      'id, first_name, last_name, removed_at, employee_id',
+      'id, first_name, last_name, removed_at, employee_id, photo_path',
       'id',
       staffIds,
     ),
@@ -498,6 +500,13 @@ export async function loadBoard(
     return { event: null, problem: `The workers on this event could not be read: ${peopleError}` };
   }
 
+  // The selfie is a key in the private `photos` bucket, not a URL: one
+  // batched signing for everyone the board names, and an unsigned path
+  // leaves that row on initials (_lib/photos.ts). A removed worker shows no
+  // face (§1.7), whatever the column still holds.
+  const facePath = (s: StaffRow) => (s.removed_at === null ? s.photo_path : null);
+  const photoUrls = await signStaffPhotos(staffRes.rows.map(facePath));
+
   const rolesByStaff = new Map<string, string[]>();
   for (const sr of staffRoleRes.rows) {
     const list = rolesByStaff.get(sr.staff_id) ?? [];
@@ -516,6 +525,7 @@ export async function loadBoard(
           employeeId: s.employee_id,
         }),
         roles: (rolesByStaff.get(s.id) ?? []).sort(),
+        photoUrl: photoUrls.get(facePath(s) ?? '') ?? null,
       },
     ]),
   );

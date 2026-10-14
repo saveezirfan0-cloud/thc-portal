@@ -41,6 +41,11 @@ export interface BoardPersonName {
   name: string;
   /** Roles this worker is signed off for, for the row's second line. */
   roles: string[];
+  /**
+   * The onboarding selfie as a short-lived signed URL (§1.6), or null when
+   * there is none or it could not be signed — `Avatar` then draws initials.
+   */
+  photoUrl?: string | null;
 }
 
 /**

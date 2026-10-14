@@ -23,7 +23,7 @@ const { ListView, WeekView, DayView } = await import('../_components/EventViews'
 const { MonthCellEvents } = await import('../_components/MonthCellEvents');
 
 /**
- * ADR-0131: on the Scheduling screen, a shift that is not 100% filled — and
+ * ADR-0132: on the Scheduling screen, a shift that is not 100% filled — and
  * has not ended — flashes red until it fills.
  */
 const DATE = '2026-10-13';

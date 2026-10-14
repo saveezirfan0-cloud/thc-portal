@@ -208,7 +208,7 @@ function PoolRow({
   return (
     <div className={`prow${waveBreak ? ' wave-break' : ''}`}>
       <span className="rank">{entry.rank}</span>
-      <Avatar name={entry.name} />
+      <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
       <div className="who">
         <div className="n">{entry.name}</div>
         <div className="s">

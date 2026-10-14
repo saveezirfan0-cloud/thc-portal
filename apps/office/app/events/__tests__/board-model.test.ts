@@ -59,6 +59,16 @@ const people = new Map<string, BoardPersonName>(
 
 // ---------------------------------------------------------------------
 
+describe('the Potential pool shows the onboarding selfie (§1.6)', () => {
+  it('carries the signed photo onto the row, and leaves the rest on initials', () => {
+    const faces = new Map(people);
+    faces.set('ella', { ...faces.get('ella')!, photoUrl: 'https://photos.test/ella.jpg' });
+    const pool = buildPool([row('ella'), row('ben')], faces, [], DEFAULT_WEIGHTS);
+    expect(pool.find((e) => e.staffId === 'ella')?.photoUrl).toBe('https://photos.test/ella.jpg');
+    expect(pool.find((e) => e.staffId === 'ben')?.photoUrl).toBeUndefined();
+  });
+});
+
 describe('the Potential pool is the engine’s ranking (§3.3, §3.4, §6)', () => {
   // The wireframe's §6 example: a qualified worker is listed — and invited —
   // above an unqualified one who scores higher (RULE-17).
