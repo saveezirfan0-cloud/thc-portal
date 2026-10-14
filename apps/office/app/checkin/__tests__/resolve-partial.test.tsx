@@ -78,7 +78,7 @@ function open() {
   const resolve = () =>
     [...document.body.querySelectorAll('button')].find((b) => b.textContent === 'Resolve')!;
   return {
-    // The date is typed dd/mm/yyyy (UkDateField, ADR-0138).
+    // The date is typed dd/mm/yyyy (UkDateField, ADR-0140).
     date: () => q<HTMLInputElement>('.ukd input[type="text"]'),
     time: () => q<HTMLInputElement>('input[aria-label="Time"]'),
     note: () => q<HTMLTextAreaElement>('textarea'),

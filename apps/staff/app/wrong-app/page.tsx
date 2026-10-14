@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 /**
  * An account that is not a worker's, signed in here (§1.4). The middleware
  * rewrites its every request to this page with the refused role on a header
- * (ADR-0138); a worker who opens the address by hand goes to their shifts.
+ * (ADR-0140); a worker who opens the address by hand goes to their shifts.
  */
 export default async function WrongAppPage() {
   const asked = (await headers()).get(WRONG_APP_ROLE_HEADER);

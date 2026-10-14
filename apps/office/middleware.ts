@@ -163,7 +163,7 @@ export async function middleware(request: NextRequest) {
     // only ever bounced them to a local route that failed this same check
     // again. That was the ERR_TOO_MANY_REDIRECTS. A rewrite is not a
     // navigation, so it cannot loop either: the app's own sign-in card
-    // (app/wrong-app, ADR-0138) answers this same request.
+    // (app/wrong-app, ADR-0140) answers this same request.
     return wrongApp(request, role);
   }
 
@@ -224,7 +224,7 @@ function withCookies(redirect: NextResponse, from: NextResponse): NextResponse {
 
 /**
  * A signed-in session this app will not admit: the same request, answered
- * by app/wrong-app (ADR-0138) with the refused role on a request header.
+ * by app/wrong-app (ADR-0140) with the refused role on a request header.
  * The address bar keeps the URL that was asked for; 403 says why.
  */
 function wrongApp(request: NextRequest, role: unknown): NextResponse {

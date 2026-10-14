@@ -19,7 +19,7 @@ export interface RoleSectionCounts {
  * "6 (+1)" — and "2 (+0)": the buffer is always spelled out, never dropped
  * and never added in.
  *
- * Every screen writes it this way (ADR-0138, release audit 14.10.2026). The
+ * Every screen writes it this way (ADR-0140, release audit 14.10.2026). The
  * wireframes draw "(+0)" on the dashboard, the events list, the event board
  * and the client card alike, and CLAUDE.md's "displays as 6 (+1)" names one
  * form; the events list dropping a zero buffer while the dashboard beside

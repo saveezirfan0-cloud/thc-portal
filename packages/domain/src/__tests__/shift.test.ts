@@ -52,7 +52,7 @@ describe('the buffer is absolute (§3.2)', () => {
     expect(formatAllocationPair(6, 1)).not.toBe('7');
   });
 
-  it('spells out a zero buffer everywhere — the builder, the lists and the calendar (ADR-0138)', () => {
+  it('spells out a zero buffer everywhere — the builder, the lists and the calendar (ADR-0140)', () => {
     expect(formatAllocationPair(2, 0)).toBe('2 (+0)');
     expect(formatAllocation(2, 0)).toBe('2 (+0)');
   });

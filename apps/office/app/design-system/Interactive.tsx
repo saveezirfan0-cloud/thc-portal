@@ -127,7 +127,7 @@ export function InteractiveControls() {
         label={`Geofence radius — ${radius} m`}
       />
       <hr />
-      {/* ADR-0138: a date is typed dd/mm/yyyy whatever the device's locale;
+      {/* ADR-0140: a date is typed dd/mm/yyyy whatever the device's locale;
           the calendar on the right only ever writes into the box. */}
       <div className="toolbar">
         <UkDateField

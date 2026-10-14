@@ -103,7 +103,7 @@ describe('signed in', () => {
       for (const path of ['/client', '/login', '/reset']) {
         const res = await get(path);
         expect(res.status, path).toBe(403);
-        // ADR-0138: answered by the app's own /wrong-app card, the refused
+        // ADR-0140: answered by the app's own /wrong-app card, the refused
         // role on the request — a rewrite, never a redirect.
         expect(new URL(res.headers.get('x-middleware-rewrite')!).pathname).toBe('/wrong-app');
         expect(res.headers.get('x-middleware-request-x-thc-wrong-app-role')).toBe(role);

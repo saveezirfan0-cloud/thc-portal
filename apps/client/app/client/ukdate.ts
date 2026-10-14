@@ -6,7 +6,7 @@ import { ukDateText } from '@thc/ui';
  *
  * The field and its pure readers (`UkDateField`, `readUkDate`, `typeUkDate`,
  * `ukDateText`) moved to @thc/ui so the Back Office's dates are typed the
- * same way (ADR-0138); they are re-exported here so the portal keeps one
+ * same way (ADR-0140); they are re-exported here so the portal keeps one
  * import for its dates. What stays is the portal's own sentence.
  */
 export {

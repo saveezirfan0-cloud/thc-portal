@@ -1612,7 +1612,7 @@ textarea.input {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
-/* The typed UK date (UkDateField, ADR-0138): dd/mm/yyyy in a text box, a
+/* The typed UK date (UkDateField, ADR-0140): dd/mm/yyyy in a text box, a
    calendar welded to its right with the browser's own picker laid
    invisibly over it (the Staff App's date of birth, ADR-0068). */
 .ukd-row .input {

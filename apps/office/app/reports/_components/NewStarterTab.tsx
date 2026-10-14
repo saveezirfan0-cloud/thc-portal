@@ -79,7 +79,7 @@ export function NewStarterTab({
           <span className="label" aria-hidden="true">
             Pick a date
           </span>
-          {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+          {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
           <UkDateField
             label="Pick a date (UK date)"
             labelHidden

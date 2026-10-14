@@ -97,7 +97,7 @@ test('the monitor lists today’s event with each worker’s live status (§9.5)
   await expect(row(avocet)).toContainText('No check-out');
   // Check-in is an actual stamp — the viewer's clock, no suffix; the
   // Window is scheduled — UK, labelled (§1.8).
-  // Under it, checkin.html's second line: on site, and how late (ADR-0138).
+  // Under it, checkin.html's second line: on site, and how late (ADR-0140).
   await expect(row(curlew).locator('td.stamp')).toHaveText(/^\d{2}:\d{2}/);
   await expect(row(curlew).locator('td.stamp .sub')).toContainText('on site');
   await expect(row(dunlin).locator('td.stamp')).toHaveText('—');
@@ -142,7 +142,7 @@ test('the violation log opens a No-show and a No check-out, with "(UK time)" inp
   await expect(dialog).toContainText('the same action as “Get back”');
   // A UK date field and a TimeField, not a datetime-local or a native date:
   // the browser draws those on the device's clock and locale (ADR-0085,
-  // ADR-0138 — typed dd/mm/yyyy).
+  // ADR-0140 — typed dd/mm/yyyy).
   const arrived = dialog.getByRole('group', { name: /Arrived at \(UK time\)/ });
   await expect(arrived.getByLabel('Date')).toHaveAttribute('placeholder', 'dd/mm/yyyy');
   await expect(arrived.getByLabel('Time')).toHaveAttribute('type', 'text');

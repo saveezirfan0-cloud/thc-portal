@@ -43,7 +43,7 @@ export function AddedFilters({ rows, value, onChange }: AddedFiltersProps) {
         ))}
         {hasNobody ? <option value={ADDED_BY_NOBODY}>Not recorded</option> : null}
       </Select>
-      {/* Typed dd/mm/yyyy whatever the device's locale (ADR-0138): a native
+      {/* Typed dd/mm/yyyy whatever the device's locale (ADR-0140): a native
           date input showed mm/dd/yyyy on a US-English browser. */}
       <span className="row sm muted added-date">
         <span aria-hidden="true">Added from</span>

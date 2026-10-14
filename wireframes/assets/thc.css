@@ -803,7 +803,7 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
   .auth-form .auth-link { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap-min); padding: 0 8px; }
 }
 
-/* ---- mirrors packages/ui (release audit 14.10.2026, package G, ADR-0138) ----
+/* ---- mirrors packages/ui (release audit 14.10.2026, package G, ADR-0140) ----
    "Skip to content", the first Tab stop of every Back Office page; a label
    kept for screen readers only; the switch's focus ring on its round track;
    TileGrid compact (two KPIs to a row on a phone); the typed UK date

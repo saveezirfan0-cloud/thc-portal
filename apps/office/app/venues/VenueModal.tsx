@@ -46,7 +46,7 @@ interface Pin {
  *   · the address comes from the pin by reverse geocoding and is read-only,
  *     with the coordinates printed underneath as plain text — unless the
  *     lookup cannot answer (offline, the service down), when it may be
- *     typed so the venue can still be created (ADR-0138).
+ *     typed so the venue can still be created (ADR-0140).
  *
  * The search above the map (ADR-0101) is a faster way to put the pin
  * somewhere: a postcode or street address finds the site and picking a
@@ -385,7 +385,7 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
             // The lookup could not answer (offline, the service down, a pin
             // with no address): the pin stands and the manager types the
             // address instead, rather than a Create that stays disabled
-            // forever (release audit m6, ADR-0138).
+            // forever (release audit m6, ADR-0140).
             <Input
               label={
                 <>

@@ -273,7 +273,7 @@
   height: 30px;
   font-size: var(--fs-12);
 }
-/* Typed UK dates (UkDateField, ADR-0138) at the width the native date box
+/* Typed UK dates (UkDateField, ADR-0140) at the width the native date box
    had: a period's two ends, a document's expiry, Right to work until. */
 .period .ukd {
   min-width: 0;

@@ -6,7 +6,7 @@ import type { ReportView } from '../view-model';
  * range lives in the URL, so a report can be bookmarked or sent to someone
  * and opens on the same figures.
  *
- * The dates are typed dd/mm/yyyy (`UkDateField`, ADR-0138): a native date
+ * The dates are typed dd/mm/yyyy (`UkDateField`, ADR-0140): a native date
  * input wrote mm/dd/yyyy on a US-locale device. Each field submits its
  * `yyyy-mm-dd` under the same name the URL always carried.
  */

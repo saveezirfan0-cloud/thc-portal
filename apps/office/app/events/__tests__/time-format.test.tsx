@@ -77,7 +77,7 @@ describe('Shift Builder times (§3.2, §1.8, ADR-0085)', () => {
       roles: [newRoleDraft(DRAFT, 'role-waiting')],
     });
     expect(html).not.toContain('type="time"');
-    // The date is typed dd/mm/yyyy (UkDateField, ADR-0138).
+    // The date is typed dd/mm/yyyy (UkDateField, ADR-0140).
     expect(html).toContain('placeholder="dd/mm/yyyy"');
   });
 

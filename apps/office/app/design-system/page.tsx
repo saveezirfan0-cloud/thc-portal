@@ -750,7 +750,7 @@ export default function Page() {
               </Button>
             </AuthCard>
           </div>
-          {/* ADR-0138: an account opening an app its role has no business in
+          {/* ADR-0140: an account opening an app its role has no business in
               gets the same card, with sign-out as the only way on. */}
           <div className="ds-grid-2 ds-auth mt-8">
             <WrongApp

@@ -190,7 +190,7 @@
 }
 
 /* The typed UK date (UkDateField, CW-03) is drawn by packages/ui
-   (components.css `.ukd-row`, ADR-0138); only its place in this filter
+   (components.css `.ukd-row`, ADR-0140); only its place in this filter
    row is the portal's. A date's error hangs under its box rather than
    lifting the box out of line with the search and the other date (the
    row is bottom-aligned); the row makes room for it below. */

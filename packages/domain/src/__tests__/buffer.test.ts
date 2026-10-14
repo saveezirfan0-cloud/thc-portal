@@ -14,7 +14,7 @@ describe('buffer display (§3.2)', () => {
     expect(formatAllocation(6, 1)).not.toBe('7');
   });
 
-  it('spells out a zero buffer, as every wireframe draws it (ADR-0138)', () => {
+  it('spells out a zero buffer, as every wireframe draws it (ADR-0140)', () => {
     expect(formatAllocation(6, 0)).toBe('6 (+0)');
   });
 

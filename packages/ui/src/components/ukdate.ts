@@ -16,7 +16,7 @@ import { formatDobTyping, isRealIsoDate } from '@thc/domain';
  * date is typed the same way in all three apps.
  *
  * Moved here from the Client Portal (ADR-0133's list filters) so the Back
- * Office's date filters and dated fields use the same box (ADR-0138).
+ * Office's date filters and dated fields use the same box (ADR-0140).
  */
 
 export const UK_DATE_PLACEHOLDER = 'dd/mm/yyyy';

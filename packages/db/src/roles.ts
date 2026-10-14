@@ -36,7 +36,7 @@ export const HOME_PATH: Readonly<Record<Role, string>> = {
  * own sign-in card (`WrongApp` in @thc/ui), with the logo, the font, the
  * appearance switch and the reader's own light or dark. It used to be a
  * self-contained inline page that could load none of those (release audit
- * 14.10.2026, ADR-0138).
+ * 14.10.2026, ADR-0140).
  */
 export const WRONG_APP_PATH = '/wrong-app';
 

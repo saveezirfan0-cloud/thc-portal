@@ -99,7 +99,7 @@ describe('the violation detail window', () => {
     expect(html).not.toContain('datetime-local');
     expect(html).not.toContain('type="time"');
     expect(html).toContain('Actual finish (UK time)');
-    // The date is typed dd/mm/yyyy (UkDateField, ADR-0138), never the
+    // The date is typed dd/mm/yyyy (UkDateField, ADR-0140), never the
     // device's own date box.
     expect(html).toContain('placeholder="dd/mm/yyyy"');
     expect(html).toContain('placeholder="HH:MM"');

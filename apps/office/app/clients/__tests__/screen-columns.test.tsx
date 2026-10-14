@@ -81,7 +81,7 @@ describe('/clients directory — Date added and Added by (§9.7)', () => {
     ]) {
       expect(markup).toContain(`aria-label="${label}"`);
     }
-    // Typed UK dates (ADR-0138): each box carries its own (screen-reader) label.
+    // Typed UK dates (ADR-0140): each box carries its own (screen-reader) label.
     for (const label of ['Added from (UK date)', 'Added to (UK date)']) {
       expect(markup).toContain(`>${label}</label>`);
     }

@@ -153,7 +153,7 @@ test('a role on rate cards and events cannot be deleted, and says why (§9.8)', 
 
   await roleRow(page, 'Waiting Staff').getByRole('button', { name: 'Delete', exact: true }).click();
   // In use: the refusal up front, never "Delete role?" above a refusal
-  // (release audit P2, ADR-0138) — and a Close, no Delete button at all.
+  // (release audit P2, ADR-0140) — and a Close, no Delete button at all.
   const dialog = page.getByRole('dialog', { name: 'This role can’t be deleted yet' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Waiting Staff is in use.')).toBeVisible();

@@ -1,4 +1,4 @@
-# ADR-0138 · Polish & accessibility: one date box, one buffer form, the wrong-app card, a typed address when the lookup fails
+# ADR-0140 · Polish & accessibility: one date box, one buffer form, the wrong-app card, a typed address when the lookup fails
 
 **Status:** Accepted (product owner, 14.10.2026 — release audit package G, `docs/20-release-audit-2026-10-14.md`) · **Builds on:** ADR-0007 (one appearance switch), ADR-0068 (the typed date of birth), ADR-0099 (no cancelled events on the Scheduling diary), ADR-0133 (the Client Portal's UK date filters), ADR-0136 (the table frame), ADR-0137 (editing safety) · **Departs from:** §9.11 "the address is reverse-geocoded and read-only" for the one case the lookup cannot answer (§4 below)
 

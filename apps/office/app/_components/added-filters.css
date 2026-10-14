@@ -1,5 +1,5 @@
 /* "Added from … to …" on the Clients and Venues filter rows: a word, then a
-   typed UK date (UkDateField, ADR-0138) at the width the native date box
+   typed UK date (UkDateField, ADR-0140) at the width the native date box
    had. */
 .added-date {
   gap: var(--sp-6);

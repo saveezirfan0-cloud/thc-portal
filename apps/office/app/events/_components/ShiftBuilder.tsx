@@ -460,7 +460,7 @@ export function ShiftBuilder({
         >
           <div className="stack">
             <div className="f3">
-              {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+              {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
               <UkDateField
                 label={
                   <>

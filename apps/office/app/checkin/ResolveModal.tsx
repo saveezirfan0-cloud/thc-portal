@@ -284,7 +284,7 @@ function UkDateTimeField({
         {label}
       </span>
       <div className="dt2">
-        {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+        {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
         <UkDateField
           label="Date (UK)"
           labelHidden

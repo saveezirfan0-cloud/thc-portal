@@ -1426,7 +1426,7 @@ function ShareCodeCard({
           ) : typing ? (
             <span className="stack">
               <span className="row wrap">
-                {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+                {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
                 <UkDateField
                   className="rtw-until"
                   label="Right to work until, from the gov.uk report"
@@ -1630,7 +1630,7 @@ function TermDates({
             <div className="period" key={index}>
               <span className="mono muted">{index + 1}</span>
               <span>Holiday {index + 1}</span>
-              {/* dd/mm/yyyy whatever the device's locale (ADR-0138). */}
+              {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
               <UkDateField
                 label={`Period ${index + 1} from`}
                 labelHidden

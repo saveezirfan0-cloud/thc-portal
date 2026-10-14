@@ -178,7 +178,7 @@ describe('TileGrid compact', () => {
   });
 });
 
-describe('UkDateField (shared, ADR-0138)', () => {
+describe('UkDateField (shared, ADR-0140)', () => {
   it('reads dd/mm/yyyy, day first', () => {
     expect(readUkDate('03/04/2026')).toEqual({ value: '2026-04-03' });
     expect(readUkDate('10/16/2026')).toEqual({

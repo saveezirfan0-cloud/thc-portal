@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HOME_PATH, ROLES, WRONG_APP_PATH, wrongAppCopy, wrongAppRole } from '../roles';
 
 /**
- * The wrong-app page (ADR-0138): each app renders it as its own sign-in
+ * The wrong-app page (ADR-0140): each app renders it as its own sign-in
  * card at WRONG_APP_PATH, the middleware rewriting a refused session there.
  * The sign-out control is `WrongApp` in @thc/ui (a POST, pinned there).
  */
