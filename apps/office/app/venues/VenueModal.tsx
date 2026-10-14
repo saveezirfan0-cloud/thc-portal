@@ -57,6 +57,8 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
   const [pin, setPin] = useState<Pin | null>(
     venue ? { point: { lat: venue.lat, lng: venue.lng }, address: venue.address } : null,
   );
+  // What the dialog opened with, for "Discard your changes?" (release audit E-M4).
+  const [opened] = useState(() => ({ name, venueType, radius, pin }));
   const [lookup, setLookup] = useState<'idle' | 'working' | 'failed'>('idle');
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -212,12 +214,23 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
       // venue's name.
       title={editing ? venue.name : 'New venue'}
       onClose={onClose}
+      dirty={
+        !saving &&
+        (name !== opened.name ||
+          venueType !== opened.venueType ||
+          radius !== opened.radius ||
+          pin?.point.lat !== opened.pin?.point.lat ||
+          pin?.point.lng !== opened.pin?.point.lng)
+      }
+      onSubmit={() => {
+        if (ready && !saving) save();
+      }}
       footer={
         <>
           <Button tone="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button tone="primary" onClick={save} disabled={!ready || saving}>
+          <Button tone="primary" type="submit" disabled={!ready || saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Create venue'}
           </Button>
         </>

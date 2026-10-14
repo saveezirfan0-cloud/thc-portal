@@ -416,12 +416,16 @@ function InviteModal({
       open
       title="Invite a user"
       onClose={onClose}
+      dirty={!pending && (fullName.trim() !== '' || email.trim() !== '' || jobTitle.trim() !== '')}
+      onSubmit={() => {
+        if (!pending) submit();
+      }}
       footer={
         <>
           <Button tone="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button tone="primary" disabled={pending} onClick={submit}>
+          <Button tone="primary" type="submit" disabled={pending}>
             {pending ? 'Creating…' : 'Create login'}
           </Button>
         </>
@@ -432,7 +436,11 @@ function InviteModal({
           aria-label="Which app"
           block
           value={role}
-          onChange={setRole}
+          onChange={(next) => {
+            setRole(next);
+            // Release audit m16: "Choose a client" is not about the Back Office.
+            setResult(null);
+          }}
           options={[
             { value: 'admin', label: 'Back Office' },
             { value: 'client', label: 'Client Portal' },

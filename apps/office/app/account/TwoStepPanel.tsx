@@ -92,6 +92,7 @@ function OffState() {
     return (
       <form
         className="account-form"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           begin();
@@ -124,6 +125,7 @@ function OffState() {
   return (
     <form
       className="account-form"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         confirm(setup.factorId);
@@ -199,6 +201,7 @@ function OnState({ twoStep }: { twoStep: MyTwoStep }) {
   return (
     <form
       className="account-form"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         remove();

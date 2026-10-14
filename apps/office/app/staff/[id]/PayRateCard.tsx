@@ -137,12 +137,16 @@ export function PayRateCard({
         open={dialog === 'edit'}
         title={payRate ? 'Change personal pay rate' : 'Set personal pay rate'}
         onClose={close}
+        dirty={!pending && typed !== (current === null ? '' : poundsInput(current))}
+        onSubmit={() => {
+          if (!pending) save();
+        }}
         footer={
           <>
             <Button tone="ghost" onClick={close} disabled={pending}>
               Cancel
             </Button>
-            <Button tone="primary" disabled={pending || pence === null} onClick={save}>
+            <Button tone="primary" type="submit" disabled={pending || pence === null}>
               {pending ? 'Saving…' : 'Save rate'}
             </Button>
           </>

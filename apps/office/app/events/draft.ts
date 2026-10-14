@@ -235,6 +235,19 @@ export function draftIssues(draft: EventDraft): DraftIssues {
   return { event, roles };
 }
 
+/** A new event's date that has already gone by (release audit, Shift Builder). */
+export const PAST_DATE =
+  'That date has already passed — a new event can only be built for today or a later day.';
+
+/**
+ * The past-date refusal for a NEW event, or null. `today` is the UK
+ * calendar day (`ukToday()`), the day every rule is judged on. Both are
+ * `YYYY-MM-DD`, so they compare as strings.
+ */
+export function pastDateIssue(date: string, today: string): string | null {
+  return date !== '' && date < today ? PAST_DATE : null;
+}
+
 /** Save is disabled while any role section fails validation (§3.2). */
 export function canSave(draft: EventDraft): boolean {
   const issues = draftIssues(draft);

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { type TimeFormat, UK_ZONE, clockLabel, formatDateTimeIn } from '@thc/domain';
+import { type TimeFormat, UK_ZONE, clockLabel, formatDateTimeIn, isEmail } from '@thc/domain';
 import {
   Alert,
   Avatar,
@@ -120,6 +120,10 @@ function DetailsBlock({ account }: { account: MyAccount }) {
   const [jobTitle, setJobTitle] = useState(account.jobTitle);
   const [phone, setPhone] = useState(account.phone);
   const { result, pending, run } = useAction();
+  // Release audit: an empty name used to raise the browser's own "Please
+  // fill out this field." bubble; the form says it inline, like every other.
+  const [tried, setTried] = useState(false);
+  const nameError = tried && !fullName.trim() ? 'Enter your full name.' : undefined;
   const dirty =
     fullName !== account.fullName || jobTitle !== account.jobTitle || phone !== account.phone;
 
@@ -127,8 +131,11 @@ function DetailsBlock({ account }: { account: MyAccount }) {
     <Panel title="Your details">
       <form
         className="account-form"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          setTried(true);
+          if (!fullName.trim()) return;
           run(() => saveMyDetails({ fullName, jobTitle, phone }));
         }}
       >
@@ -136,7 +143,8 @@ function DetailsBlock({ account }: { account: MyAccount }) {
           label="Full name"
           value={fullName}
           autoComplete="name"
-          required
+          aria-required="true"
+          error={nameError}
           hint="Shown in the sidebar and against everything you do in the activity log."
           onChange={(event) => setFullName(event.target.value)}
         />
@@ -166,13 +174,21 @@ function DetailsBlock({ account }: { account: MyAccount }) {
 
 function EmailBlock({ account }: { account: MyAccount }) {
   const [email, setEmail] = useState('');
+  const [tried, setTried] = useState(false);
   const { result, pending, run } = useAction();
+  const emailError =
+    tried && email.trim() && !isEmail(email)
+      ? 'Enter an email address, e.g. name@example.com.'
+      : undefined;
   return (
     <Panel title="Sign-in email">
       <form
         className="account-form"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          setTried(true);
+          if (!isEmail(email)) return;
           run(
             () => changeMyEmail(email),
             () => setEmail(''),
@@ -193,6 +209,7 @@ function EmailBlock({ account }: { account: MyAccount }) {
           type="email"
           value={email}
           autoComplete="email"
+          error={emailError}
           onChange={(event) => setEmail(event.target.value)}
         />
         <Feedback result={result} />
@@ -213,6 +230,7 @@ function PasswordBlock() {
     <Panel title="Password">
       <form
         className="account-form"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           run(

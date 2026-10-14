@@ -76,6 +76,18 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
   const pendingEmails =
     emailDraft.trim() && isEmail(emailDraft.trim()) ? [...emails, emailDraft.trim()] : emails;
 
+  // Release audit E-M4 / m2: Escape or the backdrop on a filled-in form
+  // asks first; Enter submits.
+  const dirty =
+    name !== (client?.name ?? '') ||
+    contactName !== (client?.contact_name ?? '') ||
+    phone !== (client?.phone ?? '') ||
+    contactPoint !== (client?.staff_contact_point ?? '') ||
+    emailDraft.trim() !== '' ||
+    emails.join('\n') !== (client?.contact_emails ?? []).join('\n') ||
+    paysBreaks !== (client?.pays_breaks ?? false) ||
+    paysBuffer !== (client?.pays_buffer ?? true);
+
   const ready =
     name.trim() !== '' &&
     contactName.trim() !== '' &&
@@ -109,12 +121,16 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
       wide
       title={editing ? 'Edit client' : 'New client'}
       onClose={onClose}
+      dirty={dirty && !saving}
+      onSubmit={() => {
+        if (ready && !saving) save();
+      }}
       footer={
         <>
           <Button tone="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button tone="primary" onClick={save} disabled={!ready || saving}>
+          <Button tone="primary" type="submit" disabled={!ready || saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Create client'}
           </Button>
         </>

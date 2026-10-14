@@ -82,12 +82,21 @@ export function EditFeedbackModal({
       open
       title={`Edit feedback · ${entry.staff_name}`}
       onClose={onClose}
+      dirty={
+        !pending &&
+        (rating !== entry.rating ||
+          text !== (entry.text ?? '') ||
+          eventId !== (entry.event_id ?? ''))
+      }
+      onSubmit={() => {
+        if (!pending) save();
+      }}
       footer={
         <>
           <Button tone="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button tone="primary" onClick={save} disabled={pending}>
+          <Button tone="primary" type="submit" disabled={pending}>
             {pending ? 'Saving…' : 'Save changes'}
           </Button>
         </>

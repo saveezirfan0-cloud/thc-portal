@@ -62,12 +62,21 @@ export function RoleModal({ role, onClose, onSaved }: RoleModalProps) {
       open
       title={editing ? 'Edit role' : 'New role'}
       onClose={onClose}
+      dirty={
+        !saving &&
+        (name !== (role?.name ?? '') ||
+          rate !== (role ? poundsInput(toPence(role.pay_rate)) : '') ||
+          description !== (role?.description ?? ''))
+      }
+      onSubmit={() => {
+        if (ready && !saving) save();
+      }}
       footer={
         <>
           <Button tone="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button tone="primary" onClick={save} disabled={!ready || saving}>
+          <Button tone="primary" type="submit" disabled={!ready || saving}>
             {saving ? 'Saving…' : editing ? 'Save role' : 'Create role'}
           </Button>
         </>

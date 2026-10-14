@@ -1,10 +1,29 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, useTransition } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Note, Panel, Pill, SaveBar, Select, Tabs } from '@thc/ui';
+import {
+  Alert,
+  Button,
+  Input,
+  Note,
+  Panel,
+  Pill,
+  SaveBar,
+  Select,
+  Tabs,
+  useUnsavedChanges,
+} from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { NotificationsTab } from './NotificationsTab';
 import {
@@ -22,6 +41,10 @@ import {
   MAX_RADIUS_M,
   MIN_RADIUS_M,
   WEIGHT_FIELDS,
+  validateClientPortalPhone,
+  validateEscalationRadius,
+  validateGap,
+  validateWilloReviewUrlTemplate,
   weightTotal,
 } from './validate';
 import { KANBAN_STAGES } from './types';
@@ -85,6 +108,15 @@ export function SettingsScreen({
     });
   }, []);
   const titles = Object.values(dirty);
+  // Release audit m1: a sidebar link, Cancel-by-navigation or closing the
+  // tab with an unsaved block asks first. A radius row counts too, though
+  // its Save stays beside its slider rather than in the bar.
+  const guard = useUnsavedChanges(titles.length > 0, {
+    message: `Unsaved: ${titles.join(', ')}. Leave and these changes are lost.`,
+  });
+  const barTitles = Object.entries(dirty)
+    .filter(([id]) => !id.startsWith('radius:'))
+    .map(([, title]) => title);
 
   return (
     <OfficeShell
@@ -129,12 +161,13 @@ export function SettingsScreen({
         <SaveBar
           label="Unsaved settings"
           dirty
-          hint={titles.join(' · ')}
-          className={titles.length === 0 ? 'hide' : undefined}
+          hint={barTitles.join(' · ')}
+          className={barTitles.length === 0 ? 'hide' : undefined}
         >
           <div className="settings-savebar-slot" ref={setSlot} />
         </SaveBar>
       </SaveSlot.Provider>
+      {guard.dialog}
     </OfficeShell>
   );
 }
@@ -161,13 +194,18 @@ function SaveAction({
   children: ReactNode;
 }) {
   const bar = useContext(SaveSlot);
-  const mark = bar?.mark;
+  useMarkDirty(id, title, dirty);
+  if (dirty && bar?.slot) return createPortal(children, bar.slot);
+  return <>{children}</>;
+}
+
+/** Tells the screen a block has unsaved edits (the save bar's list and the guard). */
+function useMarkDirty(id: string, title: string, dirty: boolean) {
+  const mark = useContext(SaveSlot)?.mark;
   useEffect(() => {
     mark?.(id, title, dirty);
     return () => mark?.(id, title, false);
   }, [mark, id, title, dirty]);
-  if (dirty && bar?.slot) return createPortal(children, bar.slot);
-  return <>{children}</>;
 }
 
 /** One block's save button, its pending state and its one line of feedback. */
@@ -224,10 +262,31 @@ function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/**
+ * A block's one line of feedback. A refusal is brought into view (release
+ * audit m1): the Save that failed may have been pressed in the save bar at
+ * the bottom of the screen, far from the block — so the page scrolls to
+ * the first field marked invalid in the block, or to this line, and puts
+ * the keyboard there.
+ */
 function Feedback({ note, error }: { note: string | null; error: string | null }) {
-  if (error) return <Alert tone="coral">{error}</Alert>;
-  if (note) return <Alert tone="green">{note}</Alert>;
-  return null;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!error) return;
+    const line = ref.current;
+    const field = line
+      ?.closest('.panel, .radius-row')
+      ?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    const target = field ?? line;
+    target?.scrollIntoView({ block: 'center' });
+    target?.focus({ preventScroll: true });
+  }, [error]);
+  if (!error && !note) return null;
+  return (
+    <div ref={ref} tabIndex={-1} className="settings-feedback">
+      {error ? <Alert tone="coral">{error}</Alert> : <Alert tone="green">{note}</Alert>}
+    </div>
+  );
 }
 
 /**
@@ -301,6 +360,7 @@ function AutoAssignBlock({
         mono
         value={String(gap)}
         hint="A worker booked elsewhere is only offered a shift at a different venue with at least this much clear time between the two."
+        error={(error && validateGap(gap)) || undefined}
         onChange={(event) => setGap(Number(event.target.value))}
       />
       <Input
@@ -311,6 +371,7 @@ function AutoAssignBlock({
         mono
         value={String(miles)}
         hint="How far out the escalation round looks when a role section is still short."
+        error={(error && validateEscalationRadius(miles)) || undefined}
         onChange={(event) => setMiles(Number(event.target.value))}
       />
       <Feedback note={note} error={error} />
@@ -441,6 +502,9 @@ function WilloBlock({
         value={template}
         placeholder="https://app.willo.video/…/{id}"
         hint="THC’s Willo account URL with {id} where the candidate id goes. Blank until Willo is connected: the cards then say “not connected”."
+        error={
+          (link.error && template.trim() && validateWilloReviewUrlTemplate(template)) || undefined
+        }
         onChange={(event) => setTemplate(event.target.value)}
       />
       <Feedback note={link.note} error={link.error} />
@@ -529,6 +593,7 @@ function ClientPortalBlock({ phone }: { phone: string }) {
         maxLength={CLIENT_PORTAL_PHONE_MAX}
         placeholder="020 7946 0000"
         hint="Shown beside “Contact THC about this event” as a tap-to-call link. Leave blank to hide it."
+        error={(error && validateClientPortalPhone(draft)) || undefined}
         onChange={(event) => setDraft(event.target.value)}
       />
       <Feedback note={note} error={error} />
@@ -570,6 +635,7 @@ function RadiusRow({ type }: { type: SettingsData['venueTypes'][number] }) {
   const [metres, setMetres] = useState(type.default_radius_m);
   const { note, error, pending, run } = useSave();
   const dirty = metres !== type.default_radius_m;
+  useMarkDirty(`radius:${type.key}`, `${type.label} radius`, dirty);
 
   return (
     <div className="radius-row">
