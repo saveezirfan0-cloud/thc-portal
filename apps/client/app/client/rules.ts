@@ -45,6 +45,11 @@ export interface RoleSection {
   endsAt: string;
   headcount: number;
   confirmed: number;
+  /**
+   * The section's dress code, as the office picked it from the client's own
+   * rate card (ADR-0134 N2); read on the event page only, null when none.
+   */
+  dressCode?: string | null;
 }
 
 /**
@@ -302,6 +307,8 @@ export interface LineupGroup {
   confirmed: number;
   /** The headcount booked for the section; null for a row with no section. */
   headcount: number | null;
+  /** The section's dress code (ADR-0134 N2); null when none or not read. */
+  dressCode: string | null;
   people: LineupRow[];
 }
 
@@ -338,6 +345,7 @@ export function groupBySection(
         endsAt: from.endsAt,
         confirmed: people.length,
         headcount: section ? section.headcount : null,
+        dressCode: section?.dressCode?.trim() || null,
         people: [...people].sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
       };
     })

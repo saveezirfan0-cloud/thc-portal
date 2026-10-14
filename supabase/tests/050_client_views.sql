@@ -56,8 +56,8 @@ select bag_eq(
       where table_schema = 'public' and table_name = 'client_events_v' $$,
   $$ values ('id'::text),('client_id'),('title'),('venue_name'),('venue_address'),
             ('event_date'),('po_number'),('onsite_contact'),('starts_at'),('ends_at'),('status'),
-            ('cancelled_at') $$,
-  'client_events_v exposes exactly the §11.1/§11.2 columns; onsite_contact is the header field the event page shows, cancelled_at dates a cancelled row (20261013100300)');
+            ('cancelled_at'),('timesheet_recipients') $$,
+  'client_events_v exposes exactly the §11.1/§11.2 columns; onsite_contact is the header field the event page shows, cancelled_at dates a cancelled row (20261013100300), timesheet_recipients says who the timesheets go to (ADR-0089, ADR-0134 N3) — never notes');
 
 select bag_eq(
   $$ select column_name::text from information_schema.columns
@@ -71,8 +71,9 @@ select bag_eq(
 select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_role_sections_v' $$,
-  $$ values ('shift_id'::text),('event_id'),('role'),('starts_at'),('ends_at'),('headcount'),('confirmed') $$,
-  'client_role_sections_v exposes exactly the §11.1 "N of M confirmed" columns');
+  $$ values ('shift_id'::text),('event_id'),('role'),('starts_at'),('ends_at'),('headcount'),('confirmed'),
+            ('dress_code') $$,
+  'client_role_sections_v exposes exactly the §11.1 "N of M confirmed" columns, plus the section''s dress code (ADR-0134 N2)');
 
 select is(
   (select count(*)::int

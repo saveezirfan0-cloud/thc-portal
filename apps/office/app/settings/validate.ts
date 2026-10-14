@@ -200,3 +200,24 @@ export function validateEscalationRadius(miles: number): string | null {
   if (miles > 100) return 'An escalation radius over 100 miles is not a local escalation.';
   return null;
 }
+
+/**
+ * THC's on-the-day phone number for the Client Portal (ADR-0134 N1). Blank
+ * is allowed and hides the line on the portal; otherwise a number as people
+ * write it (digits, spaces, +, brackets, dashes, dots), 10–15 digits once a
+ * UK "(0)" is dropped — the portal's tap-to-call link rings only that.
+ */
+export const CLIENT_PORTAL_PHONE_MAX = 30;
+
+export function validateClientPortalPhone(value: string): string | null {
+  const phone = value.trim();
+  if (phone === '') return null;
+  if (phone.length > CLIENT_PORTAL_PHONE_MAX || !/^\+?[\d\s().-]+$/.test(phone)) {
+    return 'Enter a phone number, e.g. 020 7946 0000 or +44 20 7946 0000.';
+  }
+  const digits = phone.replace(/\(0\)/g, '').replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 15) {
+    return 'A phone number has 10 to 15 digits.';
+  }
+  return null;
+}

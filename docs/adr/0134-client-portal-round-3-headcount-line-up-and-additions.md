@@ -28,3 +28,23 @@ Round 2 (ADR-0133) held every COUNT to the headcount the customer booked, but ke
 - `submit_client_feedback()` is unchanged. It still accepts any booking on the confirmed line-up of the caller's event, but a booking id outside the trimmed set never reaches the browser.
 - The admin passes `client_portal_visible()` and so reads the trimmed line-up through these views too. The Back Office has its own reads and is unaffected.
 - pgTAP `815_client_lineup_within_headcount.sql`: six confirmed on four gives four rows, the right four before and during the event, the tie-break, the arrivals cap (including a fifth check-in), the rated worker kept, tenancy, and the restated views' ADR-0004 shape.
+
+## 2 · Three things the event page now says (N1–N3)
+
+All three come from `20261014140100_client_portal_phone_dress_code_recipients.sql`. Each is THC's public contact detail or the customer's own data: no money, and nothing about a worker.
+
+### N1 · THC's on-the-day phone number
+- **Where the number lives.** Nothing in the schema held an office phone, so a settings key carries it: `client_portal_phone`, a JSON string, seeded `""`. The office edits it in a new **Client Portal** block on `/settings`. The admin-only `settings` policy is the gate, as for every other key. Blank hides the number. Otherwise it must be digits, spaces, `+`, brackets, dashes and dots, 10–15 digits, at most 30 characters (`validateClientPortalPhone`).
+- **How the portal reads it.** `settings` also carries job secrets and payroll recipients, so the client role gets no policy on it. Instead a new owner-rights view, **`client_portal_contact_v`**, returns one column, `phone` (trimmed, null while empty or not a string). It has `client_company_v`'s shape: `current_client_id()` + `client_portal_visible()` in the body, one row for a client user whose login is linked to a company, none for anybody else, SELECT to `authenticated` only. `001_rls_guard` now pins **eighteen** owner-rights views (fifteen selectable), and `docs/14-handover.md` counts 15.
+- **On the page.** A ghost button reads **"Call THC · 020 7946 0000"** beside "Contact THC about this event". It is a `tel:` link that dials digits only, keeps a leading +, and drops a UK "(0)" (the Staff App's rule). It is named "Call THC on …" for a screen reader. There is no button while the setting is empty, and a failed read hides it without breaking the page.
+
+### N2 · The dress code per role
+- `client_role_sections_v` gains **`dress_code`**: the section's own text, which the office picks from the customer's rate card (`client_rate_cards.dress_codes`). A blank value is null.
+- The event page draws it as one quiet line at the top of each role panel ("DRESS CODE Black tie"). The list does not ask for it.
+- **`events.notes` stays out.** It is the office's internal note (ADR-0026), and pgTAP 816 asserts no `client_*` view names `notes`, `cancel_reason`, `pays_buffer` or `buffer`.
+- This departs from ADR-0128's "once per event" for the board. The customer reads one role at a time, and the owner asked for it per role.
+
+### N3 · "Timesheets go to …"
+- `client_events_v` gains **`timesheet_recipients`** = `coalesce(events.document_recipients, clients.contact_emails)`. That is `event_document_recipients()` to the letter, written inline because that function reads `clients` with the caller's rights.
+- The event page's meta block lists the addresses once each ("Timesheets go to", sub-line "for this event · ask THC to change who receives them"). There is no line for a cancelled event (§3.3: no documents), and none without addresses. Only the event page asks for the column.
+- An event's own list may name addresses that are not on the client card (ADR-0089). They are the people THC was asked to send this customer's documents to, so showing them to that customer reveals nothing new.

@@ -203,6 +203,7 @@ describe('a database error never reaches the customer', () => {
       event: null,
       sections: [],
       lineup: [],
+      thcPhone: null,
       problem: null,
     });
     expect(state.tables).toEqual([]);

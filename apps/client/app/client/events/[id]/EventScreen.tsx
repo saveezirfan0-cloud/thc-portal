@@ -10,6 +10,7 @@ import type { EventArrivals } from '../../arrivals';
 import { DocumentLink } from '../../DocumentLink';
 import { EventWindow } from '../../EventWindow';
 import { OFFICE_EMAIL } from '../../account/copy';
+import { recipientsLine, telHref } from '../../contact';
 import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
   arrivalsWithinHeadcount,
@@ -29,6 +30,7 @@ import {
   statusTone,
 } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
+import type { ClientEvent } from '../../data';
 import { CalendarButton } from './CalendarButton';
 import { FeedbackModal } from './FeedbackModal';
 
@@ -65,8 +67,10 @@ export function EventScreen({
   now,
   documents = [],
   arrivals,
+  thcPhone = null,
 }: {
-  event: PortalEvent;
+  /** With `timesheetRecipients` when the page read them (ADR-0134 N3). */
+  event: PortalEvent & Pick<ClientEvent, 'timesheetRecipients'>;
   sections: RoleSection[];
   lineup: LineupRow[];
   /** Signed photo URLs keyed by `bookingId` (photos.ts); never a Storage path. */
@@ -76,6 +80,8 @@ export function EventScreen({
   documents?: IssuedDocument[];
   /** On-the-day check-in counts (ADR-0053); counts only, never who. */
   arrivals?: EventArrivals;
+  /** THC's on-the-day phone number (ADR-0134 N1); no link when null. */
+  thcPhone?: string | null;
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
   // Sent from this page and not yet re-read: the row says "✓ Feedback sent"
@@ -118,6 +124,9 @@ export function EventScreen({
     documents.map((d) => d.kind),
   );
   const timesheet = completed ? documents.find((d) => d.kind === 'signout') : undefined;
+  const call = telHref(thcPhone);
+  // A cancelled event has no documents (§3.3), so nobody to send them to.
+  const recipients = cancelled ? [] : recipientsLine(event.timesheetRecipients);
 
   return (
     <div className="stack epage">
@@ -184,6 +193,13 @@ export function EventScreen({
             <a className="btn ghost" href={contactHref(event)}>
               Contact THC about this event
             </a>
+            {/* "Who do I call at 07:30?" (ADR-0134 N1): the number the
+                office set on /settings, none until it has. */}
+            {call ? (
+              <a className="btn ghost call-thc" href={call} aria-label={`Call THC on ${thcPhone}`}>
+                Call THC · <span className="num">{thcPhone}</span>
+              </a>
+            ) : null}
           </div>
         </div>
 
@@ -214,6 +230,22 @@ export function EventScreen({
                     records that a final copy exists, not whether or to whom
                     the office sent it (ADR-0089). */}
                 Completed Allocation Timesheet generated {ukStamp(timesheet.issuedAt)}
+              </div>
+            </div>
+          ) : null}
+          {recipients.length > 0 ? (
+            <div>
+              <div className="k">Timesheets go to</div>
+              <div className="v recipients">
+                {/* ADR-0089 via ADR-0134 N3: the event's own list, or the
+                    addresses on the client card. */}
+                {recipients.map((address, i) => (
+                  <span key={address}>
+                    {address}
+                    {i < recipients.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+                <span className="sub">for this event · ask THC to change who receives them</span>
               </div>
             </div>
           ) : null}
@@ -271,6 +303,13 @@ export function EventScreen({
               }
               flush
             >
+              {/* The role's dress code, from the customer's own rate card
+                  (ADR-0134 N2). */}
+              {group.dressCode ? (
+                <p className="role-dress sm">
+                  <span className="k">Dress code</span> {group.dressCode}
+                </p>
+              ) : null}
               {group.people.length === 0 ? (
                 // A section nobody has confirmed on yet still shows its role
                 // and window, and says so in one line.

@@ -55,6 +55,7 @@ export async function loadSettings(): Promise<SettingsData> {
     venueTypes: [],
     rotaGuardMode: 'block',
     notificationsOff: [],
+    clientPortalPhone: '',
     problem: null,
   };
 
@@ -104,6 +105,11 @@ export async function loadSettings(): Promise<SettingsData> {
     rotaGuardMode: byKey.get('rota_guard_mode') === 'warn' ? 'warn' : 'block',
     // Read by the same rule as notification_switched_on(): only a JSON false is off.
     notificationsOff: switchedOff(byKey.get('notification_switches')),
+    // client_portal_contact_v reads only a JSON string, so does the screen.
+    clientPortalPhone:
+      typeof byKey.get('client_portal_phone') === 'string'
+        ? (byKey.get('client_portal_phone') as string)
+        : '',
     problem: null,
   };
 }

@@ -1343,3 +1343,36 @@ a.btn[aria-busy='true']:hover {
     display: inline;
   }
 }
+
+/* ---- round 3 (ADR-0134) ---- */
+
+/* N1 · "Call THC · 020 7946 0000": the number in the figures' face, never
+   broken across lines. */
+.call-thc .num {
+  font-family: var(--font-num);
+  white-space: nowrap;
+}
+
+/* N3 · "Timesheets go to": long addresses break anywhere rather than push
+   the meta grid wider than the card. */
+.meta .v.recipients {
+  overflow-wrap: anywhere;
+}
+
+/* N2 · a role's dress code, one quiet line at the top of its panel. */
+.role-dress {
+  margin: 0;
+  padding: var(--sp-10) var(--sp-20);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+
+.role-dress .k {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+  margin-right: var(--sp-8);
+}

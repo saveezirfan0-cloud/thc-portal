@@ -82,7 +82,7 @@ export default async function ClientEventPage({
   if (!isUuid(id)) notFound();
   const notice = docNotice((await searchParams)?.doc);
 
-  const { event, sections, lineup, problem } = await readEvent(id);
+  const { event, sections, lineup, thcPhone, problem } = await readEvent(id);
 
   if (problem) {
     return (
@@ -125,6 +125,7 @@ export default async function ClientEventPage({
         photos={shown.photos}
         documents={documents.documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
         arrivals={arrivals[event.id]}
+        thcPhone={thcPhone}
         now={new Date().toISOString()}
       />
     </>

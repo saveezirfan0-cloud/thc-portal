@@ -163,7 +163,7 @@ describe('loadEventList', () => {
 describe('loadEvent', () => {
   it('treats a non-UUID id as not found, without a query', async () => {
     const out = await loadEvent('not-a-uuid');
-    expect(out).toEqual({ event: null, sections: [], lineup: [], problem: null });
+    expect(out).toEqual({ event: null, sections: [], lineup: [], thcPhone: null, problem: null });
     expect(state.tables).toEqual([]);
   });
 
@@ -369,5 +369,79 @@ describe('loadEventList · a bounded read (R1)', () => {
     expect((await loadEventList({ now: NOW })).unlinked).toBe(false);
     state.results = { client_company_v: { data: null, error: { message: 'boom' } } };
     expect((await loadEventList({ now: NOW })).unlinked).toBe(false);
+  });
+});
+
+describe('loadEvent · round 3 additions (ADR-0134 N1–N3)', () => {
+  it("asks the event page for the recipients and the dress codes, and reads THC's phone", async () => {
+    state.results = {
+      client_events_v: {
+        data: {
+          ...eventRow,
+          status: 'upcoming',
+          timesheet_recipients: ['a@x.test', ' ', 'b@y.test'],
+        },
+        error: null,
+      },
+      client_role_sections_v: {
+        data: [
+          {
+            shift_id: 's1',
+            event_id: EV,
+            role: 'Waiting Staff',
+            starts_at: '2026-10-20T16:00:00Z',
+            ends_at: '2026-10-20T22:30:00Z',
+            headcount: 4,
+            confirmed: 4,
+            dress_code: 'Black tie',
+          },
+        ],
+        error: null,
+      },
+      client_portal_contact_v: { data: { phone: ' 020 7946 0000 ' }, error: null },
+    };
+    const out = await loadEvent(EV);
+    const selects = Object.fromEntries(
+      state.queries.map((q) => [q.table, String(q.calls.find((c) => c[0] === 'select')?.[1])]),
+    );
+    expect(selects.client_events_v).toContain('timesheet_recipients');
+    expect(selects.client_role_sections_v).toContain('dress_code');
+    expect(selects.client_portal_contact_v).toBe('phone');
+    expect(out.event?.timesheetRecipients).toEqual(['a@x.test', 'b@y.test']);
+    expect(out.sections[0]?.dressCode).toBe('Black tie');
+    expect(out.thcPhone).toBe('020 7946 0000');
+  });
+
+  it('never asks the list for either: what the list does not draw, it is not sent', async () => {
+    state.results = { client_events_v: { data: [eventRow], error: null } };
+    await loadEventList();
+    for (const q of state.queries) {
+      const columns = String(q.calls.find((c) => c[0] === 'select')?.[1] ?? '');
+      expect(columns).not.toContain('timesheet_recipients');
+      expect(columns).not.toContain('dress_code');
+    }
+    expect(state.tables).not.toContain('client_portal_contact_v');
+  });
+
+  it('a failed phone read hides the number and keeps the page, logging the detail', async () => {
+    state.results = {
+      client_events_v: { data: eventRow, error: null },
+      client_portal_contact_v: { data: null, error: { message: LEAK, code: '42501' } },
+    };
+    const out = await loadEvent(EV);
+    expect(out.problem).toBeNull();
+    expect(out.event?.title).toBe('Gala Dinner');
+    expect(out.thcPhone).toBeNull();
+    expect(JSON.stringify(logged)).toContain('THC phone');
+  });
+
+  it('an empty number, or no row (an unlinked login), is no number', async () => {
+    state.results = {
+      client_events_v: { data: eventRow, error: null },
+      client_portal_contact_v: { data: { phone: null }, error: null },
+    };
+    expect((await loadEvent(EV)).thcPhone).toBeNull();
+    state.results.client_portal_contact_v = { data: null, error: null };
+    expect((await loadEvent(EV)).thcPhone).toBeNull();
   });
 });
