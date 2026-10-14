@@ -24,7 +24,7 @@ export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients:
   const calendarView: CalendarView = isCalendar ? view : 'month';
 
   return (
-    <div className="toolbar">
+    <div className="toolbar filters">
       <div className="seg">
         <Link
           className={view === 'list' ? 'on' : undefined}

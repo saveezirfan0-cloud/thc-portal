@@ -185,7 +185,7 @@ export function SavedViewsBar({
         <form className="row" onSubmit={save}>
           <input
             className="input"
-            style={{ height: 32, width: 240 }}
+            style={{ width: 240 }}
             aria-label="Name this view"
             placeholder="Name this view"
             maxLength={MAX_VIEW_NAME}
