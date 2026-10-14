@@ -544,6 +544,9 @@ describe("IR1 — the owner's own design (ADR-0122)", () => {
     expect(html).toContain('⏰&nbsp; Daily reminder</span>');
     expect(html).toContain('>AXLR8 is being switched off soon</h1>');
     expect(html).toContain('⚠️&nbsp; Action required');
+    expect(html).toContain(
+      'Without clicking the link below, actually taking the online interview and fully onboarding, we will be unable to offer you any more shifts going forwards.</div>',
+    );
     expect(html).toContain('>The steps you must complete</td>');
     for (const step of ['Step 1', 'Step 2', 'Step 3', 'Step 4'])
       expect(html).toContain(`>${step}</div>`);

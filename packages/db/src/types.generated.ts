@@ -9638,6 +9638,7 @@ export type Database = {
         Args: { p_offer: string; p_staff: string[] };
         Returns: number;
       };
+      oc1_existing_staff_notice: { Args: { p_now?: string }; Returns: Json };
       offer_candidates: {
         Args: { p_offer: string };
         Returns: {
