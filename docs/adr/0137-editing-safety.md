@@ -32,7 +32,7 @@ Venue name and client name ≤ 120, each dress code ≤ 200, the office's own fe
 ## Consequences
 
 - `packages/ui`: `useUnsavedChanges`, `Modal dirty` / `onSubmit`, `toast()` / `<Toaster />` (mounted once in `OfficeShell`).
-- Migration `20261014160000_editing_safety_caps_and_pay_floor.sql`, pinned by `822_editing_safety_caps_and_pay_floor.sql`; fixtures that set a rate under £12.71 through the functions were moved to £12.71+.
+- Migration `20261014180000_editing_safety_caps_and_pay_floor.sql`, pinned by `822_editing_safety_caps_and_pay_floor.sql`; fixtures that set a rate under £12.71 through the functions were moved to £12.71+.
 - Each April: update `settings.minimum_hourly_pay`.
 - The browser's Back button inside the app is not intercepted by the guard (the App Router answers it from its own history without a cancellable event).
 - The client form's emails label says the real rule, "up to 10" (ADR-0087), not "2–3 people".

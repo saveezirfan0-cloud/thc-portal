@@ -45,7 +45,7 @@ export function poundsInput(pence: number): string {
 /**
  * The ceiling on an hourly pay rate: above £1,000.00 is a typo, not a rate
  * (999999 used to come back as "not a rate"). assert_pay_floor() in SQL
- * holds the same line (20261014160000).
+ * holds the same line (20261014180000).
  */
 export const MAX_RATE_PENCE = 1_000_00;
 

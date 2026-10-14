@@ -18,7 +18,7 @@ const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 /** The `contact_emails` column is `check (array_length between 1 and 10)` (ADR-0087). */
 export const MAX_CONTACT_EMAILS = 10;
 
-/** clients_name_length and assert_client_input (20261014160000). */
+/** clients_name_length and assert_client_input (20261014180000). */
 export const CLIENT_NAME_MAX = 120;
 export const CONTACT_NAME_MAX = 120;
 export const CONTACT_POINT_MAX = 200;

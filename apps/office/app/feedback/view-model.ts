@@ -288,7 +288,7 @@ export function validateDraft(draft: OfficeDraft): string | null {
     return 'Choose between 1 and 5 stars.';
   }
   if (draft.text.trim() === '') return 'Add a comment.';
-  // feedback_office_text_length (20261014160000): the Client Portal's 2,000.
+  // feedback_office_text_length (20261014180000): the Client Portal's 2,000.
   if (draft.text.trim().length > OFFICE_TEXT_MAX) {
     return `A comment is at most ${OFFICE_TEXT_MAX.toLocaleString('en-GB')} characters.`;
   }

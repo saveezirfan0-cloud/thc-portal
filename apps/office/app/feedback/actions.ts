@@ -44,7 +44,7 @@ function message(error: { message: string; code?: string }): string {
   // required"); Postgres's wording is not shown (_lib/dbError).
   return explainDbError(error, {
     log: '[feedback]',
-    // feedback_office_text_length (20261014160000); the form stops at it first.
+    // feedback_office_text_length (20261014180000); the form stops at it first.
     check: 'A comment is at most 2,000 characters.',
   });
 }

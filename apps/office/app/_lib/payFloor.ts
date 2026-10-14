@@ -2,7 +2,7 @@ import { DEFAULT_PAY_FLOOR_PENCE } from '../roles/money';
 
 /**
  * Today's National Living Wage, in pence, from the database
- * (`minimum_pay_rate()`, `settings.minimum_hourly_pay` — 20261014160000,
+ * (`minimum_pay_rate()`, `settings.minimum_hourly_pay` — 20261014180000,
  * ADR-0137). The forms use it to refuse a base or personal pay rate below
  * the legal floor before the database does; when it cannot be read they
  * fall back to the 2026/27 figure, and the database still holds the line.

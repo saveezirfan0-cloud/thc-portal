@@ -11,7 +11,7 @@ export function lengthHint(length: number, max: number): string | null {
 
 /** Venue and client names (venues_name_length, clients_name_length). */
 export const NAME_MAX = 120;
-/** One dress code (client_rate_cards / shift_requirements, 20261014160000). */
+/** One dress code (client_rate_cards / shift_requirements, 20261014180000). */
 export const DRESS_CODE_MAX = 200;
 /** The office's own feedback — the Client Portal's figure for a client's (20261012120600). */
 export const FEEDBACK_TEXT_MAX = 2000;
