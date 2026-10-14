@@ -7,11 +7,21 @@
  * layout. Every colour, size and spacing is a token from packages/ui.
  */
 
+/* Masonry, not a grid of rows (release audit P1): blocks of very different
+   heights sat in rows as tall as the tallest, leaving holes under the short
+   ones. Columns of at least 340px, each block whole in its column; the
+   radii table spans them all at the end (.settings-wide), so its venue
+   types read on one line instead of four. */
 .settings-grid {
-  display: grid;
-  gap: var(--sp-16);
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  align-items: start;
+  columns: 340px;
+  column-gap: var(--sp-16);
+}
+.settings-grid > * {
+  break-inside: avoid;
+  margin: 0 0 var(--sp-16);
+}
+.settings-grid > .settings-wide {
+  column-span: all;
 }
 
 /* Each block's body is a column with air between its fields. Without it a
@@ -43,7 +53,7 @@
 /* The §9.11 standard-radius table: label, slider, value, save. */
 .radius-row {
   display: grid;
-  grid-template-columns: 1fr 2fr auto auto;
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr) auto auto;
   gap: var(--sp-10);
   align-items: center;
   padding: var(--sp-8) 0;
@@ -77,7 +87,7 @@
    the label and value share the first, the slider and button the second. */
 @media (max-width: 760px) {
   .settings-grid {
-    grid-template-columns: minmax(0, 1fr);
+    columns: 1;
   }
   .radius-row {
     grid-template-columns: minmax(0, 1fr) auto;

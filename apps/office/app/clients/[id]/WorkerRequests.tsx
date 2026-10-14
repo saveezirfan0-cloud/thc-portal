@@ -47,7 +47,11 @@ export function WorkerRequests({
 
   return (
     <Panel
-      title="Requests from the Client Portal"
+      title={
+        <>
+          <span className="blk-n">5</span> Requests from the Client Portal
+        </>
+      }
       actions={
         <>
           <span className="muted sm">“Request again” from a finished event · not a booking</span>

@@ -30,6 +30,7 @@ import {
   groupQualifications,
   matchesName,
   newEntryCount,
+  verifiedTally,
 } from '../view-model';
 import type { CandidateRow, ReturningRow, StaffStatus } from '../types';
 
@@ -859,5 +860,51 @@ describe('the group filter (ADR-0107)', () => {
       );
     expect(all('any')).toBe(1);
     expect(all('spudbros')).toBe(0);
+  });
+});
+
+describe('"N of M items verified" counts what is still missing (release audit m15)', () => {
+  const base = {
+    docs_verified: 0,
+    docs_total: 1,
+    declaration_answer: null,
+    declaration_status: null,
+    quiz_blockers: [] as string[],
+  };
+
+  it('adds every item not on file yet to the total, not just the uploads', () => {
+    const tally = verifiedTally({
+      ...base,
+      quiz_blockers: [
+        'document_unverified:passport',
+        'ni_evidence',
+        'birth_certificate',
+        'share_code',
+        'dob',
+        'criminal_declaration',
+      ],
+    } as never);
+    // The passport is on file (1); five more are still missing.
+    expect(tally).toEqual({ verified: 0, total: 6 });
+  });
+
+  it('counts a Yes declaration once, whether it is pending or verified', () => {
+    expect(
+      verifiedTally({
+        ...base,
+        docs_verified: 1,
+        declaration_answer: true,
+        declaration_status: 'pending',
+        quiz_blockers: ['conviction_unreviewed'],
+      } as never),
+    ).toEqual({ verified: 1, total: 2 });
+    expect(
+      verifiedTally({
+        ...base,
+        docs_verified: 1,
+        declaration_answer: true,
+        declaration_status: 'verified',
+      } as never),
+    ).toEqual({ verified: 2, total: 2 });
   });
 });

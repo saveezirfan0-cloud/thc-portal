@@ -208,7 +208,6 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           placeholder="020 7946 0000"
           error={shown('phone', phone)}
           onChange={(event) => setPhone(event.target.value)}
-          mono
           aria-required="true"
         />
       </div>

@@ -118,6 +118,8 @@ const KEY_LABEL: Readonly<Record<string, string>> = {
   pin: 'Map pin',
   duplicatedFrom: 'Duplicated from',
   section: 'Role section',
+  // The nth email of its kind to this person (an invitation, an activation link).
+  n: 'Send no.',
 };
 
 /** A `{from, to}` pair nested under a key — "Date of birth: 1995-01-01 → 1994-12-31" (ADR-0070). */
@@ -159,6 +161,12 @@ export function describe(row: Pick<ActivityRow, 'data'>): string[] {
   }
   for (const [key, value] of Object.entries(data)) {
     if (HIDDEN.has(key) || value === null || value === undefined || value === '') continue;
+    // The outbox key ("E11:invite:<uuid>:1") is plumbing: what it means to a
+    // reader is that an email was put in the queue (release audit m7).
+    if (key === 'outboxKey') {
+      out.push('Email queued');
+      continue;
+    }
     if (isChange(value)) {
       out.push(`${words(key)}: ${dated(value.from, key)} → ${dated(value.to, key)}`);
       continue;

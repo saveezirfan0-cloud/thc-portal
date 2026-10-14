@@ -56,7 +56,11 @@ export function ShiftRequirements({
 
   return (
     <Panel
-      title="Shift requirements"
+      title={
+        <>
+          <span className="blk-n">4</span> Shift requirements
+        </>
+      }
       actions={
         <span className="muted sm">
           a quiz before the first shift on a role, a message to confirm on the day of every shift
@@ -74,8 +78,8 @@ export function ShiftRequirements({
         <div className="empty">
           <h3>This client asks nothing extra</h3>
           <p>
-            No quiz and no kit message on any role. Set up as data by the office (migration
-            20261008180000); the Leonardo Hotel bar menu quiz is the first.
+            No role here has a quiz before the first shift or a message to confirm on the day. They
+            are set up for a client on request — ask the platform team.
           </p>
         </div>
       ) : (

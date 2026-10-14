@@ -829,6 +829,30 @@ export function quizGate(row: Pick<CandidateRow, 'quiz_blockers'>): QuizGate {
   return { unlocked: outstanding.length === 0, outstanding };
 }
 
+/** Blockers about something already on file (counted in the uploads), not something missing. */
+const ON_FILE_BLOCKER =
+  /^(document_unverified:|document_expired:|conviction_unreviewed$|conviction_rejected$)/;
+
+/**
+ * "N of M items verified" over the candidate profile's gate. The uploads on
+ * file (and a Yes declaration) are counted as before; every outstanding item
+ * that is not on file yet — a document not uploaded, the share code, the
+ * branch, the date of birth — is one more item still to verify. It used to
+ * count the uploads alone, so a candidate with one upload read "0 of 1 items
+ * verified" above a list of six outstanding (release audit m15).
+ */
+export function verifiedTally(
+  row: Pick<
+    CandidateRow,
+    'docs_verified' | 'docs_total' | 'declaration_answer' | 'declaration_status' | 'quiz_blockers'
+  >,
+): { verified: number; total: number } {
+  const declared = row.declaration_answer === true;
+  const verified = row.docs_verified + (declared && row.declaration_status === 'verified' ? 1 : 0);
+  const missing = (row.quiz_blockers ?? []).filter((token) => !ON_FILE_BLOCKER.test(token)).length;
+  return { verified, total: row.docs_total + (declared ? 1 : 0) + missing };
+}
+
 export type AiTone = 'hi' | 'mid' | 'manual';
 
 /**
