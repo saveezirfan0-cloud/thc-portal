@@ -1768,6 +1768,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           document_recipients: string[] | null;
+          duplicated_from: string | null;
           event_date: string;
           geofence_radius_m: number;
           id: string;
@@ -1794,6 +1795,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           document_recipients?: string[] | null;
+          duplicated_from?: string | null;
           event_date: string;
           geofence_radius_m: number;
           id?: string;
@@ -1820,6 +1822,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           document_recipients?: string[] | null;
+          duplicated_from?: string | null;
           event_date?: string;
           geofence_radius_m?: number;
           id?: string;
@@ -1878,6 +1881,13 @@ export type Database = {
             columns: ['created_by'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
+            referencedRelation: 'events';
             referencedColumns: ['id'];
           },
           {
@@ -8698,6 +8708,20 @@ export type Database = {
         Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
       };
+      audit_changes: { Args: { p_new: Json; p_old: Json }; Returns: Json };
+      audit_data_shown: {
+        Args: { p_data: Json; p_money: boolean };
+        Returns: Json;
+      };
+      audit_event_fields: {
+        Args: { e: Database['public']['Tables']['events']['Row'] };
+        Returns: Json;
+      };
+      audit_section_fields: {
+        Args: { s: Database['public']['Tables']['shift_requirements']['Row'] };
+        Returns: Json;
+      };
+      audit_uk_stamp: { Args: { p_at: string }; Returns: string };
       auth_attempt_allowed: {
         Args: { p_key_hash: string; p_kind: string };
         Returns: boolean;

@@ -2,6 +2,7 @@
  * /activity — turning an `audit_log` row into something a person reads
  * (ADR-0055). Pure, and tested.
  */
+import { type TimeFormat, clockLabel } from '@thc/domain';
 
 export interface ActivityRow {
   id: number;
@@ -45,15 +46,65 @@ const HIDDEN = new Set([
   'clientId',
   'bookingId',
   'eventId',
+  // Release audit D-M1's rows carry these so History can find them.
+  'roleId',
+  'feedbackId',
+  'sectionId',
 ]);
 
-function short(value: unknown): string {
-  if (value === null || value === undefined) return '—';
-  if (typeof value === 'string') return value.length > 80 ? `${value.slice(0, 77)}…` : value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (Array.isArray(value)) return value.map(short).join(', ');
-  const json = JSON.stringify(value);
-  return json.length > 80 ? `${json.slice(0, 77)}…` : json;
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}(:?\d{2})?)$/;
+
+/** Money in the log's data (release audit D-M1), written as the office writes it. */
+const MONEY = new Set(['chargeRate', 'payRate']);
+
+/**
+ * A value as words. Nothing is cut short here (release audit 14.10.2026):
+ * a long detail is folded on screen by `<ActivityDetails>`, and the CSV
+ * export carries it whole. An object is its own "Key: value" pairs, never
+ * raw JSON.
+ */
+function short(value: unknown, key?: string): string {
+  if (value === null || value === undefined || value === '') return '—';
+  if (key && MONEY.has(key) && (typeof value === 'number' || typeof value === 'string')) {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? `£${amount.toFixed(2)}` : String(value);
+  }
+  // An instant in the data ("uploadedAt") is an audit stamp too: UK, §1.8.
+  if (typeof value === 'string') return ISO_INSTANT.test(value) ? auditStamp(value) : value;
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.length ? value.map((v) => short(v)).join(', ') : '—';
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([k, v]) => !HIDDEN.has(k) && v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => `${words(k)}: ${short(v, k)}`)
+      .join(', ');
+  }
+  return String(value);
+}
+
+/** Past this many characters the Details cell folds, with a "more" to open it. */
+export const DETAILS_FOLD = 160;
+
+/**
+ * An audit stamp as §1.8 writes one: UK time, dd.mm.yyyy HH:mm — the
+ * clock in the reader's 12- or 24-hour choice (ADR-0085), the zone never
+ * the reader's own.
+ */
+export function auditStamp(iso: string, format?: TimeFormat): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  // en-GB writes midnight as 24 in some engines; the clock reads 00.
+  const hour = get('hour') === '24' ? '00' : get('hour');
+  return `${get('day')}.${get('month')}.${get('year')} ${clockLabel(`${hour}:${get('minute')}`, format)}`;
 }
 
 /** Keys whose readable form is not their code made readable. */
@@ -61,6 +112,12 @@ const KEY_LABEL: Readonly<Record<string, string>> = {
   dob: 'Date of birth',
   rtwCheck: 'gov.uk check',
   optOutSignedUnder18: 'Opt-out signed under 18',
+  // Release audit D-M1.
+  radius: 'Geofence radius (m)',
+  poNumber: 'PO number',
+  pin: 'Map pin',
+  duplicatedFrom: 'Duplicated from',
+  section: 'Role section',
 };
 
 /** A `{from, to}` pair nested under a key — "Date of birth: 1995-01-01 → 1994-12-31" (ADR-0070). */
@@ -74,9 +131,9 @@ function isChange(value: unknown): value is { from?: unknown; to?: unknown } {
 }
 
 /** A `yyyy-mm-dd` as the office writes dates, "05.06.1998" (§9.6); anything else as `short()`. */
-function dated(value: unknown): string {
+function dated(value: unknown, key?: string): string {
   const m = typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : short(value);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : short(value, key);
 }
 
 function words(key: string): string {
@@ -103,10 +160,10 @@ export function describe(row: Pick<ActivityRow, 'data'>): string[] {
   for (const [key, value] of Object.entries(data)) {
     if (HIDDEN.has(key) || value === null || value === undefined || value === '') continue;
     if (isChange(value)) {
-      out.push(`${words(key)}: ${dated(value.from)} → ${dated(value.to)}`);
+      out.push(`${words(key)}: ${dated(value.from, key)} → ${dated(value.to, key)}`);
       continue;
     }
-    out.push(`${words(key)}: ${short(value)}`);
+    out.push(`${words(key)}: ${short(value, key)}`);
   }
   return out;
 }

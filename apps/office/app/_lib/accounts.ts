@@ -99,6 +99,9 @@ export const ENTITY_LABEL: Readonly<Record<string, string>> = {
   settings: 'Settings',
   client: 'Clients',
   client_qualification: 'Qualifications',
+  // Release audit D-M1 (20261014093200).
+  venue: 'Venues',
+  role: 'Roles',
 };
 
 export function entityLabel(entity: string): string {
@@ -158,6 +161,38 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'settings.update': 'Changed setting',
   'settings.delete': 'Cleared setting',
   'settings.radius_changed': 'Changed default radius',
+  // ADR-0081.
+  'client.name_badges': 'Switched name badges',
+  // Release audit D-M1 (20261014093200): every Back Office edit.
+  'client.created': 'Created client',
+  'client.updated': 'Edited client',
+  'client.rate_added': 'Added a role to the rate card',
+  'client.rate_changed': 'Changed the rate card',
+  'client.rate_removed': 'Removed a role from the rate card',
+  'staff.pay_rate_set': 'Set personal pay rate',
+  'staff.pay_rate_cleared': 'Cleared personal pay rate',
+  'staff.role_added': 'Added role',
+  'staff.role_removed': 'Removed role',
+  'client_qualification.granted': 'Qualified at a client',
+  'client_qualification.note_changed': 'Changed a qualification note',
+  'client_qualification.revoked': 'Removed a client qualification',
+  'feedback.added': 'Added office feedback',
+  'feedback.edited': 'Edited office feedback',
+  'feedback.deleted': 'Deleted feedback',
+  'feedback.read': 'Marked client feedback as read',
+  'venue.created': 'Added venue',
+  'venue.updated': 'Edited venue',
+  'venue.deleted': 'Deleted venue',
+  'role.created': 'Added role to the catalogue',
+  'role.updated': 'Edited role',
+  'role.deleted': 'Deleted role',
+  'event.created': 'Created event',
+  'event.duplicated': 'Duplicated event',
+  'event.updated': 'Edited event',
+  'event.deleted': 'Deleted event',
+  'event.role_added': 'Added role section',
+  'event.role_changed': 'Changed role section',
+  'event.role_removed': 'Removed role section',
 };
 
 export function actionLabel(action: string): string {
@@ -179,6 +214,10 @@ export function entityHref(entity: string, id: string | null): string | null {
       return `/clients/${id}`;
     case 'account':
       return '/users';
+    case 'venue':
+      return '/venues';
+    case 'role':
+      return '/roles';
     default:
       return null;
   }

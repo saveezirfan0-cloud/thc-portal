@@ -180,6 +180,10 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
       auto_assign: input.autoAssign,
       // English is always in it; the database's CHECK holds the same.
       required_languages: normaliseLanguages(input.requiredLanguages),
+      // Release audit D-M1: a Duplicate says what it was made from, so the
+      // activity log reads "Duplicated event" (20261014093200). created_by
+      // is not sent: the database fills it from the session (auth.uid()).
+      ...(input.duplicateOf ? { duplicated_from: input.duplicateOf } : {}),
     })
     .select('id')
     .single();
