@@ -15,8 +15,9 @@
  * the completion letter requirement's CL codes (REQUIREMENT_CODES), two
  * extensions §8 should have named (EXTENSION_CODES), and the Staff App
  * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), the
- * onboarding chasers OC (CHASER_CODES, ADR-0071), and the invite-list
- * reminder IR1 (INVITE_CODES, ADR-0122).
+ * onboarding chasers OC (CHASER_CODES, ADR-0071), the invite-list
+ * reminder IR1 (INVITE_CODES, ADR-0122), and the Client Portal additions
+ * CP (CLIENT_PORTAL_CODES, ADR-0135).
  *
  * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
  * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
@@ -993,6 +994,58 @@ export const TEMPLATES = {
       'Somebody on the THC invite list (/staff/roster, ADR-0107) who has not applied with that email yet (invite_roster_reminders). Not in §8: an addition to scope v1.6, ADR-0122',
     timing: 'daily, once a UK day between 10:00 and 18:00, until they apply',
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // CLIENT PORTAL ADDITIONS (ADR-0135, approved by the product owner on
+  // 14.10.2026). `CP` codes, so none can collide with an N- or E-number THC
+  // assigns to §8 later. CP1 tells the office a customer asked for a worker
+  // again from the portal — a message, never a booking. Queued by
+  // client_request_worker() (20261014170100), key `CP1:request:<id>`, once
+  // per request; at most one open request per client and worker.
+  // ────────────────────────────────────────────────────────────────────────
+  CP1: {
+    code: 'CP1',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Client asked for a worker again — {name} · {client}',
+    body: '{client} would like {name} (Employee ID {employeeId}) on their events again. They asked from the Client Portal after {event} on {date}, where {name} worked as {role}.\n\nNote from the client: {clientNote}\n\nRequested by: {requestedBy}\nRequested: {requestedAt} (UK time)\n\nThis is a request, not a booking: nothing has been booked or changed. Invite them from the event board where they fit, then mark the request handled on the client card (Requests from the Client Portal).',
+    trigger:
+      'A Client Portal login presses "Request again" on a worker from a finished event (client_request_worker). Not in §8: an addition to scope v1.6, ADR-0135',
+    timing:
+      'immediately, once per request; one open request per client and worker, at most 20 a day per client',
+  },
+  // To the CUSTOMER's contacts — the event's timesheet recipients
+  // (events.document_recipients, else the client card's contact_emails,
+  // ADR-0089), never a Client Portal login unless it is on that list.
+  // Queued by client_lineup_notices() (20261014170200) from triggers on
+  // bookings and shift_requirements; never between 23:00 and 07:00 UK.
+  // `{link}` is not in the payload: the drain builds it from
+  // CLIENT_PORTAL_URL and the row's `eventId` (portalLink, outbox.ts).
+  // No money and no worker names: one line per role section,
+  // "Role · 17:00–23:30 · N of M confirmed" ({sections}).
+  CP2: {
+    code: 'CP2',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Your line-up is fully confirmed — {event} · {date}',
+    body: 'Hello,\n\nEvery role for {event} on {date} is now fully confirmed.\n\n{sections}\n\nVenue: {venue}\nTimes: {time} (UK time)\n\nSee who is coming in the Client Portal: {link}\n\nThe Hospitality Company',
+    trigger:
+      'Every role section of an upcoming event holds its headcount of confirmed workers, as the portal counts them — never the buffer (client_lineup_notices). Not in §8: an addition to scope v1.6, ADR-0135',
+    timing:
+      'once per event, at once or at 07:00 UK if it falls between 23:00 and 07:00; withdrawn while unsent if the line-up drops below full; never for a cancelled or started event; per-client switch on the client card',
+  },
+  CP3: {
+    code: 'CP3',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Line-up changed after your Allocation Timesheet was sent — {event} · {date}',
+    body: 'Hello,\n\nThe line-up for {event} on {date} has changed since your Allocation Timesheet was sent.\n\nWhere it stands now:\n{sections}\n\nVenue: {venue}\nTimes: {time} (UK time)\n\nSee the current line-up in the Client Portal: {link}\n\nIf you have a question, reply to this email.\n\nThe Hospitality Company',
+    trigger:
+      'A confirmed worker leaves the line-up, or a new one is confirmed, on an upcoming event whose Allocation Timesheet (D1) was already sent (client_lineup_notices). Not in §8: an addition to scope v1.6, ADR-0135',
+    timing:
+      'at most one per event per hour, at the top of the next hour, saying where the line-up stands then; never between 23:00 and 07:00 UK (queued for 07:00); never for a cancelled or started event; per-client switch on the client card',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -1120,6 +1173,20 @@ export const CHASER_CODES = ['OC1', 'OC2', 'OC3'] as const satisfies readonly Te
  * candidate, so it is not one of the onboarding chasers above.
  */
 export const INVITE_CODES = ['IR1'] as const satisfies readonly TemplateCode[];
+
+/**
+ * Client Portal additions (ADR-0135): CP1 tells the office a customer asked
+ * for a worker again; CP2 and CP3 tell the customer's contacts their
+ * line-up is fully confirmed, or changed after the Allocation Timesheet
+ * went. Not §8's; approved by the product owner on 14.10.2026.
+ */
+export const CLIENT_PORTAL_CODES = ['CP1', 'CP2', 'CP3'] as const satisfies readonly TemplateCode[];
+
+/**
+ * The register emails whose `{link}` is the event's Client Portal page,
+ * built at send time from CLIENT_PORTAL_URL and the row's `eventId`.
+ */
+export const PORTAL_LINK_CODES = ['CP2', 'CP3'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

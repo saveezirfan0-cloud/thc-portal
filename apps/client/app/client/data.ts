@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { ukInstant, ukToday } from '@thc/domain';
 import { isUuid } from './ids';
+import { isArrivalStatus } from './rules';
 import type { LineupRow, PortalEvent, RoleSection } from './rules';
 import { addDays, pastWindow, validDay } from './window';
 import type { LoadedHistory } from './window';
@@ -67,6 +68,10 @@ const LIST_SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, head
 const SECTION_COLUMNS = `${LIST_SECTION_COLUMNS}, dress_code`;
 const LINEUP_COLUMNS =
   'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given, feedback_rating, feedback_sent_at';
+// The event page alone says, per person, who has arrived on the day
+// (ADR-0135 §1); the list keeps counts only, so it never asks.
+// It also says who the customer has asked for again (ADR-0135 §2).
+const EVENT_LINEUP_COLUMNS = `${LINEUP_COLUMNS}, arrival_status, arrived_at, worker_requested`;
 
 /**
  * `PortalEvent` plus the moment a cancelled event was cancelled, for
@@ -160,6 +165,14 @@ function toLineup(r: Row): LineupRecord {
     feedbackGiven: r.feedback_given === true,
     feedbackRating: typeof r.feedback_rating === 'number' ? r.feedback_rating : null,
     feedbackSentAt: r.feedback_sent_at ?? null,
+    // Only when the read asked for them (the event page, ADR-0135 §1).
+    ...('arrival_status' in r
+      ? {
+          arrivalStatus: isArrivalStatus(r.arrival_status) ? r.arrival_status : null,
+          arrivedAt: typeof r.arrived_at === 'string' ? r.arrived_at : null,
+        }
+      : {}),
+    ...('worker_requested' in r ? { workerRequested: r.worker_requested === true } : {}),
   };
 }
 
@@ -478,7 +491,7 @@ export async function loadEventDetails(id: string): Promise<EventDetailsData> {
       .order('shift_id', { ascending: true }),
     supabase
       .from('client_lineup_v')
-      .select(LINEUP_COLUMNS)
+      .select(EVENT_LINEUP_COLUMNS)
       .eq('event_id', id)
       .order('sort_key', { ascending: true })
       .order('booking_id', { ascending: true }),
@@ -614,4 +627,68 @@ export async function loadFeedbackHistory(): Promise<FeedbackHistoryData> {
   });
 
   return { entries, truncated, problem: null };
+}
+
+/** One open "Request again" (ADR-0135 §2): the customer's own message to THC. */
+export interface OpenRequest {
+  id: string;
+  eventId: string | null;
+  eventTitle: string | null;
+  eventStartsAt: string | null;
+  /** The worker's name, or "Deleted account #id" (§1.7). */
+  name: string;
+  role: string | null;
+  /** The customer's own note; null without one, or once the worker is removed. */
+  note: string | null;
+  requestedAt: string;
+}
+
+/** Open requests one read keeps; the ceiling is 20 a day, so this is generous. */
+export const REQUESTS_LIMIT = 200;
+
+/**
+ * The customer's open "Request again" messages (`client_worker_requests_v`,
+ * ADR-0135 §2), newest first, each with its event's name and date from
+ * `client_events_v`. An aid on the feedback page, not the page: a failed
+ * read is logged and shows nothing.
+ */
+export async function loadOpenRequests(): Promise<OpenRequest[]> {
+  if (!supabaseConfigured()) return [];
+  const supabase = createClient(await cookies()) as any;
+  const requests = await supabase
+    .from('client_worker_requests_v')
+    .select('id, booking_id, event_id, name, role, note, requested_at')
+    .order('requested_at', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(REQUESTS_LIMIT);
+  if (requests.error) {
+    logFailure('open requests', requests.error);
+    return [];
+  }
+  const rows: Row[] = requests.data ?? [];
+  const ids = [...new Set(rows.map((r) => r.event_id).filter((id): id is string => isUuid(id)))];
+  const events = await readForEvents(ids, (chunk, from, to) =>
+    supabase
+      .from('client_events_v')
+      .select('id, title, starts_at')
+      .in('id', chunk)
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+  if (events.error) logFailure('open requests', events.error);
+  const byId = new Map(events.rows.map((e) => [e.id as string, e]));
+  return rows.map((r) => {
+    const event = r.event_id ? byId.get(r.event_id) : undefined;
+    const note = typeof r.note === 'string' ? r.note.trim() : '';
+    return {
+      id: r.id,
+      eventId: event ? (r.event_id as string) : null,
+      eventTitle: event?.title ?? null,
+      eventStartsAt: event?.starts_at ?? null,
+      name: r.name,
+      role: r.role ?? null,
+      note: note === '' ? null : note,
+      requestedAt: r.requested_at,
+    };
+  });
 }

@@ -13,6 +13,8 @@ import { OFFICE_EMAIL } from '../../account/copy';
 import { recipientsLine, telHref } from '../../contact';
 import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
+  REQUEST_COPY,
+  arrivalState,
   arrivalsWithinHeadcount,
   documentPendingLine,
   eventEnded,
@@ -24,6 +26,7 @@ import {
   headerDocuments,
   isRemoved,
   momentIn,
+  requestOffered,
   roleCountOf,
   sectionCountLabel,
   sectionTone,
@@ -35,6 +38,7 @@ import { CalendarButton } from './CalendarButton';
 import { FeedbackModal } from './FeedbackModal';
 import { PrintButton } from './PrintButton';
 import { RateEveryone } from './RateEveryone';
+import { RequestModal } from './RequestModal';
 import { RATE_ALL_FROM, stillToRate } from './rate-all';
 
 /**
@@ -94,6 +98,12 @@ export function EventScreen({
   // row's own "✓ Feedback sent", not <body>.
   const [focusAfter, setFocusAfter] = useState<string | null>(null);
   const rowButtons = useRef(new Map<string, HTMLButtonElement | null>());
+  // ADR-0135 §2: "Request again" — the row being asked about, and the
+  // bookings asked about from this page and not yet re-read.
+  const [requesting, setRequesting] = useState<LineupRow | null>(null);
+  const [requestedHere, setRequestedHere] = useState<ReadonlySet<string>>(() => new Set());
+  const requestButtons = useRef(new Map<string, HTMLButtonElement | null>());
+  const [focusRequest, setFocusRequest] = useState<string | null>(null);
 
   useEffect(() => {
     if (!focusAfter || rating) return;
@@ -105,6 +115,17 @@ export function EventScreen({
   }, [focusAfter, rating, lineup]);
 
   const at = useMemo(() => new Date(now), [now]);
+
+  useEffect(() => {
+    if (!focusRequest || requesting) return;
+    const target = requestButtons.current.get(focusRequest);
+    if (target && target.isConnected) {
+      target.focus();
+      setFocusRequest(null);
+    }
+  }, [focusRequest, requesting, lineup]);
+  // Who has arrived is an actual stamp: the viewer's own clock (§1.8).
+  const zone = useViewerZone();
   const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
   // Two sections of one role are two panels but still one role; counted
   // from the sections the customer booked, so "0 of 6" still says "2 roles".
@@ -128,6 +149,8 @@ export function EventScreen({
   );
   const timesheet = completed ? documents.find((d) => d.kind === 'signout') : undefined;
   const call = telHref(thcPhone);
+  // ADR-0135 §2: once the event has finished, never when cancelled.
+  const offerRequest = requestOffered(event, at);
   // "Rate everyone" (ADR-0134 P4): once feedback is open, for two or more
   // still to rate on the visible line-up.
   const toRate = open && !cancelled ? stillToRate(lineup, sentHere) : [];
@@ -360,6 +383,8 @@ export function EventScreen({
                     const removed = isRemoved(p);
                     const given = p.feedbackGiven || sentHere.has(p.bookingId);
                     const sent = p.feedbackGiven ? sentLine(p) : null;
+                    // On the day only (ADR-0135 §1): the door's own facts.
+                    const arrival = cancelled ? null : arrivalState(p, group.startsAt, at, zone);
                     const keep = (el: HTMLButtonElement | null) => {
                       rowButtons.current.set(p.bookingId, el);
                     };
@@ -383,42 +408,85 @@ export function EventScreen({
                               </>
                             ) : null}
                           </div>
+                          {arrival ? (
+                            // Words first; the dot only decorates, so the
+                            // state is never told by colour alone.
+                            <div className={`arr arr-${arrival.kind}`} title={arrival.title}>
+                              <span className="arr-dot" aria-hidden="true" />
+                              <span aria-hidden="true">{arrival.text}</span>
+                              <span className="arr-sr">{arrival.label}</span>
+                            </div>
+                          ) : null}
                         </div>
-                        {given ? (
-                          // aria-disabled, not disabled: a status that can
-                          // still hold focus, so focus lands here after a
-                          // send instead of dropping to the page (WCAG 2.4.3).
-                          <button
-                            ref={keep}
-                            type="button"
-                            className="btn sm fb sent"
-                            aria-disabled="true"
-                            aria-label={`Feedback sent for ${p.name}`}
-                            title="Your feedback is read-only once sent"
-                          >
-                            ✓ Feedback sent
-                          </button>
-                        ) : (
-                          // Named per worker: twelve buttons all called
-                          // "Leave feedback" told a screen reader nothing.
-                          <button
-                            ref={keep}
-                            type="button"
-                            className={removed ? 'btn sm fb gone' : 'btn sm fb'}
-                            disabled={!open || removed}
-                            aria-label={`Leave feedback for ${p.name}`}
-                            title={
-                              removed
-                                ? 'This account has been removed'
-                                : open
-                                  ? undefined
-                                  : 'Feedback opens once the event has started'
-                            }
-                            onClick={() => setRating(p)}
-                          >
-                            Leave feedback
-                          </button>
-                        )}
+                        {/* "Request again" joins "Leave feedback" once the
+                            event has finished (ADR-0135 §2); without it the
+                            wrapper is display: contents, so the row is as
+                            before. */}
+                        <div className={offerRequest && !removed ? 'wacts two' : 'wacts'}>
+                          {given ? (
+                            // aria-disabled, not disabled: a status that can
+                            // still hold focus, so focus lands here after a
+                            // send instead of dropping to the page (WCAG 2.4.3).
+                            <button
+                              ref={keep}
+                              type="button"
+                              className="btn sm fb sent"
+                              aria-disabled="true"
+                              aria-label={`Feedback sent for ${p.name}`}
+                              title="Your feedback is read-only once sent"
+                            >
+                              ✓ Feedback sent
+                            </button>
+                          ) : (
+                            // Named per worker: twelve buttons all called
+                            // "Leave feedback" told a screen reader nothing.
+                            <button
+                              ref={keep}
+                              type="button"
+                              className={removed ? 'btn sm fb gone' : 'btn sm fb'}
+                              disabled={!open || removed}
+                              aria-label={`Leave feedback for ${p.name}`}
+                              title={
+                                removed
+                                  ? 'This account has been removed'
+                                  : open
+                                    ? undefined
+                                    : 'Feedback opens once the event has started'
+                              }
+                              onClick={() => setRating(p)}
+                            >
+                              Leave feedback
+                            </button>
+                          )}
+                          {offerRequest && !removed ? (
+                            p.workerRequested || requestedHere.has(p.bookingId) ? (
+                              <button
+                                ref={(el) => {
+                                  requestButtons.current.set(p.bookingId, el);
+                                }}
+                                type="button"
+                                className="btn sm req sent"
+                                aria-disabled="true"
+                                aria-label={`Requested again: ${p.name}. THC has your request.`}
+                                title="THC has your request"
+                              >
+                                {REQUEST_COPY.done}
+                              </button>
+                            ) : (
+                              <button
+                                ref={(el) => {
+                                  requestButtons.current.set(p.bookingId, el);
+                                }}
+                                type="button"
+                                className="btn sm req"
+                                aria-label={`Request ${p.name} again`}
+                                onClick={() => setRequesting(p)}
+                              >
+                                {REQUEST_COPY.button}
+                              </button>
+                            )
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}
@@ -426,6 +494,26 @@ export function EventScreen({
               )}
             </Panel>
           ))}
+
+      {requesting ? (
+        <RequestModal
+          eventId={event.id}
+          bookingId={requesting.bookingId}
+          personName={requesting.name}
+          photo={photos[requesting.bookingId]}
+          role={requesting.role}
+          eventTitle={event.title}
+          eventDate={ukDateShort(event.startsAt)}
+          onClose={() => {
+            setFocusRequest(requesting.bookingId);
+            setRequesting(null);
+          }}
+          onSent={() => {
+            const id = requesting.bookingId;
+            setRequestedHere((prev) => new Set(prev).add(id));
+          }}
+        />
+      ) : null}
 
       {rating ? (
         <FeedbackModal

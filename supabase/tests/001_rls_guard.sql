@@ -97,8 +97,9 @@ select bag_eq(
             ('new_starter_reported'),
             ('client_quizzes'),('client_quiz_slides'),('client_quiz_questions'),
             ('client_quiz_attempts'),('client_role_requirements'),('booking_kit_acknowledgements'),
-            ('client_quiz_draws') $$,
-  'RLS is enabled on all 60 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000)'
+            ('client_quiz_draws'),
+            ('client_worker_requests') $$,
+  'RLS is enabled on all 61 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100)'
 );
 
 -- ---------------------------------------------------------------------
@@ -186,7 +187,8 @@ select bag_eq(
             ('new_starter_reported'),
             ('client_quizzes'),('client_quiz_slides'),('client_quiz_questions'),
             ('client_quiz_attempts'),('client_role_requirements'),('booking_kit_acknowledgements'),
-            ('client_quiz_draws') $$,
+            ('client_quiz_draws'),
+            ('client_worker_requests') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -466,12 +468,12 @@ select bag_eq(
                            and d.deptype = 'e') $$,
   $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
             ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
-            ('client_portal_contact_v'),
+            ('client_portal_contact_v'), ('client_worker_requests_v'),
             ('client_role_sections_v'), ('event_windows'), ('feedback_authors_v'),
             ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'the owner-rights views in public are exactly these eighteen (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134); a new one is a reviewed addition'
+  'the owner-rights views in public are exactly these nineteen (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text
@@ -486,11 +488,11 @@ select bag_eq(
                            and d.deptype = 'e') $$,
   $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
             ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
-            ('client_portal_contact_v'),
+            ('client_portal_contact_v'), ('client_worker_requests_v'),
             ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'fifteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
+  'sixteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();

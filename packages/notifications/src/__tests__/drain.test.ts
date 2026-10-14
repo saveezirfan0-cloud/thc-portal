@@ -667,3 +667,94 @@ describe('document email signatures follow the sender setting', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// ADR-0135 §3: the customer's line-up emails link to the Client Portal
+// ---------------------------------------------------------------------------
+
+describe('CP2 / CP3 portal link (ADR-0135 §3)', () => {
+  const EVENT = '60000000-0000-4000-8000-000000000001';
+  const lineup = (over: Partial<OutboxRow> = {}): OutboxRow => ({
+    id: 9,
+    key: `CP2:event:${EVENT}`,
+    channel: 'email',
+    template: 'CP2',
+    recipient_staff_id: null,
+    recipient_emails: ['events@client.example'],
+    payload: {
+      eventId: EVENT,
+      event: 'Autumn Gala',
+      date: 'Fri 18 Oct 2026',
+      time: '17:00–23:30',
+      venue: 'Leonardo Royal Hotel',
+      sections: 'Waiting Staff · 17:00–23:30 · 4 of 4 confirmed',
+    },
+    attempts: 1,
+    ...over,
+  });
+  const WITH_PORTAL: DrainConfig = {
+    ...CONFIGURED,
+    clientPortalUrl: 'https://clients.thc.example',
+  };
+
+  it('reads CLIENT_PORTAL_URL as an origin, and nothing else as one', () => {
+    const env = (value: string | undefined) => (n: string) =>
+      n === 'CLIENT_PORTAL_URL' ? value : undefined;
+    expect(readDrainConfig(env('https://clients.thc.example/x?y=1')).clientPortalUrl).toBe(
+      'https://clients.thc.example',
+    );
+    expect(readDrainConfig(env('javascript:alert(1)')).clientPortalUrl).toBeNull();
+    expect(readDrainConfig(env('https://user:pw@evil.example')).clientPortalUrl).toBeNull();
+    expect(readDrainConfig(env(undefined)).clientPortalUrl).toBeNull();
+    // Only the customer emails need it: it is not one of the held channels.
+    expect(readDrainConfig(env(undefined)).missing).not.toContain('CLIENT_PORTAL_URL');
+  });
+
+  it('sends to the row’s recipients with a button to the event’s portal page', async () => {
+    const { p, sent } = ports({});
+    const s = await drainRow(lineup(), WITH_PORTAL, null, p);
+    expect(s).toMatchObject({ verdict: 'sent' });
+    const body = JSON.parse(sent[0]!.body as string);
+    expect(body.to).toEqual(['events@client.example']);
+    expect(body.subject).toBe('Your line-up is fully confirmed — Autumn Gala · Fri 18 Oct 2026');
+    expect(body.text).toContain(`https://clients.thc.example/client/events/${EVENT}`);
+    expect(body.html).toContain(`href="https://clients.thc.example/client/events/${EVENT}"`);
+    expect(body.html).toContain('>See who is coming</a>');
+  });
+
+  it('never uses a link carried in the payload', async () => {
+    const { p, sent } = ports({});
+    const row = lineup({
+      template: 'CP3',
+      key: `CP3:event:${EVENT}:1`,
+      payload: { ...lineup().payload, link: 'https://evil.example/phish' },
+    });
+    await drainRow(row, WITH_PORTAL, null, p);
+    const body = JSON.parse(sent[0]!.body as string);
+    expect(body.html).not.toContain('evil.example');
+    expect(body.text).not.toContain('evil.example');
+  });
+
+  it('holds the row, without spending an attempt, while CLIENT_PORTAL_URL is unset', async () => {
+    const { p, sent } = ports({});
+    const s = await drainRow(lineup(), CONFIGURED, null, p);
+    expect(s).toEqual({
+      id: 9,
+      key: `CP2:event:${EVENT}`,
+      verdict: 'unconfigured',
+      error: NOT_CONFIGURED.portal,
+    });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('fails a row whose event id is not one', async () => {
+    const { p } = ports({});
+    const s = await drainRow(
+      lineup({ payload: { ...lineup().payload, eventId: '../x' } }),
+      WITH_PORTAL,
+      null,
+      p,
+    );
+    expect(s).toMatchObject({ verdict: 'failed' });
+  });
+});

@@ -48,6 +48,8 @@ export const OFFICE_INBOX = [
   { code: 'OF5', label: 'Cover requested' },
   // ADR-0110: a worker used every attempt at a client's quiz.
   { code: 'CR3', label: 'Client quiz not passed' },
+  // ADR-0135 §2: a customer asked for a worker again from the Client Portal.
+  { code: 'CP1', label: 'Client asked for a worker again' },
 ] as const;
 
 export type OfficeInboxCode = (typeof OFFICE_INBOX)[number]['code'];

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
-import { HISTORY_LIMIT, loadFeedbackHistory } from '../data';
-import type { FeedbackEntry } from '../data';
+import { HISTORY_LIMIT, loadFeedbackHistory, loadOpenRequests } from '../data';
+import type { FeedbackEntry, OpenRequest } from '../data';
 import { ukDateShort } from '../format';
 import { isRemoved } from '../rules';
 
@@ -15,13 +15,21 @@ import { isRemoved } from '../rules';
  *
  * A server component: nothing here is interactive, and the comments are
  * rendered into the page rather than shipped as props.
+ *
+ * Above the entries, "People you've asked for again" (ADR-0135 §2): the
+ * customer's OPEN "Request again" messages to THC, from
+ * `client_worker_requests_v`. Shown only when there is one; a request the
+ * office has marked handled leaves the list.
  */
 export const metadata = { title: 'Feedback you’ve given · THC Client Portal' };
 
 export const dynamic = 'force-dynamic';
 
 export default async function FeedbackHistoryPage() {
-  const { entries, truncated, problem } = await loadFeedbackHistory();
+  const [{ entries, truncated, problem }, requests] = await Promise.all([
+    loadFeedbackHistory(),
+    loadOpenRequests(),
+  ]);
 
   return (
     <>
@@ -37,6 +45,8 @@ export default async function FeedbackHistoryPage() {
           </div>
         </div>
       </div>
+
+      {requests.length > 0 ? <OpenRequests requests={requests} /> : null}
 
       {problem ? (
         <Alert tone="amber">{problem}</Alert>
@@ -147,4 +157,51 @@ function Comment({ entry }: { entry: FeedbackEntry }) {
   // hand); the stars still stand.
   if (isRemoved(entry)) return <span className="muted">Comment not shown — account removed</span>;
   return <span className="muted">No comment</span>;
+}
+
+/**
+ * "People you've asked for again" (ADR-0135 §2): each open request — the
+ * person, the event it was asked from, when, and the customer's own note.
+ * A list rather than a table: it is short, and reads the same on a phone.
+ */
+function OpenRequests({ requests }: { requests: OpenRequest[] }) {
+  return (
+    <Panel
+      className="req-panel"
+      title="People you’ve asked for again"
+      actions={
+        <Pill tone="cyan">{requests.length === 1 ? '1 open' : `${requests.length} open`}</Pill>
+      }
+    >
+      <p className="sm muted req-panel-help">
+        THC has these requests. They are not bookings: THC offers the person your future events
+        where they are free, and the request leaves this list once THC has handled it.
+      </p>
+      <ul className="req-list">
+        {requests.map((r) => (
+          <li key={r.id} className="req-item">
+            <div>
+              <b className={isRemoved(r) ? 'muted' : undefined}>{r.name}</b>
+              {r.role ? <span className="muted"> · {r.role}</span> : null}
+            </div>
+            <div className="sm">
+              {r.eventId && r.eventTitle ? (
+                <>
+                  From <Link href={`/client/events/${r.eventId}`}>{r.eventTitle}</Link>
+                  {r.eventStartsAt ? ` · ${ukDateShort(r.eventStartsAt)}` : ''}
+                  {' · '}
+                </>
+              ) : null}
+              <span className="muted">requested {ukDateShort(r.requestedAt)}</span>
+            </div>
+            {r.note ? (
+              <div className="sm req-note">
+                <q>{r.note}</q>
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
 }

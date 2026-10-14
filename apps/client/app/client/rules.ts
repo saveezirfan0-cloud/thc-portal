@@ -78,6 +78,150 @@ export interface LineupRow {
   feedbackRating?: number | null;
   /** When the customer's feedback was sent (ISO); null before. */
   feedbackSentAt?: string | null;
+  /**
+   * On the day only (ADR-0135 §1): `client_lineup_v.arrival_status`, set by
+   * the database for a seated row while the event is live and not
+   * cancelled, null before, after and otherwise. Read on the event page
+   * only; the list keeps counts.
+   */
+  arrivalStatus?: ArrivalStatus | null;
+  /** The first check-in of an arrived row (ISO), shown viewer-local (§1.8). */
+  arrivedAt?: string | null;
+  /**
+   * The customer has an open "Request again" for this worker (ADR-0135 §2),
+   * from this event or another; the row reads "✓ Requested".
+   */
+  workerRequested?: boolean;
+}
+
+/** The longest note a "Request again" carries to THC (client_request_worker). */
+export const REQUEST_NOTE_MAX = 500;
+
+/**
+ * "Request again" copy (ADR-0135 §2). A message to THC, never a booking:
+ * the words say so wherever the button is.
+ */
+export const REQUEST_COPY = {
+  button: 'Request again',
+  done: '✓ Requested',
+  hint: `Optional · up to ${REQUEST_NOTE_MAX} characters · seen by The Hospitality Company office, not by the worker.`,
+  explain:
+    'This asks THC to offer them your future events where they are free. It does not book anyone, and nothing changes on this event.',
+  sent: 'Sent to THC. They will see it when they plan your next events.',
+  already: 'Already requested — THC has it.',
+  tooLong: `Keep the note to ${REQUEST_NOTE_MAX} characters or fewer.`,
+  failed: 'Your request could not be sent. Check your connection and try again.',
+  notVisible:
+    'That person is not on this event’s line-up any more, so they cannot be requested from here.',
+  notYet: 'You can ask for someone again once the event has finished.',
+  removed: 'This person is no longer on our books, so they cannot be requested.',
+  limit:
+    'You have sent a lot of requests today. Try again tomorrow, or email the office if it is urgent.',
+  signedOut: 'You’ve been signed out — sign in again to send this request.',
+} as const;
+
+/**
+ * Whether a note is over the limit, counted as the database counts it
+ * (`char_length`, one per character, so an emoji is one) after trimming.
+ */
+export function requestNoteTooLong(note: string): boolean {
+  return [...note.trim()].length > REQUEST_NOTE_MAX;
+}
+
+/**
+ * Whether "Request again" is offered on an event: once it has finished, by
+ * the clock as well as the view's status, and never when cancelled. The
+ * database decides again (client_request_worker), so this only spares the
+ * customer a refusal.
+ */
+export function requestOffered(event: Pick<PortalEvent, 'status' | 'endsAt'>, now: Date): boolean {
+  if (event.status === 'cancelled') return false;
+  return eventEnded(event, now);
+}
+
+/** The database's refusal of a request, in the customer's words; never the raw text. */
+export function requestErrorMessage(error: {
+  code?: string | null;
+  message?: string | null;
+}): string {
+  const message = (error.message ?? '').toLowerCase();
+  if (message.includes('request_note_too_long')) return REQUEST_COPY.tooLong;
+  if (message.includes('request_after_event')) return REQUEST_COPY.notYet;
+  if (message.includes('worker_removed')) return REQUEST_COPY.removed;
+  if (message.includes('request_limit_reached')) return REQUEST_COPY.limit;
+  if (error.code === '42501') return REQUEST_COPY.notVisible;
+  return REQUEST_COPY.failed;
+}
+
+/** `client_lineup_v.arrival_status` (ADR-0135 §1). */
+export type ArrivalStatus = 'arrived' | 'expected' | 'not_arrived';
+
+export function isArrivalStatus(value: unknown): value is ArrivalStatus {
+  return value === 'arrived' || value === 'expected' || value === 'not_arrived';
+}
+
+/** One person's line on the day: words first, the dot only decorates. */
+export interface ArrivalState {
+  kind: 'arrived' | 'waiting' | 'missing';
+  /** What the row says: "Arrived 08:52", "Not here yet", "Not arrived". */
+  text: string;
+  /** The same for a screen reader, with the person's name. */
+  label: string;
+  /** A hover note: what the state means, never the office's own words. */
+  title?: string;
+}
+
+/**
+ * Copy for the named arrivals (ADR-0135 §1). Never "Late", never "No-show",
+ * never anything about where the worker is: the door's own facts only.
+ */
+export const ARRIVAL_COPY = {
+  arrived: 'Arrived',
+  waiting: 'Not here yet',
+  missing: 'Not arrived',
+  // §9.5: 30 minutes after the start the office's board already shows the
+  // worker as missing; the customer is told who to call, not what THC records.
+  missingTitle:
+    'Not checked in 30 minutes after the start. THC can see this too — call THC if you need to talk about cover.',
+} as const;
+
+/**
+ * "Arrived 08:52" / "Not here yet" / "Not arrived" for one row of the
+ * line-up, or null when there is nothing to say: no state from the view
+ * (before or after the event, cancelled, a rated face past the headcount),
+ * or a person still expected whose role section has not started yet
+ * (RULE-18, as the per-role pill hides itself). The check-in time is an
+ * actual stamp, so it is written in the viewer's own zone and nothing else
+ * (§1.8); `zone` is the viewer's, UK until the page has mounted.
+ */
+export function arrivalState(
+  row: Pick<LineupRow, 'name' | 'arrivalStatus' | 'arrivedAt'>,
+  sectionStartsAt: string,
+  now: Date,
+  zone: string,
+): ArrivalState | null {
+  const status = row.arrivalStatus;
+  if (!status) return null;
+  if (status === 'arrived') {
+    const at = row.arrivedAt ? new Date(row.arrivedAt) : null;
+    const time = at && Number.isFinite(at.getTime()) ? formatTimeIn(at, zone) : null;
+    return {
+      kind: 'arrived',
+      text: time ? `${ARRIVAL_COPY.arrived} ${time}` : ARRIVAL_COPY.arrived,
+      label: time ? `${row.name}: arrived at ${time}` : `${row.name}: arrived`,
+    };
+  }
+  if (status === 'not_arrived') {
+    return {
+      kind: 'missing',
+      text: ARRIVAL_COPY.missing,
+      label: `${row.name}: not arrived`,
+      title: ARRIVAL_COPY.missingTitle,
+    };
+  }
+  const start = Date.parse(sectionStartsAt);
+  if (Number.isFinite(start) && now.getTime() < start) return null;
+  return { kind: 'waiting', text: ARRIVAL_COPY.waiting, label: `${row.name}: not here yet` };
 }
 
 /** Faces drawn per row of the event list (§11.1); the rest are a "+N" chip. */

@@ -13,6 +13,7 @@ import type {
   RoleOption,
   ShiftRequirementRow,
   StaffOption,
+  WorkerRequestRow,
 } from './types';
 
 /**
@@ -35,11 +36,13 @@ const NOT_CONFIGURED =
 const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
   nameBadges: false,
+  lineupEmails: { confirmed: true, changed: true },
   rateCard: [],
   dressCodeLibrary: [],
   qualified: [],
   requirements: [],
   quizResults: [],
+  workerRequests: [],
   events: [],
   roles: [],
   staff: [],
@@ -62,6 +65,17 @@ interface RequirementsClient {
     select(columns: '*'): RequirementQuery<ShiftRequirementRow>;
   };
   from(view: 'clients_quiz_results_v'): { select(columns: '*'): RequirementQuery<QuizResultRow> };
+  from(view: 'clients_worker_requests_v'): { select(columns: '*'): RequestQuery };
+}
+
+/** ADR-0135 §2: open first, newest first, at most 50 (832 holds the view's columns). */
+interface RequestQuery extends PromiseLike<{
+  data: WorkerRequestRow[] | null;
+  error: { message: string } | null;
+}> {
+  eq(column: string, value: string): RequestQuery;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): RequestQuery;
+  limit(count: number): RequestQuery;
 }
 
 const CLIENT_COLUMNS =
@@ -124,14 +138,20 @@ export async function loadClientCard(
     staff,
     requirements,
     quizResults,
+    workerRequests,
   ] = await Promise.all([
     supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
     // ADR-0081: one switch, read from the table rather than restating the view.
+    // ADR-0135 §3: and the two line-up email switches beside it.
     supabase
       .from('clients')
-      .select('name_badges')
+      .select('name_badges, lineup_confirmed_emails, lineup_changed_emails')
       .eq('id', id)
-      .maybeSingle<{ name_badges: boolean | null }>(),
+      .maybeSingle<{
+        name_badges: boolean | null;
+        lineup_confirmed_emails: boolean | null;
+        lineup_changed_emails: boolean | null;
+      }>(),
     ratesVisible
       ? supabase
           .from('clients_rate_card_v')
@@ -181,6 +201,14 @@ export async function loadClientCard(
       .select('*')
       .eq('client_id', id)
       .order('display_name'),
+    // ADR-0135 §2: the Client Portal's "Request again" messages.
+    requirementsDb
+      .from('clients_worker_requests_v')
+      .select('*')
+      .eq('client_id', id)
+      .order('handled_at', { ascending: false, nullsFirst: true })
+      .order('created_at', { ascending: false })
+      .limit(50),
   ]);
 
   const error =
@@ -194,7 +222,8 @@ export async function loadClientCard(
     payRates.error ??
     staff.error ??
     requirements.error ??
-    quizResults.error;
+    quizResults.error ??
+    workerRequests.error;
   if (error) return { ...EMPTY, problem: error.message };
 
   const payOf = new Map(
@@ -212,6 +241,10 @@ export async function loadClientCard(
   return {
     client: client.data ?? null,
     nameBadges: badges.data?.name_badges === true,
+    lineupEmails: {
+      confirmed: badges.data?.lineup_confirmed_emails !== false,
+      changed: badges.data?.lineup_changed_emails !== false,
+    },
     rateCard: rateCard.data ?? [],
     dressCodeLibrary: dressCodeLibrary(
       (library.data ?? []).map((card: { dress_codes: string[] | null }) => card.dress_codes),
@@ -220,6 +253,7 @@ export async function loadClientCard(
     qualified: await withPhotoUrls(qualified.data ?? []),
     requirements: requirements.data ?? [],
     quizResults: quizResults.data ?? [],
+    workerRequests: workerRequests.data ?? [],
     events: events.data ?? [],
     roles: roleOptions,
     staff: staff.data ?? [],

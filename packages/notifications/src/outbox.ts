@@ -14,7 +14,7 @@ import { isHttpUrl } from './email-html.ts';
 import { templateEmailHtml } from './email-layouts.ts';
 import { DEFAULT_SENDER_ADDRESSES } from './senders.ts';
 import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
-import { TEMPLATES, body, render, title } from './templates.ts';
+import { PORTAL_LINK_CODES, TEMPLATES, body, render, title } from './templates.ts';
 
 /** A claimed row, as `claim_outbox_batch` returns it. */
 export interface OutboxRow {
@@ -62,6 +62,44 @@ export interface EmailMessage {
  */
 export interface RenderOptions {
   replyTo?: string;
+  /**
+   * The Client Portal's origin (CLIENT_PORTAL_URL), for the codes whose
+   * `{link}` is the event's portal page (PORTAL_LINK_CODES, ADR-0135 §3).
+   * Absent, their `{link}` stays unfilled; the drain holds such a row as
+   * unconfigured rather than sending it.
+   */
+  clientPortalUrl?: string;
+}
+
+/** An event id, as client_lineup_notices() writes it. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Whether the code's `{link}` is the Client Portal's event page (ADR-0135 §3). */
+export function needsPortalLink(code: string): boolean {
+  return (PORTAL_LINK_CODES as readonly string[]).includes(code);
+}
+
+/**
+ * The origin from CLIENT_PORTAL_URL, or null when it is missing or not an
+ * http(s) origin. A path or query on it is dropped: the link is always
+ * `<origin>/client/events/<id>`.
+ */
+export function portalOrigin(value: string | null | undefined): string | null {
+  const raw = (value ?? '').trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    if (url.username || url.password) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+/** `<origin>/client/events/<id>` — the page the email points at. */
+export function portalLink(origin: string, eventId: string): string {
+  return `${origin}/client/events/${eventId}`;
 }
 
 export type OutboxMessage = PushMessage | EmailMessage;
@@ -119,7 +157,19 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
     );
   }
 
-  const values = row.payload ?? {};
+  let values: Record<string, string> = row.payload ?? {};
+
+  // ADR-0135 §3: the customer's link is built here, never taken from the
+  // row — an event id the database wrote, under the configured origin.
+  if (needsPortalLink(row.template)) {
+    const eventId = values.eventId ?? '';
+    if (!UUID.test(eventId)) {
+      throw new UnsendableRow(`${row.template} needs the event's id in its payload`);
+    }
+    const origin = portalOrigin(options.clientPortalUrl);
+    const { link: _ignored, ...rest } = values;
+    values = origin ? { ...rest, link: portalLink(origin, eventId) } : rest;
+  }
 
   // A code with variants (N9, N14, CL2, the OC chasers) has no single
   // body: the row names the half — or the rung — in `variant`.

@@ -14,13 +14,20 @@ import { ACCOUNT_COPY } from './copy';
  *
  *   · the name from their own `profiles` row (profiles_self);
  *   · the sign-in email from auth.getUser();
- *   · the company and the document recipients from `client_account_v`,
+ *   · the company, the document recipients and which line-up emails are
+ *     on (ADR-0135 §3) from `client_account_v`,
  *     NOT from `clients` — the client role holds no policy on that table
  *     and must not be given one (ADR-0004, ADR-0026). The view returns the
  *     caller's own row only; there is deliberately no `where` here, so the
  *     tenancy rule lives in the database and nowhere this file could drop.
  */
-const EMPTY: AccountDetails = { name: null, email: null, company: null, recipients: [] };
+const EMPTY: AccountDetails = {
+  name: null,
+  email: null,
+  company: null,
+  recipients: [],
+  lineupEmails: null,
+};
 
 export async function loadAccount(): Promise<{ account: AccountDetails; problem: string | null }> {
   if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
@@ -35,7 +42,10 @@ export async function loadAccount(): Promise<{ account: AccountDetails; problem:
 
   const [profile, company] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-    supabase.from('client_account_v').select('name, contact_emails').maybeSingle(),
+    supabase
+      .from('client_account_v')
+      .select('name, contact_emails, lineup_confirmed_emails, lineup_changed_emails')
+      .maybeSingle(),
   ]);
 
   const failed = Boolean(profile.error || company.error);
@@ -55,6 +65,13 @@ export async function loadAccount(): Promise<{ account: AccountDetails; problem:
       recipients: Array.isArray(recipients)
         ? recipients.filter((r): r is string => typeof r === 'string')
         : [],
+      // ADR-0135 §3: which line-up emails this company receives.
+      lineupEmails: company.data
+        ? {
+            confirmed: company.data.lineup_confirmed_emails !== false,
+            changed: company.data.lineup_changed_emails !== false,
+          }
+        : null,
     },
     problem: failed ? ACCOUNT_COPY.loadFailed : null,
   };

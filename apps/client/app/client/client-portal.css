@@ -726,6 +726,93 @@ a.btn[aria-busy='true']:hover {
   padding-inline: var(--sp-12);
 }
 
+/* ADR-0135 §1 · "Arrived 08:52" / "Not here yet" / "Not arrived" under a
+   name, on the day only. The words carry the state; the dot repeats it. */
+.wrow .arr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  margin-top: var(--sp-4);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+
+.wrow .arr-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.wrow .arr-arrived {
+  color: var(--green-ink);
+}
+
+.wrow .arr-waiting {
+  color: var(--muted);
+}
+
+/* Hollow, so it differs from "arrived" in shape as well as colour. */
+.wrow .arr-waiting .arr-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.wrow .arr-missing {
+  color: var(--amber-ink);
+}
+
+.wrow .arr-missing .arr-dot {
+  border-radius: 2px;
+}
+
+/* The sentence a screen reader hears, with the person's name. */
+.wrow .arr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ADR-0135 §2 · "Leave feedback" and "Request again" stacked on a finished
+   event's row; on any other row the wrapper is not a box at all. */
+.wrow .wacts {
+  display: contents;
+}
+
+.wrow .wacts.two {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-6);
+}
+
+.wrow .req {
+  flex: none;
+  white-space: nowrap;
+  min-width: max-content;
+  padding-inline: var(--sp-12);
+}
+
+.wrow .req.sent {
+  color: var(--green-ink);
+  cursor: default;
+}
+
+.req-explain {
+  margin: 0;
+  color: var(--muted);
+}
+
+.req-done:focus {
+  outline: none;
+}
+
 /* A removed worker's "Leave feedback" (§1.7): nobody left to rate, so the
    whole control greys, ink and edge, as the wireframe's disabled button. */
 .wrow .fb.gone {
@@ -1308,6 +1395,7 @@ a.btn[aria-busy='true']:hover {
 
   .cwrap .btn.sm,
   .wrow .btn.fb,
+  .wrow .btn.req,
   .wrow .btn.fb.sent[aria-disabled] {
     height: var(--tap-min);
   }
@@ -1678,6 +1766,8 @@ a.btn[aria-busy='true']:hover {
   .ehead .sep,
   .rate-all-row,
   .wrow .fb,
+  .wrow .req,
+  .wrow .arr,
   .modal-back {
     display: none !important;
   }
@@ -1718,4 +1808,38 @@ a.btn[aria-busy='true']:hover {
     color: inherit;
     text-decoration: none;
   }
+}
+
+/* ADR-0135 §2 · "People you've asked for again" on /client/feedback. */
+.req-panel {
+  margin-bottom: var(--sp-16);
+}
+
+.req-panel-help {
+  margin: 0 0 var(--sp-12);
+}
+
+.req-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-12);
+}
+
+.req-item {
+  display: grid;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-12);
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.req-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.req-note {
+  color: var(--text);
 }
