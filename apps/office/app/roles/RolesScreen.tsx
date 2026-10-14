@@ -6,13 +6,15 @@ import { Alert, Button, EmptyState, Note, Panel, Pill, TableScroll } from '@thc/
 import { OfficeShell } from '../_components/OfficeShell';
 import { RoleModal } from './RoleModal';
 import { DeleteRoleModal } from './DeleteRoleModal';
-import { formatAddition, formatPounds, toPence } from './money';
+import { DEFAULT_PAY_FLOOR_PENCE, formatAddition, formatPounds, toPence } from './money';
 import type { Role } from './types';
 import './roles.css';
 
 export interface RolesScreenProps {
   roles: Role[];
   problem: string | null;
+  /** Today's National Living Wage, pence: no base rate below it (ADR-0137). */
+  payFloorPence?: number;
 }
 
 /**
@@ -24,7 +26,11 @@ export interface RolesScreenProps {
  * margin in the system is computed from. None of the three is held here —
  * they come from `role_directory_v`.
  */
-export function RolesScreen({ roles, problem }: RolesScreenProps) {
+export function RolesScreen({
+  roles,
+  problem,
+  payFloorPence = DEFAULT_PAY_FLOOR_PENCE,
+}: RolesScreenProps) {
   const router = useRouter();
   /** `null` = closed, `'new'` = create, a role = edit it. */
   const [editing, setEditing] = useState<Role | 'new' | null>(null);
@@ -119,7 +125,18 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
                       </td>
                       <td className="sm muted desc">{role.description ?? '—'}</td>
                       <td data-label="Staff pay rate" className="money">
-                        {formatPounds(toPence(role.pay_rate))}
+                        {/* Release audit L8: the ✎ in the header promised the
+                            figure opens the edit; now it does, as the client
+                            card's charge rate does. */}
+                        <button
+                          type="button"
+                          className="rate-open"
+                          title="Edit staff pay rate"
+                          aria-label={`Edit staff pay rate for ${role.name}`}
+                          onClick={() => setEditing(role)}
+                        >
+                          {formatPounds(toPence(role.pay_rate))}
+                        </button>
                       </td>
                       <td data-label="Holiday +12.07%" className="money hol">
                         {formatAddition(toPence(role.holiday_rate))}
@@ -172,6 +189,7 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
         <RoleModal
           key={editing === 'new' ? 'new' : editing.id}
           role={editing === 'new' ? null : editing}
+          floorPence={payFloorPence}
           onClose={close}
           onSaved={saved}
         />

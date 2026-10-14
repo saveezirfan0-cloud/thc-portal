@@ -10,8 +10,10 @@ import {
   isEditLocked,
   normaliseLanguages,
   ukRoleWindow,
+  ukToday,
   validateRoleSection,
 } from '@thc/domain';
+import { pastDateIssue } from './draft';
 import { LIVE_BOOKING_STATUSES } from './data';
 import { planReconfirmations, reconfirmOutboxRows } from './reconfirm';
 import { explainDbError } from '../_lib/dbError';
@@ -142,6 +144,9 @@ function sectionRow(eventId: string, date: string, role: RoleSectionInput) {
 }
 
 export async function createEvent(input: EventInput): Promise<SaveResult> {
+  // The builder refuses it too; this is the same line for any other caller.
+  const past = pastDateIssue(input.date, ukToday());
+  if (past) return { error: past };
   const invalid = validate(input);
   if (invalid) return { error: invalid };
   if (!supabaseConfigured()) return { error: NO_SUPABASE };

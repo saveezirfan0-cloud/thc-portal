@@ -36,12 +36,13 @@ async function Counts() {
  * The topbar and chrome paint at once; the queue streams in behind a
  * skeleton. One `OfficeShell`, outside the Suspense (see /dashboard).
  */
-export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function Page() {
   // `?tab=radar` is how the dashboard's "view radar →" (§9.1) lands on the
   // Radar rather than the queue; `?tab=checks` opens the gov.uk check monitor.
-  // Anything else opens the default tab.
-  const { tab } = await searchParams;
-
+  // The screen reads the tab, its search and filters from the URL itself
+  // (release audit L1) and changes them with the History API, never with a
+  // router navigation — so the streamed body below never sits under a
+  // query-only navigation (ADR-0109).
   return (
     <OfficeShell
       activeHref="/compliance"
@@ -73,7 +74,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
           </SkeletonScreen>
         }
       >
-        <ComplianceBody tab={tab === 'radar' || tab === 'checks' ? tab : 'review'} />
+        <ComplianceBody />
       </Suspense>
     </OfficeShell>
   );

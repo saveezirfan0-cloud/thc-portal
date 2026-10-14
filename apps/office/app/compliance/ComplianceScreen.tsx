@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { Alert } from '@thc/ui';
+import { oneOf, useListQuery } from '../_lib/listQuery';
 import { RadarTab } from './RadarTab';
 import { ChecksTab } from './ChecksTab';
 import { ReviewTab } from './ReviewTab';
 import { checkCounts } from './checks';
 import { radarCounts } from './queue';
+import { COMPLIANCE_QUERY, TABS, type ComplianceTab } from './query';
 import type { CompliancePageData } from './types';
 
 /**
@@ -19,15 +20,11 @@ import type { CompliancePageData } from './types';
  * expired · 14 expiring"), not a number, and `Tabs` counts only numbers — the
  * markup and classes are the design system's own (`.tabs`, `.n`, `.alert`).
  */
-export function ComplianceScreen({
-  data,
-  initialTab = 'review',
-}: {
-  data: CompliancePageData;
-  /** `/compliance?tab=radar` — the dashboard's "view radar →" (§9.1). */
-  initialTab?: 'review' | 'radar' | 'checks';
-}) {
-  const [tab, setTab] = useState<'review' | 'radar' | 'checks'>(initialTab);
+export function ComplianceScreen({ data }: { data: CompliancePageData }) {
+  // `/compliance?tab=radar` — the dashboard's "view radar →" (§9.1).
+  const [url, setUrl] = useListQuery(COMPLIANCE_QUERY);
+  const tab = oneOf(url.tab, TABS, 'review');
+  const setTab = (next: ComplianceTab) => setUrl({ ...COMPLIANCE_QUERY, tab: next });
   const counts = radarCounts(data.radar);
   const checks = checkCounts(data.checkMonitor.checks);
 

@@ -15,9 +15,12 @@ import {
   Tabs,
   Textarea,
   TileGrid,
+  toast,
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { RecordHistory } from '../../_components/history/RecordHistory';
+import { useConfirm } from '../../_components/useConfirm';
+import { oneOf, useListQuery } from '../../_lib/listQuery';
 import {
   RTW_LABEL,
   capReason,
@@ -59,6 +62,17 @@ import './profile.css';
 
 type Tab =
   'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback' | 'availability' | 'history';
+const TABS: readonly Tab[] = [
+  'overview',
+  'documents',
+  'qualification',
+  'shifts',
+  'feedback',
+  'availability',
+  'history',
+];
+/** The open tab is `?tab=` — a link to it, a reload and Back keep it (release audit m5). */
+const QUERY = { tab: 'overview' } as const satisfies Record<string, string>;
 type Dialog = 'block' | 'reset' | 'remove' | null;
 
 /**
@@ -115,7 +129,9 @@ export function ProfileScreen({
   canMessage?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
-  const [tab, setTab] = useState<Tab>('overview');
+  const [url, setUrl] = useListQuery(QUERY);
+  const tab = oneOf(url.tab, TABS, 'overview');
+  const setTab = (next: Tab) => setUrl({ tab: next });
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -134,6 +150,8 @@ export function ProfileScreen({
   );
   const unheld = data.roles.filter((role) => !profile.role_names.includes(role.name));
 
+  // ADR-0137 §1: a role chip's × used to remove on the click.
+  const confirm = useConfirm();
   const run = (
     work: () => Promise<{ ok: true } | { ok: false; message: string }>,
     after?: () => void,
@@ -255,7 +273,18 @@ export function ProfileScreen({
                           aria-label={`Remove ${name}`}
                           title="Also removes this worker’s client qualifications for this role — except any marked Do not return, which the database keeps"
                           disabled={pending}
-                          onClick={() => run(() => removeRole(profile.id, role.id))}
+                          onClick={() =>
+                            confirm.ask({
+                              title: `Remove ${name} from ${profile.display_name}?`,
+                              body: `They stop being offered ${name} shifts, and their client qualifications for ${name} go with it — except any marked Do not return, which stay. Add the role again to offer it again; the qualifications come back only by hand or after a clean shift.`,
+                              confirm: 'Remove role',
+                              onConfirm: () =>
+                                run(
+                                  () => removeRole(profile.id, role.id),
+                                  () => toast(`${name} removed`, { tone: 'green' }),
+                                ),
+                            })
+                          }
                         >
                           ×
                         </button>
@@ -467,6 +496,7 @@ export function ProfileScreen({
             canCorrectDob={canCorrectDob}
             payRate={data.payRate ?? null}
             payRateProblem={data.payRateProblem ?? null}
+            {...(data.payFloorPence ? { payFloorPence: data.payFloorPence } : {})}
             showPayRate={showPayRate}
             canEditPayRate={canEditPayRate}
           />
@@ -693,6 +723,7 @@ export function ProfileScreen({
           />
         </div>
       </Modal>
+      {confirm.dialog}
     </OfficeShell>
   );
 }

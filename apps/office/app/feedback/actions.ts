@@ -42,7 +42,11 @@ function message(error: { message: string; code?: string }): string {
   if (error.message === 'unknown_staff') return 'That worker could not be found.';
   // Release audit D-M5: our own sentences are kept ("A comment is
   // required"); Postgres's wording is not shown (_lib/dbError).
-  return explainDbError(error, { log: '[feedback]' });
+  return explainDbError(error, {
+    log: '[feedback]',
+    // feedback_office_text_length (20261014180000); the form stops at it first.
+    check: 'A comment is at most 2,000 characters.',
+  });
 }
 
 function staffIdOf(data: unknown): string | null {

@@ -6,13 +6,14 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Chip, EmptyState, Note, Panel, Select, TableScroll } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { OfficeShell } from '../_components/OfficeShell';
+import { Pager } from '../_components/Pager';
 import {
-  NO_ADDED_FILTER,
   addedFilterActive,
   formatDateAdded,
   matchesAdded,
   type AddedFilter,
 } from '../_lib/addedBy';
+import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
 import { ClientModal } from './ClientModal';
 import type { Client } from './types';
 import './clients.css';
@@ -40,6 +41,24 @@ export const PAGE_SIZES = [10, 25, 50, 100] as const;
 type PageSize = (typeof PAGE_SIZES)[number];
 const DEFAULT_PAGE_SIZE: PageSize = 25;
 
+const SORTS: readonly Sort[] = ['name', 'events', 'margin', 'newest', 'oldest'];
+const POLICIES: readonly PolicyFilter[] = ['all', 'paid', 'unpaid'];
+const BUFFERS: readonly BufferFilter[] = ['all', 'paid', 'strict'];
+
+/** Search, sort, filters and page live in the URL (release audit L1). */
+const QUERY = {
+  q: '',
+  sort: 'name',
+  breaks: 'all',
+  buffer: 'all',
+  role: '',
+  by: '',
+  from: '',
+  to: '',
+  page: '1',
+  size: String(DEFAULT_PAGE_SIZE),
+} as const satisfies Record<string, string>;
+
 /**
  * /clients — the client directory (§9.7).
  *
@@ -54,14 +73,18 @@ const DEFAULT_PAGE_SIZE: PageSize = 25;
  */
 export function ClientsScreen({ clients, problem, ratesVisible = true }: ClientsScreenProps) {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<Sort>('name');
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
-  const [breaks, setBreaks] = useState<PolicyFilter>('all');
-  const [buffer, setBuffer] = useState<BufferFilter>('all');
-  const [role, setRole] = useState('');
-  const [added, setAdded] = useState<AddedFilter>(NO_ADDED_FILTER);
+  const [url, setUrl] = useListQuery(QUERY);
+  const query = url.q;
+  const sort = oneOf(url.sort, SORTS, 'name');
+  const page = pageIndex(url.page);
+  const pageSize = sizeOf(url.size, PAGE_SIZES, DEFAULT_PAGE_SIZE);
+  const breaks = oneOf(url.breaks, POLICIES, 'all');
+  const buffer = oneOf(url.buffer, BUFFERS, 'all');
+  const role = url.role;
+  const added: AddedFilter = useMemo(
+    () => ({ by: url.by, from: url.from, to: url.to }),
+    [url.by, url.from, url.to],
+  );
   /** `null` = closed, `'new'` = create, a client = edit it. */
   const [editing, setEditing] = useState<Client | 'new' | null>(null);
 
@@ -76,13 +99,8 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
 
   // Every filter change goes back to the first page: the pager would
   // otherwise be left past the end of a shorter list.
-  const clearFilters = () => {
-    setBreaks('all');
-    setBuffer('all');
-    setRole('');
-    setAdded(NO_ADDED_FILTER);
-    setPage(0);
-  };
+  const clearFilters = () =>
+    setUrl({ breaks: 'all', buffer: 'all', role: '', by: '', from: '', to: '', page: '1' });
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -167,17 +185,14 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
             style={{ width: 280 }}
             type="search"
             value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(0);
-            }}
+            onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
             placeholder="Search client, contact, email"
             aria-label="Search client, contact, email"
           />
         </div>
         <Select
           value={sort}
-          onChange={(event) => setSort(event.target.value as Sort)}
+          onChange={(event) => setUrl({ sort: event.target.value })}
           aria-label="Sort clients"
           style={{ width: 190 }}
         >
@@ -200,10 +215,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       <div className="toolbar filters" role="group" aria-label="Client filters">
         <Select
           value={breaks}
-          onChange={(event) => {
-            setBreaks(event.target.value as PolicyFilter);
-            setPage(0);
-          }}
+          onChange={(event) => setUrl({ breaks: event.target.value, page: '1' })}
           aria-label="Filter by break policy"
           style={{ width: 160 }}
         >
@@ -213,10 +225,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         </Select>
         <Select
           value={buffer}
-          onChange={(event) => {
-            setBuffer(event.target.value as BufferFilter);
-            setPage(0);
-          }}
+          onChange={(event) => setUrl({ buffer: event.target.value, page: '1' })}
           aria-label="Filter by buffer policy"
           style={{ width: 160 }}
         >
@@ -226,10 +235,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         </Select>
         <Select
           value={role}
-          onChange={(event) => {
-            setRole(event.target.value);
-            setPage(0);
-          }}
+          onChange={(event) => setUrl({ role: event.target.value, page: '1' })}
           aria-label="Filter by rate card role"
           style={{ width: 190 }}
         >
@@ -244,10 +250,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         <AddedFilters
           rows={clients}
           value={added}
-          onChange={(next) => {
-            setAdded(next);
-            setPage(0);
-          }}
+          onChange={(next) => setUrl({ by: next.by, from: next.from, to: next.to, page: '1' })}
         />
         {filtersActive ? (
           <div className="right">
@@ -370,48 +373,14 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
           size can still be changed while everything fits on one page.
         */}
         {filtered.length > PAGE_SIZES[0] ? (
-          <div className="panel-h pager">
-            <span className="muted sm">
-              Showing {current * pageSize + 1}–{current * pageSize + shown.length} of{' '}
-              {filtered.length}
-            </span>
-            <div className="right">
-              <Button
-                size="sm"
-                tone="ghost"
-                disabled={current === 0}
-                onClick={() => setPage(current - 1)}
-              >
-                ‹ Prev
-              </Button>
-              <span className="mono sm">
-                {current + 1} / {pages}
-              </span>
-              <Button
-                size="sm"
-                tone="ghost"
-                disabled={current >= pages - 1}
-                onClick={() => setPage(current + 1)}
-              >
-                Next ›
-              </Button>
-              <Select
-                value={String(pageSize)}
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value) as PageSize);
-                  setPage(0);
-                }}
-                aria-label="Rows per page"
-                style={{ height: 28, width: 110 }}
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {size} / page
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
+          <Pager
+            total={filtered.length}
+            page={current}
+            pageSize={pageSize}
+            sizes={PAGE_SIZES}
+            onPage={(next) => setUrl({ page: pageParam(next) })}
+            onPageSize={(size) => setUrl({ size: String(size), page: '1' })}
+          />
         ) : null}
       </Panel>
 

@@ -31,7 +31,8 @@ import {
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { useReviewDialogs } from './ReviewDialogs';
-import type { WhoFilter } from './queue';
+import { oneOf, useListQuery } from '../_lib/listQuery';
+import { COMPLIANCE_QUERY, WHO } from './query';
 import type { ActionResult, QueueRow } from './types';
 
 /**
@@ -66,9 +67,10 @@ export function ReviewTab({
   rtwCheckEnabled?: boolean;
 }) {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [who, setWho] = useState<WhoFilter>('all');
-  const [document, setDocument] = useState('any');
+  const [url, setUrl] = useListQuery(COMPLIANCE_QUERY);
+  const query = url.q;
+  const who = oneOf(url.who, WHO, 'all');
+  const document = url.doc;
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, start] = useTransition();
@@ -108,14 +110,14 @@ export function ReviewTab({
             style={{ width: 240 }}
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
             placeholder="Search by name"
             aria-label="Search by name"
           />
         </div>
         <Select
           value={who}
-          onChange={(event) => setWho(event.target.value as WhoFilter)}
+          onChange={(event) => setUrl({ who: event.target.value })}
           aria-label="Candidates or staff"
           style={{ width: 170 }}
         >
@@ -125,7 +127,7 @@ export function ReviewTab({
         </Select>
         <Select
           value={document}
-          onChange={(event) => setDocument(event.target.value)}
+          onChange={(event) => setUrl({ doc: event.target.value })}
           aria-label="Document type"
           style={{ width: 220 }}
         >

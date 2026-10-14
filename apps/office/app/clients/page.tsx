@@ -3,6 +3,9 @@ import { officeCan } from '../_lib/permissions';
 import { loadClients } from './data';
 import { ClientsScreen } from './ClientsScreen';
 
+// Per-request data, and the screen reads its list state from the URL.
+export const dynamic = 'force-dynamic';
+
 export const metadata = { title: 'Clients · THC Back Office' };
 
 /**

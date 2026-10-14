@@ -30,12 +30,13 @@ const CLIENT = {
  * wireframes draw them (clients.html, client-card.html).
  */
 describe('the client modal names the emails as §9.7 does', () => {
-  it('New client: "Contact emails · 2–3 people"', () => {
+  it('New client: "Contact emails · up to 10" — the real rule (ADR-0087)', () => {
     const markup = renderToStaticMarkup(
       <ClientModal client={null} onClose={() => undefined} onSaved={() => undefined} />,
     );
     expect(markup).toContain('Contact emails');
-    expect(markup).toContain('2–3 people');
+    expect(markup).toContain('up to 10');
+    expect(markup).not.toContain('2–3 people');
     expect(markup).not.toContain('Allocation email(s)');
   });
 

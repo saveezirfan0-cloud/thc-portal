@@ -351,6 +351,8 @@ export interface ProfileData {
    */
   payRate?: PersonalPayRate | null;
   payRateProblem?: string | null;
+  /** Today's National Living Wage, pence (ADR-0137). */
+  payFloorPence?: number;
   problem: string | null;
 }
 

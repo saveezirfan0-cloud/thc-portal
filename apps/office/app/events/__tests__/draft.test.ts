@@ -16,6 +16,8 @@ import {
   newRoleDraft,
   reconfirmPlan,
   roleIssues,
+  PAST_DATE,
+  pastDateIssue,
 } from '../draft';
 import type { SavedEvent } from '../data';
 
@@ -437,5 +439,18 @@ describe('defaultDressCode', () => {
   it('leaves the choice to the manager when there is none or more than one', () => {
     expect(defaultDressCode([])).toBe('');
     expect(defaultDressCode(['All black', 'Black & whites'])).toBe('');
+  });
+});
+
+describe('a new event dated in the past (release audit)', () => {
+  it('is refused before today, UK calendar day', () => {
+    expect(pastDateIssue('2026-10-12', '2026-10-14')).toBe(PAST_DATE);
+    expect(pastDateIssue('2026-10-13', '2026-10-14')).toBe(PAST_DATE);
+  });
+
+  it('is allowed today and later, and says nothing while the date is empty', () => {
+    expect(pastDateIssue('2026-10-14', '2026-10-14')).toBeNull();
+    expect(pastDateIssue('2026-11-01', '2026-10-14')).toBeNull();
+    expect(pastDateIssue('', '2026-10-14')).toBeNull();
   });
 });

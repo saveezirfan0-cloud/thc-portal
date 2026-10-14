@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Select, TableScroll, Tabs } from '@thc/ui';
+import { Button, EmptyState, Note, Panel, Select, TableScroll, Tabs, toast } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { Pager } from '../_components/Pager';
 import {
-  NO_ADDED_FILTER,
   addedFilterActive,
   formatDateAdded,
   matchesAdded,
   type AddedFilter,
 } from '../_lib/addedBy';
+import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
 import { VenueMap, markerLabel } from './VenueMap';
 import { VenueModal } from './VenueModal';
 import { DeleteVenueModal } from './DeleteVenueModal';
@@ -27,6 +27,26 @@ type Sort = 'name' | 'newest' | 'oldest' | 'events';
 /** The pager's sizes, as on /clients (ADR-0124): 68 venues were one 22,000px page on a phone. */
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 25;
+
+const TABS: readonly Tab[] = ['list', 'map'];
+const RADII: readonly RadiusFilter[] = ['all', 'standard', 'custom'];
+const EVENTS: readonly EventsFilter[] = ['all', 'with', 'none'];
+const SORTS: readonly Sort[] = ['name', 'newest', 'oldest', 'events'];
+
+/** The tab, search, filters, sort and page live in the URL (release audit L1). */
+const QUERY = {
+  tab: 'list',
+  q: '',
+  type: '',
+  radius: 'all',
+  events: 'all',
+  by: '',
+  from: '',
+  to: '',
+  sort: 'name',
+  page: '1',
+  size: String(DEFAULT_PAGE_SIZE),
+} as const satisfies Record<string, string>;
 
 export interface VenuesScreenProps {
   venues: Venue[];
@@ -44,14 +64,22 @@ export interface VenuesScreenProps {
  */
 export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('list');
-  const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [radiusFilter, setRadiusFilter] = useState<RadiusFilter>('all');
-  const [eventsFilter, setEventsFilter] = useState<EventsFilter>('all');
-  const [added, setAdded] = useState<AddedFilter>(NO_ADDED_FILTER);
-  const [sort, setSort] = useState<Sort>('name');
-  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [url, setUrl] = useListQuery(QUERY);
+  const tab = oneOf(url.tab, TABS, 'list');
+  const query = url.q;
+  const typeFilter = url.type;
+  const radiusFilter = oneOf(url.radius, RADII, 'all');
+  const eventsFilter = oneOf(url.events, EVENTS, 'all');
+  const added: AddedFilter = useMemo(
+    () => ({ by: url.by, from: url.from, to: url.to }),
+    [url.by, url.from, url.to],
+  );
+  const sort = oneOf(url.sort, SORTS, 'name');
+  const pageSize = sizeOf(url.size, PAGE_SIZES, DEFAULT_PAGE_SIZE);
+  // Any change to the search, a filter or the sort goes back to page 1:
+  // the page belongs to the list it was turned on.
+  const filterBy = (patch: Partial<Record<keyof typeof QUERY, string>>, replace = false) =>
+    setUrl({ ...patch, page: '1' }, replace ? 'replace' : 'push');
   /** `null` = closed, `'new'` = create, a venue = edit it. */
   const [editing, setEditing] = useState<Venue | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Venue | null>(null);
@@ -63,12 +91,8 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     addedFilterActive(added);
   const narrowed = query.trim() !== '' || filtersActive;
 
-  const clearFilters = () => {
-    setTypeFilter('');
-    setRadiusFilter('all');
-    setEventsFilter('all');
-    setAdded(NO_ADDED_FILTER);
-  };
+  const clearFilters = () =>
+    filterBy({ type: '', radius: 'all', events: 'all', by: '', from: '', to: '' });
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -99,21 +123,8 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     return sorted;
   }, [venues, query, typeFilter, radiusFilter, eventsFilter, added, sort]);
 
-  // Any change to the search, a filter or the sort goes back to page 1:
-  // the page belongs to the list it was turned on.
-  const listKey = [
-    query,
-    typeFilter,
-    radiusFilter,
-    eventsFilter,
-    added.by,
-    added.from,
-    added.to,
-    sort,
-  ].join('|');
-  const [paging, setPaging] = useState({ key: listKey, page: 0 });
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const current = paging.key === listKey ? Math.min(paging.page, pages - 1) : 0;
+  const current = Math.min(pageIndex(url.page), pages - 1);
   const shown = filtered.slice(current * pageSize, current * pageSize + pageSize);
 
   // The map draws `filtered`, not `venues`. §9.11's "every venue at once"
@@ -137,9 +148,11 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     setDeleting(null);
   };
 
-  const saved = () => {
+  // ADR-0137 §1 (release audit L10): a list edit says that it worked.
+  const saved = (message: string) => () => {
     close();
     router.refresh();
+    toast(message, { tone: 'green' });
   };
 
   return (
@@ -163,7 +176,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
             { value: 'map', label: 'On map' },
           ]}
           value={tab}
-          onChange={setTab}
+          onChange={(next) => setUrl({ tab: next })}
           aria-label="Venue view"
         />
         <div className="right">
@@ -173,7 +186,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
               style={{ width: 280 }}
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => filterBy({ q: event.target.value }, true)}
               placeholder="Search by name and address"
               aria-label="Search by name and address"
             />
@@ -185,7 +198,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
       <div className="toolbar filters" role="group" aria-label="Venue filters">
         <Select
           value={typeFilter}
-          onChange={(event) => setTypeFilter(event.target.value)}
+          onChange={(event) => filterBy({ type: event.target.value })}
           aria-label="Filter by venue type"
           style={{ width: 190 }}
         >
@@ -198,7 +211,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
         </Select>
         <Select
           value={radiusFilter}
-          onChange={(event) => setRadiusFilter(event.target.value as RadiusFilter)}
+          onChange={(event) => filterBy({ radius: event.target.value })}
           aria-label="Filter by geofence"
           style={{ width: 170 }}
         >
@@ -208,7 +221,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
         </Select>
         <Select
           value={eventsFilter}
-          onChange={(event) => setEventsFilter(event.target.value as EventsFilter)}
+          onChange={(event) => filterBy({ events: event.target.value })}
           aria-label="Filter by events held"
           style={{ width: 170 }}
         >
@@ -216,11 +229,15 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           <option value="with">Has held events</option>
           <option value="none">No events yet</option>
         </Select>
-        <AddedFilters rows={venues} value={added} onChange={setAdded} />
+        <AddedFilters
+          rows={venues}
+          value={added}
+          onChange={(next) => filterBy({ by: next.by, from: next.from, to: next.to })}
+        />
         <div className="right">
           <Select
             value={sort}
-            onChange={(event) => setSort(event.target.value as Sort)}
+            onChange={(event) => filterBy({ sort: event.target.value })}
             aria-label="Sort venues"
             style={{ width: 190 }}
           >
@@ -329,11 +346,8 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                 page={current}
                 pageSize={pageSize}
                 sizes={PAGE_SIZES}
-                onPage={(next) => setPaging({ key: listKey, page: next })}
-                onPageSize={(size) => {
-                  setPageSize(size);
-                  setPaging({ key: listKey, page: 0 });
-                }}
+                onPage={(next) => setUrl({ page: pageParam(next) })}
+                onPageSize={(size) => filterBy({ size: String(size) })}
               />
             ) : null}
           </Panel>
@@ -379,12 +393,17 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           venue={editing === 'new' ? null : editing}
           venueTypes={venueTypes}
           onClose={close}
-          onSaved={saved}
+          onSaved={saved(editing === 'new' ? 'Venue created' : 'Venue saved')}
         />
       ) : null}
 
       {deleting ? (
-        <DeleteVenueModal key={deleting.id} venue={deleting} onClose={close} onDeleted={saved} />
+        <DeleteVenueModal
+          key={deleting.id}
+          venue={deleting}
+          onClose={close}
+          onDeleted={saved('Venue deleted')}
+        />
       ) : null}
     </>
   );

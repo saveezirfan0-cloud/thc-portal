@@ -123,7 +123,7 @@ select throws_ok(format($$ select set_staff_pay_rate(%L, 'NaN') $$, :'staffa'),
   '23514', 'A pay rate must be a number', 'NaN is refused (the API, not only the form)');
 select throws_ok(format($$ select set_staff_pay_rate(%L, 12.71) $$, :'nobody'),
   'P0002', null, 'an unknown worker is refused');
-select lives_ok(format($$ select set_staff_pay_rate(%L, 12.00) $$, :'staffa'), 'manager sets a personal rate');
+select lives_ok(format($$ select set_staff_pay_rate(%L, 12.90) $$, :'staffa'), 'manager sets a personal rate');
 select lives_ok(format($$ select set_staff_pay_rate(%L, 12.71) $$, :'staffa'), 'and changes it (one row per worker)');
 select is((select count(*)::int from staff_pay_rates where staff_id = :'staffa'), 1, 'still one row');
 select is((select pay_rate from staff_pay_rates where staff_id = :'staffa'), 12.71::numeric, 'manager reads the new rate');

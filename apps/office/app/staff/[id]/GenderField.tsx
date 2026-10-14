@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Pill } from '@thc/ui';
+import { Pill, toast } from '@thc/ui';
+import { useSavedFlash } from '../../_lib/useSavedFlash';
 import { saveGender } from './actions';
 
 const LABEL: Readonly<Record<'M' | 'F', string>> = { M: 'Male', F: 'Female' };
@@ -38,6 +39,8 @@ export function GenderField({
   }
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // ADR-0137 §1: a field that saves on change says that it did.
+  const [saved, flashSaved] = useSavedFlash();
 
   if (shown === undefined || removed) return <span className="muted">—</span>;
 
@@ -46,8 +49,11 @@ export function GenderField({
     setFailure(null);
     start(async () => {
       const result = await saveGender(staffId, value);
-      if (result.ok) setShown(value);
-      else setFailure(result.message);
+      if (result.ok) {
+        setShown(value);
+        flashSaved();
+        toast('Gender saved', { tone: 'green' });
+      } else setFailure(result.message);
     });
   };
 
@@ -82,6 +88,17 @@ export function GenderField({
             those until it is recorded.
           </span>
         </>
+      ) : null}
+      {pending ? (
+        <span className="muted sm saved-note" role="status">
+          {' '}
+          Saving…
+        </span>
+      ) : saved ? (
+        <span className="saved-note" role="status">
+          {' '}
+          <Pill tone="green">Saved</Pill>
+        </span>
       ) : null}
       {failure ? (
         <>

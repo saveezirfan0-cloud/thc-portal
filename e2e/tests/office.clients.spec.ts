@@ -101,14 +101,22 @@ test('New client asks for every field and refuses a bad email; Cancel writes not
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('all fields mandatory')).toBeVisible();
   const create = dialog.getByRole('button', { name: 'Create client' });
-  await expect(create).toBeDisabled();
+  // Release audit D-M2: Create says what is missing, under each field,
+  // instead of sitting disabled with no reason.
+  await create.click();
+  await expect(dialog.getByText('Give the client a name.')).toBeVisible();
+  await expect(dialog.getByText('Enter a contact phone number.')).toBeVisible();
 
   await dialog.getByLabel('Client name').fill('E2E never saved');
   await dialog.getByLabel('Contact full name').fill('Robin Test');
+  // A phone that is not one is said as it is typed.
+  await dialog.getByLabel('Contact phone').fill('not a phone');
+  await expect(dialog.getByText(/Enter a phone number, e\.g\. 020 7946 0000/)).toBeVisible();
   await dialog.getByLabel('Contact phone').fill('+44 20 7946 0000');
   await dialog.getByLabel('Staff contact point').fill('Front desk');
   // Every field but the emails: still not enough.
-  await expect(create).toBeDisabled();
+  await create.click();
+  await expect(dialog.getByText(/Add at least one contact email/)).toBeVisible();
 
   // Enter adds the address — and refuses one that is not an address
   // (ClientModal.tsx addEmail, the same wording as validate.ts).
@@ -116,7 +124,6 @@ test('New client asks for every field and refuses a bad email; Cancel writes not
   await emails.fill('not-an-email');
   await emails.press('Enter');
   await expect(dialog.locator('.alert')).toHaveText('“not-an-email” is not an email address.');
-  await expect(create).toBeDisabled();
 
   // Both policies are switches with no "not set" state: breaks off, buffer on.
   await expect(dialog.getByRole('switch', { name: /Client pays for breaks/ })).toHaveAttribute(
@@ -253,8 +260,10 @@ test('the card adds a role as a draft and Cancel drops it; Edit opens the full c
     .locator('tbody tr')
     .filter({ has: page.getByLabel('Charge rate for Barista') });
   await expect(draft.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
-  await expect(draft).toContainText('on Save');
+  // Release audit m8: a new row previews final pay and the margin live.
+  await expect(draft).toContainText('£16.25');
   await charge.fill('23.00');
+  await expect(draft).toContainText('+£6.75/h');
   await expect(draft.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   await draft.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(rates.getByLabel('Charge rate for Barista')).toHaveCount(0);

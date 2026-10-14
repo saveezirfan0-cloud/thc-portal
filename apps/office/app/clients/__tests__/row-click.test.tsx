@@ -5,6 +5,7 @@ import type { Client } from '../types';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
   usePathname: () => '/clients',
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock('../actions', () => ({ createClientRecord: vi.fn(), updateClientRecord: vi.fn() }));
 vi.mock('../../_components/OfficeShell', () => ({

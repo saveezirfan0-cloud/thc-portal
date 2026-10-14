@@ -2,7 +2,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { Venue, VenueType } from '../types';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: () => undefined }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: () => undefined }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/venues',
+}));
 vi.mock('../actions', () => ({
   createVenue: vi.fn(),
   updateVenue: vi.fn(),

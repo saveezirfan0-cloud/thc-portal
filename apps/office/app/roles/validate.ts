@@ -11,6 +11,8 @@ export function validateRole(draft: RoleDraft): string | null {
   if (!Number.isInteger(draft.pay_rate_pence) || draft.pay_rate_pence < 0) {
     return 'Enter a staff pay rate, to the penny.';
   }
-  if (draft.pay_rate_pence > MAX_RATE_PENCE) return 'That pay rate is not a realistic hourly rate.';
+  if (draft.pay_rate_pence > MAX_RATE_PENCE) {
+    return 'A pay rate over £1,000.00 an hour is refused — check the figure.';
+  }
   return null;
 }

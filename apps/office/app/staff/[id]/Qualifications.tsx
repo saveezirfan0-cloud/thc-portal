@@ -13,8 +13,10 @@ import {
   Switch,
   TableScroll,
   Textarea,
+  toast,
 } from '@thc/ui';
 import { formatUkDate } from '../staff';
+import { useConfirm } from '../../_components/useConfirm';
 import { grantQualification, revokeQualification, setDoNotReturn } from './actions';
 import type { ClientOption, ProfileRow, QualificationRow, RoleOption } from './types';
 
@@ -89,6 +91,8 @@ export function Qualifications({
     setBarring(null);
     setDialogProblem(null);
   };
+  // ADR-0137 §1: Remove used to happen on the click.
+  const confirm = useConfirm();
 
   return (
     <div className="stack">
@@ -197,10 +201,16 @@ export function Qualifications({
                             : undefined
                         }
                         onClick={() =>
-                          run(
-                            () => revokeQualification(profile.id, row.id),
-                            () => undefined,
-                          )
+                          confirm.ask({
+                            title: `Remove ${row.role_name} at ${row.client_name}?`,
+                            body: `They stop being first choice (Wave 1) for ${row.role_name} at ${row.client_name}. A later clean shift there may grant it again automatically; to keep them away, switch Do not return on instead.`,
+                            confirm: 'Remove qualification',
+                            onConfirm: () =>
+                              run(
+                                () => revokeQualification(profile.id, row.id),
+                                () => toast('Qualification removed', { tone: 'green' }),
+                              ),
+                          })
                         }
                       >
                         Remove
@@ -364,6 +374,7 @@ export function Qualifications({
           </span>
         </div>
       </Modal>
+      {confirm.dialog}
     </div>
   );
 }

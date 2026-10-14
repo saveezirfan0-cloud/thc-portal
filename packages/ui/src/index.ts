@@ -81,6 +81,10 @@ export type { SignOutProps } from './components/SignOut';
 
 export { Modal, Toast } from './components/Modal';
 export type { ModalProps, ToastTone } from './components/Modal';
+export { Toaster, dismissToast, toast } from './components/Toaster';
+export type { ToastOptions } from './components/Toaster';
+export { useUnsavedChanges } from './components/UnsavedChanges';
+export type { UnsavedChanges, UnsavedChangesOptions } from './components/UnsavedChanges';
 
 export {
   AppBody,

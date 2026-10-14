@@ -304,7 +304,7 @@ select lives_ok(format($$ select add_client_role(%L, %L, 18.00, null) $$, :'clie
   'manager adds a new rate-card row');
 select lives_ok(format($$ select remove_client_role((select id from client_rate_cards where client_id = %L and role_id = %L)) $$, :'clientb', :'role2'),
   'manager removes it (remove_client_role no longer reads the whole row)');
-select lives_ok($$ select create_role('Fixture Cloakroom', 12.40, null) $$, 'manager creates a role');
+select lives_ok($$ select create_role('Fixture Cloakroom', 12.80, null) $$, 'manager creates a role');
 select lives_ok(format($$ select update_role(%L, 'Second Fixture Role', 11.00, null) $$, :'role2'), 'and edits one');
 
 -- =====================================================================

@@ -10,6 +10,8 @@
 
 /* ---- list ---------------------------------------------------------- */
 .tbl td.name .venue-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: var(--text);
   font-weight: 600;
   background: none;

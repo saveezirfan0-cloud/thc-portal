@@ -3,6 +3,9 @@ import { OfficeShell } from '../_components/OfficeShell';
 import { loadVenuesPage } from './data';
 import { VenuesScreen } from './VenuesScreen';
 
+// Per-request data, and the screen reads its list state from the URL.
+export const dynamic = 'force-dynamic';
+
 export const metadata = { title: 'Venues · THC Back Office' };
 
 /**

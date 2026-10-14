@@ -135,12 +135,21 @@ export function EmergencyContactCard({
         open={dialog === 'edit'}
         title={contact ? 'Edit emergency contact' : 'Add emergency contact'}
         onClose={close}
+        dirty={
+          !pending &&
+          (name !== (contact?.name ?? '') ||
+            relationship !== (contact?.relationship ?? '') ||
+            phone !== (contact?.phone ?? ''))
+        }
+        onSubmit={() => {
+          if (!pending) save();
+        }}
         footer={
           <>
             <Button tone="ghost" onClick={close}>
               Cancel
             </Button>
-            <Button tone="primary" disabled={pending} onClick={save}>
+            <Button tone="primary" type="submit" disabled={pending}>
               Save
             </Button>
           </>
