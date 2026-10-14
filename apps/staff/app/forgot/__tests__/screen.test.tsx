@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * A1 Forgot password and A2 Reset link sent against
@@ -81,20 +81,29 @@ describe('A1 Forgot password (wireframes/staff/auth.html)', () => {
 });
 
 describe('A1 reached signed in, from "Forgot password?" beside Current password (ADR-0113)', () => {
+  function signIn() {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
+    session.email = 'tom.r@example.com';
+  }
+  afterEach(() => {
+    session.email = null;
+    vi.unstubAllEnvs();
+  });
+
   it('fills in the session’s own address and goes back to the app, not to sign in', async () => {
-    const saved = { ...process.env };
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321';
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
-    session.email = 'ayushman.p@example.com';
-    try {
-      const markup = renderToStaticMarkup(await ForgotPage());
-      expect(markup).toContain('value="ayushman.p@example.com"');
-      expect(markup).toMatch(/<div class="row"><a href="\/" class="sm">‹ Back<\/a>/);
-      expect(markup).not.toContain('Back to sign in');
-    } finally {
-      session.email = null;
-      process.env = saved;
-    }
+    signIn();
+    const markup = renderToStaticMarkup(await ForgotPage());
+    expect(markup).toContain('value="tom.r@example.com"');
+    expect(markup).toMatch(/<div class="row"><a href="\/" class="sm">‹ Back<\/a>/);
+    expect(markup).not.toContain('Back to sign in');
+  });
+
+  it('A2 gives the installed app a way back too — and only when signed in', async () => {
+    signIn();
+    const markup = renderToStaticMarkup(await SentPage());
+    expect(markup).toMatch(/<div class="row"><a href="\/" class="sm">‹ Back<\/a>/);
+    expect(markup).not.toContain('Back to sign in');
   });
 
   it('signed out, fills in nothing', async () => {

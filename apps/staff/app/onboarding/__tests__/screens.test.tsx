@@ -745,6 +745,9 @@ describe('9/11 – 11/11', () => {
     expect(html).toContain('autoComplete="current-password"');
     expect(html).toContain('Enter your password to continue');
     expect(footer(html).disabled).toBe(true);
+    // A candidate who has forgotten it has a way on from here, not only
+    // from the sign-in screen.
+    expect(html).toMatch(/<a href="\/forgot"[^>]*>Forgot password\?<\/a>/);
   });
 
   it('contract, unsigned: the duty to disclose, Continue disabled', () => {

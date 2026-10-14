@@ -1,9 +1,11 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { AuthCard } from '@thc/ui';
 import { RESET_LINK_VALIDITY, SENT_TO_COOKIE } from '../copy';
 import { ResendButton } from './ResendButton';
 import { mailAppHref } from './resend';
+import { signedInEmail } from '../signed-in';
 import '../../login/auth-tap.css';
 
 export const dynamic = 'force-dynamic';
@@ -23,13 +25,16 @@ export const metadata = { title: 'Check your inbox · THC Staff' };
  *
  * Under the copy, exactly the wireframe's two controls: "Open mail app" and
  * a throttled "Didn't get it? Resend in 0:48". No link back to sign in — A2
- * does not draw one.
+ * does not draw one. Signed in (reached from "Forgot password?" inside the
+ * app, ADR-0113) it adds "‹ Back" to the app: the installed PWA has no
+ * browser back button, and without it a worker would be stuck here.
  */
 export default async function Page() {
   const to = (await cookies()).get(SENT_TO_COOKIE)?.value;
   if (!to) redirect('/forgot');
 
   const mailApp = mailAppHref((await headers()).get('user-agent'));
+  const signedIn = (await signedInEmail()) !== null;
 
   return (
     <AuthCard product="Staff app" heading="Check your inbox">
@@ -43,6 +48,13 @@ export default async function Page() {
         </a>
       ) : null}
       <ResendButton to={to} />
+      {signedIn ? (
+        <div className="row">
+          <Link href="/" className="sm">
+            ‹ Back
+          </Link>
+        </div>
+      ) : null}
     </AuthCard>
   );
 }

@@ -1,6 +1,6 @@
 # ADR-0113 · The current password before bank details, Request my P45 and a new email
 
-**Status:** Accepted · Deviates from `wireframes/staff/profile.html` and `onboarding-3.html` (one field) · §2.10, §10.1, §10.6 · Security round 12.10.2026, item 1 · DB side: `20261012120900`
+**Status:** Accepted · Deviates from `wireframes/staff/profile.html` and `onboarding-3.html` (one field, with "Forgot password?" on its label line) and `auth.html` A1/A2 (a signed-in "‹ Back") · §2.10, §10.1, §10.6 · Security round 12.10.2026, item 1 · DB side: `20261012120900`
 
 ## Context
 
@@ -23,5 +23,5 @@ Security settings → Change password already asked for the current password (§
 ## Consequences
 
 - One more field on three screens and one wizard step than the wireframes draw. Everything else on those screens — labels, order, the P45 two-step with Cancel as the primary action — is unchanged.
-- A worker who has forgotten their password uses "Forgot password" first; the `recovery` sign-in that leaves them with also satisfies the ten-minute rule. **The way there is on the field itself** (14.10.2026, after a candidate was stuck on step 9 with "That current password isn't right." and no way on): `CurrentPasswordField` carries "Forgot password?" on its label line, linking to `/forgot`. Signed in, A1 fills in the session's own address and its back link reads "‹ Back" to the app; A3 then redirects to `/` rather than `/shifts`, so a candidate lands back on their wizard step and a worker on Shifts.
+- A worker who has forgotten their password uses "Forgot password" first; the `recovery` sign-in that leaves them with also satisfies the ten-minute rule. **The way there is on the field itself** (14.10.2026, after a candidate was stuck on step 9 with "That current password isn't right." and no way on): `CurrentPasswordField` carries "Forgot password?" on its label line, linking to `/forgot`. Signed in, A1 fills in the session's own address and its back link reads "‹ Back" to the app, and A2 gains the same "‹ Back" (the installed app has no browser back button; signed out, A2 still draws none). A3 then redirects to `/` rather than `/shifts`, so a candidate lands back on their wizard step and a worker on Shifts — in the browser the link opened in. On iOS that is Safari, not the installed app (ADR-0039), and A3's "sign out every other device" signs the installed app out: there the candidate signs in with the new password and the app resumes at their step. Two known costs, accepted: the link is a plain navigation, so bank details or a new address typed above the field are not kept; and "‹ Back" goes to `/`, so from a Profile form it lands on Shifts, not the form (no free `?next=` — a return path the URL chooses is a redirect someone else can choose).
 - `e2e/tests/staff.profile-requests.spec.ts` must type the password in the second P45 step before pressing "Request my P45".

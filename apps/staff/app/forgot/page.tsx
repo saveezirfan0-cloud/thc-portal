@@ -1,7 +1,6 @@
-import { cookies } from 'next/headers';
 import { AuthCard } from '@thc/ui';
-import { createClient } from '@thc/db/server';
 import { ForgotForm } from './ForgotForm';
+import { signedInEmail } from './signed-in';
 import '../login/auth-tap.css';
 
 export const dynamic = 'force-dynamic';
@@ -23,14 +22,4 @@ export default async function Page() {
       <ForgotForm signedInAs={await signedInEmail()} />
     </AuthCard>
   );
-}
-
-async function signedInEmail(): Promise<string | null> {
-  if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
-    return null;
-  }
-  const {
-    data: { user },
-  } = await createClient(await cookies()).auth.getUser();
-  return user?.email ?? null;
 }
