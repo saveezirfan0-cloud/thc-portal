@@ -243,6 +243,35 @@
   flex-direction: column;
   gap: var(--sp-26);
 }
+/* Focus moved here by "Skip to content" is a destination, not a control:
+   no ring round the whole page. */
+.content:focus {
+  outline: none;
+}
+/* "Skip to content" (Shell): the first Tab stop on every Back Office page,
+   out of sight until it has focus, then a pill over the brand corner. */
+.skip-link {
+  position: fixed;
+  left: var(--sp-12);
+  top: var(--sp-8);
+  z-index: 60;
+  transform: translateY(-200%);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-16);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--control-line);
+  font-weight: 600;
+  font-size: var(--fs-13);
+  text-decoration: none;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+}
 .page-head {
   display: flex;
   align-items: flex-start;
@@ -1529,8 +1558,13 @@ textarea.input {
 .input.accent {
   border-color: var(--cyan-ink);
 }
+/* Figures and codes: the numeric face (IBM Plex Mono in scope, the UI font
+   in warm — release audit 14.10.2026: the Shift Builder's PO, times,
+   headcount and rates were the only monospace left on a warm screen) with
+   tabular numerals, so a column of times or rates lines up either way. */
 .input.mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   font-size: var(--fs-16);
 }
@@ -1577,6 +1611,55 @@ textarea.input {
 .input-row > .field:not(:last-child) > .input {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+}
+/* The typed UK date (UkDateField, ADR-0138): dd/mm/yyyy in a text box, a
+   calendar welded to its right with the browser's own picker laid
+   invisibly over it (the Staff App's date of birth, ADR-0068). */
+.ukd-row .input {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ukd-row .ukd-cal {
+  position: relative;
+  padding: 0 var(--sp-12);
+  color: var(--muted);
+  cursor: pointer;
+}
+.ukd-row .ukd-cal:hover {
+  color: var(--text);
+}
+.ukd-row .ukd-cal.disabled {
+  cursor: not-allowed;
+  color: var(--disabled-ink);
+  background: var(--disabled-bg);
+}
+.ukd-row .ukd-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.ukd-row .ukd-native:disabled {
+  cursor: not-allowed;
+}
+/* Chromium opens its calendar only from this indicator: stretch it over
+   the whole icon so a click anywhere on it lands there. */
+.ukd-row .ukd-native::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
 }
 .check {
   display: flex;
@@ -1725,6 +1808,16 @@ textarea.input {
   transition:
     left 0.15s,
     background 0.15s;
+}
+/* The ring follows the round track, not the button's square box (release
+   audit 14.10.2026): the button is transparent and unrounded, so base.css's
+   ring drew a rectangle round a pill. */
+.switch:focus-visible {
+  outline: none;
+}
+.switch:focus-visible .track {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 2px;
 }
 .switch.on .track {
   background: var(--cyan-dim);
@@ -3077,6 +3170,20 @@ textarea.input {
   .grid.c5,
   .grid.c6 {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* `TileGrid compact`: short KPIs two to a row, the figure a size down. */
+  .grid.tilegrid.tiles-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tiles-compact > .kpi {
+    padding: var(--sp-12) var(--sp-14);
+    gap: var(--sp-4);
+  }
+  .tiles-compact > .kpi .v {
+    font-size: var(--fs-24);
+  }
+  .tiles-compact > .kpi .d {
+    font-size: var(--fs-11);
   }
   .content {
     padding: var(--sp-16) var(--gutter-mobile) var(--sp-26);

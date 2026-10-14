@@ -19,6 +19,7 @@ import {
   Slider,
   Switch,
   Tabs,
+  UkDateField,
 } from '@thc/ui';
 
 /** The parts of the gallery that need state. Everything else is server-rendered. */
@@ -30,6 +31,7 @@ export function InteractiveControls() {
   const [agreed, setAgreed] = useState(true);
   const [branch, setBranch] = useState('student');
   const [radius, setRadius] = useState(250);
+  const [until, setUntil] = useState('2027-06-30');
 
   return (
     <Panel title="Toggles, switches and markers">
@@ -116,6 +118,17 @@ export function InteractiveControls() {
         aria-label="Geofence radius"
         label={`Geofence radius — ${radius} m`}
       />
+      <hr />
+      {/* ADR-0138: a date is typed dd/mm/yyyy whatever the device's locale;
+          the calendar on the right only ever writes into the box. */}
+      <div className="toolbar">
+        <UkDateField
+          label="Right to work until (UK date)"
+          value={until}
+          onChange={setUntil}
+          hint={until ? `stored as ${until}` : 'dd/mm/yyyy'}
+        />
+      </div>
     </Panel>
   );
 }

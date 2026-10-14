@@ -10,12 +10,23 @@ export type MetricTone = 'default' | 'accent' | 'ok' | 'warn' | 'danger';
  */
 export function TileGrid({
   columns,
+  compact,
   children,
 }: {
   columns: 2 | 3 | 4 | 5 | 6;
+  /**
+   * On a phone, two tiles to a row with a smaller figure instead of one
+   * full-width card each — for a row of short KPIs above a page's real
+   * content (the staff profile's five used ~1,300 px before its tabs).
+   */
+  compact?: boolean;
   children: ReactNode;
 }) {
-  return <div className={clsx('grid', 'tilegrid', `c${columns}`)}>{children}</div>;
+  return (
+    <div className={clsx('grid', 'tilegrid', `c${columns}`, compact && 'tiles-compact')}>
+      {children}
+    </div>
+  );
 }
 
 export interface KpiTileProps {
