@@ -23,5 +23,5 @@ Security settings → Change password already asked for the current password (§
 ## Consequences
 
 - One more field on three screens and one wizard step than the wireframes draw. Everything else on those screens — labels, order, the P45 two-step with Cancel as the primary action — is unchanged.
-- A worker who has forgotten their password uses "Forgot password" first; the `recovery` sign-in that leaves them with also satisfies the ten-minute rule.
+- A worker who has forgotten their password uses "Forgot password" first; the `recovery` sign-in that leaves them with also satisfies the ten-minute rule. **The way there is on the field itself** (14.10.2026, after a candidate was stuck on step 9 with "That current password isn't right." and no way on): `CurrentPasswordField` carries "Forgot password?" on its label line, linking to `/forgot`. Signed in, A1 fills in the session's own address and its back link reads "‹ Back" to the app; A3 then redirects to `/` rather than `/shifts`, so a candidate lands back on their wizard step and a worker on Shifts.
 - `e2e/tests/staff.profile-requests.spec.ts` must type the password in the second P45 step before pressing "Request my P45".

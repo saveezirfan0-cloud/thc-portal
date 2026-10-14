@@ -17,6 +17,15 @@ vi.mock('next/link', () => ({
 }));
 vi.mock('../actions', () => ({ requestReset: vi.fn() }));
 
+const session = vi.hoisted(() => ({ email: null as string | null }));
+vi.mock('@thc/db/server', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: async () => ({ data: { user: session.email ? { email: session.email } : null } }),
+    },
+  }),
+}));
+
 const state = vi.hoisted(() => ({
   cookie: 'amara.k@example.com' as string | undefined,
   userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
@@ -43,8 +52,10 @@ vi.mock('next/navigation', () => ({
 const { default: ForgotPage } = await import('../page');
 const { default: SentPage } = await import('../sent/page');
 
+const signedOutA1 = renderToStaticMarkup(await ForgotPage());
+
 describe('A1 Forgot password (wireframes/staff/auth.html)', () => {
-  const markup = renderToStaticMarkup(<ForgotPage />);
+  const markup = signedOutA1;
 
   it('puts "‹ Back to sign in" first, above the copy — not under the small print', () => {
     const back = markup.indexOf('‹ Back to sign in');
@@ -66,6 +77,29 @@ describe('A1 Forgot password (wireframes/staff/auth.html)', () => {
       'The email comes from admin@thehospitalitycompany.co.uk. If you don’t see it, check spam — or contact the office.',
     );
     expect(markup).not.toContain('60 minutes');
+  });
+});
+
+describe('A1 reached signed in, from "Forgot password?" beside Current password (ADR-0113)', () => {
+  it('fills in the session’s own address and goes back to the app, not to sign in', async () => {
+    const saved = { ...process.env };
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
+    session.email = 'ayushman.p@example.com';
+    try {
+      const markup = renderToStaticMarkup(await ForgotPage());
+      expect(markup).toContain('value="ayushman.p@example.com"');
+      expect(markup).toMatch(/<div class="row"><a href="\/" class="sm">‹ Back<\/a>/);
+      expect(markup).not.toContain('Back to sign in');
+    } finally {
+      session.email = null;
+      process.env = saved;
+    }
+  });
+
+  it('signed out, fills in nothing', async () => {
+    const markup = renderToStaticMarkup(await ForgotPage());
+    expect(markup).not.toMatch(/name="email"[^>]*value=/);
   });
 });
 

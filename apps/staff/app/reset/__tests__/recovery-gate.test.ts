@@ -66,13 +66,13 @@ describe('setPassword: only a fresh reset-link session', () => {
 
   it('a recovery link opened within 15 minutes sets the password', async () => {
     auth.getClaims.mockResolvedValue(amr('recovery', 14 * 60));
-    expect(await submit()).toBe('REDIRECT:/shifts');
+    expect(await submit()).toBe('REDIRECT:/');
     expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Gala-Dinner-2026' });
   });
 
   it('the token_hash link (amr otp) counts as a recovery link', async () => {
     auth.getClaims.mockResolvedValue(amr('otp', 10));
-    expect(await submit()).toBe('REDIRECT:/shifts');
+    expect(await submit()).toBe('REDIRECT:/');
   });
 
   it('a recovery link opened more than 15 minutes ago is refused', async () => {

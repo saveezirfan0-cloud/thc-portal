@@ -183,13 +183,13 @@ describe('activateAccount (§2.7)', () => {
 });
 
 describe('setPassword (§10.2 A3)', () => {
-  it('updates, signs every OTHER device out, then goes to /shifts', async () => {
+  it('updates, signs every OTHER device out, then goes to the root (wizard or Shifts)', async () => {
     auth.getUser.mockResolvedValue({ data: { user: STAFF_USER } });
     auth.updateUser.mockResolvedValue({ error: null });
     const result = await outcome(() =>
       setPassword(null, form({ password: 'Gala-Dinner-2026', confirm: 'Gala-Dinner-2026' })),
     );
-    expect(result).toBe('REDIRECT:/shifts');
+    expect(result).toBe('REDIRECT:/');
     expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Gala-Dinner-2026' });
     expect(auth.signOut).toHaveBeenCalledWith({ scope: 'others' });
     expect(auth.updateUser.mock.invocationCallOrder[0]).toBeLessThan(
