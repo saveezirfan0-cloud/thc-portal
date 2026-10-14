@@ -97,7 +97,9 @@ test('the monitor lists today’s event with each worker’s live status (§9.5)
   await expect(row(avocet)).toContainText('No check-out');
   // Check-in is an actual stamp — the viewer's clock, no suffix; the
   // Window is scheduled — UK, labelled (§1.8).
-  await expect(row(curlew).locator('td.stamp')).toHaveText(/^\d{2}:\d{2}$/);
+  // Under it, checkin.html's second line: on site, and how late (ADR-0138).
+  await expect(row(curlew).locator('td.stamp')).toHaveText(/^\d{2}:\d{2}/);
+  await expect(row(curlew).locator('td.stamp .sub')).toContainText('on site');
   await expect(row(dunlin).locator('td.stamp')).toHaveText('—');
   await expect(row(curlew)).toContainText('UK time');
 
@@ -138,10 +140,11 @@ test('the violation log opens a No-show and a No check-out, with "(UK time)" inp
   await expect(dialog.locator('.kv', { hasText: 'Detected' })).toContainText('your time');
   await expect(dialog.locator('.kv', { hasText: 'Checked in' })).toContainText('never');
   await expect(dialog).toContainText('the same action as “Get back”');
-  // A date and a TimeField, not a datetime-local: the browser draws that on
-  // the device's clock (ADR-0085).
+  // A UK date field and a TimeField, not a datetime-local or a native date:
+  // the browser draws those on the device's clock and locale (ADR-0085,
+  // ADR-0138 — typed dd/mm/yyyy).
   const arrived = dialog.getByRole('group', { name: /Arrived at \(UK time\)/ });
-  await expect(arrived.getByLabel('Date')).toHaveAttribute('type', 'date');
+  await expect(arrived.getByLabel('Date')).toHaveAttribute('placeholder', 'dd/mm/yyyy');
   await expect(arrived.getByLabel('Time')).toHaveAttribute('type', 'text');
   await expect(dialog.getByText('Actual finish (UK time)')).toHaveCount(0);
 
@@ -168,7 +171,7 @@ test('the violation log opens a No-show and a No check-out, with "(UK time)" inp
   dialog = page.getByRole('dialog', { name: `No check-out — ${fullName(avocet)}` });
   await expect(dialog).toBeVisible();
   const finish = dialog.getByRole('group', { name: /Actual finish \(UK time\)/ });
-  await expect(finish.getByLabel('Date')).toHaveAttribute('type', 'date');
+  await expect(finish.getByLabel('Date')).toHaveAttribute('placeholder', 'dd/mm/yyyy');
   await expect(finish.getByLabel('Time')).toHaveAttribute('type', 'text');
   await expect(finish).toContainText('*');
   await dialog.locator('textarea').fill('Note without a finish.');

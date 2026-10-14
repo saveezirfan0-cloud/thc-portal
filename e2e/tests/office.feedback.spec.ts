@@ -56,7 +56,11 @@ test('two tabs, never one list: the client channel is read-only (§9.10)', async
     'aria-selected',
     'false',
   );
-  await expect(clientList(page)).toBeVisible();
+  // The list, or — with nothing to show — the empty card alone, with no
+  // column heads over it (release audit L19).
+  await expect(
+    clientList(page).or(page.getByText(/^No client feedback (yet|matches)/)),
+  ).toBeVisible();
   await expect(page.getByText(/read-only channel — arrives from the Client Portal/)).toBeVisible();
   await expect(page.getByLabel('Filter by client')).toHaveValue('');
   await expect(
@@ -65,7 +69,9 @@ test('two tabs, never one list: the client channel is read-only (§9.10)', async
 
   await tabs.getByRole('tab', { name: 'Office feedback' }).click();
   await expect(page).toHaveURL(/\/feedback\?tab=office$/);
-  await expect(officeList(page)).toBeVisible();
+  await expect(
+    officeList(page).or(page.getByText(/^No office feedback (yet|matches)/)),
+  ).toBeVisible();
   await expect(page.getByLabel('Filter by author')).toHaveValue('');
   // Mark as read and the read-state filter belong to the client tab only.
   await expect(page.getByRole('group', { name: 'Read state' })).toHaveCount(0);
@@ -154,9 +160,9 @@ test.describe('entries about one worker', () => {
 
     await page.getByLabel('Filter by client').selectOption(LEONARDO);
     await expect(page).toHaveURL(new RegExp(`client=${LEONARDO}`));
-    await expect(
-      clientList(page).getByText('No client feedback matches these filters.'),
-    ).toBeVisible();
+    // Nothing matches: the empty card alone, no list under it (L19).
+    await expect(page.getByText('No client feedback matches these filters.')).toBeVisible();
+    await expect(clientList(page)).toHaveCount(0);
 
     await page.getByLabel('Filter by client').selectOption(DORCHESTER);
     await expect(page).toHaveURL(new RegExp(`client=${DORCHESTER}`));
