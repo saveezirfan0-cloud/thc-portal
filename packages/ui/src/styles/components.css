@@ -2182,6 +2182,52 @@ textarea.input {
   gap: var(--sp-8);
   justify-content: flex-end;
 }
+/* `Modal onSubmit`: the body and footer inside a real <form>, so Enter
+   submits. The form takes the dialog's column so the body still scrolls. */
+.modal .modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* `Modal dirty`: Escape, the backdrop or the × ask before a filled-in form
+   is thrown away — in the footer, so the form stays in view. */
+.modal .mf.discard {
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--amber-dim);
+  border-top-color: var(--amber-line);
+}
+.modal .mf.discard .discard-q {
+  margin-right: auto;
+  font-size: var(--fs-13);
+  font-weight: 600;
+  color: var(--amber-ink);
+}
+
+/* `Toaster`: receipts for a saved edit and the Undo of a remove, stacked
+   bottom-right over the page; above the tab bar on a phone. */
+.toaster {
+  position: fixed;
+  right: var(--sp-20);
+  bottom: calc(var(--sp-20) + env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-8);
+  width: min(26rem, calc(100vw - 2 * var(--sp-16)));
+  pointer-events: none;
+}
+.toaster .toast {
+  width: 100%;
+  pointer-events: auto;
+}
+.toaster .toast .toast-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 /* The tone travels on --accent rather than straight into border-left-color,
    because the rounded style draws the same accent as an inset bar instead of
@@ -3406,6 +3452,10 @@ textarea.input {
   }
   .modal .mf {
     flex-wrap: wrap;
+  }
+  .toaster {
+    right: var(--sp-16);
+    bottom: calc(var(--pnav-h) + env(safe-area-inset-bottom) + var(--sp-8));
   }
 
   /* A card-rows table is a stack of cards here, not a scroller: it takes

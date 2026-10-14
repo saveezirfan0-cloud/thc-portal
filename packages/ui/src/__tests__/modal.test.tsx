@@ -226,3 +226,80 @@ describe('Modal', () => {
     expect(document.activeElement).toBe($('button[aria-label="Close"]'));
   });
 });
+
+describe('Modal with a filled-in form (release audit E-M4, m2)', () => {
+  function FormHarness({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
+    const [open, setOpen] = useState(true);
+    const [text, setText] = useState('');
+    return open ? (
+      <Modal
+        open
+        title="Edit"
+        dirty={text !== ''}
+        onSubmit={onSubmit}
+        onClose={() => {
+          onClose();
+          setOpen(false);
+        }}
+        footer={
+          <button type="submit" id="save" disabled={text === ''}>
+            Save
+          </button>
+        }
+      >
+        <input id="name" value={text} onChange={(event) => setText(event.target.value)} />
+      </Modal>
+    ) : null;
+  }
+
+  const type = (value: string) => {
+    const input = $<HTMLInputElement>('#name');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    act(() => {
+      setter.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+  const button = (text: string) =>
+    [...document.querySelectorAll('button')].find((b) => b.textContent === text)!;
+
+  it('closes at once while nothing has changed', () => {
+    const onClose = vi.fn();
+    mount(<FormHarness onClose={onClose} onSubmit={() => {}} />);
+    act(() => $('.modal-back').click());
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks "Discard your changes?" on Escape, the backdrop and the ×, and keeps the form', () => {
+    const onClose = vi.fn();
+    mount(<FormHarness onClose={onClose} onSubmit={() => {}} />);
+    type('Leonardo');
+
+    $('#name').focus();
+    key('Escape');
+    expect(onClose).not.toHaveBeenCalled();
+    expect($('[role="alertdialog"]').textContent).toContain('Discard your changes?');
+    // A second Escape is "keep editing".
+    key('Escape');
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+
+    act(() => $('.modal-back').click());
+    expect(document.activeElement).toBe(button('Keep editing'));
+    act(() => button('Keep editing').click());
+    expect($<HTMLInputElement>('#name').value).toBe('Leonardo');
+
+    act(() => $('button[aria-label="Close"]').click());
+    act(() => button('Discard').click());
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a real form: Enter submits through the enabled submit button', () => {
+    const onSubmit = vi.fn();
+    mount(<FormHarness onClose={() => {}} onSubmit={onSubmit} />);
+    const form = $<HTMLFormElement>('form.modal-form');
+    expect(form.noValidate).toBe(true);
+    type('Leonardo');
+    act(() => form.requestSubmit($('#save')));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
