@@ -42,6 +42,12 @@
   align-items: flex-end;
   flex: 0 0 auto;
 }
+/* Why Block / Reset to candidate are off, under the buttons; it wraps
+   rather than widening the header's action column. */
+.phead .acts-why {
+  max-width: 26rem;
+  text-align: right;
+}
 
 /* Role qualification, edited in place on the header (§9.6). */
 .roles-edit {
@@ -202,6 +208,9 @@
   .phead .acts {
     align-items: flex-start;
   }
+  .phead .acts-why {
+    text-align: left;
+  }
   /* Block, Reset to candidate and Remove (GDPR) are one row that is wider
      than a 360px phone. */
   .phead .acts .row {
@@ -225,6 +234,16 @@
 .kv > * {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+/* A button in a value cell ("Mark as SpudBros Express staff") wraps inside
+   the cell instead of running past the card at 1024 (release audit m4). */
+.kv > * .btn {
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  min-height: var(--btn-h-sm);
+  padding-block: var(--sp-4);
+  text-align: left;
 }
 
 /* A panel that runs the full width of a two-column tab. */

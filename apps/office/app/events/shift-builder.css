@@ -70,6 +70,12 @@
   align-items: center;
   gap: var(--sp-10);
 }
+/* Why Remove is off: its own line under the header's row, right-aligned
+   under the button it explains. */
+.rolesec .rh .rh-why {
+  flex: 1 1 100%;
+  text-align: right;
+}
 .rolesec .rb {
   padding: var(--sp-14);
   display: flex;
