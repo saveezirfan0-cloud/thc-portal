@@ -146,6 +146,22 @@ describe('the tabs fit a phone (ADR-0049)', () => {
     expect(markup).toContain('Upcoming<span class="n">2</span>');
     expect(markup).not.toContain('Upcoming &amp; ongoing');
   });
+
+  it('counts only live events on the tabs, while still listing a cancelled one (CW-14)', () => {
+    const called = event({
+      id: 'ev-off',
+      title: 'Rooftop Reception',
+      startsAt: '2026-09-21T17:00:00Z',
+      endsAt: '2026-09-21T21:00:00Z',
+      status: 'cancelled',
+    });
+    const markup = render([gala, launch, called, lunch]);
+    expect(markup).toContain('Upcoming<span class="n">2</span>');
+    expect(markup).toContain('Past<span class="n">1</span>');
+    // Listed, greyed, all the same — and in the panel's own count.
+    expect(markup).toContain('<tr class="cancelled">');
+    expect(markup).toContain('3 events');
+  });
 });
 
 describe('the "Next up" strip (ADR-0049)', () => {
@@ -220,12 +236,15 @@ describe('the document is the primary action (ADR-0049)', () => {
     expect(galaCard).toContain('<a href="/client/events/ev-gala" class="btn sm">Details →</a>');
   });
 
-  it('keeps a copy not yet issued as the plain, disabled button', () => {
+  it('draws no dead button for a copy not yet issued: a quiet line, and Details (CW-04)', () => {
     const launchCard = card(render([launch]), 'Product Launch');
-    expect(launchCard).toMatch(
-      /<button[^>]*class="btn sm"[^>]*disabled=""[^>]*>↓ Allocation Timesheet/,
-    );
+    expect(launchCard).not.toMatch(/<button[^>]*disabled=""/);
+    expect(launchCard).not.toContain('↓ Allocation Timesheet');
     expect(launchCard).not.toContain('primary');
+    // In the foot, where the download would be, beside "Details →".
+    expect(launchCard).toContain(
+      '<div class="foot"><span class="ev-sheet muted doc-pending">Allocation Timesheet: sent the day before, once every role is confirmed</span><a href="/client/events/ev-launch" class="btn sm">Details →</a></div>',
+    );
   });
 });
 
@@ -249,7 +268,16 @@ describe("the signed timesheet's status (§11.3, ADR-0049)", () => {
 describe('the filters (ADR-0049)', () => {
   it('offers From and To dates and the search', () => {
     const markup = render([gala, launch]);
-    expect(markup.match(/type="date"/g)).toHaveLength(2);
+    // Typed dd/mm/yyyy (CW-03), never a bare native date box: the only
+    // type="date" inputs left are the hidden calendar shortcuts.
+    expect(
+      markup.match(
+        /<input[^>]*type="text"[^>]*inputMode="numeric"[^>]*placeholder="dd\/mm\/yyyy"/g,
+      ),
+    ).toHaveLength(2);
+    expect(
+      markup.match(/<input class="ukd-native" type="date" tabindex="-1" aria-hidden="true"/g),
+    ).toHaveLength(2);
     expect(markup).toContain('>From (UK date)</label>');
     expect(markup).toContain('>To (UK date)</label>');
     expect(markup).toContain('placeholder="Search events"');
@@ -300,17 +328,33 @@ describe('an empty list says why (ADR-0049)', () => {
 
 describe('arrival counts on the day (ADR-0053)', () => {
   const counts = (confirmed: number, arrived: number) => ({ confirmed, arrived, bySection: {} });
-  const withArrivals = (events: PortalEvent[]) =>
+  // The gala as client_arrivals_v sends it: per section, Waiting 8 (7 in)
+  // and Bar 5 (4 in).
+  const gala13 = {
+    confirmed: 13,
+    arrived: 11,
+    bySection: { 's-wait': { confirmed: 8, arrived: 7 }, 's-bar': { confirmed: 5, arrived: 4 } },
+  };
+  const withArrivals = (events: PortalEvent[], over: RoleSection[] = sections) =>
     renderToStaticMarkup(
       <EventsScreen
         events={events}
-        sections={sections}
+        sections={over}
         lineup={lineup}
         photos={{}}
-        arrivals={{ 'ev-gala': counts(13, 11), 'ev-lunch': counts(4, 4) }}
+        arrivals={{ 'ev-gala': gala13, 'ev-lunch': counts(4, 4) }}
         now={NOW}
       />,
     );
+
+  it('holds each section to its headcount, so the buffer never shows (CW-01)', () => {
+    // Bar booked 7, with 5 confirmed; Waiting booked 4 but carries 8 —
+    // THC's buffer. "N of M arrived" counts at most 4 of the 8.
+    const overfilled = sections.map((s) => (s.shiftId === 's-wait' ? { ...s, headcount: 4 } : s));
+    const markup = withArrivals([gala], overfilled);
+    expect(markup).toContain('8 of 9 arrived');
+    expect(markup).not.toContain('11 of 13 arrived');
+  });
 
   it('shows "N of M arrived" on the ongoing event, in the table and on the card', () => {
     const markup = withArrivals([gala]);
@@ -437,7 +481,9 @@ describe('the rows open the event (wireframe tr.clickable)', () => {
   it('marks a live row clickable and keeps its Details link as the real target', () => {
     const markup = render([gala]);
     expect(markup).toContain('<tr class="clickable">');
-    expect(markup).toContain('<a href="/client/events/ev-gala" class="sm">Details →</a>');
+    expect(markup).toContain(
+      '<a href="/client/events/ev-gala" class="sm ev-details">Details →</a>',
+    );
     // Not a focus stop of its own.
     expect(markup).not.toMatch(/<tr[^>]*tabindex/);
   });
@@ -489,23 +535,56 @@ describe('the table folds to four columns on a tablet (§1.2, wireframe tablet n
 });
 
 describe('a document not issued yet says so in words', () => {
-  it('prints "Not issued yet" under the disabled button, and names it on the card', () => {
+  it('says when it comes, in the Document cell and on the card, with no button (CW-04)', () => {
     const markup = render([launch]);
     const table = markup.slice(0, markup.indexOf('class="cards"'));
-    expect(table).toMatch(
-      /disabled=""[^>]*>↓ Allocation Timesheet<\/button><span class="ev-sheet">Not issued yet<\/span>/,
+    expect(table).toContain(
+      '<div class="stack tight ev-doc"><span class="ev-sheet muted doc-pending">Allocation Timesheet: sent the day before, once every role is confirmed</span><a href="/client/events/ev-launch" class="sm ev-details">Details →</a></div>',
     );
-    expect(card(markup, 'Product Launch')).toContain('Allocation Timesheet not issued yet');
+    expect(card(markup, 'Product Launch')).toContain('sent the day before');
+  });
+
+  it('on the day, or once running, says only that it is not issued yet', () => {
+    // The gala is running and nothing was issued: "sent the day before"
+    // would be a promise already broken.
+    const markup = render([gala], {});
+    expect(markup).toContain('Allocation Timesheet not issued yet');
+    expect(markup).not.toContain('sent the day before');
+  });
+
+  it('a completed event without a final copy says so, with no button', () => {
+    query = 'tab=past';
+    const markup = render([lunch], { 'ev-lunch': ['allocation'] });
+    const table = markup.slice(0, markup.indexOf('class="cards"'));
+    expect(table).toContain('<td><b>Lunch Service</b>');
+    expect(table).toContain(
+      '<span class="ev-sheet muted doc-pending">Completed Timesheet not issued yet</span>',
+    );
+    expect(markup).not.toMatch(/<button[^>]*disabled=""[^>]*>↓/);
   });
 
   it('says nothing extra once the document is live', () => {
     expect(render([gala])).not.toContain('not issued yet');
-    expect(render([gala])).not.toContain('Not issued yet');
+    expect(render([gala])).not.toContain('sent the day before');
   });
 });
 
 describe('the page head says when it was read', () => {
   it('stamps the read time in UK time on the first paint', () => {
     expect(render([gala])).toContain('as of <b>Sat 19 Sep 2026, 09:00 UK time</b>');
+  });
+});
+
+describe('a reversed date range (CW-03)', () => {
+  it('says the dates are the wrong way round, not "No events match your filters"', () => {
+    query = 'tab=all&from=2026-09-20&to=2026-09-10';
+    const markup = render([gala, launch, lunch]);
+    expect(markup).toContain('<h3>The dates are the wrong way round</h3>');
+    expect(markup).toContain('“From” (20/09/2026) is after “To” (10/09/2026).');
+    expect(markup).toContain('>Swap the dates</button>');
+    expect(markup).not.toContain('No events match your filters');
+    // And on the "To" box itself, where the customer is looking.
+    expect(markup).toContain('role="alert"');
+    expect(markup).toContain('Before the “From” date.');
   });
 });

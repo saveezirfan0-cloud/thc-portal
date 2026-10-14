@@ -1,17 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { Alert, Avatar, Button, Panel, Pill, useViewerZone } from '@thc/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Avatar, Panel, Pill, useViewerZone } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
 import { AsOf } from '../../../_components/AsOf';
 import { Arrivals } from '../../ArrivalsPill';
 import type { EventArrivals } from '../../arrivals';
+import { DocumentLink } from '../../DocumentLink';
 import { EventWindow } from '../../EventWindow';
 import { OFFICE_EMAIL } from '../../account/copy';
 import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
+  arrivalsWithinHeadcount,
+  documentPendingLine,
+  eventEnded,
   feedbackInviteShown,
+  feedbackInviteText,
   feedbackOpen,
   fillOf,
   groupBySection,
@@ -19,6 +24,7 @@ import {
   isRemoved,
   momentIn,
   roleCountOf,
+  sectionCountLabel,
   sectionTone,
   statusTone,
 } from '../../rules';
@@ -72,6 +78,22 @@ export function EventScreen({
   arrivals?: EventArrivals;
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
+  // Sent from this page and not yet re-read: the row says "✓ Feedback sent"
+  // at once, rather than flashing "Leave feedback" until the refresh lands.
+  const [sentHere, setSentHere] = useState<ReadonlySet<string>>(() => new Set());
+  // Where focus goes once the popup has closed on a successful send: the
+  // row's own "✓ Feedback sent", not <body>.
+  const [focusAfter, setFocusAfter] = useState<string | null>(null);
+  const rowButtons = useRef(new Map<string, HTMLButtonElement | null>());
+
+  useEffect(() => {
+    if (!focusAfter || rating) return;
+    const target = rowButtons.current.get(focusAfter);
+    if (target && target.isConnected) {
+      target.focus();
+      setFocusAfter(null);
+    }
+  }, [focusAfter, rating, lineup]);
 
   const at = useMemo(() => new Date(now), [now]);
   const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
@@ -88,7 +110,9 @@ export function EventScreen({
   const completed = event.status === 'completed';
   // "On the day" (ADR-0053): the count is live information about the shift in
   // progress. Once the event is over the signed timesheet is the record.
-  const live = event.status === 'ongoing' ? arrivals : undefined;
+  // Each section held to its headcount, as "N of M confirmed" is.
+  const live = event.status === 'ongoing' ? arrivalsWithinHeadcount(arrivals, sections) : undefined;
+  const ended = eventEnded(event, at);
   const downloads = headerDocuments(
     event.status,
     documents.map((d) => d.kind),
@@ -99,7 +123,7 @@ export function EventScreen({
     <div className="stack epage">
       <div className={cancelled ? 'ehead cancelled' : 'ehead'}>
         <div className="row wrap">
-          <Link className="sm" href="/client">
+          <Link className="sm back-link" href="/client">
             ← Your events
           </Link>
           <span className="muted sm">
@@ -137,30 +161,24 @@ export function EventScreen({
                     : '↓ Download Allocation Timesheet';
               const primary = kind === 'signout' || !completed;
               return available ? (
-                <a
+                <DocumentLink
                   key={kind}
                   className={primary ? 'btn primary' : 'btn'}
                   href={`/client/events/${event.id}/document?kind=${kind}`}
                 >
                   {label}
-                </a>
+                </DocumentLink>
               ) : (
-                // Said in words under the button, as on the list: a title
-                // alone reaches nobody on a phone or a keyboard.
-                <span key={kind} className="doc-slot">
-                  <Button
-                    tone={primary ? 'primary' : 'default'}
-                    disabled
-                    title="THC has not issued this document yet"
-                  >
-                    {label}
-                  </Button>
-                  <span className="ev-sheet">Not issued yet</span>
+                // Not issued yet: no dead button, a quiet line saying what
+                // to expect, as on the list (documentPendingLine).
+                <span key={kind} className="ev-sheet doc-pending">
+                  {documentPendingLine(kind, event, at)}
                 </span>
               );
             })}
-            {/* ADR-0050: an .ics built in the browser; none when cancelled. */}
-            <CalendarButton event={event} />
+            {/* ADR-0050: an .ics built in the browser; none when cancelled,
+                and none once the event is over — nothing left to attend. */}
+            {ended ? null : <CalendarButton event={event} />}
             {/* A question about this event goes to the office, with the
                 event already named in the subject. */}
             <a className="btn ghost" href={contactHref(event)}>
@@ -216,10 +234,7 @@ export function EventScreen({
           </Alert>
         ) : !rateable ? null : open ? (
           invite ? (
-            <Alert tone="green">
-              The event has started — you can now leave feedback on each member of staff. One entry
-              per person per event.
-            </Alert>
+            <Alert tone="green">{feedbackInviteText(event, at)}</Alert>
           ) : null
         ) : (
           <FeedbackLocked startsAt={event.startsAt} now={at} />
@@ -240,8 +255,11 @@ export function EventScreen({
               }
               actions={
                 <>
+                  {/* Held to the headcount: a section carrying THC's buffer
+                      reads "4 of 4", never "6 of 4"; the line-up below still
+                      lists everyone confirmed. */}
                   <Pill tone={sectionTone(group, completed)}>
-                    {group.confirmed} {completed ? 'worked' : 'confirmed'}
+                    {sectionCountLabel(group, completed)}
                   </Pill>
                   <Arrivals
                     counts={live}
@@ -263,7 +281,11 @@ export function EventScreen({
                 <div className="wgrid">
                   {group.people.map((p) => {
                     const removed = isRemoved(p);
+                    const given = p.feedbackGiven || sentHere.has(p.bookingId);
                     const sent = p.feedbackGiven ? sentLine(p) : null;
+                    const keep = (el: HTMLButtonElement | null) => {
+                      rowButtons.current.set(p.bookingId, el);
+                    };
                     return (
                       <div className="wrow" key={p.bookingId}>
                         <Avatar
@@ -285,20 +307,29 @@ export function EventScreen({
                             ) : null}
                           </div>
                         </div>
-                        {p.feedbackGiven ? (
-                          <Button
-                            className="fb sent"
-                            size="sm"
-                            disabled
+                        {given ? (
+                          // aria-disabled, not disabled: a status that can
+                          // still hold focus, so focus lands here after a
+                          // send instead of dropping to the page (WCAG 2.4.3).
+                          <button
+                            ref={keep}
+                            type="button"
+                            className="btn sm fb sent"
+                            aria-disabled="true"
+                            aria-label={`Feedback sent for ${p.name}`}
                             title="Your feedback is read-only once sent"
                           >
                             ✓ Feedback sent
-                          </Button>
+                          </button>
                         ) : (
-                          <Button
-                            className={removed ? 'fb gone' : 'fb'}
-                            size="sm"
+                          // Named per worker: twelve buttons all called
+                          // "Leave feedback" told a screen reader nothing.
+                          <button
+                            ref={keep}
+                            type="button"
+                            className={removed ? 'btn sm fb gone' : 'btn sm fb'}
                             disabled={!open || removed}
+                            aria-label={`Leave feedback for ${p.name}`}
                             title={
                               removed
                                 ? 'This account has been removed'
@@ -309,7 +340,7 @@ export function EventScreen({
                             onClick={() => setRating(p)}
                           >
                             Leave feedback
-                          </Button>
+                          </button>
                         )}
                       </div>
                     );
@@ -330,6 +361,11 @@ export function EventScreen({
           eventTitle={event.title}
           eventDate={ukDateShort(event.startsAt)}
           onClose={() => setRating(null)}
+          onSent={() => {
+            const id = rating.bookingId;
+            setSentHere((prev) => new Set(prev).add(id));
+            setFocusAfter(id);
+          }}
         />
       ) : null}
     </div>

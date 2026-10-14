@@ -9,6 +9,7 @@ import { DOCUMENTS_UNAVAILABLE, loadDocuments } from '../../documents';
 import { isUuid } from '../../ids';
 import { presentLineup } from '../../photos';
 import { AutoRefresh } from '../../../_components/AutoRefresh';
+import { DocNotice } from './DocNotice';
 import { EventScreen } from './EventScreen';
 
 /**
@@ -64,9 +65,9 @@ const DOC_NOTICE = {
   unavailable: "That document couldn't be downloaded just now. Try again in a few minutes.",
 } as const;
 
-type DocNotice = 'missing' | 'unavailable';
+type DocNoticeKind = 'missing' | 'unavailable';
 
-function docNotice(value: string | string[] | undefined): DocNotice | null {
+function docNotice(value: string | string[] | undefined): DocNoticeKind | null {
   return value === 'missing' || value === 'unavailable' ? value : null;
 }
 
@@ -105,11 +106,17 @@ export default async function ClientEventPage({
   return (
     <>
       <AutoRefresh />
-      {notice ? (
-        <Alert tone="amber">
-          {DOC_NOTICE[notice === 'missing' && event.status === 'cancelled' ? 'cancelled' : notice]}
-        </Alert>
-      ) : null}
+      {/* Shown once: the parameter leaves the address as soon as it is
+          read, so a reload or the next refresh does not repeat it. */}
+      <DocNotice
+        message={
+          notice
+            ? DOC_NOTICE[
+                notice === 'missing' && event.status === 'cancelled' ? 'cancelled' : notice
+              ]
+            : null
+        }
+      />
       {documents.unavailable ? <Alert tone="amber">{DOCUMENTS_UNAVAILABLE}</Alert> : null}
       <EventScreen
         event={event}

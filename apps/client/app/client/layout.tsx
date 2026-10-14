@@ -76,10 +76,14 @@ export default async function ClientPortalLayout({ children }: { children: React
           </span>
         </Link>
 
+        {/* A long company name is cut with an ellipsis on a short bar
+            (client-portal.css); the whole name is its title. */}
         {company ? (
           <span className="who">
             <span className="l">Signed in as</span>
-            <span className="n">{company}</span>
+            <span className="n" title={company}>
+              {company}
+            </span>
           </span>
         ) : null}
 

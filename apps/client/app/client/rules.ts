@@ -102,13 +102,30 @@ export function listFaces<T extends Pick<LineupRow, 'eventId' | 'sortKey'>>(
 }
 
 /**
+ * One section's share of "N of M confirmed": its confirmed workers, never
+ * more than the headcount booked.
+ *
+ * `client_role_sections_v.confirmed` counts every confirmed booking on the
+ * section, and that includes THC's buffer once the buffer is filled — six
+ * confirmed on a Waiting Staff section of four. The customer booked four;
+ * the two extra are THC's insurance and stay internal (§3.2, the wireframe:
+ * "N counts confirmed workers only … buffer slots are internal and never
+ * shown"). So a section counts at most its headcount, and an over-filled
+ * section can never make up for an empty one.
+ */
+export function cappedConfirmed(section: Pick<RoleSection, 'confirmed' | 'headcount'>): number {
+  return Math.max(0, Math.min(section.confirmed, section.headcount));
+}
+
+/**
  * "N of M confirmed" (§11.1).
  *
- * N counts confirmed workers only and M is the headcount the customer
- * booked. The buffer is THC's own over-booking and is never shown here
- * (§3.2), which is why this adds `headcount` and never `headcount + buffer`
- * — `client_role_sections_v` does not return the buffer at all, so the sum
- * cannot accidentally include it.
+ * M is the headcount the customer booked; N is the sum of each section's
+ * `cappedConfirmed`, so Host 2/2 + Waiting Staff 6/4 + Bar Staff 0/2 is
+ * "6 of 8", not "8 of 8". Green only when EVERY section is full — a total
+ * that happens to reach M while one role is empty is still amber — and the
+ * bar is drawn from the capped sum. `client_role_sections_v` does not
+ * return the buffer itself, and nothing here adds it.
  */
 export function fillOf(sections: readonly RoleSection[]): {
   confirmed: number;
@@ -116,10 +133,47 @@ export function fillOf(sections: readonly RoleSection[]): {
   percent: number;
   tone: 'green' | 'amber';
 } {
-  const confirmed = sections.reduce((n, s) => n + s.confirmed, 0);
-  const headcount = sections.reduce((n, s) => n + s.headcount, 0);
+  const confirmed = sections.reduce((n, s) => n + cappedConfirmed(s), 0);
+  const headcount = sections.reduce((n, s) => n + Math.max(0, s.headcount), 0);
   const percent = headcount === 0 ? 0 : Math.min(100, Math.round((confirmed / headcount) * 100));
-  return { confirmed, headcount, percent, tone: confirmed >= headcount ? 'green' : 'amber' };
+  const full = sections.every((s) => s.confirmed >= s.headcount);
+  return { confirmed, headcount, percent, tone: full ? 'green' : 'amber' };
+}
+
+/**
+ * "N of M arrived" (ADR-0053) on the same footing as "N of M confirmed".
+ *
+ * `client_arrivals_v` counts every confirmed booking on a section, buffer
+ * included, and every check-in. Shown as it came, a section of four with
+ * six confirmed read "5 of 6 arrived" — THC's over-booking again. Each
+ * section is held to its headcount (from `client_role_sections_v`): at most
+ * that many confirmed, and at most that many arrived (under the strict
+ * buffer policy only the first `headcount` check-ins work, RULE-15). The
+ * event's total is re-added from the capped sections. A section the
+ * sections read did not return keeps its own figures.
+ */
+export function arrivalsWithinHeadcount<
+  T extends {
+    confirmed: number;
+    arrived: number;
+    bySection: Record<string, { confirmed: number; arrived: number }>;
+  },
+>(counts: T | undefined, sections: readonly RoleSection[]): T | undefined {
+  // No per-section figures to hold to anything: leave the totals alone.
+  if (!counts || Object.keys(counts.bySection).length === 0) return counts;
+  const headcount = new Map(sections.map((s) => [s.shiftId, s.headcount]));
+  const bySection: Record<string, { confirmed: number; arrived: number }> = {};
+  let confirmed = 0;
+  let arrived = 0;
+  for (const [id, figure] of Object.entries(counts.bySection)) {
+    const cap = headcount.get(id);
+    const c = cap === undefined ? figure.confirmed : Math.min(figure.confirmed, Math.max(0, cap));
+    const a = Math.min(figure.arrived, c);
+    bySection[id] = { confirmed: c, arrived: a };
+    confirmed += c;
+    arrived += a;
+  }
+  return { ...counts, confirmed, arrived, bySection };
 }
 
 /** The two §11.3 PDFs, as `client_event_documents_v` names them. */
@@ -310,6 +364,24 @@ export function sectionTone(
 }
 
 /**
+ * The words on a role section's pill: "4 of 4 confirmed" (or "worked" once
+ * the event is over), the confirmed count held to the headcount
+ * (`cappedConfirmed`) so a section carrying THC's buffer never reads "6 of
+ * 4". The line-up under it still lists everyone confirmed — they are who is
+ * coming — only the count is the customer's booking. A row with no section
+ * (no headcount to compare) says what it has: "2 confirmed".
+ */
+export function sectionCountLabel(
+  group: Pick<LineupGroup, 'confirmed' | 'headcount'>,
+  completed: boolean,
+): string {
+  const word = completed ? 'worked' : 'confirmed';
+  if (group.headcount === null) return `${group.confirmed} ${word}`;
+  const n = cappedConfirmed({ confirmed: group.confirmed, headcount: group.headcount });
+  return `${n} of ${group.headcount} ${word}`;
+}
+
+/**
  * "3 roles" in the event header: the distinct roles the customer booked,
  * read from the role sections — two sections of one role are one role —
  * so an event with nobody confirmed yet still counts its roles. The
@@ -478,23 +550,36 @@ export interface RoleFill {
 /**
  * "Waiting 8/10 · Bar 5/7" under the list's fill bar (§11.1, ADR-0049).
  *
- * The same numbers `fillOf` adds up, split by role: confirmed only against
- * the booked headcount, never the buffer (§3.2). Two sections of the same
- * role (a lunch and a dinner shift of Waiting Staff) are one entry, because
- * the customer booked "Waiting Staff", not two shift ids. Ordered by the
- * role's own start (RULE-18) as the event page groups them, so the line and
- * the page read in the same order.
+ * The same numbers `fillOf` adds up, split by role: each section's confirmed
+ * held to its headcount (`cappedConfirmed`), never the buffer (§3.2) — so a
+ * Waiting Staff section of four with six confirmed reads "4/4", not "6/4".
+ * Two sections of the same role (a lunch and a dinner shift of Waiting
+ * Staff) are one entry, because the customer booked "Waiting Staff", not
+ * two shift ids; the entry is short when either section is, so a full lunch
+ * cannot hide an empty dinner. Ordered by the role's own start (RULE-18) as
+ * the event page groups them, so the line and the page read in the same
+ * order.
  */
 export function roleBreakdown(sections: readonly RoleSection[]): RoleFill[] {
-  const byRole = new Map<string, { startsAt: string; confirmed: number; headcount: number }>();
+  const byRole = new Map<
+    string,
+    { startsAt: string; confirmed: number; headcount: number; short: boolean }
+  >();
   for (const s of sections) {
+    const short = s.confirmed < s.headcount;
     const seen = byRole.get(s.role);
     if (seen) {
-      seen.confirmed += s.confirmed;
-      seen.headcount += s.headcount;
+      seen.confirmed += cappedConfirmed(s);
+      seen.headcount += Math.max(0, s.headcount);
+      seen.short ||= short;
       if (s.startsAt < seen.startsAt) seen.startsAt = s.startsAt;
     } else {
-      byRole.set(s.role, { startsAt: s.startsAt, confirmed: s.confirmed, headcount: s.headcount });
+      byRole.set(s.role, {
+        startsAt: s.startsAt,
+        confirmed: cappedConfirmed(s),
+        headcount: Math.max(0, s.headcount),
+        short,
+      });
     }
   }
   return [...byRole.entries()]
@@ -503,7 +588,7 @@ export function roleBreakdown(sections: readonly RoleSection[]): RoleFill[] {
       role,
       confirmed: f.confirmed,
       headcount: f.headcount,
-      short: f.confirmed < f.headcount,
+      short: f.short,
     }));
 }
 
@@ -554,6 +639,72 @@ export function feedbackInviteShown(
   return now.getTime() <= stale;
 }
 
+/** Whether the event's window is over: completed, or past its end on the clock. */
+export function eventEnded(event: Pick<PortalEvent, 'status' | 'endsAt'>, now: Date): boolean {
+  return event.status === 'completed' || now.getTime() >= new Date(event.endsAt).getTime();
+}
+
+/**
+ * The words of the feedback invitation (`feedbackInviteShown` decides
+ * whether it shows). While the event runs it says it has started
+ * (wireframes/client/event.html:148); once it is over "has started" is
+ * stale news, so it says the event has finished and that the ones not yet
+ * rated are still open — the buttons stay live with no closing rule.
+ */
+export function feedbackInviteText(
+  event: Pick<PortalEvent, 'status' | 'endsAt'>,
+  now: Date,
+): string {
+  return eventEnded(event, now)
+    ? "This event has finished — you can leave feedback for anyone you haven't yet. One entry per person per event."
+    : 'The event has started — you can now leave feedback on each member of staff. One entry per person per event.';
+}
+
+/**
+ * The counts on the Upcoming and Past tabs: the live events in each.
+ *
+ * A cancelled event is still LISTED in its tab, greyed (§11.1), but it is
+ * not an event to attend or one that happened, so "Upcoming 4" with one of
+ * the four cancelled over-promised. The rows and the "N events" pill are
+ * unchanged; only the badge leaves cancellations out.
+ */
+export function tabCounts(
+  events: readonly PortalEvent[],
+  now: Date,
+): { upcoming: number; past: number } {
+  const live = events.filter((e) => e.status !== 'cancelled');
+  return {
+    upcoming: filterByTab(live, 'upcoming', now).length,
+    past: filterByTab(live, 'past', now).length,
+  };
+}
+
+/**
+ * The quiet line a row shows instead of a dead download button (§11.3,
+ * ADR-0074 as amended by ADR-0088), when the office has not issued the
+ * document it would offer.
+ *
+ * The Allocation Timesheet goes out automatically the day before the event
+ * once every role is fully confirmed (ADR-0088 §2 — the hour is an office
+ * setting, so it is not promised here). That is only worth saying while the
+ * day before is still ahead or today; on the day itself, or once the event
+ * is running, it plainly has not gone, so the line says only that. The
+ * Completed Timesheet is drawn after the event and its timing depends on
+ * every check-out being settled (ADR-0074 D2), so it says not yet, nothing
+ * more. A cancelled event has its own "No document".
+ */
+export function documentPendingLine(
+  kind: DocumentKind,
+  event: Pick<PortalEvent, 'status' | 'startsAt'>,
+  now: Date,
+): string {
+  if (kind === 'signout') return 'Completed Timesheet not issued yet';
+  const before = event.status === 'upcoming' && ukToday(new Date(event.startsAt)) > ukToday(now);
+  return before
+    ? 'Allocation Timesheet: sent the day before, once every role is confirmed'
+    : 'Allocation Timesheet not issued yet';
+}
+
 /**
  * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0049).
  *
@@ -573,8 +724,9 @@ export function timesheetStatus(
 
 /**
  * The list's filters, on top of the tab (ADR-0049). Dates are `yyyy-mm-dd`
- * as an `<input type="date">` gives them, read as UK calendar days; an
- * empty string means "no bound".
+ * (the address bar's form; the field itself is typed dd/mm/yyyy,
+ * `UkDateField`), read as UK calendar days; an empty string means "no
+ * bound".
  */
 export interface EventFilters {
   query: string;
@@ -675,8 +827,8 @@ function searchMatches(e: PortalEvent, needle: string): boolean {
  * event at 23:30 UK on the "To" day is in, and one at 00:30 UK the day
  * after is out, although in summer that is still the "To" day in UTC. Both
  * bounds are inclusive. A "From" after the "To" matches nothing rather
- * than being silently swapped; the empty state then names the filters as
- * the reason.
+ * than being silently swapped; the empty state then says the dates are the
+ * wrong way round (`rangeReversed`, `emptyReason` 'range').
  */
 export function applyFilters(events: readonly PortalEvent[], f: EventFilters): PortalEvent[] {
   const needle = f.query.trim().toLowerCase();
@@ -701,11 +853,20 @@ export function emptyReason(
   total: number,
   inTab: number,
   shown: number,
-): 'none' | 'tab' | 'filters' | null {
+  reversed = false,
+): 'none' | 'tab' | 'filters' | 'range' | null {
   if (shown > 0) return null;
+  // The dates contradict each other: no clearing of the other filters would
+  // help, and "no events match" would send the customer looking for one.
+  if (reversed) return 'range';
   if (total === 0) return 'none';
   if (inTab === 0) return 'tab';
   return 'filters';
+}
+
+/** "From" falls after "To": a range that can match nothing (`applyFilters`). */
+export function rangeReversed(f: Pick<EventFilters, 'from' | 'to'>): boolean {
+  return f.from !== '' && f.to !== '' && f.from > f.to;
 }
 
 /**

@@ -9,7 +9,6 @@ import {
   AvatarGroup,
   Button,
   EmptyState,
-  Input,
   Panel,
   Pill,
   Progress,
@@ -22,13 +21,18 @@ import { needsDualZone, ukToday } from '@thc/domain';
 import { AsOf } from '../_components/AsOf';
 import { Arrivals } from './ArrivalsPill';
 import type { ArrivalsByEvent } from './arrivals';
+import { DocumentLink } from './DocumentLink';
 import { EventWindow } from './EventWindow';
+import { UkDateField } from './UkDateField';
+import { reversedRangeText } from './ukdate';
 import { ukDateShort, ukDayMonth } from './format';
 import {
   FACES_SHOWN,
   NO_FILTERS,
   applyFilters,
+  arrivalsWithinHeadcount,
   documentOffer,
+  documentPendingLine,
   emptyReason,
   eventsPanelTitle,
   feedbackToGo,
@@ -41,9 +45,11 @@ import {
   momentIn,
   nextUp,
   orderLabel,
+  rangeReversed,
   roleBreakdown,
   sortForTab,
   statusTone,
+  tabCounts,
   timesheetStatus,
   venuesOf,
 } from './rules';
@@ -51,7 +57,6 @@ import { dayLabel, olderQuery, pastWindow, sameWindow, withSince } from './windo
 import type { LoadedHistory } from './window';
 import type {
   DocumentKind,
-  DocumentOffer,
   EventFilters,
   LineupRow,
   ListState,
@@ -92,11 +97,6 @@ const STATUS_LABEL: Record<PortalEvent['status'], string> = {
 const DOC_LABEL = {
   allocation: '↓ Allocation Timesheet',
   signout: '↓ Completed Timesheet',
-} as const;
-
-const DOC_NAME = {
-  allocation: 'Allocation Timesheet',
-  signout: 'Completed Timesheet',
 } as const;
 
 const TAB_EMPTY: Record<Tab, string> = {
@@ -143,13 +143,8 @@ export function EventsScreen({
 
   const at = useMemo(() => new Date(now), [now]);
 
-  const counts = useMemo(
-    () => ({
-      upcoming: filterByTab(events, 'upcoming', at).length,
-      past: filterByTab(events, 'past', at).length,
-    }),
-    [events, at],
-  );
+  // Live events only: a cancelled one is listed, greyed, but not counted.
+  const counts = useMemo(() => tabCounts(events, at), [events, at]);
 
   const venues = useMemo(() => venuesOf(events), [events]);
   const next = useMemo(() => nextUp(events, at), [events, at]);
@@ -157,11 +152,16 @@ export function EventsScreen({
   const inTab = useMemo(() => filterByTab(events, tab, at), [events, tab, at]);
   const rows = useMemo(() => sortForTab(applyFilters(inTab, filters), tab), [inTab, filters, tab]);
   const filtering = filtersActive(filters);
-  const empty = emptyReason(events.length, inTab.length, rows.length);
+  const reversed = rangeReversed(filters);
+  const empty = emptyReason(events.length, inTab.length, rows.length, reversed);
 
   const sectionsFor = (id: string) => sections.filter((s) => s.eventId === id);
   const facesFor = (id: string) =>
     lineup.filter((l) => l.eventId === id).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  // "N of M arrived" while the event runs (ADR-0053), each section held to
+  // its headcount like "N of M confirmed", so the buffer stays internal.
+  const arrivalsFor = (e: PortalEvent, secs: RoleSection[]) =>
+    e.status === 'ongoing' ? arrivalsWithinHeadcount(arrivals[e.id], secs) : undefined;
 
   /**
    * The whole row opens the event, as the wireframe's `tr.clickable` does.
@@ -230,22 +230,20 @@ export function EventsScreen({
             </Select>
           ) : null}
           {/* Calendar days in the UK, inclusive (applyFilters): what the
-              Date column prints, not the viewer's own zone. */}
-          <Input
-            type="date"
+              Date column prints, not the viewer's own zone. Typed dd/mm/yyyy
+              whatever the device's locale (UkDateField). */}
+          <UkDateField
             label="From (UK date)"
             className="ev-date"
             value={filters.from}
-            max={filters.to || undefined}
-            onChange={(e) => set({ from: e.currentTarget.value })}
+            onChange={(from) => set({ from })}
           />
-          <Input
-            type="date"
+          <UkDateField
             label="To (UK date)"
             className="ev-date"
             value={filters.to}
-            min={filters.from || undefined}
-            onChange={(e) => set({ to: e.currentTarget.value })}
+            onChange={(to) => set({ to })}
+            error={reversed ? 'Before the “From” date.' : null}
           />
           {filtering ? (
             <Button
@@ -265,7 +263,7 @@ export function EventsScreen({
         title={
           <>
             {eventsPanelTitle(company)}{' '}
-            <span className="muted sm">only your events · {orderLabel(tab)}</span>
+            <span className="muted sm ev-qual">only your events · {orderLabel(tab)}</span>
           </>
         }
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
@@ -278,6 +276,8 @@ export function EventsScreen({
             hidden={inTab.length}
             onShowAll={() => setTab('all')}
             onClearFilters={() => setFilters(NO_FILTERS)}
+            range={reversed ? { from: filters.from, to: filters.to } : undefined}
+            onSwapDates={() => set({ from: filters.to, to: filters.from })}
             older={olderHref && loaded ? { since: loaded.since, href: olderHref } : undefined}
           />
         ) : (
@@ -308,6 +308,7 @@ export function EventsScreen({
                     const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
                     const nudge = feedbackToGo(e, faces, at);
                     const cancelled = e.status === 'cancelled';
+                    const here = arrivalsFor(e, secs);
                     const href = `/client/events/${e.id}`;
                     // Its own column on a wide screen, under the date once
                     // that column folds; rendered in both, the CSS shows one.
@@ -365,9 +366,7 @@ export function EventsScreen({
                               </span>
                               <Progress value={fill.percent} tone={fill.tone} />
                               <RoleLine sections={secs} />
-                              <Arrivals
-                                counts={e.status === 'ongoing' ? arrivals[e.id] : undefined}
-                              />
+                              <Arrivals counts={here} />
                               {/* Shown only once the Line-up column folds (≤1279px). */}
                               <div className="faces-inline">
                                 <Faces people={faces} photos={photos} />
@@ -383,14 +382,13 @@ export function EventsScreen({
                           )}
                         </td>
                         <td>
-                          <div className="stack tight">
-                            <DocumentButton eventId={e.id} offer={doc} />
-                            {sheet ? (
-                              <TimesheetStatus status={sheet} />
-                            ) : doc && !doc.available ? (
-                              <span className="ev-sheet">Not issued yet</span>
-                            ) : null}
-                            <Link className={cancelled ? 'sm muted' : 'sm'} href={href}>
+                          <div className="stack tight ev-doc">
+                            <DocumentButton event={e} offer={doc} now={at} />
+                            {sheet === 'ready' ? <TimesheetStatus status={sheet} /> : null}
+                            <Link
+                              className={cancelled ? 'sm muted ev-details' : 'sm ev-details'}
+                              href={href}
+                            >
                               Details →
                             </Link>
                           </div>
@@ -412,6 +410,7 @@ export function EventsScreen({
                 const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
                 const nudge = feedbackToGo(e, faces, at);
                 const cancelled = e.status === 'cancelled';
+                const ready = sheet === 'ready';
 
                 return (
                   <div key={e.id} className={cancelled ? 'ecard cancelled' : 'ecard'}>
@@ -441,21 +440,17 @@ export function EventsScreen({
                         </div>
                         <Progress value={fill.percent} tone={fill.tone} />
                         <RoleLine sections={secs} />
-                        <Arrivals counts={e.status === 'ongoing' ? arrivals[e.id] : undefined} />
+                        <Arrivals counts={arrivalsFor(e, secs)} />
                       </div>
                     )}
-                    {nudge || sheet || (doc && !doc.available) ? (
+                    {nudge || ready ? (
                       <div className="ev-notes">
                         {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
-                        {sheet ? (
-                          <TimesheetStatus status={sheet} />
-                        ) : doc && !doc.available ? (
-                          <span className="ev-sheet">{DOC_NAME[doc.kind]} not issued yet</span>
-                        ) : null}
+                        {ready ? <TimesheetStatus status={sheet} /> : null}
                       </div>
                     ) : null}
                     <div className="foot">
-                      <DocumentButton eventId={e.id} offer={doc} />
+                      <DocumentButton event={e} offer={doc} now={at} />
                       <Link className="btn sm" href={`/client/events/${e.id}`}>
                         Details →
                       </Link>
@@ -470,7 +465,7 @@ export function EventsScreen({
 
       {/* The list reads a recent window of past events (window.ts); older
           ones are a page further back, never silently missing. */}
-      {loaded && tab !== 'upcoming' && !(empty && olderHref) ? (
+      {loaded && tab !== 'upcoming' && !reversed && !(empty && olderHref) ? (
         <p className="sm muted mt-16">
           {loaded.until
             ? `Past events from ${dayLabel(loaded.since)} to ${dayLabel(loaded.until)}`
@@ -560,17 +555,44 @@ export function EmptyList({
   hidden,
   onShowAll,
   onClearFilters,
+  range,
+  onSwapDates,
   older,
 }: {
-  reason: 'none' | 'tab' | 'filters';
+  reason: 'none' | 'tab' | 'filters' | 'range';
   tab: Tab;
   /** How many rows of this tab the filters are hiding. */
   hidden: number;
   onShowAll: () => void;
   onClearFilters: () => void;
+  /** The two dates, when "From" is after "To" (`rangeReversed`). */
+  range?: { from: string; to: string };
+  onSwapDates?: () => void;
   /** Past events exist before the window read (window.ts): where they are. */
   older?: { since: string; href: string };
 }) {
+  // The dates contradict each other: say so, and offer the obvious fix,
+  // rather than "No events match your filters".
+  if (reason === 'range') {
+    return (
+      <div className="ev-empty">
+        <EmptyState>
+          <h3>The dates are the wrong way round</h3>
+          <p>{range ? reversedRangeText(range.from, range.to) : 'Swap “From” and “To”.'}</p>
+          <div className="row wrap mt-16 ev-empty-actions">
+            {onSwapDates ? (
+              <Button size="sm" onClick={onSwapDates}>
+                Swap the dates
+              </Button>
+            ) : null}
+            <Button size="sm" tone="ghost" onClick={onClearFilters}>
+              Clear filters
+            </Button>
+          </div>
+        </EmptyState>
+      </div>
+    );
+  }
   // "No events yet" / "no past events yet" would be untrue with history
   // before the window: say what was looked at, and offer the rest.
   if (older && (reason === 'none' || (reason === 'tab' && tab !== 'upcoming'))) {
@@ -722,34 +744,47 @@ export function TimesheetStatus({ status }: { status: 'ready' | 'pending' }) {
   return status === 'ready' ? (
     <span className="ev-sheet ready">✓ Completed Timesheet ready</span>
   ) : (
-    <span className="ev-sheet">Timesheet not issued yet</span>
+    <span className="ev-sheet">Completed Timesheet not issued yet</span>
   );
 }
 
 /**
  * The row's document (§11.1, §11.3): a real download (an `<a href>` to the
  * PDF, so it can be saved or forwarded from a phone, §11.4) once the office
- * has issued that kind; the same label, disabled, until it has; and the
+ * has issued that kind, filled as the row's primary action (ADR-0049), with
+ * a "Preparing…" state while the PDF is fetched (`DocumentLink`); the
  * wireframe's "No document" for a cancelled event.
  *
- * A live download is the row's primary action, filled (ADR-0049): next to
- * the bordered "Details →" the plain `btn` read as greyed out. The disabled
- * stub stays the plain, faded button, so a copy not yet issued still looks
- * unavailable rather than like a primary that does nothing.
+ * Until the office has issued it there is NO button: a disabled full-width
+ * pill on every upcoming card read as a broken primary action. A quiet line
+ * says what to expect instead (`documentPendingLine`: the Allocation
+ * Timesheet is sent the day before, once every role is confirmed), and
+ * "Details →" is the row's way on.
  */
-function DocumentButton({ eventId, offer }: { eventId: string; offer: DocumentOffer | null }) {
+function DocumentButton({
+  event,
+  offer,
+  now,
+}: {
+  event: PortalEvent;
+  offer: ReturnType<typeof documentOffer>;
+  now: Date;
+}) {
   if (!offer) return <span className="muted sm">No document</span>;
   if (offer.available) {
     return (
-      <a className="btn sm primary" href={`/client/events/${eventId}/document?kind=${offer.kind}`}>
+      <DocumentLink
+        className="btn sm primary"
+        href={`/client/events/${event.id}/document?kind=${offer.kind}`}
+      >
         {DOC_LABEL[offer.kind]}
-      </a>
+      </DocumentLink>
     );
   }
   return (
-    <Button size="sm" disabled title="THC has not issued this document yet">
-      {DOC_LABEL[offer.kind]}
-    </Button>
+    <span className="ev-sheet muted doc-pending">
+      {documentPendingLine(offer.kind, event, now)}
+    </span>
   );
 }
 

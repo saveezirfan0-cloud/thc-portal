@@ -19,8 +19,9 @@ import { leaveFeedback } from './actions';
  *
  * One entry per worker per event. The customer cannot edit or delete it
  * afterwards and cannot see the office's own entry on the same worker
- * (§9.10), so the modal closes on success and the row's button becomes
- * "✓ Feedback sent" when the page re-reads.
+ * (§9.10), so the modal closes on success, the row's button becomes
+ * "✓ Feedback sent" at once (`onSent`; the page's re-read confirms it) and
+ * focus lands on it rather than on the page.
  *
  * The comment is optional: §11.2 asks for "stars + comment", and a customer
  * who wants to record five stars and nothing else should not have to invent
@@ -47,6 +48,9 @@ export function commentHint(length: number): string {
 }
 
 const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
+
+/** The one complaint a star choice answers; cleared as soon as one is chosen. */
+const RATING_REQUIRED = 'Choose a rating between 1 and 5 stars.';
 
 /**
  * Whether a failed send was a lapsed session rather than the connection.
@@ -117,6 +121,7 @@ export function FeedbackModal({
   eventTitle,
   eventDate,
   onClose,
+  onSent,
 }: {
   open: boolean;
   eventId: string;
@@ -129,6 +134,11 @@ export function FeedbackModal({
   eventTitle: string;
   eventDate: string;
   onClose: () => void;
+  /**
+   * The entry is saved (or was already there). Called before `onClose`, so
+   * the page can mark the row "✓ Feedback sent" and put focus on it.
+   */
+  onSent?: () => void;
 }) {
   const router = useRouter();
   const [rating, setRating] = useState(0);
@@ -140,6 +150,13 @@ export function FeedbackModal({
   const [pending, startTransition] = useTransition();
   const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // Choosing a star answers "Choose a rating…": the complaint goes with it.
+  // Any other message (a refusal, a lapsed session) stays until resent.
+  function choose(n: number) {
+    setRating(n);
+    setError((current) => (current === RATING_REQUIRED ? null : current));
+  }
+
   // One tab stop for the group (roving tabindex): the chosen star, or the
   // first before a choice; the arrows, Home and End move and choose.
   function onStarKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -147,7 +164,7 @@ export function FeedbackModal({
     const next = starForKey(e.key, rating);
     if (next === null) return;
     e.preventDefault();
-    setRating(next);
+    choose(next);
     starRefs.current[next - 1]?.focus();
   }
 
@@ -162,7 +179,7 @@ export function FeedbackModal({
 
   function submit() {
     if (rating === 0) {
-      setError('Choose a rating between 1 and 5 stars.');
+      setError(RATING_REQUIRED);
       return;
     }
     if (feedbackTextTooLong(text)) {
@@ -184,12 +201,14 @@ export function FeedbackModal({
       if (result.ok) {
         setRating(0);
         setText('');
+        onSent?.();
         onClose();
         return;
       }
       if (isAlreadyLeft(result as { error?: string; code?: string | null })) {
         setRating(0);
         setText('');
+        onSent?.();
         onClose();
         router.refresh();
         return;
@@ -269,7 +288,7 @@ export function FeedbackModal({
               tabIndex={n === (rating || 1) ? 0 : -1}
               aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
               className={n <= rating ? 'star on' : 'star'}
-              onClick={() => setRating(n)}
+              onClick={() => choose(n)}
               disabled={pending}
             >
               <StarIcon />
