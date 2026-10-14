@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 822 · Editing safety: the pay floor, a client phone, length caps
---       (20261014160000, release audit D-M2, D-M3, D-M7, ADR-0137)
+--       (20261014180000, release audit D-M2, D-M3, D-M7, ADR-0137)
 --
 --   1. the floor: settings.minimum_hourly_pay (£12.71, 2026/27) read by
 --      minimum_pay_rate(); create_role / update_role (a changed rate

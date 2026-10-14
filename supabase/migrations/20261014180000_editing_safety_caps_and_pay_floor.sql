@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261014160000 · editing safety: length caps, the pay floor,
+-- Migration 20261014180000 · editing safety: length caps, the pay floor,
 --                            a client phone that is a phone
 --                            (release audit 14.10.2026 D-M2, D-M3, D-M7;
 --                            ADR-0137)
@@ -68,7 +68,7 @@ as $$
 $$;
 
 comment on function public.minimum_pay_rate() is
-  '20261014160000 (ADR-0137): the UK National Living Wage for 21 and over, £/h — settings.minimum_hourly_pay (£12.71 from 1 April 2026, GOV.UK). No base or personal pay rate is set below it.';
+  '20261014180000 (ADR-0137): the UK National Living Wage for 21 and over, £/h — settings.minimum_hourly_pay (£12.71 from 1 April 2026, GOV.UK). No base or personal pay rate is set below it.';
 
 revoke all on function public.minimum_pay_rate() from public, anon;
 grant execute on function public.minimum_pay_rate() to authenticated, service_role;
@@ -185,7 +185,7 @@ begin
   if p_pay_rate is not null and p_pay_rate <> round(p_pay_rate, 2) then
     raise exception 'A pay rate is set to the penny' using errcode = 'check_violation';
   end if;
-  -- 20261014160000: never below the National Living Wage.
+  -- 20261014180000: never below the National Living Wage.
   perform assert_pay_floor(p_pay_rate);
 
   select s.removed_at into v_removed from staff s where s.id = p_staff for update;
@@ -308,7 +308,7 @@ as $$
 $$;
 
 comment on function public.dress_codes_fit(text[]) is
-  '20261014160000: every dress code in a rate card''s list is at most 200 characters (client_rate_cards_dress_code_length).';
+  '20261014180000: every dress code in a rate card''s list is at most 200 characters (client_rate_cards_dress_code_length).';
 
 alter table venues drop constraint if exists venues_name_length;
 alter table venues add constraint venues_name_length check (char_length(name) <= 120) not valid;
@@ -348,12 +348,12 @@ begin
 end $$;
 
 comment on constraint venues_name_length on venues is
-  '20261014160000 (release audit D-M3): a venue name is at most 120 characters.';
+  '20261014180000 (release audit D-M3): a venue name is at most 120 characters.';
 comment on constraint clients_name_length on clients is
-  '20261014160000 (release audit D-M3): a client name is at most 120 characters.';
+  '20261014180000 (release audit D-M3): a client name is at most 120 characters.';
 comment on constraint client_rate_cards_dress_code_length on client_rate_cards is
-  '20261014160000 (release audit D-M3): each dress code on a rate card is at most 200 characters.';
+  '20261014180000 (release audit D-M3): each dress code on a rate card is at most 200 characters.';
 comment on constraint shift_requirements_dress_code_length on shift_requirements is
-  '20261014160000 (release audit D-M3): an event section''s dress code is at most 200 characters.';
+  '20261014180000 (release audit D-M3): an event section''s dress code is at most 200 characters.';
 comment on constraint feedback_office_text_length on feedback is
-  '20261014160000 (release audit D-M3): the office''s own feedback is at most 2,000 characters, the Client Portal''s figure (20261012120600).';
+  '20261014180000 (release audit D-M3): the office''s own feedback is at most 2,000 characters, the Client Portal''s figure (20261012120600).';
