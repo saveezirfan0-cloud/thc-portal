@@ -228,12 +228,14 @@ export async function inviteFromUsers(
   await form.getByRole('button', { name: 'Create login' }).click();
 
   // E11 (ADR-0058) queues on the local stack, so the dialog normally says
-  // the invitation was emailed; it says "send the link" when it was not.
+  // the invitation is queued — not "emailed", which claimed a send that had
+  // not happened yet (ADR-0137 §1, release audit m9); it says "send the
+  // link" when it was not queued.
   const ready = page.getByRole('dialog', {
-    name: /^Login ready — (invitation emailed|send the link)$/,
+    name: /^Login ready — (invitation queued|send the link)$/,
   });
   await expect(ready).toBeVisible();
-  await expect(ready).toContainText(`Emailed to ${invitee.email}`);
+  await expect(ready).toContainText(`The invitation to ${invitee.email} is queued`);
   await expect(ready).toContainText(invitee.fullName);
   await expect(ready).toContainText(invitee.email);
   const link = await ready.getByLabel('Set-up link', { exact: true }).inputValue();
