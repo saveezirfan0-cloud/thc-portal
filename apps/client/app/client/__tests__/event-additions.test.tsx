@@ -139,8 +139,10 @@ describe('N3 · who the timesheets go to', () => {
       }),
     );
     expect(html).toContain('Timesheets go to');
-    expect(html).toContain('banqueting@leonardo.test');
-    expect(html.match(/events@leonardo\.test/gi)).toHaveLength(1);
+    // One per line, with a break opportunity after the "@".
+    expect(html).toContain('<span class="addr">banqueting@<wbr/>leonardo.test</span>');
+    const text = html.replace(/<wbr\/>/g, '');
+    expect(text.match(/events@leonardo\.test/gi)).toHaveLength(1);
   });
 
   it('draws nothing without addresses, and nothing for a cancelled event', () => {

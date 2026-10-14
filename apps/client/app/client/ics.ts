@@ -90,6 +90,27 @@ export function buildIcs(
   event: CalendarEventInput,
   { lineupUrl, stampedAt }: { lineupUrl: string; stampedAt: Date },
 ): string {
+  return calendar(veventLines(event, lineupUrl, stampedAt));
+}
+
+/**
+ * "Add all upcoming to calendar" on the list (ADR-0134 N7): one file with a
+ * VEVENT per event, each exactly as `buildIcs` writes it — the same UID
+ * (`{eventId}@thehospitalitycompany.co.uk`, ADR-0050), so importing this
+ * file after a single event's, or importing it again next week, updates
+ * the entries rather than doubling them. Same thin content: name, place,
+ * window, PO and the line-up link — never a worker's name, never money.
+ * `lineupUrl` maps an event id to its page on this origin (`lineupUrlFor`).
+ */
+export function buildCalendar(
+  events: readonly CalendarEventInput[],
+  { lineupUrl, stampedAt }: { lineupUrl: (eventId: string) => string; stampedAt: Date },
+): string {
+  return calendar(events.flatMap((e) => veventLines(e, lineupUrl(e.id), stampedAt)));
+}
+
+/** One VEVENT's content lines, unfolded. */
+function veventLines(event: CalendarEventInput, lineupUrl: string, stampedAt: Date): string[] {
   const location = [event.venueName, event.venueAddress].filter(Boolean).join(', ');
   const description = [
     event.poNumber ? `PO number: ${event.poNumber}` : null,
@@ -98,12 +119,7 @@ export function buildIcs(
     .filter((line): line is string => line !== null)
     .join('\n');
 
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//The Hospitality Company//Client Portal//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
+  return [
     'BEGIN:VEVENT',
     `UID:${event.id}@${ICS_UID_DOMAIN}`,
     `DTSTAMP:${icsUtc(stampedAt)}`,
@@ -113,9 +129,34 @@ export function buildIcs(
     `LOCATION:${escapeText(location)}`,
     `DESCRIPTION:${escapeText(description)}`,
     'END:VEVENT',
+  ];
+}
+
+/** The VCALENDAR around some VEVENT lines, folded, CRLF-terminated. */
+function calendar(vevents: readonly string[]): string {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//The Hospitality Company//Client Portal//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    ...vevents,
     'END:VCALENDAR',
   ];
   return lines.map(foldLine).join(CRLF) + CRLF;
+}
+
+/**
+ * The events "Add all upcoming to calendar" puts in the file: every one the
+ * Upcoming tab lists (not yet ended — upcoming or under way) that is not
+ * cancelled, soonest first.
+ */
+export function upcomingForCalendar<
+  T extends Pick<CalendarEventInput, 'startsAt' | 'endsAt'> & { status: string },
+>(events: readonly T[], now: Date): T[] {
+  return events
+    .filter((e) => e.status !== 'cancelled' && new Date(e.endsAt).getTime() >= now.getTime())
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
 /**

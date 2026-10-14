@@ -716,9 +716,31 @@ export function documentPendingLine(
   if (kind === 'signout') return 'Completed Timesheet not issued yet';
   const before = event.status === 'upcoming' && ukToday(new Date(event.startsAt)) > ukToday(now);
   return before
-    ? 'Allocation Timesheet: sent the day before, once every role is confirmed'
+    ? `Allocation Timesheet: ${ALLOCATION_TIMING}`
     : 'Allocation Timesheet not issued yet';
 }
+
+/**
+ * When the Allocation Timesheet goes out, in the words round 2 settled
+ * (ADR-0133, ADR-0088: the day before, once every role is fully confirmed;
+ * the hour is an office setting, so it is not promised). One phrase for the
+ * list's quiet line and the welcome panel.
+ */
+export const ALLOCATION_TIMING = 'sent the day before, once every role is confirmed';
+
+/**
+ * The first-visit welcome on the list (ADR-0134 N8): what the customer will
+ * see, when the timesheets arrive, and how feedback works — three lines.
+ * Nothing about money, and nothing about how THC chooses who to book.
+ */
+export const WELCOME = {
+  title: 'Welcome to your Client Portal',
+  lines: [
+    'Every event THC is staffing for you, with the people confirmed for each role — by name and photo.',
+    `Timesheets: the Allocation Timesheet is ${ALLOCATION_TIMING}; the Completed Timesheet follows after the event. Both are emailed to your timesheet contacts and can be downloaded here.`,
+    "Feedback opens once an event has started: give each person stars and, if you like, a comment. One entry per person per event, read by THC's office — not by the worker.",
+  ],
+} as const;
 
 /**
  * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0049).
@@ -834,7 +856,57 @@ function searchMatches(e: PortalEvent, needle: string): boolean {
 }
 
 /**
+ * A name as the search compares it: lower case, accents off, one space
+ * between words — so "zoe" finds "Zoë" and "priya  shah" finds "Priya Shah".
+ */
+export function foldName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * The confirmed line-up's names per event, for "which events was Priya
+ * on?" (ADR-0134 N5). Only what the list already holds: the events in the
+ * window read (window.ts), each line-up already held to its headcount by
+ * `client_lineup_v` — so the search reaches exactly the people the
+ * customer can see, and "Show older events" widens it with the window. A
+ * removed worker's "Deleted account #id" is not a name to search for.
+ */
+export function lineupNames(
+  lineup: readonly Pick<LineupRow, 'eventId' | 'name'>[],
+): Map<string, string[]> {
+  const byEvent = new Map<string, string[]>();
+  for (const row of lineup) {
+    if (isRemoved(row)) continue;
+    const list = byEvent.get(row.eventId);
+    if (list) {
+      if (!list.includes(row.name)) list.push(row.name);
+    } else byEvent.set(row.eventId, [row.name]);
+  }
+  return byEvent;
+}
+
+/**
+ * The names on one event's line-up that the search box matches, in the
+ * line-up's order; empty when the box is empty or nobody matches. The row
+ * says who ("On the line-up: Priya Shah") so a match on a person is never
+ * a mystery row.
+ */
+export function staffMatching(names: readonly string[] | undefined, query: string): string[] {
+  const needle = foldName(query);
+  if (needle === '' || !names) return [];
+  return names.filter((n) => foldName(n).includes(needle));
+}
+
+/**
  * The search, venue and date range, combined (ADR-0049).
+ *
+ * The search also finds an event by a worker on its line-up (ADR-0134 N5)
+ * when `names` (`lineupNames`) is given.
  *
  * The day an event is filed under is the UK calendar day it starts on, the
  * day the list's Date column prints (`ukDateShort`), evaluated in
@@ -845,10 +917,19 @@ function searchMatches(e: PortalEvent, needle: string): boolean {
  * than being silently swapped; the empty state then says the dates are the
  * wrong way round (`rangeReversed`, `emptyReason` 'range').
  */
-export function applyFilters(events: readonly PortalEvent[], f: EventFilters): PortalEvent[] {
+export function applyFilters(
+  events: readonly PortalEvent[],
+  f: EventFilters,
+  names?: ReadonlyMap<string, readonly string[]>,
+): PortalEvent[] {
   const needle = f.query.trim().toLowerCase();
   return events.filter((e) => {
-    if (needle !== '' && !searchMatches(e, needle)) return false;
+    if (
+      needle !== '' &&
+      !searchMatches(e, needle) &&
+      staffMatching(names?.get(e.id), needle).length === 0
+    )
+      return false;
     if (f.venue !== '' && e.venueName !== f.venue) return false;
     if (f.from === '' && f.to === '') return true;
     const day = ukToday(new Date(e.startsAt));

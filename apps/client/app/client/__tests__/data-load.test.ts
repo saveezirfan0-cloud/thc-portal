@@ -55,7 +55,8 @@ vi.mock('@thc/db/server', () => ({
   }),
 }));
 
-const { LIST_LIMITS, LOAD_FAILED, loadEvent, loadEventList } = await import('../data');
+const { HISTORY_LIMIT, LIST_LIMITS, LOAD_FAILED, loadEvent, loadEventList, loadFeedbackHistory } =
+  await import('../data');
 
 const EV = '80000000-0000-4000-8000-000000000001';
 const LEAK = 'permission denied for view client_lineup_v (SQLSTATE 42501)';
@@ -443,5 +444,75 @@ describe('loadEvent · round 3 additions (ADR-0134 N1–N3)', () => {
     expect((await loadEvent(EV)).thcPhone).toBeNull();
     state.results.client_portal_contact_v = { data: null, error: null };
     expect((await loadEvent(EV)).thcPhone).toBeNull();
+  });
+});
+
+describe('loadFeedbackHistory (ADR-0134 N4)', () => {
+  const entry = (n: number, over: Record<string, unknown> = {}) => ({
+    booking_id: `b${n}`,
+    event_id: EV,
+    role: 'Waiting Staff',
+    name: `Worker ${n}`,
+    feedback_rating: 4,
+    feedback_sent_at: `2026-10-0${n}T20:00:00Z`,
+    feedback_text: `Comment ${n}`,
+    ...over,
+  });
+
+  it("reads the customer's own entries, newest first, bounded, and names each event", async () => {
+    state.answer = (q) =>
+      q.table === 'client_lineup_v'
+        ? { data: [entry(2), entry(1, { feedback_text: '  ' })], error: null }
+        : q.table === 'client_events_v'
+          ? {
+              data: [
+                {
+                  id: EV,
+                  title: 'Gala Dinner',
+                  venue_name: 'Leonardo',
+                  starts_at: '2026-10-01T16:00:00Z',
+                },
+              ],
+              error: null,
+            }
+          : undefined;
+    const out = await loadFeedbackHistory();
+    const lineup = state.queries.find((q) => q.table === 'client_lineup_v')!;
+    expect(lineup.calls).toContainEqual(['eq', 'feedback_given', true]);
+    expect(lineup.calls).toContainEqual(['order', 'feedback_sent_at', { ascending: false }]);
+    expect(lineup.calls).toContainEqual(['limit', HISTORY_LIMIT + 1]);
+    expect(String(lineup.calls.find((c) => c[0] === 'select')?.[1])).toContain('feedback_text');
+    // No photo path: the history draws no faces.
+    expect(String(lineup.calls.find((c) => c[0] === 'select')?.[1])).not.toContain('photo_path');
+    expect(out.problem).toBeNull();
+    expect(out.truncated).toBe(false);
+    expect(out.entries.map((e) => [e.name, e.eventTitle, e.rating, e.text])).toEqual([
+      ['Worker 2', 'Gala Dinner', 4, 'Comment 2'],
+      ['Worker 1', 'Gala Dinner', 4, null],
+    ]);
+  });
+
+  it('says when there are more than it keeps', async () => {
+    const many = Array.from({ length: HISTORY_LIMIT + 1 }, (_, i) =>
+      entry(1, { booking_id: `b${i}` }),
+    );
+    state.answer = (q) =>
+      q.table === 'client_lineup_v'
+        ? { data: many, error: null }
+        : {
+            data: [{ id: EV, title: 'G', venue_name: 'V', starts_at: '2026-10-01T16:00:00Z' }],
+            error: null,
+          };
+    const out = await loadFeedbackHistory();
+    expect(out.truncated).toBe(true);
+    expect(out.entries).toHaveLength(HISTORY_LIMIT);
+  });
+
+  it('a failed read is the customer sentence, the detail in the log', async () => {
+    state.results = { client_lineup_v: { data: null, error: { message: LEAK, code: '42501' } } };
+    const out = await loadFeedbackHistory();
+    expect(out.problem).toBe(LOAD_FAILED.feedback);
+    expect(out.entries).toEqual([]);
+    expect(JSON.stringify(logged)).toContain('feedback history');
   });
 });

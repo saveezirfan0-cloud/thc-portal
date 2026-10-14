@@ -33,6 +33,9 @@ import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../ru
 import type { ClientEvent } from '../../data';
 import { CalendarButton } from './CalendarButton';
 import { FeedbackModal } from './FeedbackModal';
+import { PrintButton } from './PrintButton';
+import { RateEveryone } from './RateEveryone';
+import { RATE_ALL_FROM, stillToRate } from './rate-all';
 
 /**
  * §11.2 · the event page.
@@ -125,6 +128,9 @@ export function EventScreen({
   );
   const timesheet = completed ? documents.find((d) => d.kind === 'signout') : undefined;
   const call = telHref(thcPhone);
+  // "Rate everyone" (ADR-0134 P4): once feedback is open, for two or more
+  // still to rate on the visible line-up.
+  const toRate = open && !cancelled ? stillToRate(lineup, sentHere) : [];
   // A cancelled event has no documents (§3.3), so nobody to send them to.
   const recipients = cancelled ? [] : recipientsLine(event.timesheetRecipients);
 
@@ -136,7 +142,8 @@ export function EventScreen({
             ← Your events
           </Link>
           <span className="muted sm">
-            · <AsOf now={now} />
+            <span className="sep">· </span>
+            <AsOf now={now} />
           </span>
         </div>
 
@@ -188,6 +195,9 @@ export function EventScreen({
             {/* ADR-0050: an .ics built in the browser; none when cancelled,
                 and none once the event is over — nothing left to attend. */}
             {ended ? null : <CalendarButton event={event} />}
+            {/* ADR-0134 N6: the line-up on paper for the door, before the
+                PDF is issued. Nothing to print for a cancelled event. */}
+            {cancelled ? null : <PrintButton />}
             {/* A question about this event goes to the office, with the
                 event already named in the subject. */}
             <a className="btn ghost" href={contactHref(event)}>
@@ -234,17 +244,29 @@ export function EventScreen({
             </div>
           ) : null}
           {recipients.length > 0 ? (
-            <div>
+            <div className="meta-recipients">
               <div className="k">Timesheets go to</div>
               <div className="v recipients">
                 {/* ADR-0089 via ADR-0134 N3: the event's own list, or the
                     addresses on the client card. */}
-                {recipients.map((address, i) => (
-                  <span key={address}>
-                    {address}
-                    {i < recipients.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
+                {/* One per line, breaking after the "@" before anywhere
+                    else, so "leonardo-stpauls.example" stays whole. */}
+                {recipients.map((address) => {
+                  const at = address.indexOf('@');
+                  return (
+                    <span key={address} className="addr">
+                      {at > 0 ? (
+                        <>
+                          {address.slice(0, at + 1)}
+                          <wbr />
+                          {address.slice(at + 1)}
+                        </>
+                      ) : (
+                        address
+                      )}
+                    </span>
+                  );
+                })}
                 <span className="sub">for this event · ask THC to change who receives them</span>
               </div>
             </div>
@@ -271,6 +293,22 @@ export function EventScreen({
         ) : (
           <FeedbackLocked startsAt={event.startsAt} now={at} />
         )}
+
+        {toRate.length >= RATE_ALL_FROM ? (
+          <div className="row wrap rate-all-row">
+            <RateEveryone
+              eventId={event.id}
+              eventTitle={event.title}
+              eventDate={ukDateShort(event.startsAt)}
+              people={toRate}
+              photos={photos}
+              onSent={(ids) => setSentHere((prev) => new Set([...prev, ...ids]))}
+            />
+            <span className="sm muted">
+              Or one at a time with &ldquo;Leave feedback&rdquo; beside each person.
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {cancelled

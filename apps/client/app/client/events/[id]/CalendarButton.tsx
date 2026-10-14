@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@thc/ui';
+import { saveCalendarFile } from '../../download';
 import { buildIcs, icsFileName, lineupUrlFor } from '../../ics';
 import type { PortalEvent } from '../../rules';
 
@@ -22,16 +23,7 @@ export function CalendarButton({ event }: { event: PortalEvent }) {
       lineupUrl: lineupUrlFor(window.location.origin, event.id),
       stampedAt: new Date(),
     });
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = icsFileName(event.title);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // After the click has been handled: revoking at once can cancel the
-    // download in Safari.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    saveCalendarFile(text, icsFileName(event.title));
   }
 
   return (

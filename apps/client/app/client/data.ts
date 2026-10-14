@@ -41,6 +41,7 @@ export const LOAD_FAILED = {
   tooMany:
     'You have more events in this date range than we can show at once. Choose a shorter range with From and To.',
   event: 'We could not load this event just now. Refresh the page to try again.',
+  feedback: 'We could not load your feedback just now. Refresh the page to try again.',
   noProject: "The portal isn't connected yet. Please contact THC.",
 } as const;
 
@@ -412,27 +413,63 @@ function noEvent(problem: string | null): EventPageData {
   return { event: null, sections: [], lineup: [], thcPhone: null, problem };
 }
 
+/** The event row alone: what decides between the page and its 404. */
+export interface EventRowData {
+  event: ClientEvent | null;
+  problem: string | null;
+}
+
+/** Everything under the event's header: sections, line-up, THC's phone. */
+export type EventDetailsData = Omit<EventPageData, 'event'>;
+
 /**
- * §11.2 · one event.
+ * §11.2 · the event's own row, read first and on its own (ADR-0134 N9).
+ *
+ * The page decides between itself and a 404 on this one indexed read
+ * before anything is streamed, so a wrong id still answers 404 while the
+ * line-up and its photos load under a skeleton (page.tsx).
  *
  * A wrong id returns `event: null` and the page renders not-found. It is
  * not an authorisation decision the screen is making: the view returned no
  * row because the predicate said so, which is the same answer another
- * customer's event gives.
- *
- * An id that is not a uuid is the same answer, without asking: no event
- * could have it, and asking would only earn Postgres's 22P02.
+ * customer's event gives. An id that is not a uuid is the same answer,
+ * without asking: no event could have it, and asking would only earn
+ * Postgres's 22P02.
  */
-export async function loadEvent(id: string): Promise<EventPageData> {
-  if (!supabaseConfigured()) {
-    return noEvent(LOAD_FAILED.noProject);
+export async function loadEventRow(id: string): Promise<EventRowData> {
+  if (!supabaseConfigured()) return { event: null, problem: LOAD_FAILED.noProject };
+  if (!isUuid(id)) return { event: null, problem: null };
+
+  const supabase = createClient(await cookies()) as any;
+  const event = await supabase
+    .from('client_events_v')
+    .select(EVENT_COLUMNS)
+    .eq('id', id)
+    .maybeSingle();
+  if (event.error) {
+    logFailure('event page', event.error);
+    return { event: null, problem: LOAD_FAILED.event };
   }
-  if (!isUuid(id)) return noEvent(null);
+  return { event: event.data ? toEvent(event.data) : null, problem: null };
+}
+
+/**
+ * §11.2 · the rest of the page: the role sections, the line-up (at most
+ * each section's headcount, ADR-0134 §1) and THC's on-the-day phone.
+ */
+export async function loadEventDetails(id: string): Promise<EventDetailsData> {
+  const none = (problem: string | null): EventDetailsData => ({
+    sections: [],
+    lineup: [],
+    thcPhone: null,
+    problem,
+  });
+  if (!supabaseConfigured()) return none(LOAD_FAILED.noProject);
+  if (!isUuid(id)) return none(null);
 
   const supabase = createClient(await cookies()) as any;
 
-  const [event, sections, lineup, contact] = await Promise.all([
-    supabase.from('client_events_v').select(EVENT_COLUMNS).eq('id', id).maybeSingle(),
+  const [sections, lineup, contact] = await Promise.all([
     supabase
       .from('client_role_sections_v')
       .select(SECTION_COLUMNS)
@@ -449,20 +486,132 @@ export async function loadEvent(id: string): Promise<EventPageData> {
     supabase.from('client_portal_contact_v').select('phone').maybeSingle(),
   ]);
 
-  const failed = [event, sections, lineup].find((r) => r.error);
+  const failed = [sections, lineup].find((r) => r.error);
   if (failed?.error) {
     logFailure('event page', failed.error);
-    return noEvent(LOAD_FAILED.event);
+    return none(LOAD_FAILED.event);
   }
   // The number is an aid, not the page: failing to read it withholds nothing.
   if (contact?.error) logFailure('THC phone', contact.error);
   const phone = contact?.error ? null : contact?.data?.phone;
 
   return {
-    event: event.data ? toEvent(event.data) : null,
     sections: (sections.data ?? []).map(toSection),
     lineup: (lineup.data ?? []).map(toLineup),
     thcPhone: typeof phone === 'string' && phone.trim() !== '' ? phone.trim() : null,
     problem: null,
   };
+}
+
+/**
+ * §11.2 · one event, whole: `loadEventRow` and `loadEventDetails` together.
+ * Either failing is the page's one customer sentence.
+ */
+export async function loadEvent(id: string): Promise<EventPageData> {
+  if (!supabaseConfigured()) return noEvent(LOAD_FAILED.noProject);
+  if (!isUuid(id)) return noEvent(null);
+
+  const [row, details] = await Promise.all([loadEventRow(id), loadEventDetails(id)]);
+  const problem = row.problem ?? details.problem;
+  if (problem) return noEvent(problem);
+  return { event: row.event, ...details };
+}
+
+/** One entry of "Feedback you've given" (ADR-0134 N4): the customer's own. */
+export interface FeedbackEntry {
+  bookingId: string;
+  eventId: string;
+  eventTitle: string;
+  venueName: string;
+  /** The event window's start (ISO): the UK date printed beside it. */
+  eventStartsAt: string;
+  /** The worker's name, or "Deleted account #id" (§1.7). */
+  name: string;
+  role: string;
+  /** The customer's stars, 1–5. */
+  rating: number | null;
+  /** When the customer sent it (ISO). */
+  sentAt: string | null;
+  /** The customer's own comment; null when they left none, or the worker was removed. */
+  text: string | null;
+}
+
+export interface FeedbackHistoryData {
+  entries: FeedbackEntry[];
+  /** More entries than one read keeps: the page says it shows the latest. */
+  truncated: boolean;
+  problem: string | null;
+}
+
+/** The latest entries one read keeps (and one more, to notice there are more). */
+export const HISTORY_LIMIT = 500;
+
+const HISTORY_COLUMNS =
+  'booking_id, event_id, role, name, feedback_rating, feedback_sent_at, feedback_text';
+
+/**
+ * "Feedback you've given" (ADR-0134 N4): every entry the customer has left,
+ * newest first, from `client_lineup_v`'s feedback columns — the customer's
+ * OWN entries only (author_kind = client), so the office's never appear —
+ * with each event's name, venue and date from `client_events_v`. A worker
+ * the customer rated stays on the line-up whatever their seat (ADR-0134
+ * §1), so no entry is lost to the headcount trim.
+ */
+export async function loadFeedbackHistory(): Promise<FeedbackHistoryData> {
+  if (!supabaseConfigured()) {
+    return { entries: [], truncated: false, problem: LOAD_FAILED.noProject };
+  }
+  const supabase = createClient(await cookies()) as any;
+
+  const rated = await supabase
+    .from('client_lineup_v')
+    .select(HISTORY_COLUMNS)
+    .eq('feedback_given', true)
+    .order('feedback_sent_at', { ascending: false })
+    .order('booking_id', { ascending: true })
+    .limit(HISTORY_LIMIT + 1);
+  if (rated.error) {
+    logFailure('feedback history', rated.error);
+    return { entries: [], truncated: false, problem: LOAD_FAILED.feedback };
+  }
+  const rows: Row[] = uniqueBy(rated.data ?? [], 'booking_id');
+  const truncated = rows.length > HISTORY_LIMIT;
+  const kept = rows.slice(0, HISTORY_LIMIT);
+
+  const ids = [...new Set(kept.map((r) => r.event_id as string))];
+  const events = await readForEvents(ids, (chunk, from, to) =>
+    supabase
+      .from('client_events_v')
+      .select('id, title, venue_name, starts_at')
+      .in('id', chunk)
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+  if (events.error) {
+    logFailure('feedback history', events.error);
+    return { entries: [], truncated: false, problem: LOAD_FAILED.feedback };
+  }
+  const byId = new Map(events.rows.map((e) => [e.id as string, e]));
+
+  const entries = kept.flatMap((r): FeedbackEntry[] => {
+    const event = byId.get(r.event_id);
+    if (!event) return [];
+    const text = typeof r.feedback_text === 'string' ? r.feedback_text.trim() : '';
+    return [
+      {
+        bookingId: r.booking_id,
+        eventId: r.event_id,
+        eventTitle: event.title,
+        venueName: event.venue_name,
+        eventStartsAt: event.starts_at,
+        name: r.name,
+        role: r.role,
+        rating: typeof r.feedback_rating === 'number' ? r.feedback_rating : null,
+        sentAt: r.feedback_sent_at ?? null,
+        text: text === '' ? null : text,
+      },
+    ];
+  });
+
+  return { entries, truncated, problem: null };
 }

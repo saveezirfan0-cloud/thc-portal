@@ -128,6 +128,7 @@ const { isUuid } = await import('../ids');
 const { EventScreen } = await import('../events/[id]/EventScreen');
 const { EventsScreen } = await import('../EventsScreen');
 const EventPage = (await import('../events/[id]/page')).default;
+const { EventBody } = await import('../events/[id]/EventBody');
 const ListPage = (await import('../(list)/page')).default;
 const { GET: documentGet } = await import('../events/[id]/document/route');
 
@@ -266,7 +267,12 @@ describe('the worker’s Storage path stays on the server', () => {
   });
 
   it('the event page hands EventScreen no staff id, and the photo by booking', async () => {
-    const tree = await EventPage({ params: Promise.resolve({ id: EVENT_ID }) });
+    // The page reads the event row, then streams EventBody behind a skeleton
+    // (ADR-0134 N9): the screen's props are EventBody's.
+    const page = await EventPage({ params: Promise.resolve({ id: EVENT_ID }) });
+    const [body] = find(page, EventBody);
+    expect(body).toBeDefined();
+    const tree = await EventBody(body!.props as Parameters<typeof EventBody>[0]);
     const [screen] = find(tree, EventScreen);
     expect(screen).toBeDefined();
     const props = JSON.stringify(screen!.props);
