@@ -140,7 +140,7 @@ select throws_ok(
 
 -- Up to ten contact emails (ADR-0087).
 select lives_ok(
-  $$ select create_client('Ten Emails Ltd', 'T', '1', 'P',
+  $$ select create_client('Ten Emails Ltd', 'T', '020 7946 0000', 'P',
        array['a1@b.co','a2@b.co','a3@b.co','a4@b.co','a5@b.co','a6@b.co','a7@b.co','a8@b.co','a9@b.co','a10@b.co'],
        true, false) $$,
   'a client can have ten contact emails');

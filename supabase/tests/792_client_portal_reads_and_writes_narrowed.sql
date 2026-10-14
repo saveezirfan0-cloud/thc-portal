@@ -35,9 +35,11 @@ select is((select char_length(text) from feedback
 select throws_ok(format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
                            values ('client', %L, %L, %L, 4, %L) $$, :'clientb_uid', :'staffb', :'event_b', repeat('b', 2001)),
   '23514', null, 'the table holds the same line for any client row, whatever wrote it');
+-- 20261014160000 (release audit D-M3) caps the office's own entries at the
+-- same 2,000 with a constraint of their own; this one does not touch them.
 select lives_ok(format($$ insert into feedback (author_kind, author_id, staff_id, rating, text)
-                          values ('office', %L, %L, 4, %L) $$, :'admin_uid', :'staffb', repeat('o', 3000)),
-  'an office entry is not bound by it');
+                          values ('office', %L, %L, 4, %L) $$, :'admin_uid', :'staffb', repeat('o', 2000)),
+  'an office entry is not bound by it (its own cap, feedback_office_text_length, is 2,000 too)');
 select ok((select convalidated from pg_constraint where conname = 'feedback_client_text_length'),
   'the constraint is validated (no historical client row is longer)');
 

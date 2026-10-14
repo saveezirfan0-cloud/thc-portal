@@ -9,6 +9,7 @@ import {
   formatPounds,
   holidayPence,
   parseRate,
+  payRateProblem,
   poundsInput,
   toPence,
 } from './money';
@@ -17,6 +18,8 @@ import type { Role } from './types';
 export interface RoleModalProps {
   /** Null creates; a role edits it, pre-filled. */
   role: Role | null;
+  /** Today's National Living Wage, pence (ADR-0137). */
+  floorPence: number;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -30,7 +33,7 @@ export interface RoleModalProps {
  * the rate is the §9.8 table's three columns, moving as the rate is typed,
  * so the manager sees what the change does to the final rate before saving.
  */
-export function RoleModal({ role, onClose, onSaved }: RoleModalProps) {
+export function RoleModal({ role, floorPence, onClose, onSaved }: RoleModalProps) {
   const editing = role !== null;
 
   const [name, setName] = useState(role?.name ?? '');
@@ -41,9 +44,13 @@ export function RoleModal({ role, onClose, onSaved }: RoleModalProps) {
 
   const pence = parseRate(rate);
   const rateIsBlank = rate.trim() === '';
-  const ready = name.trim().length > 0 && pence !== null;
-
   const wasPence = role ? toPence(role.pay_rate) : null;
+  // Release audit D-M7: £0.00 or £5.00 was accepted; 999999 said "not a
+  // rate". Below today's National Living Wage is refused (an unchanged
+  // rate under an older floor can still be saved), above £1,000 too.
+  const rateProblem = rateIsBlank ? null : payRateProblem(rate, floorPence, wasPence);
+  const ready = name.trim().length > 0 && pence !== null && !rateIsBlank && rateProblem === null;
+
   const changed = wasPence !== null && pence !== null && pence !== wasPence;
 
   const save = () => {
@@ -116,16 +123,21 @@ export function RoleModal({ role, onClose, onSaved }: RoleModalProps) {
             onChange={(event) => setRate(event.target.value)}
             placeholder="0.00"
             aria-describedby="role-rate-hint"
+            aria-invalid={rateProblem ? true : undefined}
           />
           <span className="addon">/h</span>
         </div>
-        <span className="hint" id="role-rate-hint">
-          {pence === null && !rateIsBlank
-            ? 'Enter a rate to the penny, e.g. 14.50.'
-            : changed && wasPence !== null
+        {rateProblem ? (
+          <span className="error" role="alert" id="role-rate-hint">
+            {rateProblem}
+          </span>
+        ) : (
+          <span className="hint" id="role-rate-hint">
+            {changed && wasPence !== null
               ? `Was ${formatPounds(wasPence)}. Applies to events built from now on; the holiday element and the final rate recalculate automatically.`
-              : 'The base rate. Holiday and the final rate are calculated from it.'}
-        </span>
+              : `The base rate — at least the National Living Wage, ${formatPounds(floorPence)}/h. Holiday and the final rate are calculated from it.`}
+          </span>
+        )}
       </div>
 
       {/* The §9.8 table's three columns, live. */}

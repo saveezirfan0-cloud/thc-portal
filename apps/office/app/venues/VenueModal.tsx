@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
 import { Alert, Button, Input, Modal, Select } from '@thc/ui';
+import { NAME_MAX, lengthHint } from '../_lib/length';
 import { VenueMap } from './VenueMap';
 import { createVenue, reverseGeocode, searchPlaces, updateVenue } from './actions';
 import type { PlaceMatch } from './actions';
@@ -313,9 +314,11 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
               </>
             }
             value={name}
+            maxLength={NAME_MAX}
+            hint={lengthHint(name.length, NAME_MAX)}
             onChange={(event) => setName(event.target.value)}
             placeholder="e.g. Claridge's"
-            required
+            aria-required="true"
           />
           <Select
             label={

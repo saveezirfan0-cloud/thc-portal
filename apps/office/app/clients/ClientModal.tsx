@@ -3,8 +3,16 @@
 import { useState, useTransition } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Alert, Button, Input, Modal, Pill, Switch } from '@thc/ui';
+import { lengthHint } from '../_lib/length';
 import { createClientRecord, updateClientRecord } from './actions';
-import { MAX_CONTACT_EMAILS, isEmail } from './validate';
+import {
+  CLIENT_NAME_MAX,
+  CONTACT_NAME_MAX,
+  CONTACT_POINT_MAX,
+  MAX_CONTACT_EMAILS,
+  clientFieldErrors,
+  isEmail,
+} from './validate';
 import type { Client } from './types';
 
 export interface ClientModalProps {
@@ -37,6 +45,10 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
   const [paysBreaks, setPaysBreaks] = useState(client?.pays_breaks ?? false);
   const [paysBuffer, setPaysBuffer] = useState(client?.pays_buffer ?? true);
   const [error, setError] = useState<string | null>(null);
+  // Release audit D-M2: what is missing is said under the field once Save
+  // has been tried; what is malformed (a phone that is not one) as soon as
+  // it is typed.
+  const [tried, setTried] = useState(false);
   const [saving, startSaving] = useTransition();
 
   const addEmail = () => {
@@ -88,15 +100,29 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
     paysBreaks !== (client?.pays_breaks ?? false) ||
     paysBuffer !== (client?.pays_buffer ?? true);
 
-  const ready =
-    name.trim() !== '' &&
-    contactName.trim() !== '' &&
-    phone.trim() !== '' &&
-    contactPoint.trim() !== '' &&
-    pendingEmails.length > 0;
+  const fieldErrors = clientFieldErrors({
+    name,
+    contact_name: contactName,
+    phone,
+    staff_contact_point: contactPoint,
+    contact_emails: pendingEmails,
+    pays_breaks: paysBreaks,
+    pays_buffer: paysBuffer,
+  });
+  /** The error to draw under a field: always once tried, else only for a value that is there but wrong. */
+  const shown = (field: keyof typeof fieldErrors, value: string) =>
+    tried || value.trim() !== '' ? fieldErrors[field] : undefined;
 
   const save = () => {
     setError(null);
+    setTried(true);
+    if (Object.keys(fieldErrors).length > 0) {
+      // The keyboard goes to the first field that needs attention.
+      window.setTimeout(() => {
+        document.querySelector<HTMLElement>('.modal [aria-invalid="true"]')?.focus();
+      }, 0);
+      return;
+    }
     startSaving(async () => {
       const draft = {
         name,
@@ -123,14 +149,14 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
       onClose={onClose}
       dirty={dirty && !saving}
       onSubmit={() => {
-        if (ready && !saving) save();
+        if (!saving) save();
       }}
       footer={
         <>
           <Button tone="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button tone="primary" type="submit" disabled={!ready || saving}>
+          <Button tone="primary" type="submit" disabled={saving}>
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Create client'}
           </Button>
         </>
@@ -150,8 +176,11 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           </>
         }
         value={name}
+        maxLength={CLIENT_NAME_MAX}
+        error={shown('name', name)}
+        hint={lengthHint(name.length, CLIENT_NAME_MAX)}
         onChange={(event) => setName(event.target.value)}
-        required
+        aria-required="true"
       />
 
       <div className="grid c2">
@@ -162,8 +191,10 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
             </>
           }
           value={contactName}
+          maxLength={CONTACT_NAME_MAX}
+          error={shown('contact_name', contactName)}
           onChange={(event) => setContactName(event.target.value)}
-          required
+          aria-required="true"
         />
         <Input
           label={
@@ -172,9 +203,13 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
             </>
           }
           value={phone}
+          type="tel"
+          inputMode="tel"
+          placeholder="020 7946 0000"
+          error={shown('phone', phone)}
           onChange={(event) => setPhone(event.target.value)}
           mono
-          required
+          aria-required="true"
         />
       </div>
 
@@ -185,9 +220,11 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           </>
         }
         value={contactPoint}
+        maxLength={CONTACT_POINT_MAX}
+        error={shown('staff_contact_point', contactPoint)}
         onChange={(event) => setContactPoint(event.target.value)}
         hint="The on-site contact the staff see at the venue — pre-fills the event form’s on-site contact."
-        required
+        aria-required="true"
       />
 
       <div className="field">
@@ -197,10 +234,12 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
               (wireframes/backoffice/client-card.html) — the allocation sheet
               and timesheet go to these addresses (§11.4). */}
           {editing ? 'Allocation email(s)' : 'Contact emails'} <span className="coral">*</span>
+          {/* §9.7 says "several (2–3 people)" without a ceiling; the owner
+              asked for ten (ADR-0087), and the label says the real rule. */}
           {editing ? null : (
             <>
               {' '}
-              <span className="muted">· 2–3 people</span>
+              <span className="muted">· up to {MAX_CONTACT_EMAILS}</span>
             </>
           )}
         </label>
@@ -227,8 +266,14 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
             placeholder={emails.length === 0 ? 'add an email ↵' : 'add another email ↵'}
             inputMode="email"
             aria-describedby="client-email-hint"
+            aria-invalid={tried && fieldErrors.contact_emails ? true : undefined}
           />
         </div>
+        {tried && fieldErrors.contact_emails ? (
+          <span className="error" role="alert">
+            {fieldErrors.contact_emails}
+          </span>
+        ) : null}
         <span className="hint" id="client-email-hint">
           The Allocation Timesheet and the Completed Allocation Timesheet go to every address here,
           from timesheets@thehospitalitycompany.co.uk.

@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from 'react';
 import { Alert, Button, Modal, Note, Panel, useTimeFormat } from '@thc/ui';
-import { parseRate, poundsInput } from '../../roles/money';
+import {
+  DEFAULT_PAY_FLOOR_PENCE,
+  formatPounds,
+  parseRate,
+  payRateProblem,
+  poundsInput,
+} from '../../roles/money';
 import { clearPayRate, savePayRate } from './actions';
 import { HOLIDAY_LABEL, payRateFigures, payRateSetLine, storedPence } from './payRate';
 import type { PersonalPayRate } from './types';
@@ -28,6 +34,7 @@ export function PayRateCard({
   payRate,
   problem = null,
   editable,
+  floorPence = DEFAULT_PAY_FLOOR_PENCE,
 }: {
   staffId: string;
   /** Null: no personal rate — the role section's rate applies. */
@@ -35,6 +42,8 @@ export function PayRateCard({
   problem?: string | null;
   /** Finance + write, and not a removed profile. */
   editable: boolean;
+  /** Today's National Living Wage, pence: no personal rate below it (ADR-0137). */
+  floorPence?: number;
 }) {
   const format = useTimeFormat();
   const [dialog, setDialog] = useState<'edit' | 'clear' | null>(null);
@@ -45,6 +54,9 @@ export function PayRateCard({
   const current = payRate ? storedPence(payRate) : null;
   const pence = parseRate(typed);
   const typedIsBlank = typed.trim() === '';
+  // Release audit D-M7: £0.00 was accepted. Below the National Living
+  // Wage, above £1,000/h or not to the penny says so under the field.
+  const rateProblem = typedIsBlank ? null : payRateProblem(typed, floorPence);
 
   const openEdit = () => {
     setTyped(current === null ? '' : poundsInput(current));
@@ -146,7 +158,11 @@ export function PayRateCard({
             <Button tone="ghost" onClick={close} disabled={pending}>
               Cancel
             </Button>
-            <Button tone="primary" type="submit" disabled={pending || pence === null}>
+            <Button
+              tone="primary"
+              type="submit"
+              disabled={pending || pence === null || rateProblem !== null}
+            >
               {pending ? 'Saving…' : 'Save rate'}
             </Button>
           </>
@@ -168,14 +184,20 @@ export function PayRateCard({
                 onChange={(event) => setTyped(event.target.value)}
                 placeholder="0.00"
                 aria-describedby="staff-pay-rate-hint"
+                aria-invalid={rateProblem ? true : undefined}
               />
               <span className="addon">/h</span>
             </div>
-            <span className="hint" id="staff-pay-rate-hint">
-              {pence === null && !typedIsBlank
-                ? 'Enter a rate to the penny, e.g. 13.50.'
-                : 'The base rate. Holiday and the final rate are calculated from it.'}
-            </span>
+            {rateProblem ? (
+              <span className="error" role="alert" id="staff-pay-rate-hint">
+                {rateProblem}
+              </span>
+            ) : (
+              <span className="hint" id="staff-pay-rate-hint">
+                The base rate — at least the National Living Wage, {formatPounds(floorPence)}/h.
+                Holiday and the final rate are calculated from it.
+              </span>
+            )}
           </div>
 
           {/* §9.8's three columns, live, as on /roles. */}

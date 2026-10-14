@@ -481,6 +481,7 @@ export function ProfileScreen({
             canCorrectDob={canCorrectDob}
             payRate={data.payRate ?? null}
             payRateProblem={data.payRateProblem ?? null}
+            {...(data.payFloorPence ? { payFloorPence: data.payFloorPence } : {})}
             showPayRate={showPayRate}
             canEditPayRate={canEditPayRate}
           />

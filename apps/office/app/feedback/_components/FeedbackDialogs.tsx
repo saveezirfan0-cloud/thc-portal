@@ -4,7 +4,14 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal } from '@thc/ui';
 import { deleteFeedback, updateOfficeFeedback, workerEvents } from '../actions';
-import { eventOptionLabel, quoted, uniqueEvents, validateDraft } from '../view-model';
+import {
+  OFFICE_TEXT_MAX,
+  eventOptionLabel,
+  quoted,
+  uniqueEvents,
+  validateDraft,
+} from '../view-model';
+import { lengthHint } from '../../_lib/length';
 import type { EventOption, FeedbackEntry } from '../types';
 import { StarPicker, Stars } from './Stars';
 
@@ -136,9 +143,13 @@ export function EditFeedbackModal({
             className="input"
             rows={4}
             value={text}
+            maxLength={OFFICE_TEXT_MAX}
             disabled={pending}
             onChange={(event) => setText(event.target.value)}
           />
+          {lengthHint(text.length, OFFICE_TEXT_MAX) ? (
+            <span className="hint">{lengthHint(text.length, OFFICE_TEXT_MAX)}</span>
+          ) : null}
           <span className="hint">
             The author ({entry.author_name ?? 'unknown'}) and the date stay as they are. The change
             to the stars counts toward the rating straight away.

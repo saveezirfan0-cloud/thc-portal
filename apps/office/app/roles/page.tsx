@@ -21,6 +21,6 @@ export default async function Page() {
   if (role && !officeCan(role, 'finance')) {
     return <NotAvailable activeHref="/roles" title="Roles & rates" role={role} needs="finance" />;
   }
-  const { roles, problem } = await loadRoles();
-  return <RolesScreen roles={roles} problem={problem} />;
+  const { roles, problem, payFloorPence } = await loadRoles();
+  return <RolesScreen roles={roles} problem={problem} payFloorPence={payFloorPence} />;
 }

@@ -6,7 +6,6 @@ import {
   Alert,
   Avatar,
   Button,
-  Checkbox,
   Chip,
   Modal,
   Note,
@@ -41,6 +40,21 @@ import type { QualifiedStaffRow, RateCardRow, StaffOption } from './types';
  * outright, so counting them would overstate the pool by exactly the
  * people auto-assign will refuse.
  */
+/** How many workers the picker draws at a time (release audit D-M6). */
+const PICKER_PAGE = 50;
+
+/** The workers whose name or Employee ID ("THC-00873", "873") contains the search. */
+export function pickerResults(staff: StaffOption[], query: string): StaffOption[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return staff;
+  return staff.filter(
+    (worker) =>
+      worker.display_name.toLowerCase().includes(needle) ||
+      employeeId(worker.employee_id).toLowerCase().includes(needle) ||
+      String(worker.employee_id ?? '').includes(needle),
+  );
+}
+
 export function QualifiedStaff({
   clientId,
   rows,
@@ -61,6 +75,11 @@ export function QualifiedStaff({
     group: string;
   } | null>(null);
   const [pickedStaff, setPickedStaff] = useState<string[]>([]);
+  // Release audit D-M6: the picker listed every worker, unsearchable, at
+  // ~1,000. It searches by name or Employee ID and draws the results a
+  // page at a time.
+  const [pickQuery, setPickQuery] = useState('');
+  const [pickLimit, setPickLimit] = useState(PICKER_PAGE);
   const [pickedRoles, setPickedRoles] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
@@ -115,6 +134,23 @@ export function QualifiedStaff({
   const chosenNames = pickedRoles.map((id) => rolesByName.get(id)).filter(Boolean) as string[];
   const eligible = (worker: StaffOption) =>
     chosenNames.length === 0 || chosenNames.some((name) => worker.role_names.includes(name));
+
+  const results = pickerResults(staff, pickQuery);
+  const visible = results.slice(0, pickLimit);
+  const selectable = results.filter(eligible);
+  const allSelected =
+    selectable.length > 0 && selectable.every((worker) => pickedStaff.includes(worker.id));
+  // Ticked, and still able to take one of the chosen roles: what Add sends.
+  const sending = staff.filter((worker) => pickedStaff.includes(worker.id) && eligible(worker));
+  const toggleWorker = (id: string, on: boolean) =>
+    setPickedStaff((current) =>
+      on ? [...new Set([...current, id])] : current.filter((other) => other !== id),
+    );
+  const toggleResults = (on: boolean) =>
+    setPickedStaff((current) => {
+      const ids = new Set(selectable.map((worker) => worker.id));
+      return on ? [...new Set([...current, ...ids])] : current.filter((id) => !ids.has(id));
+    });
 
   return (
     <Panel
@@ -330,21 +366,29 @@ export function QualifiedStaff({
             </Button>
             <Button
               tone="primary"
-              disabled={pending || pickedStaff.length === 0 || pickedRoles.length === 0}
+              disabled={pending || sending.length === 0 || pickedRoles.length === 0}
               onClick={() =>
                 run(
-                  () => qualifyStaff(clientId, pickedStaff, pickedRoles, note),
+                  () =>
+                    qualifyStaff(
+                      clientId,
+                      sending.map((worker) => worker.id),
+                      pickedRoles,
+                      note,
+                    ),
                   () => {
                     setAdding(false);
                     setPickedStaff([]);
                     setPickedRoles([]);
+                    setPickQuery('');
+                    setPickLimit(PICKER_PAGE);
                     setNote('');
                   },
                   'dialog',
                 )
               }
             >
-              Add {pickedStaff.length * pickedRoles.length || ''}
+              Add {sending.length * pickedRoles.length || ''}
             </Button>
           </>
         }
@@ -359,19 +403,20 @@ export function QualifiedStaff({
               </span>
             ) : (
               rateCard.map((row) => (
-                <Checkbox
-                  key={row.role_id}
-                  checked={pickedRoles.includes(row.role_id)}
-                  onChange={(on) =>
-                    setPickedRoles(
-                      on
-                        ? [...pickedRoles, row.role_id]
-                        : pickedRoles.filter((id) => id !== row.role_id),
-                    )
-                  }
-                >
+                <label className="pick-row" key={row.role_id}>
+                  <input
+                    type="checkbox"
+                    checked={pickedRoles.includes(row.role_id)}
+                    onChange={(event) =>
+                      setPickedRoles(
+                        event.target.checked
+                          ? [...pickedRoles, row.role_id]
+                          : pickedRoles.filter((id) => id !== row.role_id),
+                      )
+                    }
+                  />
                   {row.role_name}
-                </Checkbox>
+                </label>
               ))
             )}
           </div>
@@ -381,26 +426,74 @@ export function QualifiedStaff({
           </span>
         </div>
         <div className="field">
-          <span className="label">Workers</span>
-          <div className="picker">
-            {staff.map((worker) => (
-              <Checkbox
-                key={worker.id}
-                checked={pickedStaff.includes(worker.id)}
-                disabled={!eligible(worker)}
-                onChange={(on) =>
-                  setPickedStaff(
-                    on ? [...pickedStaff, worker.id] : pickedStaff.filter((id) => id !== worker.id),
-                  )
-                }
-              >
-                {worker.display_name}{' '}
-                <span className="muted xs">{employeeId(worker.employee_id)}</span>
-                {!eligible(worker) ? (
-                  <span className="muted xs"> — does not hold the chosen role</span>
-                ) : null}
-              </Checkbox>
-            ))}
+          <div className="label-row">
+            <span className="label" id="picker-label">
+              Workers
+            </span>
+            <span className="label-action sm" aria-live="polite">
+              <b>{sending.length}</b> selected
+              {pickedStaff.length > 0 ? (
+                <>
+                  {' · '}
+                  <Button size="sm" tone="link" onClick={() => setPickedStaff([])}>
+                    Clear
+                  </Button>
+                </>
+              ) : null}
+            </span>
+          </div>
+          <SearchInput
+            aria-label="Search workers by name or Employee ID"
+            placeholder="Search name or Employee ID"
+            value={pickQuery}
+            onChange={(event) => {
+              setPickQuery(event.target.value);
+              setPickLimit(PICKER_PAGE);
+            }}
+          />
+          <label className="pick-row pick-all">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              disabled={selectable.length === 0}
+              onChange={(event) => toggleResults(event.target.checked)}
+            />
+            Select all {selectable.length.toLocaleString('en-GB')}{' '}
+            {pickQuery.trim() ? 'in these results' : 'who can be added'}
+          </label>
+          <ul className="picker" aria-labelledby="picker-label">
+            {visible.length === 0 ? (
+              <li className="muted sm">No worker matches “{pickQuery.trim()}”.</li>
+            ) : (
+              visible.map((worker) => (
+                <li key={worker.id}>
+                  <label className="pick-row">
+                    <input
+                      type="checkbox"
+                      checked={pickedStaff.includes(worker.id)}
+                      disabled={!eligible(worker)}
+                      onChange={(event) => toggleWorker(worker.id, event.target.checked)}
+                    />
+                    <span className="pick-name">{worker.display_name}</span>
+                    <span className="muted xs mono">{employeeId(worker.employee_id)}</span>
+                    {!eligible(worker) ? (
+                      <span className="muted xs">— does not hold the chosen role</span>
+                    ) : null}
+                  </label>
+                </li>
+              ))
+            )}
+          </ul>
+          <div className="row picker-more">
+            <span className="muted xs">
+              Showing {visible.length.toLocaleString('en-GB')} of{' '}
+              {results.length.toLocaleString('en-GB')}
+            </span>
+            {results.length > visible.length ? (
+              <Button size="sm" tone="ghost" onClick={() => setPickLimit(pickLimit + PICKER_PAGE)}>
+                Show {Math.min(PICKER_PAGE, results.length - visible.length)} more
+              </Button>
+            ) : null}
           </div>
         </div>
         <div className="field">

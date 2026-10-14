@@ -9,7 +9,7 @@ vi.mock('../actions', () => ({
   setDoNotReturn: vi.fn(),
 }));
 
-const { QualifiedStaff } = await import('../QualifiedStaff');
+const { QualifiedStaff, pickerResults } = await import('../QualifiedStaff');
 
 const ROLES = ['Bar Staff', 'Barista', 'Cloakroom Staff', 'Runner', 'Waiting Staff'];
 
@@ -57,5 +57,21 @@ describe('qualified staff (§9.7, ADR-0125)', () => {
     );
     expect(html).toContain('1 role');
     expect(html).not.toContain('1 roles');
+  });
+});
+
+describe('the + Add staff picker finds one worker among a thousand (release audit D-M6)', () => {
+  const staff = Array.from({ length: 1000 }, (_, i) => ({
+    id: `w${i}`,
+    display_name: i === 873 ? 'Amara Kalu' : `Worker ${i}`,
+    employee_id: i,
+    role_names: ['Waiting Staff'],
+  }));
+
+  it('searches by name, Employee ID or the bare number', () => {
+    expect(pickerResults(staff, 'amara').map((w) => w.id)).toEqual(['w873']);
+    expect(pickerResults(staff, 'THC-00873').map((w) => w.id)).toEqual(['w873']);
+    expect(pickerResults(staff, '873').map((w) => w.id)).toEqual(['w873']);
+    expect(pickerResults(staff, '  ')).toHaveLength(1000);
   });
 });

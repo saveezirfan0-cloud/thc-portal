@@ -194,7 +194,7 @@ set local role authenticated;
 select create_venue('Audit Fixture Hall', '2 Test Street, London', 51.501, -0.101, 'hotel', 150) as venue \gset
 select update_venue(:'venue', 'Audit Fixture Hall', '2 Test Street, London', 51.501, -0.101, 'hotel', 200);
 select delete_venue(:'venue');
-select create_role('Audit Fixture Role C', 12.50, null) as role_c \gset
+select create_role('Audit Fixture Role C', 12.80, null) as role_c \gset
 select update_role(:'role_c', 'Audit Fixture Role C', 13.00, null);
 reset role;
 
@@ -206,7 +206,7 @@ select is((pg_temp.last_row('venue.updated', :'venue')).data -> 'radius',
 select ok((pg_temp.last_row('venue.deleted', :'venue')).id is not null,
   'delete_venue: venue.deleted');
 select is((pg_temp.last_row('role.updated', :'role_c')).data -> 'payRate',
-  '{"from": 12.50, "to": 13.00}'::jsonb,
+  '{"from": 12.80, "to": 13.00}'::jsonb,
   'update_role: the base pay rate from → to');
 
 -- =====================================================================

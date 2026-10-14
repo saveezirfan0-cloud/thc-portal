@@ -4,7 +4,14 @@ import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Avatar, Button, Pill } from '@thc/ui';
 import { addOfficeFeedback, searchWorkers, workerEvents } from '../actions';
-import { eventOptionLabel, uniqueEvents, validateDraft, workerSubline } from '../view-model';
+import {
+  OFFICE_TEXT_MAX,
+  eventOptionLabel,
+  uniqueEvents,
+  validateDraft,
+  workerSubline,
+} from '../view-model';
+import { lengthHint } from '../../_lib/length';
 import type { EventOption, WorkerOption } from '../types';
 import { StarPicker } from './Stars';
 
@@ -108,13 +115,21 @@ export function OfficeFeedbackForm({
       aria-label="Comment"
       placeholder="Comment — e.g. a compliment or complaint that came in by phone"
       value={text}
+      maxLength={OFFICE_TEXT_MAX}
+      aria-describedby={lengthHint(text.length, OFFICE_TEXT_MAX) ? `${ids}-count` : undefined}
       disabled={pending}
       onChange={(event) => setText(event.target.value)}
     />
   );
+  const count = lengthHint(text.length, OFFICE_TEXT_MAX);
 
   const feedback = (
     <>
+      {count ? (
+        <span className="hint" id={`${ids}-count`}>
+          {count}
+        </span>
+      ) : null}
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
       {saved ? <Alert tone="green">{saved}</Alert> : null}
     </>

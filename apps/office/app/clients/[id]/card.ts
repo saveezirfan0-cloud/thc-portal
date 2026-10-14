@@ -31,7 +31,56 @@ export function chargeRateProblem(rate: number): string | null {
   if (Math.abs(pence - Math.round(pence)) > 1e-6) {
     return 'A charge rate is in pounds and pence — two decimal places.';
   }
+  if (rate > 1000) return 'A charge rate over £1,000.00 an hour is refused — check the figure.';
   return null;
+}
+
+/** What was typed in the £ field, as a number ("£22.50", "1,200.00"); NaN when it is not one. */
+export function chargeValue(text: string): number {
+  const trimmed = text.trim().replace(/^£/, '').replace(/,/g, '');
+  return /^\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : Number.NaN;
+}
+
+/**
+ * Why the typed charge rate cannot be saved, next to the field and with
+ * Save disabled while it stands (release audit m8 — the error used to
+ * come back from the server, at the top of the card, as "Enter a charge
+ * rate." for anything that was not a number).
+ */
+export function chargeRateInputProblem(text: string): string | null {
+  if (text.trim() === '') return 'Enter a charge rate.';
+  const value = chargeValue(text);
+  if (Number.isNaN(value)) return 'Enter the charge rate in pounds and pence, e.g. 22.50.';
+  return chargeRateProblem(value);
+}
+
+/**
+ * The margin an hour and as a share of the charge, from pence — the
+ * preview a row shows while it is typed, before final_rate() has priced
+ * it (release audit m8).
+ */
+export function marginPreview(
+  chargePence: number,
+  finalPence: number,
+): { perHour: number; pct: number | null } {
+  const perHour = (chargePence - finalPence) / 100;
+  return {
+    perHour,
+    pct:
+      chargePence > 0 ? Math.round(((chargePence - finalPence) / chargePence) * 1000) / 10 : null,
+  };
+}
+
+/** "31.7%" / "−56.9%": a margin share, with a real minus too. */
+export function signedPct(pct: number | null): string {
+  if (pct === null || !Number.isFinite(pct)) return '—';
+  return `${pct < 0 ? '−' : ''}${Math.abs(pct)}%`;
+}
+
+/** "+£4.21" / "−£5.69": a margin carries its sign, with a real minus (release audit D-M7). */
+export function signedGbp(amount: number | null): string {
+  if (amount === null || !Number.isFinite(amount)) return '—';
+  return `${amount < 0 ? '−' : '+'}${gbp(Math.abs(amount))}`;
 }
 
 /** A whole-pound figure, for the events list's margin column. */
