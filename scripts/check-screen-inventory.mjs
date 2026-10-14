@@ -34,9 +34,11 @@ const APPS = ['apps/office/app', 'apps/staff/app', 'apps/client/app'];
 
 /**
  * `/auth/signout` and `/auth/callback` are plumbing, not screens: no wireframe,
- * no state list, nothing a reader of the inventory would look for.
+ * no state list, nothing a reader of the inventory would look for. Nor is the
+ * Client Portal's `/client/session`, a 204 the feedback dialog probes to tell
+ * an expired session from a lost connection (ADR-0133).
  */
-const NOT_SCREENS = [/^\/auth\//];
+const NOT_SCREENS = [/^\/auth\//, /^\/client\/session$/];
 
 /** Every `page.tsx` and `route.ts` under a directory, as a Next.js route. */
 function routesOf(appDir) {
