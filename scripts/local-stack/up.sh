@@ -114,7 +114,7 @@ apps)
   shift; apps=("${@:-office client}"); [ $# -eq 0 ] && apps=(office client)
   export NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=$(jwt anon)
   export SUPABASE_SERVICE_ROLE_KEY=$(jwt service_role) APP_TZ=Europe/London
-  export NEXT_PUBLIC_OFFICE_URL=http://localhost:3000 NEXT_PUBLIC_STAFF_URL=http://localhost:3001 NEXT_PUBLIC_CLIENT_URL=http://localhost:3002
+  export NEXT_PUBLIC_OFFICE_URL=http://127.0.0.1:3000 NEXT_PUBLIC_STAFF_URL=http://127.0.0.1:3001 NEXT_PUBLIC_CLIENT_URL=http://127.0.0.1:3002
   cd "$REPO"
   pnpm turbo run build $(printf -- '--filter=@thc/%s ' "${apps[@]}") >"$STACK/run/build.log" 2>&1 ||
     { tail -n 40 "$STACK/run/build.log"; exit 1; }
