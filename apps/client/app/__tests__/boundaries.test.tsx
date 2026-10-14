@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -47,5 +47,32 @@ describe('the Client Portal’s boundaries', () => {
       const src = readFileSync(join(app, file), 'utf8');
       expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/);
     }
+  });
+
+  // ADR-0109 / ad9d6333: behind a loading boundary or an in-page <Suspense>,
+  // a navigation that changes only the query string froze on the old state.
+  it('the list, which navigates by query, streams nothing: no loading.tsx, no Suspense', () => {
+    const list = join(app, 'client', '(list)');
+    expect(existsSync(join(list, 'loading.tsx'))).toBe(false);
+    expect(readFileSync(join(list, 'page.tsx'), 'utf8')).not.toMatch(/\bSuspense\b/);
+  });
+
+  it('the event page may stream its body (ADR-0134 N9) only while nothing on it navigates by query', () => {
+    // The 404 is decided before the boundary (page.tsx reads the row first).
+    // `?doc=` arrives by a full navigation (a plain <a> to the document
+    // route, which answers 303) and leaves by history.replaceState; the only
+    // router calls are refresh(). A push/replace to a query here would need
+    // the Suspense taken out first.
+    const dir = join(app, 'client', 'events', '[id]');
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.tsx'))) {
+      const src = readFileSync(join(dir, file), 'utf8');
+      expect(src, file).not.toMatch(/router\.(push|replace)\(/);
+      expect(src, file).not.toMatch(/<Link[^>]*href=\{?[`'"]\?/);
+    }
+    const page = readFileSync(join(dir, 'page.tsx'), 'utf8');
+    // Every notFound() comes before the boundary opens.
+    expect(page.indexOf('<Suspense')).toBeGreaterThan(-1);
+    expect(page.lastIndexOf('notFound()')).toBeGreaterThan(-1);
+    expect(page.lastIndexOf('notFound()')).toBeLessThan(page.indexOf('<Suspense'));
   });
 });

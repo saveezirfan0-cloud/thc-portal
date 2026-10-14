@@ -154,3 +154,17 @@
     width: 100%;
   }
 }
+
+/* ADR-0135 §3 · "Emails about your events": On / Off in words, weighted. */
+.acct-emails .acct-on,
+.acct-emails .acct-off {
+  font-weight: 700;
+}
+
+.acct-emails .acct-on {
+  color: var(--green-ink);
+}
+
+.acct-emails .acct-off {
+  color: var(--muted);
+}

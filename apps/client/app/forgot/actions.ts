@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { appOrigin, recoveryRedirect } from '@thc/db';
 import { recoveryRequestAllowed } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
+import { OFFICE_EMAIL } from '../client/account/copy';
 
 /**
  * A1 Forgot password — §10.2, `wireframes/client/login.html` (forgot).
@@ -34,7 +35,7 @@ export async function requestReset(
   const origin = appOrigin(process.env['NEXT_PUBLIC_CLIENT_URL'], 'http://127.0.0.1:3002');
   if (!origin) {
     console.error('[reset] NEXT_PUBLIC_CLIENT_URL is not set; cannot build the reset link');
-    return 'Password reset is not available on this deployment yet. Email admin@thehospitalitycompany.co.uk.';
+    return `Password reset is not available on this deployment yet. Email ${OFFICE_EMAIL}.`;
   }
 
   // Three links an hour per address (packages/db/src/auth-throttle.ts), so

@@ -169,8 +169,9 @@ export const config = {
   // Static files are skipped only at the top level, where public/ serves
   // them (favicon, icons). `[^/]+`, not `.*`: a nested path that merely
   // ENDS in an image extension (/staff/x.png) is a page route and must
-  // pass the gate like any other (audit D52).
+  // pass the gate like any other (audit D52). robots.txt is public so a
+  // crawler reads "Disallow: /" rather than a redirect to the sign-in card.
   matcher: [
-    '/((?!_next/static|_next/image|(?:favicon\\.ico|manifest\\.webmanifest|sw\\.js)$|[^/]+\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|(?:favicon\\.ico|manifest\\.webmanifest|sw\\.js|robots\\.txt)$|[^/]+\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
   ],
 };

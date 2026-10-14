@@ -37,16 +37,74 @@ import type { ClientLineupRow, LineupRecord } from './data';
  * step 2 is done — this returns an empty map and `Avatar` falls back to
  * monogram initials rather than breaking the screen.
  *
- * What reaches the browser is the signed URL keyed by `bookingId`, never the
- * path: the path's first segment is the worker's `staff.id`, an internal id
- * the customer has no use for. `presentLineup` is the one door from the
- * server's `LineupRecord` to the props of a client component.
+ * What a client component receives is the signed URL keyed by `bookingId`,
+ * never `photoPath` as a field of its own: `presentLineup` is the one door
+ * from the server's `LineupRecord` to the props of a client component. That
+ * is tidiness, not secrecy — a Supabase signed URL carries the object's path
+ * in clear (`…/object/sign/photos/<staff_id>/<file>?token=…`), so the
+ * worker's `staff.id` does reach the browser inside each photo's URL.
+ * ADR-0026 §4 accepts that: the id is an opaque uuid that opens nothing
+ * without the token, and the token is per object and short-lived.
+ *
+ * Links are reused (`signedUrlCache`): the pages re-render every minute
+ * (AutoRefresh), and a fresh token each time gave every face a new URL, so
+ * the browser re-downloaded every photo every minute — on mobile data — and
+ * the faces flickered. A link is now handed out again until half its life
+ * has gone, so whatever a page shows still has at least that half to run.
  */
 
 /** Long enough to read a page, short enough not to be worth forwarding. */
 const TTL_SECONDS = 60 * 10;
 
 const BUCKET = 'photos';
+
+/** How many signed links the server keeps; least recently used goes first. */
+const CACHE_ENTRIES = 5000;
+
+/**
+ * A bounded, least-recently-used store of signed links keyed by Storage
+ * path, each reused until `reuseMs` after it was signed.
+ *
+ * Per server instance and shared by every customer it serves — which adds no
+ * reach: a path is only ever looked up after `client_lineup_v` returned it
+ * for THIS caller (see above), and the answer is the link anyone holding that
+ * path from the view would have been given.
+ */
+export function signedUrlCache(options: { max: number; reuseMs: number; now?: () => number }) {
+  const now = options.now ?? (() => Date.now());
+  // A Map iterates in insertion order: re-inserting on use makes the first
+  // key the least recently used.
+  const entries = new Map<string, { url: string; signedAt: number }>();
+
+  return {
+    get(path: string): string | undefined {
+      const hit = entries.get(path);
+      if (!hit) return undefined;
+      entries.delete(path);
+      if (now() - hit.signedAt >= options.reuseMs) return undefined;
+      entries.set(path, hit);
+      return hit.url;
+    },
+    set(path: string, url: string, signedAt: number = now()): void {
+      entries.delete(path);
+      entries.set(path, { url, signedAt });
+      while (entries.size > options.max) {
+        const oldest = entries.keys().next().value;
+        if (oldest === undefined) break;
+        entries.delete(oldest);
+      }
+    },
+    clear(): void {
+      entries.clear();
+    },
+    get size(): number {
+      return entries.size;
+    },
+  };
+}
+
+/** Reused until half its life has gone (TTL_SECONDS). */
+export const photoUrls = signedUrlCache({ max: CACHE_ENTRIES, reuseMs: (TTL_SECONDS * 1000) / 2 });
 
 /** Signed photo URLs keyed by `bookingId`; a booking with no photo is absent. */
 export async function signLineupPhotos(
@@ -80,13 +138,26 @@ export function publicLineup(rows: readonly LineupRecord[]): ClientLineupRow[] {
     // The customer's OWN entry: its stars and when it was sent (§11.2).
     feedbackRating: r.feedbackRating,
     feedbackSentAt: r.feedbackSentAt,
+    // On the day, on the event page only (ADR-0135 §1).
+    ...(r.arrivalStatus !== undefined
+      ? { arrivalStatus: r.arrivalStatus, arrivedAt: r.arrivedAt ?? null }
+      : {}),
+    // ADR-0135 §2: "✓ Requested", on the event page only.
+    ...(r.workerRequested !== undefined ? { workerRequested: r.workerRequested } : {}),
   }));
 }
 
+/**
+ * The line-up for a client component, and photos for `shown` only — the
+ * faces the screen actually draws (the list shows a handful per event,
+ * `listFaces` in rules.ts; the event page shows everyone). `shown` must be
+ * drawn from `rows`. Defaults to every row.
+ */
 export async function presentLineup(
   rows: readonly LineupRecord[],
+  shown: readonly LineupRecord[] = rows,
 ): Promise<{ lineup: ClientLineupRow[]; photos: Record<string, string> }> {
-  const signed = await signLineupPhotos(rows);
+  const signed = await signLineupPhotos(shown);
   return { lineup: publicLineup(rows), photos: Object.fromEntries(signed) };
 }
 
@@ -96,16 +167,30 @@ async function signPaths(paths: readonly (string | null)[]): Promise<Map<string,
 
   if (wanted.length === 0 || !process.env.SUPABASE_SERVICE_ROLE_KEY) return signed;
 
+  // A link still in its first half-life is handed out again, unchanged.
+  const fresh: string[] = [];
+  for (const path of wanted) {
+    const url = photoUrls.get(path);
+    if (url) signed.set(path, url);
+    else fresh.push(path);
+  }
+  if (fresh.length === 0) return signed;
+
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin.storage.from(BUCKET).createSignedUrls(wanted, TTL_SECONDS);
+    const signedAt = Date.now();
+    const { data, error } = await admin.storage.from(BUCKET).createSignedUrls(fresh, TTL_SECONDS);
     if (error || !data) return signed;
 
     for (const entry of data) {
       // createSignedUrls reports per-path failures in the row rather than
       // throwing, so a worker whose file is missing loses their photo and
-      // nobody else's page breaks.
-      if (entry.signedUrl && entry.path) signed.set(entry.path, entry.signedUrl);
+      // nobody else's page breaks. A failure is not cached: the next render
+      // asks again.
+      if (entry.signedUrl && entry.path) {
+        signed.set(entry.path, entry.signedUrl);
+        photoUrls.set(entry.path, entry.signedUrl, signedAt);
+      }
     }
   } catch {
     // Storage being unreachable is not a reason to fail the line-up: §11.2's

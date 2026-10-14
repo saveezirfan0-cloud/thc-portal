@@ -9,12 +9,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   calls: [] as unknown[],
   error: null as null | { code?: string; message: string },
+  signedOut: false,
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
+    auth: {
+      getUser: async () => ({ data: { user: state.signedOut ? null : { id: 'u1' } }, error: null }),
+    },
     rpc: async (fn: string, args: unknown) => {
       state.calls.push({ fn, args });
       return { data: state.error ? null : 'id', error: state.error };
@@ -34,9 +38,21 @@ beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
   state.calls = [];
   state.error = null;
+  state.signedOut = false;
 });
 
 describe('leaveFeedback', () => {
+  it('says "signed out" when the session has lapsed, without calling the RPC', async () => {
+    state.signedOut = true;
+    const out = await leaveFeedback(EV, BK, 4, 'Great');
+    expect(out).toEqual({
+      ok: false,
+      error: "You've been signed out — sign in again to send this feedback.",
+      signedOut: true,
+    });
+    expect(state.calls).toEqual([]);
+  });
+
   it('refuses a comment over 2000 characters without calling the database', async () => {
     const out = await leaveFeedback(EV, BK, 4, 'x'.repeat(2001));
     expect(out).toEqual({ ok: false, error: FEEDBACK_TOO_LONG });

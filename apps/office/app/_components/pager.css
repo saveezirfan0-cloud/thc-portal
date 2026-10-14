@@ -1,0 +1,13 @@
+/* The pager sits under the table, inside the card (as on /clients). */
+.panel .pager {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+}
+.panel .pager .right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.panel .pager select.input {
+  height: var(--btn-h-sm);
+}

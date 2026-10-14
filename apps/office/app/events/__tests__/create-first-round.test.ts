@@ -122,8 +122,16 @@ describe('creating an event posts the first auto-assign round (§3.4)', () => {
   });
 
   it('never when the sections failed — there is no event to fill', async () => {
-    state.sectionsError = { message: 'min_4h' };
-    expect(await outcome()).toBe('RETURNED:{"error":"min_4h"}');
+    // Release audit D-M5: the constraint's name is not what the manager reads.
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    state.sectionsError = {
+      message: 'new row for relation "shift_requirements" violates check constraint "min_4h"',
+    };
+    const returned = await outcome();
+    expect(returned).toMatch(/^RETURNED:/);
+    expect(returned).not.toContain('min_4h');
+    expect(returned).toContain('Check the times, headcount and buffer');
+    quiet.mockRestore();
     expect(state.rpc).not.toHaveBeenCalled();
   });
 

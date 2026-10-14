@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { type TimeFormat, UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { OFFICE_INBOX } from '@thc/notifications';
-import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
+import { Alert, EmptyState, Panel, Pill, TableScroll } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import type { InboxFilters, InboxPageData } from './data';
 import { inboxHref } from './filters';
@@ -60,15 +60,15 @@ export function InboxScreen({
               : 'No email was sent to the office in this period.'}
           </EmptyState>
         ) : (
-          <div className="table-scroll">
+          <TableScroll label="Office emails" fixed minWidth="56rem">
             <table className="tbl card-rows inbox-table">
               <thead>
                 <tr>
                   <th>What</th>
                   <th>About</th>
-                  <th>To</th>
-                  <th>Queued (UK time)</th>
-                  <th>Status</th>
+                  <th className="col-xl">To</th>
+                  <th className="col-m">Queued (UK time)</th>
+                  <th className="col-l">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,7 +113,7 @@ export function InboxScreen({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
         <div className="inbox-pager">
           {filters.before ? (

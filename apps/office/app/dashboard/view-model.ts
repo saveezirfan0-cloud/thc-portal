@@ -265,6 +265,13 @@ function weekday(date: Date): string {
   return WEEKDAYS[(date.getUTCDay() + 6) % 7]!;
 }
 
+/**
+ * How many events the dashboard lists before "See all in Events": ten days
+ * of a busy diary is 100+ rows, which is what the Scheduling list is for
+ * (release audit m13).
+ */
+export const UPCOMING_LIMIT = 8;
+
 /** "Fri 25 Sep". */
 export function formatDayLabel(isoDate: string): string {
   const date = utcDate(isoDate);

@@ -1,9 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { Alert, Avatar, Button, EmptyState, Panel, Pill, Tabs, useTimeFormat } from '@thc/ui';
+import { useState, type ReactNode } from 'react';
+import {
+  Alert,
+  Avatar,
+  Button,
+  EmptyState,
+  Panel,
+  Pill,
+  TableScroll,
+  Tabs,
+  useTimeFormat,
+} from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { Pager } from '../../_components/Pager';
 import { RTW_LABEL, employeeId, formatUkDate } from '../staff';
 import { DecideDialog } from './DecideDialog';
 import type { DecideStage } from './DecideDialog';
@@ -27,6 +38,10 @@ import type { ChangeRequestView } from './types';
 import './requests.css';
 
 type Tab = 'pending' | 'decided';
+
+/** The pager's sizes, as on /clients and /venues (release audit L4). */
+const PAGE_SIZES = [10, 25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 25;
 
 /**
  * /staff/requests — ADR-0045, `wireframes/backoffice/change-requests.html`
@@ -56,6 +71,44 @@ export function RequestsScreen({
   const queue = oldestFirst(pending);
   const current = queue.find((row) => row.id === open?.id) ?? null;
 
+  // Search by name or Employee ID, and a page at a time (release audit L4):
+  // the decided list only grows. A new search or tab starts at page 1.
+  const [query, setQuery] = useState('');
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const listKey = `${tab}|${query}`;
+  const [paging, setPaging] = useState({ key: listKey, page: 0 });
+  const needle = query.trim().toLowerCase();
+  const matches = (row: ChangeRequestView) =>
+    needle === '' ||
+    row.display_name.toLowerCase().includes(needle) ||
+    employeeId(row.employee_id).toLowerCase().includes(needle);
+  const all = tab === 'pending' ? queue : decided;
+  const list = all.filter(matches);
+  const pages = Math.max(1, Math.ceil(list.length / pageSize));
+  const page = paging.key === listKey ? Math.min(paging.page, pages - 1) : 0;
+  const shown = list.slice(page * pageSize, page * pageSize + pageSize);
+  const pager =
+    list.length > PAGE_SIZES[0] ? (
+      <Pager
+        total={list.length}
+        page={page}
+        pageSize={pageSize}
+        sizes={PAGE_SIZES}
+        onPage={(next) => setPaging({ key: listKey, page: next })}
+        onPageSize={(size) => {
+          setPageSize(size);
+          setPaging({ key: listKey, page: 0 });
+        }}
+      />
+    ) : null;
+  const noMatch =
+    all.length > 0 && list.length === 0 ? (
+      <EmptyState>
+        <h3>No change request matches that search</h3>
+        <p>Search runs over the worker&rsquo;s name and Employee ID.</p>
+      </EmptyState>
+    ) : null;
+
   return (
     <OfficeShell
       activeHref="/staff"
@@ -72,17 +125,34 @@ export function RequestsScreen({
         {outcome ? <Alert tone="green">{outcome.note}</Alert> : null}
         {outcome?.warning ? <Alert tone="amber">{outcome.warning}</Alert> : null}
 
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          aria-label="Change requests"
-          options={[
-            { value: 'pending', label: 'Pending', count: queue.length, alert: queue.length > 0 },
-            { value: 'decided', label: 'Decided' },
-          ]}
-        />
+        <div className="toolbar filters">
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            aria-label="Change requests"
+            options={[
+              { value: 'pending', label: 'Pending', count: queue.length, alert: queue.length > 0 },
+              { value: 'decided', label: 'Decided' },
+            ]}
+          />
+          <div className="right">
+            <div className="search">
+              <input
+                className="input"
+                style={{ width: 280 }}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search name or Employee ID"
+                aria-label="Search name or Employee ID"
+              />
+            </div>
+          </div>
+        </div>
 
-        {tab === 'pending' ? (
+        {noMatch ? (
+          noMatch
+        ) : tab === 'pending' ? (
           queue.length === 0 ? (
             <EmptyState>
               <h3>No change requests waiting</h3>
@@ -93,7 +163,7 @@ export function RequestsScreen({
             </EmptyState>
           ) : (
             <>
-              {queue.map((row) => (
+              {shown.map((row) => (
                 <PendingCard
                   key={row.id}
                   row={row}
@@ -101,6 +171,7 @@ export function RequestsScreen({
                   onDecide={(stage) => setOpen({ id: row.id, stage })}
                 />
               ))}
+              {pager ? <div className="panel">{pager}</div> : null}
               <span className="muted xs">
                 Oldest first · one pending request per worker per kind · the worker never sees who
                 decided
@@ -108,7 +179,7 @@ export function RequestsScreen({
             </>
           )
         ) : (
-          <DecidedTable rows={decided} />
+          <DecidedTable rows={shown} pager={pager} />
         )}
       </div>
 
@@ -242,7 +313,14 @@ export function PendingCard({
   );
 }
 
-export function DecidedTable({ rows }: { rows: ChangeRequestView[] }) {
+export function DecidedTable({
+  rows,
+  pager,
+}: {
+  rows: ChangeRequestView[];
+  /** The page controls under the table, inside its card. */
+  pager?: ReactNode;
+}) {
   const format = useTimeFormat();
   if (rows.length === 0) {
     return (
@@ -255,52 +333,55 @@ export function DecidedTable({ rows }: { rows: ChangeRequestView[] }) {
   return (
     <Panel flush>
       <div className="panel-b tight">
-        <table className="tbl card-rows">
-          <thead>
-            <tr>
-              <th>Worker</th>
-              <th>Kind</th>
-              <th>Change</th>
-              <th>Requested (UK)</th>
-              <th>Decision</th>
-              <th>By</th>
-              <th>Decided (UK)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const decision = decisionLabel(row.status);
-              return (
-                <tr key={row.id}>
-                  <td className="cell-title">
-                    <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>{' '}
-                    <span className="mono xs muted">{employeeId(row.employee_id)}</span>
-                  </td>
-                  <td data-label="Kind">{kindLabel(row.kind)}</td>
-                  <td data-label="Change" className={row.removed ? 'muted' : undefined}>
-                    {changeSummary(row)}
-                  </td>
-                  <td data-label="Requested (UK)" className="mono sm">
-                    {ukStamp(row.created_at, format).replace(' UK time', '')}
-                  </td>
-                  <td data-label="Decision">
-                    <Pill tone={decision.tone}>{decision.label}</Pill>
-                    {row.status === 'rejected' && row.decision_reason ? (
-                      <span className="sub xs muted">&ldquo;{row.decision_reason}&rdquo;</span>
-                    ) : null}
-                  </td>
-                  <td data-label="By" className={row.decided_by_name ? undefined : 'muted'}>
-                    {decidedBy(row)}
-                  </td>
-                  <td data-label="Decided (UK)" className="mono sm">
-                    {ukStamp(row.decided_at, format).replace(' UK time', '')}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <TableScroll label="Decided change requests" minWidth="52rem">
+          <table className="tbl card-rows">
+            <thead>
+              <tr>
+                <th className="col-l">Worker</th>
+                <th className="col-s">Kind</th>
+                <th>Change</th>
+                <th className="col-m">Requested (UK)</th>
+                <th className="col-m">Decision</th>
+                <th className="col-s">By</th>
+                <th className="col-m">Decided (UK)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const decision = decisionLabel(row.status);
+                return (
+                  <tr key={row.id}>
+                    <td className="cell-title">
+                      <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>{' '}
+                      <span className="mono xs muted">{employeeId(row.employee_id)}</span>
+                    </td>
+                    <td data-label="Kind">{kindLabel(row.kind)}</td>
+                    <td data-label="Change" className={row.removed ? 'muted' : undefined}>
+                      {changeSummary(row)}
+                    </td>
+                    <td data-label="Requested (UK)" className="mono sm">
+                      {ukStamp(row.created_at, format).replace(' UK time', '')}
+                    </td>
+                    <td data-label="Decision">
+                      <Pill tone={decision.tone}>{decision.label}</Pill>
+                      {row.status === 'rejected' && row.decision_reason ? (
+                        <span className="sub xs muted">&ldquo;{row.decision_reason}&rdquo;</span>
+                      ) : null}
+                    </td>
+                    <td data-label="By" className={row.decided_by_name ? undefined : 'muted'}>
+                      {decidedBy(row)}
+                    </td>
+                    <td data-label="Decided (UK)" className="mono sm">
+                      {ukStamp(row.decided_at, format).replace(' UK time', '')}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
       </div>
+      {pager}
     </Panel>
   );
 }

@@ -239,3 +239,118 @@ describe('Invite anyway (ADR-0043)', () => {
     expect(actions.inviteWorker).toHaveBeenCalledWith('evt-1', 'sh-1', 'st-1');
   });
 });
+
+describe('Withdraw a confirmed worker (release audit E-M5)', () => {
+  beforeEach(async () => {
+    const { withdrawGuard } = await import('../[id]/board-model');
+    withdrawGuard.reset();
+  });
+
+  it('asks first, naming the worker and saying they will be told; Cancel sends nothing', async () => {
+    const { BookingActions } = await import('../[id]/_components/BookingActions');
+    const { withdrawConfirmPrompt } = await import('../[id]/board-model');
+    mount(
+      <BookingActions
+        eventId="evt-1"
+        bookingId="bk-1"
+        workerName="Ada Lovelace"
+        noShow={false}
+        confirmed
+        payrollExported={false}
+      />,
+    );
+    expect(dialog()).toBeNull();
+
+    await press(button('Withdraw'));
+    expect(dialog()?.textContent).toContain(withdrawConfirmPrompt('Ada Lovelace'));
+    expect(dialog()?.textContent).toMatch(/told straight away/);
+    expect(actions.withdraw).not.toHaveBeenCalled();
+
+    await press(button('Cancel', true));
+    expect(dialog()).toBeNull();
+    expect(actions.withdraw).not.toHaveBeenCalled();
+  });
+
+  it('withdraws only on the dialog’s own button, and once however often it is pressed', async () => {
+    const { BookingActions } = await import('../[id]/_components/BookingActions');
+    mount(
+      <BookingActions
+        eventId="evt-1"
+        bookingId="bk-1"
+        workerName="Ada Lovelace"
+        noShow={false}
+        confirmed
+        payrollExported={false}
+      />,
+    );
+    await press(button('Withdraw'));
+    const confirm = button('Withdraw Ada Lovelace', true);
+    await press(confirm);
+    await press(confirm);
+    expect(actions.withdraw).toHaveBeenCalledTimes(1);
+    expect(actions.withdraw).toHaveBeenCalledWith('evt-1', 'bk-1');
+  });
+
+  it('an invitation is still withdrawn in one click', async () => {
+    const { BookingActions } = await import('../[id]/_components/BookingActions');
+    mount(
+      <BookingActions
+        eventId="evt-1"
+        bookingId="bk-2"
+        workerName="Grace Hopper"
+        noShow={false}
+        confirmed={false}
+        payrollExported={false}
+      />,
+    );
+    await press(button('Withdraw invite'));
+    expect(dialog()).toBeNull();
+    expect(actions.withdraw).toHaveBeenCalledWith('evt-1', 'bk-2');
+  });
+
+  it('a double-click cannot withdraw the next row as well once the list closes up', async () => {
+    const { BookingActions } = await import('../[id]/_components/BookingActions');
+    mount(
+      <>
+        <BookingActions
+          eventId="evt-1"
+          bookingId="bk-2"
+          workerName="Grace Hopper"
+          noShow={false}
+          confirmed={false}
+          payrollExported={false}
+        />
+        <BookingActions
+          eventId="evt-1"
+          bookingId="bk-3"
+          workerName="Alan Turing"
+          noShow={false}
+          confirmed={false}
+          payrollExported={false}
+        />
+      </>,
+    );
+    const [first, second] = [...container.querySelectorAll('button')].filter(
+      (b) => b.textContent === 'Withdraw invite',
+    );
+    await press(first!);
+    await press(second!);
+    expect(actions.withdraw).toHaveBeenCalledTimes(1);
+    expect(actions.withdraw).toHaveBeenCalledWith('evt-1', 'bk-2');
+  });
+});
+
+describe('the board-wide Withdraw guard', () => {
+  it('lets one run at a time and none for a moment after it lands', async () => {
+    const { WITHDRAW_SETTLE_MS, createWithdrawGuard } = await import('../[id]/board-model');
+    let t = 1_000;
+    const guard = createWithdrawGuard(() => t);
+    expect(guard.tryStart()).toBe(true);
+    expect(guard.tryStart()).toBe(false);
+    guard.finish();
+    t += WITHDRAW_SETTLE_MS - 1;
+    expect(guard.tryStart()).toBe(false);
+    t += 1;
+    expect(guard.tryStart()).toBe(true);
+  });
+});

@@ -7,6 +7,7 @@ import { READ_ONLY_MESSAGE } from '../_lib/sessionRole';
 import { settingsDb } from './db';
 import { supabaseConfigured } from './data';
 import {
+  validateClientPortalPhone,
   validateEscalationRadius,
   validateGap,
   validateRadius,
@@ -179,6 +180,17 @@ export async function saveNotificationSwitch(code: string, on: boolean): Promise
   else off[code] = false;
 
   return put('notification_switches', off);
+}
+
+/**
+ * ADR-0134 N1: THC's on-the-day phone number on the Client Portal's event
+ * page. Blank is saved as an empty string, which the portal's view reads as
+ * "no number" and hides the line.
+ */
+export async function saveClientPortalPhone(value: string): Promise<ActionResult> {
+  const invalid = validateClientPortalPhone(value);
+  if (invalid) return { ok: false, message: invalid };
+  return put('client_portal_phone', value.trim());
 }
 
 /**

@@ -125,11 +125,6 @@ export function UserChip({ children }: { children: ReactNode }) {
   return <span className="userchip">{children}</span>;
 }
 
-/** Wraps a wide table so it scrolls rather than squashing on a phone (§1.2). */
-export function TableScroll({ children }: { children: ReactNode }) {
-  return <div className="table-scroll">{children}</div>;
-}
-
 export interface PageHeadProps {
   title: ReactNode;
   description?: ReactNode;

@@ -193,6 +193,7 @@ supabase secrets set \
 | `VAPID_PUBLIC_KEY` | base64url, 65 bytes, from `npx web-push generate-vapid-keys` | Every push row is held the same way. Email still sends. |
 | `VAPID_PRIVATE_KEY` | base64url, 32 bytes, same command. **Secret.** | Same |
 | `VAPID_SUBJECT` | `mailto:` or `https:` contact the push services can reach | Same |
+| `CLIENT_PORTAL_URL` | The Client Portal's public origin, e.g. `https://clients.thehospitalitycompany.co.uk` (only the origin is used). CP2 / CP3's button links to `<origin>/client/events/<id>` (ADR-0135 §3) | Those two customer emails are **held** the same way ("not configured: CLIENT_PORTAL_URL"); every other email still sends. |
 
 The **same public key** must also be set on the staff app in Vercel as
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — the browser subscribes with it, and a push signed by a

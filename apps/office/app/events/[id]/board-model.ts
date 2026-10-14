@@ -1129,3 +1129,51 @@ export function declineNoteCounter(note: string): string {
 /** The confirm in front of Open to pool. */
 export const OPEN_TO_POOL_CONFIRM =
   'Open this shift to other workers? It stays theirs until someone takes it, up to the start of the shift.';
+
+/**
+ * Release audit E-M5: the confirm in front of Withdraw on a CONFIRMED
+ * worker. It was one click, with no undo, and it queues N10b at once
+ * ("You've been removed from …", §8) — and the list closing up put the
+ * next worker's Withdraw under the pointer. Withdrawing an invitation stays
+ * one click: nobody had the shift yet.
+ */
+export function withdrawConfirmPrompt(name: string): string {
+  return `Take ${name} off this shift? They are told straight away with a push — “You’ve been removed from this shift” — and their place goes back to auto-assign. This cannot be undone: to have them back, invite them again.`;
+}
+
+/** The dialog's title and its button, naming the worker. */
+export function withdrawConfirmLabel(name: string): string {
+  return `Withdraw ${name}`;
+}
+
+/**
+ * One Withdraw at a time across the whole board, and none for a moment
+ * after one lands (release audit E-M5). Each row is its own component, so a
+ * per-row "running" flag cannot stop a double-click whose second click
+ * lands on the NEXT row once the list has closed up.
+ */
+export const WITHDRAW_SETTLE_MS = 800;
+
+export function createWithdrawGuard(now: () => number = Date.now) {
+  let busy = false;
+  let settledAt = Number.NEGATIVE_INFINITY;
+  return {
+    /** True when a new Withdraw may start; marks the board busy if so. */
+    tryStart(): boolean {
+      if (busy || now() - settledAt < WITHDRAW_SETTLE_MS) return false;
+      busy = true;
+      return true;
+    },
+    finish(): void {
+      busy = false;
+      settledAt = now();
+    },
+    /** For tests. */
+    reset(): void {
+      busy = false;
+      settledAt = Number.NEGATIVE_INFINITY;
+    },
+  };
+}
+
+export const withdrawGuard = createWithdrawGuard();

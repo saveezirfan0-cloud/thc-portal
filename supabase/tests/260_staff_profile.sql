@@ -136,6 +136,11 @@ insert into clients (id, name, contact_name, phone, staff_contact_point, contact
    array['clientc@rls.test'], true, true);
 insert into client_qualifications (client_id, role_id, staff_id, note) values
   (:'clientc', :'role_b', :'staffa', 'Manual clearance for role B');
+-- set_do_not_return() checks for a Back Office session itself since it
+-- became a definer (20261014093100, release audit B1), so from here on the
+-- calls carry the fixture admin's claims. 270 calls it under role
+-- `authenticated`, which is how the screen does.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 select set_do_not_return((select id from client_qualifications
                            where staff_id = :'staffa' and role_id = :'role_id'
                              and client_id = :'clienta'),

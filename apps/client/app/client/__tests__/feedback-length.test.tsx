@@ -22,6 +22,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
+    auth: { getUser: async () => ({ data: { user: { id: 'u1' } }, error: null }) },
     rpc: async (fn: string, args: Record<string, unknown>) => {
       state.calls.push({ fn, args });
       return { data: null, error: state.error };

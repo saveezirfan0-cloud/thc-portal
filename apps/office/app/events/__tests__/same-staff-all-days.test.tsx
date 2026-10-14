@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
     return { data: { queued: true } as Record<string, unknown>, error: null };
   }),
   sectionRows: [] as Record<string, unknown>[],
+  eventRows: [] as Record<string, unknown>[],
 }));
 
 function chain(result: unknown): unknown {
@@ -47,7 +48,17 @@ function fakeDb() {
             data: { name: 'V', address: 'A', location: '0101', geofence_radius_m: 150 },
           });
         case 'events':
-          return chain({ data: { id: 'evt-new' }, error: null });
+          return new Proxy(function () {}, {
+            get(_t, prop) {
+              if (prop === 'insert') {
+                return (value: Record<string, unknown>) => {
+                  state.eventRows.push(value);
+                  return chain({ data: { id: 'evt-new' }, error: null });
+                };
+              }
+              return () => chain({ data: { id: 'evt-new' }, error: null });
+            },
+          });
         case 'shift_requirements': {
           const rows = state.sectionRows;
           return new Proxy(function () {}, {
@@ -326,7 +337,18 @@ describe('saving a Duplicate (createEvent)', () => {
     state.sourceFlagged = true;
     state.sourceReadError = null;
     state.sectionRows.length = 0;
+    state.eventRows.length = 0;
     state.rpc.mockClear();
+  });
+
+  it('a Duplicate records what it was made from; a new event does not, and neither sends created_by', async () => {
+    // Release audit D-M1: the activity log reads "Duplicated event" from
+    // events.duplicated_from; created_by is the session's, set by the database.
+    await outcome(input('ev-fri'));
+    expect(state.eventRows[0]).toMatchObject({ duplicated_from: 'ev-fri' });
+    await outcome(input(null));
+    expect(state.eventRows[1]).not.toHaveProperty('duplicated_from');
+    expect(state.eventRows[0]).not.toHaveProperty('created_by');
   });
 
   it('writes the flag on the section', async () => {

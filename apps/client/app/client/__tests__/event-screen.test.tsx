@@ -42,8 +42,9 @@ afterEach(() => {
   viewer = 'Europe/London';
 });
 
-const { EventScreen } = await import('../events/[id]/EventScreen');
-const { FeedbackModal, isAlreadyLeft, starForKey } = await import('../events/[id]/FeedbackModal');
+const { EventScreen, contactHref } = await import('../events/[id]/EventScreen');
+const { FeedbackModal, isAlreadyLeft, sessionLapsed, starForKey } =
+  await import('../events/[id]/FeedbackModal');
 
 const EVENT_ID = '60000000-0000-4000-8000-000000000001';
 
@@ -118,19 +119,22 @@ function screen(
   );
 }
 
+/** Either wording of the feedback invitation (feedbackInviteText). */
+const INVITE = /you can now leave feedback|you can leave feedback for anyone/;
+
 const ALLOCATION = { kind: 'allocation' as const, issuedAt: '2026-09-17T15:30:00Z' };
 const SIGNOUT = { kind: 'signout' as const, issuedAt: '2026-09-19T23:12:00Z' }; // 00:12 BST next day
 
 describe('before the event (event.html:81-89)', () => {
-  it('offers the allocation sheet in the header: a link once issued, disabled until then', () => {
-    expect(screen(gala(), BEFORE)).toContain(
-      '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Allocation Timesheet</button>',
+  it('offers the allocation sheet in the header once issued, and a quiet line until then (CW-04)', () => {
+    // No dead, disabled button: a line saying when it comes (ADR-0088).
+    const pending = screen(gala(), BEFORE);
+    expect(pending).not.toContain('Download Allocation Timesheet');
+    expect(pending).not.toMatch(/<button[^>]*disabled=""[^>]*>↓/);
+    expect(pending).toContain(
+      '<span class="ev-sheet doc-pending">Allocation Timesheet: sent the day before, once every role is confirmed</span>',
     );
-    // Said in words as well as in the title, as the list does.
-    expect(screen(gala(), BEFORE)).toContain(
-      'Download Allocation Timesheet</button><span class="ev-sheet">Not issued yet</span>',
-    );
-    expect(screen(gala(), BEFORE, [ALLOCATION])).not.toContain('Not issued yet');
+    expect(screen(gala(), BEFORE, [ALLOCATION])).not.toContain('doc-pending');
     expect(screen(gala(), BEFORE, [ALLOCATION])).toContain(
       `<a class="btn primary" href="/client/events/${EVENT_ID}/document?kind=allocation">↓ Download Allocation Timesheet</a>`,
     );
@@ -144,10 +148,10 @@ describe('before the event (event.html:81-89)', () => {
       'Feedback opens once the event has started — from 07:00 UK time on the day. Until then the “Leave feedback” buttons are disabled.',
     );
     expect(markup).toContain(
-      'disabled="" title="Feedback opens once the event has started">Leave feedback</button>',
+      'disabled="" aria-label="Leave feedback for Aisha Bello" title="Feedback opens once the event has started">Leave feedback</button>',
     );
     expect(markup).toContain('Confirmed staff');
-    expect(markup).toContain('<span class="pill green">2 confirmed</span>');
+    expect(markup).toContain('<span class="pill green">2 of 2 confirmed</span>');
   });
 });
 
@@ -164,11 +168,12 @@ describe('completed (event.html:247-273)', () => {
     );
   });
 
-  it('keeps the timesheet disabled until a final copy exists, without losing the allocation sheet', () => {
+  it('says the timesheet is not issued until a final copy exists, keeping the allocation sheet', () => {
     const markup = screen(completed, AFTER, [ALLOCATION]);
     expect(markup).toContain('↓ Allocation Timesheet</a>');
+    expect(markup).not.toContain('Download Completed Timesheet');
     expect(markup).toContain(
-      '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Completed Timesheet</button>',
+      '<span class="ev-sheet doc-pending">Completed Timesheet not issued yet</span>',
     );
     expect(markup).not.toContain('Completed Allocation Timesheet generated');
   });
@@ -177,7 +182,7 @@ describe('completed (event.html:247-273)', () => {
     const markup = screen(completed, AFTER, [ALLOCATION, SIGNOUT]);
     expect(markup).toContain('<div class="k">Staff on the day</div>');
     expect(markup).not.toContain('Confirmed staff');
-    expect(markup).toContain('<span class="pill">2 worked</span>');
+    expect(markup).toContain('<span class="pill">2 of 2 worked</span>');
     expect(markup).not.toContain('2 confirmed');
   });
 
@@ -192,13 +197,25 @@ describe('completed (event.html:247-273)', () => {
     expect(markup).not.toContain('client card</span></div></div><div><div class="k">Your on-site');
   });
 
-  it('marks a row already rated with the disabled "✓ Feedback sent" button and leaves the others live', () => {
+  it('marks a row already rated "✓ Feedback sent" and leaves the others live', () => {
     const markup = screen(completed, AFTER);
-    expect(markup).toMatch(
-      /<button type="button" class="btn sm fb sent" disabled=""[^>]*>✓ Feedback sent<\/button>/,
+    // aria-disabled, not disabled: still focusable, so focus can land on it
+    // after a send (CW-06); named for the worker (CW-05).
+    expect(markup).toContain(
+      '<button type="button" class="btn sm fb sent" aria-disabled="true" aria-label="Feedback sent for Luca Moretti" title="Your feedback is read-only once sent">✓ Feedback sent</button>',
     );
-    expect(markup).toContain('<button type="button" class="btn sm fb">Leave feedback</button>');
-    expect(markup).toContain('The event has started — you can now leave feedback');
+    expect(markup).toContain(
+      '<button type="button" class="btn sm fb" aria-label="Leave feedback for Aisha Bello">Leave feedback</button>',
+    );
+  });
+
+  it('says the event has FINISHED once it is over, not that it has started (CW-10)', () => {
+    const markup = screen(completed, AFTER);
+    // The apostrophe is escaped in static markup.
+    expect(markup).toContain(
+      'This event has finished — you can leave feedback for anyone you haven&#x27;t yet.',
+    );
+    expect(markup).not.toContain('The event has started');
   });
 });
 
@@ -335,7 +352,7 @@ describe('a removed worker (§1.7, event.html:276)', () => {
 
   it('cannot be rated, even after the event has started', () => {
     expect(row).toContain(
-      '<button type="button" class="btn sm fb gone" disabled="" title="This account has been removed">Leave feedback</button>',
+      '<button type="button" class="btn sm fb gone" disabled="" aria-label="Leave feedback for Deleted account #1042" title="This account has been removed">Leave feedback</button>',
     );
   });
 });
@@ -394,7 +411,7 @@ describe('nobody confirmed yet', () => {
 
   it('has no banner about feedback buttons that are not on the page', () => {
     expect(empty(BEFORE)).not.toContain('Feedback opens once the event has started');
-    expect(empty(AFTER)).not.toContain('you can now leave feedback');
+    expect(empty(AFTER)).not.toMatch(INVITE);
     expect(empty(BEFORE)).not.toContain('Leave feedback');
   });
 });
@@ -424,13 +441,23 @@ describe('the feedback banner', () => {
         now={AFTER}
       />,
     );
-    expect(markup).not.toContain('you can now leave feedback');
+    expect(markup).not.toMatch(INVITE);
   });
 
   it('stops inviting a week after the event ended, while the buttons stay live', () => {
     const markup = screen(gala({ status: 'completed' }), '2026-10-05T09:00:00Z');
-    expect(markup).not.toContain('you can now leave feedback');
-    expect(markup).toContain('<button type="button" class="btn sm fb">Leave feedback</button>');
+    expect(markup).not.toMatch(INVITE);
+    expect(markup).toContain(
+      '<button type="button" class="btn sm fb" aria-label="Leave feedback for Aisha Bello">Leave feedback</button>',
+    );
+  });
+
+  it('invites with "has started" while the event runs (event.html:148)', () => {
+    const markup = screen(gala({ status: 'ongoing' }), '2026-09-19T12:00:00Z');
+    expect(markup).toContain(
+      'The event has started — you can now leave feedback on each member of staff.',
+    );
+    expect(markup).not.toContain('has finished');
   });
 });
 
@@ -538,5 +565,62 @@ describe('the feedback popup, guarded', () => {
       isAlreadyLeft({ error: 'Feedback has already been left for this person on this event.' }),
     ).toBe(true);
     expect(isAlreadyLeft({ error: 'That could not be saved.' })).toBe(false);
+  });
+});
+
+describe('"Contact THC about this event" (R3)', () => {
+  it('mails the office with the event, its UK date and its PO in the subject', () => {
+    expect(contactHref(gala())).toBe(
+      `mailto:admin@thehospitalitycompany.co.uk?subject=${encodeURIComponent('Gala Dinner · Sat 19 Sep 2026 · PO 4471-A')}`,
+    );
+  });
+
+  it('leaves the PO out when there is none, and names the UK day of a late start', () => {
+    // 23:30 UTC on the 19th is 00:30 BST on the 20th.
+    const href = contactHref(gala({ poNumber: null, startsAt: '2026-09-19T23:30:00Z' }));
+    expect(decodeURIComponent(href.split('subject=')[1]!)).toBe('Gala Dinner · Sun 20 Sep 2026');
+  });
+
+  it('is a ghost button in the header, beside the downloads', () => {
+    const markup = screen(gala(), '2026-09-18T09:00:00Z');
+    expect(markup).toMatch(
+      /<a class="btn ghost" href="mailto:admin@thehospitalitycompany\.co\.uk\?subject=[^"]+">Contact THC about this event<\/a>/,
+    );
+  });
+
+  it('says the on-site contact is per event, not "as given on your client card"', () => {
+    const markup = screen(gala(), '2026-09-18T09:00:00Z');
+    expect(markup).toContain('for this event · usually the contact on your client card');
+    expect(markup).not.toContain('as given on your client card');
+  });
+});
+
+describe('a lapsed session while sending feedback (R4 e)', () => {
+  const answer = (init: Partial<Response>) => (async () => init as Response) as typeof fetch;
+
+  it('is a redirect from the session probe (the middleware sending it to /login)', async () => {
+    expect(await sessionLapsed(answer({ type: 'opaqueredirect', status: 0 }))).toBe(true);
+    expect(await sessionLapsed(answer({ type: 'basic', status: 307 }))).toBe(true);
+    expect(await sessionLapsed(answer({ type: 'basic', status: 401 }))).toBe(true);
+  });
+
+  it('is not a lapsed session when the probe gets through, or cannot be made at all', async () => {
+    expect(await sessionLapsed(answer({ type: 'basic', status: 204 }))).toBe(false);
+    const offline = (async () => {
+      throw new TypeError('Failed to fetch');
+    }) as typeof fetch;
+    expect(await sessionLapsed(offline)).toBe(false);
+  });
+
+  it('probes /client/session without following the redirect', async () => {
+    const seen: [string, RequestInit | undefined][] = [];
+    const spy = (async (url: string, init?: RequestInit) => {
+      seen.push([url, init]);
+      return { type: 'basic', status: 204 } as Response;
+    }) as typeof fetch;
+    await sessionLapsed(spy);
+    expect(seen).toEqual([
+      ['/client/session', { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' }],
+    ]);
   });
 });

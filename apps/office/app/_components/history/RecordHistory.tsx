@@ -2,10 +2,19 @@
 
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from 'react';
-import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Avatar, Button, EmptyState, Panel, Pill, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Button,
+  EmptyState,
+  Panel,
+  Pill,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import { actionLabel, entityLabel } from '../../_lib/accounts';
-import { actorName, describe } from '../../activity/view-model';
+import { ActivityDetails } from '../../activity/ActivityDetails';
+import { actorName, auditStamp, describe } from '../../activity/view-model';
 import { loadRecordHistory } from './actions';
 import {
   HISTORY_SCOPE,
@@ -103,14 +112,14 @@ export function RecordHistory({
               <EmptyState>Nothing has been recorded about this yet.</EmptyState>
             )
           ) : (
-            <div className="table-scroll">
+            <TableScroll label="History" fixed minWidth="52rem">
               <table className="tbl card-rows activity-table">
                 <thead>
                   <tr>
-                    <th>When (UK time)</th>
-                    <th>Who</th>
-                    <th>What</th>
-                    <th>Record</th>
+                    <th className="col-m">When (UK time)</th>
+                    <th className="col-m">Who</th>
+                    <th className="col-l">What</th>
+                    <th className="col-l">Record</th>
                     <th>Details</th>
                   </tr>
                 </thead>
@@ -122,7 +131,7 @@ export function RecordHistory({
                     return (
                       <tr key={row.id}>
                         <td data-label="When" className="mono sm activity-when">
-                          {formatDateTimeIn(new Date(row.at), UK_ZONE, format)}
+                          {auditStamp(row.at, format)}
                         </td>
                         <td data-label="Who">
                           {row.actor ? (
@@ -146,14 +155,14 @@ export function RecordHistory({
                           )}
                         </td>
                         <td data-label="Details" className="sm muted activity-details">
-                          {details.length ? details.join(' · ') : '—'}
+                          <ActivityDetails lines={details} />
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
           {older !== null ? (
             <div className="activity-pager">

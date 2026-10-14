@@ -50,7 +50,7 @@ export function PayrollTab({
 
   return (
     <div className="stack">
-      <div className="rp-toolbar">
+      <div className="rp-toolbar filters">
         <Link
           className={`btn sm${onLastWeek ? ' primary' : ''}`}
           href={reportHref(view, { ...last })}

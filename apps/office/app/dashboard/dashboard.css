@@ -55,22 +55,14 @@
    pushing the table out, and a card that scrolls sideways as the last
    resort rather than clipping. */
 @media (min-width: 761px) {
-  .table-scroll:has(> .dash-upcoming) {
-    overflow-x: auto;
-  }
-  .dash-upcoming {
-    min-width: 860px;
-  }
-  .dash-upcoming th,
-  .dash-upcoming td {
-    padding-inline: var(--sp-12);
-  }
-  .dash-upcoming td.cell-title {
-    min-width: 12rem;
-  }
   .dash-upcoming td.mono,
   .dash-upcoming td.dash-status {
     white-space: nowrap;
+  }
+  /* §1.8's "your time" line may wrap under the UK window it follows, so a
+     reader outside the UK does not push Status off a laptop's card. */
+  .dash-upcoming td.mono .sub {
+    white-space: normal;
   }
 }
 
@@ -90,8 +82,13 @@
    viewport breakpoint gave it the wide grid below — too wide for the card,
    so the role chips were painted over and the margins and Status ran off
    the right edge. The table's scroll wrapper is the container. */
-.table-scroll:has(> .dash-upcoming) {
+.tbl-scroll:has(> .dash-upcoming) {
   container: dash-upcoming / inline-size;
+}
+/* "Showing the first 8 of 23 · See all in Events", under the table. */
+.panel .dash-more {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
 }
 
 /* Wide card. The role lines are one grid with a column per part — role,
@@ -140,7 +137,12 @@
    Roles cell needed and pushed the margins and Status off the card. */
 @media (min-width: 761px) {
   .dash-upcoming .dash-clip {
-    max-width: 26ch;
+    max-width: 18ch;
+  }
+  /* "Roles · allocation · fill · margin/h" is a sentence: it wraps rather
+     than setting the column's width. */
+  .dash-upcoming th {
+    white-space: normal;
   }
 }
 
@@ -221,21 +223,24 @@
 @media (min-width: 761px) {
   @container dash-upcoming (max-width: 1199.98px) {
     .dash-upcoming td.cell-wide {
-      min-width: 16rem;
+      min-width: 12rem;
     }
-    .dash-roles .r > .win,
-    .dash-roles .r > .win .sub {
+    /* The window stays whole; "your time" may wrap under it. */
+    .dash-roles .r > .win {
       white-space: nowrap;
     }
-    /* A 1280px laptop leaves a card of ~980px beside the sidebar. The
-       client name and the event title give up a little measure (both end
-       in an ellipsis or wrap, with the full text on hover or on the
-       board) so the Status column stays inside the card. */
+    .dash-roles .r > .win .sub {
+      white-space: normal;
+    }
+    /* A 1024px tablet leaves a card of ~760px beside the sidebar. The
+       client name and the event title give up measure (both end in an
+       ellipsis or wrap, with the full text on hover or on the board) so
+       the Status column stays inside the card (release audit m13). */
     .dash-upcoming .dash-clip {
-      max-width: 20ch;
+      max-width: 14ch;
     }
     .dash-upcoming td.cell-title {
-      min-width: 10rem;
+      min-width: 8rem;
     }
   }
 }

@@ -30,7 +30,7 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
       <div className="search">
         <input
           className="input"
-          style={{ height: 32, width: 220 }}
+          style={{ width: 220 }}
           placeholder="Search event, client, PO"
           aria-label="Search events"
           value={q}
@@ -40,7 +40,7 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
 
       <select
         className="input"
-        style={{ height: 32, width: 170 }}
+        style={{ width: 170 }}
         aria-label="Filter by client"
         value={query.clientId}
         onChange={(event) => router.push(hrefFor({ ...query, clientId: event.target.value }))}
@@ -55,7 +55,7 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
 
       <select
         className="input"
-        style={{ height: 32, width: 140 }}
+        style={{ width: 140 }}
         aria-label="Filter by status"
         value={query.status}
         onChange={(event) => router.push(hrefFor({ ...query, status: event.target.value }))}

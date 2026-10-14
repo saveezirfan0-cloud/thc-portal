@@ -109,9 +109,9 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     const html = renderToStaticMarkup(
       <StaffScreen staff={[LEAVER]} students={[]} problem={null} initialFilter="inactive" />,
     );
-    expect(html).toContain('<th>Last completed shift</th>');
-    expect(html).toContain('<th>Released shifts</th>');
-    expect(html).toContain('<th>P45</th>');
+    expect(html).toMatch(/<th[^>]*>Last completed shift<\/th>/);
+    expect(html).toMatch(/<th[^>]*>Released shifts<\/th>/);
+    expect(html).toMatch(/<th[^>]*>P45<\/th>/);
     expect(html).toContain('16.09.2026');
     expect(html).toContain('>2</td>');
     expect(html).toContain('Requested');

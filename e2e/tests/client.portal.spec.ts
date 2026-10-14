@@ -69,12 +69,12 @@ async function bodyText(page: Page): Promise<string> {
 }
 
 /**
- * The row's document button (§11.1, §11.3): a real `<a href>` to
- * /client/events/:id/document once the office has issued that kind, the
- * same label disabled until then — never a dead button dressed as a link.
- * The seed issues no PDF, but the office project's outbox journey may have
- * sent the Gala Dinner's allocation sheet a moment ago, so both are
- * legitimate; when it is a link, following it must reach the store.
+ * The row's document (§11.1, §11.3): a real `<a href>` to
+ * /client/events/:id/document once the office has issued that kind, and a
+ * quiet status line until then — never a dead button (ADR-0133). The seed
+ * issues no PDF, but the office project's outbox journey may have sent the
+ * Gala Dinner's allocation sheet a moment ago, so both are legitimate; when
+ * it is a link, following it must reach the store.
  */
 async function expectDocument(
   page: Page,
@@ -83,10 +83,11 @@ async function expectDocument(
   label: string,
 ): Promise<void> {
   const link = row.locator(`a.btn[href$="/document?kind=${kind}"]`);
-  const stub = row.getByRole('button', { name: label, disabled: true });
+  const name = kind === 'allocation' ? 'Allocation Timesheet' : 'Completed Timesheet';
+  const stub = row.getByText(new RegExp(`${name}(: sent the day before| not issued yet)`));
   await expect(link.or(stub)).toBeVisible();
-  await expect(link.or(stub)).toHaveText(label);
   if ((await link.count()) > 0) {
+    await expect(link).toHaveText(label);
     const href = (await link.getAttribute('href'))!;
     const response = await page.request.get(href, { maxRedirects: 0 });
     expect(response.status(), href).toBe(302);
@@ -227,7 +228,9 @@ test('a filter that matches nothing says so, and Clear filters brings the list b
   const rows = page.locator('table.tbl tbody tr');
   await expect(rows.first()).toBeVisible();
 
-  await page.getByLabel('From (UK date)').fill('2099-01-01');
+  // A typed UK date (dd/mm/yyyy, ADR-0133) applies when the field is left.
+  await page.getByLabel('From (UK date)').fill('01/01/2099');
+  await page.getByLabel('From (UK date)').press('Tab');
   await expect(page.getByRole('heading', { name: 'No events match your filters' })).toBeVisible();
   await expect(rows).toHaveCount(0);
 
@@ -243,13 +246,13 @@ test('the event page shows confirmed staff only, by role, with the role window (
   await expect(page.getByRole('heading', { name: 'Gala Dinner' })).toBeVisible();
   await expect(page.getByText('PO Number · 4471-A')).toBeVisible();
 
-  // "↓ Download Allocation Timesheet" in the header: a live link once the office
-  // has issued one (the outbox journey may just have), a disabled button
-  // until then — but present either way, before and during the event.
+  // The Allocation Timesheet in the header: a live link once the office has
+  // issued one (the outbox journey may just have), and a quiet status line
+  // until then — never a dead button (ADR-0133).
   await expect(
     page
-      .getByRole('button', { name: '↓ Download Allocation Timesheet' })
-      .or(page.getByRole('link', { name: '↓ Download Allocation Timesheet' })),
+      .getByRole('link', { name: '↓ Download Allocation Timesheet' })
+      .or(page.getByText(/Allocation Timesheet(: sent the day before| not issued yet)/)),
   ).toBeVisible();
 
   // Grouped by role, each panel titled with the role's own window
@@ -320,8 +323,8 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
     // After the event the header offers the Completed Timesheet instead (ADR-0074).
     await expect(
       page
-        .getByRole('button', { name: '↓ Download Completed Timesheet' })
-        .or(page.getByRole('link', { name: '↓ Download Completed Timesheet' })),
+        .getByRole('link', { name: '↓ Download Completed Timesheet' })
+        .or(page.getByText('Completed Timesheet not issued yet')),
     ).toBeVisible();
     // The seed's Lunch Service ended two weeks ago, so the "you can now leave
     // feedback" banner has been retired (it shows for 7 days after the end,

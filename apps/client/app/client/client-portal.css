@@ -33,6 +33,29 @@
   text-decoration: none;
 }
 
+/* One clean row at every width above the phone's (CW-02): the brand and
+   the account end keep their width and never truncate; the company is the
+   piece that gives way, cut with an ellipsis (its title carries the whole
+   name, layout.tsx), and the zone note shortens to one line. */
+.ctop .brand {
+  flex: none;
+  white-space: nowrap;
+}
+
+.ctop .who {
+  flex: 0 1 auto;
+}
+
+.ctop .who .n {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ctop .spacer {
+  min-width: 0;
+}
+
 .ctop .brand .sub.co {
   display: none;
 }
@@ -75,6 +98,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-16);
+  flex: none;
 }
 
 .ctop-menu .menu-who,
@@ -91,11 +115,14 @@
 
 .ctop .tz {
   /* "Viewer: Europe/Berlin (UTC+2)" (ViewerZoneNote), only for a reader
-     outside UK time. Same recipe as the office .topbar .tz. */
+     outside UK time. Same recipe as the office .topbar .tz. One line,
+     always: wrapped beside the company it took three. */
   font-family: var(--font-label);
   font-size: var(--fs-11);
   color: var(--muted);
   letter-spacing: var(--label-track);
+  white-space: nowrap;
+  flex: none;
 }
 
 /* "Skip to content" (WCAG 2.4.1): the signed-in layout's first focusable
@@ -158,9 +185,79 @@
 }
 
 .ev-filters .ev-date {
-  width: 150px;
+  width: 170px;
   min-width: 0;
-  /* The picker's glyph follows the theme's own color-scheme (tokens.css). */
+}
+
+/* The typed UK date (UkDateField, CW-03): dd/mm/yyyy in a text box, a
+   calendar welded to its right with the browser's own picker laid
+   invisibly over it (the Staff App's date of birth, ADR-0068). */
+.ukd-row .input {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ukd-row .ukd-cal {
+  position: relative;
+  padding: 0 var(--sp-12);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ukd-row .ukd-cal:hover {
+  color: var(--text);
+}
+
+.ukd-row .ukd-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Chromium opens its calendar only from this indicator: stretch it over
+   the whole icon so a click anywhere on it lands there. */
+.ukd-row .ukd-native::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* A date's error hangs under its box rather than lifting the box out of
+   line with the search and the other date (the row is bottom-aligned);
+   the row makes room for it below. */
+.ev-filters .ukd {
+  position: relative;
+}
+
+.ev-filters .ukd .error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: max-content;
+  max-width: 300px;
+  margin-top: var(--sp-4);
+}
+
+.ev-filters:has(.ukd .error) {
+  padding-bottom: calc(var(--sp-20) + var(--sp-16));
+}
+
+.ev-empty-actions {
+  justify-content: center;
+  gap: var(--sp-8);
 }
 
 /* ---- "Next: Gala Dinner · today 07:00 UK · 13 of 17 confirmed" ---- */
@@ -204,6 +301,14 @@
    words are all ink. */
 .ev-next.live .ev-next-t > span {
   color: var(--text);
+}
+
+/* "Happening now" (CW-11): the green pill's 12% tint laid over the strip's
+   own green tint was a double tint, and --green-ink on it fell to 4.18:1 at
+   11px in light. The pill sits on the panel instead — the same tint over
+   the card ground the pill tokens are verified on (≥4.6:1). */
+.ev-next.live .pill.green {
+  background: linear-gradient(var(--green-dim), var(--green-dim)), var(--panel);
 }
 
 .ev-next-go {
@@ -252,7 +357,7 @@
    design system's 20px (the outer edges keep the panel's), so the room the
    five fixed-shape columns leave (a date on one line, a pill, a bar, the
    faces, a button) goes to the event's name. The table only shows above
-   820px; below it the cards take over. */
+   767px; below it the cards take over. */
 .events-panel .tbl :is(th, td) {
   padding-inline: var(--sp-12);
 }
@@ -284,6 +389,49 @@
 .ev-sheet.ready {
   color: var(--green-ink);
   font-weight: 600;
+}
+
+/* "Allocation Timesheet: sent the day before, once every role is
+   confirmed" (CW-04): a status, not a control, so it wraps as text in the
+   Document column instead of setting its width. */
+.ev-doc {
+  max-width: 190px;
+}
+
+.doc-pending {
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* A download being fetched (DocumentLink, CW-09). */
+a.btn[aria-busy='true'],
+a.btn[aria-busy='true']:hover {
+  cursor: progress;
+  text-decoration: none;
+}
+
+.doc-spin {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  animation: doc-spin 0.8s linear infinite;
+}
+
+@keyframes doc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-spin {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.6;
+  }
 }
 
 /* In a stacked table cell the pill keeps its own width, not the column's. */
@@ -469,9 +617,15 @@
 
 .ehead .actions {
   margin-left: auto;
-  /* A disabled document carries "Not issued yet" under it; the buttons
-     beside it stay level with the button, not with the pair's middle. */
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* The header's "not issued yet" line: quiet text beside the buttons. */
+.ehead .actions .doc-pending {
+  max-width: 260px;
+  text-align: right;
 }
 
 /* "· as of Fri 19 Sep 2026, 10:00 your time (09:00 UK)" */
@@ -572,6 +726,93 @@
   padding-inline: var(--sp-12);
 }
 
+/* ADR-0135 §1 · "Arrived 08:52" / "Not here yet" / "Not arrived" under a
+   name, on the day only. The words carry the state; the dot repeats it. */
+.wrow .arr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  margin-top: var(--sp-4);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+
+.wrow .arr-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.wrow .arr-arrived {
+  color: var(--green-ink);
+}
+
+.wrow .arr-waiting {
+  color: var(--muted);
+}
+
+/* Hollow, so it differs from "arrived" in shape as well as colour. */
+.wrow .arr-waiting .arr-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.wrow .arr-missing {
+  color: var(--amber-ink);
+}
+
+.wrow .arr-missing .arr-dot {
+  border-radius: 2px;
+}
+
+/* The sentence a screen reader hears, with the person's name. */
+.wrow .arr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ADR-0135 §2 · "Leave feedback" and "Request again" stacked on a finished
+   event's row; on any other row the wrapper is not a box at all. */
+.wrow .wacts {
+  display: contents;
+}
+
+.wrow .wacts.two {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-6);
+}
+
+.wrow .req {
+  flex: none;
+  white-space: nowrap;
+  min-width: max-content;
+  padding-inline: var(--sp-12);
+}
+
+.wrow .req.sent {
+  color: var(--green-ink);
+  cursor: default;
+}
+
+.req-explain {
+  margin: 0;
+  color: var(--muted);
+}
+
+.req-done:focus {
+  outline: none;
+}
+
 /* A removed worker's "Leave feedback" (§1.7): nobody left to rate, so the
    whole control greys, ink and edge, as the wireframe's disabled button. */
 .wrow .fb.gone {
@@ -584,15 +825,6 @@
 .wempty {
   margin: 0;
   padding: var(--sp-14) var(--sp-20);
-}
-
-/* A header document not issued yet: the disabled button and, under it, why
-   (as the list prints it). */
-.ehead .doc-slot {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-4);
 }
 
 /* The line-up of a cancelled event is not shown: the bookings were
@@ -647,6 +879,12 @@
   min-width: 0;
   justify-content: center;
   text-align: center;
+}
+
+/* No copy issued yet: the status line takes the download's half, read as
+   text from the left, and "Details →" is the card's one action. */
+.ecard .foot > .doc-pending {
+  text-align: left;
 }
 
 /* "13 of 17 confirmed", its bar and the role split, as on the desktop. */
@@ -710,16 +948,37 @@
   padding: var(--sp-14);
 }
 
-@media (max-width: 820px) {
-  .cwrap {
-    padding: var(--sp-16);
-    gap: var(--sp-16);
+/* Tablet (768–1023px): the wireframe keeps the desktop table here
+   (events.html: "Tablet 768–1024px — the desktop table stays, with the
+   Venue column folded under the event name"). Four columns fit a 768px
+   panel once the event's floor and the cell padding give a little. */
+@media (max-width: 1023px) {
+  .events-panel .tbl td:first-child {
+    min-width: 150px;
   }
 
-  /* The table folds away and the cards take over; both are rendered from
-     the same rows, so the phone drops no field (§1.2, §11.1). The panel
-     that frames the table on a desktop would be a card around cards here,
-     so it steps back to a plain heading. */
+  .events-panel .tbl :is(th, td) {
+    padding-inline: var(--sp-10);
+  }
+
+  .events-panel .tbl :is(th, td):first-child {
+    padding-left: var(--sp-16);
+  }
+
+  .events-panel .tbl :is(th, td):last-child {
+    padding-right: var(--sp-16);
+  }
+
+  .ev-doc {
+    max-width: 170px;
+  }
+}
+
+/* Phone (≤767px): the table folds away and the cards take over; both are
+   rendered from the same rows, so the phone drops no field (§1.2, §11.1).
+   The panel that frames the table on a desktop would be a card around
+   cards here, so it steps back to a plain heading. */
+@media (max-width: 767px) {
   .ev-table {
     display: none;
   }
@@ -742,6 +1001,13 @@
 
   .events-panel .cards {
     padding: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .cwrap {
+    padding: var(--sp-16);
+    gap: var(--sp-16);
   }
 
   .wgrid {
@@ -786,10 +1052,15 @@
     flex-wrap: wrap;
   }
 
-  .ehead .actions .btn,
-  .ehead .actions .doc-slot {
+  .ehead .actions .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .ehead .actions .doc-pending {
+    width: 100%;
+    max-width: none;
+    text-align: left;
   }
 
   .meta {
@@ -918,13 +1189,28 @@
     flex-basis: 100%;
   }
 
-  /* iOS draws a date input at its own intrinsic width, wider than half a
-     390px line; without its native chrome it takes the field's width. */
-  @supports (-webkit-touch-callout: none) {
-    .ev-filters .ev-date {
-      -webkit-appearance: none;
-      appearance: none;
-    }
+  /* On a phone the two dates share a line under labels of the same
+     height, so they align by the top and an error simply sits under its
+     own box, wrapped to its half of the line. */
+  .ev-filters .right {
+    align-items: flex-start;
+  }
+
+  .ev-filters .ukd .error {
+    position: static;
+    width: auto;
+    max-width: none;
+  }
+
+  .ev-filters:has(.ukd .error) {
+    padding-bottom: 0;
+  }
+
+  /* The panel title's qualifier ("only your events · soonest first")
+     takes its own line rather than breaking the company's name (CW-16). */
+  .events-panel .ev-qual {
+    display: block;
+    margin-top: calc(var(--sp-4) / 2);
   }
 
   .ev-next {
@@ -1002,9 +1288,23 @@
 
 .star:focus-visible {
   /* `outline: <colour>` alone leaves outline-style at none, so the ring
-     never drew. Same ring as the shared rule in packages/ui base.css. */
+     never drew. Same ring as the shared rule in packages/ui base.css,
+     round, so it circles the star rather than boxing it. */
   outline: 2px solid var(--focus-line);
-  outline-offset: 2px;
+  outline-offset: -2px;
+  border-radius: 50%;
+}
+
+/* The focused, chosen star still looks chosen (CW-07): the ring is drawn
+   round it, never over it, and a phone's tap flash (a translucent square
+   over the star) is off — the fill is the feedback. */
+.star {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.star.on:is(:focus, :focus-visible, :hover) path {
+  fill: var(--amber);
+  stroke: var(--amber-ink);
 }
 
 .star:disabled {
@@ -1048,4 +1348,498 @@
   .ctop-menu .me .sm {
     display: none;
   }
+
+  /* Tighter gaps, so the room goes to the company's name before it is cut
+     (CW-02); the person's initials are the first piece to go — their
+     account is one tap away under "Account". */
+  .ctop {
+    gap: var(--sp-10);
+  }
+
+  .ctop .who {
+    padding-left: var(--sp-10);
+  }
+
+  .ctop-menu {
+    gap: var(--sp-6);
+  }
+
+  .ctop-menu .me {
+    display: none;
+  }
+
+  .ctop-menu .account .btn,
+  .ctop-menu .signout .btn {
+    padding-inline: var(--sp-10);
+  }
+}
+
+/* Finger-sized targets on a tablet (CW-08): with a coarse pointer and up
+   to 1024px, every control in the bar and on the two pages is at least
+   44px tall (§1.2). A desktop mouse keeps the compact sizes. The phone
+   (≤760px) already folds the bar into its menu, sized the same. */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .ctop .seg :is(button, a),
+  .cwrap .seg :is(button, a) {
+    height: var(--tap-min);
+  }
+
+  .ctop-menu .btn,
+  .ctop .brand {
+    min-height: var(--tap-min);
+  }
+
+  .ctop-menu .btn {
+    height: var(--tap-min);
+  }
+
+  .cwrap .btn.sm,
+  .wrow .btn.fb,
+  .wrow .btn.req,
+  .wrow .btn.fb.sent[aria-disabled] {
+    height: var(--tap-min);
+  }
+
+  .ehead .actions .btn {
+    min-height: var(--tap-min);
+  }
+
+  .ehead a.back-link,
+  .events-panel a.ev-details {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
+
+  .ev-filters .input {
+    height: var(--tap-min);
+  }
+}
+
+/* The zone note's short spelling ("Your time: UTC−4", ViewerZoneNote) until
+   the bar is wide enough for the zone's name as well (CW-02). */
+.ctop .tz-short {
+  display: none;
+}
+
+@media (max-width: 1279px) {
+  .ctop .tz-full {
+    display: none;
+  }
+
+  .ctop .tz-short {
+    display: inline;
+  }
+}
+
+/* ---- round 3 (ADR-0134) ---- */
+
+/* N1 · "Call THC · 020 7946 0000": the number in the figures' face, never
+   broken across lines. */
+.call-thc .num {
+  font-family: var(--font-num);
+  white-space: nowrap;
+}
+
+/* N3 · "Timesheets go to": long addresses break anywhere rather than push
+   the meta grid wider than the card. */
+.meta .v.recipients {
+  overflow-wrap: anywhere;
+}
+
+.meta .v.recipients .addr {
+  display: block;
+}
+
+/* On a phone the meta grid is two narrow columns: an address needs the
+   card's whole width to stay on one line. */
+@media (max-width: 820px) {
+  .meta > .meta-recipients {
+    grid-column: 1 / -1;
+  }
+}
+
+/* N2 · a role's dress code, one quiet line at the top of its panel. */
+.role-dress {
+  margin: 0;
+  padding: var(--sp-10) var(--sp-20);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+
+.role-dress .k {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+  margin-right: var(--sp-8);
+}
+
+/* N8 · the first-visit welcome: a card like the event header, the three
+   lines beside "Got it"; on a phone the button takes its own line. */
+.cp-welcome {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-16);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-16) var(--sp-20);
+}
+
+.cp-welcome-b {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.cp-welcome h2 {
+  font-size: var(--fs-16);
+  margin: 0 0 var(--sp-8);
+}
+
+.cp-welcome ul {
+  margin: 0;
+  padding-left: 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  font-size: var(--fs-14);
+}
+
+.cp-welcome > .btn {
+  flex: none;
+}
+
+@media (max-width: 760px) {
+  .cp-welcome {
+    flex-direction: column;
+    padding: var(--sp-14) var(--sp-16);
+  }
+
+  .cp-welcome > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* N5 · "On the line-up: Priya Shah" under a row the search found by a
+   person. */
+.ev-match {
+  color: var(--cyan-ink);
+}
+
+.ecard .ev-match {
+  display: block;
+  font-size: var(--fs-12);
+}
+
+/* N7 + N4 · the row under the list: every upcoming event to the calendar,
+   and the feedback already given. */
+.ev-foot {
+  gap: var(--sp-8);
+}
+
+/* P4 · "Rate everyone (12)" under the feedback banner. */
+.rate-all-row {
+  gap: var(--sp-12);
+  align-items: center;
+}
+
+.rate-all-intro {
+  margin: 0;
+}
+
+.rate-all-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+}
+
+.rate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'who pick more'
+    'comment comment comment'
+    'note note note';
+  align-items: center;
+  column-gap: var(--sp-14);
+  padding: var(--sp-10) var(--sp-14);
+}
+
+.rate-row + .rate-row {
+  border-top: 1px solid var(--line);
+}
+
+.rate-who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-width: 0;
+}
+
+.rate-who .n {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: var(--fs-14);
+}
+
+.rate-who .s {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.rate-pick {
+  grid-area: pick;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rate-pick .stars-row {
+  margin-top: 0;
+}
+
+.rate-pick .hint {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.rate-more {
+  grid-area: more;
+  justify-self: end;
+}
+
+.rate-comment {
+  grid-area: comment;
+  margin-top: var(--sp-8);
+}
+
+.rate-error,
+.rate-progress {
+  grid-area: note;
+  margin: var(--sp-6) 0 0;
+}
+
+.rate-error {
+  color: var(--coral-ink);
+}
+
+.rate-done {
+  color: var(--green-ink);
+  font-weight: 600;
+  font-size: var(--fs-13);
+  white-space: nowrap;
+}
+
+/* A row already sent reads as done: the stars stay, quieter. */
+.rate-row.sent .rate-pick {
+  opacity: 0.7;
+}
+
+/* Phone: the comment button beside the name, the five stars on their own
+   line under it — five finger-sized targets need the row's whole width. */
+@media (max-width: 760px) {
+  .rate-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'who more'
+      'pick pick'
+      'comment comment'
+      'note note';
+    row-gap: var(--sp-6);
+  }
+
+  .rate-pick {
+    align-items: flex-start;
+  }
+}
+
+/* N4 · "Feedback you've given": the table from 768px, cards below, as the
+   list does. */
+.fbh-table {
+  overflow-x: auto;
+}
+
+.fbh-table .fbh-text {
+  max-width: 420px;
+  white-space: normal;
+}
+
+.fbh-table .fbh-sent {
+  white-space: nowrap;
+}
+
+.fbh-stars {
+  color: var(--amber-ink);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.fbh-stars .off {
+  color: var(--muted);
+}
+
+.fbh-text q {
+  quotes: '“' '”';
+  overflow-wrap: anywhere;
+}
+
+.fbh-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-14);
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.fbh-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  align-items: baseline;
+}
+
+.page-head .back-link {
+  display: inline-block;
+  margin-bottom: var(--sp-6);
+}
+
+@media (max-width: 767px) {
+  .fbh-table {
+    display: none;
+  }
+
+  .fbh-cards {
+    display: flex;
+  }
+
+  .fbh-panel {
+    background: none;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .fbh-panel > .panel-h {
+    padding: 0 calc(var(--sp-4) / 2) var(--sp-4);
+    border-bottom: 0;
+  }
+
+  .fbh-panel .fbh-cards {
+    padding: 0;
+  }
+}
+
+/* Finger-sized targets on a touch tablet (§1.2, CW-08) for the round's new
+   controls; the phone's are full-width or already 44px. */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .rate-all-row .btn,
+  .cp-welcome .btn,
+  .page-head a.back-link,
+  .fbh-panel a {
+    min-height: var(--tap-min);
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* N6 · "Print line-up": the event's header, its windows, dress codes and
+   every face and name by role on paper; no bar, no buttons, no banners.
+   PrintButton puts the light appearance on <html> while printing. */
+@media print {
+  .skip-link,
+  .ctop,
+  .cp-welcome,
+  .alert,
+  .ehead .actions,
+  .ehead .back-link,
+  .ehead .sep,
+  .rate-all-row,
+  .wrow .fb,
+  .wrow .req,
+  .wrow .arr,
+  .modal-back {
+    display: none !important;
+  }
+
+  .cwrap {
+    max-width: none;
+    padding: 0;
+    gap: var(--sp-12);
+  }
+
+  .ehead,
+  .panel {
+    box-shadow: none;
+  }
+
+  .ehead {
+    break-inside: avoid;
+  }
+
+  .role-panel > .panel-h,
+  .role-dress {
+    break-after: avoid;
+  }
+
+  .wrow {
+    break-inside: avoid;
+  }
+
+  .wgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .epage a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* ADR-0135 §2 · "People you've asked for again" on /client/feedback. */
+.req-panel {
+  margin-bottom: var(--sp-16);
+}
+
+.req-panel-help {
+  margin: 0 0 var(--sp-12);
+}
+
+.req-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-12);
+}
+
+.req-item {
+  display: grid;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-12);
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.req-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.req-note {
+  color: var(--text);
 }

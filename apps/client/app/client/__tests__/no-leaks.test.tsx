@@ -108,6 +108,11 @@ vi.mock('@thc/db/server', () => ({
         },
         eq: () => chain,
         in: () => chain,
+        gte: () => chain,
+        lt: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        range: () => chain,
         maybeSingle: async () => one,
         then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
           Promise.resolve(many).then(resolve, reject),
@@ -123,6 +128,7 @@ const { isUuid } = await import('../ids');
 const { EventScreen } = await import('../events/[id]/EventScreen');
 const { EventsScreen } = await import('../EventsScreen');
 const EventPage = (await import('../events/[id]/page')).default;
+const { EventBody } = await import('../events/[id]/EventBody');
 const ListPage = (await import('../(list)/page')).default;
 const { GET: documentGet } = await import('../events/[id]/document/route');
 
@@ -198,6 +204,7 @@ describe('a database error never reaches the customer', () => {
       event: null,
       sections: [],
       lineup: [],
+      thcPhone: null,
       problem: null,
     });
     expect(state.tables).toEqual([]);
@@ -260,7 +267,12 @@ describe('the worker’s Storage path stays on the server', () => {
   });
 
   it('the event page hands EventScreen no staff id, and the photo by booking', async () => {
-    const tree = await EventPage({ params: Promise.resolve({ id: EVENT_ID }) });
+    // The page reads the event row, then streams EventBody behind a skeleton
+    // (ADR-0134 N9): the screen's props are EventBody's.
+    const page = await EventPage({ params: Promise.resolve({ id: EVENT_ID }) });
+    const [body] = find(page, EventBody);
+    expect(body).toBeDefined();
+    const tree = await EventBody(body!.props as Parameters<typeof EventBody>[0]);
     const [screen] = find(tree, EventScreen);
     expect(screen).toBeDefined();
     const props = JSON.stringify(screen!.props);
@@ -270,7 +282,7 @@ describe('the worker’s Storage path stays on the server', () => {
   });
 
   it('the list page hands EventsScreen no staff id and no on-site contact', async () => {
-    const tree = await ListPage();
+    const tree = await ListPage({});
     const [screen] = find(tree, EventsScreen);
     expect(screen).toBeDefined();
     const props = JSON.stringify(screen!.props);

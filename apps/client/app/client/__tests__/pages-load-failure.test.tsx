@@ -1,3 +1,5 @@
+import { Suspense, cloneElement, isValidElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,8 +33,28 @@ vi.mock('next/navigation', () => ({
   },
 }));
 vi.mock('../data', async () => ({
+  LOAD_FAILED: {
+    tooMany:
+      'You have more events in this date range than we can show at once. Choose a shorter range with From and To.',
+  },
+  NOT_LINKED: "Your login isn't linked to a company yet — contact THC at",
   loadEventList: async () => state.list,
   loadEvent: async () => state.event,
+  // The page reads the row first and the rest behind a skeleton (ADR-0134
+  // N9); both halves answer from the same `state.event`.
+  loadEventRow: async () => {
+    const e = state.event as { event: unknown; problem: string | null };
+    return { event: e.event, problem: e.problem };
+  },
+  loadEventDetails: async () => {
+    const e = state.event as { sections: unknown[]; lineup: unknown[]; detailsProblem?: string };
+    return {
+      sections: e.sections,
+      lineup: e.lineup,
+      thcPhone: null,
+      problem: e.detailsProblem ?? null,
+    };
+  },
 }));
 vi.mock('../documents', () => ({
   DOCUMENTS_UNAVAILABLE: "Documents couldn't be loaded just now — refresh to try again.",
@@ -58,6 +80,25 @@ vi.mock('../events/[id]/EventScreen', () => ({
 
 const ListPage = (await import('../(list)/page')).default;
 const EventPage = (await import('../events/[id]/page')).default;
+const { EventBody } = await import('../events/[id]/EventBody');
+
+/**
+ * The page as the server finally streams it: the Suspense boundary's async
+ * body awaited and put in its place, the skeleton dropped.
+ */
+async function settle(node: ReactNode): Promise<ReactNode> {
+  if (Array.isArray(node)) return Promise.all(node.map(settle));
+  if (!isValidElement(node)) return node;
+  const el = node as ReactElement<{ children?: ReactNode }>;
+  if (el.type === EventBody) {
+    return settle(await EventBody(el.props as Parameters<typeof EventBody>[0]));
+  }
+  if (el.type === Suspense) return settle(el.props.children);
+  if (el.props.children === undefined) return el;
+  const children = await settle(el.props.children);
+  return cloneElement(el, undefined, ...(Array.isArray(children) ? children : [children]));
+}
+const { generateMetadata } = await import('../events/[id]/page');
 
 const EV = '90000000-0000-4000-8000-000000000001';
 const FAILED = 'We could not load your events just now. Refresh the page to try again.';
@@ -76,11 +117,13 @@ const event = {
   cancelledAt: null,
 };
 
-function renderEvent(id: string, doc?: string) {
-  return EventPage({
-    params: Promise.resolve({ id }),
-    searchParams: Promise.resolve(doc ? { doc } : {}),
-  });
+async function renderEvent(id: string, doc?: string) {
+  return settle(
+    await EventPage({
+      params: Promise.resolve({ id }),
+      searchParams: Promise.resolve(doc ? { doc } : {}),
+    }),
+  );
 }
 
 beforeEach(() => {
@@ -93,7 +136,7 @@ beforeEach(() => {
 describe('the list page', () => {
   it('on a failed read draws the head and the alert, never the screen', async () => {
     state.list = { events: [], sections: [], lineup: [], company: null, problem: FAILED };
-    const html = renderToStaticMarkup(await ListPage());
+    const html = renderToStaticMarkup(await ListPage({}));
     expect(html).toContain('Your events');
     expect(html).toContain('could not load your events');
     expect(html).not.toContain('EVENTS-SCREEN');
@@ -103,9 +146,81 @@ describe('the list page', () => {
 
   it('says so above the screen when the documents could not be read', async () => {
     state.docsUnavailable = true;
-    const html = renderToStaticMarkup(await ListPage());
+    const html = renderToStaticMarkup(await ListPage({}));
     expect(html).toContain('Documents couldn&#x27;t be loaded just now');
     expect(html).toContain('EVENTS-SCREEN');
+  });
+});
+
+describe('the list page: a login with no company, and too many rows', () => {
+  it('says the login is not linked, with the office address, instead of "No events yet"', async () => {
+    state.list = {
+      events: [],
+      sections: [],
+      lineup: [],
+      company: null,
+      unlinked: true,
+      history: null,
+      problem: null,
+    };
+    const html = renderToStaticMarkup(await ListPage({}));
+    expect(html).toContain('Your login isn&#x27;t linked to a company yet — contact THC at');
+    expect(html).toContain(
+      '<a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>',
+    );
+    expect(html).not.toContain('EVENTS-SCREEN');
+  });
+
+  it('draws the screen as usual when the company was read', async () => {
+    state.list = {
+      events: [],
+      sections: [],
+      lineup: [],
+      company: 'Leonardo Hotels',
+      unlinked: false,
+      history: null,
+      problem: null,
+    };
+    const html = renderToStaticMarkup(await ListPage({}));
+    expect(html).toContain('EVENTS-SCREEN');
+    expect(html).not.toContain('linked to a company');
+  });
+
+  it('a cut-short read is the amber notice, with a way back to the default window', async () => {
+    const tooMany =
+      'You have more events in this date range than we can show at once. Choose a shorter range with From and To.';
+    state.list = { events: [], sections: [], lineup: [], company: null, problem: tooMany };
+    const widened = renderToStaticMarkup(
+      await ListPage({ searchParams: Promise.resolve({ since: '2020-01-01' }) }),
+    );
+    expect(widened).toContain('than we can show at once');
+    expect(widened).toContain('href="/client"');
+    expect(widened).toContain('Show recent events');
+    expect(widened).not.toContain('EVENTS-SCREEN');
+    // The default window has nowhere narrower to go.
+    const plain = renderToStaticMarkup(await ListPage({}));
+    expect(plain).not.toContain('Show recent events');
+  });
+});
+
+describe('the event page title (generateMetadata)', () => {
+  const meta = (id: string) => generateMetadata({ params: Promise.resolve({ id }) });
+
+  it('names the event in the tab', async () => {
+    expect((await meta(EV)).title).toBe('Gala Dinner · THC Client Portal');
+  });
+
+  it("is the not-found title for another customer's event, an unknown one and a non-uuid alike", async () => {
+    state.event = { event: null, sections: [], lineup: [], problem: null };
+    const theirs = await meta(EV);
+    const junk = await meta('not-a-uuid');
+    expect(theirs).toEqual(junk);
+    expect(theirs.title).toBe('Not found · THC Client Portal');
+  });
+
+  it('names no event when the read failed', async () => {
+    state.event = { event: null, sections: [], lineup: [], problem: 'x' };
+    expect((await meta(EV)).title).toBe('Event details · THC Client Portal');
   });
 });
 
@@ -162,5 +277,34 @@ describe('the event page', () => {
     const html = renderToStaticMarkup(await renderEvent(EV));
     expect(html).toContain('Documents couldn&#x27;t be loaded just now');
     expect(html).toContain('EVENT-SCREEN');
+  });
+});
+
+describe('the event page while its line-up loads (ADR-0134 N9)', () => {
+  it('decides the 404 before the boundary, then names the event over a skeleton', async () => {
+    const page = await EventPage({ params: Promise.resolve({ id: EV }) });
+    // Static rendering cannot await the body: it draws the fallback.
+    const html = renderToStaticMarkup(page as ReactElement);
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('Loading the line-up for Gala Dinner');
+    expect(html).toContain('<h1>Gala Dinner</h1>');
+    expect(html).toContain('href="/client"');
+    expect(html).not.toContain('EVENT-SCREEN');
+  });
+
+  it("a failed line-up read is the alert under the event's own title, never the screen", async () => {
+    state.event = {
+      event,
+      sections: [],
+      lineup: [],
+      problem: null,
+      detailsProblem: 'We could not load this event just now. Refresh the page to try again.',
+    };
+    const html = renderToStaticMarkup(await renderEvent(EV));
+    expect(html).toContain('Gala Dinner');
+    expect(html).toContain('could not load this event');
+    expect(html).toContain('← Your events');
+    expect(html).not.toContain('EVENT-SCREEN');
   });
 });

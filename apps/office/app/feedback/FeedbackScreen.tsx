@@ -61,7 +61,7 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
 
       {query.tab === 'client' ? (
         <>
-          <div className="toolbar">
+          <div className="toolbar filters">
             <SearchBox query={query} />
             <select
               className="input fb-filter"
@@ -130,7 +130,7 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
         <>
           <OfficeFeedbackForm variant="inbox" managerName={data.managerName} />
 
-          <div className="toolbar">
+          <div className="toolbar filters">
             <SearchBox query={query} />
             <select
               className="input fb-filter"

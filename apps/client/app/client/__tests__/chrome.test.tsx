@@ -28,7 +28,7 @@ vi.mock('@thc/db/server', () => ({ createClient: () => ({}) }));
 vi.mock('../data', () => ({ supabaseConfigured: () => false }));
 
 const ClientPortalLayout = (await import('../layout')).default;
-const { ViewerZoneNote } = await import('../../_components/ViewerZoneNote');
+const { ViewerZoneNote, viewerZoneLabel } = await import('../../_components/ViewerZoneNote');
 
 /**
  * The top bar is the whole of the Client Portal's chrome (§11.1: top bar,
@@ -80,7 +80,21 @@ describe('landmarks (WCAG 1.3.1, 2.4.1)', () => {
 describe('the viewer-zone note (wireframes/client/events.html)', () => {
   it('names the zone and its offset for a reader outside UK time', () => {
     const markup = renderToStaticMarkup(<ViewerZoneNote zone="Europe/Berlin" />);
-    expect(markup).toMatch(/^<span class="tz">Viewer: Europe\/Berlin \(UTC\+[12]\)<\/span>$/);
+    // The full spelling for a wide bar and a short one for a narrow bar
+    // (client-portal.css shows one), the full one also as the title.
+    expect(markup).toMatch(
+      /^<span class="tz" title="Viewer: Europe\/Berlin \(UTC\+[12]\)"><span class="tz-full">Viewer: Europe\/Berlin \(UTC\+[12]\)<\/span><span class="tz-short">Your time: UTC\+[12]<\/span><\/span>$/,
+    );
+  });
+
+  it('says "UTC" once, not "UTC (UTC)", when the zone is named by its offset (CW-02)', () => {
+    const markup = renderToStaticMarkup(<ViewerZoneNote zone="UTC" />);
+    expect(markup).toContain('<span class="tz-full">Viewer: UTC</span>');
+    expect(markup).not.toContain('UTC (UTC)');
+    expect(viewerZoneLabel('UTC', new Date('2026-10-14T12:00:00Z'))).toBe('Viewer: UTC');
+    expect(viewerZoneLabel('America/New_York', new Date('2026-10-14T12:00:00Z'))).toBe(
+      'Viewer: America/New_York (UTC−4)',
+    );
   });
 
   it('says nothing to a reader on UK time, the Crown Dependencies included', () => {

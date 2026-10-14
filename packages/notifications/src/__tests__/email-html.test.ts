@@ -104,6 +104,13 @@ const SAMPLE: Record<string, string> = {
   note: 'Spelling',
   previousName: 'Amara Kovac',
   approvedAt: '29/09/2026 15:00',
+  // ADR-0135: CP1's note, and CP2 / CP3's event, window and role lines.
+  clientNote: 'Brilliant with our VIP table',
+  requestedBy: 'Marco Vitale (marco@leonardo-stpauls.example)',
+  eventId: '60000000-0000-4000-8000-000000000001',
+  time: '17:00–23:30',
+  sections:
+    'Waiting Staff · 17:00–23:30 · 4 of 4 confirmed\nBar Staff · 18:00–23:30 · 2 of 2 confirmed',
 };
 
 const EMAIL_CODES = (Object.keys(TEMPLATES) as TemplateCode[]).filter(

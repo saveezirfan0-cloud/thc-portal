@@ -9,6 +9,7 @@ import { OfficeShell } from '../_components/OfficeShell';
 import { NotificationsTab } from './NotificationsTab';
 import {
   saveAutoAssignNumbers,
+  saveClientPortalPhone,
   saveRotaGuardMode,
   saveSenders,
   saveVenueRadius,
@@ -16,7 +17,13 @@ import {
   saveWilloMap,
   saveWilloReviewUrlTemplate,
 } from './actions';
-import { MAX_RADIUS_M, MIN_RADIUS_M, WEIGHT_FIELDS, weightTotal } from './validate';
+import {
+  CLIENT_PORTAL_PHONE_MAX,
+  MAX_RADIUS_M,
+  MIN_RADIUS_M,
+  WEIGHT_FIELDS,
+  weightTotal,
+} from './validate';
 import { KANBAN_STAGES } from './types';
 import type {
   ActionResult,
@@ -115,6 +122,7 @@ export function SettingsScreen({
           <RotaGuardBlock mode={data.rotaGuardMode} />
           <WilloBlock map={data.willo} reviewUrlTemplate={data.willoReviewUrlTemplate} />
           <SendersBlock senders={data.senders} recipients={data.recipients} />
+          <ClientPortalBlock phone={data.clientPortalPhone} />
           <RadiiBlock types={data.venueTypes} />
         </div>
 
@@ -501,6 +509,36 @@ function SendersBlock({
       <SaveAction id="senders" title="Sender addresses" dirty={!sameValue(draft, senders)}>
         <Button tone="primary" disabled={pending} onClick={() => run(() => saveSenders(draft))}>
           {pending ? 'Saving…' : 'Save senders'}
+        </Button>
+      </SaveAction>
+    </Block>
+  );
+}
+
+/** ADR-0134 N1: the one Client Portal value the office sets here. */
+function ClientPortalBlock({ phone }: { phone: string }) {
+  const [draft, setDraft] = useState(phone);
+  const { note, error, pending, run } = useSave();
+
+  return (
+    <Block title="Client Portal" sub="What customers see on every event page of the portal.">
+      <Input
+        label="THC on-the-day phone number"
+        type="tel"
+        value={draft}
+        maxLength={CLIENT_PORTAL_PHONE_MAX}
+        placeholder="020 7946 0000"
+        hint="Shown beside “Contact THC about this event” as a tap-to-call link. Leave blank to hide it."
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <Feedback note={note} error={error} />
+      <SaveAction id="client-portal" title="Client Portal phone" dirty={draft.trim() !== phone}>
+        <Button
+          tone="primary"
+          disabled={pending}
+          onClick={() => run(() => saveClientPortalPhone(draft))}
+        >
+          {pending ? 'Saving…' : 'Save phone number'}
         </Button>
       </SaveAction>
     </Block>

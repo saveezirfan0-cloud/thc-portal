@@ -34,10 +34,11 @@ export function isUuid(value: unknown): value is string {
  */
 export const HISTORY_SCOPE: Readonly<Record<HistoryEntity, string>> = {
   staff:
-    'Everything recorded about this worker: their record, documents, bookings and Do-not-return entries.',
-  event: 'Everything recorded about this event and the bookings on its role sections.',
+    'Everything recorded about this worker: their record, pay rate, roles, client qualifications, feedback, documents, bookings and Do-not-return entries.',
+  event:
+    'Everything recorded about this event: when it was created or duplicated, every edit to it and its role sections, and the bookings on them.',
   client:
-    'Changes to this client, cancellations of its events, Do-not-return entries and its Client Portal logins. Bookings are on each event’s own history.',
+    'Changes to this client and its rate card, its events, qualifications and Do-not-return entries, and its Client Portal logins. Bookings are on each event’s own history.',
 };
 
 /**

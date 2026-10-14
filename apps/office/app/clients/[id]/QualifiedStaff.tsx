@@ -65,6 +65,10 @@ export function QualifiedStaff({
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  // Release audit B1: a refusal from inside a dialog is shown IN the
+  // dialog. On the panel it rendered behind the still-open modal, where
+  // the manager could not see why nothing happened.
+  const [dialogProblem, setDialogProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const groups = useMemo(() => {
@@ -80,13 +84,25 @@ export function QualifiedStaff({
   const run = (
     work: () => Promise<{ ok: true } | { ok: false; message: string }>,
     after?: () => void,
+    where: 'panel' | 'dialog' = 'panel',
   ) => {
     setProblem(null);
+    setDialogProblem(null);
     start(async () => {
       const result = await work();
       if (result.ok) after?.();
+      else if (where === 'dialog') setDialogProblem(result.message);
       else setProblem(result.message);
     });
+  };
+
+  const closeAdding = () => {
+    setAdding(false);
+    setDialogProblem(null);
+  };
+  const closeBarring = () => {
+    setBarring(null);
+    setDialogProblem(null);
   };
 
   /**
@@ -118,7 +134,14 @@ export function QualifiedStaff({
             aria-label="Search qualified staff"
             onChange={(event) => setQuery(event.target.value)}
           />
-          <Button size="sm" tone="primary" onClick={() => setAdding(true)}>
+          <Button
+            size="sm"
+            tone="primary"
+            onClick={() => {
+              setDialogProblem(null);
+              setAdding(true);
+            }}
+          >
             + Add staff
           </Button>
         </>
@@ -159,18 +182,18 @@ export function QualifiedStaff({
                 ) : null}
               </button>
               {collapsed[group.role] ? null : (
-                <TableScroll>
-                  <table className="tbl">
+                <TableScroll label={`Qualified staff · ${group.role}`} minWidth="44rem">
+                  <table className="tbl card-rows">
                     <thead>
                       <tr>
-                        <th>Worker</th>
+                        <th className="col-l">Worker</th>
                         <th>Role(s) at this client</th>
                         <th>Rating</th>
                         <th>Show-rate</th>
                         <th>How granted</th>
-                        <th>Date</th>
-                        <th>Do not return</th>
-                        <th />
+                        <th className="col-s">Date</th>
+                        <th className="cell-actions">Do not return</th>
+                        <th className="cell-actions" aria-label="Remove" />
                       </tr>
                     </thead>
                     <tbody>
@@ -187,7 +210,7 @@ export function QualifiedStaff({
                             key={`${row.staff_id}-${group.role}`}
                             className={row.do_not_return ? 'barred' : undefined}
                           >
-                            <td>
+                            <td className="cell-title">
                               <div className="person">
                                 <Avatar
                                   name={row.display_name}
@@ -202,7 +225,7 @@ export function QualifiedStaff({
                                 </div>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Role(s) at this client">
                               {/*
                                 Collapsed to one button (ADR-0125): a worker
                                 cleared for eighteen roles otherwise fills
@@ -220,7 +243,7 @@ export function QualifiedStaff({
                                 {row.role_names.length === 1 ? 'role' : 'roles'}
                               </button>
                             </td>
-                            <td>
+                            <td data-label="Rating">
                               {/*
                                 `.rating` is display:inline-flex in the
                                 design system, so it goes on a span — on
@@ -230,13 +253,17 @@ export function QualifiedStaff({
                                 ★ {formatRating(row.rating)}
                               </span>
                             </td>
-                            <td className="mono">{formatShowRate(row.reliability)}</td>
-                            <td className="sm">
+                            <td data-label="Show-rate" className="mono">
+                              {formatShowRate(row.reliability)}
+                            </td>
+                            <td data-label="How granted" className="sm">
                               {grantedHow(row)}
                               {row.notes ? <span className="sub">{row.notes}</span> : null}
                             </td>
-                            <td className="mono sm">{formatUkDate(row.last_granted_at)}</td>
-                            <td>
+                            <td data-label="Date" className="mono sm">
+                              {formatUkDate(row.last_granted_at)}
+                            </td>
+                            <td data-label="Do not return" className="cell-actions dnr">
                               <Switch
                                 checked={row.do_not_return}
                                 disabled={pending}
@@ -244,6 +271,7 @@ export function QualifiedStaff({
                                 onChange={(next) => {
                                   if (next) {
                                     setReason('');
+                                    setDialogProblem(null);
                                     setBarring(row);
                                   } else {
                                     run(() => setDoNotReturn(clientId, qualificationId, false, ''));
@@ -251,7 +279,7 @@ export function QualifiedStaff({
                                 }}
                               />
                             </td>
-                            <td className="right-align">
+                            <td className="right-align cell-actions">
                               <Button
                                 size="sm"
                                 tone="ghost"
@@ -293,11 +321,11 @@ export function QualifiedStaff({
       <Modal
         open={adding}
         title="Add qualified staff"
-        onClose={() => setAdding(false)}
+        onClose={closeAdding}
         wide
         footer={
           <>
-            <Button tone="ghost" onClick={() => setAdding(false)}>
+            <Button tone="ghost" onClick={closeAdding}>
               Cancel
             </Button>
             <Button
@@ -312,6 +340,7 @@ export function QualifiedStaff({
                     setPickedRoles([]);
                     setNote('');
                   },
+                  'dialog',
                 )
               }
             >
@@ -320,6 +349,7 @@ export function QualifiedStaff({
           </>
         }
       >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
         <div className="field">
           <span className="label">Roles at this client</span>
           <div className="row wrap">
@@ -386,10 +416,10 @@ export function QualifiedStaff({
       <Modal
         open={barring !== null}
         title={barring ? `Do not return · ${barring.display_name}` : ''}
-        onClose={() => setBarring(null)}
+        onClose={closeBarring}
         footer={
           <>
-            <Button tone="ghost" onClick={() => setBarring(null)}>
+            <Button tone="ghost" onClick={closeBarring}>
               Cancel
             </Button>
             <Button
@@ -401,6 +431,7 @@ export function QualifiedStaff({
                 run(
                   () => setDoNotReturn(clientId, barring.qualification_ids[0] ?? '', true, reason),
                   () => setBarring(null),
+                  'dialog',
                 )
               }
             >
@@ -409,6 +440,7 @@ export function QualifiedStaff({
           </>
         }
       >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
         <Alert tone="coral">
           This is a hard gate, not a preference. {barring?.display_name} will not be invited to this
           client in either wave, the shift will never appear on their Radar, and they cannot be

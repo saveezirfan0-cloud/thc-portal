@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { type DbError, explainDbError } from '../../_lib/dbError';
 import { supabaseConfigured } from '../data';
 import { chargeRateProblem } from './card';
 import type { ActionResult } from './types';
@@ -27,15 +28,34 @@ const NOT_CONFIGURED =
 type RpcArguments = Record<string, string | number | boolean | string[] | null>;
 
 interface RpcClient {
-  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
+  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: DbError | null }>;
 }
+
+/**
+ * Release audit D-M5: the database's words, as a sentence (`_lib/dbError`).
+ * The functions behind this card raise their own sentences for the rules
+ * (a reason for Do not return, a role the worker does not hold) — those
+ * are kept; what is mapped here is the codes and Postgres's templates.
+ */
+const CARD_WORDING = {
+  unique: 'That role is already on this client’s rate card. Edit its row instead.',
+  foreignKey: 'That role or worker no longer exists. Refresh the page.',
+  codes: {
+    unknown_client: 'That client no longer exists. Refresh the page.',
+    unknown_rate_card_row: 'That rate card row no longer exists. Refresh the page.',
+    unknown_qualification: 'That qualification no longer exists. Refresh the page.',
+    quiz_not_found: 'That quiz no longer exists. Refresh the page.',
+    unknown_worker_request: 'That request no longer exists. Refresh the page.',
+  },
+  log: '[client card]',
+};
 
 async function callRpc(fn: string, args: RpcArguments, clientId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { error } = await supabase.rpc(fn, args);
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: explainDbError(error, CARD_WORDING) };
 
   revalidatePath(`/clients/${clientId}`);
   revalidatePath('/clients');
@@ -112,7 +132,7 @@ export async function qualifyStaff(
         p_role: roleId,
         p_note: note.trim() || null,
       });
-      if (error) failures.push(error.message);
+      if (error) failures.push(explainDbError(error, CARD_WORDING));
     }
   }
 
@@ -152,6 +172,24 @@ export async function setDoNotReturn(
  */
 export async function setNameBadges(clientId: string, on: boolean): Promise<ActionResult> {
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
+}
+
+/** ADR-0135 §3: one of the two line-up emails to this client, on or off (audited). */
+export async function setLineupEmails(
+  clientId: string,
+  kind: 'confirmed' | 'changed',
+  on: boolean,
+): Promise<ActionResult> {
+  return callRpc(
+    'set_client_lineup_emails',
+    { p_client: clientId, p_kind: kind, p_on: on },
+    clientId,
+  );
+}
+
+/** ADR-0135 §2: a Client Portal "Request again" is dealt with (audited). */
+export async function markRequestHandled(clientId: string, id: string): Promise<ActionResult> {
+  return callRpc('mark_client_worker_request_handled', { p_id: id }, clientId);
 }
 
 /**

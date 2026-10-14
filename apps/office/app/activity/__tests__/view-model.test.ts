@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { actorName, describe as describeRow, parsePeriod, periodStart } from '../view-model';
+import {
+  actorName,
+  auditStamp,
+  describe as describeRow,
+  parsePeriod,
+  periodStart,
+} from '../view-model';
 import {
   actionLabel,
   entityHref,
@@ -57,6 +63,84 @@ describe('activity rows', () => {
     expect(entityHref('settings', null)).toBe('/settings');
     expect(entityHref('booking', 'abc')).toBeNull();
     expect(entityLabel('compliance_docs')).toBe('Documents');
+  });
+
+  // Release audit 14.10.2026 (D-M1 and the /activity minors).
+  it('audit stamps are UK time, dd.mm.yyyy HH:mm, in summer and winter (§1.8)', () => {
+    expect(auditStamp('2026-07-01T13:05:00Z')).toBe('01.07.2026 14:05');
+    expect(auditStamp('2026-01-15T09:30:00Z')).toBe('15.01.2026 09:30');
+    expect(auditStamp('2026-10-13T23:30:00Z')).toBe('14.10.2026 00:30');
+    expect(auditStamp('2026-07-01T13:05:00Z', '12h')).toBe('01.07.2026 2:05 pm');
+  });
+
+  it('money reads as pounds, policies as Yes/No, and nothing is cut short', () => {
+    expect(
+      describeRow({
+        data: {
+          chargeRate: { from: 20, to: 21.5 },
+          role: 'Waiting Staff',
+          roleId: 'r1',
+          clientId: 'c',
+        },
+      }),
+    ).toEqual(['Charge rate: £20.00 → £21.50', 'Role: Waiting Staff']);
+    expect(describeRow({ data: { paysBreaks: { from: true, to: false } } })).toEqual([
+      'Pays breaks: Yes → No',
+    ]);
+    const long = 'x'.repeat(300);
+    expect(describeRow({ data: { notes: { from: null, to: long } } })).toEqual([
+      `Notes: — → ${long}`,
+    ]);
+  });
+
+  it('an instant in the data reads as a UK stamp, not ISO UTC', () => {
+    expect(describeRow({ data: { uploadedAt: '2026-10-14T11:48:24.591076+00:00' } })).toEqual([
+      'Uploaded at: 14.10.2026 12:48',
+    ]);
+  });
+
+  it('an object reads as words, never raw JSON', () => {
+    const [line] = describeRow({ data: { detail: { reason: 'Late', count: 2 } } });
+    expect(line).toBe('Detail: Reason: Late, Count: 2');
+    expect(line).not.toContain('{');
+  });
+
+  it('every action the Back Office now records has words, and venues and roles link', () => {
+    for (const action of [
+      'client.created',
+      'client.updated',
+      'client.rate_added',
+      'client.rate_changed',
+      'client.rate_removed',
+      'staff.pay_rate_set',
+      'staff.pay_rate_cleared',
+      'staff.role_added',
+      'staff.role_removed',
+      'client_qualification.granted',
+      'client_qualification.revoked',
+      'feedback.added',
+      'feedback.edited',
+      'feedback.deleted',
+      'feedback.read',
+      'venue.created',
+      'venue.updated',
+      'venue.deleted',
+      'event.created',
+      'event.duplicated',
+      'event.updated',
+      'event.role_added',
+      'event.role_changed',
+      'event.role_removed',
+    ]) {
+      // A labelled action is not just its code with the dots taken out.
+      expect(actionLabel(action)).not.toBe(
+        action.replace(/[._]/g, ' ').replace(/^./, (c) => c.toUpperCase()),
+      );
+    }
+    expect(actionLabel('client.rate_changed')).toBe('Changed the rate card');
+    expect(entityLabel('venue')).toBe('Venues');
+    expect(entityHref('venue', 'v1')).toBe('/venues');
+    expect(entityHref('role', 'r1')).toBe('/roles');
   });
 
   it('periods default to 30 days and count back from now', () => {

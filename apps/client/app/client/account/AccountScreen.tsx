@@ -1,5 +1,5 @@
 import { Alert, PageHead, Panel } from '@thc/ui';
-import { ACCOUNT_COPY } from './copy';
+import { ACCOUNT_COPY, EMAILS_COPY } from './copy';
 import { PasswordForm } from './PasswordForm';
 
 /**
@@ -20,6 +20,11 @@ export interface AccountDetails {
   email: string | null;
   company: string | null;
   recipients: string[];
+  /**
+   * Which of the two line-up emails THC sends this company (ADR-0135 §3);
+   * null when the account could not be read.
+   */
+  lineupEmails?: { confirmed: boolean; changed: boolean } | null;
 }
 
 export interface AccountScreenProps {
@@ -62,6 +67,27 @@ export function AccountScreen({ account, officeEmail, problem }: AccountScreenPr
               <p className="acct-v muted">{ACCOUNT_COPY.noRecipients}</p>
             )}
           </section>
+
+          {account.lineupEmails ? (
+            <section className="acct-recipients" aria-labelledby="acct-emails-h">
+              <h4 id="acct-emails-h" className="acct-k">
+                {EMAILS_COPY.title}
+              </h4>
+              <p className="acct-help">{EMAILS_COPY.help}</p>
+              <ul className="acct-list acct-emails">
+                <li>
+                  {EMAILS_COPY.documents} <span className="acct-on">{EMAILS_COPY.always}</span>
+                </li>
+                <li>
+                  {EMAILS_COPY.confirmed} <OnOff on={account.lineupEmails.confirmed} />
+                </li>
+                <li>
+                  {EMAILS_COPY.changed} <OnOff on={account.lineupEmails.changed} />
+                </li>
+              </ul>
+              <p className="acct-help">{EMAILS_COPY.change}</p>
+            </section>
+          ) : null}
         </Panel>
 
         <div className="acct-side">
@@ -83,6 +109,13 @@ export function AccountScreen({ account, officeEmail, problem }: AccountScreenPr
         </div>
       </div>
     </>
+  );
+}
+
+/** "On" / "Off" in words (never colour alone), for the emails list. */
+function OnOff({ on }: { on: boolean }) {
+  return (
+    <span className={on ? 'acct-on' : 'acct-off'}>{on ? EMAILS_COPY.on : EMAILS_COPY.off}</span>
   );
 }
 

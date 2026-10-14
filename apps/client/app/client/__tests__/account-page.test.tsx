@@ -40,6 +40,9 @@ vi.mock('@thc/db/server', () => ({
                     'hannah.brooks@leonardo-stpauls.co.uk',
                     'events@leonardo-stpauls.co.uk',
                   ],
+                  // ADR-0135 §3.
+                  lineup_confirmed_emails: true,
+                  lineup_changed_emails: false,
                 },
                 error: null,
               }
@@ -96,14 +99,17 @@ describe('Your account · where the data comes from (ADR-0004)', () => {
       email: 'hannah.brooks@leonardo-stpauls.co.uk',
       company: 'Leonardo Hotel St Pauls',
       recipients: ['hannah.brooks@leonardo-stpauls.co.uk', 'events@leonardo-stpauls.co.uk'],
+      lineupEmails: { confirmed: true, changed: false },
     });
     expect(state.tables.sort()).toEqual(['client_account_v', 'profiles']);
     expect(state.tables).not.toContain('clients');
   });
 
-  it('asks the view for its two named columns and adds no tenancy filter of its own', async () => {
+  it('asks the view for its named columns and adds no tenancy filter of its own', async () => {
     await loadAccount();
-    expect(state.selects).toContain('client_account_v:name, contact_emails');
+    expect(state.selects).toContain(
+      'client_account_v:name, contact_emails, lineup_confirmed_emails, lineup_changed_emails',
+    );
     expect(state.selects).toContain('profiles:full_name');
     // The only filter is "my own profile row"; the view scopes itself.
     expect(state.filters).toEqual(['profiles.id=u1']);
@@ -136,6 +142,17 @@ describe('Your account · the page', () => {
     expect(html).toContain('Leonardo Hotel St Pauls');
     expect(html).toContain('events@leonardo-stpauls.co.uk');
     expect(html).toContain('Timesheet emails go to');
+  });
+
+  it('says which emails the company receives, in words, read-only (ADR-0135 §3)', async () => {
+    const html = await markup();
+    expect(html).toContain('Emails about your events');
+    expect(html).toContain('Line-up fully confirmed');
+    expect(html).toMatch(/Line-up fully confirmed[^<]*<span class="acct-on">On<\/span>/);
+    expect(html).toMatch(
+      /Line-up changed after your Allocation Timesheet was sent[^<]*<span class="acct-off">Off<\/span>/,
+    );
+    expect(html).toContain('not to your sign-in email unless it is one of them');
   });
 
   it('has no input for the name, company or recipients: only the three password fields', async () => {

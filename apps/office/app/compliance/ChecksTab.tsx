@@ -10,6 +10,7 @@ import {
   Panel,
   Pill,
   SegToggle,
+  TableScroll,
   TileGrid,
   useTimeFormat,
 } from '@thc/ui';
@@ -112,32 +113,34 @@ export function ChecksTab({
 
       {monitor.waiting.length > 0 ? (
         <Panel title="Share codes filed with no check started">
-          <table className="tbl card-rows">
-            <thead>
-              <tr>
-                <th>Who</th>
-                <th>Filed</th>
-                <th>Why there is no check</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monitor.waiting.map((doc) => (
-                <tr key={doc.docId}>
-                  <td className="cell-title">
-                    <Link href={`/staff/${doc.staffId}`}>{doc.name}</Link>
-                  </td>
-                  <td data-label="Filed" className="mono sm">
-                    {ukStampFull(doc.filedAt, format)}
-                  </td>
-                  <td data-label="Why" className="sm muted">
-                    {enabled
-                      ? 'Filed before the check was switched on, or its start was refused. Open the profile and press “Run gov.uk check”.'
-                      : 'The automatic check is off.'}
-                  </td>
+          <TableScroll label="Share codes with no check">
+            <table className="tbl card-rows">
+              <thead>
+                <tr>
+                  <th className="col-l">Who</th>
+                  <th className="col-m">Filed</th>
+                  <th>Why there is no check</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {monitor.waiting.map((doc) => (
+                  <tr key={doc.docId}>
+                    <td className="cell-title">
+                      <Link href={`/staff/${doc.staffId}`}>{doc.name}</Link>
+                    </td>
+                    <td data-label="Filed" className="mono sm">
+                      {ukStampFull(doc.filedAt, format)}
+                    </td>
+                    <td data-label="Why" className="sm muted">
+                      {enabled
+                        ? 'Filed before the check was switched on, or its start was refused. Open the profile and press “Run gov.uk check”.'
+                        : 'The automatic check is off.'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         </Panel>
       ) : null}
 
@@ -182,52 +185,54 @@ export function ChecksTab({
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>Who</th>
-                  <th>Status</th>
-                  <th>Tries</th>
-                  <th>Filed</th>
-                  <th>Elapsed</th>
-                  <th>What happened</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map(({ check, name }) => {
-                  const line = checkLine(check, now, format);
-                  return (
-                    <tr key={check.check_id}>
-                      <td className="cell-title">
-                        <div className="person">
-                          <Avatar name={name} size="sm" />
-                          <div>
-                            <div className="n">
-                              <Link href={`/staff/${check.staff_id}`}>{name}</Link>
+            <TableScroll label="Right-to-work checks">
+              <table className="tbl card-rows">
+                <thead>
+                  <tr>
+                    <th className="col-l">Who</th>
+                    <th className="col-m">Status</th>
+                    <th className="col-xs">Tries</th>
+                    <th className="col-m">Filed</th>
+                    <th className="col-s">Elapsed</th>
+                    <th>What happened</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map(({ check, name }) => {
+                    const line = checkLine(check, now, format);
+                    return (
+                      <tr key={check.check_id}>
+                        <td className="cell-title">
+                          <div className="person">
+                            <Avatar name={name} size="sm" />
+                            <div>
+                              <div className="n">
+                                <Link href={`/staff/${check.staff_id}`}>{name}</Link>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td data-label="Status">
-                        <Pill tone={line.tone}>{line.label}</Pill>
-                      </td>
-                      <td data-label="Tries" className="mono sm">
-                        {line.tries}
-                      </td>
-                      <td data-label="Filed" className="mono sm">
-                        {line.filed}
-                      </td>
-                      <td data-label="Elapsed" className="sm">
-                        {line.elapsed}
-                      </td>
-                      <td data-label="What happened" className="sm muted">
-                        {line.detail ?? '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td data-label="Status">
+                          <Pill tone={line.tone}>{line.label}</Pill>
+                        </td>
+                        <td data-label="Tries" className="mono sm">
+                          {line.tries}
+                        </td>
+                        <td data-label="Filed" className="mono sm">
+                          {line.filed}
+                        </td>
+                        <td data-label="Elapsed" className="sm">
+                          {line.elapsed}
+                        </td>
+                        <td data-label="What happened" className="sm muted">
+                          {line.detail ?? '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </div>

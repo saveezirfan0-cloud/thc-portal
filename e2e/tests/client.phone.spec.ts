@@ -6,7 +6,7 @@ import { openAsClient } from './_support/session';
  * "Phone · 390px").
  *
  * The client project runs at desktop size, so nothing else in the suite
- * sees the cards that replace the table below 820px. This file runs at
+ * sees the cards that replace the table at 767px and below. This file runs at
  * 390×844 with a touch screen, signed in as the seeded client contact
  * (Marco V., Leonardo Hotel St Pauls), and holds the two promises the
  * wireframe makes for that width: each card carries every field the table

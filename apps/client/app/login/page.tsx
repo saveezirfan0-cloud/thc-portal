@@ -1,11 +1,10 @@
 import { isSafeRelativePath } from '@thc/db';
 import { AuthCard } from '@thc/ui';
+import { OFFICE_EMAIL as OFFICE } from '../client/account/copy';
 import { LEAD } from './copy';
 import { LoginForm } from './LoginForm';
 
 export const metadata = { title: 'Sign in · THC Client Portal' };
-
-const OFFICE = 'admin@thehospitalitycompany.co.uk';
 
 /**
  * The privacy notice (§1.7) lives on the Staff App, a different deployment,

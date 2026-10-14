@@ -45,15 +45,8 @@ import { PasswordRules } from '../components/PasswordRules';
 import { Alert, EmptyState, Note, Panel } from '../components/Panel';
 import { Chip, Pill } from '../components/Pill';
 import { SegToggle, Tabs } from '../components/SegToggle';
-import {
-  Content,
-  PageHead,
-  Shell,
-  Sidebar,
-  TableScroll,
-  Topbar,
-  UserChip,
-} from '../components/Shell';
+import { Content, PageHead, Shell, Sidebar, Topbar, UserChip } from '../components/Shell';
+import { TableScroll } from '../components/Table';
 import { Progress, Stepper } from '../components/Stepper';
 import { SaveBar } from '../components/SaveBar';
 import {

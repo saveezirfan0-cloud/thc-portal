@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
-import { Avatar, Chip, Panel, Pill, useTimeFormat } from '@thc/ui';
+import { Avatar, Chip, Panel, Pill, TableScroll, useTimeFormat } from '@thc/ui';
 import type { PayrollLine, PayrollPerson } from '../data';
 import { breakLabel, dayLabel, employeeId, hours, pounds } from '../view-model';
 import { formatTimeIn } from '@thc/domain';
@@ -75,87 +75,89 @@ export function PeopleTable({ people, lines }: { people: PayrollPerson[]; lines:
       }
       flush
     >
-      <div className="panel-b tight table-scroll">
-        <table className="tbl">
-          <thead>
-            <tr>
-              <th style={{ width: 32 }} />
-              <th>Staff</th>
-              <th>Employee ID</th>
-              <th className="money">Shifts</th>
-              <th className="money">Payable hours</th>
-              <th className="money">Base</th>
-              <th className="money">Holiday +12.07%</th>
-              <th className="money">Total payroll</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.length === 0 ? (
+      <div className="panel-b tight">
+        <TableScroll label="Payroll by person" pin={2} minWidth="48rem">
+          <table className="tbl">
+            <thead>
               <tr>
-                <td colSpan={8} className="muted">
-                  {people.length === 0
-                    ? 'Nobody worked a shift in this period.'
-                    : 'Nobody matches that search.'}
-                </td>
+                <th style={{ width: 32 }} />
+                <th>Staff</th>
+                <th>Employee ID</th>
+                <th className="money">Shifts</th>
+                <th className="money">Payable hours</th>
+                <th className="money">Base</th>
+                <th className="money">Holiday +12.07%</th>
+                <th className="money">Total payroll</th>
               </tr>
-            ) : null}
-            {shown.map((person) => {
-              const id = person.staff_id ?? '';
-              const isOpen = open.has(id);
-              return (
-                <Fragment key={id}>
-                  <tr
-                    className={`rp-person${isOpen ? ' open' : ''}`}
-                    onClick={() => toggle(id)}
-                    aria-expanded={isOpen}
-                  >
-                    <td className={isOpen ? 'rp-green' : 'muted'}>{isOpen ? '▾' : '▸'}</td>
-                    <td>
-                      <span className="person">
-                        <Avatar
-                          name={person.staff_name ?? ''}
-                          size="sm"
-                          deleted={Boolean(person.removed)}
-                        />
-                        <span className={person.removed ? 'muted' : undefined}>
-                          {person.removed ? (
-                            <i>{person.staff_name}</i>
-                          ) : isOpen ? (
-                            <b>{person.staff_name}</b>
-                          ) : (
-                            person.staff_name
-                          )}
+            </thead>
+            <tbody>
+              {shown.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="muted">
+                    {people.length === 0
+                      ? 'Nobody worked a shift in this period.'
+                      : 'Nobody matches that search.'}
+                  </td>
+                </tr>
+              ) : null}
+              {shown.map((person) => {
+                const id = person.staff_id ?? '';
+                const isOpen = open.has(id);
+                return (
+                  <Fragment key={id}>
+                    <tr
+                      className={`rp-person${isOpen ? ' open' : ''}`}
+                      onClick={() => toggle(id)}
+                      aria-expanded={isOpen}
+                    >
+                      <td className={isOpen ? 'rp-green' : 'muted'}>{isOpen ? '▾' : '▸'}</td>
+                      <td>
+                        <span className="person">
+                          <Avatar
+                            name={person.staff_name ?? ''}
+                            size="sm"
+                            deleted={Boolean(person.removed)}
+                          />
+                          <span className={person.removed ? 'muted' : undefined}>
+                            {person.removed ? (
+                              <i>{person.staff_name}</i>
+                            ) : isOpen ? (
+                              <b>{person.staff_name}</b>
+                            ) : (
+                              person.staff_name
+                            )}
+                          </span>
                         </span>
-                      </span>
-                    </td>
-                    <td className="mono sm">{employeeId(person.employee_id)}</td>
-                    <td className="money">{person.shifts}</td>
-                    <td className="money">
-                      {hours(person.payable_min)}
-                      {person.pending > 0 ? (
-                        <span className="sub rp-amber">+ {person.pending} pending</span>
-                      ) : null}
-                    </td>
-                    <td className="money">{pounds(person.base)}</td>
-                    <td className="money muted">{pounds(person.holiday)}</td>
-                    <td className="money">
-                      <b>{pounds(person.total)}</b>
-                    </td>
-                  </tr>
-                  {isOpen ? (
-                    <tr className="rp-shifts">
-                      <td colSpan={8}>
-                        <div className="inner">
-                          <ShiftTable person={person} lines={byPerson.get(id) ?? []} />
-                        </div>
+                      </td>
+                      <td className="mono sm">{employeeId(person.employee_id)}</td>
+                      <td className="money">{person.shifts}</td>
+                      <td className="money">
+                        {hours(person.payable_min)}
+                        {person.pending > 0 ? (
+                          <span className="sub rp-amber">+ {person.pending} pending</span>
+                        ) : null}
+                      </td>
+                      <td className="money">{pounds(person.base)}</td>
+                      <td className="money muted">{pounds(person.holiday)}</td>
+                      <td className="money">
+                        <b>{pounds(person.total)}</b>
                       </td>
                     </tr>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                    {isOpen ? (
+                      <tr className="rp-shifts">
+                        <td colSpan={8}>
+                          <div className="inner">
+                            <ShiftTable person={person} lines={byPerson.get(id) ?? []} />
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
       </div>
       {filtered.length > PAGE ? (
         <div className="rp-pager">

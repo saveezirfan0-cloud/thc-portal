@@ -104,6 +104,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         warning: 'The office is not told when a worker runs out of attempts at a client’s quiz.',
       },
       {
+        code: 'CP1',
+        label: 'Client asked for a worker again',
+        when: 'A client presses “Request again” in the Client Portal',
+        warning:
+          'The office is not emailed when a client asks for a worker again; the request still shows on the client card.',
+      },
+      {
         code: 'RC1',
         label: 'Profile change requested',
         when: 'A worker asks to change name, photo or date of birth',
@@ -136,6 +143,20 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         code: 'D2',
         label: 'Completed Allocation Timesheet',
         when: 'After the event — sent from the event page, or automatically',
+      },
+      {
+        code: 'CP2',
+        label: 'Line-up fully confirmed',
+        when: 'Every role of an upcoming event is confirmed — once per event, 07:00–23:00 UK',
+        warning:
+          'No client is told their line-up is fully confirmed. Each client card also has its own switch.',
+      },
+      {
+        code: 'CP3',
+        label: 'Line-up changed after the Allocation Timesheet',
+        when: 'Someone joins or leaves after the timesheet went — at most hourly, 07:00–23:00 UK',
+        warning:
+          'No client is told their line-up changed after the timesheet went. Each client card also has its own switch.',
       },
     ],
   },

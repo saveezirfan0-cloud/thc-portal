@@ -19,7 +19,7 @@ export function InboxFilterBar({
   const go = (patch: Parameters<typeof inboxHref>[1]) => router.push(inboxHref(query, patch));
 
   return (
-    <div className="toolbar inbox-filters">
+    <div className="toolbar filters inbox-filters">
       <Select
         aria-label="Type"
         value={query.type ?? ''}

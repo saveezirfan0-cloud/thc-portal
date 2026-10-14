@@ -78,6 +78,12 @@ export interface SettingsData {
    * (`settings.notification_switches`). Everything else is on.
    */
   notificationsOff: string[];
+  /**
+   * ADR-0134 N1: THC's on-the-day phone number, shown on every Client
+   * Portal event page as a tap-to-call link (`client_portal_phone`). Empty
+   * hides it.
+   */
+  clientPortalPhone: string;
   problem: string | null;
 }
 

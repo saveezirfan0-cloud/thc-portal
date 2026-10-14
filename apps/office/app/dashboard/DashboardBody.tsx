@@ -3,7 +3,14 @@ import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
 import { ShortStaffedPanel } from './_components/ShortStaffedPanel';
 import { UpcomingTable } from './_components/UpcomingTable';
 import { dashboardView } from './view';
-import { formatHours, formatPercent, formatPounds, formatWeekRange, todayInUk } from './view-model';
+import {
+  UPCOMING_LIMIT,
+  formatHours,
+  formatPercent,
+  formatPounds,
+  formatWeekRange,
+  todayInUk,
+} from './view-model';
 
 /**
  * The Dashboard's content (§9.1), streamed in behind the topbar by
@@ -138,11 +145,22 @@ export async function DashboardBody() {
         flush
       >
         <div className="panel-b tight">
-          {/* docs/07: tables scroll horizontally under 820px. */}
-          <TableScroll>
+          <TableScroll label="Upcoming events" minWidth="44rem">
             <UpcomingTable events={upcoming} today={today} showMargin={showMoney} />
           </TableScroll>
         </div>
+        {upcoming.length > UPCOMING_LIMIT ? (
+          <div className="panel-h dash-more">
+            <span className="muted sm">
+              Showing the first {UPCOMING_LIMIT} of {upcoming.length} events
+            </span>
+            <div className="right">
+              <Link className="btn sm" href="/events?view=list">
+                See all in Events
+              </Link>
+            </div>
+          </div>
+        ) : null}
       </Panel>
     </div>
   );

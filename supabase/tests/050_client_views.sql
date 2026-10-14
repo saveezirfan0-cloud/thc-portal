@@ -56,23 +56,25 @@ select bag_eq(
       where table_schema = 'public' and table_name = 'client_events_v' $$,
   $$ values ('id'::text),('client_id'),('title'),('venue_name'),('venue_address'),
             ('event_date'),('po_number'),('onsite_contact'),('starts_at'),('ends_at'),('status'),
-            ('cancelled_at') $$,
-  'client_events_v exposes exactly the §11.1/§11.2 columns; onsite_contact is the header field the event page shows, cancelled_at dates a cancelled row (20261013100300)');
+            ('cancelled_at'),('timesheet_recipients') $$,
+  'client_events_v exposes exactly the §11.1/§11.2 columns; onsite_contact is the header field the event page shows, cancelled_at dates a cancelled row (20261013100300), timesheet_recipients says who the timesheets go to (ADR-0089, ADR-0134 N3) — never notes');
 
 select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_lineup_v' $$,
   $$ values ('booking_id'::text),('event_id'),('role'),('starts_at'),('ends_at'),('name'),('photo_path'),
-            ('sort_key'),('feedback_given'),('shift_id'),('feedback_rating'),('feedback_sent_at') $$,
-  'client_lineup_v exposes the §11.2 columns plus its §11.3 sort key, the §11.2 feedback flag, its section key (20260930110400) and the customer''s own entry''s stars and time (20261013100300) — and no staff id, because submit_client_feedback() takes a booking id');
+            ('sort_key'),('feedback_given'),('shift_id'),('feedback_rating'),('feedback_sent_at'),
+            ('feedback_text'),('arrival_status'),('arrived_at'),('worker_requested') $$,
+  'client_lineup_v exposes the §11.2 columns plus its §11.3 sort key, the §11.2 feedback flag, its section key (20260930110400), the customer''s own entry''s stars and time (20261013100300), its own words (20261014140200, ADR-0134 N4) the live-window arrival state (20261014170000, ADR-0135 §1) and whether the customer has an open "Request again" for the worker (20261014170100, ADR-0135 §2) — and no staff id, because submit_client_feedback() takes a booking id');
 
 -- headcount and confirmed, never buffer: the buffer is THC's own
 -- over-booking, and §11.1 shows the customer "N of M confirmed".
 select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_role_sections_v' $$,
-  $$ values ('shift_id'::text),('event_id'),('role'),('starts_at'),('ends_at'),('headcount'),('confirmed') $$,
-  'client_role_sections_v exposes exactly the §11.1 "N of M confirmed" columns');
+  $$ values ('shift_id'::text),('event_id'),('role'),('starts_at'),('ends_at'),('headcount'),('confirmed'),
+            ('dress_code') $$,
+  'client_role_sections_v exposes exactly the §11.1 "N of M confirmed" columns, plus the section''s dress code (ADR-0134 N2)');
 
 select is(
   (select count(*)::int

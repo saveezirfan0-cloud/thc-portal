@@ -76,6 +76,7 @@ describe('CalendarButton', () => {
         sections={sections}
         lineup={lineup}
         photos={{}}
+        documents={[{ kind: 'allocation', issuedAt: '2026-09-18T15:00:00Z' }]}
         now="2026-09-18T12:00:00Z"
       />,
     );
@@ -84,6 +85,25 @@ describe('CalendarButton', () => {
     expect(actions.indexOf(BUTTON)).toBeGreaterThan(
       actions.indexOf('Download Allocation Timesheet'),
     );
+  });
+
+  it('is not offered once the event is over: nothing left to attend (CW-10)', () => {
+    for (const [status, now] of [
+      ['completed', '2026-09-20T12:00:00Z'],
+      // The view's status lags the clock by a refresh: the end decides.
+      ['ongoing', '2026-09-19T23:00:00Z'],
+    ] as const) {
+      const markup = renderToStaticMarkup(
+        <EventScreen
+          event={gala({ status })}
+          sections={sections}
+          lineup={lineup}
+          photos={{}}
+          now={now}
+        />,
+      );
+      expect(markup, status).not.toContain('Add to calendar');
+    }
   });
 
   it('is offered for upcoming, ongoing and completed events', () => {

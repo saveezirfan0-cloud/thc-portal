@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Button, EmptyState, KpiTile, Panel, Pill, TileGrid } from '@thc/ui';
+import { Button, EmptyState, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
 import { formatDateAdded } from '../../_lib/addedBy';
 import { ukStampFull } from '../../_lib/rtwCheck';
 import type { RosterEntry } from './data';
@@ -199,7 +199,7 @@ export function MatchesPanel({
           <p>Everyone who applied used the email on the list.</p>
         </EmptyState>
       ) : (
-        <div className="table-scroll">
+        <TableScroll label="Reminder report" minWidth="44rem">
           <table className="tbl">
             <thead>
               <tr>
@@ -208,7 +208,7 @@ export function MatchesPanel({
                 <th>Payroll ID</th>
                 <th>Group</th>
                 <th>Stage</th>
-                {canEdit ? <th aria-label="Link" /> : null}
+                {canEdit ? <th aria-label="Link" className="cell-actions" /> : null}
               </tr>
             </thead>
             <tbody>
@@ -236,7 +236,7 @@ export function MatchesPanel({
                     </td>
                     <td className="sm">{statusLabel(m.status)}</td>
                     {canEdit ? (
-                      <td>
+                      <td className="cell-actions">
                         <Button
                           size="sm"
                           tone="primary"
@@ -252,7 +252,7 @@ export function MatchesPanel({
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
     </Panel>
   );

@@ -13,6 +13,7 @@ import {
   formatMarginPerHour,
   marginTone,
   relativeDayLabel,
+  UPCOMING_LIMIT,
 } from '../view-model';
 import { ScheduledWindow } from './ScheduledWindow';
 
@@ -45,11 +46,14 @@ export function UpcomingTable({
   events,
   today,
   showMargin = true,
+  limit = UPCOMING_LIMIT,
 }: {
   events: UpcomingEvent[];
   today: string;
   /** False for an office role without finance (ADR-0056): the view returns no rate either. */
   showMargin?: boolean;
+  /** The first this-many events, by date; the rest are one link away. */
+  limit?: number;
 }) {
   const router = useRouter();
   if (events.length === 0) {
@@ -79,7 +83,7 @@ export function UpcomingTable({
         </tr>
       </thead>
       <tbody>
-        {events.map((event) => {
+        {events.slice(0, limit).map((event) => {
           const status = eventStatus(
             { startsAt: new Date(event.startsAt), endsAt: new Date(event.endsAt) },
             event.cancelledAt,

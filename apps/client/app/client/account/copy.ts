@@ -36,6 +36,23 @@ export const ACCOUNT_COPY = {
 } as const;
 
 /**
+ * "Emails about your events" (ADR-0135 §3) — read-only: which emails THC
+ * sends this company and to whom. The office switches the two line-up
+ * emails on the client card; the customer asks for a change.
+ */
+export const EMAILS_COPY = {
+  title: 'Emails about your events',
+  help: 'Sent to the timesheet addresses above, or to the addresses THC sets for a particular event — not to your sign-in email unless it is one of them. Never between 23:00 and 07:00 UK.',
+  documents: 'Allocation Timesheet and Completed Allocation Timesheet —',
+  always: 'always',
+  confirmed: 'Line-up fully confirmed (once per event, when every role is confirmed) —',
+  changed: 'Line-up changed after your Allocation Timesheet was sent (at most once an hour) —',
+  on: 'On',
+  off: 'Off',
+  change: 'To change which emails you receive, or who receives them, email the office.',
+} as const;
+
+/**
  * Change password messages. The rule failures themselves come from
  * `passwordError()` in @thc/domain, the same function /reset uses, so the
  * two forms never disagree about what a valid password is.

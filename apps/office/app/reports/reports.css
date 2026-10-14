@@ -25,8 +25,12 @@
   align-items: center;
   gap: var(--sp-6);
 }
+/* Height from the toolbar's `.filters` (release audit L16); the row's small
+   buttons ("This week", "Apply", "Export CSV") stand level with the dates. */
+.rp-toolbar.filters .btn.sm {
+  height: var(--filter-h);
+}
 .daterange .input {
-  height: var(--btn-h-sm);
   width: 150px;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
@@ -205,7 +209,7 @@
    fold to one "N cancelled · excluded" line. A sentence of names joined by
    "·" wrapped down the cell eleven lines deep. */
 .tbl td.rp-events {
-  min-width: 220px;
+  min-width: 9rem;
   max-width: 300px;
   font-size: var(--fs-12);
   line-height: 1.45;

@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Alert, Avatar, Button, Modal, Textarea } from '@thc/ui';
 import {
+  FEEDBACK_SIGNED_OUT,
   FEEDBACK_TEXT_MAX,
   FEEDBACK_TOO_LONG,
   feedbackTextTooLong,
@@ -18,8 +19,9 @@ import { leaveFeedback } from './actions';
  *
  * One entry per worker per event. The customer cannot edit or delete it
  * afterwards and cannot see the office's own entry on the same worker
- * (§9.10), so the modal closes on success and the row's button becomes
- * "✓ Feedback sent" when the page re-reads.
+ * (§9.10), so the modal closes on success, the row's button becomes
+ * "✓ Feedback sent" at once (`onSent`; the page's re-read confirms it) and
+ * focus lands on it rather than on the page.
  *
  * The comment is optional: §11.2 asks for "stars + comment", and a customer
  * who wants to record five stars and nothing else should not have to invent
@@ -46,6 +48,34 @@ export function commentHint(length: number): string {
 }
 
 const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
+
+/** The one complaint a star choice answers; cleared as soon as one is chosen. */
+const RATING_REQUIRED = 'Choose a rating between 1 and 5 stars.';
+
+/**
+ * Whether a failed send was a lapsed session rather than the connection.
+ *
+ * With no session the middleware answers the action's POST with a redirect
+ * to /login, so the action never runs and its call throws instead of
+ * returning. That looks exactly like a dropped connection from here, so the
+ * modal asks: `/client/session` (session/route.ts) is behind the same gate,
+ * and a redirect from it means signed out. A probe that cannot be made at
+ * all is the connection after all.
+ */
+export async function sessionLapsed(fetcher: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetcher('/client/session', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      redirect: 'manual',
+    });
+    return (
+      res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400) || res.status === 401
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The star a key moves the rating to, as the WAI-ARIA APG radio group does
@@ -91,6 +121,7 @@ export function FeedbackModal({
   eventTitle,
   eventDate,
   onClose,
+  onSent,
 }: {
   open: boolean;
   eventId: string;
@@ -103,13 +134,28 @@ export function FeedbackModal({
   eventTitle: string;
   eventDate: string;
   onClose: () => void;
+  /**
+   * The entry is saved (or was already there). Called before `onClose`, so
+   * the page can mark the row "✓ Feedback sent" and put focus on it.
+   */
+  onSent?: () => void;
 }) {
   const router = useRouter();
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // The session lapsed: the comment stays typed, and a sign-in link opens
+  // in a new tab so this one keeps it for "Submit feedback" afterwards.
+  const [signedOut, setSignedOut] = useState(false);
   const [pending, startTransition] = useTransition();
   const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Choosing a star answers "Choose a rating…": the complaint goes with it.
+  // Any other message (a refusal, a lapsed session) stays until resent.
+  function choose(n: number) {
+    setRating(n);
+    setError((current) => (current === RATING_REQUIRED ? null : current));
+  }
 
   // One tab stop for the group (roving tabindex): the chosen star, or the
   // first before a choice; the arrows, Home and End move and choose.
@@ -118,7 +164,7 @@ export function FeedbackModal({
     const next = starForKey(e.key, rating);
     if (next === null) return;
     e.preventDefault();
-    setRating(next);
+    choose(next);
     starRefs.current[next - 1]?.focus();
   }
 
@@ -127,12 +173,13 @@ export function FeedbackModal({
     setRating(0);
     setText('');
     setError(null);
+    setSignedOut(false);
     onClose();
   }
 
   function submit() {
     if (rating === 0) {
-      setError('Choose a rating between 1 and 5 stars.');
+      setError(RATING_REQUIRED);
       return;
     }
     if (feedbackTextTooLong(text)) {
@@ -140,27 +187,33 @@ export function FeedbackModal({
       return;
     }
     setError(null);
+    setSignedOut(false);
     startTransition(async () => {
       let result: Awaited<ReturnType<typeof leaveFeedback>>;
       try {
         result = await leaveFeedback(eventId, bookingId, rating, text);
       } catch {
-        setError(FAILED);
+        const lapsed = await sessionLapsed();
+        setSignedOut(lapsed);
+        setError(lapsed ? FEEDBACK_SIGNED_OUT : FAILED);
         return;
       }
       if (result.ok) {
         setRating(0);
         setText('');
+        onSent?.();
         onClose();
         return;
       }
       if (isAlreadyLeft(result as { error?: string; code?: string | null })) {
         setRating(0);
         setText('');
+        onSent?.();
         onClose();
         router.refresh();
         return;
       }
+      setSignedOut(result.signedOut === true);
       setError(result.error);
     });
   }
@@ -196,7 +249,23 @@ export function FeedbackModal({
         </div>
       </div>
 
-      {error ? <Alert tone="coral">{error}</Alert> : null}
+      {error ? (
+        <Alert tone="coral">
+          {error}
+          {signedOut ? (
+            <>
+              {' '}
+              <a
+                href={`/login?next=${encodeURIComponent(`/client/events/${eventId}`)}`}
+                target="_blank"
+                rel="noopener"
+              >
+                Sign in (opens a new tab)
+              </a>
+            </>
+          ) : null}
+        </Alert>
+      ) : null}
 
       <fieldset className="stars-field">
         <legend className="label">Rating</legend>
@@ -219,7 +288,7 @@ export function FeedbackModal({
               tabIndex={n === (rating || 1) ? 0 : -1}
               aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
               className={n <= rating ? 'star on' : 'star'}
-              onClick={() => setRating(n)}
+              onClick={() => choose(n)}
               disabled={pending}
             >
               <StarIcon />
@@ -257,7 +326,7 @@ export function FeedbackModal({
  * five identical stars in light mode, where --muted and the amber ink are
  * barely 1.2:1 apart.
  */
-function StarIcon() {
+export function StarIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M12 2.8l2.83 5.73 6.33.92-4.58 4.46 1.08 6.3L12 17.24l-5.66 2.97 1.08-6.3-4.58-4.46 6.33-.92z" />

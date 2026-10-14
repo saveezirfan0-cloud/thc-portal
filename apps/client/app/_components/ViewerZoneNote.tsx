@@ -18,9 +18,24 @@ export function ViewerZoneNote({ zone: override }: { zone?: string }) {
   const browser = useViewerZone();
   const zone = override ?? browser;
   if (!needsDualZone(zone)) return null;
+  const full = viewerZoneLabel(zone, new Date());
+  const offset = utcOffsetLabel(zone, new Date());
+  // Two spellings, one shown (client-portal.css): the full one on a wide
+  // bar, "Your time: UTC−4" where the bar is short of room (761–1279px), so
+  // it stays one line beside the company rather than wrapping to three.
   return (
-    <span className="tz">
-      Viewer: {zone} ({utcOffsetLabel(zone, new Date())})
+    <span className="tz" title={full}>
+      <span className="tz-full">{full}</span>
+      <span className="tz-short">Your time: {offset}</span>
     </span>
   );
+}
+
+/**
+ * "Viewer: Europe/Berlin (UTC+2)" — or just "Viewer: UTC" when the zone's
+ * name IS its offset label, rather than the "UTC (UTC)" the walk found.
+ */
+export function viewerZoneLabel(zone: string, at: Date): string {
+  const offset = utcOffsetLabel(zone, at);
+  return zone === offset ? `Viewer: ${zone}` : `Viewer: ${zone} (${offset})`;
 }
