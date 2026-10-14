@@ -95,7 +95,7 @@ describe('the fill chip (§3.1)', () => {
     expect(row.fill.confirmed).toBe(13);
     expect(row.fill.headcount).toBe(17);
     expect(row.fill.open).toBe(4);
-    // Short and still to happen: the red alert (ADR-0130).
+    // Short and still to happen: the red alert (ADR-0131).
     expect(fillTone(row)).toBe('coral');
   });
 

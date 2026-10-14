@@ -319,7 +319,7 @@ export interface MonthChipModel {
   cancelled: boolean;
   ongoing: boolean;
   full: boolean;
-  /** Something in the chip is still short of staff and not over yet — it flashes red (ADR-0130). */
+  /** Something in the chip is still short of staff and not over yet — it flashes red (ADR-0131). */
   alert: boolean;
   /** A single event's board; null for a group, which opens the day popup. */
   href: string | null;
@@ -442,7 +442,7 @@ export type FillTone = 'green' | 'amber' | 'coral' | 'neutral';
 
 /**
  * The tone the chip and the fill pill carry (§3.1). An event still short of
- * its headcount is coral and flashes on the Scheduling screen (ADR-0130) —
+ * its headcount is coral and flashes on the Scheduling screen (ADR-0131) —
  * upcoming or ongoing, while it can still be filled. Once it has ended nobody
  * can fill it, so a short completed event reads amber and stays still.
  */
@@ -452,7 +452,7 @@ export function fillTone(row: EventRow): FillTone {
   return row.status === 'completed' ? 'amber' : 'coral';
 }
 
-/** Not 100% filled and still to happen (or happening): the red alert (ADR-0130). */
+/** Not 100% filled and still to happen (or happening): the red alert (ADR-0131). */
 export function isShortStaffed(row: EventRow): boolean {
   return fillTone(row) === 'coral';
 }

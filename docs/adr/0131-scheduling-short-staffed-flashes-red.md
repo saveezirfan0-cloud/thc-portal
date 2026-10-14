@@ -1,4 +1,4 @@
-# ADR-0130 · On the Scheduling screen, a shift that is not 100% filled flashes red
+# ADR-0131 · On the Scheduling screen, a shift that is not 100% filled flashes red
 
 **Status:** Accepted · **Departs from:** `wireframes/backoffice/events.html` (a short event's chip edge and fill pill are amber and still) · **Owner request:** 13.10.2026 — "On the Scheduler, any shifts which are not 100% filled, should flash red - alert"
 

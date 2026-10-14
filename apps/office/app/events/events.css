@@ -184,7 +184,7 @@
   background: var(--green-dim);
 }
 
-/* ADR-0130: a shift that is not 100% filled, and has not ended, flashes red
+/* ADR-0131: a shift that is not 100% filled, and has not ended, flashes red
    until it fills — chip, week card, popup row and the fill pill alike. Ongoing
    loses its cyan to it: a shift running short is the most urgent of all. The
    pulse is slow (one every 1.6 s, well under WCAG 2.3.1's three flashes a
