@@ -129,7 +129,8 @@ export function RoleBoard({
           <b>{section.roleName}</b>
           {/* How far the role is from its requested headcount, set large so
               it reads before anything else in the header. */}
-          <span className={`role-fill ${fill.tone}`}>
+          {/* A cancelled event needs nobody: no amber "to fill" (release audit p8). */}
+          <span className={`role-fill ${status === 'cancelled' ? 'neutral' : fill.tone}`}>
             <span className="rf-num">
               <b>{fill.confirmed}</b>
               <span className="rf-of">/ {fill.headcount}</span>
@@ -191,6 +192,7 @@ export function RoleBoard({
             checked={section.autoAssign}
             disabled={!canToggleAutoAssign(status)}
             label={eventAutoAssign ? 'Auto-assign' : 'Auto-assign (event switch off)'}
+            name={`${eventAutoAssign ? 'Auto-assign' : 'Auto-assign (event switch off)'} · ${section.roleName}`}
           />
         </span>
       }

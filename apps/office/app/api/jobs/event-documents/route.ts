@@ -99,7 +99,8 @@ export async function POST(request: Request) {
         });
         return result.ok && result.documentId
           ? { ok: true, documentId: result.documentId }
-          : { ok: false, message: result.ok ? 'not stored' : result.message };
+          : // The retry record keeps what actually failed (release audit p9).
+            { ok: false, message: result.ok ? 'not stored' : (result.detail ?? result.message) };
       },
       queue: async (documentId) => {
         const { data, error } = await db.rpc('queue_event_document_autosend', {
