@@ -298,7 +298,11 @@
   --control-line: #958676; /* 3.1:1 on bg, panel and panel-2 */
 
   --text: #241d16;
-  --muted: #7a6b5c;
+  /* #736456, not #7a6b5c: small secondary text sits on the accent tints too
+     (the PO number chip, the board's "your time" line, a week chip's client
+     line), where #7a6b5c measured 4.36–4.48:1 (release audit 14.10.2026).
+     ≥4.5:1 on every ground and on each 12% accent tint over the card. */
+  --muted: #736456;
 
   --cyan: #0e7688;
   --purple: #6e45c4;
@@ -442,6 +446,9 @@
   --panel-2: #1e2333;
   --line: #252a36;
   --control-line: #64708a; /* 3.1:1 on panel-2, the lightest of the three */
+  /* A step lighter than the scope's #8a97a3, which measured 4.46:1 on the
+     12% accent tints over this card (release audit 14.10.2026). */
+  --muted: #929fab;
 
   --glass: rgba(23, 27, 38, 0.6);
   --glass-nav: rgba(23, 27, 38, 0.72);

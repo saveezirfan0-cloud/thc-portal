@@ -152,14 +152,17 @@ test('a role on rate cards and events cannot be deleted, and says why (§9.8)', 
   await skipWithoutRoles(page);
 
   await roleRow(page, 'Waiting Staff').getByRole('button', { name: 'Delete', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Delete role?' });
+  // In use: the refusal up front, never "Delete role?" above a refusal
+  // (release audit P2, ADR-0140) — and a Close, no Delete button at all.
+  const dialog = page.getByRole('dialog', { name: 'This role can’t be deleted yet' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('In use — it cannot be deleted yet.')).toBeVisible();
+  await expect(dialog.getByText('Waiting Staff is in use.')).toBeVisible();
   // DeleteRoleModal.tsx describeUse(): the counts come from the list row.
   await expect(dialog).toContainText('It is on 5 client rate cards and');
-  await expect(dialog.getByRole('button', { name: 'Delete role' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Delete role' })).toHaveCount(0);
 
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  // The footer's Close (the header's × shares the name).
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
   await expect(dialog).toBeHidden();
   await expect(roleRow(page, 'Waiting Staff')).toHaveCount(1);
 });

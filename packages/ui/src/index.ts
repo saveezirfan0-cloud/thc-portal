@@ -18,10 +18,53 @@ export type { AvatarGroupProps, AvatarProps } from './components/Avatar';
 export { PasswordRules } from './components/PasswordRules';
 export type { PasswordRuleState, PasswordRulesProps } from './components/PasswordRules';
 
-export { Content, PageHead, Shell, Sidebar, Topbar, UserChip } from './components/Shell';
+export { Content, MAIN_ID, PageHead, Shell, Sidebar, Topbar, UserChip } from './components/Shell';
 export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './components/Shell';
 export { TableScroll } from './components/Table';
 export type { TableScrollProps } from './components/Table';
+export {
+  ColumnCells,
+  ColumnCellsFor,
+  ColumnChooser,
+  ColumnChooserFor,
+  ColumnHeads,
+  ColumnHeadsFor,
+  ColumnPrefsProvider,
+  TableScrollFor,
+  useColumns,
+} from './components/ColumnChooser';
+export type {
+  ColumnChooserProps,
+  ColumnListProps,
+  ColumnPrefsSource,
+  Columns,
+  SaveColumnPref,
+  UseColumnsOptions,
+} from './components/ColumnChooser';
+// Server-safe: a plain module, so a server action can validate a stored choice.
+export {
+  COLUMN_ID_PATTERN,
+  LIST_KEY_PATTERN,
+  MAX_COLUMNS_PER_LIST,
+  columnRem,
+  isDefaultLayout,
+  moveColumnTo,
+  normaliseColumnPref,
+  normaliseColumnPrefs,
+  offeredColumns,
+  prefOf,
+  resolveColumns,
+  scaledMinWidth,
+  setColumnVisible,
+  widthClass,
+} from './components/columns';
+export type {
+  ColumnDef,
+  ColumnPref,
+  ColumnPrefs,
+  ColumnWidth,
+  ResolvedColumn,
+} from './components/columns';
 export { MenuButton } from './components/MenuButton';
 export type { MenuButtonProps } from './components/MenuButton';
 
@@ -69,9 +112,23 @@ export type { DocRowProps, DocState } from './components/DocRow';
 
 export { AuthCard } from './components/AuthCard';
 export type { AuthCardProps } from './components/AuthCard';
+export { WrongApp } from './components/WrongApp';
+export type { WrongAppProps } from './components/WrongApp';
 
 export { TimeFormatProvider, TimeField, useTimeFormat } from './components/TimeFormat';
 export type { TimeFieldProps } from './components/TimeFormat';
+
+export { UkDateField } from './components/UkDateField';
+export type { UkDateFieldProps } from './components/UkDateField';
+// Server-safe: plain functions, no React.
+export {
+  UK_DATE_FORMAT_ERROR,
+  UK_DATE_PLACEHOLDER,
+  readUkDate,
+  typeUkDate,
+  ukDateText,
+} from './components/ukdate';
+export type { UkDateReading } from './components/ukdate';
 
 export { ScheduledWindow, useViewerZone } from './components/ScheduledWindow';
 export type { ScheduledWindowProps } from './components/ScheduledWindow';

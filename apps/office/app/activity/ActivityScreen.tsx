@@ -3,17 +3,23 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Alert,
   Avatar,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
   EmptyState,
   Panel,
   Pill,
   SearchInput,
   Select,
   TableScroll,
+  useColumns,
   useTimeFormat,
 } from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { actionLabel, entityHref, entityLabel } from '../_lib/accounts';
 import type { ActivityFilters, ActivityPageData } from './data';
@@ -21,6 +27,19 @@ import { ActivityDetails } from './ActivityDetails';
 import { EXPORT_CAP, PERIODS, actorName, auditStamp, describe, exportHref } from './view-model';
 import '../account/account.css';
 import './activity.css';
+
+/**
+ * The log's columns, declared once (ADR-0139). When stays first; What
+ * (each entry's title, and a phone card's heading) cannot be hidden.
+ */
+const COLUMNS = [
+  { id: 'when', label: 'When (UK time)', required: true, width: 'm' },
+  { id: 'who', label: 'Who', width: 'm' },
+  { id: 'what', label: 'What', required: true, width: 'l' },
+  { id: 'record', label: 'Record', width: 'l' },
+  { id: 'details', label: 'Details' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 /**
  * /activity — Activity log (ADR-0055, §1.7).
@@ -38,6 +57,7 @@ export function ActivityScreen({
   filters: ActivityFilters;
 }) {
   const format = useTimeFormat();
+  const columns = useColumns('activity', COLUMNS);
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState(filters.query ?? '');
@@ -132,6 +152,9 @@ export function ActivityScreen({
             </option>
           ))}
         </Select>
+        <div className="right">
+          <ColumnChooser columns={columns} label="Activity" />
+        </div>
       </div>
 
       <Panel flush>
@@ -142,15 +165,11 @@ export function ActivityScreen({
               : 'Nothing has been recorded in this period.'}
           </EmptyState>
         ) : (
-          <TableScroll label="Activity" fixed minWidth="52rem">
+          <TableScroll label="Activity" fixed minWidth={columns.minWidth('52rem')}>
             <table className="tbl card-rows activity-table">
               <thead>
                 <tr>
-                  <th className="col-m">When (UK time)</th>
-                  <th className="col-m">Who</th>
-                  <th className="col-l">What</th>
-                  <th className="col-l">Record</th>
-                  <th>Details</th>
+                  <ColumnHeads columns={columns} />
                 </tr>
               </thead>
               <tbody>
@@ -158,11 +177,13 @@ export function ActivityScreen({
                   const who = actorName(row);
                   const href = entityHref(row.entity, row.entity_id);
                   const details = describe(row);
-                  return (
-                    <tr key={row.id}>
+                  const cells: Record<ColumnId, ReactNode> = {
+                    when: (
                       <td data-label="When" className="mono sm activity-when">
                         {auditStamp(row.at, format)}
                       </td>
+                    ),
+                    who: (
                       <td data-label="Who" className="activity-who">
                         {row.actor ? (
                           <button
@@ -178,10 +199,14 @@ export function ActivityScreen({
                           <Pill>System</Pill>
                         )}
                       </td>
+                    ),
+                    what: (
                       <td className="cell-title">
                         <b>{actionLabel(row.action)}</b>
                         <span className="sub">{entityLabel(row.entity)}</span>
                       </td>
+                    ),
+                    record: (
                       <td data-label="Record">
                         {href && row.entity_label ? (
                           <Link href={href}>{row.entity_label}</Link>
@@ -189,9 +214,16 @@ export function ActivityScreen({
                           (row.entity_label ?? <span className="muted">—</span>)
                         )}
                       </td>
+                    ),
+                    details: (
                       <td data-label="Details" className="sm muted activity-details">
                         <ActivityDetails lines={details} />
                       </td>
+                    ),
+                  };
+                  return (
+                    <tr key={row.id}>
+                      <ColumnCells columns={columns} cells={cells} />
                     </tr>
                   );
                 })}

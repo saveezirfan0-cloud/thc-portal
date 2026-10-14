@@ -178,7 +178,10 @@ export function ClientCard({
           staff={data.staff}
         />
 
-        {/* ADR-0110: the client's own asks of a worker, per role, and who has met them. */}
+        {/* ADR-0110: the client's own asks of a worker, per role, and who has met them.
+            Every block carries its number in page order (release audit m7):
+            the wireframe's first three, these two (which it does not draw),
+            then Events and History. */}
         <ShiftRequirements
           clientId={client.id}
           rows={data.requirements}
@@ -197,7 +200,7 @@ export function ClientCard({
           id={client.id}
           title={
             <>
-              <span className="blk-n">5</span> History
+              <span className="blk-n">7</span> History
             </>
           }
         />

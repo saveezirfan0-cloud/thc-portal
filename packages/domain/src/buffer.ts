@@ -15,21 +15,26 @@ export interface RoleSectionCounts {
   invited: number;
 }
 
-/** "6 (+1)", or plain "6" when there is no buffer. */
-export function formatAllocation(headcount: number, buffer: number): string {
-  return buffer > 0 ? `${headcount} (+${buffer})` : String(headcount);
-}
-
 /**
- * The same pair with the buffer always spelled out, even at zero: "2 (+0)".
+ * "6 (+1)" — and "2 (+0)": the buffer is always spelled out, never dropped
+ * and never added in.
  *
- * The Shift Builder shows this form (§3.2, `shift-builder.html`) because the
- * manager is editing headcount and buffer side by side and needs to see which
- * number is which. Lists and the calendar use `formatAllocation`, which drops
- * a zero buffer. Neither ever renders the total.
+ * Every screen writes it this way (ADR-0140, release audit 14.10.2026). The
+ * wireframes draw "(+0)" on the dashboard, the events list, the event board
+ * and the client card alike, and CLAUDE.md's "displays as 6 (+1)" names one
+ * form; the events list dropping a zero buffer while the dashboard beside
+ * it said "2 (+0)" read as two different numbers.
+ *
+ * A negative buffer is never stored (the builder refuses it), but while one
+ * is typed it reads "0 (−2)" with a real minus, not "0 (+-2)".
  */
 export function formatAllocationPair(headcount: number, buffer: number): string {
-  return `${headcount} (+${buffer})`;
+  return `${headcount} (${buffer < 0 ? '−' : '+'}${Math.abs(buffer)})`;
+}
+
+/** The same pair as `formatAllocationPair` — kept for the screens that call it by this name. */
+export function formatAllocation(headcount: number, buffer: number): string {
+  return formatAllocationPair(headcount, buffer);
 }
 
 /** "3 (+1) = 4" — what auto-assign fills up to, with the sum kept visible. */

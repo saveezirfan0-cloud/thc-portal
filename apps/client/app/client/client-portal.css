@@ -189,55 +189,11 @@
   min-width: 0;
 }
 
-/* The typed UK date (UkDateField, CW-03): dd/mm/yyyy in a text box, a
-   calendar welded to its right with the browser's own picker laid
-   invisibly over it (the Staff App's date of birth, ADR-0068). */
-.ukd-row .input {
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.ukd-row .ukd-cal {
-  position: relative;
-  padding: 0 var(--sp-12);
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.ukd-row .ukd-cal:hover {
-  color: var(--text);
-}
-
-.ukd-row .ukd-native {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-/* Chromium opens its calendar only from this indicator: stretch it over
-   the whole icon so a click anywhere on it lands there. */
-.ukd-row .ukd-native::-webkit-calendar-picker-indicator {
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  cursor: pointer;
-}
-
-/* A date's error hangs under its box rather than lifting the box out of
-   line with the search and the other date (the row is bottom-aligned);
-   the row makes room for it below. */
+/* The typed UK date (UkDateField, CW-03) is drawn by packages/ui
+   (components.css `.ukd-row`, ADR-0140); only its place in this filter
+   row is the portal's. A date's error hangs under its box rather than
+   lifting the box out of line with the search and the other date (the
+   row is bottom-aligned); the row makes room for it below. */
 .ev-filters .ukd {
   position: relative;
 }

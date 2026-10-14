@@ -1,6 +1,6 @@
 'use client';
 
-import { Select } from '@thc/ui';
+import { Select, UkDateField } from '@thc/ui';
 import {
   ADDED_BY_ANYONE,
   ADDED_BY_NOBODY,
@@ -8,6 +8,7 @@ import {
   type Added,
   type AddedFilter,
 } from '../_lib/addedBy';
+import './added-filters.css';
 
 export interface AddedFiltersProps {
   /** The rows on the page, so the picker only offers managers who matched something. */
@@ -42,30 +43,28 @@ export function AddedFilters({ rows, value, onChange }: AddedFiltersProps) {
         ))}
         {hasNobody ? <option value={ADDED_BY_NOBODY}>Not recorded</option> : null}
       </Select>
-      <label className="row sm muted" style={{ gap: 6, alignItems: 'center' }}>
-        Added from
-        <input
-          className="input"
-          style={{ width: 150 }}
-          type="date"
+      {/* Typed dd/mm/yyyy whatever the device's locale (ADR-0140): a native
+          date input showed mm/dd/yyyy on a US-English browser. */}
+      <span className="row sm muted added-date">
+        <span aria-hidden="true">Added from</span>
+        <UkDateField
+          label="Added from (UK date)"
+          labelHidden
           value={value.from}
           max={value.to || undefined}
-          onChange={(event) => onChange({ ...value, from: event.target.value })}
-          aria-label="Added from (UK date)"
+          onChange={(from) => onChange({ ...value, from })}
         />
-      </label>
-      <label className="row sm muted" style={{ gap: 6, alignItems: 'center' }}>
-        to
-        <input
-          className="input"
-          style={{ width: 150 }}
-          type="date"
+      </span>
+      <span className="row sm muted added-date">
+        <span aria-hidden="true">to</span>
+        <UkDateField
+          label="Added to (UK date)"
+          labelHidden
           value={value.to}
           min={value.from || undefined}
-          onChange={(event) => onChange({ ...value, to: event.target.value })}
-          aria-label="Added to (UK date)"
+          onChange={(to) => onChange({ ...value, to })}
         />
-      </label>
+      </span>
     </>
   );
 }

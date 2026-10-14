@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Switch } from '@thc/ui';
 import { setEventAutoAssign, setRoleAutoAssign } from '../actions';
 
@@ -18,16 +18,31 @@ export function AutoAssignSwitch({
   checked,
   disabled,
   label,
+  name,
 }: {
   eventId: string;
   shiftId?: string;
   checked: boolean;
   disabled?: boolean;
   label: string;
+  /**
+   * The accessible name, where the visible label is the same on every role
+   * ("Auto-assign") — "Auto-assign · Waiting Staff" tells a screen reader
+   * which of the board's switches it is on.
+   */
+  name?: string;
 }) {
   const [on, setOn] = useState(checked);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // The server's word wins once it arrives: cancelling the event turns
+  // auto-assign off in the database, and the switch kept showing ON until
+  // a reload (release audit 14.10.2026) because `on` only ever read
+  // `checked` once.
+  useEffect(() => {
+    setOn(checked);
+  }, [checked]);
 
   const change = (next: boolean) => {
     setError(null);
@@ -45,7 +60,14 @@ export function AutoAssignSwitch({
 
   return (
     <span className="row" style={{ gap: 8 }}>
-      <Switch purple checked={on} disabled={disabled || pending} onChange={change} label={label} />
+      <Switch
+        purple
+        checked={on}
+        disabled={disabled || pending}
+        onChange={change}
+        label={label}
+        {...(name ? { 'aria-label': name } : {})}
+      />
       {error ? (
         <span className="error sm" role="alert">
           {error}

@@ -181,9 +181,16 @@
   color: var(--text);
   font-weight: 500;
 }
+/* A row with a gap: Resend activation link and Reject candidate sat glued
+   together (release audit P1). */
 .cand-head .actions {
   flex: 0 0 auto;
   margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: var(--sp-8);
 }
 
 .kv {
@@ -265,6 +272,15 @@
 .period .input {
   height: 30px;
   font-size: var(--fs-12);
+}
+/* Typed UK dates (UkDateField, ADR-0140) at the width the native date box
+   had: a period's two ends, a document's expiry, Right to work until. */
+.period .ukd {
+  min-width: 0;
+}
+.ukd.rtw-until .input,
+.ukd.doc-expiry .input {
+  width: 8.5rem;
 }
 .period .rm {
   background: none;

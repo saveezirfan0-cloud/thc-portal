@@ -3,11 +3,16 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
-import { type TimeFormat, UK_ZONE, formatDateTimeIn } from '@thc/domain';
+import type { ReactNode } from 'react';
+import type { TimeFormat } from '@thc/domain';
+import { auditStamp } from '../activity/view-model';
 import {
   Alert,
   Avatar,
   Button,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
   EmptyState,
   Input,
   Modal,
@@ -18,8 +23,10 @@ import {
   SegToggle,
   Select,
   TableScroll,
+  useColumns,
   useTimeFormat,
 } from '@thc/ui';
+import type { Columns, ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { ROLE_LABEL } from '../_lib/accounts';
 import { oneOf, useListQuery } from '../_lib/listQuery';
@@ -78,8 +85,9 @@ const ACCESS_NOTE: Record<Tab, string> = {
     'Staff App: only their own onboarding, documents, invites, shifts and check-in. Created when a candidate is accepted in Onboarding; closed by Block or Remove on the staff profile.',
 };
 
+/** A sign-in is an audit stamp: UK, dd.mm.yyyy HH:mm (§1.8), as the activity log writes it. */
 function ukStamp(iso: string | null, format: TimeFormat): string {
-  return iso ? formatDateTimeIn(new Date(iso), UK_ZONE, format) : 'Never';
+  return iso ? auditStamp(iso, format) : 'Never';
 }
 
 function statusOf(account: AccountRow): { tone: 'green' | 'amber' | 'neutral'; label: string } {
@@ -88,10 +96,40 @@ function statusOf(account: AccountRow): { tone: 'green' | 'amber' | 'neutral'; l
   return { tone: 'green', label: 'Active' };
 }
 
+/**
+ * Each app's columns, declared once (ADR-0139). The tabs differ (Office
+ * role on Back Office, Client on Client Portal), so each keeps its own
+ * choice. The avatar is a lead cell, not a column; Name stays first and
+ * the actions last.
+ */
+const NAME = { id: 'name', label: 'Name', required: true, width: 'm' } as const;
+const EMAIL = { id: 'email', label: 'Email', width: 'l' } as const;
+const SIGNED_IN = { id: 'signed-in', label: 'Last signed in (UK time)', width: 'm' } as const;
+const STATUS = { id: 'status', label: 'Status' } as const;
+const ACTIONS = {
+  id: 'actions',
+  label: 'Actions',
+  required: true,
+  blankHeader: true,
+  className: 'cell-actions',
+} as const;
+const COLUMNS = {
+  admin: [NAME, EMAIL, { id: 'office-role', label: 'Office role' }, SIGNED_IN, STATUS, ACTIONS],
+  client: [NAME, EMAIL, { id: 'client', label: 'Client', width: 'm' }, SIGNED_IN, STATUS, ACTIONS],
+  staff: [NAME, EMAIL, SIGNED_IN, STATUS, ACTIONS],
+} as const satisfies Record<Tab, readonly ColumnDef[]>;
+type ColumnId = (typeof COLUMNS)[Tab][number]['id'];
+
 export function UsersScreen({ data }: { data: UsersPageData }) {
   const [url, setUrl] = useListQuery(QUERY);
   const tab = oneOf(url.tab, TABS, 'admin');
   const query = url.q;
+  const tabColumns: Record<Tab, Columns<ColumnId>> = {
+    admin: useColumns<ColumnId>('users.admin', COLUMNS.admin),
+    client: useColumns<ColumnId>('users.client', COLUMNS.client),
+    staff: useColumns<ColumnId>('users.staff', COLUMNS.staff),
+  };
+  const columns = tabColumns[tab];
   const [inviting, setInviting] = useState(false);
   const [switching, setSwitching] = useState<AccountRow | null>(null);
   const [reroling, setReroling] = useState<AccountRow | null>(null);
@@ -154,6 +192,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
             value={query}
             onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
           />
+          <ColumnChooser columns={columns} label={`Users · ${ROLE_LABEL[tab]}`} />
         </div>
       </div>
 
@@ -165,18 +204,12 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
             {query ? 'No login matches that search.' : `No ${ROLE_LABEL[tab]} logins yet.`}
           </EmptyState>
         ) : (
-          <TableScroll label="Users" minWidth="50rem">
+          <TableScroll label="Users" minWidth={columns.minWidth('50rem', 3)}>
             <table className="tbl card-rows users-table">
               <thead>
                 <tr>
                   <th aria-label="Avatar" className="cell-lead" />
-                  <th className="col-m">Name</th>
-                  <th className="col-l">Email</th>
-                  {tab === 'admin' ? <th>Office role</th> : null}
-                  {tab === 'client' ? <th className="col-m">Client</th> : null}
-                  <th className="col-m">Last signed in (UK time)</th>
-                  <th>Status</th>
-                  <th aria-label="Actions" className="cell-actions" />
+                  <ColumnHeads columns={columns} />
                 </tr>
               </thead>
               <tbody>
@@ -185,6 +218,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                     key={account.id}
                     account={account}
                     tab={tab}
+                    columns={columns}
                     self={account.id === data.selfId}
                     onSwitch={() => setSwitching(account)}
                     onChangeRole={() => setReroling(account)}
@@ -206,28 +240,32 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
         ) : null}
       </Panel>
 
-      <Panel title="Office roles">
-        <p className="sm muted users-plain">
-          Each Back Office login has an office role, and the database enforces it — a page hidden
-          from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
-          {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager} <b>Scheduler</b>
-          : {OFFICE_ROLE_SUMMARY.scheduler} <b>Viewer</b>: {OFFICE_ROLE_SUMMARY.viewer} New logins
-          are managers unless you choose otherwise. Nobody can change their own role, and there is
-          always at least one working owner. Role changes are in the{' '}
-          <Link href="/activity">activity log</Link> under the owner’s name.
-        </p>
-        <p className="sm muted users-plain">
-          <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
-          codes come from. Check it is really them first — by phone, not by email — because a
-          password without the phone is exactly what two-step keeps out. It signs them out
-          everywhere; they sign in with their password and set two-step up again on My profile.
-        </p>
-        <p className="sm muted users-plain">
-          A scheduler sees no pay or charge rates, margins, payroll or reports anywhere — the
-          database refuses them, not just the screens. A role section they add carries the catalogue
-          rates.
-        </p>
-      </Panel>
+      {/* About Back Office logins only, so on their tab only — it read as a
+          rule for Client Portal accounts on theirs (release audit). */}
+      {tab === 'admin' ? (
+        <Panel title="Office roles">
+          <p className="sm muted users-plain">
+            Each Back Office login has an office role, and the database enforces it — a page hidden
+            from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
+            {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager}{' '}
+            <b>Scheduler</b>: {OFFICE_ROLE_SUMMARY.scheduler} <b>Viewer</b>:{' '}
+            {OFFICE_ROLE_SUMMARY.viewer} New logins are managers unless you choose otherwise. Nobody
+            can change their own role, and there is always at least one working owner. Role changes
+            are in the <Link href="/activity">activity log</Link> under the owner’s name.
+          </p>
+          <p className="sm muted users-plain">
+            <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
+            codes come from. Check it is really them first — by phone, not by email — because a
+            password without the phone is exactly what two-step keeps out. It signs them out
+            everywhere; they sign in with their password and set two-step up again on My profile.
+          </p>
+          <p className="sm muted users-plain">
+            A scheduler sees no pay or charge rates, margins, payroll or reports anywhere — the
+            database refuses them, not just the screens. A role section they add carries the
+            catalogue rates.
+          </p>
+        </Panel>
+      ) : null}
 
       {inviting ? (
         <InviteModal
@@ -259,6 +297,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
 function UserRow({
   account,
   tab,
+  columns,
   self,
   onSwitch,
   onChangeRole,
@@ -267,6 +306,7 @@ function UserRow({
 }: {
   account: AccountRow;
   tab: Tab;
+  columns: Columns<ColumnId>;
   self: boolean;
   onSwitch: () => void;
   onChangeRole: () => void;
@@ -288,11 +328,8 @@ function UserRow({
     });
   };
 
-  return (
-    <tr className={account.disabled ? 'muted' : undefined}>
-      <td className="cell-lead">
-        <Avatar name={account.full_name} size="sm" />
-      </td>
+  const cells: Record<ColumnId, ReactNode> = {
+    name: (
       <td className="cell-title">
         {tab === 'staff' && account.staff_id ? (
           <Link href={`/staff/${account.staff_id}`}>
@@ -304,28 +341,36 @@ function UserRow({
         {self ? <span className="sub">You</span> : null}
         {account.job_title ? <span className="sub">{account.job_title}</span> : null}
       </td>
+    ),
+    email: (
       <td data-label="Email" className="sm">
         {account.email ?? '—'}
       </td>
-      {tab === 'admin' ? (
-        <td data-label="Office role">
-          {account.office_role ? (
-            <Pill tone={account.office_role === 'owner' ? 'cyan' : 'neutral'}>
-              {OFFICE_ROLE_LABEL[account.office_role]}
-            </Pill>
-          ) : (
-            '—'
-          )}
-        </td>
-      ) : null}
-      {tab === 'client' ? <td data-label="Client">{account.client_name ?? '—'}</td> : null}
+    ),
+    'office-role': (
+      <td data-label="Office role">
+        {account.office_role ? (
+          <Pill tone={account.office_role === 'owner' ? 'cyan' : 'neutral'}>
+            {OFFICE_ROLE_LABEL[account.office_role]}
+          </Pill>
+        ) : (
+          '—'
+        )}
+      </td>
+    ),
+    client: <td data-label="Client">{account.client_name ?? '—'}</td>,
+    'signed-in': (
       <td data-label="Last signed in" className="mono sm">
         {ukStamp(account.last_sign_in_at, format)}
       </td>
+    ),
+    status: (
       <td data-label="Status">
         <Pill tone={status.tone}>{status.label}</Pill>
         {tab === 'admin' && account.two_step ? <span className="sub">Two-step on</span> : null}
       </td>
+    ),
+    actions: (
       <td className="cell-actions">
         {tab === 'staff' ? (
           account.staff_id ? (
@@ -365,6 +410,15 @@ function UserRow({
           </>
         )}
       </td>
+    ),
+  };
+
+  return (
+    <tr className={account.disabled ? 'muted' : undefined}>
+      <td className="cell-lead">
+        <Avatar name={account.full_name} size="sm" />
+      </td>
+      <ColumnCells columns={columns} cells={cells} />
     </tr>
   );
 }

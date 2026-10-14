@@ -89,6 +89,29 @@ export function breaksCell(
     : String(row.breaksCount);
 }
 
+/**
+ * The check-in stamp's second line, as `checkin.html` draws it: "GPS · on
+ * site · 3 min late", "GPS · on site · early", "GPS · on site · on time".
+ *
+ * A check-in is only ever recorded inside the geofence (§5.1), so a stamp
+ * is "on site" by construction — except where the fix behind it was too
+ * vague to trust (`location_suspect`), which keeps its own amber pill and
+ * says nothing about the site here. The lateness is the stamp against the
+ * ROLE SECTION's start (RULE-18), in whole minutes: "21 min late" is inside
+ * the 30-minute grace that makes it a Late violation (§9.5). Null when
+ * there is no check-in.
+ */
+export function arrivalLine(
+  row: Pick<MonitorRow, 'checkInAt' | 'startsAt' | 'locationSuspect'>,
+): string | null {
+  if (!row.checkInAt) return null;
+  const minutes = Math.floor(
+    (new Date(row.checkInAt).getTime() - new Date(row.startsAt).getTime()) / 60_000,
+  );
+  const timing = minutes > 0 ? `${minutes} min late` : minutes < 0 ? 'early' : 'on time';
+  return row.locationSuspect ? `GPS · ${timing}` : `GPS · on site · ${timing}`;
+}
+
 export const VIOLATION_LABEL: Record<ViolationType, string> = {
   no_show: 'No-show',
   late: 'Late',

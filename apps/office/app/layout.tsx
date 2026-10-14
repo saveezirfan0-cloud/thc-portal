@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { AppearanceScript, TimeFormatProvider } from '@thc/ui';
+import { AppearanceScript, ColumnPrefsProvider, TimeFormatProvider } from '@thc/ui';
 import { SignedInAsProvider } from './_components/SignedInAs';
 import { officeUser } from './_components/officeUser';
 import { NavCountsProvider } from './_components/OfficeSidebar';
 import { officeNavCounts } from './_components/navCounts';
 import { timeFormatChoice } from './_lib/timeFormat';
+import { listColumnPrefs } from './_lib/listColumns';
+import { saveListColumns } from './_lib/listColumnsActions';
 import '@thc/ui/styles.css';
 
 export const metadata: Metadata = {
@@ -30,6 +32,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const clock = await timeFormatChoice();
   const user = officeUser().catch(() => null);
   const counts = officeNavCounts();
+  // ADR-0139: each list's columns as this operator left them. Started, not
+  // awaited; the lists resolve it, so their first paint is already right.
+  const columns = listColumnPrefs();
 
   return (
     <html lang="en-GB" data-style="warm" suppressHydrationWarning>
@@ -39,7 +44,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <TimeFormatProvider format={clock.format} remember={clock.remember}>
           <SignedInAsProvider user={user}>
-            <NavCountsProvider counts={counts}>{children}</NavCountsProvider>
+            <ColumnPrefsProvider prefs={columns} save={saveListColumns}>
+              <NavCountsProvider counts={counts}>{children}</NavCountsProvider>
+            </ColumnPrefsProvider>
           </SignedInAsProvider>
         </TimeFormatProvider>
       </body>

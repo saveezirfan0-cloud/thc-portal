@@ -1,66 +1,22 @@
-import { formatDobTyping, isRealIsoDate } from '@thc/domain';
+import { ukDateText } from '@thc/ui';
 
 /**
  * The list's date filters as the customer types them: dd/mm/yyyy, UK order
  * (§1.8), whatever the device's own locale is.
  *
- * A native `<input type="date">` draws its value in the browser's locale, so
- * on a US-English device the "From (UK date)" box read mm/dd/yyyy — the same
- * trap CLAUDE.md names for `<input type="time">`. The field is text instead
- * (`UkDateField`), and these pure functions turn what it shows into the
- * `yyyy-mm-dd` the address bar and the window logic read (`listQuery`,
- * window.ts `pastWindow`) and back. Pure, so the rules are pinned by tests.
- *
- * The typing itself — digits in, slashes drawn, "5/6" padded to "05/06",
- * a pasted `2026-10-16` turned round — is `formatDobTyping` from
- * `@thc/domain`, the same as the Staff App's and the office's typed dates
- * (ADR-0068), so a date is typed the same way in all three apps.
+ * The field and its pure readers (`UkDateField`, `readUkDate`, `typeUkDate`,
+ * `ukDateText`) moved to @thc/ui so the Back Office's dates are typed the
+ * same way (ADR-0140); they are re-exported here so the portal keeps one
+ * import for its dates. What stays is the portal's own sentence.
  */
-
-export const UK_DATE_PLACEHOLDER = 'dd/mm/yyyy';
-
-const SHOWN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** What the box shows for an address-bar value: "16/10/2026", or '' for no bound. */
-export function ukDateText(iso: string): string {
-  const m = ISO.exec(iso);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
-}
-
-/** What the box shows after a keystroke or a paste (`formatDobTyping`). */
-export function typeUkDate(raw: string): string {
-  return formatDobTyping(raw);
-}
-
-export type UkDateReading =
-  /** A real day (`yyyy-mm-dd`), or '' when the box is empty: no bound. */
-  | { value: string }
-  /** Still being typed: nothing to apply yet, nothing to complain about. */
-  | { partial: true }
-  /** Complete but not a date: the sentence the field shows. */
-  | { error: string };
-
-export const UK_DATE_FORMAT_ERROR = 'Enter the date as dd/mm/yyyy, for example 16/10/2026.';
-
-/**
- * What the box holds. `final` is true once the customer has left the field
- * (blur): an entry still short of dd/mm/yyyy is then an error rather than
- * work in progress.
- */
-export function readUkDate(text: string, final = false): UkDateReading {
-  const shown = typeUkDate(text.trim());
-  if (shown === '') return { value: '' };
-  const m = SHOWN.exec(shown);
-  if (!m) return final ? { error: UK_DATE_FORMAT_ERROR } : { partial: true };
-  const [, dd, mm, yyyy] = m;
-  const iso = `${yyyy}-${mm}-${dd}`;
-  if (Number(mm) < 1 || Number(mm) > 12) {
-    return { error: `There is no month ${mm} — enter the date as dd/mm/yyyy.` };
-  }
-  if (!isRealIsoDate(iso)) return { error: `${shown} is not a date — check the day and month.` };
-  return { value: iso };
-}
+export {
+  UK_DATE_FORMAT_ERROR,
+  UK_DATE_PLACEHOLDER,
+  readUkDate,
+  typeUkDate,
+  ukDateText,
+} from '@thc/ui';
+export type { UkDateReading } from '@thc/ui';
 
 /** The reversed-range sentence, on the "To" field and in the empty list. */
 export function reversedRangeText(from: string, to: string): string {

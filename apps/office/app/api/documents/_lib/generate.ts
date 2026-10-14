@@ -61,7 +61,26 @@ export type GenerateResult =
       /** ADR-0081: the name badges drawn with this copy, when the client has them. */
       badges: { layout: BadgeLayout; pdf: Buffer; storagePath: string | null } | null;
     }
-  | { ok: false; status: number; message: string };
+  | {
+      ok: false;
+      status: number;
+      /** For the manager: a sentence, never the infrastructure's own words. */
+      message: string;
+      /**
+       * For the server log and the event-documents job's retry record: what
+       * Storage or the renderer actually said. Never shown on a screen
+       * (release audit p9: "Storage refused the PDF: …" reached the board).
+       */
+      detail?: string;
+    };
+
+/** What the manager reads when the PDF could not be kept (and so not sent). */
+export const STORAGE_FAILED_MESSAGE =
+  'The timesheet could not be saved for sending just now, so nothing was sent. Try again in a minute; if it keeps happening, tell the platform team.';
+
+/** What the manager reads when the name badges could not be drawn for a Send. */
+export const BADGES_FAILED_MESSAGE =
+  'The name badges could not be drawn, so the timesheet was not sent without them. Try again; if it keeps happening, tell the platform team.';
 
 export interface DocumentRpc {
   rpc(
@@ -239,7 +258,8 @@ export async function generateDocument(
       return {
         ok: false,
         status: 500,
-        message: `The name badges could not be drawn: ${(cause as Error).message}`,
+        message: BADGES_FAILED_MESSAGE,
+        detail: `The name badges could not be drawn: ${(cause as Error).message}`,
       };
     drawn = null;
   }
@@ -254,8 +274,8 @@ export async function generateDocument(
     storagePath: null,
     badges: unstoredBadges,
   };
-  const fail = (status: number, message: string): GenerateResult =>
-    store === 'required' ? { ok: false, status, message } : unstored;
+  const fail = (status: number, message: string, detail?: string): GenerateResult =>
+    store === 'required' ? { ok: false, status, message, ...(detail ? { detail } : {}) } : unstored;
 
   // ADR-0060: storing a copy is a write, made with the service key BEFORE
   // record_event_document() would refuse a viewer — so a read-only login
@@ -283,20 +303,25 @@ export async function generateDocument(
     const upload = await admin.storage
       .from('timesheets')
       .upload(storagePath, pdf, { contentType: 'application/pdf', upsert: false });
-    if (upload.error) return fail(502, `Storage refused the PDF: ${upload.error.message}`);
+    if (upload.error)
+      return fail(502, STORAGE_FAILED_MESSAGE, `Storage refused the PDF: ${upload.error.message}`);
     if (drawn && badgesPath) {
       const badges = await admin.storage
         .from('timesheets')
         .upload(badgesPath, drawn.pdf, { contentType: 'application/pdf', upsert: false });
       if (badges.error) {
         if (store === 'required')
-          return fail(502, `Storage refused the name badges PDF: ${badges.error.message}`);
+          return fail(
+            502,
+            STORAGE_FAILED_MESSAGE,
+            `Storage refused the name badges PDF: ${badges.error.message}`,
+          );
         // A Download: keep the record of the sheet that was handed out.
         badgesPath = null;
       }
     }
   } catch (cause) {
-    return fail(502, `Storage is unreachable: ${(cause as Error).message}`);
+    return fail(502, STORAGE_FAILED_MESSAGE, `Storage is unreachable: ${(cause as Error).message}`);
   }
 
   const record = {

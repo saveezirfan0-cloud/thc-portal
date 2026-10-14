@@ -2,11 +2,15 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Alert,
   Avatar,
   Button,
   Chip,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
   EmptyState,
   Note,
   Panel,
@@ -15,8 +19,10 @@ import {
   SegToggle,
   Select,
   TableScroll,
+  useColumns,
   useTimeFormat,
 } from '@thc/ui';
+import type { Columns, ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { Pager } from '../_components/Pager';
 import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
@@ -58,6 +64,37 @@ export interface StaffScreenProps {
    */
   canMessage?: boolean;
 }
+
+/**
+ * The directory's columns and the Inactive tab's, declared once each
+ * (ADR-0139): a separate choice per view, since their columns differ. The
+ * lead cell (tick box, avatar) is not a column; Name stays first.
+ */
+const DIRECTORY_COLUMNS = [
+  { id: 'name', label: 'Name', required: true },
+  { id: 'employee-id', label: 'Employee ID', width: 's' },
+  { id: 'roles', label: 'Role(s)' },
+  { id: 'rating', label: 'Rating', width: 'xs' },
+  { id: 'show-rate', label: 'Show-rate', width: 'xs' },
+  { id: 'status', label: 'Compliance status', width: 'l' },
+  { id: 'rtw', label: 'Right to work' },
+] as const satisfies readonly ColumnDef[];
+type DirectoryColumn = (typeof DIRECTORY_COLUMNS)[number]['id'];
+
+const INACTIVE_COLUMNS = [
+  { id: 'name', label: 'Name', required: true },
+  { id: 'employee-id', label: 'Employee ID', width: 's' },
+  { id: 'left', label: 'Left', width: 'm' },
+  { id: 'reason', label: 'Reason given' },
+  { id: 'roles', label: 'Role(s)' },
+  { id: 'last-shift', label: 'Last completed shift', width: 'm' },
+  { id: 'released', label: 'Released shifts', width: 's' },
+  { id: 'p45', label: 'P45', width: 'm' },
+] as const satisfies readonly ColumnDef[];
+type InactiveColumn = (typeof INACTIVE_COLUMNS)[number]['id'];
+
+/** The lead cell's share of the table's minimum width (ADR-0136), in rem. */
+const LEAD_REM = 4;
 
 /** A worker ticked for Send push: the id it sends, the name the dialog shows. */
 type Picked = ReadonlyMap<string, string>;
@@ -121,6 +158,8 @@ export function StaffScreen({
   // ADR-0082: kept across pages, tabs and searches, so a list can be built
   // up from several of them; cleared after a send.
   const [picked, setPicked] = useState<Picked>(new Map());
+  const directoryColumns = useColumns('staff.directory', DIRECTORY_COLUMNS);
+  const inactiveColumns = useColumns('staff.inactive', INACTIVE_COLUMNS);
 
   // §9.6 lists workers. Candidates and rejected applicants come through the
   // same view but belong to /onboarding, so they are neither counted nor
@@ -213,25 +252,28 @@ export function StaffScreen({
           removed
         </>
       }
+      // In the top bar, not a band of their own above the status tabs that
+      // was empty but for two links on the right (release audit L19).
+      actions={
+        <span className="row staff-requests-link">
+          {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
+          <Link
+            href="/staff/requests"
+            className="btn sm ghost"
+            {...(pendingRequests === null
+              ? { title: 'The pending count could not be read — open the queue to see it.' }
+              : {})}
+          >
+            Change requests ({pendingRequests ?? '?'})
+          </Link>
+          {/* ADR-0107: who is SpudBros Express, and each person's Payroll ID. */}
+          <Link href="/staff/roster" className="btn sm ghost">
+            Invite list
+          </Link>
+        </span>
+      }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
-
-      {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
-      <div className="staff-requests-link">
-        <Link
-          href="/staff/requests"
-          className="btn sm ghost"
-          {...(pendingRequests === null
-            ? { title: 'The pending count could not be read — open the queue to see it.' }
-            : {})}
-        >
-          Change requests ({pendingRequests ?? '?'})
-        </Link>
-        {/* ADR-0107: who is SpudBros Express, and each person's Payroll ID. */}
-        <Link href="/staff/roster" className="btn sm ghost">
-          Invite list
-        </Link>
-      </div>
 
       <div className="toolbar filters">
         <SegToggle
@@ -311,6 +353,11 @@ export function StaffScreen({
                 <option value="show">Sort: show-rate</option>
                 <option value="newest">Sort: newest</option>
               </Select>
+              {filter === 'inactive' ? (
+                <ColumnChooser columns={inactiveColumns} label="Inactive workers" />
+              ) : (
+                <ColumnChooser columns={directoryColumns} label="Staff" />
+              )}
             </>
           ) : (
             // The Student visa view's own filter (wireframe: All caps ·
@@ -359,46 +406,53 @@ export function StaffScreen({
                   works through: the last shift actually worked, the shifts
                   the leaving released (E8's list), and the P45 request.
                 */
-                <TableScroll label="Inactive workers" fixed pin={2} minWidth="66rem">
+                <TableScroll
+                  label="Inactive workers"
+                  fixed
+                  pin={2}
+                  minWidth={inactiveColumns.minWidth('66rem', LEAD_REM)}
+                >
                   <table className="tbl card-rows">
                     <thead>
                       <tr>
                         {headPicker}
-                        <th>Name</th>
-                        <th className="col-s">Employee ID</th>
-                        <th className="col-m">Left</th>
-                        <th>Reason given</th>
-                        <th>Role(s)</th>
-                        <th className="col-m">Last completed shift</th>
-                        <th className="col-s">Released shifts</th>
-                        <th className="col-m">P45</th>
+                        <ColumnHeads columns={inactiveColumns} />
                       </tr>
                     </thead>
                     <tbody>
                       {shown.map((row) => (
-                        <InactiveTableRow key={row.id} row={row} picker={pickerFor(row)} />
+                        <InactiveTableRow
+                          key={row.id}
+                          row={row}
+                          picker={pickerFor(row)}
+                          columns={inactiveColumns}
+                        />
                       ))}
                     </tbody>
                   </table>
                 </TableScroll>
               ) : (
-                <TableScroll label="Staff" fixed pin={2} minWidth="56rem">
+                <TableScroll
+                  label="Staff"
+                  fixed
+                  pin={2}
+                  minWidth={directoryColumns.minWidth('56rem', LEAD_REM)}
+                >
                   <table className="tbl card-rows">
                     <thead>
                       <tr>
                         {headPicker}
-                        <th>Name</th>
-                        <th className="col-s">Employee ID</th>
-                        <th>Role(s)</th>
-                        <th className="col-xs">Rating</th>
-                        <th className="col-xs">Show-rate</th>
-                        <th className="col-l">Compliance status</th>
-                        <th>Right to work</th>
+                        <ColumnHeads columns={directoryColumns} />
                       </tr>
                     </thead>
                     <tbody>
                       {shown.map((row) => (
-                        <StaffTableRow key={row.id} row={row} picker={pickerFor(row)} />
+                        <StaffTableRow
+                          key={row.id}
+                          row={row}
+                          picker={pickerFor(row)}
+                          columns={directoryColumns}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -478,20 +532,20 @@ function PickBox({ picker, name }: { picker: RowPicker | undefined; name: string
   );
 }
 
-function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
+function StaffTableRow({
+  row,
+  picker,
+  columns,
+}: {
+  row: StaffRow;
+  picker?: RowPicker;
+  columns: Columns<DirectoryColumn>;
+}) {
   const tone = ratingTone(row.rating);
   const atLimit = limitReached(row);
 
-  return (
-    <tr className={picker?.checked ? 'picked' : undefined}>
-      <td className="cell-lead">
-        <PickBox picker={picker} name={row.display_name} />
-        <Avatar
-          name={row.removed ? '#' : row.display_name}
-          src={row.removed ? undefined : (row.photo_url ?? undefined)}
-          size="sm"
-        />
-      </td>
+  const cells: Record<DirectoryColumn, ReactNode> = {
+    name: (
       <td className="name cell-title">
         {/*
           §9.6: "The name is clickable → the profile." A removed worker's
@@ -520,12 +574,16 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
           </>
         ) : null}
       </td>
+    ),
+    'employee-id': (
       <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
         {row.payroll_id && !row.removed ? (
           <div className="xs muted">Payroll {row.payroll_id}</div>
         ) : null}
       </td>
+    ),
+    roles: (
       <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
@@ -533,12 +591,18 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
           ))}
         </div>
       </td>
+    ),
+    rating: (
       <td data-label="Rating">
         <span className={`rating ${tone}`}>★ {formatRating(row.rating)}</span>
       </td>
+    ),
+    'show-rate': (
       <td data-label="Show-rate" className="mono">
         {formatShowRate(row.reliability)}
       </td>
+    ),
+    status: (
       <td data-label="Compliance status" className="status">
         <StatusPill row={row} />
         {atLimit ? (
@@ -564,9 +628,25 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
           <span className="sub">Left: {row.leave_reason}</span>
         ) : null}
       </td>
+    ),
+    rtw: (
       <td data-label="Right to work" className="sm muted">
         {describeRightToWork(row)}
       </td>
+    ),
+  };
+
+  return (
+    <tr className={picker?.checked ? 'picked' : undefined}>
+      <td className="cell-lead">
+        <PickBox picker={picker} name={row.display_name} />
+        <Avatar
+          name={row.removed ? '#' : row.display_name}
+          src={row.removed ? undefined : (row.photo_url ?? undefined)}
+          size="sm"
+        />
+      </td>
+      <ColumnCells columns={columns} cells={cells} />
     </tr>
   );
 }
@@ -577,25 +657,35 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
  * the P45 request (§9.6, §10.6). "Issued" has no column yet — the office
  * marks nothing when the P45 goes out, so the pill stays at Requested.
  */
-function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
+function InactiveTableRow({
+  row,
+  picker,
+  columns,
+}: {
+  row: StaffRow;
+  picker?: RowPicker;
+  columns: Columns<InactiveColumn>;
+}) {
   const format = useTimeFormat();
-  return (
-    <tr className={picker?.checked ? 'picked' : undefined}>
-      <td className="cell-lead">
-        <PickBox picker={picker} name={row.display_name} />
-        <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
-      </td>
+  const cells: Record<InactiveColumn, ReactNode> = {
+    name: (
       <td className="name cell-title">
         <Link href={`/staff/${row.id}`} className="staff-name">
           {row.display_name}
         </Link>
       </td>
+    ),
+    'employee-id': (
       <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
       </td>
+    ),
+    left: (
       <td data-label="Left" className="mono sm">
         {formatUkStamp(row.left_at, format)}
       </td>
+    ),
+    reason: (
       <td data-label="Reason given">
         {row.leave_reason ? (
           `“${row.leave_reason}”`
@@ -603,6 +693,8 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
           <span className="muted">— no reason given</span>
         )}
       </td>
+    ),
+    roles: (
       <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
@@ -610,6 +702,8 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
           ))}
         </div>
       </td>
+    ),
+    'last-shift': (
       <td data-label="Last completed shift" className="sm">
         {row.last_shift_at ? (
           formatUkDate(row.last_shift_at)
@@ -617,9 +711,13 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
           <span className="muted">— none worked</span>
         )}
       </td>
+    ),
+    released: (
       <td data-label="Released shifts" className="sm mono">
         {row.released_shift_count}
       </td>
+    ),
+    p45: (
       <td data-label="P45">
         {row.p45_requested_at ? (
           <>
@@ -630,6 +728,16 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
           <span className="muted">—</span>
         )}
       </td>
+    ),
+  };
+
+  return (
+    <tr className={picker?.checked ? 'picked' : undefined}>
+      <td className="cell-lead">
+        <PickBox picker={picker} name={row.display_name} />
+        <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
+      </td>
+      <ColumnCells columns={columns} cells={cells} />
     </tr>
   );
 }

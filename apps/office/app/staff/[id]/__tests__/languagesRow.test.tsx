@@ -42,7 +42,8 @@ describe('the Languages row (ADR-0080)', () => {
     const html = render({});
     expect(html).toContain('>English<');
     expect(html).toContain('Spanish');
-    expect(html.match(/aria-label="Remove"/g)?.length).toBe(1);
+    // One named × (release audit: every chip's was just "Remove").
+    expect(html.match(/aria-label="Remove [^"]+"/g)).toEqual(['aria-label="Remove Spanish"']);
     expect(html).toContain('Add a language…');
     // Spanish is already chosen, so it is not offered again.
     expect(html).not.toContain('<option value="Spanish">');

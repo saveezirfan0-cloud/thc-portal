@@ -1,14 +1,44 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, EmptyState, Note, Panel, Pill, TableScroll } from '@thc/ui';
+import {
+  Alert,
+  Button,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
+  EmptyState,
+  Note,
+  Panel,
+  Pill,
+  TableScroll,
+  useColumns,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { RoleModal } from './RoleModal';
 import { DeleteRoleModal } from './DeleteRoleModal';
 import { DEFAULT_PAY_FLOOR_PENCE, formatAddition, formatPounds, toPence } from './money';
 import type { Role } from './types';
 import './roles.css';
+
+/**
+ * The catalogue's columns, declared once (ADR-0139). The three rates are
+ * money: the page is finance-only already (ADR-0056), and the flag keeps
+ * them out of the chooser should that ever change (ADR-0061).
+ */
+const COLUMNS = [
+  { id: 'role', label: 'Role', required: true, width: 'l' },
+  { id: 'description', label: 'Description' },
+  { id: 'pay', label: 'Staff pay rate ✎', className: 'money', finance: true },
+  { id: 'holiday', label: 'Holiday +12.07%', className: 'money', finance: true },
+  { id: 'final', label: 'Final rate', className: 'money', finance: true },
+  { id: 'cards', label: 'On rate cards' },
+  { id: 'actions', label: 'Actions', required: true, className: 'actions cell-actions' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 export interface RolesScreenProps {
   roles: Role[];
@@ -32,6 +62,7 @@ export function RolesScreen({
   payFloorPence = DEFAULT_PAY_FLOOR_PENCE,
 }: RolesScreenProps) {
   const router = useRouter();
+  const columns = useColumns('roles', COLUMNS);
   /** `null` = closed, `'new'` = create, a role = edit it. */
   const [editing, setEditing] = useState<Role | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Role | null>(null);
@@ -84,6 +115,7 @@ export function RolesScreen({
           <span className="hol-lbl">
             <Pill tone="amber">Holiday +12.07%</Pill>
             <span className="muted xs">calculated, never stored</span>
+            <ColumnChooser columns={columns} label="Roles" />
           </span>
         }
         flush
@@ -98,72 +130,83 @@ export function RolesScreen({
               </p>
             </EmptyState>
           ) : (
-            <TableScroll label="Roles" minWidth="48rem">
+            <TableScroll label="Roles" minWidth={columns.minWidth('48rem')}>
               <table className="tbl card-rows">
                 <thead>
                   <tr>
-                    <th className="col-l">Role</th>
-                    <th>Description</th>
-                    <th className="money">Staff pay rate ✎</th>
-                    <th className="money">Holiday +12.07%</th>
-                    <th className="money">Final rate</th>
-                    <th>On rate cards</th>
-                    <th className="actions cell-actions">Actions</th>
+                    <ColumnHeads columns={columns} />
                   </tr>
                 </thead>
                 <tbody>
-                  {roles.map((role) => (
-                    <tr key={role.id}>
-                      <td className="cell-title">
-                        <button
-                          type="button"
-                          className="role-name"
-                          onClick={() => setEditing(role)}
-                        >
-                          {role.name}
-                        </button>
-                      </td>
-                      <td className="sm muted desc">{role.description ?? '—'}</td>
-                      <td data-label="Staff pay rate" className="money">
-                        {/* Release audit L8: the ✎ in the header promised the
-                            figure opens the edit; now it does, as the client
-                            card's charge rate does. */}
-                        <button
-                          type="button"
-                          className="rate-open"
-                          title="Edit staff pay rate"
-                          aria-label={`Edit staff pay rate for ${role.name}`}
-                          onClick={() => setEditing(role)}
-                        >
-                          {formatPounds(toPence(role.pay_rate))}
-                        </button>
-                      </td>
-                      <td data-label="Holiday +12.07%" className="money hol">
-                        {formatAddition(toPence(role.holiday_rate))}
-                      </td>
-                      <td data-label="Final rate" className="money fin">
-                        {formatPounds(toPence(role.final_rate))}
-                      </td>
-                      <td data-label="On rate cards" className="sm">
-                        {role.rate_card_count === 0 ? (
-                          <span className="muted">0 clients</span>
-                        ) : (
-                          <>
-                            {role.rate_card_count}{' '}
-                            {role.rate_card_count === 1 ? 'client' : 'clients'}
-                          </>
-                        )}
-                      </td>
-                      <td className="actions cell-actions">
-                        <Button size="sm" onClick={() => setEditing(role)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" tone="danger" onClick={() => setDeleting(role)}>
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {roles.map((role) => {
+                    const cells: Record<ColumnId, ReactNode> = {
+                      role: (
+                        <td className="cell-title">
+                          <button
+                            type="button"
+                            className="role-name"
+                            onClick={() => setEditing(role)}
+                          >
+                            {role.name}
+                          </button>
+                        </td>
+                      ),
+                      description: <td className="sm muted desc">{role.description ?? '—'}</td>,
+                      pay: (
+                        <td data-label="Staff pay rate" className="money">
+                          {/* Release audit L8: the ✎ in the header promised the
+                              figure opens the edit; now it does, as the client
+                              card's charge rate does. */}
+                          <button
+                            type="button"
+                            className="rate-open"
+                            title="Edit staff pay rate"
+                            aria-label={`Edit staff pay rate for ${role.name}`}
+                            onClick={() => setEditing(role)}
+                          >
+                            {formatPounds(toPence(role.pay_rate))}
+                          </button>
+                        </td>
+                      ),
+                      holiday: (
+                        <td data-label="Holiday +12.07%" className="money hol">
+                          {formatAddition(toPence(role.holiday_rate))}
+                        </td>
+                      ),
+                      final: (
+                        <td data-label="Final rate" className="money fin">
+                          {formatPounds(toPence(role.final_rate))}
+                        </td>
+                      ),
+                      cards: (
+                        <td data-label="On rate cards" className="sm">
+                          {role.rate_card_count === 0 ? (
+                            <span className="muted">0 clients</span>
+                          ) : (
+                            <>
+                              {role.rate_card_count}{' '}
+                              {role.rate_card_count === 1 ? 'client' : 'clients'}
+                            </>
+                          )}
+                        </td>
+                      ),
+                      actions: (
+                        <td className="actions cell-actions">
+                          <Button size="sm" onClick={() => setEditing(role)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" tone="danger" onClick={() => setDeleting(role)}>
+                            Delete
+                          </Button>
+                        </td>
+                      ),
+                    };
+                    return (
+                      <tr key={role.id}>
+                        <ColumnCells columns={columns} cells={cells} />
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </TableScroll>

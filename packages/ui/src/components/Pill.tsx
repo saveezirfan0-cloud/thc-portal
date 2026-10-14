@@ -44,6 +44,12 @@ export interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
   /** Hairline chip on the page ground, e.g. "Wave 2 — not qualified here". */
   outline?: boolean;
   onRemove?: () => void;
+  /**
+   * The × button's accessible name. Defaults to "Remove <the chip's text>"
+   * when the chip is plain text — a row of chips that were all "Remove"
+   * told a screen reader nothing about which one it was on.
+   */
+  removeLabel?: string;
   children?: ReactNode;
 }
 
@@ -51,10 +57,16 @@ export function Chip({
   tone = 'neutral',
   outline,
   onRemove,
+  removeLabel,
   className,
   children,
   ...rest
 }: ChipProps) {
+  const name =
+    removeLabel ??
+    (typeof children === 'string' || typeof children === 'number'
+      ? `Remove ${children}`
+      : 'Remove');
   return (
     <span
       className={clsx('chip', tone !== 'neutral' && tone, outline && 'outline', className)}
@@ -62,7 +74,7 @@ export function Chip({
     >
       {children}
       {onRemove ? (
-        <button type="button" className="x" aria-label="Remove" onClick={onRemove}>
+        <button type="button" className="x" aria-label={name} onClick={onRemove}>
           ×
         </button>
       ) : null}

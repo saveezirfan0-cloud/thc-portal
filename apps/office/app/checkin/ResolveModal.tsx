@@ -2,7 +2,16 @@
 
 import { useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Alert, Button, Input, Modal, Note, Textarea, TimeField, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  Button,
+  Modal,
+  Note,
+  Textarea,
+  TimeField,
+  UkDateField,
+  useTimeFormat,
+} from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, ukInputLabel, viewerZone } from '@thc/domain';
 import { resolveViolation } from './actions';
 import { flaggedAs } from './log';
@@ -275,12 +284,12 @@ function UkDateTimeField({
         {label}
       </span>
       <div className="dt2">
-        <Input
-          type="date"
-          mono
-          aria-label="Date"
+        {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
+        <UkDateField
+          label="Date (UK)"
+          labelHidden
           value={date}
-          onChange={(e) => set(e.target.value, time)}
+          onChange={(next) => set(next, time)}
         />
         <TimeField
           aria-label="Time"

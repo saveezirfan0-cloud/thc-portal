@@ -1,9 +1,32 @@
 'use client';
 
-import { Avatar, EmptyState, Note, Panel, Pill, TableScroll } from '@thc/ui';
+import type { ReactNode } from 'react';
+import {
+  Avatar,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
+  EmptyState,
+  Note,
+  Panel,
+  Pill,
+  TableScroll,
+  useColumns,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { capReason, employeeId, formatUkDate, matchesCapFilter } from './staff';
 import type { CapFilter } from './staff';
 import type { StudentRow } from './types';
+
+/** The view's columns, declared once (ADR-0139); Worker stays first. */
+const COLUMNS = [
+  { id: 'worker', label: 'Worker', required: true, width: 'l' },
+  { id: 'cap', label: 'Current weekly cap' },
+  { id: 'evidence', label: 'Evidence set' },
+  { id: 'rtw', label: 'Right-to-work expiry', width: 'm' },
+  { id: 'status', label: 'Status', width: 's' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 export interface StudentVisaViewProps {
   students: StudentRow[];
@@ -32,6 +55,7 @@ export interface StudentVisaViewProps {
  * and the days left on the visa once it is inside the 60-day alert window.
  */
 export function StudentVisaView({ students, query, capFilter = 'all' }: StudentVisaViewProps) {
+  const columns = useColumns('staff.student', COLUMNS);
   const needle = query.trim().toLowerCase();
   // The KPI tiles above count the whole population; the table follows the
   // toolbar's cap filter and search.
@@ -80,9 +104,12 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
       <Panel
         title="Student visa · caps and evidence"
         actions={
-          <span className="muted sm">
-            the whole student population in one place, not one profile at a time
-          </span>
+          <>
+            <span className="muted sm">
+              the whole student population in one place, not one profile at a time
+            </span>
+            <ColumnChooser columns={columns} label="Student visa" />
+          </>
         }
         flush
       >
@@ -93,66 +120,77 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
               <p>This view holds every worker on the International student branch.</p>
             </EmptyState>
           ) : (
-            <TableScroll label="Student visa workers" minWidth="44rem">
+            <TableScroll label="Student visa workers" minWidth={columns.minWidth('44rem')}>
               <table className="tbl card-rows">
                 <thead>
                   <tr>
-                    <th className="col-l">Worker</th>
-                    <th>Current weekly cap</th>
-                    <th>Evidence set</th>
-                    <th className="col-m">Right-to-work expiry</th>
-                    <th className="col-s">Status</th>
+                    <ColumnHeads columns={columns} />
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="cell-title">
-                        <div className="person">
-                          <Avatar
-                            name={row.display_name}
-                            src={row.photo_url ?? undefined}
-                            size="sm"
-                          />
-                          <div>
-                            <div className="n">{row.display_name}</div>
-                            <div className="s">{employeeId(row.employee_id)}</div>
+                  {rows.map((row) => {
+                    const cells: Record<ColumnId, ReactNode> = {
+                      worker: (
+                        <td className="cell-title">
+                          <div className="person">
+                            <Avatar
+                              name={row.display_name}
+                              src={row.photo_url ?? undefined}
+                              size="sm"
+                            />
+                            <div>
+                              <div className="n">{row.display_name}</div>
+                              <div className="s">{employeeId(row.employee_id)}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td data-label="Current weekly cap">
-                        <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
-                        <span className="sub">
-                          {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
-                          {row.weekly_booked_hours !== null
-                            ? ` · ${row.weekly_booked_hours} h booked this week`
-                            : null}
-                          {releaseLine(row)}
-                        </span>
-                      </td>
-                      <td data-label="Evidence set" className="sm">
-                        <Evidence row={row} />
-                      </td>
-                      <td data-label="Right-to-work expiry" className="mono sm">
-                        {row.right_to_work_until ? formatUkDate(row.right_to_work_until) : '—'}
-                        {row.rtw_days_left !== null && row.rtw_days_left <= 60 ? (
-                          <>
-                            {' '}
-                            <Pill tone={row.rtw_days_left <= 14 ? 'coral' : 'amber'}>
-                              {row.rtw_days_left} d
-                            </Pill>
-                          </>
-                        ) : null}
-                      </td>
-                      <td data-label="Status">
-                        {row.status === 'blocked' ? (
-                          <Pill tone="coral">Blocked</Pill>
-                        ) : (
-                          <Pill tone="green">Compliant</Pill>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      ),
+                      cap: (
+                        <td data-label="Current weekly cap">
+                          <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
+                          <span className="sub">
+                            {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
+                            {row.weekly_booked_hours !== null
+                              ? ` · ${row.weekly_booked_hours} h booked this week`
+                              : null}
+                            {releaseLine(row)}
+                          </span>
+                        </td>
+                      ),
+                      evidence: (
+                        <td data-label="Evidence set" className="sm">
+                          <Evidence row={row} />
+                        </td>
+                      ),
+                      rtw: (
+                        <td data-label="Right-to-work expiry" className="mono sm">
+                          {row.right_to_work_until ? formatUkDate(row.right_to_work_until) : '—'}
+                          {row.rtw_days_left !== null && row.rtw_days_left <= 60 ? (
+                            <>
+                              {' '}
+                              <Pill tone={row.rtw_days_left <= 14 ? 'coral' : 'amber'}>
+                                {row.rtw_days_left} d
+                              </Pill>
+                            </>
+                          ) : null}
+                        </td>
+                      ),
+                      status: (
+                        <td data-label="Status">
+                          {row.status === 'blocked' ? (
+                            <Pill tone="coral">Blocked</Pill>
+                          ) : (
+                            <Pill tone="green">Compliant</Pill>
+                          )}
+                        </td>
+                      ),
+                    };
+                    return (
+                      <tr key={row.id}>
+                        <ColumnCells columns={columns} cells={cells} />
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </TableScroll>

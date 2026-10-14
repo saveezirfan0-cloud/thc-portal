@@ -1,8 +1,23 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Select, TableScroll, Tabs, toast } from '@thc/ui';
+import {
+  Button,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
+  EmptyState,
+  Note,
+  Panel,
+  Select,
+  TableScroll,
+  Tabs,
+  toast,
+  useColumns,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { Pager } from '../_components/Pager';
 import {
@@ -18,6 +33,28 @@ import { DeleteVenueModal } from './DeleteVenueModal';
 import { formatCoordinates } from './geo';
 import type { Venue, VenueType } from './types';
 import './venues.css';
+
+/**
+ * The list's columns, declared once (ADR-0139): the person can hide and
+ * reorder all but Venue (first) and Actions (last).
+ */
+const COLUMNS = [
+  { id: 'name', label: 'Venue', required: true },
+  { id: 'address', label: 'Address' },
+  { id: 'type', label: 'Type', width: 'm' },
+  { id: 'radius', label: 'Geofence (m)', width: 's', className: 'num' },
+  { id: 'events', label: 'Events', width: 'xs', className: 'num' },
+  { id: 'added', label: 'Date added', width: 's' },
+  { id: 'by', label: 'Added by', width: 's' },
+  {
+    id: 'actions',
+    label: 'Actions',
+    required: true,
+    width: 'm',
+    className: 'actions cell-actions',
+  },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 type Tab = 'list' | 'map';
 type RadiusFilter = 'all' | 'standard' | 'custom';
@@ -75,6 +112,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     [url.by, url.from, url.to],
   );
   const sort = oneOf(url.sort, SORTS, 'name');
+  const columns = useColumns('venues', COLUMNS);
   const pageSize = sizeOf(url.size, PAGE_SIZES, DEFAULT_PAGE_SIZE);
   // Any change to the search, a filter or the sort goes back to page 1:
   // the page belongs to the list it was turned on.
@@ -246,6 +284,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
             <option value="oldest">Sort: oldest added</option>
             <option value="events">Sort: most events</option>
           </Select>
+          {tab === 'list' ? <ColumnChooser columns={columns} label="Venues" /> : null}
           {filtersActive ? (
             <Button size="sm" tone="ghost" onClick={clearFilters}>
               Clear filters
@@ -276,65 +315,79 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                   </p>
                 </EmptyState>
               ) : (
-                <TableScroll label="Venues" fixed minWidth="58rem">
+                <TableScroll label="Venues" fixed minWidth={columns.minWidth('58rem')}>
                   <table className="tbl card-rows">
                     <thead>
                       <tr>
-                        <th>Venue</th>
-                        <th>Address</th>
-                        <th className="col-m">Type</th>
-                        <th className="num col-s">Geofence (m)</th>
-                        <th className="num col-xs">Events</th>
-                        <th className="col-s">Date added</th>
-                        <th className="col-s">Added by</th>
-                        <th className="actions cell-actions col-m">Actions</th>
+                        <ColumnHeads columns={columns} />
                       </tr>
                     </thead>
                     <tbody>
-                      {shown.map((venue) => (
-                        <tr key={venue.id}>
-                          <td className="name cell-title">
-                            <button
-                              type="button"
-                              className="venue-name"
-                              onClick={() => setEditing(venue)}
-                            >
-                              {venue.name}
-                            </button>
-                            <span className="sub mono">{formatCoordinates(venue)}</span>
-                          </td>
-                          <td data-label="Address">{venue.address}</td>
-                          <td data-label="Type" className="vt">
-                            {venue.venue_type_label}
-                          </td>
-                          <td data-label="Geofence (m)" className="num">
-                            {venue.geofence_radius_m}
-                            {venue.geofence_radius_m !== venue.default_radius_m ? (
-                              <span className="radius-note">default {venue.default_radius_m}</span>
-                            ) : null}
-                          </td>
-                          <td data-label="Events" className="num">
-                            {venue.events_past}
-                          </td>
-                          <td data-label="Date added" className="sm">
-                            {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
-                            <time dateTime={venue.created_at}>
-                              {formatDateAdded(venue.created_at)}
-                            </time>
-                          </td>
-                          <td data-label="Added by" className="sm">
-                            {venue.created_by_name ?? <span className="muted">—</span>}
-                          </td>
-                          <td className="actions cell-actions">
-                            <Button size="sm" onClick={() => setEditing(venue)}>
-                              Edit
-                            </Button>
-                            <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
-                              Delete
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
+                      {shown.map((venue) => {
+                        const cells: Record<ColumnId, ReactNode> = {
+                          name: (
+                            <td className="name cell-title">
+                              <button
+                                type="button"
+                                className="venue-name"
+                                onClick={() => setEditing(venue)}
+                              >
+                                {venue.name}
+                              </button>
+                              <span className="sub mono">{formatCoordinates(venue)}</span>
+                            </td>
+                          ),
+                          address: <td data-label="Address">{venue.address}</td>,
+                          type: (
+                            <td data-label="Type" className="vt">
+                              {venue.venue_type_label}
+                            </td>
+                          ),
+                          radius: (
+                            <td data-label="Geofence (m)" className="num">
+                              {venue.geofence_radius_m}
+                              {venue.geofence_radius_m !== venue.default_radius_m ? (
+                                <span className="radius-note">
+                                  default {venue.default_radius_m}
+                                </span>
+                              ) : null}
+                            </td>
+                          ),
+                          events: (
+                            <td data-label="Events" className="num">
+                              {venue.events_past}
+                            </td>
+                          ),
+                          added: (
+                            <td data-label="Date added" className="sm">
+                              {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                              <time dateTime={venue.created_at}>
+                                {formatDateAdded(venue.created_at)}
+                              </time>
+                            </td>
+                          ),
+                          by: (
+                            <td data-label="Added by" className="sm">
+                              {venue.created_by_name ?? <span className="muted">—</span>}
+                            </td>
+                          ),
+                          actions: (
+                            <td className="actions cell-actions">
+                              <Button size="sm" onClick={() => setEditing(venue)}>
+                                Edit
+                              </Button>
+                              <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
+                                Delete
+                              </Button>
+                            </td>
+                          ),
+                        };
+                        return (
+                          <tr key={venue.id}>
+                            <ColumnCells columns={columns} cells={cells} />
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </TableScroll>

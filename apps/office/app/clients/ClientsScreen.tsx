@@ -1,9 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { type MouseEvent, useMemo, useState } from 'react';
+import { type MouseEvent, type ReactNode, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Chip, EmptyState, Note, Panel, Select, TableScroll } from '@thc/ui';
+import {
+  Alert,
+  Button,
+  Chip,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
+  EmptyState,
+  Note,
+  Panel,
+  Select,
+  TableScroll,
+  useColumns,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { OfficeShell } from '../_components/OfficeShell';
 import { Pager } from '../_components/Pager';
@@ -45,6 +59,24 @@ const SORTS: readonly Sort[] = ['name', 'events', 'margin', 'newest', 'oldest'];
 const POLICIES: readonly PolicyFilter[] = ['all', 'paid', 'unpaid'];
 const BUFFERS: readonly BufferFilter[] = ['all', 'paid', 'strict'];
 
+/**
+ * The directory's columns, declared once (ADR-0139). Client stays first;
+ * Avg margin is money and is neither drawn nor offered without finance
+ * (ADR-0061).
+ */
+const COLUMNS = [
+  { id: 'client', label: 'Client', required: true },
+  { id: 'contact', label: 'Contact' },
+  { id: 'phone', label: 'Phone', className: 'col-phone', rem: 9 },
+  { id: 'roles', label: 'Rate card roles' },
+  { id: 'policies', label: 'Policies', width: 'm' },
+  { id: 'events', label: 'Events', width: 'xs', className: 'num' },
+  { id: 'margin', label: 'Avg margin', width: 's', className: 'num', finance: true },
+  { id: 'added', label: 'Date added', width: 's' },
+  { id: 'by', label: 'Added by', width: 's' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
+
 /** Search, sort, filters and page live in the URL (release audit L1). */
 const QUERY = {
   q: '',
@@ -85,6 +117,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
     () => ({ by: url.by, from: url.from, to: url.to }),
     [url.by, url.from, url.to],
   );
+  const columns = useColumns('clients', COLUMNS, { finance: ratesVisible });
   /** `null` = closed, `'new'` = create, a client = edit it. */
   const [editing, setEditing] = useState<Client | 'new' | null>(null);
 
@@ -202,6 +235,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
           <option value="oldest">Sort: oldest added</option>
           {ratesVisible ? <option value="margin">Sort: margin</option> : null}
         </Select>
+        <ColumnChooser columns={columns} label="Clients" />
         {ratesVisible ? (
           <div className="right">
             <span className="muted sm">
@@ -281,69 +315,74 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
               </p>
             </EmptyState>
           ) : (
-            <TableScroll label="Clients" fixed minWidth="58rem">
+            <TableScroll label="Clients" fixed minWidth={columns.minWidth('58rem')}>
               <table className="tbl card-rows clients-list">
                 <thead>
                   <tr>
-                    <th>Client</th>
-                    <th>Contact</th>
-                    <th className="col-phone">Phone</th>
-                    <th>Rate card roles</th>
-                    <th className="col-m">Policies</th>
-                    <th className="num col-xs">Events</th>
-                    {ratesVisible ? <th className="num col-s">Avg margin</th> : null}
-                    <th className="col-s">Date added</th>
-                    <th className="col-s">Added by</th>
+                    <ColumnHeads columns={columns} />
                   </tr>
                 </thead>
                 <tbody>
-                  {shown.map((client) => (
-                    <tr key={client.id} className="clickable" onClick={openClient(client.id)}>
-                      <td className="name cell-title">
-                        {/*
-                        The name opens the card (§9.7), not the edit modal:
-                        the card is where the rate card, the qualified pool
-                        and this client's events live, and Edit is one
-                        button on it. The row opens it too (openClient).
-                      */}
-                        <Link href={`/clients/${client.id}`} className="client-name">
-                          {client.name}
-                        </Link>
-                        <span className="sub">{client.staff_contact_point}</span>
-                      </td>
-                      <td data-label="Contact">
-                        {client.contact_name}
-                        <span className="sub">{describeEmails(client.contact_emails)}</span>
-                      </td>
-                      <td data-label="Phone" className="mono sm client-phone">
-                        {client.phone}
-                      </td>
-                      <td data-label="Rate card roles">
-                        {client.rate_card_roles.length === 0 ? (
-                          <span className="muted sm">no rate card yet</span>
-                        ) : (
-                          <div className="chips">
-                            {client.rate_card_roles.map((role) => (
-                              <Chip key={role}>{role}</Chip>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td data-label="Policies" className="sm client-policies">
-                        <span className="policy">
-                          <span className="muted">Breaks:</span>{' '}
-                          {client.pays_breaks ? 'paid' : 'unpaid'}
-                        </span>{' '}
-                        ·{' '}
-                        <span className="policy">
-                          <span className="muted">Buffer:</span>{' '}
-                          {client.pays_buffer ? 'paid' : 'strict'}
-                        </span>
-                      </td>
-                      <td data-label="Events" className="num">
-                        {client.event_count}
-                      </td>
-                      {ratesVisible ? (
+                  {shown.map((client) => {
+                    const cells: Record<ColumnId, ReactNode> = {
+                      client: (
+                        <td className="name cell-title">
+                          {/*
+                            The name opens the card (§9.7), not the edit modal:
+                            the card is where the rate card, the qualified pool
+                            and this client's events live, and Edit is one
+                            button on it. The row opens it too (openClient).
+                          */}
+                          <Link href={`/clients/${client.id}`} className="client-name">
+                            {client.name}
+                          </Link>
+                          <span className="sub">{client.staff_contact_point}</span>
+                        </td>
+                      ),
+                      contact: (
+                        <td data-label="Contact">
+                          {client.contact_name}
+                          <span className="sub">{describeEmails(client.contact_emails)}</span>
+                        </td>
+                      ),
+                      phone: (
+                        <td data-label="Phone" className="mono sm client-phone">
+                          {client.phone}
+                        </td>
+                      ),
+                      roles: (
+                        <td data-label="Rate card roles">
+                          {client.rate_card_roles.length === 0 ? (
+                            <span className="muted sm">no rate card yet</span>
+                          ) : (
+                            <div className="chips">
+                              {client.rate_card_roles.map((role) => (
+                                <Chip key={role}>{role}</Chip>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      ),
+                      policies: (
+                        <td data-label="Policies" className="sm client-policies">
+                          <span className="policy">
+                            <span className="muted">Breaks:</span>{' '}
+                            {client.pays_breaks ? 'paid' : 'unpaid'}
+                          </span>{' '}
+                          ·{' '}
+                          <span className="policy">
+                            <span className="muted">Buffer:</span>{' '}
+                            {client.pays_buffer ? 'paid' : 'strict'}
+                          </span>
+                        </td>
+                      ),
+                      events: (
+                        <td data-label="Events" className="num">
+                          {client.event_count}
+                        </td>
+                      ),
+                      // ADR-0061: only drawn when the column is offered at all.
+                      margin: (
                         <td data-label="Avg margin" className="num margin">
                           {client.avg_margin_pct === null ? (
                             <span className="muted">—</span>
@@ -351,18 +390,27 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                             `${client.avg_margin_pct.toFixed(1)}%`
                           )}
                         </td>
-                      ) : null}
-                      <td data-label="Date added" className="sm client-nowrap">
-                        {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
-                        <time dateTime={client.created_at}>
-                          {formatDateAdded(client.created_at)}
-                        </time>
-                      </td>
-                      <td data-label="Added by" className="sm client-nowrap">
-                        {client.created_by_name ?? <span className="muted">—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                      ),
+                      added: (
+                        <td data-label="Date added" className="sm client-nowrap">
+                          {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                          <time dateTime={client.created_at}>
+                            {formatDateAdded(client.created_at)}
+                          </time>
+                        </td>
+                      ),
+                      by: (
+                        <td data-label="Added by" className="sm client-nowrap">
+                          {client.created_by_name ?? <span className="muted">—</span>}
+                        </td>
+                      ),
+                    };
+                    return (
+                      <tr key={client.id} className="clickable" onClick={openClient(client.id)}>
+                        <ColumnCells columns={columns} cells={cells} />
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </TableScroll>

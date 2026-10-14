@@ -1,12 +1,41 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { clsx } from 'clsx';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { UK_DATE_PLACEHOLDER, readUkDate, typeUkDate, ukDateText } from './ukdate';
 
+export interface UkDateFieldProps {
+  /** The field's name for people. Visible unless `labelHidden`. */
+  label: ReactNode;
+  /**
+   * Keep the label for a screen reader only — for a filter row whose
+   * placeholder and neighbours already say what the box is ("Added from").
+   */
+  labelHidden?: boolean;
+  /** Controlled: `yyyy-mm-dd`, or '' for no date. */
+  value?: string;
+  /** Uncontrolled: the first value, for a plain `<form>`. */
+  defaultValue?: string;
+  /** Called with `yyyy-mm-dd`, or '' when the box is emptied or left wrong. */
+  onChange?: (iso: string) => void;
+  /**
+   * Submitted with a `<form>` as `yyyy-mm-dd` (a hidden input) — the typed
+   * box itself carries the UK text and is never submitted.
+   */
+  name?: string;
+  /** An error from outside the field (a reversed range); the field's own wins. */
+  error?: string | null;
+  hint?: ReactNode;
+  disabled?: boolean;
+  required?: boolean;
+  /** Bounds for the calendar picker, `yyyy-mm-dd`. Typing is not clamped. */
+  min?: string;
+  max?: string;
+  className?: string;
+}
+
 /**
- * "From (UK date)" / "To (UK date)" on the event list (ADR-0049, ADR-0133).
- *
- * A text box typed dd/mm/yyyy, never a bare `<input type="date">`: that one
+ * A date typed dd/mm/yyyy, never a bare `<input type="date">`: that one
  * draws its value in the device's locale, so a US-English browser showed
  * mm/dd/yyyy under a "UK date" label (the reason CLAUDE.md bans
  * `<input type="time">` for `TimeField`). The typed box is the field — it
@@ -18,75 +47,84 @@ import { UK_DATE_PLACEHOLDER, readUkDate, typeUkDate, ukDateText } from './ukdat
  * the device's order never reaches the screen. It is a pointer shortcut to
  * the same value, kept out of the Tab order and the accessibility tree.
  *
- * `value` is `yyyy-mm-dd` or '' (the address bar's form, window.ts). A
- * complete, real day is applied as it is typed; an empty box removes the
- * bound; anything else is left unapplied while typing and, once the
- * customer leaves the box, said in words — and the bound is removed, so the
- * list is never filtered by a date the box does not show.
+ * A complete, real day is applied as it is typed; an empty box removes the
+ * value; anything else is left unapplied while typing and, once the reader
+ * leaves the box, said in words — and the value is removed, so nothing is
+ * filtered or saved by a date the box does not show.
+ *
+ * Shared by the Client Portal's list filters (ADR-0133) and the Back
+ * Office's date fields (ADR-0140).
  */
 export function UkDateField({
   label,
+  labelHidden,
   value,
+  defaultValue = '',
   onChange,
+  name,
   error,
+  hint,
+  disabled,
+  required,
+  min,
+  max,
   className,
-}: {
-  label: string;
-  value: string;
-  onChange: (iso: string) => void;
-  /** An error from outside the field (a reversed range); the field's own wins. */
-  error?: string | null;
-  className?: string;
-}) {
+}: UkDateFieldProps) {
   const id = useId();
   const noteId = `${id}-note`;
-  const [text, setText] = useState(() => ukDateText(value));
-  const [own, setOwn] = useState<string | null>(null);
+  const controlled = value !== undefined;
+  const [own, setOwnValue] = useState(defaultValue);
+  const current = controlled ? value : own;
+  const [text, setText] = useState(() => ukDateText(current));
+  const [problem, setProblem] = useState<string | null>(null);
   // The value this field last applied, so a change from outside (Clear
   // filters, Back, a hand-edited address) is told apart from its own echo.
-  const applied = useRef(value);
+  const applied = useRef(current);
 
   useEffect(() => {
-    if (value === applied.current) return;
-    applied.current = value;
-    setText(ukDateText(value));
-    setOwn(null);
-  }, [value]);
+    if (current === applied.current) return;
+    applied.current = current;
+    setText(ukDateText(current));
+    setProblem(null);
+  }, [current]);
 
   function apply(iso: string) {
     applied.current = iso;
-    if (iso !== value) onChange(iso);
+    if (!controlled) setOwnValue(iso);
+    if (iso !== current) onChange?.(iso);
   }
 
   function show(next: string) {
     setText(next);
     const reading = readUkDate(next);
     if ('value' in reading) {
-      setOwn(null);
+      setProblem(null);
       apply(reading.value);
     } else if ('error' in reading) {
-      setOwn(reading.error);
+      setProblem(reading.error);
     } else {
       // Half-typed: no complaint yet, and nothing applied.
-      setOwn(null);
+      setProblem(null);
     }
   }
 
   function leave() {
     const reading = readUkDate(text, true);
     if ('error' in reading) {
-      setOwn(reading.error);
+      setProblem(reading.error);
       apply('');
     } else if ('value' in reading) {
       setText(ukDateText(reading.value));
     }
   }
 
-  const shownError = own ?? error ?? null;
+  const shownError = problem ?? error ?? null;
+  const hintId = `${id}-hint`;
+  const describedBy = shownError ? noteId : hint ? hintId : undefined;
 
   return (
-    <div className={className ? `field ukd ${className}` : 'field ukd'}>
-      <label className="label" htmlFor={id}>
+    <div className={clsx('field', 'ukd', className)}>
+      <label className={labelHidden ? 'label sr-only' : 'label'} htmlFor={id}>
         {label}
       </label>
       <div className="input-row ukd-row">
@@ -98,8 +136,10 @@ export function UkDateField({
           autoComplete="off"
           placeholder={UK_DATE_PLACEHOLDER}
           maxLength={10}
+          disabled={disabled}
+          required={required}
           aria-invalid={shownError ? true : undefined}
-          aria-describedby={shownError ? noteId : undefined}
+          aria-describedby={describedBy}
           value={text}
           onChange={(e) => {
             const raw = e.currentTarget.value;
@@ -110,7 +150,7 @@ export function UkDateField({
           }}
           onBlur={leave}
         />
-        <span className="addon ukd-cal">
+        <span className={clsx('addon', 'ukd-cal', disabled && 'disabled')}>
           <svg
             viewBox="0 0 24 24"
             width="16"
@@ -132,6 +172,9 @@ export function UkDateField({
             tabIndex={-1}
             aria-hidden="true"
             title="Pick from a calendar"
+            disabled={disabled}
+            min={min}
+            max={max}
             value={readUkDateValue(text)}
             onClick={(e) => {
               try {
@@ -146,9 +189,14 @@ export function UkDateField({
           />
         </span>
       </div>
+      {name ? <input type="hidden" name={name} value={current} /> : null}
       {shownError ? (
         <span className="error" role="alert" id={noteId}>
           {shownError}
+        </span>
+      ) : hint ? (
+        <span className="hint" id={hintId}>
+          {hint}
         </span>
       ) : null}
     </div>

@@ -49,7 +49,7 @@ describe('the handoff colour table is what ships', () => {
         '--panel': '#ffffff',
         '--line': '#ebe4da',
         '--text': '#241d16',
-        '--muted': '#7a6b5c',
+        '--muted': '#736456',
         '--cyan': '#0e7688',
         '--purple': '#6e45c4',
         '--green': '#1f7a4d',

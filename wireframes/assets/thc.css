@@ -251,6 +251,36 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl td.cell-actions { white-space: nowrap; text-align: right; } .tbl th.cell-actions { text-align: right; }
 /* .filters — a list's filter row: every search, select and date in it is one height (the button height). */
 .filters { --input-h: var(--btn-h); }
+/* Column chooser (ADR-0139) — "Columns" in a list's toolbar opens a labelled dialog: a popover on a desktop,
+   a frosted sheet on a phone. A tick per column, a drag handle AND Move up / Move down (never drag-only);
+   the identifying first column and the actions column are ticked, disabled and held in place. */
+.colchooser { display: inline-flex; position: relative; }
+.toolbar .right:has(> .colchooser) { flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.colchooser-btn.changed { border-color: var(--cyan-line); color: var(--cyan-ink); }
+.colchooser-count { font-family: var(--font-num); font-size: 11px; padding: 0 6px; border-radius: var(--r-pill); background: var(--cyan-dim); color: var(--cyan-ink); }
+.colchooser-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.colchooser-scrim { display: none; }
+.colchooser-pop { position: fixed; z-index: 60; top: var(--pop-top, 56px); right: var(--pop-right, 20px); width: min(22rem, calc(100vw - 32px)); max-height: calc(100dvh - var(--pop-top, 56px) - 16px); display: flex; flex-direction: column; background: radial-gradient(120% 120% at 0% 0%, var(--glow-a), transparent 55%), radial-gradient(120% 120% at 100% 100%, var(--glow-b), transparent 55%), var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-card); color: var(--text); }
+.colchooser-pop.inline { position: relative; top: auto; right: auto; }
+.colchooser-head { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.colchooser-head > div { flex: 1 1 auto; min-width: 0; } .colchooser-head h3 { font-size: 15px; }
+.colchooser-list { list-style: none; margin: 0; padding: 6px 8px; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.colchooser-row { display: flex; align-items: center; gap: 8px; min-height: var(--btn-h); padding: 4px 8px; border-radius: var(--r-sm); }
+.colchooser-row:hover { background: var(--hover); }
+.colchooser-row.dragging { background: var(--cyan-dim); outline: 1px solid var(--cyan-line); }
+.colchooser-handle { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; align-self: stretch; color: var(--muted); cursor: grab; touch-action: none; }
+.colchooser-handle svg { fill: currentColor; } .colchooser-handle.off { visibility: hidden; }
+.colchooser-check { flex: 1 1 auto; min-width: 0; } .colchooser-check .check { align-items: center; }
+.colchooser-check .check-input:disabled + .box.on { color: var(--muted); }
+.colchooser-check .sub { display: block; font-size: 11px; color: var(--muted); }
+.colchooser-moves { flex: none; display: inline-flex; gap: 4px; }
+.colchooser-foot { display: flex; justify-content: space-between; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid var(--line); }
+@media (pointer: coarse) { .colchooser-row { min-height: var(--tap-min); } .colchooser-moves .btn.icon, .colchooser-head .btn.icon, .colchooser-foot .btn, .colchooser-btn { min-height: var(--tap-min); min-width: var(--tap-min); } .colchooser-handle { width: var(--tap-min); } }
+@media (max-width: 760px) {
+  .colchooser-scrim { display: block; position: fixed; inset: 0; z-index: 59; background: var(--scrim-soft); }
+  .colchooser-pop:not(.inline) { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 82dvh; background: radial-gradient(120% 120% at 0% 0%, var(--glow-a), transparent 55%), radial-gradient(120% 120% at 100% 100%, var(--glow-b), transparent 55%), var(--glass-strong); backdrop-filter: blur(26px) saturate(140%); -webkit-backdrop-filter: blur(26px) saturate(140%); border-radius: var(--r-lg) var(--r-lg) 0 0; border-width: 1px 0 0; border-top-color: var(--cyan-line); }
+  .colchooser-row { min-height: var(--tap-min); }
+}
 
 /* ---------------------------------------------------------------------
    5 · BUTTONS
@@ -329,7 +359,8 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 .input:focus { border-color: var(--cyan-ink); box-shadow: 0 0 0 3px var(--focus); }
 .input.readonly, .input[readonly] { color: var(--muted); background: var(--panel-2); }
 .input.err { border-color: var(--coral-ink); }
-.input.mono { font-family: var(--font-mono); letter-spacing: .06em; }
+.input.mono { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+:root[data-style="warm"] .input.mono { letter-spacing: normal; }
 .input-row { display: flex; gap: 0; }
 .input-row .input { flex: 1; }
 .input-row .addon { display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid var(--line); border-left: 0; background: var(--panel-2); color: var(--muted); font-family: var(--font-num); font-size: 11px; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
@@ -770,4 +801,24 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
   .field > .label-row { align-items: center; }
   .field > .label-row > .label-action > :is(a, button) { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 8px; margin-right: -8px; }
   .auth-form .auth-link { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap-min); padding: 0 8px; }
+}
+
+/* ---- mirrors packages/ui (release audit 14.10.2026, package G, ADR-0140) ----
+   "Skip to content", the first Tab stop of every Back Office page; a label
+   kept for screen readers only; the switch's focus ring on its round track;
+   TileGrid compact (two KPIs to a row on a phone); the typed UK date
+   (UkDateField: dd/mm/yyyy text box + a calendar laid over its addon). */
+.skip-link { position: fixed; left: 12px; top: 8px; z-index: 60; transform: translateY(-200%); display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 16px; border-radius: var(--r-pill); background: var(--panel); color: var(--text); border: 1px solid var(--control-line); font-weight: 600; font-size: 13px; text-decoration: none; }
+.skip-link:focus, .skip-link:focus-visible { transform: none; }
+.content:focus { outline: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.switch:focus-visible { outline: none; }
+.switch:focus-visible .track { outline: 2px solid var(--cyan-ink); outline-offset: 2px; }
+.ukd-row .input { min-width: 0; font-variant-numeric: tabular-nums; }
+.ukd-row .ukd-cal { position: relative; padding: 0 12px; color: var(--muted); cursor: pointer; }
+.ukd-row .ukd-native { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+@media (max-width: 760px) {
+  .grid.tilegrid.tiles-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tiles-compact > .kpi { padding: 12px 14px; gap: 4px; }
+  .tiles-compact > .kpi .v { font-size: 24px; }
 }

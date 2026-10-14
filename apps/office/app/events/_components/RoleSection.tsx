@@ -163,25 +163,31 @@ export function RoleSection({
           <Pill tone="amber">{confirmed} confirmed will be asked to re-confirm</Pill>
         ) : null}
         <div className="right">
+          {/* Named per role — every section's switch reads "Auto-assign" on
+              screen (release audit m10). */}
           <Switch
             checked={role.autoAssign}
             onChange={(autoAssign) => onChange({ autoAssign })}
             label="Auto-assign"
+            name={`Auto-assign · Role ${index + 1}${role.roleId ? ` · ${roleName}` : ''}`}
           />
           <Button
             size="sm"
             tone="ghost"
             onClick={onRemove}
             disabled={booked > 0}
-            title={
-              booked > 0
-                ? 'This section has people on it. Withdraw them on the event board first.'
-                : undefined
-            }
+            aria-describedby={booked > 0 ? `${fieldId}-remove-why` : undefined}
           >
             Remove
           </Button>
         </div>
+        {/* Why Remove is greyed out, in words on the screen — a tooltip is
+            invisible to a keyboard and a touch screen (release audit). */}
+        {booked > 0 ? (
+          <span className="rh-why muted xs" id={`${fieldId}-remove-why`}>
+            Remove is off: this section has people on it. Withdraw them on the event board first.
+          </span>
+        ) : null}
       </div>
 
       <div className="rb">

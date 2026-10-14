@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { isRole, withSessionPersistence, wrongAppBody } from '@thc/db';
+import { WRONG_APP_PATH, WRONG_APP_ROLE_HEADER, isRole, withSessionPersistence } from '@thc/db';
 
 /**
  * Role routing for the staff app (§1.4).
@@ -134,15 +134,27 @@ export async function middleware(request: NextRequest) {
     // Signed in, wrong app. This used to redirect to HOME_PATH[role], which
     // is a PATH — and the three apps are on three different hosts, so it
     // only ever bounced them to a local route that failed this same check
-    // again. That was the ERR_TOO_MANY_REDIRECTS. A terminal response is
-    // the only thing here that cannot loop.
-    return new NextResponse(wrongAppBody(isRole(role) ? role : null, 'Staff App'), {
-      status: 403,
-      headers: { 'content-type': 'text/html; charset=utf-8' },
-    });
+    // again. That was the ERR_TOO_MANY_REDIRECTS. A rewrite is not a
+    // navigation, so it cannot loop either: the app's own sign-in card
+    // (app/wrong-app, ADR-0140) answers this same request.
+    return wrongApp(request, role);
   }
 
   return response;
+}
+
+/**
+ * A signed-in session this app will not admit: the same request, answered
+ * by app/wrong-app (ADR-0140) with the refused role on a request header.
+ * The address bar keeps the URL that was asked for; 403 says why.
+ */
+function wrongApp(request: NextRequest, role: unknown): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = WRONG_APP_PATH;
+  url.search = '';
+  const headers = new Headers(request.headers);
+  headers.set(WRONG_APP_ROLE_HEADER, isRole(role) ? role : 'none');
+  return NextResponse.rewrite(url, { status: 403, request: { headers } });
 }
 
 export const config = {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   STATUS_LABEL,
   VIOLATION_LABEL,
+  arrivalLine,
   breaksCell,
   missingWorkers,
   needsActualFinish,
@@ -126,5 +127,25 @@ describe('§9.5 resolving', () => {
   it('names all five violation types', () => {
     expect(Object.keys(VIOLATION_LABEL)).toHaveLength(5);
     expect(VIOLATION_LABEL.left_geofence).toBe('Left the geofence during the shift');
+  });
+});
+
+describe("the check-in stamp's second line (checkin.html)", () => {
+  const start = '2026-10-14T16:00:00Z';
+  const at = (checkInAt: string | null, locationSuspect = false) =>
+    arrivalLine({ checkInAt, startsAt: start, locationSuspect });
+
+  it("says on site, and how late against the role section's start", () => {
+    expect(at('2026-10-14T16:21:30Z')).toBe('GPS · on site · 21 min late');
+    expect(at('2026-10-14T15:52:00Z')).toBe('GPS · on site · early');
+    expect(at('2026-10-14T16:00:40Z')).toBe('GPS · on site · on time');
+  });
+
+  it('does not call a vague fix on site (its amber pill says why)', () => {
+    expect(at('2026-10-14T16:03:00Z', true)).toBe('GPS · 3 min late');
+  });
+
+  it('is nothing without a check-in', () => {
+    expect(at(null)).toBeNull();
   });
 });

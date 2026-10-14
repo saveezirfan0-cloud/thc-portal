@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Avatar, Button, Input, Modal, Note, Textarea, useTimeFormat } from '@thc/ui';
+import { Avatar, Button, Input, Modal, Note, Textarea, UkDateField, useTimeFormat } from '@thc/ui';
 import {
   approveCompletionLetter,
   confirmRtwDate,
@@ -453,30 +453,28 @@ function ApproveModal({
           uploaded {ukStamp(row.submitted_at, format)}
         </div>
       </div>
-      <Input
-        type="date"
+      <UkDateField
         label={
           <>
             Course completion date on the document <span className="coral">*</span>
           </>
         }
         value={completionDate}
-        onChange={(event) => setCompletionDate(event.target.value)}
+        onChange={setCompletionDate}
         hint={
           row.completion_date_claimed
             ? `The worker entered ${ukDate(row.completion_date_claimed)}. Correct it if the document says otherwise.`
             : 'The worker did not enter one — read it off the document.'
         }
       />
-      <Input
-        type="date"
+      <UkDateField
         label={
           <>
             Visa expiry <span className="coral">*</span>
           </>
         }
         value={visaExpiry}
-        onChange={(event) => setVisaExpiry(event.target.value)}
+        onChange={setVisaExpiry}
         hint={
           onFile
             ? `On file from the right-to-work check: ${ukDate(onFile)}. If you enter a different date, the earlier of the two is kept.`
@@ -579,8 +577,7 @@ function RightToWorkModal({
           </div>
         </div>
       ) : (
-        <Input
-          type="date"
+        <UkDateField
           label={
             <>
               {rule.label} <span className="coral">*</span>
@@ -588,7 +585,7 @@ function RightToWorkModal({
           }
           value={noTimeLimit ? '' : date}
           disabled={noTimeLimit}
-          onChange={(event) => setDate(event.target.value)}
+          onChange={setDate}
           hint={rule.hint}
         />
       )}

@@ -37,7 +37,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ even
     return new Response('This environment has no Supabase project.', { status: 503 });
 
   const result = await generateDocument(eventId, kind, 'best-effort');
-  if (!result.ok) return new Response(result.message, { status: result.status });
+  if (!result.ok) {
+    if (result.detail)
+      console.error('[documents] download failed', { eventId, kind, detail: result.detail });
+    return new Response(result.message, { status: result.status });
+  }
 
   return new Response(new Uint8Array(result.pdf), {
     headers: {

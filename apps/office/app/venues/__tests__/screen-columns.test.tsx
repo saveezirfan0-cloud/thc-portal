@@ -72,10 +72,12 @@ describe('/venues list — Date added and Added by (§9.11)', () => {
       'Filter by geofence',
       'Filter by events held',
       'Filter by who added',
-      'Added from (UK date)',
-      'Added to (UK date)',
     ]) {
       expect(markup).toContain(`aria-label="${label}"`);
+    }
+    // Typed UK dates (ADR-0140): each box carries its own (screen-reader) label.
+    for (const label of ['Added from (UK date)', 'Added to (UK date)']) {
+      expect(markup).toContain(`>${label}</label>`);
     }
     expect(markup).toContain('>Not recorded<');
   });

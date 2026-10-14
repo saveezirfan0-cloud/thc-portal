@@ -7,7 +7,7 @@
 -- is what `supabase db reset` / `supabase start` give you.
 -- =====================================================================
 begin;
-select plan(13);
+select plan(16);
 
 select is((select count(*)::int from clients), 5,  'Phase 0 seeds exactly 5 clients');
 select is((select count(*)::int from venues),  8,  'Phase 0 seeds exactly 8 venues');
@@ -64,6 +64,34 @@ select is(
     where e.title = 'Gala Dinner' and r.name = 'Waiting Staff'),
   '12 (+2)',
   'Gala Dinner Waiting Staff reads 12 (+2), never 14'
+);
+
+-- Release audit 14.10.2026 (L11, m11): the seed is consistent with itself.
+-- A verified document was verified at a moment, so every reader that asks
+-- "when" agrees (the Student view's "verified letter on file", the Radar)…
+select is(
+  (select count(*)::int from compliance_docs
+    where id::text like '62000000-0000-4000-8000-%'
+      and review_status = 'verified' and reviewed_at is null),
+  0,
+  'every verified seed document carries reviewed_at'
+);
+select isnt(
+  (select term_letter_verified_at from student_visa_v
+    where id = '20000000-0000-4000-8000-000000000001'),
+  null,
+  'Amara''s verified term letter is "on file" for the Student view, as the Radar says'
+);
+-- …and a seeded rating is the mean of the worker's counted feedback, never
+-- "4.4 from 0 counted entries" that the first new entry would replace.
+select is(
+  (select count(*)::int from staff s
+    where s.rating is not null
+      and s.rating is distinct from (
+        select round(avg(f.rating)::numeric, 2) from feedback f
+         where f.staff_id = s.id and (f.author_kind = 'office' or f.read_at is not null))),
+  0,
+  'every seeded rating is the mean of that worker''s counted feedback'
 );
 
 select * from finish();

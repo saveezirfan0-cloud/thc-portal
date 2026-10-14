@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { UkDateField } from '../UkDateField';
+import { UkDateField } from '@thc/ui';
 import { emptyReason, listQuery, listStateFromParams, rangeReversed } from '../rules';
 import { pastWindow } from '../window';
 import {

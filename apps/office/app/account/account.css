@@ -49,7 +49,10 @@
 .account-form > hr {
   margin: 0;
 }
-.account-form > .btn {
+.account-form > .btn,
+.account-form > .seg {
+  /* The Light / Dark and 24 / 12-hour toggles at their own width, not
+     stretched across the panel (release audit P2). */
   align-self: flex-start;
 }
 
