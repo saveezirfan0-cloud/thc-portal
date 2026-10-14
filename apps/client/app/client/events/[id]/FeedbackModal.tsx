@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Alert, Avatar, Button, Modal, Textarea } from '@thc/ui';
 import {
+  FEEDBACK_SIGNED_OUT,
   FEEDBACK_TEXT_MAX,
   FEEDBACK_TOO_LONG,
   feedbackTextTooLong,
@@ -46,6 +47,31 @@ export function commentHint(length: number): string {
 }
 
 const FAILED = 'Your feedback could not be sent. Check your connection and try again.';
+
+/**
+ * Whether a failed send was a lapsed session rather than the connection.
+ *
+ * With no session the middleware answers the action's POST with a redirect
+ * to /login, so the action never runs and its call throws instead of
+ * returning. That looks exactly like a dropped connection from here, so the
+ * modal asks: `/client/session` (session/route.ts) is behind the same gate,
+ * and a redirect from it means signed out. A probe that cannot be made at
+ * all is the connection after all.
+ */
+export async function sessionLapsed(fetcher: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetcher('/client/session', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      redirect: 'manual',
+    });
+    return (
+      res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400) || res.status === 401
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The star a key moves the rating to, as the WAI-ARIA APG radio group does
@@ -108,6 +134,9 @@ export function FeedbackModal({
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // The session lapsed: the comment stays typed, and a sign-in link opens
+  // in a new tab so this one keeps it for "Submit feedback" afterwards.
+  const [signedOut, setSignedOut] = useState(false);
   const [pending, startTransition] = useTransition();
   const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -127,6 +156,7 @@ export function FeedbackModal({
     setRating(0);
     setText('');
     setError(null);
+    setSignedOut(false);
     onClose();
   }
 
@@ -140,12 +170,15 @@ export function FeedbackModal({
       return;
     }
     setError(null);
+    setSignedOut(false);
     startTransition(async () => {
       let result: Awaited<ReturnType<typeof leaveFeedback>>;
       try {
         result = await leaveFeedback(eventId, bookingId, rating, text);
       } catch {
-        setError(FAILED);
+        const lapsed = await sessionLapsed();
+        setSignedOut(lapsed);
+        setError(lapsed ? FEEDBACK_SIGNED_OUT : FAILED);
         return;
       }
       if (result.ok) {
@@ -161,6 +194,7 @@ export function FeedbackModal({
         router.refresh();
         return;
       }
+      setSignedOut(result.signedOut === true);
       setError(result.error);
     });
   }
@@ -196,7 +230,23 @@ export function FeedbackModal({
         </div>
       </div>
 
-      {error ? <Alert tone="coral">{error}</Alert> : null}
+      {error ? (
+        <Alert tone="coral">
+          {error}
+          {signedOut ? (
+            <>
+              {' '}
+              <a
+                href={`/login?next=${encodeURIComponent(`/client/events/${eventId}`)}`}
+                target="_blank"
+                rel="noopener"
+              >
+                Sign in (opens a new tab)
+              </a>
+            </>
+          ) : null}
+        </Alert>
+      ) : null}
 
       <fieldset className="stars-field">
         <legend className="label">Rating</legend>

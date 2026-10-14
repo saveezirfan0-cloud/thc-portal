@@ -56,7 +56,9 @@ export async function loadDocuments(eventId: string): Promise<DocumentsLoad> {
     const { data, error } = await supabase
       .from('client_event_documents_v')
       .select(DOCUMENT_COLUMNS)
-      .eq('event_id', eventId);
+      .eq('event_id', eventId)
+      .order('issued_at', { ascending: false })
+      .order('id', { ascending: true });
     if (error) {
       console.error('[client] documents load failed', { eventId, error });
       return { documents: [], unavailable: true };
@@ -68,27 +70,55 @@ export async function loadDocuments(eventId: string): Promise<DocumentsLoad> {
   }
 }
 
+/** Rows per documents read, plus the one that says a cap was hit (data.ts LIST_LIMITS). */
+export const DOCUMENTS_PER_READ = 900;
+const IDS_PER_READ = 100;
+
 /**
- * §11.1 · every document this customer can download, for the list — one
- * query for the whole page rather than one per row. There is deliberately
- * no filter: the view scopes itself to the caller's own events (ADR-0004),
- * exactly as `loadEventList` reads the other three.
+ * §11.1 · the documents for the events the list loaded — one query per
+ * hundred events rather than one per row, and never every document the
+ * customer ever had: PostgREST caps a response at 1000 rows without saying
+ * so (supabase/config.toml), which would turn issued copies into "not issued
+ * yet". There is deliberately no client filter: the view scopes itself to
+ * the caller's own events (ADR-0004); `eventIds` only narrows that further.
+ * A read that comes back full is `unavailable`, never a short list.
  */
-export async function loadAllDocuments(): Promise<
-  DocumentsLoad<ClientDocument & { event_id: string }>
-> {
-  if (!configured()) return { documents: [], unavailable: false };
+export async function loadAllDocuments(
+  eventIds: readonly string[],
+): Promise<DocumentsLoad<ClientDocument & { event_id: string }>> {
+  if (!configured() || eventIds.length === 0) return { documents: [], unavailable: false };
   try {
     const supabase = createClient(await cookies()) as any;
-    const { data, error } = await supabase
-      .from('client_event_documents_v')
-      .select(DOCUMENT_COLUMNS);
-    if (error) {
-      console.error('[client] documents load failed', { error });
+    const chunks: string[][] = [];
+    for (let i = 0; i < eventIds.length; i += IDS_PER_READ) {
+      chunks.push(eventIds.slice(i, i + IDS_PER_READ));
+    }
+    const reads = await Promise.all(
+      chunks.map((chunk) =>
+        supabase
+          .from('client_event_documents_v')
+          .select(DOCUMENT_COLUMNS)
+          .in('event_id', chunk)
+          .order('event_id', { ascending: true })
+          .order('issued_at', { ascending: false })
+          .order('id', { ascending: true })
+          .limit(DOCUMENTS_PER_READ + 1),
+      ),
+    );
+    const failed = reads.find((r: { error: unknown }) => r.error);
+    if (failed) {
+      console.error('[client] documents load failed', { error: failed.error });
+      return { documents: [], unavailable: true };
+    }
+    if (reads.some((r: { data: unknown[] | null }) => (r.data ?? []).length > DOCUMENTS_PER_READ)) {
+      console.error('[client] documents load would be cut short', { per: DOCUMENTS_PER_READ });
       return { documents: [], unavailable: true };
     }
     return {
-      documents: (data ?? []) as (ClientDocument & { event_id: string })[],
+      documents: reads.flatMap(
+        (r: { data: unknown[] | null }) =>
+          (r.data ?? []) as (ClientDocument & { event_id: string })[],
+      ),
       unavailable: false,
     };
   } catch (error) {
@@ -114,7 +144,12 @@ export async function loadEventDocuments(
     const supabase = createClient(await cookies()) as any;
     const [event, docs] = await Promise.all([
       supabase.from('client_events_v').select('id').eq('id', eventId).maybeSingle(),
-      supabase.from('client_event_documents_v').select(DOCUMENT_COLUMNS).eq('event_id', eventId),
+      supabase
+        .from('client_event_documents_v')
+        .select(DOCUMENT_COLUMNS)
+        .eq('event_id', eventId)
+        .order('issued_at', { ascending: false })
+        .order('id', { ascending: true }),
     ]);
     if (event.error || docs.error) {
       if (event.error?.code === '22P02')

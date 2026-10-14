@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { AuthCard } from '@thc/ui';
 import { shownEmail } from '@thc/db/recovery';
+import { OFFICE_EMAIL as OFFICE } from '../../client/account/copy';
 
 export const metadata = { title: 'Check your inbox · THC Client Portal' };
-
-const OFFICE = 'admin@thehospitalitycompany.co.uk';
 
 /**
  * A2 Reset link sent — §10.2, `wireframes/client/login.html` (forgot → sent).

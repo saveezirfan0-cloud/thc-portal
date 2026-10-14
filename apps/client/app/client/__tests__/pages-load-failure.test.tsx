@@ -31,6 +31,11 @@ vi.mock('next/navigation', () => ({
   },
 }));
 vi.mock('../data', async () => ({
+  LOAD_FAILED: {
+    tooMany:
+      'You have more events in this date range than we can show at once. Choose a shorter range with From and To.',
+  },
+  NOT_LINKED: "Your login isn't linked to a company yet — contact THC at",
   loadEventList: async () => state.list,
   loadEvent: async () => state.event,
 }));
@@ -58,6 +63,7 @@ vi.mock('../events/[id]/EventScreen', () => ({
 
 const ListPage = (await import('../(list)/page')).default;
 const EventPage = (await import('../events/[id]/page')).default;
+const { generateMetadata } = await import('../events/[id]/page');
 
 const EV = '90000000-0000-4000-8000-000000000001';
 const FAILED = 'We could not load your events just now. Refresh the page to try again.';
@@ -93,7 +99,7 @@ beforeEach(() => {
 describe('the list page', () => {
   it('on a failed read draws the head and the alert, never the screen', async () => {
     state.list = { events: [], sections: [], lineup: [], company: null, problem: FAILED };
-    const html = renderToStaticMarkup(await ListPage());
+    const html = renderToStaticMarkup(await ListPage({}));
     expect(html).toContain('Your events');
     expect(html).toContain('could not load your events');
     expect(html).not.toContain('EVENTS-SCREEN');
@@ -103,9 +109,81 @@ describe('the list page', () => {
 
   it('says so above the screen when the documents could not be read', async () => {
     state.docsUnavailable = true;
-    const html = renderToStaticMarkup(await ListPage());
+    const html = renderToStaticMarkup(await ListPage({}));
     expect(html).toContain('Documents couldn&#x27;t be loaded just now');
     expect(html).toContain('EVENTS-SCREEN');
+  });
+});
+
+describe('the list page: a login with no company, and too many rows', () => {
+  it('says the login is not linked, with the office address, instead of "No events yet"', async () => {
+    state.list = {
+      events: [],
+      sections: [],
+      lineup: [],
+      company: null,
+      unlinked: true,
+      history: null,
+      problem: null,
+    };
+    const html = renderToStaticMarkup(await ListPage({}));
+    expect(html).toContain('Your login isn&#x27;t linked to a company yet — contact THC at');
+    expect(html).toContain(
+      '<a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>',
+    );
+    expect(html).not.toContain('EVENTS-SCREEN');
+  });
+
+  it('draws the screen as usual when the company was read', async () => {
+    state.list = {
+      events: [],
+      sections: [],
+      lineup: [],
+      company: 'Leonardo Hotels',
+      unlinked: false,
+      history: null,
+      problem: null,
+    };
+    const html = renderToStaticMarkup(await ListPage({}));
+    expect(html).toContain('EVENTS-SCREEN');
+    expect(html).not.toContain('linked to a company');
+  });
+
+  it('a cut-short read is the amber notice, with a way back to the default window', async () => {
+    const tooMany =
+      'You have more events in this date range than we can show at once. Choose a shorter range with From and To.';
+    state.list = { events: [], sections: [], lineup: [], company: null, problem: tooMany };
+    const widened = renderToStaticMarkup(
+      await ListPage({ searchParams: Promise.resolve({ since: '2020-01-01' }) }),
+    );
+    expect(widened).toContain('than we can show at once');
+    expect(widened).toContain('href="/client"');
+    expect(widened).toContain('Show recent events');
+    expect(widened).not.toContain('EVENTS-SCREEN');
+    // The default window has nowhere narrower to go.
+    const plain = renderToStaticMarkup(await ListPage({}));
+    expect(plain).not.toContain('Show recent events');
+  });
+});
+
+describe('the event page title (generateMetadata)', () => {
+  const meta = (id: string) => generateMetadata({ params: Promise.resolve({ id }) });
+
+  it('names the event in the tab', async () => {
+    expect((await meta(EV)).title).toBe('Gala Dinner · THC Client Portal');
+  });
+
+  it("is the not-found title for another customer's event, an unknown one and a non-uuid alike", async () => {
+    state.event = { event: null, sections: [], lineup: [], problem: null };
+    const theirs = await meta(EV);
+    const junk = await meta('not-a-uuid');
+    expect(theirs).toEqual(junk);
+    expect(theirs.title).toBe('Not found · THC Client Portal');
+  });
+
+  it('names no event when the read failed', async () => {
+    state.event = { event: null, sections: [], lineup: [], problem: 'x' };
+    expect((await meta(EV)).title).toBe('Event details · THC Client Portal');
   });
 });
 

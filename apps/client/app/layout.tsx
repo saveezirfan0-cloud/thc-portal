@@ -5,6 +5,10 @@ import '@thc/ui/styles.css';
 export const metadata: Metadata = {
   title: 'THC Client Portal',
   description: 'The Hospitality Company — Client Portal',
+  // A private portal: nothing in it is for a search engine, the sign-in card
+  // included. app/robots.ts says the same to crawlers that ask first, and
+  // next.config.ts sends X-Robots-Tag on every response, files included.
+  robots: { index: false, follow: false },
   // app/manifest.ts serves this; named here as well so the link is explicit
   // rather than a side effect of a file's existence (ADR-0052).
   manifest: '/manifest.webmanifest',

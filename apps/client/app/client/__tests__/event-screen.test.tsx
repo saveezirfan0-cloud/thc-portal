@@ -42,8 +42,9 @@ afterEach(() => {
   viewer = 'Europe/London';
 });
 
-const { EventScreen } = await import('../events/[id]/EventScreen');
-const { FeedbackModal, isAlreadyLeft, starForKey } = await import('../events/[id]/FeedbackModal');
+const { EventScreen, contactHref } = await import('../events/[id]/EventScreen');
+const { FeedbackModal, isAlreadyLeft, sessionLapsed, starForKey } =
+  await import('../events/[id]/FeedbackModal');
 
 const EVENT_ID = '60000000-0000-4000-8000-000000000001';
 
@@ -538,5 +539,62 @@ describe('the feedback popup, guarded', () => {
       isAlreadyLeft({ error: 'Feedback has already been left for this person on this event.' }),
     ).toBe(true);
     expect(isAlreadyLeft({ error: 'That could not be saved.' })).toBe(false);
+  });
+});
+
+describe('"Contact THC about this event" (R3)', () => {
+  it('mails the office with the event, its UK date and its PO in the subject', () => {
+    expect(contactHref(gala())).toBe(
+      `mailto:admin@thehospitalitycompany.co.uk?subject=${encodeURIComponent('Gala Dinner · Sat 19 Sep 2026 · PO 4471-A')}`,
+    );
+  });
+
+  it('leaves the PO out when there is none, and names the UK day of a late start', () => {
+    // 23:30 UTC on the 19th is 00:30 BST on the 20th.
+    const href = contactHref(gala({ poNumber: null, startsAt: '2026-09-19T23:30:00Z' }));
+    expect(decodeURIComponent(href.split('subject=')[1]!)).toBe('Gala Dinner · Sun 20 Sep 2026');
+  });
+
+  it('is a ghost button in the header, beside the downloads', () => {
+    const markup = screen(gala(), '2026-09-18T09:00:00Z');
+    expect(markup).toMatch(
+      /<a class="btn ghost" href="mailto:admin@thehospitalitycompany\.co\.uk\?subject=[^"]+">Contact THC about this event<\/a>/,
+    );
+  });
+
+  it('says the on-site contact is per event, not "as given on your client card"', () => {
+    const markup = screen(gala(), '2026-09-18T09:00:00Z');
+    expect(markup).toContain('for this event · usually the contact on your client card');
+    expect(markup).not.toContain('as given on your client card');
+  });
+});
+
+describe('a lapsed session while sending feedback (R4 e)', () => {
+  const answer = (init: Partial<Response>) => (async () => init as Response) as typeof fetch;
+
+  it('is a redirect from the session probe (the middleware sending it to /login)', async () => {
+    expect(await sessionLapsed(answer({ type: 'opaqueredirect', status: 0 }))).toBe(true);
+    expect(await sessionLapsed(answer({ type: 'basic', status: 307 }))).toBe(true);
+    expect(await sessionLapsed(answer({ type: 'basic', status: 401 }))).toBe(true);
+  });
+
+  it('is not a lapsed session when the probe gets through, or cannot be made at all', async () => {
+    expect(await sessionLapsed(answer({ type: 'basic', status: 204 }))).toBe(false);
+    const offline = (async () => {
+      throw new TypeError('Failed to fetch');
+    }) as typeof fetch;
+    expect(await sessionLapsed(offline)).toBe(false);
+  });
+
+  it('probes /client/session without following the redirect', async () => {
+    const seen: [string, RequestInit | undefined][] = [];
+    const spy = (async (url: string, init?: RequestInit) => {
+      seen.push([url, init]);
+      return { type: 'basic', status: 204 } as Response;
+    }) as typeof fetch;
+    await sessionLapsed(spy);
+    expect(seen).toEqual([
+      ['/client/session', { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' }],
+    ]);
   });
 });

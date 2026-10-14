@@ -5,7 +5,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Framing, sniffing, referrer, permissions, HSTS (packages/db/src/security-headers.ts).
-  headers: async () => securityHeaderRules('client'),
+  // Plus X-Robots-Tag: the portal is private, and the header reaches what a
+  // page's robots meta cannot (route handlers, redirects, files).
+  headers: async () =>
+    securityHeaderRules('client').map((rule) => ({
+      ...rule,
+      headers: [...rule.headers, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+    })),
   transpilePackages: ['@thc/ui', '@thc/domain', '@thc/db', '@thc/notifications'],
   env: {
     APP_TZ: process.env.APP_TZ ?? 'Europe/London',

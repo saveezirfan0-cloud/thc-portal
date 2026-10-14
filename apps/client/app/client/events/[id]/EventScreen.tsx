@@ -8,6 +8,7 @@ import { AsOf } from '../../../_components/AsOf';
 import { Arrivals } from '../../ArrivalsPill';
 import type { EventArrivals } from '../../arrivals';
 import { EventWindow } from '../../EventWindow';
+import { OFFICE_EMAIL } from '../../account/copy';
 import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
   feedbackInviteShown,
@@ -160,6 +161,11 @@ export function EventScreen({
             })}
             {/* ADR-0050: an .ics built in the browser; none when cancelled. */}
             <CalendarButton event={event} />
+            {/* A question about this event goes to the office, with the
+                event already named in the subject. */}
+            <a className="btn ghost" href={contactHref(event)}>
+              Contact THC about this event
+            </a>
           </div>
         </div>
 
@@ -197,7 +203,9 @@ export function EventScreen({
             <div className="k">Your on-site contact</div>
             <div className="v">
               {event.onsiteContact ?? '—'}
-              <span className="sub">as given on your client card</span>
+              {/* Per event (§3.2): pre-filled from the client profile when
+                  the event is created, and editable for this event alone. */}
+              <span className="sub">for this event · usually the contact on your client card</span>
             </div>
           </div>
         </div>
@@ -326,6 +334,23 @@ export function EventScreen({
       ) : null}
     </div>
   );
+}
+
+/**
+ * The mail link behind "Contact THC about this event": the office address
+ * (`OFFICE_EMAIL`, the one the rest of the portal shows), with a subject
+ * naming the event as the office files it — title, UK date, PO when there is
+ * one — so the reply does not start with "which event?".
+ */
+export function contactHref(event: Pick<PortalEvent, 'title' | 'startsAt' | 'poNumber'>): string {
+  const subject = [
+    event.title,
+    ukDateShort(event.startsAt),
+    event.poNumber && `PO ${event.poNumber}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return `mailto:${OFFICE_EMAIL}?subject=${encodeURIComponent(subject)}`;
 }
 
 /**

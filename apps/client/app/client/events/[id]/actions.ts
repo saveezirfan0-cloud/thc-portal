@@ -12,7 +12,12 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../../data';
 import { isUuid } from '../../ids';
-import { FEEDBACK_TOO_LONG, feedbackErrorMessage, feedbackTextTooLong } from '../../rules';
+import {
+  FEEDBACK_SIGNED_OUT,
+  FEEDBACK_TOO_LONG,
+  feedbackErrorMessage,
+  feedbackTextTooLong,
+} from '../../rules';
 
 /**
  * §11.2 / §11.5 · leave feedback on one confirmed worker.
@@ -31,7 +36,14 @@ import { FEEDBACK_TOO_LONG, feedbackErrorMessage, feedbackTextTooLong } from '..
  * refuses, and it runs with the caller's own session so the tenancy check
  * cannot be skipped by posting a different booking id.
  */
-export type FeedbackResult = { ok: true } | { ok: false; error: string };
+export type FeedbackResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      /** The session has lapsed: the modal keeps the comment and says "sign in again". */
+      signedOut?: true;
+    };
 
 const WORKER_REMOVED =
   'This person is no longer on our books, so feedback can no longer be left for them.';
@@ -74,6 +86,12 @@ export async function leaveFeedback(
   const comment = text.trim();
 
   const supabase = createClient(await cookies()) as any;
+
+  // No session: the RPC would refuse with a permission error that reads as
+  // "not one of your events". Say what actually happened.
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return { ok: false, error: FEEDBACK_SIGNED_OUT, signedOut: true };
+
   const { error } = await supabase.rpc('submit_client_feedback', {
     p_booking_id: bookingId,
     p_rating: rating,

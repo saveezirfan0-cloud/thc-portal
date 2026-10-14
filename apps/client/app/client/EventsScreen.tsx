@@ -18,13 +18,14 @@ import {
   Select,
   useViewerZone,
 } from '@thc/ui';
-import { needsDualZone } from '@thc/domain';
+import { needsDualZone, ukToday } from '@thc/domain';
 import { AsOf } from '../_components/AsOf';
 import { Arrivals } from './ArrivalsPill';
 import type { ArrivalsByEvent } from './arrivals';
 import { EventWindow } from './EventWindow';
 import { ukDateShort, ukDayMonth } from './format';
 import {
+  FACES_SHOWN,
   NO_FILTERS,
   applyFilters,
   documentOffer,
@@ -46,6 +47,8 @@ import {
   timesheetStatus,
   venuesOf,
 } from './rules';
+import { dayLabel, olderQuery, pastWindow, sameWindow, withSince } from './window';
+import type { LoadedHistory } from './window';
 import type {
   DocumentKind,
   DocumentOffer,
@@ -79,8 +82,6 @@ import type {
  * address bar (`?tab=past&q=gala`), so Back from an event page and a
  * reload land on the view the customer left (`useListState`).
  */
-const FACES_SHOWN = 6;
-
 const STATUS_LABEL: Record<PortalEvent['status'], string> = {
   upcoming: 'Upcoming',
   ongoing: 'Ongoing',
@@ -112,6 +113,7 @@ export function EventsScreen({
   documents = {},
   company = null,
   arrivals = {},
+  loaded,
   now,
 }: {
   events: PortalEvent[];
@@ -125,10 +127,15 @@ export function EventsScreen({
   company?: string | null;
   /** On-the-day check-in counts per event (ADR-0053); counts only, never who. */
   arrivals?: ArrivalsByEvent;
+  /**
+   * The past window the page read (window.ts): a date filter reaching outside
+   * it re-reads on the server, and "Show older events" pages further back.
+   */
+  loaded?: LoadedHistory;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
 }) {
-  const [{ tab, filters }, setList] = useListState();
+  const [{ tab, filters }, setList, olderHref] = useListState(loaded, now);
   const setTab = (next: Tab) => setList({ tab: next, filters });
   const setFilters = (next: EventFilters) => setList({ tab, filters: next });
   const set = (patch: Partial<EventFilters>) => setFilters({ ...filters, ...patch });
@@ -271,6 +278,7 @@ export function EventsScreen({
             hidden={inTab.length}
             onShowAll={() => setTab('all')}
             onClearFilters={() => setFilters(NO_FILTERS)}
+            older={olderHref && loaded ? { since: loaded.since, href: olderHref } : undefined}
           />
         ) : (
           <>
@@ -459,6 +467,24 @@ export function EventsScreen({
           </>
         )}
       </Panel>
+
+      {/* The list reads a recent window of past events (window.ts); older
+          ones are a page further back, never silently missing. */}
+      {loaded && tab !== 'upcoming' && !(empty && olderHref) ? (
+        <p className="sm muted mt-16">
+          {loaded.until
+            ? `Past events from ${dayLabel(loaded.since)} to ${dayLabel(loaded.until)}`
+            : `Past events since ${dayLabel(loaded.since)}`}
+          {olderHref ? (
+            <>
+              {' · '}
+              <Link href={olderHref} scroll={false}>
+                Show older events
+              </Link>
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </>
   );
 }
@@ -476,8 +502,13 @@ export function EventsScreen({
  * changes from outside (the brand link back to a bare `/client`), the
  * state follows it.
  */
-function useListState(): [ListState, (next: ListState) => void] {
+function useListState(
+  loaded: LoadedHistory | undefined,
+  now: string,
+): [ListState, (next: ListState) => void, string | null] {
   const params = useSearchParams();
+  const router = useRouter();
+  const since = params.get('since');
   const fromUrl = useMemo(() => listStateFromParams(params), [params]);
   const [state, setState] = useState<ListState>(fromUrl);
   const written = useRef(listQuery(fromUrl));
@@ -489,15 +520,32 @@ function useListState(): [ListState, (next: ListState) => void] {
     setState(fromUrl);
   }, [fromUrl]);
 
-  const update = useCallback((next: ListState) => {
-    setState(next);
-    const query = listQuery(next);
-    if (query === written.current) return;
-    written.current = query;
-    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
-  }, []);
+  const update = useCallback(
+    (next: ListState) => {
+      setState(next);
+      const query = listQuery(next);
+      if (query === written.current) return;
+      written.current = query;
+      // `since` ("Show older events") rides along, or the next refresh
+      // would narrow the window again.
+      const full = withSince(query, since);
+      const href = `${window.location.pathname}${full ? `?${full}` : ''}`;
+      // A date filter that moves the past window needs rows the page has
+      // not read: the server reads them (window.ts). Anything else filters
+      // what is already here.
+      const wanted = pastWindow(new URLSearchParams(full), ukToday(new Date(now)));
+      if (loaded && !sameWindow(wanted, loaded)) router.replace(href, { scroll: false });
+      else window.history.replaceState(null, '', href);
+    },
+    [loaded, now, router, since],
+  );
 
-  return [state, update];
+  const older =
+    loaded?.older && !state.filters.from
+      ? `/client?${olderQuery(withSince(listQuery(state), since), loaded)}`
+      : null;
+
+  return [state, update, older];
 }
 
 /**
@@ -512,6 +560,7 @@ export function EmptyList({
   hidden,
   onShowAll,
   onClearFilters,
+  older,
 }: {
   reason: 'none' | 'tab' | 'filters';
   tab: Tab;
@@ -519,7 +568,28 @@ export function EmptyList({
   hidden: number;
   onShowAll: () => void;
   onClearFilters: () => void;
+  /** Past events exist before the window read (window.ts): where they are. */
+  older?: { since: string; href: string };
 }) {
+  // "No events yet" / "no past events yet" would be untrue with history
+  // before the window: say what was looked at, and offer the rest.
+  if (older && (reason === 'none' || (reason === 'tab' && tab !== 'upcoming'))) {
+    return (
+      <div className="ev-empty">
+        <EmptyState>
+          <h3>Nothing recent</h3>
+          <p>
+            {tab === 'past'
+              ? `You have no past events since ${dayLabel(older.since)}.`
+              : `You have no upcoming events, and none since ${dayLabel(older.since)}.`}
+          </p>
+          <Link className="btn sm mt-16" href={older.href} scroll={false}>
+            Show older events
+          </Link>
+        </EmptyState>
+      </div>
+    );
+  }
   return (
     <div className="ev-empty">
       {reason === 'none' ? (

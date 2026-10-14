@@ -1,5 +1,7 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { Alert, PageHead } from '@thc/ui';
 import { loadEvent } from '../../data';
 import { loadArrivals } from '../../arrivals';
@@ -22,6 +24,34 @@ import { EventScreen } from './EventScreen';
  * goes to the server log, never to the customer.
  */
 export const dynamic = 'force-dynamic';
+
+/**
+ * One read per request: the tab title and the page are both drawn from it.
+ * `cache` holds for the render of one request only, so nothing is shared
+ * between customers or between refreshes.
+ */
+const readEvent = cache(loadEvent);
+
+/** The not-found card's own title (not-found.tsx), for an id that is not this customer's. */
+const NOT_FOUND_TITLE = 'Not found · THC Client Portal';
+
+/**
+ * "<event title> · THC Client Portal" in the tab. An id that is not a uuid,
+ * another customer's event and one that never existed all get the not-found
+ * title — the page answers them with the same 404, and the title must not
+ * tell them apart either (ADR-0004). A failed read names no event.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  if (!isUuid(id)) return { title: NOT_FOUND_TITLE };
+  const { event, problem } = await readEvent(id);
+  if (problem) return { title: 'Event details · THC Client Portal' };
+  return { title: event ? `${event.title} · THC Client Portal` : NOT_FOUND_TITLE };
+}
 
 /**
  * What the download route sent the customer back with (document/route.ts):
@@ -51,7 +81,7 @@ export default async function ClientEventPage({
   if (!isUuid(id)) notFound();
   const notice = docNotice((await searchParams)?.doc);
 
-  const { event, sections, lineup, problem } = await loadEvent(id);
+  const { event, sections, lineup, problem } = await readEvent(id);
 
   if (problem) {
     return (

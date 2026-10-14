@@ -50,11 +50,13 @@ export interface RoleSection {
 /**
  * One row of `client_lineup_v`, as the browser receives it.
  *
- * Deliberately WITHOUT the view's `photo_path`: that path's first segment is
- * the worker's `staff.id` (the photos bucket keys objects by owner), an
- * internal id the customer has no use for. The server reads it into
- * `LineupRecord` (data.ts), signs the photo, and hands over only the signed
- * URL keyed by `bookingId` (photos.ts `presentLineup`).
+ * Without the view's `photo_path` as a field: the server reads it into
+ * `LineupRecord` (data.ts), signs the photo, and hands over the signed URL
+ * keyed by `bookingId` (photos.ts `presentLineup`). That keeps the screens'
+ * props to what they render; it does not hide the path. A signed URL carries
+ * it (`…/sign/photos/<staff_id>/<file>?token=…`), so the worker's `staff.id`
+ * does reach the browser inside each photo URL — an opaque id that opens
+ * nothing without the token, which ADR-0026 §4 accepts as harmless.
  */
 export interface LineupRow {
   bookingId: string;
@@ -71,6 +73,32 @@ export interface LineupRow {
   feedbackRating?: number | null;
   /** When the customer's feedback was sent (ISO); null before. */
   feedbackSentAt?: string | null;
+}
+
+/** Faces drawn per row of the event list (§11.1); the rest are a "+N" chip. */
+export const FACES_SHOWN = 6;
+
+/**
+ * The line-up rows whose faces the event list actually draws: per event that
+ * is not cancelled, the first `FACES_SHOWN` in the order the row lists them
+ * (`sortKey`, as `EventsScreen` sorts). Only these photos are signed for the
+ * list (photos.ts); the event page signs its whole line-up.
+ */
+export function listFaces<T extends Pick<LineupRow, 'eventId' | 'sortKey'>>(
+  events: readonly Pick<PortalEvent, 'id' | 'status'>[],
+  lineup: readonly T[],
+): T[] {
+  const drawn = new Set(events.filter((e) => e.status !== 'cancelled').map((e) => e.id));
+  const byEvent = new Map<string, T[]>();
+  for (const row of lineup) {
+    if (!drawn.has(row.eventId)) continue;
+    const list = byEvent.get(row.eventId);
+    if (list) list.push(row);
+    else byEvent.set(row.eventId, [row]);
+  }
+  return [...byEvent.values()].flatMap((rows) =>
+    [...rows].sort((a, b) => a.sortKey.localeCompare(b.sortKey)).slice(0, FACES_SHOWN),
+  );
 }
 
 /**
@@ -313,6 +341,14 @@ export function eventsPanelTitle(company: string | null | undefined): string {
 export const FEEDBACK_TEXT_MAX = 2000;
 
 export const FEEDBACK_TOO_LONG = `Keep the comment to ${FEEDBACK_TEXT_MAX.toLocaleString('en-GB')} characters or fewer.`;
+
+/**
+ * What the customer reads when their session lapsed before the feedback was
+ * sent: the server action found no session, or its request was turned away
+ * to /login before it ran (FeedbackModal `sessionLapsed`). The modal keeps
+ * the typed comment, so signing in again loses nothing.
+ */
+export const FEEDBACK_SIGNED_OUT = "You've been signed out — sign in again to send this feedback.";
 
 /**
  * A comment is fine at or under the limit; it is measured after trimming,

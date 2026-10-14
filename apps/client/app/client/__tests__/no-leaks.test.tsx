@@ -108,6 +108,11 @@ vi.mock('@thc/db/server', () => ({
         },
         eq: () => chain,
         in: () => chain,
+        gte: () => chain,
+        lt: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        range: () => chain,
         maybeSingle: async () => one,
         then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
           Promise.resolve(many).then(resolve, reject),
@@ -270,7 +275,7 @@ describe('the worker’s Storage path stays on the server', () => {
   });
 
   it('the list page hands EventsScreen no staff id and no on-site contact', async () => {
-    const tree = await ListPage();
+    const tree = await ListPage({});
     const [screen] = find(tree, EventsScreen);
     expect(screen).toBeDefined();
     const props = JSON.stringify(screen!.props);
