@@ -15,9 +15,9 @@
 # usage: scripts/pgtest-local.sh [repo_dir] [port]
 #        TESTS="120_apply.sql 290_staff_directory.sql" scripts/pgtest-local.sh
 #
-# Expected locally: 002 assertions 6–7 fail (ADR-0010 — postgres owns
-# PostGIS here, so the spatial_ref_sys gap is closed locally and open on
-# Supabase). Anything else failing is real.
+# Expected locally: no failures. (Until ADR-0131, 13.10.2026, 002
+# assertions 6–7 failed here by design; spatial_ref_sys writes are now
+# refused by a trigger in every environment.) Anything failing is real.
 # =====================================================================
 set -euo pipefail
 EXT=/usr/share/postgresql/16/extension; LIB=/usr/lib/postgresql/16/lib

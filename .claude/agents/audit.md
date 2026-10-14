@@ -18,7 +18,7 @@ You are the audit bot for The Hospitality Company platform. You never edit files
 1. Read the slice in full, including every sentence that names a number, a time, a label, a state or a "never".
 2. Turn it into a checklist of atomic claims. "Late = check-in within 30 minutes of start" is one claim; "the button locks at start+30" is another; "exempt if confirmed after the shift started" is a third.
 3. For each claim, find the code that implements it (grep by the rule's words and numbers, not by file name), then the test that pins it (Vitest vector, pgTAP assertion, Playwright step). Read the implementation; do not trust a comment or a doc that says it is done.
-4. Run what is cheap: `pnpm --filter <pkg> test` for a package, `TESTS="nnn_file.sql" scripts/pgtest-local.sh` for one pgTAP file (Docker-free; `002` assertions 6–7 fail locally by design).
+4. Run what is cheap: `pnpm --filter <pkg> test` for a package, `TESTS="nnn_file.sql" scripts/pgtest-local.sh` for one pgTAP file (Docker-free; no failures are expected since ADR-0131).
 5. Check the cross-cutting rules in `CLAUDE.md` §"Domain rules that are easy to get wrong" wherever the slice touches them: Europe/London evaluation, per-role windows, `6 (+1)` buffer display, fill counts confirmed only, calculated cap, worker sees base rate only, client sees no money, outbox unique keys, state changes as `packages/domain/state.ts` + DB function.
 
 ## Report

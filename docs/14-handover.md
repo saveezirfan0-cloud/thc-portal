@@ -40,10 +40,10 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 | Live Supabase project vs the repo | **in sync** — all 124 applied, last is `20260928120100_extraction_never_clears_worker_input`. The pending-deploy note that stood here is closed: #63 added the Edge Function deploy to `deploy-database`, so a merge to `main` now pushes the migrations *and* redeploys all seven functions |
 | Edge Functions on the live project | **all seven ACTIVE** (it was two until 25.09). `willo-webhook` is the only one with `verify_jwt: false`, which is right — Willo signs its own deliveries (ADR-0021) |
 
-`002` assertions **6 and 7** fail in every local harness and **that pair is the
-clean baseline**: they record that on Supabase `anon` *can* write
-`spatial_ref_sys`, which is false locally because `postgres` owns PostGIS there.
-Two failures are expected; three is a regression.
+Since ADR-0131 (13.10.2026) the clean local baseline is **zero** failures. `002`
+assertions 6 and 7 used to fail in every local harness because they recorded that on
+Supabase `anon` *can* write `spatial_ref_sys`; a statement trigger now refuses it in
+every environment, and they assert that instead.
 
 Use `scripts/pgtest-local.sh` and not a hand-rolled cluster. A stub `auth.users`
 missing `encrypted_password` stops the suite at migration 73, and a `002` that
@@ -389,7 +389,7 @@ here so a reader can tell a deliberate finding from a new one.
 | `SECURITY DEFINER` callable by `anon` | **5** (2 of ours) | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role` and `current_client_id`, which every role's policies call (0001). Re-counted 12.10.2026 with a catalog query over `pg_proc` on a cluster built from every migration (`prosecdef`, not an extension member, `has_function_privilege('anon', …)`): exactly those two of ours — `submit_application` had already left anon (ADR-0024, service role via `submit_application_as_caller`). Since `20261012121500` a new function is not anon's or PUBLIC's by default, and those two grants are explicit; `801` pins the defaults, `190` 2e/2f the set
 | `SECURITY DEFINER` callable by `authenticated` | **170** (re-counted 12.10.2026; the table said 90 and had not kept up with the build) | the product's RPC surface; counted with the same catalog query as the anon row (`prosecdef`, ours, `has_function_privilege('authenticated', …)`). The 12.10 security round left it at 170: `account_invite_link_ok` became a definer (+1, it reads the vault's `app_origins`, 20261012120500) and `onboarding_save_address` left `authenticated` (−1, the pin is server-geocoded, 20261012121400); every other definer that round added is service-role only (`auth_attempt_allowed`, `record_auth_attempt`, `onboarding_save_address_geocoded`) or internal (`auth_session_live`, `app_origin_allowed`, `activation_link_ok`, `edge_base_url_pinned`, trigger functions). Earlier history: every one is guarded internally. It grew with the build and is not in itself a defect, but it is the number to watch. 89 → 90 with `reviewer_name()` (20261008110000): returns one admin account's display name to an admin session only (NULL for anyone else, and for a non-admin id), so "Verified by <name>" reads on every office screen without opening `profiles`; closed to anon and PUBLIC, pinned by `781`. 88 → 89 with `set_staff_pay_rate()` (ADR-0072): finance-gated by `assert_finance_caller()`, closed to anon and PUBLIC, pinned by `759`. 86 → 88 with `password_check_allowed()` and `record_password_check_failure()` (ADR-0051, security review L2): the per-account limit on the Client Portal's Change password action, 5 wrong current passwords per 15 minutes. Both act only on the caller's own `auth.uid()`, are closed to anon and PUBLIC, and reach `private.password_check_failures` (RLS on, no policy, no API-role grant); pinned by `608` |
 | `SECURITY DEFINER` views | **14** (once `20261001100000`/`100100`/`20261001203000` are deployed) | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse. 9 since `20260927120000` added `client_company_v` (deliberate: two named columns, `current_client_id()` + `client_portal_visible()` in the body, pinned by `570`); 10 with `client_account_v` (ADR-0051: name + timesheet recipients, pinned by `606`) and 11 with `client_arrivals_v` (ADR-0053: arrival counts per role section, no names or times, pinned by `607`); 14 with `shift_rates_v`, `role_rates_v` and `rate_card_rates_v` (ADR-0061: the only read path left to the four rate columns, gated by `office_rates_visible()` in the body — finance office roles only — SELECT-only, pinned by `753`). Any further one is a finding, and since this round CI catches it: `001_rls_guard` assertion 10 pins the whole owner-rights set by name (these 14, plus `event_windows` and the two `report_*` views, which `authenticated` cannot select) |
-| `spatial_ref_sys` without RLS | 1 | ADR-0010, known gap, needs `supabase_admin` |
+| `spatial_ref_sys` without RLS | 1 | ADR-0010: RLS needs `supabase_admin`. Writes closed since 13.10.2026 by a statement trigger (ADR-0131), so the finding is the switch, not a hole. Clears only when Supabase support runs ADR-0131's three statements |
 | **Leaked-password protection** | off | **still owed — see §5.** The only advisor finding that is nobody's design decision |
 
 New from the 24.09 wave:
@@ -518,10 +518,10 @@ previews back on for everything.
   staff self-service migration were found — including one that raised at run time
   and not at create time, so it would have deployed green and broken every
   contact save.
-- **`002` assertions 6 and 7 fail in any local harness and that is expected.**
-  They record the ADR-0010 known gap — on Supabase `anon` can write
-  `spatial_ref_sys` — which is false locally because `postgres` owns PostGIS
-  there. **Two** failures are the clean baseline; three is a regression.
+- **The clean local baseline is zero failures** (ADR-0131, 13.10.2026). Until
+  then `002` assertions 6 and 7 failed in every local harness, recording the
+  ADR-0010 gap; the `spatial_ref_sys` write is now refused by a trigger in every
+  environment and they assert that.
 - **`scripts/pgtest-local.sh` needs `postgresql-16-cron`**, which its header
   lists but a fresh sandbox does not have. Without it the cluster dies at
   startup with `could not access file "pg_cron"` and the script only reports

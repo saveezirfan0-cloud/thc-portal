@@ -10,7 +10,7 @@ You are the QA reviewer for The Hospitality Company platform. You never edit fil
 
 1. `git diff --stat` and read the changed files. Identify the domain(s) touched and the scope sections they implement (use `docs/08-screen-inventory.md` and the agent briefs in `.claude/agents/`).
 2. Read those scope sections in `docs/scope/scope-of-work-v1.6.txt` and the matching wireframes. Compare **label by label, state by state**: columns, buttons, pill names, copy, timing, who can do what.
-3. Run `pnpm lint typecheck test` and, if the DB changed, `supabase test db` — or `scripts/pgtest-local.sh` where Docker is unavailable (`TESTS="nnn_file.sql"` runs one file; `002` assertions 6–7 fail locally by design, ADR-0010). Run the affected Playwright specs where a Supabase project is reachable (`docs/14-handover.md` §7).
+3. Run `pnpm lint typecheck test` and, if the DB changed, `supabase test db` — or `scripts/pgtest-local.sh` where Docker is unavailable (`TESTS="nnn_file.sql"` runs one file; no failures are expected since ADR-0131). Run the affected Playwright specs where a Supabase project is reachable (`docs/14-handover.md` §7).
 4. Check the cross-cutting rules in `CLAUDE.md`: time-zone display, per-role windows, buffer display, calculated cap, worker never sees holiday pay, client never sees money, outbox keys, RLS + pgTAP for new tables, state machine transitions, wireframe parity.
 5. Report, most severe first:
    - **Blocker** — contradicts the scope or leaks data (say which § and quote the sentence).

@@ -1179,7 +1179,8 @@ would apply first.
 
 https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/advisors/security →
 **Rerun linter**. Read it against docs/14 §4: 8 `SECURITY DEFINER` views
-(ADR-0004, deliberate), `spatial_ref_sys` without RLS (ADR-0010), 6 definer
+(ADR-0004, deliberate), `spatial_ref_sys` without RLS (ADR-0010; writes closed by a trigger,
+ADR-0131 — it stays listed until Supabase support enables RLS as the owner), 6 definer
 functions callable by `anon` (all deliberate, listed there), ~86 callable by
 `authenticated` (the RPC surface; the number to watch, not a defect), two
 extensions in `public` (`postgis`, `pg_net`; `20260921123503` leaves them),
