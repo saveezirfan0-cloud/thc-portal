@@ -1,6 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StaffRow } from '../types';
+
+// The list's tab and view come from the URL (release audit L1).
+const nav = vi.hoisted(() => ({ search: '' }));
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(nav.search),
+  usePathname: () => '/staff',
+}));
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -11,6 +18,10 @@ vi.mock('next/link', () => ({
 }));
 
 const { StaffScreen } = await import('../StaffScreen');
+
+afterEach(() => {
+  nav.search = '';
+});
 
 const WORKER: StaffRow = {
   id: 'w1',
@@ -106,8 +117,9 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
   };
 
   it('shows the last completed shift, the released count and the P45 request', () => {
+    nav.search = 'tab=inactive';
     const html = renderToStaticMarkup(
-      <StaffScreen staff={[LEAVER]} students={[]} problem={null} initialFilter="inactive" />,
+      <StaffScreen staff={[LEAVER]} students={[]} problem={null} />,
     );
     expect(html).toMatch(/<th[^>]*>Last completed shift<\/th>/);
     expect(html).toMatch(/<th[^>]*>Released shifts<\/th>/);
@@ -119,6 +131,7 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
   });
 
   it('reads "— none worked" and no pill for a leaver who never worked or asked', () => {
+    nav.search = 'tab=inactive';
     const html = renderToStaticMarkup(
       <StaffScreen
         staff={[
@@ -126,7 +139,6 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
         ]}
         students={[]}
         problem={null}
-        initialFilter="inactive"
       />,
     );
     expect(html).toContain('— none worked');

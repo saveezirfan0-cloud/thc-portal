@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Avatar,
   EmptyState,
@@ -27,7 +27,9 @@ import {
   ukStamp,
 } from './queue';
 import { reviewStamp } from '../staff/[id]/profile';
-import type { RadarFilter } from './queue';
+import { Pager } from '../_components/Pager';
+import { oneOf, pageIndex, pageParam, useListQuery } from '../_lib/listQuery';
+import { COMPLIANCE_QUERY, RADAR_STATES } from './query';
 import type { RadarRow, WarningRow } from './types';
 
 const PAGE = 10;
@@ -59,16 +61,17 @@ export function RadarTab({
   mode: 'block' | 'warn';
 }) {
   const format = useTimeFormat();
-  const [state, setState] = useState<RadarFilter>('all');
-  const [query, setQuery] = useState('');
-  const [document, setDocument] = useState('any');
-  const [page, setPage] = useState(0);
+  const [url, setUrl] = useListQuery(COMPLIANCE_QUERY);
+  const state = oneOf(url.state, RADAR_STATES, 'all');
+  const query = url.q;
+  const document = url.doc;
   const counts = radarCounts(rows);
   const visible = useMemo(
     () => filterRadar(rows, state, query, document),
     [rows, state, query, document],
   );
   const pages = Math.max(1, Math.ceil(visible.length / PAGE));
+  const page = Math.min(pageIndex(url.page), pages - 1);
   const shown = visible.slice(page * PAGE, page * PAGE + PAGE);
 
   return (
@@ -106,10 +109,7 @@ export function RadarTab({
             { value: 'expiring', label: 'Expiring', count: counts.expiring },
           ]}
           value={state}
-          onChange={(value) => {
-            setState(value);
-            setPage(0);
-          }}
+          onChange={(value) => setUrl({ state: value, page: '1' })}
           small
           aria-label="Filter the radar"
         />
@@ -119,20 +119,14 @@ export function RadarTab({
             style={{ width: 220 }}
             type="search"
             value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(0);
-            }}
+            onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
             placeholder="Search by name"
             aria-label="Search by name"
           />
         </div>
         <Select
           value={document}
-          onChange={(event) => {
-            setDocument(event.target.value);
-            setPage(0);
-          }}
+          onChange={(event) => setUrl({ doc: event.target.value, page: '1' })}
           aria-label="Document type"
           style={{ width: 190 }}
         >
@@ -229,32 +223,12 @@ export function RadarTab({
             </TableScroll>
           )}
         </div>
-        <div className="panel-h" style={{ borderBottom: 0, borderTop: '1px solid var(--line)' }}>
-          <span className="muted sm">
-            Showing {shown.length} of {visible.length}
-          </span>
-          <div className="right">
-            <button
-              type="button"
-              className="btn sm ghost"
-              disabled={page === 0}
-              onClick={() => setPage(page - 1)}
-            >
-              ‹ Prev
-            </button>
-            <span className="mono sm">
-              {page + 1} / {pages}
-            </span>
-            <button
-              type="button"
-              className="btn sm ghost"
-              disabled={page + 1 >= pages}
-              onClick={() => setPage(page + 1)}
-            >
-              Next ›
-            </button>
-          </div>
-        </div>
+        <Pager
+          total={visible.length}
+          page={page}
+          pageSize={PAGE}
+          onPage={(next) => setUrl({ page: pageParam(next) })}
+        />
       </div>
 
       <div className="grid c2">

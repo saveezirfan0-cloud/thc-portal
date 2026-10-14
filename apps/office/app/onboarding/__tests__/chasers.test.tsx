@@ -8,7 +8,11 @@ import type { BoardData, CandidateRow, ChaserState } from '../types';
  * candidate has been sent, and "Stalled" once all three have gone with no
  * progress. Read through onboarding_chaser_state(), a separate admin read.
  */
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/onboarding',
+}));
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => (
     <a href={href}>{children}</a>

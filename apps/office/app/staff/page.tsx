@@ -7,6 +7,9 @@ import { loadStaff, supabaseConfigured } from './data';
 import { countPendingChangeRequests } from './requests/data';
 import { StaffScreen } from './StaffScreen';
 
+// Per-request data, and the screen reads its list state from the URL.
+export const dynamic = 'force-dynamic';
+
 export const metadata = { title: 'Staff · THC Back Office' };
 
 /**
@@ -17,7 +20,7 @@ export const metadata = { title: 'Staff · THC Back Office' };
  * applied in the view, so nothing this screen holds could print a name a
  * GDPR removal was meant to retire.
  */
-export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+export default async function Page() {
   const [{ staff, students, problem }, pendingRequests, role] = await Promise.all([
     loadStaff(),
     // ADR-0045: "Change requests (N)". A failed count is null — never a
@@ -27,20 +30,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
       : Promise.resolve(0),
     currentOfficeRole(),
   ]);
-  // `/staff?view=student` opens the Student visa view directly — the link
-  // /compliance uses for the completion letter requirement's §4 report.
-  const { view } = await searchParams;
   return (
     <>
       {/* Compliance, blocks and new starters change without the manager
           doing anything: re-read every 15 s. Filters, search and ticked
-          workers are client state and survive the refresh. */}
+          workers survive the refresh. */}
       <AutoRefresh everyMs={15_000} />
       <StaffScreen
         staff={staff}
         students={students}
         problem={problem}
-        initialView={view === 'student' ? 'student' : 'directory'}
+        // `/staff?view=student` (the link /compliance uses for the completion
+        // letter requirement's §4 report), the tab, search, filters and page
+        // are read from the URL by the screen itself (release audit L1).
         pendingRequests={pendingRequests}
         // ADR-0082: tick workers and Send push — any login that may write.
         canMessage={officeCan(role, 'write')}

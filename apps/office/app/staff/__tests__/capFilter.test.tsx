@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CAP_FILTER_LABEL, hoursText, matchesCapFilter } from '../staff';
 import type { StaffRow, StudentRow } from '../types';
 
@@ -8,6 +8,13 @@ import type { StaffRow, StudentRow } from '../types';
  * cap filter (All caps · 20 h · term time · 48 h · holiday · 48 h ·
  * graduated · Blocked) and the directory pager's "15 / page · 50 / page".
  */
+// The list's tab and view come from the URL (release audit L1).
+const nav = vi.hoisted(() => ({ search: '' }));
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(nav.search),
+  usePathname: () => '/staff',
+}));
+
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
     <a href={href} {...rest}>
@@ -18,6 +25,10 @@ vi.mock('next/link', () => ({
 
 const { StaffScreen } = await import('../StaffScreen');
 const { StudentVisaView } = await import('../StudentVisaView');
+
+afterEach(() => {
+  nav.search = '';
+});
 
 const WORKER: StaffRow = {
   id: 'w1',
@@ -100,9 +111,8 @@ const ALL = [TERM, HOLIDAY, GRADUATED, BLOCKED];
 
 describe('the Student visa view filters by cap (wireframe)', () => {
   it('offers every cap in the toolbar', () => {
-    const html = renderToStaticMarkup(
-      <StaffScreen staff={[]} students={ALL} problem={null} initialView="student" />,
-    );
+    nav.search = 'view=student';
+    const html = renderToStaticMarkup(<StaffScreen staff={[]} students={ALL} problem={null} />);
     expect(html).toContain('aria-label="Filter by weekly cap"');
     for (const label of Object.values(CAP_FILTER_LABEL)) {
       expect(html).toContain(`>${label}</option>`);

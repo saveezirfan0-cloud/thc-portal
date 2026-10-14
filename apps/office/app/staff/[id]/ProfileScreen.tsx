@@ -18,6 +18,7 @@ import {
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { RecordHistory } from '../../_components/history/RecordHistory';
+import { oneOf, useListQuery } from '../../_lib/listQuery';
 import {
   RTW_LABEL,
   capReason,
@@ -59,6 +60,17 @@ import './profile.css';
 
 type Tab =
   'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback' | 'availability' | 'history';
+const TABS: readonly Tab[] = [
+  'overview',
+  'documents',
+  'qualification',
+  'shifts',
+  'feedback',
+  'availability',
+  'history',
+];
+/** The open tab is `?tab=` — a link to it, a reload and Back keep it (release audit m5). */
+const QUERY = { tab: 'overview' } as const satisfies Record<string, string>;
 type Dialog = 'block' | 'reset' | 'remove' | null;
 
 /**
@@ -115,7 +127,9 @@ export function ProfileScreen({
   canMessage?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
-  const [tab, setTab] = useState<Tab>('overview');
+  const [url, setUrl] = useListQuery(QUERY);
+  const tab = oneOf(url.tab, TABS, 'overview');
+  const setTab = (next: Tab) => setUrl({ tab: next });
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState('');
   const [confirmation, setConfirmation] = useState('');

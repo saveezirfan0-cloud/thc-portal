@@ -22,6 +22,7 @@ import {
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { useAutoRefresh } from '../_components/useAutoRefresh';
+import { oneOf, useListQuery } from '../_lib/listQuery';
 import { employeeId, formatRating, formatShowRate } from '../staff/staff';
 import { resolveReturning } from './actions';
 import {
@@ -48,6 +49,31 @@ import type {
   StageFilter,
 } from './view-model';
 import type { BoardCandidateRow, BoardData, ChaserState, ReturningRow } from './types';
+
+const VIEWS: readonly BoardFilter[] = ['active', 'rejected'];
+const REASONS: readonly ReasonFilter[] = ['any', 'willo', 'quiz_failed', 'manager'];
+const STAGES: readonly StageFilter[] = ['any', ...COLUMNS.map((column) => column.key)];
+const ATTENTION: readonly AttentionFilter[] = [
+  'any',
+  'attention',
+  'stalled',
+  'referred',
+  'not_activated',
+];
+const APPLIED: readonly AppliedFilter[] = ['any', 'today', '7d', '30d'];
+const GROUPS: readonly GroupFilter[] = ['any', 'spudbros', 'thc'];
+
+/** The Active / Rejected toggle, search and filters live in the URL (release audit L1). */
+const QUERY = {
+  view: 'active',
+  q: '',
+  role: '',
+  reason: 'any',
+  stage: 'any',
+  attention: 'any',
+  applied: 'any',
+  group: 'any',
+} as const satisfies Record<string, string>;
 import './onboarding.css';
 
 function Meta({ line }: { line: Line }) {
@@ -137,14 +163,15 @@ export function OnboardingBoard({
   // so the board re-reads every 30 s and when the tab regains focus.
   useAutoRefresh();
   const at = useMemo(() => new Date(now), [now]);
-  const [filter, setFilter] = useState<BoardFilter>('active');
-  const [query, setQuery] = useState('');
-  const [roleName, setRoleName] = useState('');
-  const [reason, setReason] = useState<ReasonFilter>('any');
-  const [stage, setStage] = useState<StageFilter>('any');
-  const [attention, setAttention] = useState<AttentionFilter>('any');
-  const [applied, setApplied] = useState<AppliedFilter>('any');
-  const [group, setGroup] = useState<GroupFilter>('any');
+  const [url, setUrl] = useListQuery(QUERY);
+  const filter = oneOf(url.view, VIEWS, 'active');
+  const query = url.q;
+  const roleName = url.role;
+  const reason = oneOf(url.reason, REASONS, 'any');
+  const stage = oneOf(url.stage, STAGES, 'any');
+  const attention = oneOf(url.attention, ATTENTION, 'any');
+  const applied = oneOf(url.applied, APPLIED, 'any');
+  const group = oneOf(url.group, GROUPS, 'any');
   const [pending, setPending] = useState<Pending>(null);
   const [note, setNote] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -180,15 +207,7 @@ export function OnboardingBoard({
     applied !== 'any' ||
     group !== 'any' ||
     (filter === 'active' ? roleName !== '' || attention !== 'any' : reason !== 'any');
-  const clearFilters = () => {
-    setQuery('');
-    setRoleName('');
-    setReason('any');
-    setStage('any');
-    setAttention('any');
-    setApplied('any');
-    setGroup('any');
-  };
+  const clearFilters = () => setUrl({ ...QUERY, view: filter });
 
   const open = (row: BoardCandidateRow) => router.push(`/onboarding/${row.id}`);
 
@@ -254,19 +273,19 @@ export function OnboardingBoard({
               { value: 'rejected', label: 'Rejected', count: counts.rejected },
             ]}
             value={filter}
-            onChange={setFilter}
+            onChange={(view) => setUrl({ view })}
           />
           <div className="right">
             <SearchInput
               aria-label="Search candidates"
               placeholder="Search candidates"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
             />
             <Select
               aria-label="Stage"
               value={stage}
-              onChange={(event) => setStage(event.target.value as StageFilter)}
+              onChange={(event) => setUrl({ stage: event.target.value })}
             >
               <option value="any">
                 {filter === 'active' ? 'Any stage' : 'Rejected from any stage'}
@@ -282,7 +301,7 @@ export function OnboardingBoard({
                 <Select
                   aria-label="Role"
                   value={roleName}
-                  onChange={(event) => setRoleName(event.target.value)}
+                  onChange={(event) => setUrl({ role: event.target.value })}
                 >
                   <option value="">Any role</option>
                   {data.roles.map((role) => (
@@ -294,7 +313,7 @@ export function OnboardingBoard({
                 <Select
                   aria-label="Attention"
                   value={attention}
-                  onChange={(event) => setAttention(event.target.value as AttentionFilter)}
+                  onChange={(event) => setUrl({ attention: event.target.value })}
                 >
                   <option value="any">Everyone</option>
                   <option value="attention">Needs attention</option>
@@ -306,7 +325,7 @@ export function OnboardingBoard({
                 <Select
                   aria-label="Group"
                   value={group}
-                  onChange={(event) => setGroup(event.target.value as GroupFilter)}
+                  onChange={(event) => setUrl({ group: event.target.value })}
                 >
                   <option value="any">All groups</option>
                   <option value="spudbros">SpudBros Express</option>
@@ -317,7 +336,7 @@ export function OnboardingBoard({
               <Select
                 aria-label="Reason"
                 value={reason}
-                onChange={(event) => setReason(event.target.value as ReasonFilter)}
+                onChange={(event) => setUrl({ reason: event.target.value })}
               >
                 <option value="any">Any reason</option>
                 <option value="willo">Rejected in Willo</option>
@@ -328,7 +347,7 @@ export function OnboardingBoard({
             <Select
               aria-label="Applied"
               value={applied}
-              onChange={(event) => setApplied(event.target.value as AppliedFilter)}
+              onChange={(event) => setUrl({ applied: event.target.value })}
             >
               <option value="any">Applied any time</option>
               <option value="today">Applied today</option>

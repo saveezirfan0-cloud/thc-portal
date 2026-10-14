@@ -22,6 +22,7 @@ import {
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { ROLE_LABEL } from '../_lib/accounts';
+import { oneOf, useListQuery } from '../_lib/listQuery';
 import {
   DEFAULT_OFFICE_ROLE,
   OFFICE_ROLES,
@@ -60,6 +61,10 @@ import '../account/account.css';
  */
 
 type Tab = 'admin' | 'client' | 'staff';
+const TABS: readonly Tab[] = ['admin', 'client', 'staff'];
+
+/** The app tab and the search live in the URL (release audit L1, m5). */
+const QUERY = { tab: 'admin', q: '' } as const satisfies Record<string, string>;
 
 /** The Staff App tab can hold a thousand rows; a search narrows it. */
 const STAFF_LIMIT = 100;
@@ -84,8 +89,9 @@ function statusOf(account: AccountRow): { tone: 'green' | 'amber' | 'neutral'; l
 }
 
 export function UsersScreen({ data }: { data: UsersPageData }) {
-  const [tab, setTab] = useState<Tab>('admin');
-  const [query, setQuery] = useState('');
+  const [url, setUrl] = useListQuery(QUERY);
+  const tab = oneOf(url.tab, TABS, 'admin');
+  const query = url.q;
   const [inviting, setInviting] = useState(false);
   const [switching, setSwitching] = useState<AccountRow | null>(null);
   const [reroling, setReroling] = useState<AccountRow | null>(null);
@@ -134,7 +140,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
         <SegToggle<Tab>
           aria-label="Which app"
           value={tab}
-          onChange={setTab}
+          onChange={(next) => setUrl({ tab: next })}
           options={[
             { value: 'admin', label: 'Back Office', count: counts.admin },
             { value: 'client', label: 'Client Portal', count: counts.client },
@@ -146,7 +152,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
             aria-label="Search users"
             placeholder="Search name, email, client"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
           />
         </div>
       </div>
