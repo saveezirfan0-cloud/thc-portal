@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Select, Tabs } from '@thc/ui';
+import { Button, EmptyState, Note, Panel, Select, TableScroll, Tabs } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
+import { Pager } from '../_components/Pager';
 import {
   NO_ADDED_FILTER,
   addedFilterActive,
@@ -22,6 +23,10 @@ type Tab = 'list' | 'map';
 type RadiusFilter = 'all' | 'standard' | 'custom';
 type EventsFilter = 'all' | 'with' | 'none';
 type Sort = 'name' | 'newest' | 'oldest' | 'events';
+
+/** The pager's sizes, as on /clients (ADR-0124): 68 venues were one 22,000px page on a phone. */
+export const PAGE_SIZES = [10, 25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 25;
 
 export interface VenuesScreenProps {
   venues: Venue[];
@@ -46,6 +51,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
   const [eventsFilter, setEventsFilter] = useState<EventsFilter>('all');
   const [added, setAdded] = useState<AddedFilter>(NO_ADDED_FILTER);
   const [sort, setSort] = useState<Sort>('name');
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   /** `null` = closed, `'new'` = create, a venue = edit it. */
   const [editing, setEditing] = useState<Venue | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Venue | null>(null);
@@ -93,6 +99,23 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     return sorted;
   }, [venues, query, typeFilter, radiusFilter, eventsFilter, added, sort]);
 
+  // Any change to the search, a filter or the sort goes back to page 1:
+  // the page belongs to the list it was turned on.
+  const listKey = [
+    query,
+    typeFilter,
+    radiusFilter,
+    eventsFilter,
+    added.by,
+    added.from,
+    added.to,
+    sort,
+  ].join('|');
+  const [paging, setPaging] = useState({ key: listKey, page: 0 });
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const current = paging.key === listKey ? Math.min(paging.page, pages - 1) : 0;
+  const shown = filtered.slice(current * pageSize, current * pageSize + pageSize);
+
   // The map draws `filtered`, not `venues`. §9.11's "every venue at once"
   // is what an untouched screen shows, because the search starts empty; the
   // search box sits in the same toolbar row as both tabs, so once a manager
@@ -122,7 +145,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
   return (
     <>
       {/* §9.11: this row sits directly under the page title. */}
-      <div className="toolbar">
+      <div className="toolbar filters">
         <Button
           tone="primary"
           size="sm"
@@ -147,7 +170,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           <div className="search">
             <input
               className="input"
-              style={{ height: 32, width: 280 }}
+              style={{ width: 280 }}
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -159,12 +182,12 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
       </div>
 
       {/* Filters apply to both tabs: the map draws exactly what the list shows. */}
-      <div className="toolbar" role="group" aria-label="Venue filters">
+      <div className="toolbar filters" role="group" aria-label="Venue filters">
         <Select
           value={typeFilter}
           onChange={(event) => setTypeFilter(event.target.value)}
           aria-label="Filter by venue type"
-          style={{ height: 32, width: 190 }}
+          style={{ width: 190 }}
         >
           <option value="">Type: all</option>
           {venueTypes.map((type) => (
@@ -177,7 +200,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           value={radiusFilter}
           onChange={(event) => setRadiusFilter(event.target.value as RadiusFilter)}
           aria-label="Filter by geofence"
-          style={{ height: 32, width: 170 }}
+          style={{ width: 170 }}
         >
           <option value="all">Geofence: all</option>
           <option value="standard">Standard radius</option>
@@ -187,7 +210,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           value={eventsFilter}
           onChange={(event) => setEventsFilter(event.target.value as EventsFilter)}
           aria-label="Filter by events held"
-          style={{ height: 32, width: 170 }}
+          style={{ width: 170 }}
         >
           <option value="all">Events: any</option>
           <option value="with">Has held events</option>
@@ -199,7 +222,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
             value={sort}
             onChange={(event) => setSort(event.target.value as Sort)}
             aria-label="Sort venues"
-            style={{ height: 32, width: 190 }}
+            style={{ width: 190 }}
           >
             <option value="name">Sort: name A–Z</option>
             <option value="newest">Sort: newest added</option>
@@ -236,68 +259,83 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                   </p>
                 </EmptyState>
               ) : (
-                <table className="tbl card-rows">
-                  <thead>
-                    <tr>
-                      <th>Venue</th>
-                      <th>Address</th>
-                      <th>Type</th>
-                      <th className="num">Geofence (m)</th>
-                      <th className="num">Events</th>
-                      <th>Date added</th>
-                      <th>Added by</th>
-                      <th className="actions">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((venue) => (
-                      <tr key={venue.id}>
-                        <td className="name cell-title">
-                          <button
-                            type="button"
-                            className="venue-name"
-                            onClick={() => setEditing(venue)}
-                          >
-                            {venue.name}
-                          </button>
-                          <span className="sub mono">{formatCoordinates(venue)}</span>
-                        </td>
-                        <td data-label="Address">{venue.address}</td>
-                        <td data-label="Type" className="vt">
-                          {venue.venue_type_label}
-                        </td>
-                        <td data-label="Geofence (m)" className="num">
-                          {venue.geofence_radius_m}
-                          {venue.geofence_radius_m !== venue.default_radius_m ? (
-                            <span className="radius-note">default {venue.default_radius_m}</span>
-                          ) : null}
-                        </td>
-                        <td data-label="Events" className="num">
-                          {venue.events_past}
-                        </td>
-                        <td data-label="Date added" className="sm">
-                          {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
-                          <time dateTime={venue.created_at}>
-                            {formatDateAdded(venue.created_at)}
-                          </time>
-                        </td>
-                        <td data-label="Added by" className="sm">
-                          {venue.created_by_name ?? <span className="muted">—</span>}
-                        </td>
-                        <td className="actions cell-actions">
-                          <Button size="sm" onClick={() => setEditing(venue)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
-                            Delete
-                          </Button>
-                        </td>
+                <TableScroll label="Venues" fixed minWidth="58rem">
+                  <table className="tbl card-rows">
+                    <thead>
+                      <tr>
+                        <th>Venue</th>
+                        <th>Address</th>
+                        <th className="col-m">Type</th>
+                        <th className="num col-s">Geofence (m)</th>
+                        <th className="num col-xs">Events</th>
+                        <th className="col-s">Date added</th>
+                        <th className="col-s">Added by</th>
+                        <th className="actions cell-actions col-m">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {shown.map((venue) => (
+                        <tr key={venue.id}>
+                          <td className="name cell-title">
+                            <button
+                              type="button"
+                              className="venue-name"
+                              onClick={() => setEditing(venue)}
+                            >
+                              {venue.name}
+                            </button>
+                            <span className="sub mono">{formatCoordinates(venue)}</span>
+                          </td>
+                          <td data-label="Address">{venue.address}</td>
+                          <td data-label="Type" className="vt">
+                            {venue.venue_type_label}
+                          </td>
+                          <td data-label="Geofence (m)" className="num">
+                            {venue.geofence_radius_m}
+                            {venue.geofence_radius_m !== venue.default_radius_m ? (
+                              <span className="radius-note">default {venue.default_radius_m}</span>
+                            ) : null}
+                          </td>
+                          <td data-label="Events" className="num">
+                            {venue.events_past}
+                          </td>
+                          <td data-label="Date added" className="sm">
+                            {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                            <time dateTime={venue.created_at}>
+                              {formatDateAdded(venue.created_at)}
+                            </time>
+                          </td>
+                          <td data-label="Added by" className="sm">
+                            {venue.created_by_name ?? <span className="muted">—</span>}
+                          </td>
+                          <td className="actions cell-actions">
+                            <Button size="sm" onClick={() => setEditing(venue)}>
+                              Edit
+                            </Button>
+                            <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
+                              Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               )}
             </div>
+            {filtered.length > PAGE_SIZES[0] ? (
+              <Pager
+                total={filtered.length}
+                page={current}
+                pageSize={pageSize}
+                sizes={PAGE_SIZES}
+                onPage={(next) => setPaging({ key: listKey, page: next })}
+                onPageSize={(size) => {
+                  setPageSize(size);
+                  setPaging({ key: listKey, page: 0 });
+                }}
+              />
+            ) : null}
           </Panel>
           {narrowed && venues.length > 0 ? (
             <p className="muted sm" role="status">

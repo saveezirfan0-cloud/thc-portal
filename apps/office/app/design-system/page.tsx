@@ -447,6 +447,77 @@ export default function Page() {
           </TableScroll>
         </Panel>
 
+        {/* ADR-0134: the one table frame. Wider than its card on purpose, so
+            the sideways state shows — first column and actions pinned, the
+            fade on the side with more, the scrollbar stuck to the window. */}
+        <Panel title="Table frame · wider than its card" flush>
+          <div className="panel-b tight">
+            <TableScroll label="Table frame example" minWidth="84rem">
+              <table className="tbl card-rows">
+                <thead>
+                  <tr>
+                    <th className="col-l">Venue</th>
+                    <th>Address</th>
+                    <th className="col-m">Type</th>
+                    <th className="num col-s">Geofence (m)</th>
+                    <th className="num col-xs">Events</th>
+                    <th className="col-s">Date added</th>
+                    <th className="col-s">Added by</th>
+                    <th className="cell-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Leonardo Royal Hotel', '10 Godliman St, London EC4V 5AJ', 'Hotel', 150, 47],
+                    [
+                      'ExCeL London',
+                      'Royal Victoria Dock, London E16 1XL',
+                      'Exhibition centre',
+                      400,
+                      72,
+                    ],
+                    [
+                      'Hurst Manor',
+                      'Cuckfield, Haywards Heath RH17 5LB',
+                      'Private residence',
+                      250,
+                      6,
+                    ],
+                  ].map(([name, address, type, radius, events]) => (
+                    <tr key={String(name)}>
+                      <td className="cell-title">
+                        <b>{name}</b>
+                      </td>
+                      <td data-label="Address">{address}</td>
+                      <td data-label="Type" className="sm muted">
+                        {type}
+                      </td>
+                      <td data-label="Geofence (m)" className="num">
+                        {radius}
+                      </td>
+                      <td data-label="Events" className="num">
+                        {events}
+                      </td>
+                      <td data-label="Date added" className="sm">
+                        12 Jan 2026
+                      </td>
+                      <td data-label="Added by" className="sm">
+                        Gisela M.
+                      </td>
+                      <td className="cell-actions">
+                        <Button size="sm">Edit</Button>
+                        <Button size="sm" tone="danger">
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+          </div>
+        </Panel>
+
         <Panel title="Scheduled window">
           <p className="sm muted">
             A scheduled time is UK first, with a second &ldquo;your time&rdquo; line only when the

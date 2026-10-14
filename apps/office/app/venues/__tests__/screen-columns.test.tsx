@@ -47,7 +47,9 @@ describe('/venues list — Date added and Added by (§9.11)', () => {
   );
 
   it('has the two new columns before Actions', () => {
-    expect(markup).toMatch(/Events<\/th><th>Date added<\/th><th>Added by<\/th><th[^>]*>Actions/);
+    expect(markup).toMatch(
+      /Events<\/th><th[^>]*>Date added<\/th><th[^>]*>Added by<\/th><th[^>]*>Actions/,
+    );
   });
 
   it('prints the UK date of the stamp, not the UTC one', () => {

@@ -21,37 +21,15 @@
 .tbl td.client-phone {
   white-space: nowrap;
 }
-/* On a laptop the nine columns did not fit the card, so each cell was
-   squeezed to its narrowest word: "Breaks: / unpaid / · / Buffer: /
-   strict" one word a line, "13 Oct / 2026", a client name four lines
-   tall. The card scrolls now (packages/ui); these keep the short values
-   whole and give the name a readable measure. Each policy is one unit
-   that can sit under the other, never split. */
+/* Each policy is one unit that can sit under the other, never split;
+   a date and a name stay whole. Column widths come from the table frame's
+   hints (ADR-0134); the phone column is sized to a UK number. */
 .tbl td.client-policies .policy,
 .tbl td.client-nowrap {
   white-space: nowrap;
 }
-@media (min-width: 761px) {
-  /* Nine columns: the default 20px either side of every cell was 360px of
-     the card. */
-  .tbl.clients-list :is(th, td) {
-    padding-left: var(--sp-12);
-    padding-right: var(--sp-12);
-  }
-  .tbl.clients-list :is(th, td):first-child {
-    padding-left: var(--sp-20);
-  }
-  .tbl.clients-list :is(th, td):last-child {
-    padding-right: var(--sp-20);
-  }
-  /* Prefixed to outrank the shared cell floor (packages/ui). A header never
-     wraps, so the floor only padded it out; the client name takes the room. */
-  :is(.panel, .panel-b) > table.tbl.clients-list th {
-    min-width: 0;
-  }
-  :is(.panel, .panel-b) > table.tbl.clients-list td.name.cell-title {
-    min-width: 10.5rem;
-  }
+.tbl th.col-phone {
+  width: 8.5rem;
 }
 .tbl td.num.margin {
   color: var(--green-ink);

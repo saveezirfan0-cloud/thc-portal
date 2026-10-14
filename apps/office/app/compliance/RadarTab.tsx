@@ -10,6 +10,7 @@ import {
   Pill,
   SegToggle,
   Select,
+  TableScroll,
   TileGrid,
   useTimeFormat,
 } from '@thc/ui';
@@ -92,7 +93,7 @@ export function RadarTab({
         />
       </TileGrid>
 
-      <div className="toolbar">
+      <div className="toolbar filters">
         <SegToggle
           options={[
             { value: 'all', label: 'All', count: rows.length },
@@ -115,7 +116,7 @@ export function RadarTab({
         <div className="search">
           <input
             className="input"
-            style={{ height: 32, width: 220 }}
+            style={{ width: 220 }}
             type="search"
             value={query}
             onChange={(event) => {
@@ -133,7 +134,7 @@ export function RadarTab({
             setPage(0);
           }}
           aria-label="Document type"
-          style={{ height: 32, width: 190 }}
+          style={{ width: 190 }}
         >
           {DOCUMENT_FILTERS.filter((f) =>
             ['any', 'id', 'rtw', 'visa', 'term'].includes(f.value),
@@ -156,69 +157,76 @@ export function RadarTab({
               <p>Every verified document with an expiry date on a live worker is listed here.</p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>Who</th>
-                  <th>Document</th>
-                  <th>Expiry date</th>
-                  <th>Days left</th>
-                  <th>Status</th>
-                  <th>Reminders sent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((row) => {
-                  const status = radarStatus(row, format);
-                  return (
-                    <tr key={row.doc_id}>
-                      <td className="cell-title">
-                        <div className="person">
-                          <Avatar name={row.display_name} size="sm" />
-                          <div>
-                            <div className="n">
-                              <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>
-                            </div>
-                            <div className="s">
-                              {row.rtw_branch ? (BRANCH[row.rtw_branch] ?? row.rtw_branch) : '—'}
+            <TableScroll label="Expiry radar" fixed minWidth="56rem">
+              <table className="tbl card-rows">
+                <thead>
+                  <tr>
+                    <th className="col-l">Who</th>
+                    <th>Document</th>
+                    <th className="col-s">Expiry date</th>
+                    <th className="col-s">Days left</th>
+                    <th className="col-l">Status</th>
+                    <th>Reminders sent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((row) => {
+                    const status = radarStatus(row, format);
+                    return (
+                      <tr key={row.doc_id}>
+                        <td className="cell-title">
+                          <div className="person">
+                            <Avatar name={row.display_name} size="sm" />
+                            <div>
+                              <div className="n">
+                                <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>
+                              </div>
+                              <div className="s">
+                                {row.rtw_branch ? (BRANCH[row.rtw_branch] ?? row.rtw_branch) : '—'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td data-label="Document">
-                        {row.doc_label}
-                        {row.reviewed_at ? (
-                          <span className="sub">
-                            {reviewStamp('verified', row.reviewed_by_name, row.reviewed_at, format)}
+                        </td>
+                        <td data-label="Document">
+                          {row.doc_label}
+                          {row.reviewed_at ? (
+                            <span className="sub">
+                              {reviewStamp(
+                                'verified',
+                                row.reviewed_by_name,
+                                row.reviewed_at,
+                                format,
+                              )}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td data-label="Expiry date" className="mono">
+                          {ukDate(row.expires_on)}
+                        </td>
+                        <td data-label="Days left">
+                          <span className={`days ${daysTone(row.state)}`}>
+                            {daysLabel(row.days_left)}
                           </span>
-                        ) : null}
-                      </td>
-                      <td data-label="Expiry date" className="mono">
-                        {ukDate(row.expires_on)}
-                      </td>
-                      <td data-label="Days left">
-                        <span className={`days ${daysTone(row.state)}`}>
-                          {daysLabel(row.days_left)}
-                        </span>
-                      </td>
-                      <td data-label="Status">
-                        <Pill tone={status.tone}>{status.label}</Pill>
-                        {row.replacement_in_review ? (
-                          <span className="sub">a newer one is in Needs review</span>
-                        ) : row.state === 'expired' ? (
-                          <span className="sub">nothing re-uploaded yet</span>
-                        ) : row.doc_type === 'university_term_dates_letter' ? (
-                          <span className="sub">expires on the letter’s last printed date</span>
-                        ) : null}
-                      </td>
-                      <td data-label="Reminders sent" className="sm muted">
-                        {remindersLine(row)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td data-label="Status">
+                          <Pill tone={status.tone}>{status.label}</Pill>
+                          {row.replacement_in_review ? (
+                            <span className="sub">a newer one is in Needs review</span>
+                          ) : row.state === 'expired' ? (
+                            <span className="sub">nothing re-uploaded yet</span>
+                          ) : row.doc_type === 'university_term_dates_letter' ? (
+                            <span className="sub">expires on the letter’s last printed date</span>
+                          ) : null}
+                        </td>
+                        <td data-label="Reminders sent" className="sm muted">
+                          {remindersLine(row)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
         <div className="panel-h" style={{ borderBottom: 0, borderTop: '1px solid var(--line)' }}>
@@ -312,38 +320,40 @@ function RotaGuardPanel({ warnings, mode }: { warnings: WarningRow[]; mode: 'blo
           right-to-work expiry are always refused, whatever the setting.
         </p>
       ) : (
-        <table className="tbl card-rows">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Worker</th>
-              <th>Shift</th>
-              <th>Hours that week</th>
-            </tr>
-          </thead>
-          <tbody>
-            {warnings.map((w) => (
-              <tr key={w.id}>
-                <td data-label="When" className="mono sm">
-                  {ukStamp(w.at, format)}
-                </td>
-                <td className="cell-title">
-                  <Link href={`/staff/${w.staff_id}`}>{w.worker}</Link>
-                </td>
-                <td data-label="Shift" className="sm">
-                  {w.event_title ?? '—'}
-                  {w.starts_at ? (
-                    <span className="sub">{ukStamp(w.starts_at, format)} (UK)</span>
-                  ) : null}
-                </td>
-                <td data-label="Hours that week" className="mono sm">
-                  {Number(w.booked_hours ?? 0) + Number(w.shift_hours ?? 0)} h of{' '}
-                  {w.cap_hours ?? '—'} h
-                </td>
+        <TableScroll label="48-hour warnings">
+          <table className="tbl card-rows">
+            <thead>
+              <tr>
+                <th className="col-m">When</th>
+                <th className="col-l">Worker</th>
+                <th>Shift</th>
+                <th className="col-m">Hours that week</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {warnings.map((w) => (
+                <tr key={w.id}>
+                  <td data-label="When" className="mono sm">
+                    {ukStamp(w.at, format)}
+                  </td>
+                  <td className="cell-title">
+                    <Link href={`/staff/${w.staff_id}`}>{w.worker}</Link>
+                  </td>
+                  <td data-label="Shift" className="sm">
+                    {w.event_title ?? '—'}
+                    {w.starts_at ? (
+                      <span className="sub">{ukStamp(w.starts_at, format)} (UK)</span>
+                    ) : null}
+                  </td>
+                  <td data-label="Hours that week" className="mono sm">
+                    {Number(w.booked_hours ?? 0) + Number(w.shift_hours ?? 0)} h of{' '}
+                    {w.cap_hours ?? '—'} h
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
     </Panel>
   );

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { type MouseEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Chip, EmptyState, Note, Panel, Select } from '@thc/ui';
+import { Alert, Button, Chip, EmptyState, Note, Panel, Select, TableScroll } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
@@ -160,11 +160,11 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
-      <div className="toolbar">
+      <div className="toolbar filters">
         <div className="search">
           <input
             className="input"
-            style={{ height: 32, width: 280 }}
+            style={{ width: 280 }}
             type="search"
             value={query}
             onChange={(event) => {
@@ -179,7 +179,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
           value={sort}
           onChange={(event) => setSort(event.target.value as Sort)}
           aria-label="Sort clients"
-          style={{ height: 32, width: 190 }}
+          style={{ width: 190 }}
         >
           <option value="name">Sort: name A–Z</option>
           <option value="events">Sort: most events</option>
@@ -197,7 +197,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         ) : null}
       </div>
 
-      <div className="toolbar" role="group" aria-label="Client filters">
+      <div className="toolbar filters" role="group" aria-label="Client filters">
         <Select
           value={breaks}
           onChange={(event) => {
@@ -205,7 +205,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
             setPage(0);
           }}
           aria-label="Filter by break policy"
-          style={{ height: 32, width: 160 }}
+          style={{ width: 160 }}
         >
           <option value="all">Breaks: all</option>
           <option value="paid">Breaks: paid</option>
@@ -218,7 +218,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
             setPage(0);
           }}
           aria-label="Filter by buffer policy"
-          style={{ height: 32, width: 160 }}
+          style={{ width: 160 }}
         >
           <option value="all">Buffer: all</option>
           <option value="paid">Buffer: paid</option>
@@ -231,7 +231,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
             setPage(0);
           }}
           aria-label="Filter by rate card role"
-          style={{ height: 32, width: 190 }}
+          style={{ width: 190 }}
         >
           <option value="">Rate card role: any</option>
           {roles.map((name) => (
@@ -278,87 +278,91 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows clients-list">
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Contact</th>
-                  <th>Phone</th>
-                  <th>Rate card roles</th>
-                  <th>Policies</th>
-                  <th className="num">Events</th>
-                  {ratesVisible ? <th className="num">Avg margin</th> : null}
-                  <th>Date added</th>
-                  <th>Added by</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((client) => (
-                  <tr key={client.id} className="clickable" onClick={openClient(client.id)}>
-                    <td className="name cell-title">
-                      {/*
+            <TableScroll label="Clients" fixed minWidth="58rem">
+              <table className="tbl card-rows clients-list">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Contact</th>
+                    <th className="col-phone">Phone</th>
+                    <th>Rate card roles</th>
+                    <th className="col-m">Policies</th>
+                    <th className="num col-xs">Events</th>
+                    {ratesVisible ? <th className="num col-s">Avg margin</th> : null}
+                    <th className="col-s">Date added</th>
+                    <th className="col-s">Added by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((client) => (
+                    <tr key={client.id} className="clickable" onClick={openClient(client.id)}>
+                      <td className="name cell-title">
+                        {/*
                         The name opens the card (§9.7), not the edit modal:
                         the card is where the rate card, the qualified pool
                         and this client's events live, and Edit is one
                         button on it. The row opens it too (openClient).
                       */}
-                      <Link href={`/clients/${client.id}`} className="client-name">
-                        {client.name}
-                      </Link>
-                      <span className="sub">{client.staff_contact_point}</span>
-                    </td>
-                    <td data-label="Contact">
-                      {client.contact_name}
-                      <span className="sub">{describeEmails(client.contact_emails)}</span>
-                    </td>
-                    <td data-label="Phone" className="mono sm client-phone">
-                      {client.phone}
-                    </td>
-                    <td data-label="Rate card roles">
-                      {client.rate_card_roles.length === 0 ? (
-                        <span className="muted sm">no rate card yet</span>
-                      ) : (
-                        <div className="chips">
-                          {client.rate_card_roles.map((role) => (
-                            <Chip key={role}>{role}</Chip>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td data-label="Policies" className="sm client-policies">
-                      <span className="policy">
-                        <span className="muted">Breaks:</span>{' '}
-                        {client.pays_breaks ? 'paid' : 'unpaid'}
-                      </span>{' '}
-                      ·{' '}
-                      <span className="policy">
-                        <span className="muted">Buffer:</span>{' '}
-                        {client.pays_buffer ? 'paid' : 'strict'}
-                      </span>
-                    </td>
-                    <td data-label="Events" className="num">
-                      {client.event_count}
-                    </td>
-                    {ratesVisible ? (
-                      <td data-label="Avg margin" className="num margin">
-                        {client.avg_margin_pct === null ? (
-                          <span className="muted">—</span>
+                        <Link href={`/clients/${client.id}`} className="client-name">
+                          {client.name}
+                        </Link>
+                        <span className="sub">{client.staff_contact_point}</span>
+                      </td>
+                      <td data-label="Contact">
+                        {client.contact_name}
+                        <span className="sub">{describeEmails(client.contact_emails)}</span>
+                      </td>
+                      <td data-label="Phone" className="mono sm client-phone">
+                        {client.phone}
+                      </td>
+                      <td data-label="Rate card roles">
+                        {client.rate_card_roles.length === 0 ? (
+                          <span className="muted sm">no rate card yet</span>
                         ) : (
-                          `${client.avg_margin_pct.toFixed(1)}%`
+                          <div className="chips">
+                            {client.rate_card_roles.map((role) => (
+                              <Chip key={role}>{role}</Chip>
+                            ))}
+                          </div>
                         )}
                       </td>
-                    ) : null}
-                    <td data-label="Date added" className="sm client-nowrap">
-                      {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
-                      <time dateTime={client.created_at}>{formatDateAdded(client.created_at)}</time>
-                    </td>
-                    <td data-label="Added by" className="sm client-nowrap">
-                      {client.created_by_name ?? <span className="muted">—</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <td data-label="Policies" className="sm client-policies">
+                        <span className="policy">
+                          <span className="muted">Breaks:</span>{' '}
+                          {client.pays_breaks ? 'paid' : 'unpaid'}
+                        </span>{' '}
+                        ·{' '}
+                        <span className="policy">
+                          <span className="muted">Buffer:</span>{' '}
+                          {client.pays_buffer ? 'paid' : 'strict'}
+                        </span>
+                      </td>
+                      <td data-label="Events" className="num">
+                        {client.event_count}
+                      </td>
+                      {ratesVisible ? (
+                        <td data-label="Avg margin" className="num margin">
+                          {client.avg_margin_pct === null ? (
+                            <span className="muted">—</span>
+                          ) : (
+                            `${client.avg_margin_pct.toFixed(1)}%`
+                          )}
+                        </td>
+                      ) : null}
+                      <td data-label="Date added" className="sm client-nowrap">
+                        {/* An audit stamp: UK date only, never the viewer's zone (§1.8). */}
+                        <time dateTime={client.created_at}>
+                          {formatDateAdded(client.created_at)}
+                        </time>
+                      </td>
+                      <td data-label="Added by" className="sm client-nowrap">
+                        {client.created_by_name ?? <span className="muted">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
         {/*

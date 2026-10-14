@@ -3,7 +3,16 @@
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from 'react';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Avatar, Button, EmptyState, Panel, Pill, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Button,
+  EmptyState,
+  Panel,
+  Pill,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import { actionLabel, entityLabel } from '../../_lib/accounts';
 import { actorName, describe } from '../../activity/view-model';
 import { loadRecordHistory } from './actions';
@@ -103,14 +112,14 @@ export function RecordHistory({
               <EmptyState>Nothing has been recorded about this yet.</EmptyState>
             )
           ) : (
-            <div className="table-scroll">
+            <TableScroll label="History" fixed minWidth="52rem">
               <table className="tbl card-rows activity-table">
                 <thead>
                   <tr>
-                    <th>When (UK time)</th>
-                    <th>Who</th>
-                    <th>What</th>
-                    <th>Record</th>
+                    <th className="col-m">When (UK time)</th>
+                    <th className="col-m">Who</th>
+                    <th className="col-l">What</th>
+                    <th className="col-l">Record</th>
                     <th>Details</th>
                   </tr>
                 </thead>
@@ -153,7 +162,7 @@ export function RecordHistory({
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
           {older !== null ? (
             <div className="activity-pager">

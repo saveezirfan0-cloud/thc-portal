@@ -52,13 +52,15 @@ const render = (ratesVisible: boolean) =>
 
 describe('/clients directory — Date added and Added by (§9.7)', () => {
   it('has the two new columns after Avg margin', () => {
-    expect(render(true)).toMatch(/Avg margin<\/th><th>Date added<\/th><th>Added by<\/th>/);
+    expect(render(true)).toMatch(
+      /Avg margin<\/th><th[^>]*>Date added<\/th><th[^>]*>Added by<\/th>/,
+    );
   });
 
   it('keeps them, and still hides the margin, for a scheduler without finance', () => {
     const markup = render(false);
     expect(markup).not.toContain('Avg margin');
-    expect(markup).toMatch(/Events<\/th><th>Date added<\/th><th>Added by<\/th>/);
+    expect(markup).toMatch(/Events<\/th><th[^>]*>Date added<\/th><th[^>]*>Added by<\/th>/);
   });
 
   it('prints the UK date, the manager, and an em dash where nobody was recorded', () => {

@@ -3,7 +3,17 @@
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Avatar, Button, EmptyState, Note, Pill, Select, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Button,
+  EmptyState,
+  Note,
+  Pill,
+  Select,
+  TableScroll,
+  useTimeFormat,
+} from '@thc/ui';
 import {
   DOCUMENT_FILTERS,
   actionsFor,
@@ -91,11 +101,11 @@ export function ReviewTab({
 
   return (
     <section className="stack" aria-label="Needs review">
-      <div className="toolbar">
+      <div className="toolbar filters">
         <div className="search">
           <input
             className="input"
-            style={{ height: 32, width: 240 }}
+            style={{ width: 240 }}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -107,7 +117,7 @@ export function ReviewTab({
           value={who}
           onChange={(event) => setWho(event.target.value as WhoFilter)}
           aria-label="Candidates or staff"
-          style={{ height: 32, width: 170 }}
+          style={{ width: 170 }}
         >
           <option value="all">Candidates + staff</option>
           <option value="candidates">Candidates only</option>
@@ -117,7 +127,7 @@ export function ReviewTab({
           value={document}
           onChange={(event) => setDocument(event.target.value)}
           aria-label="Document type"
-          style={{ height: 32, width: 220 }}
+          style={{ width: 220 }}
         >
           {DOCUMENT_FILTERS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -154,29 +164,31 @@ export function ReviewTab({
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl card-rows">
-              <thead>
-                <tr>
-                  <th>Who</th>
-                  <th>Document</th>
-                  <th>Uploaded</th>
-                  <th>AI found</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row) => (
-                  <QueueLine
-                    key={row.item_id}
-                    row={row}
-                    rtwCheckEnabled={rtwCheckEnabled}
-                    busy={pendingId === row.item_id}
-                    onVerify={() => verify(row)}
-                    onReject={() => reject(row)}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <TableScroll label="Needs review" minWidth="56rem">
+              <table className="tbl card-rows">
+                <thead>
+                  <tr>
+                    <th className="col-l">Who</th>
+                    <th>Document</th>
+                    <th className="col-m">Uploaded</th>
+                    <th>AI found</th>
+                    <th className="cell-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((row) => (
+                    <QueueLine
+                      key={row.item_id}
+                      row={row}
+                      rtwCheckEnabled={rtwCheckEnabled}
+                      busy={pendingId === row.item_id}
+                      onVerify={() => verify(row)}
+                      onReject={() => reject(row)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
   Pill,
   SearchInput,
   Select,
+  TableScroll,
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -80,7 +81,7 @@ export function ActivityScreen({
     >
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
 
-      <div className="toolbar activity-filters">
+      <div className="toolbar filters activity-filters">
         <form
           className="search"
           role="search"
@@ -141,14 +142,14 @@ export function ActivityScreen({
               : 'Nothing has been recorded in this period.'}
           </EmptyState>
         ) : (
-          <div className="table-scroll">
+          <TableScroll label="Activity" fixed minWidth="52rem">
             <table className="tbl card-rows activity-table">
               <thead>
                 <tr>
-                  <th>When (UK time)</th>
-                  <th>Who</th>
-                  <th>What</th>
-                  <th>Record</th>
+                  <th className="col-m">When (UK time)</th>
+                  <th className="col-m">Who</th>
+                  <th className="col-l">What</th>
+                  <th className="col-l">Record</th>
                   <th>Details</th>
                 </tr>
               </thead>
@@ -196,7 +197,7 @@ export function ActivityScreen({
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
         <div className="activity-pager">
           {filters.before ? (

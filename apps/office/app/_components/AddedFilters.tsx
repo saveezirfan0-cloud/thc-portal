@@ -32,7 +32,7 @@ export function AddedFilters({ rows, value, onChange }: AddedFiltersProps) {
         value={value.by}
         onChange={(event) => onChange({ ...value, by: event.target.value })}
         aria-label="Filter by who added"
-        style={{ height: 32, width: 170 }}
+        style={{ width: 170 }}
       >
         <option value={ADDED_BY_ANYONE}>Added by: anyone</option>
         {managers.map((manager) => (
@@ -46,7 +46,7 @@ export function AddedFilters({ rows, value, onChange }: AddedFiltersProps) {
         Added from
         <input
           className="input"
-          style={{ height: 32, width: 150 }}
+          style={{ width: 150 }}
           type="date"
           value={value.from}
           max={value.to || undefined}
@@ -58,7 +58,7 @@ export function AddedFilters({ rows, value, onChange }: AddedFiltersProps) {
         to
         <input
           className="input"
-          style={{ height: 32, width: 150 }}
+          style={{ width: 150 }}
           type="date"
           value={value.to}
           min={value.from || undefined}

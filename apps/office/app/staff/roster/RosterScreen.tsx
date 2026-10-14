@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
-import { Alert, Button, EmptyState, Panel, Pill } from '@thc/ui';
+import { Alert, Button, EmptyState, Panel, Pill, TableScroll } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { linkRosterEntry, loadRoster, removeRosterEntries, setRemindersEnabled } from './actions';
 import { MatchesPanel, ReminderPanel, RosterKpis } from './ReminderReport';
@@ -193,7 +193,7 @@ export function RosterScreen({
                 </Button>
               </div>
             ) : null}
-            <div className="table-scroll">
+            <TableScroll label="Invite list" minWidth="48rem">
               <table className="tbl">
                 <thead>
                   <tr>
@@ -203,7 +203,7 @@ export function RosterScreen({
                     <th>Group</th>
                     <th>Daily reminder</th>
                     <th>Loaded</th>
-                    {canEdit ? <th aria-label="Remove" /> : null}
+                    {canEdit ? <th aria-label="Remove" className="cell-actions" /> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -227,7 +227,7 @@ export function RosterScreen({
                       </td>
                       <td className="sm muted">{row.loaded_at.slice(0, 10)}</td>
                       {canEdit ? (
-                        <td>
+                        <td className="cell-actions">
                           <Button
                             size="sm"
                             tone="ghost"
@@ -242,7 +242,7 @@ export function RosterScreen({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           </>
         )}
       </Panel>
