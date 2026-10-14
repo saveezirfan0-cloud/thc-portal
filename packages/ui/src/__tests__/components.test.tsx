@@ -47,6 +47,8 @@ import { Chip, Pill } from '../components/Pill';
 import { SegToggle, Tabs } from '../components/SegToggle';
 import { Content, PageHead, Shell, Sidebar, Topbar, UserChip } from '../components/Shell';
 import { TableScroll } from '../components/Table';
+import { ColumnChooser, ColumnHeads, useColumns } from '../components/ColumnChooser';
+import type { ColumnDef } from '../components/columns';
 import { Progress, Stepper } from '../components/Stepper';
 import { SaveBar } from '../components/SaveBar';
 import {
@@ -738,5 +740,33 @@ describe('SignOut', () => {
     expect(html).toMatch(/<form[^>]*class="signout"/);
     expect(html).not.toMatch(/<form[^>]*class="[^"]*ml-auto/);
     expect(html).toMatch(/<button[^>]*class="[^"]*ml-auto[^"]*"/);
+  });
+});
+
+describe('ColumnChooser (ADR-0139)', () => {
+  const DEFS = [
+    { id: 'name', label: 'Venue', required: true },
+    { id: 'type', label: 'Type', width: 'm' },
+    { id: 'added', label: 'Date added', defaultVisible: false },
+  ] as const satisfies readonly ColumnDef[];
+
+  function Preview() {
+    const columns = useColumns('preview', DEFS);
+    return (
+      <>
+        <ColumnChooser columns={columns} label="Venues" />
+        <table className="tbl">
+          <thead>
+            <tr>
+              <ColumnHeads columns={columns} />
+            </tr>
+          </thead>
+        </table>
+      </>
+    );
+  }
+
+  it('renders the pill-ghost button, the live region and the chosen headers', () => {
+    expect(html(<Preview />)).toMatchSnapshot();
   });
 });

@@ -242,6 +242,7 @@
    every panel, card and tile the same lift; the border stays for the
    contact edge rather than being traded away for it. */
 :root[data-style='warm'] .savebar,
+:root[data-style='warm'] .colchooser-pop,
 :root[data-style='warm'] .panel,
 :root[data-style='warm'] .card,
 :root[data-style='warm'] .kpi,
