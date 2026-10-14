@@ -1,9 +1,35 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Addon, Alert, Button, Chip, Input, InputRow, Panel, Select, TableScroll } from '@thc/ui';
+import type { ReactNode } from 'react';
+import {
+  Addon,
+  Alert,
+  Button,
+  Chip,
+  Input,
+  InputRow,
+  Modal,
+  Panel,
+  Select,
+  TableScroll,
+  toast,
+} from '@thc/ui';
+import { DRESS_CODE_MAX, lengthHint } from '../../_lib/length';
+import { useConfirm } from '../../_components/useConfirm';
+import { finalPence, toPence } from '../../roles/money';
 import { addRole, removeRole, updateRole } from './actions';
-import { defaultDressCodes, dressCodeSuggestions, gbp, marginTone } from './card';
+import {
+  chargeRateInputProblem,
+  chargeValue,
+  defaultDressCodes,
+  dressCodeSuggestions,
+  gbp,
+  marginPreview,
+  marginTone,
+  signedGbp,
+  signedPct,
+} from './card';
 import type { RateCardRow, RoleOption } from './types';
 
 /**
@@ -25,10 +51,15 @@ import type { RateCardRow, RoleOption } from './types';
  * figure read as a negative margin here and became the event form's
  * default charge (events/data.ts), a rate nobody had set.
  *
- * Final pay and margin are read, not calculated here. `final_rate()` in
- * SQL is the single definition of the 12.07% (§9.8) and every margin in
- * the system is derived from it; a second implementation in TypeScript is
- * how two screens come to disagree about what a client is worth.
+ * Saved final pay and margin are read, not calculated here. `final_rate()`
+ * in SQL is the single definition of the 12.07% (§9.8) and every margin in
+ * the system is derived from it. While a row is being typed it shows a
+ * PREVIEW of both (release audit m8 — a new row said "on Save") from
+ * `roles/money`, the screen-side twin that 150_roles_directory.sql holds
+ * to final_rate() at every penny; what is stored is the database's.
+ *
+ * A charge below final pay is a loss on every hour worked, so Save asks
+ * first and says by how much — "−£5.69/h" (release audit D-M7).
  *
  * ADR-0061: an office role without finance (a scheduler) gets the same
  * block as a list of roles and their dress codes — no rate, no margin and
@@ -80,7 +111,16 @@ function EditableRateCard({
   /** The draft's dress codes were filled in from the client's other roles. */
   const [learned, setLearned] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  /** A save that would price this role below final pay, waiting on "Save anyway". */
+  const [loss, setLoss] = useState<{
+    role: string;
+    charge: number;
+    final: number;
+    save: () => void;
+  } | null>(null);
   const [pending, start] = useTransition();
+  // ADR-0137 §1: Remove used to happen on the click.
+  const confirm = useConfirm();
 
   const unlisted = roles.filter(
     (role) => !rows.some((row) => row.role_id === role.id) && role.id !== draft?.id,
@@ -116,6 +156,33 @@ function EditableRateCard({
     setCodes(usual);
     setLearned(usual.length > 0);
     setCodeDraft('');
+  };
+
+  /**
+   * The live preview for the row being typed and the guarded save: a
+   * charge below final pay asks first.
+   */
+  const preview = (finalPayPence: number): { margin: ReactNode; issue: string | null } => {
+    const issue = chargeRateInputProblem(rate);
+    if (issue)
+      return { margin: <span className="muted sm">—</span>, issue: rate.trim() ? issue : null };
+    const { perHour, pct } = marginPreview(Math.round(chargeValue(rate) * 100), finalPayPence);
+    return {
+      issue: null,
+      margin: (
+        <span className={marginTone(pct)}>
+          {signedGbp(perHour)}/h
+          <span className="sub muted">{signedPct(pct)}</span>
+        </span>
+      ),
+    };
+  };
+  // A draft's final pay, from the catalogue's base rate (preview).
+  const draftFinal = finalPence(toPence(draft?.pay_rate ?? 0));
+  const guardedSave = (role: string, finalPayPence: number, save: () => void) => {
+    const charge = Math.round(chargeValue(rate) * 100);
+    if (charge < finalPayPence) setLoss({ role, charge, final: finalPayPence, save });
+    else save();
   };
 
   const addCode = (code = codeDraft) => {
@@ -195,7 +262,9 @@ function EditableRateCard({
                 <EditingRow
                   roleName={draft.name}
                   basePay={gbp(draft.pay_rate)}
-                  finalPay="on Save"
+                  finalPay={gbp(draftFinal / 100)}
+                  margin={preview(draftFinal).margin}
+                  rateIssue={preview(draftFinal).issue}
                   rate={rate}
                   setRate={setRate}
                   codes={codes}
@@ -206,12 +275,14 @@ function EditableRateCard({
                   library={dressCodeLibrary}
                   learned={learned}
                   pending={pending}
-                  saveDisabled={rate.trim() === ''}
+                  saveDisabled={chargeRateInputProblem(rate) !== null}
                   onCancel={() => setDraft(null)}
                   onSave={() =>
-                    run(
-                      () => addRole(clientId, draft.id, Number(rate), codes),
-                      () => setDraft(null),
+                    guardedSave(draft.name, draftFinal, () =>
+                      run(
+                        () => addRole(clientId, draft.id, chargeValue(rate), codes),
+                        () => setDraft(null),
+                      ),
                     )
                   }
                 />
@@ -223,6 +294,8 @@ function EditableRateCard({
                     roleName={row.role_name}
                     basePay={gbp(row.base_pay_rate)}
                     finalPay={gbp(row.final_pay_rate)}
+                    margin={preview(toPence(row.final_pay_rate ?? 0)).margin}
+                    rateIssue={preview(toPence(row.final_pay_rate ?? 0)).issue}
                     rate={rate}
                     setRate={setRate}
                     codes={codes}
@@ -232,12 +305,14 @@ function EditableRateCard({
                     addCode={addCode}
                     library={dressCodeLibrary}
                     pending={pending}
-                    saveDisabled={rate.trim() === ''}
+                    saveDisabled={chargeRateInputProblem(rate) !== null}
                     onCancel={() => setEditing(null)}
                     onSave={() =>
-                      run(
-                        () => updateRole(clientId, row.id, Number(rate), codes),
-                        () => setEditing(null),
+                      guardedSave(row.role_name, toPence(row.final_pay_rate ?? 0), () =>
+                        run(
+                          () => updateRole(clientId, row.id, chargeValue(rate), codes),
+                          () => setEditing(null),
+                        ),
                       )
                     }
                   />
@@ -272,11 +347,8 @@ function EditableRateCard({
                       data-label="Margin"
                       className={`right-align mono ${marginTone(row.margin_pct)}`}
                     >
-                      {(row.margin_per_hour ?? 0) >= 0 ? '+' : ''}
-                      {gbp(row.margin_per_hour)}/h
-                      <span className="sub muted">
-                        {row.margin_pct === null ? '—' : `${row.margin_pct}%`}
-                      </span>
+                      {signedGbp(row.margin_per_hour)}/h
+                      <span className="sub muted">{signedPct(row.margin_pct)}</span>
                     </td>
                     <td data-label="Dress codes" className="dcs-cell">
                       <DressCodeList codes={row.dress_codes} />
@@ -294,7 +366,25 @@ function EditableRateCard({
                             ? `${row.section_count} built role sections keep the rate they were built with — this only removes the role from the next event's options`
                             : undefined
                         }
-                        onClick={() => run(() => removeRole(clientId, row.id))}
+                        onClick={() =>
+                          confirm.ask({
+                            title: `Remove ${row.role_name} from this rate card?`,
+                            body: `Its charge rate and dress codes for this client go.${
+                              row.section_count > 0
+                                ? ` The ${row.section_count} role sections already built keep the rates they were built with.`
+                                : ''
+                            } The next event for this client cannot use ${row.role_name} until it is added back here.`,
+                            confirm: 'Remove role',
+                            onConfirm: () =>
+                              run(
+                                () => removeRole(clientId, row.id),
+                                () =>
+                                  toast(`${row.role_name} removed from the rate card`, {
+                                    tone: 'green',
+                                  }),
+                              ),
+                          })
+                        }
                       >
                         Remove
                       </Button>
@@ -306,6 +396,40 @@ function EditableRateCard({
           </table>
         </TableScroll>
       )}
+
+      {confirm.dialog}
+      <Modal
+        open={loss !== null}
+        title="This charge rate loses money"
+        onClose={() => setLoss(null)}
+        footer={
+          <>
+            <Button onClick={() => setLoss(null)}>Change the rate</Button>
+            <Button
+              tone="danger"
+              onClick={() => {
+                const save = loss?.save;
+                setLoss(null);
+                save?.();
+              }}
+            >
+              Save anyway
+            </Button>
+          </>
+        }
+      >
+        {loss ? (
+          <p className="sm">
+            Charging <b>{gbp(loss.charge / 100)}/h</b> for {loss.role} is below its final pay of{' '}
+            <b>{gbp(loss.final / 100)}/h</b>: a margin of{' '}
+            <b className="coral">{signedGbp((loss.charge - loss.final) / 100)}/h</b>
+            {loss.charge > 0
+              ? ` (${signedPct(marginPreview(loss.charge, loss.final).pct)})`
+              : ''}{' '}
+            on every hour worked at this client.
+          </p>
+        ) : null}
+      </Modal>
 
       <div className="panel-b">
         <span className="muted sm">
@@ -410,6 +534,8 @@ function EditingRow({
   roleName,
   basePay,
   finalPay,
+  margin,
+  rateIssue,
   rate,
   setRate,
   codes,
@@ -427,6 +553,10 @@ function EditingRow({
   roleName: string;
   basePay: string;
   finalPay: string;
+  /** The live margin preview for what is typed (release audit m8). */
+  margin: ReactNode;
+  /** Why the typed charge rate cannot be saved, shown under the field. */
+  rateIssue: string | null;
   rate: string;
   setRate: (value: string) => void;
   codes: string[];
@@ -458,9 +588,15 @@ function EditingRow({
             inputMode="decimal"
             placeholder="0.00"
             aria-label={`Charge rate for ${roleName}`}
+            aria-invalid={rateIssue ? true : undefined}
             onChange={(event) => setRate(event.target.value)}
           />
         </InputRow>
+        {rateIssue ? (
+          <span className="error sm" role="alert">
+            {rateIssue}
+          </span>
+        ) : null}
       </td>
       <td data-label="Base pay" className="right-align mono">
         {basePay}
@@ -468,8 +604,8 @@ function EditingRow({
       <td data-label="Final pay" className="right-align mono">
         {finalPay}
       </td>
-      <td data-label="Margin" className="right-align muted sm">
-        saved on Save
+      <td data-label="Margin" className="right-align mono" aria-live="polite">
+        {margin}
       </td>
       <td data-label="Dress codes" className="dcs-cell">
         <div className="dcs dcs-edit">
@@ -490,6 +626,8 @@ function EditingRow({
             placeholder="Add a dress code"
             value={codeDraft}
             aria-label="Add a dress code"
+            maxLength={DRESS_CODE_MAX}
+            hint={lengthHint(codeDraft.length, DRESS_CODE_MAX)}
             onChange={(event) => setCodeDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {

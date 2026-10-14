@@ -69,6 +69,7 @@ export function Overview({
   canCorrectDob = false,
   payRate = null,
   payRateProblem = null,
+  payFloorPence,
   showPayRate = false,
   canEditPayRate = false,
 }: {
@@ -106,6 +107,8 @@ export function Overview({
   /** ADR-0072: the personal pay rate, null for none. */
   payRate?: PersonalPayRate | null;
   payRateProblem?: string | null;
+  /** Today's National Living Wage, pence (ADR-0137). */
+  payFloorPence?: number;
   /** `officeCan(role, 'finance')` — the card is money, never drawn for a scheduler. */
   showPayRate?: boolean;
   /** Finance and write: owners and managers edit; a viewer only reads. */
@@ -370,6 +373,7 @@ export function Overview({
           staffId={profile.id}
           payRate={payRate}
           problem={payRateProblem}
+          {...(payFloorPence ? { floorPence: payFloorPence } : {})}
           editable={canEditPayRate && !profile.removed}
         />
       ) : null}

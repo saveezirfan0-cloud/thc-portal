@@ -5,7 +5,9 @@ import {
   formatAddition,
   formatPounds,
   holidayPence,
+  formatSignedPounds,
   parseRate,
+  payRateProblem,
   poundsInput,
   toPence,
 } from '../money';
@@ -90,5 +92,40 @@ describe('the formats the wireframe prints', () => {
     for (const pounds of [0, 13.5, 14, 14.5, 18, 19, 145.55]) {
       expect(parseRate(poundsInput(toPence(pounds)))).toBe(toPence(pounds));
     }
+  });
+});
+
+describe('the National Living Wage floor and the ceiling (release audit D-M7)', () => {
+  const FLOOR = 1271;
+
+  it('refuses a base rate below the floor, and says what the floor is', () => {
+    expect(payRateProblem('0.00', FLOOR)).toBe(
+      'A pay rate cannot be below the National Living Wage, £12.71/h.',
+    );
+    expect(payRateProblem('5', FLOOR)).toMatch(/National Living Wage, £12.71/);
+    expect(payRateProblem('12.70', FLOOR)).toMatch(/National Living Wage/);
+    expect(payRateProblem('12.71', FLOOR)).toBeNull();
+  });
+
+  it('lets an unchanged rate under an older floor be saved as it is', () => {
+    expect(payRateProblem('11.44', FLOOR, 1144)).toBeNull();
+    expect(payRateProblem('11.45', FLOOR, 1144)).toMatch(/National Living Wage/);
+  });
+
+  it('answers 999999 with the ceiling, not "not a rate"', () => {
+    expect(payRateProblem('999999', FLOOR)).toBe(
+      'A pay rate over £1,000.00 an hour is refused — check the figure.',
+    );
+    expect(payRateProblem('1000.00', FLOOR)).toBeNull();
+  });
+
+  it('keeps the format messages', () => {
+    expect(payRateProblem('14.005', FLOOR)).toBe('Enter a rate to the penny, e.g. 13.50.');
+    expect(payRateProblem('fourteen', FLOOR)).toBe('Enter a rate in pounds and pence, e.g. 13.50.');
+  });
+
+  it('signs a margin with a real minus sign', () => {
+    expect(formatSignedPounds(-569)).toBe('−£5.69');
+    expect(formatSignedPounds(120)).toBe('+£1.20');
   });
 });

@@ -98,8 +98,15 @@
   color: var(--coral-ink);
 }
 
-/* A feedback entry: the source colour is the whole point of the stripe. */
+/* A feedback entry: the source colour is the whole point of the stripe.
+   One long unbroken comment wraps inside the entry instead of widening
+   the page (release audit D-M3: 2,802 px). */
+.fb-profile > * {
+  min-width: 0;
+}
 .fb {
+  min-width: 0;
+  overflow-wrap: anywhere;
   position: relative;
   border: 1px solid var(--line);
   border-radius: var(--r-card);

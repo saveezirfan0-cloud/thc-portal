@@ -195,16 +195,66 @@
   color: var(--coral-ink);
 }
 
-/* The bulk staff picker in "+ Add staff". */
+/* A long client name wraps in the crumb line and in General info instead
+   of widening the page (release audit D-M3). */
+.topbar .crumbs b,
+.client-title {
+  overflow-wrap: anywhere;
+}
+.kv > * {
+  min-width: 0;
+}
+
+/* The bulk staff picker in "+ Add staff" (release audit D-M6): a search,
+   "select all in results", and real square checkboxes — the design
+   system's rounded box read as a radio here. Results come a page at a
+   time; the list scrolls inside the dialog. */
 .picker {
+  list-style: none;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--sp-4);
   max-height: 260px;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   padding: var(--sp-10) var(--sp-12);
+}
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-height: var(--sp-28);
+  font-size: var(--fs-13);
+  cursor: pointer;
+}
+.pick-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--cyan-ink);
+  cursor: pointer;
+}
+.pick-row input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+.pick-row .pick-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pick-all {
+  font-weight: 600;
+}
+.picker-more {
+  justify-content: space-between;
+  align-items: center;
+}
+@media (pointer: coarse) {
+  .pick-row {
+    min-height: var(--tap-min);
+  }
 }
 
 @media (max-width: 900px) {

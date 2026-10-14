@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * ADR-0061: what the Shift Builder's save sends about rates.
@@ -78,6 +78,16 @@ vi.mock('../db', () => ({
 }));
 
 const { createEvent, updateEvent } = await import('../actions');
+
+// The fixtures' event is on 18.10.2026; a NEW event dated before today is
+// refused (release audit), so the clock is held at 14.10.2026.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-14T09:00:00Z'));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 function section(id: string | null, rates: { chargeRate: number | null; payRate: number | null }) {
   return {

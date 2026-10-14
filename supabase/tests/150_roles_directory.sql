@@ -75,7 +75,7 @@ select throws_ok(
   $$ select create_role('Fractions', 14.005, null) $$,
   '23514', null, 'a pay rate is set to the penny, not rounded silently behind the manager');
 select throws_ok(
-  $$ select create_role('RLS Fixture Role', 12.00, null) $$,
+  $$ select create_role('RLS Fixture Role', 13.00, null) $$,
   '23505', null, 'two roles cannot share a name: the rate-card picker would be ambiguous');
 
 -- A role in use cannot be deleted, and the message says what is using it.

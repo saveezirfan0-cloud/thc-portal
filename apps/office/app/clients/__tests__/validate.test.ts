@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_CONTACT_EMAILS, isEmail, validateClient } from '../validate';
+import { MAX_CONTACT_EMAILS, clientFieldErrors, isEmail, validateClient } from '../validate';
 import type { ClientDraft } from '../types';
 
 /**
@@ -71,5 +71,30 @@ describe('isEmail', () => {
     for (const bad of ['', 'a@b', 'a b@c.co', '@b.co', 'a@.co', 'a@b.', 'two@at@b.co']) {
       expect(isEmail(bad)).toBe(false);
     }
+  });
+});
+
+describe('a present value must also be right (release audit D-M2, D-M3)', () => {
+  it.each(['020 7946 0000', '+44 20 7946 0000', '07700 900123', '+33 (1) 23-45-67-89'])(
+    'accepts the phone %s, UK or international',
+    (phone) => {
+      expect(validateClient(draft({ phone }))).toBeNull();
+    },
+  );
+
+  it.each(['not a phone', '12345', '+44 20 7946 0000 ext 12'])('refuses the phone %s', (phone) => {
+    expect(clientFieldErrors(draft({ phone })).phone).toMatch(/phone number/);
+  });
+
+  it('caps the client name at 120 characters, as the database does', () => {
+    expect(validateClient(draft({ name: 'N'.repeat(120) }))).toBeNull();
+    expect(clientFieldErrors(draft({ name: 'N'.repeat(121) })).name).toBe(
+      'A client name is at most 120 characters.',
+    );
+  });
+
+  it('names every field that is wrong, not only the first', () => {
+    const errors = clientFieldErrors(draft({ name: '', phone: 'nope', contact_emails: [] }));
+    expect(Object.keys(errors).sort()).toEqual(['contact_emails', 'name', 'phone']);
   });
 });

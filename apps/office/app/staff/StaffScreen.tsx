@@ -18,6 +18,8 @@ import {
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { Pager } from '../_components/Pager';
+import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
 import { SendPush } from './SendPush';
 import { StudentVisaView } from './StudentVisaView';
 import {
@@ -45,10 +47,6 @@ export interface StaffScreenProps {
   staff: StaffRow[];
   students: StudentRow[];
   problem: string | null;
-  /** `/staff?view=student` lands on the Student visa view (linked from /compliance). */
-  initialView?: 'directory' | 'student';
-  /** The tab to open on — the Inactive tab is its own table (§9.6). */
-  initialFilter?: Filter;
   /**
    * Pending name/photo change requests (ADR-0045) — "Change requests (N)".
    * Null when the count could not be read: "(?)", never a claimed 0 (D18).
@@ -66,7 +64,28 @@ type Picked = ReadonlyMap<string, string>;
 
 /** The pager's two sizes, as the wireframe offers them ("15 / page", "50 / page"). */
 export const PAGE_SIZES = [15, 50] as const;
-type PageSize = (typeof PAGE_SIZES)[number];
+
+const FILTERS: readonly Filter[] = ['all', 'compliant', 'blocked', 'inactive', 'removed'];
+const GROUPS: readonly GroupFilter[] = ['all', 'spudbros', 'thc'];
+const SORTS: readonly Sort[] = ['name', 'rating', 'show', 'newest'];
+const CAPS = Object.keys(CAP_FILTER_LABEL) as CapFilter[];
+
+/**
+ * The list's state in the URL (release audit L1). `/staff?view=student`
+ * lands on the Student visa view — the link /compliance uses — and `?tab=`
+ * on a status tab (the Inactive tab is its own table, §9.6).
+ */
+const QUERY = {
+  view: 'directory',
+  tab: 'all',
+  q: '',
+  role: '',
+  group: 'all',
+  sort: 'name',
+  cap: 'all',
+  page: '1',
+  size: String(PAGE_SIZES[0]),
+} as const satisfies Record<string, string>;
 
 /**
  * /staff — the worker directory (§9.6) and the §4.5 Student visa view.
@@ -86,20 +105,19 @@ export function StaffScreen({
   staff: everyone,
   students,
   problem,
-  initialView = 'directory',
-  initialFilter = 'all',
   pendingRequests = 0,
   canMessage = false,
 }: StaffScreenProps) {
-  const [view, setView] = useState<'directory' | 'student'>(initialView);
-  const [filter, setFilter] = useState<Filter>(initialFilter);
-  const [capFilter, setCapFilter] = useState<CapFilter>('all');
-  const [pageSize, setPageSize] = useState<PageSize>(PAGE_SIZES[0]);
-  const [role, setRole] = useState('');
-  const [group, setGroup] = useState<GroupFilter>('all');
-  const [sort, setSort] = useState<Sort>('name');
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(0);
+  const [url, setUrl] = useListQuery(QUERY);
+  const view = url.view === 'student' ? 'student' : 'directory';
+  const filter = oneOf(url.tab, FILTERS, 'all');
+  const capFilter = oneOf(url.cap, CAPS, 'all');
+  const pageSize = sizeOf(url.size, PAGE_SIZES, PAGE_SIZES[0]);
+  const role = url.role;
+  const group = oneOf(url.group, GROUPS, 'all');
+  const sort = oneOf(url.sort, SORTS, 'name');
+  const query = url.q;
+  const page = pageIndex(url.page);
   // ADR-0082: kept across pages, tabs and searches, so a list can be built
   // up from several of them; cleared after a send.
   const [picked, setPicked] = useState<Picked>(new Map());
@@ -179,12 +197,10 @@ export function StaffScreen({
     <th className="col-lead" />
   );
 
-  const reset =
-    <T,>(set: (value: T) => void) =>
-    (value: T) => {
-      set(value);
-      setPage(0);
-    };
+  // Every filter change goes back to the first page: the pager would
+  // otherwise be left past the end of a shorter list.
+  const reset = (patch: Partial<Record<keyof typeof QUERY, string>>) =>
+    setUrl({ ...patch, page: '1' });
 
   return (
     <OfficeShell
@@ -232,7 +248,7 @@ export function StaffScreen({
             { value: 'removed', label: 'Removed', count: counts.removed },
           ]}
           value={filter}
-          onChange={reset<Filter>(setFilter)}
+          onChange={(tab) => reset({ tab })}
           small
           aria-label="Filter by status"
         />
@@ -242,7 +258,7 @@ export function StaffScreen({
             { value: 'student', label: 'Student visa', count: students.length },
           ]}
           value={view}
-          onChange={setView}
+          onChange={(next) => setUrl({ view: next })}
           small
           aria-label="Directory or student visa view"
         />
@@ -253,7 +269,7 @@ export function StaffScreen({
               style={{ width: 240 }}
               type="search"
               value={query}
-              onChange={(event) => reset<string>(setQuery)(event.target.value)}
+              onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
               placeholder="Search name, Employee ID, Payroll ID, role"
               aria-label="Search name, Employee ID, Payroll ID, role"
             />
@@ -262,7 +278,7 @@ export function StaffScreen({
             <>
               <Select
                 value={role}
-                onChange={(event) => reset<string>(setRole)(event.target.value)}
+                onChange={(event) => reset({ role: event.target.value })}
                 aria-label="Filter by role"
                 style={{ width: 160 }}
               >
@@ -276,9 +292,7 @@ export function StaffScreen({
               {/* ADR-0107: SpudBros Express staff are onboarding-only. */}
               <Select
                 value={group}
-                onChange={(event) =>
-                  reset<GroupFilter>(setGroup)(event.target.value as GroupFilter)
-                }
+                onChange={(event) => reset({ group: event.target.value })}
                 aria-label="Filter by group"
                 style={{ width: 160 }}
               >
@@ -288,7 +302,7 @@ export function StaffScreen({
               </Select>
               <Select
                 value={sort}
-                onChange={(event) => setSort(event.target.value as Sort)}
+                onChange={(event) => setUrl({ sort: event.target.value })}
                 aria-label="Sort staff"
                 style={{ width: 160 }}
               >
@@ -303,11 +317,11 @@ export function StaffScreen({
             // 20 h · term time · 48 h · holiday · 48 h · graduated · Blocked).
             <Select
               value={capFilter}
-              onChange={(event) => setCapFilter(event.target.value as CapFilter)}
+              onChange={(event) => setUrl({ cap: event.target.value })}
               aria-label="Filter by weekly cap"
               style={{ width: 170 }}
             >
-              {(Object.keys(CAP_FILTER_LABEL) as CapFilter[]).map((key) => (
+              {CAPS.map((key) => (
                 <option key={key} value={key}>
                   {CAP_FILTER_LABEL[key]}
                 </option>
@@ -392,47 +406,14 @@ export function StaffScreen({
               )}
             </div>
             {filtered.length > PAGE_SIZES[0] ? (
-              <div className="panel-h pager">
-                <span className="muted sm">
-                  Showing {current * pageSize + 1}–{current * pageSize + shown.length} of{' '}
-                  {filtered.length.toLocaleString('en-GB')}
-                </span>
-                <div className="right">
-                  <button
-                    type="button"
-                    className="btn sm ghost"
-                    disabled={current === 0}
-                    onClick={() => setPage(current - 1)}
-                  >
-                    ‹ Prev
-                  </button>
-                  <span className="mono sm">
-                    {current + 1} / {pages}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn sm ghost"
-                    disabled={current >= pages - 1}
-                    onClick={() => setPage(current + 1)}
-                  >
-                    Next ›
-                  </button>
-                  <Select
-                    value={String(pageSize)}
-                    onChange={(event) =>
-                      reset<PageSize>(setPageSize)(Number(event.target.value) as PageSize)
-                    }
-                    aria-label="Rows per page"
-                    style={{ height: 28, width: 90 }}
-                  >
-                    {PAGE_SIZES.map((size) => (
-                      <option key={size} value={size}>
-                        {size} / page
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
+              <Pager
+                total={filtered.length}
+                page={current}
+                pageSize={pageSize}
+                sizes={PAGE_SIZES}
+                onPage={(next) => setUrl({ page: pageParam(next) })}
+                onPageSize={(size) => reset({ size: String(size) })}
+              />
             ) : null}
           </Panel>
 

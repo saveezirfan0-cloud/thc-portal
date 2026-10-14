@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState, useTransition } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   Alert,
@@ -14,6 +14,7 @@ import {
   Textarea,
   TimeField,
   useTimeFormat,
+  useUnsavedChanges,
 } from '@thc/ui';
 import {
   UK_ZONE,
@@ -23,6 +24,7 @@ import {
   formatLanguages,
   formatTimeIn,
   ukInputLabel,
+  ukToday,
 } from '@thc/domain';
 import { LanguagePicker } from '../../_components/LanguagePicker';
 import { RoleSection } from './RoleSection';
@@ -41,6 +43,7 @@ import {
   effectiveDressCode,
   isResolvable,
   newRoleDraft,
+  pastDateIssue,
   resolveRole,
   roleChanges,
   seriesContextFor,
@@ -132,10 +135,30 @@ export function ShiftBuilder({
   const window = useMemo(() => draftWindow(draft), [draft]);
   const cancelled = Boolean(saved?.cancelledAt);
   const readOnly = locked || cancelled;
-  const saveable = canSave(draft) && !readOnly;
-  // Presentation only: the save bar says "Unsaved changes" once the form
-  // differs from what it opened with. Saving is still gated by `saveable`.
+  // Release audit: a NEW event dated before today was accepted, and its
+  // board then refused every invite. Editing an existing past event is
+  // the locked state above, unchanged.
+  const pastDate = mode === 'new' ? pastDateIssue(draft.date, ukToday()) : null;
+  const saveable = canSave(draft) && !readOnly && pastDate === null;
+  // The save bar says "Unsaved changes" once the form differs from what it
+  // opened with, and the guard below holds a way out while it does.
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
+  const guard = useUnsavedChanges(dirty && !readOnly && !pending, {
+    message:
+      mode === 'new'
+        ? 'The event you are building has not been saved. Leave and it is lost.'
+        : 'Your changes to this event have not been saved. Leave and they are lost.',
+  });
+  // Release audit E-M3: a save redirects to the event board, and the board
+  // opened at the scroll position the form was left at. A builder that is
+  // unmounted by its own successful save puts the window back at the top.
+  const leavingAfterSave = useRef(false);
+  useEffect(
+    () => () => {
+      if (leavingAfterSave.current) globalThis.window.scrollTo(0, 0);
+    },
+    [],
+  );
 
   const erroredRoles = [...issues.roles.values()].filter((list) => list.length > 0).length;
   const validRoles = draft.roles.filter(
@@ -204,7 +227,9 @@ export function ShiftBuilder({
           ...role,
           chargeRate: card?.chargeRate ?? role.chargeRate,
           dressCode:
-            stillOnList && role.dressCode ? role.dressCode : defaultDressCode(card?.dressCodes ?? []),
+            stillOnList && role.dressCode
+              ? role.dressCode
+              : defaultDressCode(card?.dressCodes ?? []),
         };
       }),
     }));
@@ -238,9 +263,13 @@ export function ShiftBuilder({
 
   function onSave() {
     setError(null);
+    leavingAfterSave.current = true;
     startTransition(async () => {
       const result = await save(toInput(draft, saved?.id ?? null, ratesVisible));
-      if (result && 'error' in result) setError(result.error);
+      if (result && 'error' in result) {
+        leavingAfterSave.current = false;
+        setError(result.error);
+      }
     });
   }
 
@@ -435,6 +464,8 @@ export function ShiftBuilder({
                 mono
                 value={draft.date}
                 disabled={readOnly}
+                error={pastDate ?? undefined}
+                min={mode === 'new' ? ukToday() : undefined}
                 onChange={(e) => setDraft((c) => ({ ...c, date: e.target.value }))}
               />
               <TimeField
@@ -682,7 +713,9 @@ export function ShiftBuilder({
               <span data-testid="save-blockers">
                 {issues.event.length > 0
                   ? issues.event.join(' · ')
-                  : 'Save is disabled while a role section fails validation.'}
+                  : pastDate
+                    ? pastDate
+                    : 'Save is disabled while a role section fails validation.'}
               </span>
             ) : undefined
           }
@@ -695,6 +728,7 @@ export function ShiftBuilder({
           </Button>
         </SaveBar>
       )}
+      {guard.dialog}
     </div>
   );
 }

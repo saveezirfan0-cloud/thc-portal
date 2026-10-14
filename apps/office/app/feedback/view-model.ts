@@ -288,8 +288,15 @@ export function validateDraft(draft: OfficeDraft): string | null {
     return 'Choose between 1 and 5 stars.';
   }
   if (draft.text.trim() === '') return 'Add a comment.';
+  // feedback_office_text_length (20261014160000): the Client Portal's 2,000.
+  if (draft.text.trim().length > OFFICE_TEXT_MAX) {
+    return `A comment is at most ${OFFICE_TEXT_MAX.toLocaleString('en-GB')} characters.`;
+  }
   return null;
 }
+
+/** The office's own comment, capped as a client's is (release audit D-M3). */
+export const OFFICE_TEXT_MAX = 2000;
 
 /** "Press Night · Mandarin Oriental · 17 Sep" for the event select. */
 export function eventOptionLabel(event: EventOption): string {

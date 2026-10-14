@@ -41,7 +41,7 @@ const { default: Page } = await import('../page');
 
 describe('/compliance topbar', () => {
   it('shows the viewer’s own zone, not a fixed UK label', async () => {
-    const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
+    const html = renderToStaticMarkup(await Page());
     expect(html).toContain('<header><span>viewer-zone</span></header>');
     expect(html).not.toContain('Viewer: Europe/London (UK)');
   });

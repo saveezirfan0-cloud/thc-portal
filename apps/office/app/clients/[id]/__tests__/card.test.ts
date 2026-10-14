@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chargeRateInputProblem,
   chargeRateProblem,
+  marginPreview,
+  signedGbp,
   defaultDressCodes,
   dressCodeLibrary,
   dressCodeSuggestions,
@@ -208,5 +211,26 @@ describe('chargeRateProblem — what Save refuses', () => {
     expect(chargeRateProblem(19.999)).toMatch(/two decimal places/);
     expect(chargeRateProblem(-1)).toMatch(/negative/);
     expect(chargeRateProblem(Number.NaN)).toBe('Enter a charge rate.');
+  });
+});
+
+describe('the rate card while a row is typed (release audit m8, D-M7)', () => {
+  it('says what is wrong with the typed charge rate, in the field’s own words', () => {
+    expect(chargeRateInputProblem('')).toBe('Enter a charge rate.');
+    expect(chargeRateInputProblem('abc')).toBe(
+      'Enter the charge rate in pounds and pence, e.g. 22.50.',
+    );
+    expect(chargeRateInputProblem('22.505')).toMatch(/two decimal places/);
+    expect(chargeRateInputProblem('999999')).toMatch(/over £1,000.00 an hour/);
+    expect(chargeRateInputProblem('£22.50')).toBeNull();
+  });
+
+  it('previews the margin before Save, and a loss carries a real minus sign', () => {
+    expect(marginPreview(2000, 1569)).toEqual({ perHour: 4.31, pct: 21.6 });
+    const loss = marginPreview(1000, 1569);
+    expect(signedGbp(loss.perHour)).toBe('−£5.69');
+    expect(signedGbp(4.31)).toBe('+£4.31');
+    expect(signedGbp(-5.69)).not.toContain('£-');
+    expect(marginPreview(0, 1569).pct).toBeNull();
   });
 });

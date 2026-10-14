@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 export interface ModalProps {
   open: boolean;
@@ -18,6 +18,21 @@ export interface ModalProps {
    * caller's to disable. Defaults to `true`.
    */
   dismissible?: boolean;
+  /**
+   * The form inside differs from what it opened with (release audit
+   * E-M4). Escape, the backdrop and the × then ask "Discard changes?" in
+   * the footer instead of closing: Keep editing, or Discard. The caller's
+   * own Cancel is an explicit choice and still closes at once.
+   */
+  dirty?: boolean;
+  /**
+   * The dialog is a form: the body and footer are wrapped in a real
+   * `<form>`, so Enter in a field submits it (release audit m2) — give the
+   * primary footer button `type="submit"`, and its `disabled` keeps Enter
+   * from submitting an incomplete form too. The browser's own validation
+   * bubbles are off (`noValidate`): the caller shows its inline errors.
+   */
+  onSubmit?: () => void;
 }
 
 /** What Tab can land on inside the dialog, in document order. */
@@ -77,8 +92,17 @@ export function Modal({
   children,
   wide,
   dismissible = true,
+  dirty = false,
+  onSubmit,
 }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
+  // "Discard changes?" is showing in the footer.
+  const [asking, setAsking] = useState(false);
+  const askingRef = useRef(asking);
+  askingRef.current = asking;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  if (asking && (!dirty || !open)) setAsking(false);
   // Callers pass a fresh onClose on every render; keep it (and the busy
   // flag) out of the effect deps so typing in a field doesn't re-run the
   // focus below and steal focus.
@@ -108,7 +132,10 @@ export function Modal({
       if (event.key === 'Escape') {
         if (dismissibleRef.current) {
           event.preventDefault();
-          onCloseRef.current();
+          // A second Escape while asking is "keep editing", not "discard".
+          if (askingRef.current) setAsking(false);
+          else if (dirtyRef.current) setAsking(true);
+          else onCloseRef.current();
         }
         return;
       }
@@ -150,8 +177,36 @@ export function Modal({
   if (!open) return null;
 
   const close = () => {
-    if (dismissibleRef.current) onCloseRef.current();
+    if (!dismissibleRef.current) return;
+    if (dirtyRef.current) setAsking(true);
+    else onCloseRef.current();
   };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!asking) onSubmit?.();
+  };
+
+  const confirmBar = (
+    <div className="mf discard" role="alertdialog" aria-label="Discard changes?">
+      <span className="discard-q">Discard your changes?</span>
+      <button type="button" className="btn sm" autoFocus onClick={() => setAsking(false)}>
+        Keep editing
+      </button>
+      <button
+        type="button"
+        className="btn sm danger"
+        onClick={() => {
+          setAsking(false);
+          onCloseRef.current();
+        }}
+      >
+        Discard
+      </button>
+    </div>
+  );
+  const foot = asking ? confirmBar : footer ? <div className="mf">{footer}</div> : null;
+  const body = <div className="mb">{children}</div>;
 
   return (
     <div
@@ -184,8 +239,17 @@ export function Modal({
             ×
           </button>
         </div>
-        <div className="mb">{children}</div>
-        {footer ? <div className="mf">{footer}</div> : null}
+        {onSubmit ? (
+          <form className="modal-form" noValidate onSubmit={submit}>
+            {body}
+            {foot}
+          </form>
+        ) : (
+          <>
+            {body}
+            {foot}
+          </>
+        )}
       </div>
     </div>
   );

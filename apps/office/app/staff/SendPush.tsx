@@ -88,6 +88,7 @@ export function SendPush({
         open={open}
         title={many ? `Send push to ${recipients.length} workers` : `Send push to ${who}`}
         onClose={close}
+        dirty={!pending && sent === null && message.trim() !== ''}
         footer={
           sent ? (
             <Button tone="primary" onClick={close}>

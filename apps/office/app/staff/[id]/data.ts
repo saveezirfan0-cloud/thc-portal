@@ -5,6 +5,7 @@ import { ENTRY_COLUMNS, managerName } from '../../feedback/data';
 import { loadStaffViolationLog } from '../../checkin/data';
 import { signStaffPhotos } from '../../_lib/photos';
 import { loadRtwChecks } from '../../_lib/rtwCheckData';
+import { loadPayFloorPence } from '../../_lib/payFloor';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { QueueRow } from '../../compliance/types';
 import { readChangeRequests } from '../requests/data';
@@ -129,6 +130,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     availability,
     changeRequests,
     payRate,
+    payFloorPence,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -240,6 +242,8 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .select('pay_rate, set_at')
       .eq('staff_id', id)
       .maybeSingle<PersonalPayRate>(),
+    // ADR-0137: no personal rate below today's National Living Wage.
+    loadPayFloorPence(supabase),
   ]);
 
   const error =
@@ -305,6 +309,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     changeRequestsProblem: changeRequests.problem,
     payRate: payRate.error ? null : (payRate.data ?? null),
     payRateProblem: payRate.error ? payRate.error.message : null,
+    payFloorPence,
     problem: null,
   };
 }

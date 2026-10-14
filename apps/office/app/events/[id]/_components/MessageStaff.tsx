@@ -106,6 +106,7 @@ export function MessageStaff({
         open={open}
         title="Message staff"
         onClose={close}
+        dirty={!pending && sent === null && message.trim() !== ''}
         footer={
           sent ? (
             <Button tone="primary" onClick={close}>

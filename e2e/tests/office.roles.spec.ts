@@ -100,7 +100,7 @@ test('New role will not save without a name and a rate to the penny, and Cancel 
   await dialog.getByLabel('Role name').fill('E2E never saved');
   await dialog.getByLabel('Staff pay rate').fill('14.555');
   await expect(dialog.locator('#role-rate-hint')).toHaveText(
-    'Enter a rate to the penny, e.g. 14.50.',
+    'Enter a rate to the penny, e.g. 13.50.',
   );
   await expect(create).toBeDisabled();
 
@@ -176,20 +176,27 @@ test('a new role is created, listed with its three rates, then deleted (§9.8)',
     await page.locator('.topbar').getByRole('button', { name: '+ New role' }).click();
     const dialog = page.getByRole('dialog', { name: 'New role' });
     await dialog.getByLabel('Role name').fill(name);
+    // Release audit D-M7: below the National Living Wage (£12.71 from
+    // April 2026, settings.minimum_hourly_pay) is refused at the field.
     await dialog.getByLabel('Staff pay rate').fill('12.34');
+    await expect(dialog.locator('#role-rate-hint')).toHaveText(
+      'A pay rate cannot be below the National Living Wage, £12.71/h.',
+    );
+    await expect(dialog.getByRole('button', { name: 'Create role' })).toBeDisabled();
+    await dialog.getByLabel('Staff pay rate').fill('12.84');
     await dialog.getByLabel('Description').fill('Made by office.roles.spec.ts');
     await dialog.getByRole('button', { name: 'Create role' }).click();
     await expect(dialog).toBeHidden();
 
-    // 12.34 × 0.1207 = 1.489… → +£1.49; final_rate(12.34) = 13.83 — the
+    // 12.84 × 0.1207 = 1.549… → +£1.55; final_rate(12.84) = 14.39 — the
     // database's figures (role_directory_v), shown as three cells.
     const row = roleRow(page, name);
     await expect(row).toHaveCount(1);
-    await expect(row.locator('td[data-label="Staff pay rate"]')).toHaveText('£12.34');
-    await expect(row.locator('td.hol')).toHaveText('+£1.49');
-    await expect(row.locator('td.fin')).toHaveText('£13.83');
+    await expect(row.locator('td[data-label="Staff pay rate"]')).toHaveText('£12.84');
+    await expect(row.locator('td.hol')).toHaveText('+£1.55');
+    await expect(row.locator('td.fin')).toHaveText('£14.39');
     await expect(row.locator('td[data-label="On rate cards"]')).toHaveText('0 clients');
-    expect(sql(`select pay_rate from roles where name = ${lit(name)}`)).toBe('12.34');
+    expect(sql(`select pay_rate from roles where name = ${lit(name)}`)).toBe('12.84');
 
     // On no rate card and no event, so the guard lets it go.
     await row.getByRole('button', { name: 'Delete', exact: true }).click();

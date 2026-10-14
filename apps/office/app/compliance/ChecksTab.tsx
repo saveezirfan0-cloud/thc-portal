@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import {
   Alert,
   Avatar,
@@ -17,6 +16,8 @@ import {
 import { ukStampFull } from '../_lib/rtwCheck';
 import { checkCounts, checkLine, elapsedLabel, filterChecks } from './checks';
 import type { CheckFilter, CheckMonitorData } from './checks';
+import { oneOf, useListQuery } from '../_lib/listQuery';
+import { CHECK_FILTERS, COMPLIANCE_QUERY } from './query';
 
 /**
  * Tab 3 · gov.uk checks (ADR-0025, ADR-0041).
@@ -37,7 +38,9 @@ export function ChecksTab({
   onOpenReview: () => void;
 }) {
   const format = useTimeFormat();
-  const [filter, setFilter] = useState<CheckFilter>('all');
+  const [url, setUrl] = useListQuery(COMPLIANCE_QUERY);
+  const filter = oneOf(url.check, CHECK_FILTERS, 'all');
+  const setFilter = (check: CheckFilter) => setUrl({ check });
   const counts = checkCounts(monitor.checks);
   const shown = filterChecks(monitor.checks, filter);
   const { lastRun, now } = monitor;
