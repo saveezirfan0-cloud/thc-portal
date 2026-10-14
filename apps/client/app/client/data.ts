@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { ukInstant, ukToday } from '@thc/domain';
 import { isUuid } from './ids';
+import { isArrivalStatus } from './rules';
 import type { LineupRow, PortalEvent, RoleSection } from './rules';
 import { addDays, pastWindow, validDay } from './window';
 import type { LoadedHistory } from './window';
@@ -67,6 +68,9 @@ const LIST_SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, head
 const SECTION_COLUMNS = `${LIST_SECTION_COLUMNS}, dress_code`;
 const LINEUP_COLUMNS =
   'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given, feedback_rating, feedback_sent_at';
+// The event page alone says, per person, who has arrived on the day
+// (ADR-0135 §1); the list keeps counts only, so it never asks.
+const EVENT_LINEUP_COLUMNS = `${LINEUP_COLUMNS}, arrival_status, arrived_at`;
 
 /**
  * `PortalEvent` plus the moment a cancelled event was cancelled, for
@@ -160,6 +164,13 @@ function toLineup(r: Row): LineupRecord {
     feedbackGiven: r.feedback_given === true,
     feedbackRating: typeof r.feedback_rating === 'number' ? r.feedback_rating : null,
     feedbackSentAt: r.feedback_sent_at ?? null,
+    // Only when the read asked for them (the event page, ADR-0135 §1).
+    ...('arrival_status' in r
+      ? {
+          arrivalStatus: isArrivalStatus(r.arrival_status) ? r.arrival_status : null,
+          arrivedAt: typeof r.arrived_at === 'string' ? r.arrived_at : null,
+        }
+      : {}),
   };
 }
 
@@ -478,7 +489,7 @@ export async function loadEventDetails(id: string): Promise<EventDetailsData> {
       .order('shift_id', { ascending: true }),
     supabase
       .from('client_lineup_v')
-      .select(LINEUP_COLUMNS)
+      .select(EVENT_LINEUP_COLUMNS)
       .eq('event_id', id)
       .order('sort_key', { ascending: true })
       .order('booking_id', { ascending: true }),

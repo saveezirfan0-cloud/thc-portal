@@ -138,6 +138,10 @@ export function publicLineup(rows: readonly LineupRecord[]): ClientLineupRow[] {
     // The customer's OWN entry: its stars and when it was sent (§11.2).
     feedbackRating: r.feedbackRating,
     feedbackSentAt: r.feedbackSentAt,
+    // On the day, on the event page only (ADR-0135 §1).
+    ...(r.arrivalStatus !== undefined
+      ? { arrivalStatus: r.arrivalStatus, arrivedAt: r.arrivedAt ?? null }
+      : {}),
   }));
 }
 

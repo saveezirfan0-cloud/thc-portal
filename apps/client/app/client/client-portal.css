@@ -726,6 +726,57 @@ a.btn[aria-busy='true']:hover {
   padding-inline: var(--sp-12);
 }
 
+/* ADR-0135 §1 · "Arrived 08:52" / "Not here yet" / "Not arrived" under a
+   name, on the day only. The words carry the state; the dot repeats it. */
+.wrow .arr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  margin-top: var(--sp-4);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+
+.wrow .arr-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.wrow .arr-arrived {
+  color: var(--green-ink);
+}
+
+.wrow .arr-waiting {
+  color: var(--muted);
+}
+
+/* Hollow, so it differs from "arrived" in shape as well as colour. */
+.wrow .arr-waiting .arr-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.wrow .arr-missing {
+  color: var(--amber-ink);
+}
+
+.wrow .arr-missing .arr-dot {
+  border-radius: 2px;
+}
+
+/* The sentence a screen reader hears, with the person's name. */
+.wrow .arr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* A removed worker's "Leave feedback" (§1.7): nobody left to rate, so the
    whole control greys, ink and edge, as the wireframe's disabled button. */
 .wrow .fb.gone {
@@ -1678,6 +1729,7 @@ a.btn[aria-busy='true']:hover {
   .ehead .sep,
   .rate-all-row,
   .wrow .fb,
+  .wrow .arr,
   .modal-back {
     display: none !important;
   }

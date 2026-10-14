@@ -13,6 +13,7 @@ import { OFFICE_EMAIL } from '../../account/copy';
 import { recipientsLine, telHref } from '../../contact';
 import { ukDateLong, ukDateShort, ukDayMonth, ukStamp } from '../../format';
 import {
+  arrivalState,
   arrivalsWithinHeadcount,
   documentPendingLine,
   eventEnded,
@@ -105,6 +106,8 @@ export function EventScreen({
   }, [focusAfter, rating, lineup]);
 
   const at = useMemo(() => new Date(now), [now]);
+  // Who has arrived is an actual stamp: the viewer's own clock (§1.8).
+  const zone = useViewerZone();
   const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
   // Two sections of one role are two panels but still one role; counted
   // from the sections the customer booked, so "0 of 6" still says "2 roles".
@@ -360,6 +363,8 @@ export function EventScreen({
                     const removed = isRemoved(p);
                     const given = p.feedbackGiven || sentHere.has(p.bookingId);
                     const sent = p.feedbackGiven ? sentLine(p) : null;
+                    // On the day only (ADR-0135 §1): the door's own facts.
+                    const arrival = cancelled ? null : arrivalState(p, group.startsAt, at, zone);
                     const keep = (el: HTMLButtonElement | null) => {
                       rowButtons.current.set(p.bookingId, el);
                     };
@@ -383,6 +388,15 @@ export function EventScreen({
                               </>
                             ) : null}
                           </div>
+                          {arrival ? (
+                            // Words first; the dot only decorates, so the
+                            // state is never told by colour alone.
+                            <div className={`arr arr-${arrival.kind}`} title={arrival.title}>
+                              <span className="arr-dot" aria-hidden="true" />
+                              <span aria-hidden="true">{arrival.text}</span>
+                              <span className="arr-sr">{arrival.label}</span>
+                            </div>
+                          ) : null}
                         </div>
                         {given ? (
                           // aria-disabled, not disabled: a status that can
