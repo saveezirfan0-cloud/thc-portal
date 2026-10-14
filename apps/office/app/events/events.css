@@ -184,6 +184,53 @@
   background: var(--green-dim);
 }
 
+/* ADR-0131: a shift that is not 100% filled, and has not ended, flashes red
+   until it fills — chip, week card, popup row and the fill pill alike. Ongoing
+   loses its cyan to it: a shift running short is the most urgent of all. The
+   pulse is slow (one every 1.6 s, well under WCAG 2.3.1's three flashes a
+   second) and holds still, still red, for a reader who asks for less motion.
+   `:root` lifts these over .ongoing whichever stylesheet loads first. */
+@keyframes ev-short-pulse {
+  50% {
+    background-color: var(--coral-dim);
+    box-shadow: 0 0 0 1px var(--coral-line);
+  }
+}
+@keyframes ev-short-pill {
+  50% {
+    background-color: var(--coral-solid);
+    border-color: transparent;
+    color: var(--on-coral);
+  }
+}
+:root .evchip.alert,
+:root .wchip.alert {
+  --accent: var(--coral);
+  animation: ev-short-pulse 1.6s ease-in-out infinite;
+}
+:root .evchip.alert .f {
+  color: var(--coral-ink);
+}
+:root .wchip.alert .f {
+  border-color: var(--coral-line);
+  color: var(--coral-ink);
+  background: var(--coral-dim);
+}
+.pill.fill-alert {
+  animation: ev-short-pill 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root .evchip.alert,
+  :root .wchip.alert,
+  .pill.fill-alert {
+    animation: none;
+  }
+  :root .evchip.alert,
+  :root .wchip.alert {
+    box-shadow: 0 0 0 1px var(--coral-line);
+  }
+}
+
 /* The status pill on a calendar chip (§3.2: list AND calendar), small. */
 .evchip .st,
 .wchip .st {

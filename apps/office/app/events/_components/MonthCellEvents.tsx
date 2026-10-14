@@ -37,6 +37,7 @@ export function MonthCellEvents({
           chip.cancelled && 'cancelled',
           chip.ongoing && 'ongoing',
           chip.full && 'full',
+          chip.alert && 'alert',
         );
         const body = (
           <>
@@ -103,6 +104,7 @@ export function MonthCellEvents({
                 event.status === 'cancelled' && 'cancelled',
                 event.status === 'ongoing' && 'ongoing',
                 event.status !== 'cancelled' && event.tone === 'green' && 'full',
+                event.tone === 'coral' && 'alert',
               )}
             >
               <span className="w">

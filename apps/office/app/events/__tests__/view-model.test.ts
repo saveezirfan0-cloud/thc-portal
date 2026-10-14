@@ -95,6 +95,14 @@ describe('the fill chip (§3.1)', () => {
     expect(row.fill.confirmed).toBe(13);
     expect(row.fill.headcount).toBe(17);
     expect(row.fill.open).toBe(4);
+    // Short and still to happen: the red alert (ADR-0131).
+    expect(fillTone(row)).toBe('coral');
+  });
+
+  it('reads amber, not the red alert, for a short event that has already ended', () => {
+    const after = ukInstant('2026-09-19', '06:00');
+    const row = toEventRow(event(), after);
+    expect(row.status).toBe('completed');
     expect(fillTone(row)).toBe('amber');
   });
 
