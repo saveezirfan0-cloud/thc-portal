@@ -41,7 +41,11 @@ import { REQUIRED_GENDER_LABEL } from '../../draft';
 function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: ReactNode }) {
   return (
     <>
-      <Avatar name={person.name} deleted={person.name.startsWith('Deleted account')} />
+      <Avatar
+        name={person.name}
+        src={person.photoUrl ?? undefined}
+        deleted={person.name.startsWith('Deleted account')}
+      />
       <div className="who">
         <div className="n">{person.name}</div>
         <div className="s">{sub}</div>
