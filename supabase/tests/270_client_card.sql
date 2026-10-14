@@ -18,7 +18,7 @@
 --     the aggregated row says so rather than showing a mixture.
 -- =====================================================================
 begin;
-select plan(39);
+select plan(50);
 \ir _shared/fixtures.psql
 
 \set role_b     'bbbbbbbb-0000-4000-8000-00000000000b'
@@ -138,13 +138,68 @@ select is((select do_not_return from clients_qualified_staff_v
             where client_id = :'clienta' and staff_id = :'staffa'), false,
   'not barred to begin with');
 
-select set_do_not_return((select id from client_qualifications
-                           where staff_id = :'staffa' and client_id = :'clienta'
-                             and role_id = :'role_id'),
-                         true, 'Client complaint');
+-- Release audit 14.10.2026 B1: this used to run as the table owner, which
+-- bypasses RLS — so it stayed green while every office login was refused
+-- by audit_log's RLS. It now runs the way the Back Office calls it: an
+-- admin's own session, role `authenticated`.
+select id as dnr_entry from client_qualifications
+ where staff_id = :'staffa' and client_id = :'clienta' and role_id = :'role_id' \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(format($$ select set_do_not_return(%L, true, 'Client complaint') $$, :'dnr_entry'),
+  'B1: an office login switches Do not return ON from the client card — the audit row is written by the definer, not refused by audit_log''s RLS');
+reset role;
+select is((select actor::text || ' ' || (data ->> 'reason') from audit_log
+            where action = 'do_not_return_on' and entity_id = :'dnr_entry'),
+  :'admin_uid' || ' Client complaint',
+  'and the audit row names the manager who did it, with the reason (§9.6, §1.7)');
 select is((select do_not_return from clients_qualified_staff_v
             where client_id = :'clienta' and staff_id = :'staffa'), true,
   'barring through ONE role bars the worker across the whole row — the auto-assign gate is client-wide, and a mixed row would read as half a bar');
+
+-- Off again, from the same session, and back on for the rest of the file.
+set local role authenticated;
+select lives_ok(format($$ select set_do_not_return(%L, false) $$, :'dnr_entry'),
+  'B1: and switches it OFF — no reason needed to lift a bar');
+reset role;
+select is((select count(*)::int from client_qualifications
+            where staff_id = :'staffa' and client_id = :'clienta' and do_not_return), 0,
+  'every entry at the client is lifted');
+select is((select actor from audit_log
+            where action = 'do_not_return_off' and entity_id = :'dnr_entry'), :'admin_uid'::uuid,
+  'and the switch-off is audited under the manager too');
+set local role authenticated;
+select set_do_not_return(:'dnr_entry', true, 'Client complaint');
+reset role;
+
+-- Nobody else gets past the definer's own gate.
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select set_do_not_return(%L, false) $$, :'dnr_entry'),
+  '42501', 'not_authorised', 'a client login cannot lift a bar — the function is a definer now, so the check is its own');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select set_do_not_return(%L, false) $$, :'dnr_entry'),
+  '42501', 'not_authorised', 'nor can the worker it is about');
+reset role;
+\set dnr_viewer '27000000-0000-4000-8000-0000000000a1'
+insert into auth.users (id, email) values (:'dnr_viewer', 'viewer.270@rls.test');
+insert into profiles (id, role, office_role, full_name) values (:'dnr_viewer', 'admin', 'viewer', 'Vera Viewer');
+select set_config('request.jwt.claims', json_build_object('sub', :'dnr_viewer', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_like(format($$ select set_do_not_return(%L, false) $$, :'dnr_entry'),
+  '%read_only%', 'a viewer is still refused by the office_read_only trigger, which fires inside a definer too (ADR-0060)');
+reset role;
+select ok(not has_function_privilege('anon', 'public.set_do_not_return(uuid, boolean, text)', 'execute'),
+  'and anon cannot execute it at all');
+select is((select prosecdef from pg_proc where oid = 'public.set_do_not_return(uuid, boolean, text)'::regprocedure), true,
+  'B1 pinned: set_do_not_return is SECURITY DEFINER');
+select is((select count(*)::int from pg_proc p
+            where p.pronamespace = 'public'::regnamespace and not p.prosecdef
+              and p.prosrc ~* 'insert\s+into\s+(public\.)?audit_log'), 0,
+  'and no SECURITY INVOKER function in public writes audit_log — audit_log has no INSERT policy, so an invoker writer is refused for every API role');
+select set_config('request.jwt.claims', '', true);
 
 -- §1.7 reaches this list too. Inside a savepoint: §2.12 (20260927160900)
 -- has no removed → compliant edge, so "putting them back" is a rollback,

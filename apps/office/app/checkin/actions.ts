@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { explainDbError } from '../_lib/dbError';
 import { supabaseConfigured } from './data';
 
 export type ResolveResult = { error: string } | { ok: true; warning?: string };
@@ -57,7 +58,10 @@ export async function resolveViolation(
     p_arrived_at: arrivedAtIso,
   });
 
-  if (error) return { error: REASONS[error.message] ?? error.message };
+  if (error)
+    return {
+      error: REASONS[error.message] ?? explainDbError(error, { codes: REASONS, log: '[checkin]' }),
+    };
 
   revalidatePath('/checkin');
   // A resolved No-show is the board's Get back (§3.3).

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { reportsDb, supabaseConfigured } from './data';
+import { explainDbError } from '../_lib/dbError';
 
 /**
  * "Retry send" on a failed BG-08 run (§9.9). The run's CSVs are already in
@@ -19,7 +20,7 @@ export async function retryFinanceSend(sendId: number): Promise<{ error: string 
         ? 'That report is not in a failed state, so there is nothing to retry.'
         : error.message.includes('admins_only')
           ? 'Only a manager can retry a report.'
-          : error.message,
+          : explainDbError(error, { log: '[reports]' }),
     };
   }
   revalidatePath('/reports');

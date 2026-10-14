@@ -65,6 +65,10 @@ export function QualifiedStaff({
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  // Release audit B1: a refusal from inside a dialog is shown IN the
+  // dialog. On the panel it rendered behind the still-open modal, where
+  // the manager could not see why nothing happened.
+  const [dialogProblem, setDialogProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const groups = useMemo(() => {
@@ -80,13 +84,25 @@ export function QualifiedStaff({
   const run = (
     work: () => Promise<{ ok: true } | { ok: false; message: string }>,
     after?: () => void,
+    where: 'panel' | 'dialog' = 'panel',
   ) => {
     setProblem(null);
+    setDialogProblem(null);
     start(async () => {
       const result = await work();
       if (result.ok) after?.();
+      else if (where === 'dialog') setDialogProblem(result.message);
       else setProblem(result.message);
     });
+  };
+
+  const closeAdding = () => {
+    setAdding(false);
+    setDialogProblem(null);
+  };
+  const closeBarring = () => {
+    setBarring(null);
+    setDialogProblem(null);
   };
 
   /**
@@ -118,7 +134,14 @@ export function QualifiedStaff({
             aria-label="Search qualified staff"
             onChange={(event) => setQuery(event.target.value)}
           />
-          <Button size="sm" tone="primary" onClick={() => setAdding(true)}>
+          <Button
+            size="sm"
+            tone="primary"
+            onClick={() => {
+              setDialogProblem(null);
+              setAdding(true);
+            }}
+          >
             + Add staff
           </Button>
         </>
@@ -244,6 +267,7 @@ export function QualifiedStaff({
                                 onChange={(next) => {
                                   if (next) {
                                     setReason('');
+                                    setDialogProblem(null);
                                     setBarring(row);
                                   } else {
                                     run(() => setDoNotReturn(clientId, qualificationId, false, ''));
@@ -293,11 +317,11 @@ export function QualifiedStaff({
       <Modal
         open={adding}
         title="Add qualified staff"
-        onClose={() => setAdding(false)}
+        onClose={closeAdding}
         wide
         footer={
           <>
-            <Button tone="ghost" onClick={() => setAdding(false)}>
+            <Button tone="ghost" onClick={closeAdding}>
               Cancel
             </Button>
             <Button
@@ -312,6 +336,7 @@ export function QualifiedStaff({
                     setPickedRoles([]);
                     setNote('');
                   },
+                  'dialog',
                 )
               }
             >
@@ -320,6 +345,7 @@ export function QualifiedStaff({
           </>
         }
       >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
         <div className="field">
           <span className="label">Roles at this client</span>
           <div className="row wrap">
@@ -386,10 +412,10 @@ export function QualifiedStaff({
       <Modal
         open={barring !== null}
         title={barring ? `Do not return · ${barring.display_name}` : ''}
-        onClose={() => setBarring(null)}
+        onClose={closeBarring}
         footer={
           <>
-            <Button tone="ghost" onClick={() => setBarring(null)}>
+            <Button tone="ghost" onClick={closeBarring}>
               Cancel
             </Button>
             <Button
@@ -401,6 +427,7 @@ export function QualifiedStaff({
                 run(
                   () => setDoNotReturn(clientId, barring.qualification_ids[0] ?? '', true, reason),
                   () => setBarring(null),
+                  'dialog',
                 )
               }
             >
@@ -409,6 +436,7 @@ export function QualifiedStaff({
           </>
         }
       >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
         <Alert tone="coral">
           This is a hard gate, not a preference. {barring?.display_name} will not be invited to this
           client in either wave, the shift will never appear on their Radar, and they cannot be

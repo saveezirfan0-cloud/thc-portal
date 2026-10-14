@@ -364,7 +364,14 @@ describe('what a refusal means to the manager', () => {
     );
     expect(reviewErrorMessage('not_verified: pending')).toContain('not been verified yet');
     expect(reviewErrorMessage('superseded_by_newer')).toContain('newer share code report');
-    expect(reviewErrorMessage('something new')).toBe('something new');
+    // Release audit D-M5: a sentence the database wrote for people is kept;
+    // Postgres's own wording never reaches the screen.
+    expect(reviewErrorMessage('Something new from the database')).toBe(
+      'Something new from the database.',
+    );
+    expect(
+      reviewErrorMessage('duplicate key value violates unique constraint "compliance_docs_pkey"'),
+    ).not.toContain('constraint');
   });
 });
 

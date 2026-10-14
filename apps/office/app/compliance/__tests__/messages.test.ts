@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { reviewErrorMessage } from '../messages';
 
 /**
@@ -25,7 +25,18 @@ describe('what a refusal means to the manager (messages.ts)', () => {
     );
   });
 
-  it('falls back to the raw string only for a token it has never seen', () => {
-    expect(reviewErrorMessage('something new')).toBe('something new');
+  // Release audit D-M5: the fallback used to be the raw string. A sentence
+  // the database wrote for people is still shown; a token or a Postgres
+  // template never is (_lib/dbError).
+  it('falls back to a sentence, never to a raw token or template', () => {
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(reviewErrorMessage('Something new from the database')).toBe(
+      'Something new from the database.',
+    );
+    expect(reviewErrorMessage('some_new_token')).not.toContain('some_new_token');
+    expect(reviewErrorMessage('permission denied for table compliance_docs')).not.toContain(
+      'compliance_docs',
+    );
+    quiet.mockRestore();
   });
 });
