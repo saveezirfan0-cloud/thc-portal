@@ -79,7 +79,7 @@ export function ShiftRequirements({
           </p>
         </div>
       ) : (
-        <TableScroll>
+        <TableScroll label="Shift requirements">
           <table className="tbl" data-testid="shift-requirements">
             <thead>
               <tr>
@@ -136,7 +136,7 @@ export function ShiftRequirements({
               moment they are first booked on a role that names it.
             </p>
           ) : (
-            <TableScroll>
+            <TableScroll label="Quiz results">
               <table className="tbl" data-testid="quiz-results">
                 <thead>
                   <tr>
@@ -145,7 +145,7 @@ export function ShiftRequirements({
                     <th>Standing</th>
                     <th>Attempts</th>
                     <th>Last sat</th>
-                    {canWrite ? <th aria-label="Actions" /> : null}
+                    {canWrite ? <th aria-label="Actions" className="cell-actions" /> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -180,7 +180,7 @@ export function ShiftRequirements({
                         {row.last_attempt_at ? formatUkDate(row.last_attempt_at) : '—'}
                       </td>
                       {canWrite ? (
-                        <td className="right-align">
+                        <td className="right-align cell-actions">
                           {row.failed ? (
                             <Button size="sm" onClick={() => setResetting(row)}>
                               Reset attempts

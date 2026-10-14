@@ -17,6 +17,7 @@ import {
   SearchInput,
   SegToggle,
   Select,
+  TableScroll,
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -158,18 +159,18 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
             {query ? 'No login matches that search.' : `No ${ROLE_LABEL[tab]} logins yet.`}
           </EmptyState>
         ) : (
-          <div className="table-scroll">
+          <TableScroll label="Users" minWidth="50rem">
             <table className="tbl card-rows users-table">
               <thead>
                 <tr>
-                  <th aria-label="Avatar" />
-                  <th>Name</th>
-                  <th>Email</th>
+                  <th aria-label="Avatar" className="cell-lead" />
+                  <th className="col-m">Name</th>
+                  <th className="col-l">Email</th>
                   {tab === 'admin' ? <th>Office role</th> : null}
-                  {tab === 'client' ? <th>Client</th> : null}
-                  <th>Last signed in (UK time)</th>
+                  {tab === 'client' ? <th className="col-m">Client</th> : null}
+                  <th className="col-m">Last signed in (UK time)</th>
                   <th>Status</th>
-                  <th aria-label="Actions" />
+                  <th aria-label="Actions" className="cell-actions" />
                 </tr>
               </thead>
               <tbody>
@@ -189,7 +190,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
         {tab === 'staff' && rows.length > STAFF_LIMIT ? (
           <p className="sm muted users-more">

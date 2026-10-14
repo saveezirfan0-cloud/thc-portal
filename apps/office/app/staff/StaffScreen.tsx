@@ -14,6 +14,7 @@ import {
   SaveBar,
   SegToggle,
   Select,
+  TableScroll,
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -163,17 +164,19 @@ export function StaffScreen({
       ? { checked: picked.has(row.id), onChange: (on) => pick(row, on) }
       : undefined;
   const headPicker = canMessage ? (
-    <th className="pick">
-      <input
-        type="checkbox"
-        aria-label="Select everyone on this page"
-        checked={allShownPicked}
-        disabled={pickable.length === 0}
-        onChange={(event) => pickShown(event.target.checked)}
-      />
+    <th className="pick col-lead">
+      <label className="pick-hit">
+        <input
+          type="checkbox"
+          aria-label="Select everyone on this page"
+          checked={allShownPicked}
+          disabled={pickable.length === 0}
+          onChange={(event) => pickShown(event.target.checked)}
+        />
+      </label>
     </th>
   ) : (
-    <th />
+    <th className="col-lead" />
   );
 
   const reset =
@@ -214,7 +217,7 @@ export function StaffScreen({
         </Link>
       </div>
 
-      <div className="toolbar">
+      <div className="toolbar filters">
         <SegToggle
           options={[
             { value: 'all', label: 'All', count: counts.all },
@@ -247,7 +250,7 @@ export function StaffScreen({
           <div className="search">
             <input
               className="input"
-              style={{ height: 32, width: 240 }}
+              style={{ width: 240 }}
               type="search"
               value={query}
               onChange={(event) => reset<string>(setQuery)(event.target.value)}
@@ -261,7 +264,7 @@ export function StaffScreen({
                 value={role}
                 onChange={(event) => reset<string>(setRole)(event.target.value)}
                 aria-label="Filter by role"
-                style={{ height: 32, width: 160 }}
+                style={{ width: 160 }}
               >
                 <option value="">Any role</option>
                 {roles.map((name) => (
@@ -277,7 +280,7 @@ export function StaffScreen({
                   reset<GroupFilter>(setGroup)(event.target.value as GroupFilter)
                 }
                 aria-label="Filter by group"
-                style={{ height: 32, width: 160 }}
+                style={{ width: 160 }}
               >
                 <option value="all">All groups</option>
                 <option value="spudbros">SpudBros Express</option>
@@ -287,7 +290,7 @@ export function StaffScreen({
                 value={sort}
                 onChange={(event) => setSort(event.target.value as Sort)}
                 aria-label="Sort staff"
-                style={{ height: 32, width: 160 }}
+                style={{ width: 160 }}
               >
                 <option value="name">Sort: name A–Z</option>
                 <option value="rating">Sort: rating</option>
@@ -302,7 +305,7 @@ export function StaffScreen({
               value={capFilter}
               onChange={(event) => setCapFilter(event.target.value as CapFilter)}
               aria-label="Filter by weekly cap"
-              style={{ height: 32, width: 170 }}
+              style={{ width: 170 }}
             >
               {(Object.keys(CAP_FILTER_LABEL) as CapFilter[]).map((key) => (
                 <option key={key} value={key}>
@@ -342,46 +345,50 @@ export function StaffScreen({
                   works through: the last shift actually worked, the shifts
                   the leaving released (E8's list), and the P45 request.
                 */
-                <table className="tbl card-rows">
-                  <thead>
-                    <tr>
-                      {headPicker}
-                      <th>Name</th>
-                      <th>Employee ID</th>
-                      <th>Left</th>
-                      <th>Reason given</th>
-                      <th>Role(s)</th>
-                      <th>Last completed shift</th>
-                      <th>Released shifts</th>
-                      <th>P45</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shown.map((row) => (
-                      <InactiveTableRow key={row.id} row={row} picker={pickerFor(row)} />
-                    ))}
-                  </tbody>
-                </table>
+                <TableScroll label="Inactive workers" fixed pin={2} minWidth="66rem">
+                  <table className="tbl card-rows">
+                    <thead>
+                      <tr>
+                        {headPicker}
+                        <th>Name</th>
+                        <th className="col-s">Employee ID</th>
+                        <th className="col-m">Left</th>
+                        <th>Reason given</th>
+                        <th>Role(s)</th>
+                        <th className="col-m">Last completed shift</th>
+                        <th className="col-s">Released shifts</th>
+                        <th className="col-m">P45</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((row) => (
+                        <InactiveTableRow key={row.id} row={row} picker={pickerFor(row)} />
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               ) : (
-                <table className="tbl card-rows">
-                  <thead>
-                    <tr>
-                      {headPicker}
-                      <th>Name</th>
-                      <th>Employee ID</th>
-                      <th>Role(s)</th>
-                      <th>Rating</th>
-                      <th>Show-rate</th>
-                      <th>Compliance status</th>
-                      <th>Right to work</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shown.map((row) => (
-                      <StaffTableRow key={row.id} row={row} picker={pickerFor(row)} />
-                    ))}
-                  </tbody>
-                </table>
+                <TableScroll label="Staff" fixed pin={2} minWidth="56rem">
+                  <table className="tbl card-rows">
+                    <thead>
+                      <tr>
+                        {headPicker}
+                        <th>Name</th>
+                        <th className="col-s">Employee ID</th>
+                        <th>Role(s)</th>
+                        <th className="col-xs">Rating</th>
+                        <th className="col-xs">Show-rate</th>
+                        <th className="col-l">Compliance status</th>
+                        <th>Right to work</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((row) => (
+                        <StaffTableRow key={row.id} row={row} picker={pickerFor(row)} />
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               )}
             </div>
             {filtered.length > PAGE_SIZES[0] ? (
@@ -478,13 +485,15 @@ interface RowPicker {
 function PickBox({ picker, name }: { picker: RowPicker | undefined; name: string }) {
   if (!picker) return null;
   return (
-    <input
-      type="checkbox"
-      className="pick"
-      aria-label={`Select ${name}`}
-      checked={picker.checked}
-      onChange={(event) => picker.onChange(event.target.checked)}
-    />
+    <label className="pick-hit">
+      <input
+        type="checkbox"
+        className="pick"
+        aria-label={`Select ${name}`}
+        checked={picker.checked}
+        onChange={(event) => picker.onChange(event.target.checked)}
+      />
+    </label>
   );
 }
 
@@ -530,7 +539,7 @@ function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
           </>
         ) : null}
       </td>
-      <td data-label="Employee ID" className="mono sm">
+      <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
         {row.payroll_id && !row.removed ? (
           <div className="xs muted">Payroll {row.payroll_id}</div>
@@ -600,7 +609,7 @@ function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }
           {row.display_name}
         </Link>
       </td>
-      <td data-label="Employee ID" className="mono sm">
+      <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
       </td>
       <td data-label="Left" className="mono sm">

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Alert, KpiTile, Panel, Pill, TileGrid } from '@thc/ui';
+import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
 import { financialStatus } from '@thc/pdf/csv';
 import type { FinanceRow } from '../data';
 import {
@@ -45,7 +45,7 @@ export function FinancialTab({
 
   return (
     <div className="stack">
-      <div className="rp-toolbar">
+      <div className="rp-toolbar filters">
         <Link
           className={`btn sm${onThisWeek ? ' primary' : ''}`}
           href={reportHref(view, { ...week })}
@@ -141,60 +141,62 @@ export function FinancialTab({
         }
         flush
       >
-        <div className="panel-b tight table-scroll">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>{GROUP_HEAD[view.by]}</th>
-                <th>Events</th>
-                <th className="money">Payable hours</th>
-                <th className="money">Base payroll</th>
-                <th className="money">Holiday +12.07%</th>
-                <th className="money">Payroll incl. holiday</th>
-                <th className="money">Invoicing</th>
-                <th className="money">Margin</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {groups.length === 0 ? (
+        <div className="panel-b tight">
+          <TableScroll label="Breakdown" minWidth="52rem">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <td colSpan={9} className="muted">
-                    Nothing was scheduled in this period.
-                  </td>
+                  <th>{GROUP_HEAD[view.by]}</th>
+                  <th>Events</th>
+                  <th className="money">Payable hours</th>
+                  <th className="money">Base payroll</th>
+                  <th className="money">Holiday +12.07%</th>
+                  <th className="money">Payroll incl. holiday</th>
+                  <th className="money">Invoicing</th>
+                  <th className="money">Margin</th>
+                  <th />
                 </tr>
-              ) : (
-                groups.map((row) => <GroupRow key={row.group_key ?? ''} row={row} />)
-              )}
-              {total ? (
-                <tr className="rp-total">
-                  <td>
-                    <b>Total</b>
-                  </td>
-                  <td />
-                  <td className="money">
-                    <b>{hours(total.payable_min)}</b>
-                  </td>
-                  <td className="money">
-                    <b>{pounds(total.base)}</b>
-                  </td>
-                  <td className="money">
-                    <b>{pounds(total.holiday)}</b>
-                  </td>
-                  <td className="money">
-                    <b>{pounds(total.payroll)}</b>
-                  </td>
-                  <td className="money">
-                    <b>{pounds(total.invoicing)}</b>
-                  </td>
-                  <td className={`money ${num(total.margin) < 0 ? 'rp-coral' : 'rp-green'}`}>
-                    <b>{pounds(total.margin)}</b>
-                  </td>
-                  <td />
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {groups.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="muted">
+                      Nothing was scheduled in this period.
+                    </td>
+                  </tr>
+                ) : (
+                  groups.map((row) => <GroupRow key={row.group_key ?? ''} row={row} />)
+                )}
+                {total ? (
+                  <tr className="rp-total">
+                    <td>
+                      <b>Total</b>
+                    </td>
+                    <td />
+                    <td className="money">
+                      <b>{hours(total.payable_min)}</b>
+                    </td>
+                    <td className="money">
+                      <b>{pounds(total.base)}</b>
+                    </td>
+                    <td className="money">
+                      <b>{pounds(total.holiday)}</b>
+                    </td>
+                    <td className="money">
+                      <b>{pounds(total.payroll)}</b>
+                    </td>
+                    <td className="money">
+                      <b>{pounds(total.invoicing)}</b>
+                    </td>
+                    <td className={`money ${num(total.margin) < 0 ? 'rp-coral' : 'rp-green'}`}>
+                      <b>{pounds(total.margin)}</b>
+                    </td>
+                    <td />
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </TableScroll>
         </div>
       </Panel>
     </div>

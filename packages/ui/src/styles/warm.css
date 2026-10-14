@@ -15,9 +15,19 @@
    v1: 3px accent left bar + 8% fill, padding 11px 18px.
    v2: padding 11px 16px; margin 2px 12px; 14px radius; 12% fill. */
 :root[data-style='warm'] .sidebar nav :is(a, .pending) {
-  padding: 11px var(--sp-16);
+  padding: 9px var(--sp-16);
   margin: 2px var(--sp-12);
   border-left: 0;
+}
+/* In the 188px tablet sidebar the pill gives back some of its side room,
+   so "Compliance" beside its count and "Users & access" read in full. */
+@media (max-width: 1024px) {
+  :root[data-style='warm'] .sidebar nav :is(a, .pending) {
+    padding-left: var(--sp-10);
+    padding-right: var(--sp-10);
+    margin-left: var(--sp-6);
+    margin-right: var(--sp-6);
+  }
 }
 :root[data-style='warm'] .sidebar nav a.active {
   background: var(--cyan-dim);
@@ -57,6 +67,37 @@
 :root[data-style='warm'] .tilegrid > .card {
   border: 1px solid var(--line);
   border-radius: var(--r-tile);
+}
+
+/* ---- table header band ----------------------------------------------
+   The wireframe's warm table has no rule under its header: the header row
+   is a --panel-2 band with rounded ends (wireframes/assets/thc.css, the
+   warm `.tbl th` rules). Rounded cells need separate borders; the rows
+   only ever draw a bottom rule, so nothing else changes. Inside a card the
+   frame is inset so the band's ends clear the card's own corners. */
+:root[data-style='warm'] table.tbl {
+  border-collapse: separate;
+  border-spacing: 0;
+  --tbl-head-bg: var(--panel-2);
+}
+:root[data-style='warm'] .tbl th {
+  border-bottom: 0;
+  background: var(--tbl-head-bg);
+}
+:root[data-style='warm'] .tbl th:first-child {
+  border-radius: var(--r-band) 0 0 var(--r-band);
+}
+:root[data-style='warm'] .tbl th:last-child {
+  border-radius: 0 var(--r-band) var(--r-band) 0;
+}
+:root[data-style='warm'] .tbl th:only-child {
+  border-radius: var(--r-band);
+}
+@media (min-width: 761px) {
+  :root[data-style='warm'] :is(.panel, .panel-b.tight) > .tbl-frame {
+    --frame-pad: var(--sp-12);
+    padding: var(--sp-10) var(--frame-pad) var(--sp-4);
+  }
 }
 
 /* ---- segmented control ---------------------------------------------

@@ -246,7 +246,7 @@ export function OnboardingBoard({
           </Alert>
         ) : null}
 
-        <div className="toolbar">
+        <div className="toolbar filters ob-toolbar">
           <SegToggle<BoardFilter>
             aria-label="Active or rejected candidates"
             options={[

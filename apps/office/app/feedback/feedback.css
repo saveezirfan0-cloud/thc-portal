@@ -75,6 +75,10 @@
 .fb-list .fb .stars {
   font-size: var(--fs-15);
 }
+.fb-list .fb .who {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .fb-list .fb .who .n {
   font-weight: 600;
 }
@@ -106,13 +110,12 @@
 }
 
 /* ---- toolbar ------------------------------------------------------- */
+/* Heights come from the row's `.filters` (release audit L16). */
 .fb-screen .fb-search {
-  height: 32px;
   width: 260px;
   max-width: 100%;
 }
 .fb-screen .fb-filter {
-  height: 32px;
   width: 170px;
 }
 

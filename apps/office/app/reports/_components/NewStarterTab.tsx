@@ -1,4 +1,4 @@
-import { Alert, Avatar, Panel, Pill } from '@thc/ui';
+import { Alert, Avatar, Panel, Pill, TableScroll } from '@thc/ui';
 import type { TimeFormat } from '@thc/domain';
 import type { NewStarter } from '../data';
 import {
@@ -38,7 +38,7 @@ export function NewStarterTab({
 
   return (
     <div className="stack">
-      <div className="rp-toolbar">
+      <div className="rp-toolbar filters">
         <form method="get" action="/reports" className="daterange">
           <input type="hidden" name="tab" value="newstarter" />
           <span className="label">Pick a date</span>
@@ -93,87 +93,90 @@ export function NewStarterTab({
         }
         flush
       >
-        <div className="panel-b tight table-scroll">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Staff</th>
-                <th>Employee ID</th>
-                <th>NI Number</th>
-                <th>Home address</th>
-                <th>Postcode</th>
-                <th>Country</th>
-                <th>Date of birth</th>
-                <th>Gender</th>
-                <th>First shift date</th>
-                <th>HMRC Statement</th>
-                <th>Student Loan</th>
-                <th>Bank details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {starters.length === 0 ? (
+        <div className="panel-b tight">
+          <TableScroll label="New starters" minWidth="56rem">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <td colSpan={12} className="muted">
-                    No new starters worked a shift in {periodLabel(period.from, period.to)}.
-                  </td>
+                  <th>Staff</th>
+                  <th>Employee ID</th>
+                  <th>NI Number</th>
+                  <th>Home address</th>
+                  <th>Postcode</th>
+                  <th>Country</th>
+                  <th>Date of birth</th>
+                  <th>Gender</th>
+                  <th>First shift date</th>
+                  <th>HMRC Statement</th>
+                  <th>Student Loan</th>
+                  <th>Bank details</th>
                 </tr>
-              ) : (
-                starters.map((s, index) => {
-                  const masked = maskNi(s.ni_number);
-                  const bank = maskBank(s.bank_sort_code, s.bank_account_number);
-                  return (
-                    <tr key={s.staff_id}>
-                      <td>
-                        <span className="person">
-                          <Avatar name={s.staff_name} size="sm" deleted={s.removed} />
-                          <span className={s.removed ? 'muted rp-nowrap' : 'rp-nowrap'}>
-                            {s.staff_name}
+              </thead>
+              <tbody>
+                {starters.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="muted">
+                      No new starters worked a shift in {periodLabel(period.from, period.to)}.
+                    </td>
+                  </tr>
+                ) : (
+                  starters.map((s, index) => {
+                    const masked = maskNi(s.ni_number);
+                    const bank = maskBank(s.bank_sort_code, s.bank_account_number);
+                    return (
+                      <tr key={s.staff_id}>
+                        <td>
+                          <span className="person">
+                            <Avatar name={s.staff_name} size="sm" deleted={s.removed} />
+                            <span className={s.removed ? 'muted rp-nowrap' : 'rp-nowrap'}>
+                              {s.staff_name}
+                            </span>
                           </span>
-                        </span>
-                      </td>
-                      <td className="mono sm rp-nowrap">{employeeId(s.employee_id)}</td>
-                      <td className="mono sm">
-                        {masked ?? <span className="muted">—</span>}
-                        {masked && index === 0 ? (
-                          <span className="sub">full number in the CSV</span>
-                        ) : null}
-                        {!masked ? (
-                          <span className="sub">
-                            not yet issued — payroll runs without it; E6 when added
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="sm">{s.home_address ?? '—'}</td>
-                      <td className="mono sm rp-nowrap">{s.postcode ?? '—'}</td>
-                      <td className="sm">{s.country ?? '—'}</td>
-                      <td className="mono sm">{dottedDate(s.date_of_birth)}</td>
-                      <td className="mono sm">{s.gender ?? '—'}</td>
-                      <td className="mono sm">{dottedDate(s.first_shift_date)}</td>
-                      <td>
-                        {s.hmrc_statement ? (
-                          <Pill tone="cyan">{s.hmrc_statement}</Pill>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-                      <td className="sm">{s.student_loan ?? '—'}</td>
-                      <td className="sm">
-                        {s.bank_account_holder ?? (bank ? null : <span className="muted">—</span>)}
-                        {bank ? <span className="sub mono rp-nowrap">{bank}</span> : null}
-                        {bank && index === 0 ? (
-                          <span className="sub">full details in the CSV</span>
-                        ) : null}
-                        {!bank && !s.removed ? (
-                          <span className="sub">not given yet — blank in the CSV</span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                        <td className="mono sm rp-nowrap">{employeeId(s.employee_id)}</td>
+                        <td className="mono sm">
+                          {masked ?? <span className="muted">—</span>}
+                          {masked && index === 0 ? (
+                            <span className="sub">full number in the CSV</span>
+                          ) : null}
+                          {!masked ? (
+                            <span className="sub">
+                              not yet issued — payroll runs without it; E6 when added
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="sm">{s.home_address ?? '—'}</td>
+                        <td className="mono sm rp-nowrap">{s.postcode ?? '—'}</td>
+                        <td className="sm">{s.country ?? '—'}</td>
+                        <td className="mono sm">{dottedDate(s.date_of_birth)}</td>
+                        <td className="mono sm">{s.gender ?? '—'}</td>
+                        <td className="mono sm">{dottedDate(s.first_shift_date)}</td>
+                        <td>
+                          {s.hmrc_statement ? (
+                            <Pill tone="cyan">{s.hmrc_statement}</Pill>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
+                        <td className="sm">{s.student_loan ?? '—'}</td>
+                        <td className="sm">
+                          {s.bank_account_holder ??
+                            (bank ? null : <span className="muted">—</span>)}
+                          {bank ? <span className="sub mono rp-nowrap">{bank}</span> : null}
+                          {bank && index === 0 ? (
+                            <span className="sub">full details in the CSV</span>
+                          ) : null}
+                          {!bank && !s.removed ? (
+                            <span className="sub">not given yet — blank in the CSV</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </TableScroll>
         </div>
       </Panel>
 

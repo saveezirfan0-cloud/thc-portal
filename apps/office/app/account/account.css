@@ -67,9 +67,15 @@
 }
 
 /* ---- /users ---------------------------------------------------------- */
+.users-table th.cell-lead {
+  width: 3.5rem;
+}
+/* Up to three actions on a row: they wrap onto a second line rather than
+   widening the table past a laptop's card. */
 .users-table td.cell-actions {
-  white-space: nowrap;
+  white-space: normal;
   text-align: right;
+  line-height: 2.4;
 }
 .users-table td.cell-actions .btn + .btn {
   margin-left: var(--sp-6);

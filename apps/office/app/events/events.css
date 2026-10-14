@@ -18,7 +18,9 @@
   background: var(--line);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  overflow: hidden;
+  /* `clip`, not `hidden`: the corners are clipped without the grid becoming
+     a scroll container, which would hold the day headers below. */
+  overflow: clip;
 }
 .wk .col {
   background: var(--panel);
@@ -30,12 +32,18 @@
   outline: 1px solid var(--cyan-ink);
   outline-offset: -1px;
 }
+/* The day heads stay under the top bar while a long week scrolls the page
+   (release audit m2). */
 .wk .ch {
   padding: var(--sp-8) var(--sp-10);
   border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 2px;
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 2;
+  background: var(--panel);
 }
 .wk .ch .d {
   font-family: var(--font-label);
@@ -148,16 +156,24 @@
   opacity: 0.55;
   text-decoration: line-through;
 }
+/* A column is ~150px on a laptop: the window keeps to one line and the
+   status and fill wrap under it, inside the card (release audit E-M2). */
 .wchip .w {
   font-family: var(--font-num);
   font-size: 10.5px;
   color: var(--text);
   display: flex;
-  gap: var(--sp-6);
+  flex-wrap: wrap;
+  gap: 2px var(--sp-6);
   align-items: center;
+  min-width: 0;
+}
+.wchip .w .t {
+  white-space: nowrap;
 }
 .wchip .n {
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .wchip .m {
   color: var(--muted);
@@ -301,53 +317,71 @@
   font-size: var(--fs-10);
   color: var(--muted);
 }
+/* Every part of a day row may shrink to its track (a grid item's min-width
+   is its content otherwise), and a part's second line — the PO under the
+   title, "2 open" under the fill — sits under it, set apart (release audit
+   E-M7, p1). */
+.dayrow > * {
+  min-width: 0;
+}
+.dayrow .sub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+.dayrow .dr-title b {
+  overflow-wrap: anywhere;
+}
+.dayrow .dr-roles {
+  gap: var(--sp-6);
+}
+/* A long role name wraps inside its chip instead of running under the fill
+   pill beside it. */
+.dayrow .dr-roles .chip {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* ---- list: column measures ------------------------------------------
-   The list is eight columns with a role section a line, so on a laptop it
-   used to run past the card: the cells were squeezed to their narrowest
-   word ("Mon / 12 / Oct", an event title five lines tall), and Fill,
-   Status and PO were cut off. The card scrolls now (packages/ui), and the
-   columns are measured so the table needs that scroller as rarely as it
-   can: short values never break, the PO sits under the status (ADR-0127),
-   the title gets a readable measure, and the long free-text names (client,
-   venue, role) end in an ellipsis with the full name on hover. */
+   Seven columns with a role section a line. The frame (packages/ui,
+   ADR-0136) lays them out fixed, from these widths, so all seven fit a
+   1280px laptop card and do not jump while a filter narrows the rows: the
+   date, window, roles, fill and status take what their values need, and
+   the event title and the client share the rest. Short values never
+   break; the PO sits under the status (ADR-0127) and wraps there rather
+   than being cut; the long free-text names (client, venue, role) end in an
+   ellipsis with the full name on hover. */
 /* Above the phone width only: below it each event is a card (card-rows)
    whose cells take the card's own padding and width. */
 @media (min-width: 761px) {
-  .tbl.ev-list :is(th, td) {
-    padding-left: var(--sp-12);
-    padding-right: var(--sp-12);
+  .tbl.ev-list th.ev-c-date {
+    width: 6rem;
   }
-  .tbl.ev-list :is(th, td):first-child {
-    padding-left: var(--sp-20);
+  .tbl.ev-list th.ev-c-window {
+    width: 7.5rem;
   }
-  .tbl.ev-list :is(th, td):last-child {
-    padding-right: var(--sp-20);
+  .tbl.ev-list th.ev-c-roles {
+    width: 17rem;
   }
+  .tbl.ev-list th.ev-c-fill {
+    width: 7.5rem;
+  }
+  .tbl.ev-list th.ev-c-status {
+    width: 7rem;
+  }
+  /* The UK window never breaks; §1.8's "your time" line under it may wrap
+     after the times, so a reader outside the UK does not widen the column. */
   .tbl.ev-list td.ev-date,
-  .tbl.ev-list td.ev-window,
-  .tbl.ev-list td.ev-window .sub,
-  .tbl.ev-list td.ev-fill,
-  .tbl.ev-list td.ev-fill .sub,
-  .tbl.ev-list td.ev-status,
-  .tbl.ev-list td.ev-status .sub {
+  .tbl.ev-list td.ev-window {
     white-space: nowrap;
   }
-  /* These never wrap, so the shared cell floor (packages/ui) would only
-     pad them out; the title takes the room instead. Prefixed to outrank
-     that floor's selector. */
-  :is(.panel, .panel-b)
-    > table.tbl.ev-list
-    :is(th, td:is(.ev-date, .ev-window, .ev-fill, .ev-status)) {
-    min-width: 0;
+  .tbl.ev-list td.ev-window .sub {
+    white-space: normal;
   }
-  :is(.panel, .panel-b) > table.tbl.ev-list td.cell-title {
-    min-width: 10.5rem;
-  }
-  /* A length, not a percentage: a percentage does not cap what the text
-     asks of an auto-width column, so the column grew to the full name. */
   .tbl.ev-list .ev-clip {
-    max-width: 17ch;
+    max-width: 100%;
   }
 }
 /* A cancelled event's fill note is a sentence, not a count. */
@@ -357,7 +391,7 @@
 .tbl .roles .r > .chip {
   display: block;
   justify-self: start;
-  max-width: 20ch;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -369,7 +403,9 @@
    a flex row squeezed them to "6 / (+1)" and "your / time". */
 .tbl .roles {
   display: grid;
-  grid-template-columns: max-content max-content max-content;
+  /* The role name gives way (ellipsis); "6 (+1)" never does; the window
+     keeps its UK line whole and lets "your time" wrap under it. */
+  grid-template-columns: minmax(0, max-content) minmax(min-content, max-content) max-content;
   column-gap: var(--sp-10);
   row-gap: var(--sp-6);
   align-items: center;
@@ -384,6 +420,9 @@
 .tbl .roles .r > .win,
 .tbl .roles .r > .alloc {
   white-space: nowrap;
+}
+.tbl .roles .r > .win .sub {
+  white-space: normal;
 }
 .tbl .roles .r > .alloc {
   justify-self: end;
@@ -440,10 +479,37 @@
   }
 }
 
+/* Below a wide desktop a day row is two lines: when, what, who and its
+   status on the first; the role chips across the width and the fill at the
+   end of the second, so a chip can never run under the fill pill. */
 @media (max-width: 1200px) {
   .dayrow {
-    grid-template-columns: 120px 1fr 1fr;
-    row-gap: var(--sp-6);
+    grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'w title client status'
+      'roles roles roles fill';
+    row-gap: var(--sp-8);
+  }
+  .dayrow > .w {
+    grid-area: w;
+  }
+  .dayrow > .dr-title {
+    grid-area: title;
+  }
+  .dayrow > .dr-client {
+    grid-area: client;
+  }
+  .dayrow > .dr-roles {
+    grid-area: roles;
+  }
+  .dayrow > .dr-fill {
+    grid-area: fill;
+    justify-self: end;
+    text-align: right;
+  }
+  .dayrow > .dr-status {
+    grid-area: status;
+    justify-self: end;
   }
 }
 @media (max-width: 900px) {
@@ -454,7 +520,23 @@
     min-height: 0;
   }
   .dayrow {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'w status'
+      'title title'
+      'client client'
+      'roles roles'
+      'fill fill';
+  }
+  .dayrow > .dr-fill {
+    justify-self: start;
+    text-align: left;
+  }
+}
+/* On a phone the top bar is not sticky, so the day heads stick to the top. */
+@media (max-width: 760px) {
+  .wk .ch {
+    top: 0;
   }
 }
 

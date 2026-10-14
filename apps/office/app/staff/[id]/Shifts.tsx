@@ -108,7 +108,7 @@ export function Shifts({
             {shifts.length === 0 ? 'No shifts yet.' : 'No shifts in the last 90 days.'}
           </div>
         ) : (
-          <TableScroll>
+          <TableScroll label="Shift history" minWidth="52rem">
             {/* `card-rows`: below 760px each shift is a card titled by its
                 event, every other cell naming its column. */}
             <table className="tbl card-rows">
@@ -195,7 +195,7 @@ export function Shifts({
             {violations.length === 0 ? 'No violations.' : 'Nothing unresolved.'}
           </div>
         ) : (
-          <TableScroll>
+          <TableScroll label="Violations">
             <table className="tbl card-rows">
               <thead>
                 <tr>
@@ -203,7 +203,7 @@ export function Shifts({
                   <th>Violation</th>
                   <th>Time (your time)</th>
                   <th>Status</th>
-                  <th />
+                  <th className="cell-actions" aria-label="Actions" />
                 </tr>
               </thead>
               <tbody>

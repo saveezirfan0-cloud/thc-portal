@@ -54,17 +54,17 @@ export function ShortStaffedPanel({
             Every role starting in the next 48 hours has its headcount confirmed.
           </EmptyState>
         ) : (
-          <TableScroll>
+          <TableScroll label="Short-staffed roles">
             <table className="tbl card-rows dash-short-tbl">
               <thead>
                 <tr>
                   {/* A scheduled time, so the column names its zone. */}
-                  <th>Starts (UK time)</th>
+                  <th className="col-m">Starts (UK time)</th>
                   <th>Event</th>
                   <th>Role</th>
                   <th>Confirmed</th>
                   <th>Open</th>
-                  <th aria-label="Event board" />
+                  <th aria-label="Event board" className="cell-actions" />
                 </tr>
               </thead>
               <tbody>
@@ -90,7 +90,7 @@ export function ShortStaffedPanel({
                       <td data-label="Open" className="mono">
                         {openLabel(role.open)}
                       </td>
-                      <td>
+                      <td className="cell-actions">
                         <Link className="btn sm" href={`/events/${role.eventId}`}>
                           Open board →
                         </Link>

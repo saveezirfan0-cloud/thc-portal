@@ -133,7 +133,38 @@
   accent-color: var(--cyan-ink);
   cursor: pointer;
 }
-.tbl td.cell-lead:has(> input.pick) {
+.tbl td.cell-lead:has(input.pick) {
+  white-space: nowrap;
+}
+/* The tick's label is its hit area. On a touch screen it grows to the
+   finger target (§1.2) around a box that stays 16px; so does the name. */
+.tbl .pick-hit {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  cursor: pointer;
+}
+@media (pointer: coarse) {
+  .tbl .pick-hit {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    margin: calc((var(--tap-min) - 16px) / -2) 0;
+  }
+  .tbl .staff-name {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
+  .tbl th.col-lead {
+    width: 6.5rem;
+  }
+}
+/* The lead column holds the tick and the avatar, and an Employee ID is
+   one token: "THC-00473" never breaks at its hyphen. */
+.tbl th.col-lead {
+  width: 5.25rem;
+}
+.tbl td.emp-id {
   white-space: nowrap;
 }
 .tbl tr.picked td {

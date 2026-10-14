@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Panel, Pill } from '@thc/ui';
+import { Panel, Pill, TableScroll } from '@thc/ui';
 import {
   EVENT_STATUS_LABEL,
   type EventStatus,
@@ -70,120 +70,125 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
   }
 
   // `card-rows`: below 760px each event is a card, titled by the event, with
-  // every other column printed against its `data-label`.
+  // every other column printed against its `data-label`. Above it the
+  // columns are fixed (events.css), so all seven fit a 1280px laptop and
+  // hold still while a filter narrows the rows; the date and the title stay
+  // pinned if a narrower card has to scroll sideways (ADR-0136).
   return (
-    <table className="tbl card-rows ev-list">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Event</th>
-          <th>Client · Venue</th>
-          {/* Scheduled times, so the column says which zone it is in (§1.8). */}
-          <th>Window (UK time)</th>
-          <th>Roles · headcount (+buffer)</th>
-          <th>Fill</th>
-          {/* PO under the status, as the venue sits under the client: a
+    <TableScroll label="Events" fixed pin={2} minWidth="58rem">
+      <table className="tbl card-rows ev-list">
+        <thead>
+          <tr>
+            <th className="ev-c-date">Date</th>
+            <th>Event</th>
+            <th>Client · Venue</th>
+            {/* Scheduled times, so the column says which zone it is in (§1.8). */}
+            <th className="ev-c-window">Window (UK time)</th>
+            <th className="ev-c-roles">Roles · headcount (+buffer)</th>
+            <th className="ev-c-fill">Fill</th>
+            {/* PO under the status, as the venue sits under the client: a
               column of its own pushed the list past a laptop's width. */}
-          <th>Status · PO</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const cancelled = row.status === 'cancelled';
-          const open = formatOpen(row.fill);
-          return (
-            <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
-              <td data-label="Date" className="ev-date">
-                <b className={row.date === today ? 'cyan' : undefined}>
-                  {formatDayShort(row.date)}
-                </b>
-                {row.date === today ? <span className="sub">today</span> : null}
-              </td>
-              <td className={classes('cell-title', cancelled && 'muted')}>
-                {cancelled ? (
-                  <s>{row.title}</s>
-                ) : (
-                  <Link href={`/events/${row.id}`}>
-                    <b>{row.title}</b>
-                  </Link>
-                )}
-                {cancelled && row.cancelReason ? (
-                  <span className="sub">{row.cancelReason}</span>
-                ) : null}
-              </td>
-              <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
-                <span className="ev-clip" title={row.clientName}>
-                  {row.clientName}
-                </span>
-                <span className="sub ev-clip" title={row.venueName}>
-                  {row.venueName}
-                </span>
-              </td>
-              <td
-                data-label="Window (UK time)"
-                className={classes('mono', 'sm', 'ev-window', cancelled && 'muted')}
-              >
-                {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
-                {row.windowIso ? (
-                  <ScheduledWindow
-                    separator="–"
-                    startsAt={row.windowIso.startsAt}
-                    endsAt={row.windowIso.endsAt}
-                  />
-                ) : (
-                  row.windowLabel
-                )}
-                {row.endsNextDay ? <span className="sub">ends next day</span> : null}
-              </td>
-              <td data-label="Roles · headcount (+buffer)" className="cell-wide">
-                <div className="roles">
-                  {row.roles.map((role, index) => (
-                    <div className="r" key={`${row.id}-${index}`}>
-                      <span className="chip" title={role.roleName}>
-                        {role.roleName}
-                      </span>
-                      <ScheduledWindow
-                        className="mono win"
-                        separator="–"
-                        startsAt={role.startsAt}
-                        endsAt={role.endsAt}
-                      />
-                      <span className="mono alloc">
-                        {formatAllocation(role.headcount, role.buffer)}
-                      </span>
-                    </div>
-                  ))}
-                  {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
-                </div>
-              </td>
-              <td data-label="Fill" className="ev-fill">
-                {cancelled ? (
-                  // §3.3: only a cancellation BEFORE the day is excluded; on
-                  // the day the scheduled hours are billed and paid in full.
-                  <span className="muted sm">
-                    {row.cancelledNote ?? 'excluded from financials'}
+            <th className="ev-c-status">Status · PO</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const cancelled = row.status === 'cancelled';
+            const open = formatOpen(row.fill);
+            return (
+              <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
+                <td data-label="Date" className="ev-date">
+                  <b className={row.date === today ? 'cyan' : undefined}>
+                    {formatDayShort(row.date)}
+                  </b>
+                  {row.date === today ? <span className="sub">today</span> : null}
+                </td>
+                <td className={classes('cell-title', cancelled && 'muted')}>
+                  {cancelled ? (
+                    <s>{row.title}</s>
+                  ) : (
+                    <Link href={`/events/${row.id}`}>
+                      <b>{row.title}</b>
+                    </Link>
+                  )}
+                  {cancelled && row.cancelReason ? (
+                    <span className="sub">{row.cancelReason}</span>
+                  ) : null}
+                </td>
+                <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
+                  <span className="ev-clip" title={row.clientName}>
+                    {row.clientName}
                   </span>
-                ) : (
-                  <>
-                    <FillPill row={row} />
-                    {open ? <span className="sub">{open}</span> : null}
-                    {row.fill.bufferConfirmed > 0 ? (
-                      <span className="sub">+{row.fill.bufferConfirmed} buffer confirmed</span>
-                    ) : null}
-                  </>
-                )}
-              </td>
-              <td data-label="Status · PO" className="ev-status">
-                <StatusPill status={row.status} />
-                <span className={classes('sub', 'mono', !row.poNumber && 'muted')}>
-                  {row.poNumber ? `PO ${row.poNumber}` : 'No PO'}
-                </span>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                  <span className="sub ev-clip" title={row.venueName}>
+                    {row.venueName}
+                  </span>
+                </td>
+                <td
+                  data-label="Window (UK time)"
+                  className={classes('mono', 'sm', 'ev-window', cancelled && 'muted')}
+                >
+                  {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
+                  {row.windowIso ? (
+                    <ScheduledWindow
+                      separator="–"
+                      startsAt={row.windowIso.startsAt}
+                      endsAt={row.windowIso.endsAt}
+                    />
+                  ) : (
+                    row.windowLabel
+                  )}
+                  {row.endsNextDay ? <span className="sub">ends next day</span> : null}
+                </td>
+                <td data-label="Roles · headcount (+buffer)" className="cell-wide">
+                  <div className="roles">
+                    {row.roles.map((role, index) => (
+                      <div className="r" key={`${row.id}-${index}`}>
+                        <span className="chip" title={role.roleName}>
+                          {role.roleName}
+                        </span>
+                        <ScheduledWindow
+                          className="mono win"
+                          separator="–"
+                          startsAt={role.startsAt}
+                          endsAt={role.endsAt}
+                        />
+                        <span className="mono alloc">
+                          {formatAllocation(role.headcount, role.buffer)}
+                        </span>
+                      </div>
+                    ))}
+                    {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
+                  </div>
+                </td>
+                <td data-label="Fill" className="ev-fill">
+                  {cancelled ? (
+                    // §3.3: only a cancellation BEFORE the day is excluded; on
+                    // the day the scheduled hours are billed and paid in full.
+                    <span className="muted sm">
+                      {row.cancelledNote ?? 'excluded from financials'}
+                    </span>
+                  ) : (
+                    <>
+                      <FillPill row={row} />
+                      {open ? <span className="sub">{open}</span> : null}
+                      {row.fill.bufferConfirmed > 0 ? (
+                        <span className="sub">+{row.fill.bufferConfirmed} buffer confirmed</span>
+                      ) : null}
+                    </>
+                  )}
+                </td>
+                <td data-label="Status · PO" className="ev-status">
+                  <StatusPill status={row.status} />
+                  <span className={classes('sub', 'mono', !row.poNumber && 'muted')}>
+                    {row.poNumber ? `PO ${row.poNumber}` : 'No PO'}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }
 
@@ -348,7 +353,9 @@ function WeekChip({ row }: { row: EventRow }) {
       href={`/events/${row.id}`}
     >
       <span className="w">
-        {row.windowLabel}
+        {/* The window is one reading and never breaks; the status and the
+            fill wrap under it inside the card rather than out of it. */}
+        <span className="t">{row.windowLabel}</span>
         <ChipStatus status={row.status} />
         {row.status !== 'cancelled' ? <span className="f">{formatEventFill(row.fill)}</span> : null}
       </span>
@@ -391,11 +398,11 @@ export function DayView({ rows }: { rows: EventRow[] }) {
               )}
               {row.endsNextDay ? <span className="sub">ends next day</span> : null}
             </span>
-            <span>
+            <span className="dr-title">
               <b>{row.title}</b>
               {row.poNumber ? <span className="sub mono">PO {row.poNumber}</span> : null}
             </span>
-            <span>
+            <span className="dr-client">
               <span className="ev-clip" title={row.clientName}>
                 {row.clientName}
               </span>
@@ -403,14 +410,14 @@ export function DayView({ rows }: { rows: EventRow[] }) {
                 {row.venueName}
               </span>
             </span>
-            <span className="row wrap">
+            <span className="row wrap dr-roles">
               {row.roles.map((role, index) => (
                 <span className="chip" key={`${row.id}-${index}`}>
                   {role.roleName} {formatAllocation(role.headcount, role.buffer)}
                 </span>
               ))}
             </span>
-            <span>
+            <span className="dr-fill">
               {row.status === 'cancelled' ? null : (
                 <>
                   <FillPill row={row} />
@@ -418,7 +425,7 @@ export function DayView({ rows }: { rows: EventRow[] }) {
                 </>
               )}
             </span>
-            <span>
+            <span className="dr-status">
               <StatusPill status={row.status} />
             </span>
           </Link>
