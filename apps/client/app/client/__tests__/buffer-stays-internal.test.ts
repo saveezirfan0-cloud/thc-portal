@@ -5,13 +5,16 @@ import {
   documentPendingLine,
   eventEnded,
   feedbackInviteText,
+  feedbackToGo,
   fillOf,
+  groupBySection,
+  listFaces,
   roleBreakdown,
   sectionCountLabel,
   sectionTone,
   tabCounts,
 } from '../rules';
-import type { PortalEvent, RoleSection } from '../rules';
+import type { LineupRow, PortalEvent, RoleSection } from '../rules';
 
 /**
  * Round 2 of the live walk (ADR-0133): the counts the customer reads hold
@@ -208,5 +211,66 @@ describe('the quiet line in place of a dead download (CW-04)', () => {
     expect(documentPendingLine('signout', ev({ id: 'c', status: 'completed' }), NOW)).toBe(
       'Completed Timesheet not issued yet',
     );
+  });
+});
+
+/**
+ * ADR-0134 (product owner, 14.10.2026: "only up to headcount"):
+ * `client_lineup_v` returns at most `headcount` people per section — the
+ * checked-in first, then the earliest confirmed — and keeps a worker the
+ * customer already rated. The screens draw what the view returns, so the
+ * faces, the pill, "N of M arrived" and the feedback nudge all follow the
+ * same trimmed set; pgTAP 815 holds which rows those are.
+ */
+describe('the line-up stops at the headcount (ADR-0134)', () => {
+  const person = (n: number, over: Partial<LineupRow> = {}): LineupRow => ({
+    bookingId: `b-${n}`,
+    eventId: 'ev-1',
+    shiftId: 's-Waiting Staff',
+    role: 'Waiting Staff',
+    startsAt: '2026-10-22T06:00:00Z',
+    endsAt: '2026-10-22T17:00:00Z',
+    name: `Worker ${n}`,
+    sortKey: `worker ${n}`,
+    feedbackGiven: false,
+    ...over,
+  });
+  // What the view now returns for Waiting Staff 4 (six confirmed): four rows,
+  // and a section count already held to four.
+  const waiting = section('Waiting Staff', 4, 4);
+  const trimmed = [1, 2, 3, 4].map((n) => person(n));
+  const started = ev({
+    id: 'ev-1',
+    status: 'ongoing',
+    startsAt: '2026-10-14T06:00:00Z',
+    endsAt: '2026-10-14T17:00:00Z',
+  });
+
+  it('draws four faces under "4 of 4 confirmed", and asks for feedback on four', () => {
+    const [group] = groupBySection(trimmed, [waiting]);
+    expect(group!.people).toHaveLength(4);
+    expect(sectionCountLabel(group!, false)).toBe('4 of 4 confirmed');
+    expect(listFaces([started], trimmed)).toHaveLength(4);
+    expect(feedbackToGo(started, trimmed, NOW)).toEqual({ toGo: 4, total: 4 });
+  });
+
+  it('keeps a rated worker past the headcount without the count ever reading "5 of 4"', () => {
+    const kept = [...trimmed, person(5, { feedbackGiven: true, feedbackRating: 2 })];
+    const [group] = groupBySection(kept, [waiting]);
+    expect(group!.people.map((p) => p.bookingId)).toContain('b-5');
+    expect(sectionCountLabel(group!, false)).toBe('4 of 4 confirmed');
+    expect(fillOf([waiting])).toMatchObject({ confirmed: 4, headcount: 4, tone: 'green' });
+    // The rated one is done; the four seated are still to go.
+    expect(feedbackToGo(started, kept, NOW)).toEqual({ toGo: 4, total: 5 });
+  });
+
+  it('agrees with the capped view counts: the client cap is a no-op on them', () => {
+    expect(cappedConfirmed(waiting)).toBe(4);
+    const view = {
+      confirmed: 4,
+      arrived: 3,
+      bySection: { 's-Waiting Staff': { confirmed: 4, arrived: 3 } },
+    };
+    expect(arrivalsWithinHeadcount(view, [waiting])).toEqual(view);
   });
 });

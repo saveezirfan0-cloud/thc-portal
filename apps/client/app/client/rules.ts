@@ -105,13 +105,16 @@ export function listFaces<T extends Pick<LineupRow, 'eventId' | 'sortKey'>>(
  * One section's share of "N of M confirmed": its confirmed workers, never
  * more than the headcount booked.
  *
- * `client_role_sections_v.confirmed` counts every confirmed booking on the
- * section, and that includes THC's buffer once the buffer is filled — six
- * confirmed on a Waiting Staff section of four. The customer booked four;
- * the two extra are THC's insurance and stay internal (§3.2, the wireframe:
- * "N counts confirmed workers only … buffer slots are internal and never
- * shown"). So a section counts at most its headcount, and an over-filled
- * section can never make up for an empty one.
+ * Six confirmed on a Waiting Staff section of four is THC's buffer at work;
+ * the customer booked four, and the two extra are THC's insurance and stay
+ * internal (§3.2, the wireframe: "N counts confirmed workers only … buffer
+ * slots are internal and never shown"). Since 20261014140000 (ADR-0134)
+ * `client_role_sections_v.confirmed` is already held to the headcount and
+ * `client_lineup_v` returns at most that many people per section, so the
+ * buffer never reaches the browser; this cap stays as the second guard
+ * (a portal deployed ahead of the migration, a test fixture), and it is a
+ * no-op on what the views now return. An over-filled section can never
+ * make up for an empty one.
  */
 export function cappedConfirmed(section: Pick<RoleSection, 'confirmed' | 'headcount'>): number {
   return Math.max(0, Math.min(section.confirmed, section.headcount));
@@ -143,14 +146,16 @@ export function fillOf(sections: readonly RoleSection[]): {
 /**
  * "N of M arrived" (ADR-0053) on the same footing as "N of M confirmed".
  *
- * `client_arrivals_v` counts every confirmed booking on a section, buffer
- * included, and every check-in. Shown as it came, a section of four with
- * six confirmed read "5 of 6 arrived" — THC's over-booking again. Each
- * section is held to its headcount (from `client_role_sections_v`): at most
- * that many confirmed, and at most that many arrived (under the strict
- * buffer policy only the first `headcount` check-ins work, RULE-15). The
- * event's total is re-added from the capped sections. A section the
- * sections read did not return keeps its own figures.
+ * A section of four with six confirmed once read "5 of 6 arrived" — THC's
+ * over-booking again. Each section is held to its headcount (from
+ * `client_role_sections_v`): at most that many confirmed, and at most that
+ * many arrived (under the strict buffer policy only the first `headcount`
+ * check-ins work, RULE-15). Since 20261014140000 (ADR-0134)
+ * `client_arrivals_v` applies the same cap itself — the checked-in take the
+ * line-up's seats first, so its `arrived` is the arrivals among the faces
+ * shown — and this is the second guard. The event's total is re-added from
+ * the capped sections. A section the sections read did not return keeps
+ * its own figures.
  */
 export function arrivalsWithinHeadcount<
   T extends {
@@ -367,9 +372,11 @@ export function sectionTone(
  * The words on a role section's pill: "4 of 4 confirmed" (or "worked" once
  * the event is over), the confirmed count held to the headcount
  * (`cappedConfirmed`) so a section carrying THC's buffer never reads "6 of
- * 4". The line-up under it still lists everyone confirmed — they are who is
- * coming — only the count is the customer's booking. A row with no section
- * (no headcount to compare) says what it has: "2 confirmed".
+ * 4". The line-up under it is held to the headcount too, in the view
+ * (ADR-0134); the one exception is a worker the customer has already rated,
+ * who stays visible past the headcount — and the pill still reads the
+ * booking, "4 of 4". A row with no section (no headcount to compare) says
+ * what it has: "2 confirmed".
  */
 export function sectionCountLabel(
   group: Pick<LineupGroup, 'confirmed' | 'headcount'>,

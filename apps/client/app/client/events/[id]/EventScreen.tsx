@@ -256,8 +256,8 @@ export function EventScreen({
               actions={
                 <>
                   {/* Held to the headcount: a section carrying THC's buffer
-                      reads "4 of 4", never "6 of 4"; the line-up below still
-                      lists everyone confirmed. */}
+                      reads "4 of 4", never "6 of 4", and the line-up below
+                      stops at the headcount too (client_lineup_v, ADR-0134). */}
                   <Pill tone={sectionTone(group, completed)}>
                     {sectionCountLabel(group, completed)}
                   </Pill>
