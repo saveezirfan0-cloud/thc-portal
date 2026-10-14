@@ -2,8 +2,21 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition, type ReactNode } from 'react';
-import { Alert, Button, EmptyState, Pill, SegToggle, Tabs, toast, useTimeFormat } from '@thc/ui';
+import { useState, useTransition, type CSSProperties, type ReactNode } from 'react';
+import {
+  Alert,
+  Button,
+  ColumnCells,
+  ColumnChooser,
+  EmptyState,
+  Pill,
+  SegToggle,
+  Tabs,
+  toast,
+  useColumns,
+  useTimeFormat,
+} from '@thc/ui';
+import type { Columns, ColumnDef } from '@thc/ui';
 import { markRead } from './actions';
 import { DeleteFeedbackModal, EditFeedbackModal } from './_components/FeedbackDialogs';
 import { OfficeFeedbackForm } from './_components/OfficeFeedbackForm';
@@ -21,6 +34,45 @@ import type { FeedbackPageData } from './data';
 import type { FeedbackEntry, FeedbackQuery, ReadFilter, Tab } from './types';
 
 /**
+ * Each tab's columns, declared once (ADR-0139). The list is a grid, not a
+ * table: the chosen order is the order of the cells, and the grid's tracks
+ * follow it (`gridTracks`). Worker · event cannot be hidden; the status /
+ * author column carries the row's actions and stays last.
+ */
+const CLIENT_COLUMNS = [
+  { id: 'stars', label: 'Stars' },
+  { id: 'worker', label: 'Worker · event', required: true },
+  { id: 'comment', label: 'Comment' },
+  { id: 'status', label: 'Status', required: true },
+] as const satisfies readonly ColumnDef[];
+const OFFICE_COLUMNS = [
+  { id: 'stars', label: 'Stars' },
+  { id: 'worker', label: 'Worker · event', required: true },
+  { id: 'comment', label: 'Comment' },
+  { id: 'author', label: 'Author', required: true },
+] as const satisfies readonly ColumnDef[];
+type ClientColumn = (typeof CLIENT_COLUMNS)[number]['id'];
+type OfficeColumn = (typeof OFFICE_COLUMNS)[number]['id'];
+
+/** Each column's grid track: wide screens, then ≤1100px (feedback.css). */
+const TRACKS: Record<ClientColumn | OfficeColumn, readonly [string, string | null]> = {
+  stars: ['120px', '100px'],
+  worker: ['220px', '180px'],
+  comment: ['minmax(0, 1fr)', 'minmax(0, 1fr)'],
+  // Below 1100px the actions take a row of their own.
+  status: ['300px', null],
+  author: ['300px', null],
+};
+
+function gridTracks<Id extends ClientColumn | OfficeColumn>(columns: Columns<Id>): CSSProperties {
+  const wide = columns.visible.map((column) => TRACKS[column.id][0]);
+  const narrow = columns.visible
+    .map((column) => TRACKS[column.id][1])
+    .filter((track): track is string => track !== null);
+  return { '--fb-cols': wide.join(' '), '--fb-cols-md': narrow.join(' ') } as CSSProperties;
+}
+
+/**
  * /feedback — every piece of feedback about workers, in one place (§9.10),
  * `wireframes/backoffice/feedback.html`.
  *
@@ -36,6 +88,9 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
   const router = useRouter();
   const [editing, setEditing] = useState<FeedbackEntry | null>(null);
   const [deleting, setDeleting] = useState<FeedbackEntry | null>(null);
+
+  const clientColumns = useColumns('feedback.client', CLIENT_COLUMNS);
+  const officeColumns = useColumns('feedback.office', OFFICE_COLUMNS);
 
   const go = (patch: Partial<FeedbackQuery>) => router.push(hrefFor(query, patch));
   const info = pageInfo(query.page, data.total);
@@ -97,6 +152,7 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
                 read-only channel — arrives from the Client Portal; cannot be replied to, edited or
                 deleted
               </span>
+              <ColumnChooser columns={clientColumns} label="Client feedback" />
             </div>
           </div>
 
@@ -106,12 +162,18 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
             does not affect the rating. &ldquo;Mark as read&rdquo; exists only on this tab.
           </Alert>
 
-          <div className="fb-list" role="list" aria-label="Client feedback">
+          <div
+            className="fb-list"
+            role="list"
+            aria-label="Client feedback"
+            style={gridTracks(clientColumns)}
+          >
             <div className="fbhead" aria-hidden="true">
-              <span className="label">Stars</span>
-              <span className="label">Worker · event</span>
-              <span className="label">Comment</span>
-              <span className="label">Status</span>
+              {clientColumns.visible.map((column) => (
+                <span key={column.id} className="label">
+                  {column.label}
+                </span>
+              ))}
             </div>
             {data.entries.length === 0 ? (
               <EmptyState>
@@ -121,7 +183,12 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
               </EmptyState>
             ) : (
               data.entries.map((entry) => (
-                <ClientRow key={entry.id} entry={entry} onDelete={() => setDeleting(entry)} />
+                <ClientRow
+                  key={entry.id}
+                  entry={entry}
+                  columns={clientColumns}
+                  onDelete={() => setDeleting(entry)}
+                />
               ))
             )}
           </div>
@@ -150,15 +217,22 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
                 editable / deletable here and on the worker&rsquo;s profile · author = the
                 manager&rsquo;s own name, never a generic &ldquo;Office&rdquo;
               </span>
+              <ColumnChooser columns={officeColumns} label="Office feedback" />
             </div>
           </div>
 
-          <div className="fb-list" role="list" aria-label="Office feedback">
+          <div
+            className="fb-list"
+            role="list"
+            aria-label="Office feedback"
+            style={gridTracks(officeColumns)}
+          >
             <div className="fbhead" aria-hidden="true">
-              <span className="label">Stars</span>
-              <span className="label">Worker · event</span>
-              <span className="label">Comment</span>
-              <span className="label">Author</span>
+              {officeColumns.visible.map((column) => (
+                <span key={column.id} className="label">
+                  {column.label}
+                </span>
+              ))}
             </div>
             {data.entries.length === 0 ? (
               <EmptyState>
@@ -171,6 +245,7 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
                 <OfficeRow
                   key={entry.id}
                   entry={entry}
+                  columns={officeColumns}
                   onEdit={() => setEditing(entry)}
                   onDelete={() => setDeleting(entry)}
                 />
@@ -220,7 +295,15 @@ function WorkerName({ entry }: { entry: FeedbackEntry }) {
   );
 }
 
-function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => void }) {
+function ClientRow({
+  entry,
+  columns,
+  onDelete,
+}: {
+  entry: FeedbackEntry;
+  columns: Columns<ClientColumn>;
+  onDelete: () => void;
+}) {
   const format = useTimeFormat();
   const router = useRouter();
   const [problem, setProblem] = useState<string | null>(null);
@@ -239,17 +322,21 @@ function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => 
     });
   };
 
-  return (
-    <div className={`fb ${entry.unread ? 'unread' : 'read'}`} role="listitem">
-      <Stars rating={entry.rating} />
+  const cells: Record<ClientColumn, ReactNode> = {
+    stars: <Stars rating={entry.rating} />,
+    worker: (
       <div className="who">
         <WorkerName entry={entry} />
         <div className="s">{eventLine(entry, true)}</div>
       </div>
+    ),
+    comment: (
       <div className="txt">
         {quoted(entry.text) ?? <span className="muted">No comment — stars only.</span>}
         <span className="m">{clientMetaLine(entry, format)}</span>
       </div>
+    ),
+    status: (
       <div className="acts">
         <Pill tone={status.tone}>{status.label}</Pill>
         {entry.unread ? (
@@ -272,31 +359,43 @@ function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => 
         ) : null}
         {problem ? <span className="note-line coral xs">{problem}</span> : null}
       </div>
+    ),
+  };
+
+  return (
+    <div className={`fb ${entry.unread ? 'unread' : 'read'}`} role="listitem">
+      <ColumnCells columns={columns} cells={cells} />
     </div>
   );
 }
 
 function OfficeRow({
   entry,
+  columns,
   onEdit,
   onDelete,
 }: {
   entry: FeedbackEntry;
+  columns: Columns<OfficeColumn>;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const format = useTimeFormat();
-  return (
-    <div className="fb office" role="listitem">
-      <Stars rating={entry.rating} />
+  const cells: Record<OfficeColumn, ReactNode> = {
+    stars: <Stars rating={entry.rating} />,
+    worker: (
       <div className="who">
         <WorkerName entry={entry} />
         <div className="s">{eventLine(entry, false)}</div>
       </div>
+    ),
+    comment: (
       <div className="txt">
         {quoted(entry.text)}
         <span className="m">{officeMetaLine(entry, format)}</span>
       </div>
+    ),
+    author: (
       <div className="acts">
         <Pill tone="purple">{entry.author_name ?? 'Unknown manager'}</Pill>
         <Button size="sm" tone="ghost" onClick={onEdit}>
@@ -306,6 +405,11 @@ function OfficeRow({
           Delete
         </Button>
       </div>
+    ),
+  };
+  return (
+    <div className="fb office" role="listitem">
+      <ColumnCells columns={columns} cells={cells} />
     </div>
   );
 }

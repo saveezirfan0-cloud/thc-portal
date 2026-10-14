@@ -22,6 +22,49 @@ export { Content, PageHead, Shell, Sidebar, Topbar, UserChip } from './component
 export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './components/Shell';
 export { TableScroll } from './components/Table';
 export type { TableScrollProps } from './components/Table';
+export {
+  ColumnCells,
+  ColumnCellsFor,
+  ColumnChooser,
+  ColumnChooserFor,
+  ColumnHeads,
+  ColumnHeadsFor,
+  ColumnPrefsProvider,
+  TableScrollFor,
+  useColumns,
+} from './components/ColumnChooser';
+export type {
+  ColumnChooserProps,
+  ColumnListProps,
+  ColumnPrefsSource,
+  Columns,
+  SaveColumnPref,
+  UseColumnsOptions,
+} from './components/ColumnChooser';
+// Server-safe: a plain module, so a server action can validate a stored choice.
+export {
+  COLUMN_ID_PATTERN,
+  LIST_KEY_PATTERN,
+  MAX_COLUMNS_PER_LIST,
+  columnRem,
+  isDefaultLayout,
+  moveColumnTo,
+  normaliseColumnPref,
+  normaliseColumnPrefs,
+  offeredColumns,
+  prefOf,
+  resolveColumns,
+  scaledMinWidth,
+  setColumnVisible,
+  widthClass,
+} from './components/columns';
+export type {
+  ColumnDef,
+  ColumnPref,
+  ColumnPrefs,
+  ColumnWidth,
+  ResolvedColumn,
+} from './components/columns';
 export { MenuButton } from './components/MenuButton';
 export type { MenuButtonProps } from './components/MenuButton';
 

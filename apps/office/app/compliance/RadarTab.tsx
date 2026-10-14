@@ -2,8 +2,12 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import {
   Avatar,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
   EmptyState,
   KpiTile,
   Panel,
@@ -12,8 +16,10 @@ import {
   Select,
   TableScroll,
   TileGrid,
+  useColumns,
   useTimeFormat,
 } from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { clockLabel } from '@thc/domain';
 import {
   DOCUMENT_FILTERS,
@@ -43,6 +49,19 @@ const BRANCH: Record<string, string> = {
 };
 
 /**
+ * The radar's columns, declared once (ADR-0139); Who stays first.
+ */
+const COLUMNS = [
+  { id: 'who', label: 'Who', required: true, width: 'l' },
+  { id: 'document', label: 'Document' },
+  { id: 'expiry', label: 'Expiry date', width: 's' },
+  { id: 'days', label: 'Days left', width: 's' },
+  { id: 'status', label: 'Status', width: 'l' },
+  { id: 'reminders', label: 'Reminders sent' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
+
+/**
  * Tab 2 · Radar (§4.1, §4.2).
  *
  * Counters, then every dated document on a live worker, soonest first. The
@@ -61,6 +80,7 @@ export function RadarTab({
   mode: 'block' | 'warn';
 }) {
   const format = useTimeFormat();
+  const columns = useColumns('compliance.radar', COLUMNS);
   const [url, setUrl] = useListQuery(COMPLIANCE_QUERY);
   const state = oneOf(url.state, RADAR_STATES, 'all');
   const query = url.q;
@@ -140,6 +160,7 @@ export function RadarTab({
         </Select>
         <div className="right">
           <span className="muted sm">no manual “Send reminder” — the ladder runs itself</span>
+          <ColumnChooser columns={columns} label="Expiry radar" />
         </div>
       </div>
 
@@ -151,23 +172,18 @@ export function RadarTab({
               <p>Every verified document with an expiry date on a live worker is listed here.</p>
             </EmptyState>
           ) : (
-            <TableScroll label="Expiry radar" fixed minWidth="56rem">
+            <TableScroll label="Expiry radar" fixed minWidth={columns.minWidth('56rem')}>
               <table className="tbl card-rows">
                 <thead>
                   <tr>
-                    <th className="col-l">Who</th>
-                    <th>Document</th>
-                    <th className="col-s">Expiry date</th>
-                    <th className="col-s">Days left</th>
-                    <th className="col-l">Status</th>
-                    <th>Reminders sent</th>
+                    <ColumnHeads columns={columns} />
                   </tr>
                 </thead>
                 <tbody>
                   {shown.map((row) => {
                     const status = radarStatus(row, format);
-                    return (
-                      <tr key={row.doc_id}>
+                    const cells: Record<ColumnId, ReactNode> = {
+                      who: (
                         <td className="cell-title">
                           <div className="person">
                             <Avatar name={row.display_name} size="sm" />
@@ -181,6 +197,8 @@ export function RadarTab({
                             </div>
                           </div>
                         </td>
+                      ),
+                      document: (
                         <td data-label="Document">
                           {row.doc_label}
                           {row.reviewed_at ? (
@@ -194,14 +212,20 @@ export function RadarTab({
                             </span>
                           ) : null}
                         </td>
+                      ),
+                      expiry: (
                         <td data-label="Expiry date" className="mono">
                           {ukDate(row.expires_on)}
                         </td>
+                      ),
+                      days: (
                         <td data-label="Days left">
                           <span className={`days ${daysTone(row.state)}`}>
                             {daysLabel(row.days_left)}
                           </span>
                         </td>
+                      ),
+                      status: (
                         <td data-label="Status">
                           <Pill tone={status.tone}>{status.label}</Pill>
                           {row.replacement_in_review ? (
@@ -212,9 +236,16 @@ export function RadarTab({
                             <span className="sub">expires on the letter’s last printed date</span>
                           ) : null}
                         </td>
+                      ),
+                      reminders: (
                         <td data-label="Reminders sent" className="sm muted">
                           {remindersLine(row)}
                         </td>
+                      ),
+                    };
+                    return (
+                      <tr key={row.doc_id}>
+                        <ColumnCells columns={columns} cells={cells} />
                       </tr>
                     );
                   })}

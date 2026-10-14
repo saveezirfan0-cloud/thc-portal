@@ -1,12 +1,19 @@
 import Link from 'next/link';
-import { Alert, Panel } from '@thc/ui';
+import { Alert, ColumnChooserFor, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
 import { loadClientNames, loadEventsInRange } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { EventToolbar, hrefFor } from './_components/EventToolbar';
-import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
+import {
+  DayView,
+  EVENT_LIST_COLUMNS,
+  EVENT_LIST_KEY,
+  ListView,
+  MonthView,
+  WeekView,
+} from './_components/EventViews';
 import { parseEventQuery } from './_lib/filters';
 import { SavedViewsBar } from './_lib/SavedViewsBar';
 import { listMySavedViews } from './_lib/saved-views-actions';
@@ -83,7 +90,14 @@ export default async function Page({
         <SavedViewsBar query={query} clients={reference.clients} initial={savedViews} />
 
         {!problem && view === 'list' ? (
-          <Panel flush className="stack" actions={null}>
+          <Panel
+            flush
+            className="stack"
+            // ADR-0139: the list's own columns; a preference, never in the URL.
+            actions={
+              <ColumnChooserFor list={EVENT_LIST_KEY} defs={EVENT_LIST_COLUMNS} label="Events" />
+            }
+          >
             <div className="panel-b tight">
               <ListView rows={rows} today={today} />
             </div>

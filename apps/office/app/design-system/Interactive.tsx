@@ -1,11 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   AppBody,
   Avatar,
   Button,
   Checkbox,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
+  ColumnPrefsProvider,
   Modal,
   ModeSwitch,
   OptionRow,
@@ -18,8 +23,11 @@ import {
   Sheet,
   Slider,
   Switch,
+  TableScroll,
   Tabs,
+  useColumns,
 } from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 
 /** The parts of the gallery that need state. Everything else is server-rendered. */
 export function InteractiveControls() {
@@ -172,6 +180,114 @@ export function Overlays() {
           </Sheet>
         </PhoneFrame>
       </PhoneRow>
+    </Panel>
+  );
+}
+
+/**
+ * ADR-0139: the column chooser on the table-frame example. Its own
+ * provider with no save, so trying it here never touches the profile.
+ */
+const VENUE_COLUMNS = [
+  { id: 'name', label: 'Venue', required: true, width: 'l' },
+  { id: 'address', label: 'Address' },
+  { id: 'type', label: 'Type', width: 'm' },
+  { id: 'radius', label: 'Geofence (m)', width: 's', className: 'num' },
+  { id: 'events', label: 'Events', width: 'xs', className: 'num' },
+  { id: 'added', label: 'Date added', width: 's' },
+  { id: 'by', label: 'Added by', width: 's', defaultVisible: false },
+  { id: 'actions', label: 'Actions', required: true, className: 'cell-actions' },
+] as const satisfies readonly ColumnDef[];
+
+type VenueColumn = (typeof VENUE_COLUMNS)[number]['id'];
+
+const VENUE_ROWS = [
+  ['Leonardo Royal Hotel', '10 Godliman St, London EC4V 5AJ', 'Hotel', 150, 47],
+  ['ExCeL London', 'Royal Victoria Dock, London E16 1XL', 'Exhibition centre', 400, 72],
+  ['Hurst Manor', 'Cuckfield, Haywards Heath RH17 5LB', 'Private residence', 250, 6],
+] as const;
+
+export function ColumnsPreview() {
+  return (
+    <ColumnPrefsProvider prefs={{}} save={async () => undefined}>
+      <ColumnsPreviewTable />
+    </ColumnPrefsProvider>
+  );
+}
+
+function ColumnsPreviewTable() {
+  const columns = useColumns('design-system.venues', VENUE_COLUMNS);
+  return (
+    <Panel title="Table frame · column chooser" flush>
+      <div className="toolbar filters panel-b">
+        <span className="sm muted">
+          Hide, show and reorder; Venue and Actions stay first and last.
+        </span>
+        <div className="right">
+          <ColumnChooser columns={columns} label="Venues" />
+        </div>
+      </div>
+      <div className="panel-b tight">
+        <TableScroll label="Table frame example" fixed minWidth={columns.minWidth('84rem')}>
+          <table className="tbl card-rows">
+            <thead>
+              <tr>
+                <ColumnHeads columns={columns} />
+              </tr>
+            </thead>
+            <tbody>
+              {VENUE_ROWS.map(([name, address, type, radius, events]) => {
+                const cells: Record<VenueColumn, ReactNode> = {
+                  name: (
+                    <td className="cell-title">
+                      <b>{name}</b>
+                    </td>
+                  ),
+                  address: <td data-label="Address">{address}</td>,
+                  type: (
+                    <td data-label="Type" className="sm muted">
+                      {type}
+                    </td>
+                  ),
+                  radius: (
+                    <td data-label="Geofence (m)" className="num">
+                      {radius}
+                    </td>
+                  ),
+                  events: (
+                    <td data-label="Events" className="num">
+                      {events}
+                    </td>
+                  ),
+                  added: (
+                    <td data-label="Date added" className="sm">
+                      12 Jan 2026
+                    </td>
+                  ),
+                  by: (
+                    <td data-label="Added by" className="sm">
+                      Gisela M.
+                    </td>
+                  ),
+                  actions: (
+                    <td className="cell-actions">
+                      <Button size="sm">Edit</Button>
+                      <Button size="sm" tone="danger">
+                        Delete
+                      </Button>
+                    </td>
+                  ),
+                };
+                return (
+                  <tr key={name}>
+                    <ColumnCells columns={columns} cells={cells} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
+      </div>
     </Panel>
   );
 }

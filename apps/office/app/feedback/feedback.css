@@ -11,10 +11,16 @@
  */
 
 /* ---- the inbox list ------------------------------------------------ */
+/* The tracks follow the person's column choice (ADR-0139): the screen
+   sets --fb-cols / --fb-cols-md on the list, over these defaults. */
+.fb-list {
+  --fb-cols: 120px 220px minmax(0, 1fr) 300px;
+  --fb-cols-md: 100px 180px minmax(0, 1fr);
+}
 .fb-list .fbhead,
 .fb-list .fb {
   display: grid;
-  grid-template-columns: 120px 220px minmax(0, 1fr) 300px;
+  grid-template-columns: var(--fb-cols);
   gap: var(--sp-14);
   align-items: center;
 }
@@ -201,7 +207,7 @@
 @media (max-width: 1100px) {
   .fb-list .fbhead,
   .fb-list .fb {
-    grid-template-columns: 100px 180px minmax(0, 1fr);
+    grid-template-columns: var(--fb-cols-md);
   }
   .fb-list .fbhead span:last-child {
     display: none;

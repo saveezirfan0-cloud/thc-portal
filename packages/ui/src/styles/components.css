@@ -4093,3 +4093,218 @@ a.signed-in-as:focus-visible .strong {
     background: var(--line);
   }
 }
+
+/* ---------------------------------------------------------------------
+   COLUMN CHOOSER (ADR-0139)
+   "Columns" in a list's toolbar: a pill-ghost button opening a labelled
+   dialog — a popover under the button on a desktop, a frosted sheet from
+   the bottom on a phone (where the list is cards and the same choice
+   decides a card's fields). Tokens only.
+   --------------------------------------------------------------------- */
+.colchooser {
+  display: inline-flex;
+  position: relative;
+}
+.colchooser-btn svg {
+  flex: none;
+}
+/* A toolbar's right-hand group that ends in "Columns" wraps (from the
+   right) rather than pushing the button past the page's edge at 1024px. */
+.toolbar .right:has(> .colchooser) {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.colchooser-btn.changed {
+  border-color: var(--cyan-line);
+  color: var(--cyan-ink);
+}
+.colchooser-count {
+  font-family: var(--font-num);
+  font-size: var(--fs-11);
+  padding: 0 var(--sp-6);
+  border-radius: var(--r-pill);
+  background: var(--cyan-dim);
+  color: var(--cyan-ink);
+}
+.colchooser-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.colchooser-scrim {
+  display: none;
+}
+.colchooser-pop {
+  position: fixed;
+  z-index: 60;
+  top: var(--pop-top, var(--sp-56));
+  right: var(--pop-right, var(--sp-20));
+  width: min(22rem, calc(100vw - var(--sp-32)));
+  max-height: calc(100dvh - var(--pop-top, var(--sp-56)) - var(--sp-16));
+  display: flex;
+  flex-direction: column;
+  /* Over a table the popover is opaque — rows must not read through it;
+     the accent glow is the only lift. The phone sheet below is frosted. */
+  background:
+    radial-gradient(120% 120% at 0% 0%, var(--glow-a), transparent 55%),
+    radial-gradient(120% 120% at 100% 100%, var(--glow-b), transparent 55%), var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  color: var(--text);
+}
+.colchooser-pop:focus {
+  outline: none;
+}
+/* The design-system gallery draws the dialog in place. */
+.colchooser-pop.inline {
+  position: relative;
+  top: auto;
+  right: auto;
+}
+.colchooser-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-10);
+  padding: var(--sp-14) var(--sp-16) var(--sp-10);
+  border-bottom: 1px solid var(--line);
+}
+.colchooser-head > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.colchooser-head h3 {
+  font-size: var(--fs-15);
+}
+.colchooser-head p {
+  margin-top: var(--sp-4);
+}
+.colchooser-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-6) var(--sp-8);
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.colchooser-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: var(--btn-h);
+  padding: var(--sp-4) var(--sp-8);
+  border-radius: var(--r-band);
+}
+.colchooser-row:hover {
+  background: var(--hover);
+}
+.colchooser-row.dragging {
+  background: var(--cyan-dim);
+  outline: 1px solid var(--cyan-line);
+}
+.colchooser-handle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-20);
+  align-self: stretch;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+.colchooser-handle svg {
+  fill: currentColor;
+}
+.colchooser-row.dragging .colchooser-handle {
+  cursor: grabbing;
+  color: var(--cyan-ink);
+}
+.colchooser-handle.off {
+  visibility: hidden;
+  cursor: default;
+}
+.colchooser-check {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.colchooser-check .check {
+  align-items: center;
+}
+/* A held column's tick: ticked, and visibly not a control (the disabled
+   square would otherwise hide the white mark). */
+.colchooser-check .check-input:disabled + .box.on {
+  color: var(--muted);
+}
+.colchooser-check .sub {
+  display: block;
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+.colchooser-moves {
+  flex: none;
+  display: inline-flex;
+  gap: var(--sp-4);
+}
+.colchooser-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  padding: var(--sp-10) var(--sp-16) var(--sp-14);
+  border-top: 1px solid var(--line);
+}
+/* Fingers: every target in the dialog is at least 44px. */
+@media (pointer: coarse) {
+  .colchooser-row {
+    min-height: var(--tap-min);
+  }
+  .colchooser-moves .btn.icon,
+  .colchooser-head .btn.icon,
+  .colchooser-foot .btn,
+  .colchooser-btn {
+    min-height: var(--tap-min);
+    min-width: var(--tap-min);
+  }
+  .colchooser-handle {
+    width: var(--tap-min);
+  }
+}
+@media (max-width: 760px) {
+  .colchooser-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: var(--scrim-soft);
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+  }
+  .colchooser-pop:not(.inline) {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 82dvh;
+    background:
+      radial-gradient(120% 120% at 0% 0%, var(--glow-a), transparent 55%),
+      radial-gradient(120% 120% at 100% 100%, var(--glow-b), transparent 55%), var(--glass-strong);
+    backdrop-filter: blur(var(--blur-strong)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(140%);
+    border-radius: var(--r-tile) var(--r-tile) 0 0;
+    border-width: 1px 0 0;
+    border-top-color: var(--cyan-line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .colchooser-row {
+    min-height: var(--tap-min);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .colchooser-row {
+    transition: background-color 0.12s;
+  }
+}

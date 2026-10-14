@@ -1,13 +1,43 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
-import { Avatar, Chip, Panel, Pill, TableScroll, useTimeFormat } from '@thc/ui';
+import type { ReactNode } from 'react';
+import {
+  Avatar,
+  Chip,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
+  Panel,
+  Pill,
+  TableScroll,
+  useColumns,
+  useTimeFormat,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import type { PayrollLine, PayrollPerson } from '../data';
 import { breakLabel, dayLabel, employeeId, hours, pounds } from '../view-model';
 import { formatTimeIn } from '@thc/domain';
 import { ActualTime, ScheduledWindow, useViewerZone } from './zone';
 
 const PAGE = 25;
+
+/**
+ * The person rows' columns, declared once (ADR-0139): Staff stays first;
+ * the expand marker is a lead cell, not a column. The figures are money —
+ * /reports is finance-only (ADR-0056) and the flags say so (ADR-0061).
+ * The expanded shift table and the CSV are not affected.
+ */
+const COLUMNS = [
+  { id: 'staff', label: 'Staff', required: true },
+  { id: 'employee-id', label: 'Employee ID' },
+  { id: 'shifts', label: 'Shifts', className: 'money' },
+  { id: 'hours', label: 'Payable hours', className: 'money' },
+  { id: 'base', label: 'Base', className: 'money', finance: true },
+  { id: 'holiday', label: 'Holiday +12.07%', className: 'money', finance: true },
+  { id: 'total', label: 'Total payroll', className: 'money', finance: true },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 /**
  * The per-person breakdown (§9.9 Tab 2): click a person to expand ALL their
@@ -18,6 +48,9 @@ export function PeopleTable({ people, lines }: { people: PayrollPerson[]; lines:
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  const columns = useColumns('reports.payroll-people', COLUMNS);
+  // The expand marker, then the chosen columns.
+  const span = columns.visible.length + 1;
 
   const byPerson = useMemo(() => {
     const map = new Map<string, PayrollLine[]>();
@@ -71,29 +104,24 @@ export function PeopleTable({ people, lines }: { people: PayrollPerson[]; lines:
             }}
             aria-label="Search name or Employee ID"
           />
+          <ColumnChooser columns={columns} label="Breakdown by person" />
         </>
       }
       flush
     >
       <div className="panel-b tight">
-        <TableScroll label="Payroll by person" pin={2} minWidth="48rem">
+        <TableScroll label="Payroll by person" pin={2} minWidth={columns.minWidth('48rem', 2)}>
           <table className="tbl">
             <thead>
               <tr>
                 <th style={{ width: 32 }} />
-                <th>Staff</th>
-                <th>Employee ID</th>
-                <th className="money">Shifts</th>
-                <th className="money">Payable hours</th>
-                <th className="money">Base</th>
-                <th className="money">Holiday +12.07%</th>
-                <th className="money">Total payroll</th>
+                <ColumnHeads columns={columns} />
               </tr>
             </thead>
             <tbody>
               {shown.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="muted">
+                  <td colSpan={span} className="muted">
                     {people.length === 0
                       ? 'Nobody worked a shift in this period.'
                       : 'Nobody matches that search.'}
@@ -103,6 +131,45 @@ export function PeopleTable({ people, lines }: { people: PayrollPerson[]; lines:
               {shown.map((person) => {
                 const id = person.staff_id ?? '';
                 const isOpen = open.has(id);
+                const cells: Record<ColumnId, ReactNode> = {
+                  staff: (
+                    <td>
+                      <span className="person">
+                        <Avatar
+                          name={person.staff_name ?? ''}
+                          size="sm"
+                          deleted={Boolean(person.removed)}
+                        />
+                        <span className={person.removed ? 'muted' : undefined}>
+                          {person.removed ? (
+                            <i>{person.staff_name}</i>
+                          ) : isOpen ? (
+                            <b>{person.staff_name}</b>
+                          ) : (
+                            person.staff_name
+                          )}
+                        </span>
+                      </span>
+                    </td>
+                  ),
+                  'employee-id': <td className="mono sm">{employeeId(person.employee_id)}</td>,
+                  shifts: <td className="money">{person.shifts}</td>,
+                  hours: (
+                    <td className="money">
+                      {hours(person.payable_min)}
+                      {person.pending > 0 ? (
+                        <span className="sub rp-amber">+ {person.pending} pending</span>
+                      ) : null}
+                    </td>
+                  ),
+                  base: <td className="money">{pounds(person.base)}</td>,
+                  holiday: <td className="money muted">{pounds(person.holiday)}</td>,
+                  total: (
+                    <td className="money">
+                      <b>{pounds(person.total)}</b>
+                    </td>
+                  ),
+                };
                 return (
                   <Fragment key={id}>
                     <tr
@@ -111,41 +178,11 @@ export function PeopleTable({ people, lines }: { people: PayrollPerson[]; lines:
                       aria-expanded={isOpen}
                     >
                       <td className={isOpen ? 'rp-green' : 'muted'}>{isOpen ? '▾' : '▸'}</td>
-                      <td>
-                        <span className="person">
-                          <Avatar
-                            name={person.staff_name ?? ''}
-                            size="sm"
-                            deleted={Boolean(person.removed)}
-                          />
-                          <span className={person.removed ? 'muted' : undefined}>
-                            {person.removed ? (
-                              <i>{person.staff_name}</i>
-                            ) : isOpen ? (
-                              <b>{person.staff_name}</b>
-                            ) : (
-                              person.staff_name
-                            )}
-                          </span>
-                        </span>
-                      </td>
-                      <td className="mono sm">{employeeId(person.employee_id)}</td>
-                      <td className="money">{person.shifts}</td>
-                      <td className="money">
-                        {hours(person.payable_min)}
-                        {person.pending > 0 ? (
-                          <span className="sub rp-amber">+ {person.pending} pending</span>
-                        ) : null}
-                      </td>
-                      <td className="money">{pounds(person.base)}</td>
-                      <td className="money muted">{pounds(person.holiday)}</td>
-                      <td className="money">
-                        <b>{pounds(person.total)}</b>
-                      </td>
+                      <ColumnCells columns={columns} cells={cells} />
                     </tr>
                     {isOpen ? (
                       <tr className="rp-shifts">
-                        <td colSpan={8}>
+                        <td colSpan={span}>
                           <div className="inner">
                             <ShiftTable person={person} lines={byPerson.get(id) ?? []} />
                           </div>

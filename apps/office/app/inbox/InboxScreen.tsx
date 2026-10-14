@@ -1,7 +1,18 @@
 import Link from 'next/link';
 import { type TimeFormat, UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { OFFICE_INBOX } from '@thc/notifications';
-import { Alert, EmptyState, Panel, Pill, TableScroll } from '@thc/ui';
+import type { ReactNode } from 'react';
+import {
+  Alert,
+  ColumnCellsFor,
+  ColumnChooserFor,
+  ColumnHeadsFor,
+  EmptyState,
+  Panel,
+  Pill,
+  TableScrollFor,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import type { InboxFilters, InboxPageData } from './data';
 import { inboxHref } from './filters';
@@ -10,6 +21,20 @@ import { present } from './view-model';
 import './inbox.css';
 
 const TYPES = OFFICE_INBOX.map(({ code, label }) => ({ code, label }));
+
+/**
+ * The inbox's columns, declared once (ADR-0139): What stays first. The
+ * page is server-rendered, so it uses the list-keyed pieces.
+ */
+const LIST = 'inbox';
+const COLUMNS = [
+  { id: 'what', label: 'What', required: true },
+  { id: 'about', label: 'About' },
+  { id: 'to', label: 'To', width: 'xl' },
+  { id: 'queued', label: 'Queued (UK time)', width: 'm' },
+  { id: 'status', label: 'Status', width: 'l' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 /**
  * /inbox — Inbox (ADR-0058, §8, §1.8).
@@ -52,7 +77,7 @@ export function InboxScreen({
 
       <InboxFilterBar query={filters} types={TYPES} />
 
-      <Panel flush>
+      <Panel flush actions={<ColumnChooserFor list={LIST} defs={COLUMNS} label="Office emails" />}>
         {entries.length === 0 ? (
           <EmptyState>
             {filtered
@@ -60,60 +85,71 @@ export function InboxScreen({
               : 'No email was sent to the office in this period.'}
           </EmptyState>
         ) : (
-          <TableScroll label="Office emails" fixed minWidth="56rem">
+          <TableScrollFor list={LIST} defs={COLUMNS} label="Office emails" fixed minWidth="56rem">
             <table className="tbl card-rows inbox-table">
               <thead>
                 <tr>
-                  <th>What</th>
-                  <th>About</th>
-                  <th className="col-xl">To</th>
-                  <th className="col-m">Queued (UK time)</th>
-                  <th className="col-l">Status</th>
+                  <ColumnHeadsFor list={LIST} defs={COLUMNS} />
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="cell-title">
-                      <b>{entry.type}</b>
-                      {entry.subject ? <span className="sub">{entry.subject}</span> : null}
-                    </td>
-                    <td data-label="About">
-                      {entry.about.href ? (
-                        <Link href={entry.about.href}>{entry.about.primary}</Link>
-                      ) : (
-                        entry.about.primary
-                      )}
-                      {entry.about.secondary ? (
-                        <span className="sub sm muted">{entry.about.secondary}</span>
-                      ) : null}
-                    </td>
-                    <td data-label="To" className="sm muted inbox-to">
-                      {entry.to}
-                    </td>
-                    <td data-label="Queued" className="mono sm inbox-when">
-                      {entry.queuedAt}
-                    </td>
-                    <td data-label="Status" className="inbox-status">
-                      <Pill tone={entry.tone} dot>
-                        {entry.statusLabel}
-                      </Pill>
-                      {entry.settledAt ? (
-                        <span className="sub mono sm muted">{entry.settledAt}</span>
-                      ) : null}
-                      {entry.detail ? (
-                        <span
-                          className={`sub sm${entry.status === 'failed' ? ' inbox-error' : ''}`}
-                        >
-                          {entry.detail}
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                {entries.map((entry) => {
+                  const cells: Record<ColumnId, ReactNode> = {
+                    what: (
+                      <td className="cell-title">
+                        <b>{entry.type}</b>
+                        {entry.subject ? <span className="sub">{entry.subject}</span> : null}
+                      </td>
+                    ),
+                    about: (
+                      <td data-label="About">
+                        {entry.about.href ? (
+                          <Link href={entry.about.href}>{entry.about.primary}</Link>
+                        ) : (
+                          entry.about.primary
+                        )}
+                        {entry.about.secondary ? (
+                          <span className="sub sm muted">{entry.about.secondary}</span>
+                        ) : null}
+                      </td>
+                    ),
+                    to: (
+                      <td data-label="To" className="sm muted inbox-to">
+                        {entry.to}
+                      </td>
+                    ),
+                    queued: (
+                      <td data-label="Queued" className="mono sm inbox-when">
+                        {entry.queuedAt}
+                      </td>
+                    ),
+                    status: (
+                      <td data-label="Status" className="inbox-status">
+                        <Pill tone={entry.tone} dot>
+                          {entry.statusLabel}
+                        </Pill>
+                        {entry.settledAt ? (
+                          <span className="sub mono sm muted">{entry.settledAt}</span>
+                        ) : null}
+                        {entry.detail ? (
+                          <span
+                            className={`sub sm${entry.status === 'failed' ? ' inbox-error' : ''}`}
+                          >
+                            {entry.detail}
+                          </span>
+                        ) : null}
+                      </td>
+                    ),
+                  };
+                  return (
+                    <tr key={entry.id}>
+                      <ColumnCellsFor list={LIST} defs={COLUMNS} cells={cells} />
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </TableScroll>
+          </TableScrollFor>
         )}
         <div className="inbox-pager">
           {filters.before ? (
