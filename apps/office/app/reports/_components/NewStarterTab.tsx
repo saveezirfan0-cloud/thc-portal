@@ -1,4 +1,15 @@
-import { Alert, Avatar, Panel, Pill, TableScroll } from '@thc/ui';
+import type { ReactNode } from 'react';
+import {
+  Alert,
+  Avatar,
+  ColumnCellsFor,
+  ColumnChooserFor,
+  ColumnHeadsFor,
+  Panel,
+  Pill,
+  TableScrollFor,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import type { TimeFormat } from '@thc/domain';
 import type { NewStarter } from '../data';
 import {
@@ -15,6 +26,29 @@ import {
 import type { ReportSend, ReportView } from '../view-model';
 import { RetrySend } from './RetrySend';
 import { SendStatus } from './SendStatus';
+
+/**
+ * The preview's columns, declared once (ADR-0139): Staff stays first. Only
+ * the preview follows the choice — the CSV and the Monday email always
+ * carry every column. The whole of /reports is finance-only (ADR-0056);
+ * the bank column says so too, for ADR-0061.
+ */
+const LIST = 'reports.newstarter';
+const COLUMNS = [
+  { id: 'staff', label: 'Staff', required: true },
+  { id: 'employee-id', label: 'Employee ID' },
+  { id: 'ni', label: 'NI Number' },
+  { id: 'address', label: 'Home address' },
+  { id: 'postcode', label: 'Postcode' },
+  { id: 'country', label: 'Country' },
+  { id: 'dob', label: 'Date of birth' },
+  { id: 'gender', label: 'Gender' },
+  { id: 'first-shift', label: 'First shift date' },
+  { id: 'hmrc', label: 'HMRC Statement' },
+  { id: 'loan', label: 'Student Loan' },
+  { id: 'bank', label: 'Bank details', finance: true },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 /**
  * Tab 3 · New Starter (HMRC) report (§9.9). Pick a date, see who will be in
@@ -86,30 +120,22 @@ export function NewStarterTab({
           </>
         }
         actions={
-          <span className="muted sm">
-            HMRC Statement is the letter derived from the three routed questions; the worker never
-            saw it
-          </span>
+          <>
+            <span className="muted sm">
+              HMRC Statement is the letter derived from the three routed questions; the worker never
+              saw it
+            </span>
+            <ColumnChooserFor list={LIST} defs={COLUMNS} label="New starters" />
+          </>
         }
         flush
       >
         <div className="panel-b tight">
-          <TableScroll label="New starters" minWidth="56rem">
+          <TableScrollFor list={LIST} defs={COLUMNS} label="New starters" minWidth="56rem">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Staff</th>
-                  <th>Employee ID</th>
-                  <th>NI Number</th>
-                  <th>Home address</th>
-                  <th>Postcode</th>
-                  <th>Country</th>
-                  <th>Date of birth</th>
-                  <th>Gender</th>
-                  <th>First shift date</th>
-                  <th>HMRC Statement</th>
-                  <th>Student Loan</th>
-                  <th>Bank details</th>
+                  <ColumnHeadsFor list={LIST} defs={COLUMNS} />
                 </tr>
               </thead>
               <tbody>
@@ -123,8 +149,8 @@ export function NewStarterTab({
                   starters.map((s, index) => {
                     const masked = maskNi(s.ni_number);
                     const bank = maskBank(s.bank_sort_code, s.bank_account_number);
-                    return (
-                      <tr key={s.staff_id}>
+                    const cells: Record<ColumnId, ReactNode> = {
+                      staff: (
                         <td>
                           <span className="person">
                             <Avatar name={s.staff_name} size="sm" deleted={s.removed} />
@@ -133,7 +159,11 @@ export function NewStarterTab({
                             </span>
                           </span>
                         </td>
+                      ),
+                      'employee-id': (
                         <td className="mono sm rp-nowrap">{employeeId(s.employee_id)}</td>
+                      ),
+                      ni: (
                         <td className="mono sm">
                           {masked ?? <span className="muted">—</span>}
                           {masked && index === 0 ? (
@@ -145,12 +175,14 @@ export function NewStarterTab({
                             </span>
                           ) : null}
                         </td>
-                        <td className="sm">{s.home_address ?? '—'}</td>
-                        <td className="mono sm rp-nowrap">{s.postcode ?? '—'}</td>
-                        <td className="sm">{s.country ?? '—'}</td>
-                        <td className="mono sm">{dottedDate(s.date_of_birth)}</td>
-                        <td className="mono sm">{s.gender ?? '—'}</td>
-                        <td className="mono sm">{dottedDate(s.first_shift_date)}</td>
+                      ),
+                      address: <td className="sm">{s.home_address ?? '—'}</td>,
+                      postcode: <td className="mono sm rp-nowrap">{s.postcode ?? '—'}</td>,
+                      country: <td className="sm">{s.country ?? '—'}</td>,
+                      dob: <td className="mono sm">{dottedDate(s.date_of_birth)}</td>,
+                      gender: <td className="mono sm">{s.gender ?? '—'}</td>,
+                      'first-shift': <td className="mono sm">{dottedDate(s.first_shift_date)}</td>,
+                      hmrc: (
                         <td>
                           {s.hmrc_statement ? (
                             <Pill tone="cyan">{s.hmrc_statement}</Pill>
@@ -158,7 +190,9 @@ export function NewStarterTab({
                             <span className="muted">—</span>
                           )}
                         </td>
-                        <td className="sm">{s.student_loan ?? '—'}</td>
+                      ),
+                      loan: <td className="sm">{s.student_loan ?? '—'}</td>,
+                      bank: (
                         <td className="sm">
                           {s.bank_account_holder ??
                             (bank ? null : <span className="muted">—</span>)}
@@ -170,13 +204,18 @@ export function NewStarterTab({
                             <span className="sub">not given yet — blank in the CSV</span>
                           ) : null}
                         </td>
+                      ),
+                    };
+                    return (
+                      <tr key={s.staff_id}>
+                        <ColumnCellsFor list={LIST} defs={COLUMNS} cells={cells} />
                       </tr>
                     );
                   })
                 )}
               </tbody>
             </table>
-          </TableScroll>
+          </TableScrollFor>
         </div>
       </Panel>
 

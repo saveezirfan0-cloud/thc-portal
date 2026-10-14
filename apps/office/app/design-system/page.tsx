@@ -57,7 +57,7 @@ import {
   UserChip,
   WizardHeader,
 } from '@thc/ui';
-import { InteractiveControls, Overlays } from './Interactive';
+import { ColumnsPreview, InteractiveControls, Overlays } from './Interactive';
 import './design-system.css';
 
 /**
@@ -517,6 +517,9 @@ export default function Page() {
             </TableScroll>
           </div>
         </Panel>
+
+        {/* ADR-0139: the column chooser, on the same table. */}
+        <ColumnsPreview />
 
         <Panel title="Scheduled window">
           <p className="sm muted">

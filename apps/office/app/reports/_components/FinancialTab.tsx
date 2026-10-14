@@ -1,5 +1,17 @@
 import Link from 'next/link';
-import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
+import type { ReactNode } from 'react';
+import {
+  Alert,
+  ColumnCellsFor,
+  ColumnChooserFor,
+  ColumnHeadsFor,
+  KpiTile,
+  Panel,
+  Pill,
+  TableScrollFor,
+  TileGrid,
+} from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import { financialStatus } from '@thc/pdf/csv';
 import type { FinanceRow } from '../data';
 import {
@@ -18,6 +30,32 @@ import type { FinanceBy, ReportView } from '../view-model';
 import { RangeForm } from './RangeForm';
 
 const GROUP_HEAD: Record<FinanceBy, string> = { day: 'Day', client: 'Client', role: 'Role' };
+
+/**
+ * The breakdown's columns, declared once (ADR-0139): the group (Day /
+ * Client / Role) stays first. One choice for the three groupings — only
+ * the first heading differs. Every figure is money; /reports is
+ * finance-only (ADR-0056) and the flags say so (ADR-0061). The CSV always
+ * carries every column.
+ */
+const LIST = 'reports.financial';
+const FIGURES = [
+  { id: 'events', label: 'Events' },
+  { id: 'hours', label: 'Payable hours', className: 'money' },
+  { id: 'base', label: 'Base payroll', className: 'money', finance: true },
+  { id: 'holiday', label: 'Holiday +12.07%', className: 'money', finance: true },
+  { id: 'payroll', label: 'Payroll incl. holiday', className: 'money', finance: true },
+  { id: 'invoicing', label: 'Invoicing', className: 'money', finance: true },
+  { id: 'margin', label: 'Margin', className: 'money', finance: true },
+  { id: 'status', label: 'Status', blankHeader: true },
+] as const satisfies readonly ColumnDef[];
+const COLUMNS = {
+  day: [{ id: 'group', label: GROUP_HEAD.day, required: true }, ...FIGURES],
+  client: [{ id: 'group', label: GROUP_HEAD.client, required: true }, ...FIGURES],
+  role: [{ id: 'group', label: GROUP_HEAD.role, required: true }, ...FIGURES],
+} as const satisfies Record<FinanceBy, readonly ColumnDef[]>;
+type ColumnId = (typeof COLUMNS)[FinanceBy][number]['id'];
+type Cells = Record<ColumnId, ReactNode>;
 
 /**
  * Tab 1 · Financial report (§9.9).
@@ -127,34 +165,29 @@ export function FinancialTab({
       <Panel
         title={<>Breakdown · {periodLabel(view.from, view.to)}</>}
         actions={
-          <div className="seg sm" role="group" aria-label="Group by">
-            {(['day', 'client', 'role'] as const).map((by) => (
-              <Link
-                key={by}
-                className={view.by === by ? 'on' : undefined}
-                href={reportHref(view, { by })}
-              >
-                By {by}
-              </Link>
-            ))}
-          </div>
+          <>
+            <div className="seg sm" role="group" aria-label="Group by">
+              {(['day', 'client', 'role'] as const).map((by) => (
+                <Link
+                  key={by}
+                  className={view.by === by ? 'on' : undefined}
+                  href={reportHref(view, { by })}
+                >
+                  By {by}
+                </Link>
+              ))}
+            </div>
+            <ColumnChooserFor list={LIST} defs={COLUMNS[view.by]} label="Breakdown" />
+          </>
         }
         flush
       >
         <div className="panel-b tight">
-          <TableScroll label="Breakdown" minWidth="52rem">
+          <TableScrollFor list={LIST} defs={COLUMNS[view.by]} label="Breakdown" minWidth="52rem">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>{GROUP_HEAD[view.by]}</th>
-                  <th>Events</th>
-                  <th className="money">Payable hours</th>
-                  <th className="money">Base payroll</th>
-                  <th className="money">Holiday +12.07%</th>
-                  <th className="money">Payroll incl. holiday</th>
-                  <th className="money">Invoicing</th>
-                  <th className="money">Margin</th>
-                  <th />
+                  <ColumnHeadsFor list={LIST} defs={COLUMNS[view.by]} />
                 </tr>
               </thead>
               <tbody>
@@ -165,38 +198,62 @@ export function FinancialTab({
                     </td>
                   </tr>
                 ) : (
-                  groups.map((row) => <GroupRow key={row.group_key ?? ''} row={row} />)
+                  groups.map((row) => <GroupRow key={row.group_key ?? ''} row={row} by={view.by} />)
                 )}
                 {total ? (
                   <tr className="rp-total">
-                    <td>
-                      <b>Total</b>
-                    </td>
-                    <td />
-                    <td className="money">
-                      <b>{hours(total.payable_min)}</b>
-                    </td>
-                    <td className="money">
-                      <b>{pounds(total.base)}</b>
-                    </td>
-                    <td className="money">
-                      <b>{pounds(total.holiday)}</b>
-                    </td>
-                    <td className="money">
-                      <b>{pounds(total.payroll)}</b>
-                    </td>
-                    <td className="money">
-                      <b>{pounds(total.invoicing)}</b>
-                    </td>
-                    <td className={`money ${num(total.margin) < 0 ? 'rp-coral' : 'rp-green'}`}>
-                      <b>{pounds(total.margin)}</b>
-                    </td>
-                    <td />
+                    <ColumnCellsFor
+                      list={LIST}
+                      defs={COLUMNS[view.by]}
+                      cells={
+                        {
+                          group: (
+                            <td>
+                              <b>Total</b>
+                            </td>
+                          ),
+                          events: <td />,
+                          hours: (
+                            <td className="money">
+                              <b>{hours(total.payable_min)}</b>
+                            </td>
+                          ),
+                          base: (
+                            <td className="money">
+                              <b>{pounds(total.base)}</b>
+                            </td>
+                          ),
+                          holiday: (
+                            <td className="money">
+                              <b>{pounds(total.holiday)}</b>
+                            </td>
+                          ),
+                          payroll: (
+                            <td className="money">
+                              <b>{pounds(total.payroll)}</b>
+                            </td>
+                          ),
+                          invoicing: (
+                            <td className="money">
+                              <b>{pounds(total.invoicing)}</b>
+                            </td>
+                          ),
+                          margin: (
+                            <td
+                              className={`money ${num(total.margin) < 0 ? 'rp-coral' : 'rp-green'}`}
+                            >
+                              <b>{pounds(total.margin)}</b>
+                            </td>
+                          ),
+                          status: <td />,
+                        } satisfies Cells
+                      }
+                    />
                   </tr>
                 ) : null}
               </tbody>
             </table>
-          </TableScroll>
+          </TableScrollFor>
         </div>
       </Panel>
     </div>
@@ -206,47 +263,59 @@ export function FinancialTab({
 /** How many live event names a row shows before folding the rest away. */
 const SHOWN_EVENTS = 3;
 
-function GroupRow({ row }: { row: FinanceRow }) {
+function GroupRow({ row, by }: { row: FinanceRow; by: FinanceBy }) {
   const cancelled = row.cancelled_events ?? [];
   const excludedOnly = row.event_count === 0 && cancelled.length > 0;
-  if (excludedOnly) {
-    return (
-      <tr>
-        <td className="rp-nowrap">{row.group_label}</td>
-        <td className="rp-events">
-          <Cancelled names={cancelled} open />
-        </td>
-        {Array.from({ length: 6 }, (_, i) => (
-          <td key={i} className="money muted">
-            —
+  const dash = <td className="money muted">—</td>;
+  const cells: Cells = excludedOnly
+    ? {
+        group: <td className="rp-nowrap">{row.group_label}</td>,
+        events: (
+          <td className="rp-events">
+            <Cancelled names={cancelled} open />
           </td>
-        ))}
-        <td>
-          <div className="rp-status">
-            <Pill>excluded</Pill>
-          </div>
-        </td>
-      </tr>
-    );
-  }
+        ),
+        hours: dash,
+        base: dash,
+        holiday: dash,
+        payroll: dash,
+        invoicing: dash,
+        margin: dash,
+        status: (
+          <td>
+            <div className="rp-status">
+              <Pill>excluded</Pill>
+            </div>
+          </td>
+        ),
+      }
+    : {
+        group: <td className="rp-nowrap">{row.group_label}</td>,
+        events: (
+          <td className="rp-events">
+            <EventNames count={row.event_count} names={row.events ?? []} />
+            {cancelled.length > 0 ? <Cancelled names={cancelled} /> : null}
+          </td>
+        ),
+        hours: <td className="money">{hours(row.payable_min)}</td>,
+        base: <td className="money">{pounds(row.base)}</td>,
+        holiday: <td className="money muted">{pounds(row.holiday)}</td>,
+        payroll: <td className="money">{pounds(row.payroll)}</td>,
+        invoicing: <td className="money">{pounds(row.invoicing)}</td>,
+        margin: (
+          <td className={`money ${num(row.margin) < 0 ? 'rp-coral' : 'rp-green'}`}>
+            {pounds(row.margin)}
+          </td>
+        ),
+        status: (
+          <td>
+            <StatusPills row={row} />
+          </td>
+        ),
+      };
   return (
     <tr>
-      <td className="rp-nowrap">{row.group_label}</td>
-      <td className="rp-events">
-        <EventNames count={row.event_count} names={row.events ?? []} />
-        {cancelled.length > 0 ? <Cancelled names={cancelled} /> : null}
-      </td>
-      <td className="money">{hours(row.payable_min)}</td>
-      <td className="money">{pounds(row.base)}</td>
-      <td className="money muted">{pounds(row.holiday)}</td>
-      <td className="money">{pounds(row.payroll)}</td>
-      <td className="money">{pounds(row.invoicing)}</td>
-      <td className={`money ${num(row.margin) < 0 ? 'rp-coral' : 'rp-green'}`}>
-        {pounds(row.margin)}
-      </td>
-      <td>
-        <StatusPills row={row} />
-      </td>
+      <ColumnCellsFor list={LIST} defs={COLUMNS[by]} cells={cells} />
     </tr>
   );
 }

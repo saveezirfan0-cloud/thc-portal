@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Panel, Pill, TableScroll } from '@thc/ui';
+import { ColumnCellsFor, ColumnHeadsFor, Panel, Pill, TableScrollFor } from '@thc/ui';
+import type { ColumnDef } from '@thc/ui';
 import {
   EVENT_STATUS_LABEL,
   type EventStatus,
@@ -21,6 +22,7 @@ import {
 import { ChipStatus } from './ChipStatus';
 import { MonthCellEvents } from './MonthCellEvents';
 import { ScheduledWindow } from './ScheduledWindow';
+import type { ReactNode } from 'react';
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
   upcoming: 'cyan',
@@ -60,6 +62,27 @@ function FillPill({ row }: { row: EventRow }) {
 // List
 // ---------------------------------------------------------------------
 
+/**
+ * The list's columns, declared once (ADR-0139). Date and Event are held
+ * first (both pinned while the table scrolls sideways); the rest can be
+ * hidden and reordered — the toolbar's "Columns" (`EVENT_LIST_COLUMNS`
+ * with `ColumnChooserFor`, page.tsx). The widths are events.css's.
+ */
+export const EVENT_LIST_KEY = 'events.list';
+export const EVENT_LIST_COLUMNS = [
+  { id: 'date', label: 'Date', required: true, className: 'ev-c-date', rem: 6 },
+  { id: 'event', label: 'Event', required: true },
+  { id: 'client', label: 'Client · Venue' },
+  // Scheduled times, so the column says which zone it is in (§1.8).
+  { id: 'window', label: 'Window (UK time)', className: 'ev-c-window', rem: 7.5 },
+  { id: 'roles', label: 'Roles · headcount (+buffer)', className: 'ev-c-roles', rem: 17 },
+  { id: 'fill', label: 'Fill', className: 'ev-c-fill', rem: 7.5 },
+  // PO under the status, as the venue sits under the client: a column of
+  // its own pushed the list past a laptop's width.
+  { id: 'status', label: 'Status · PO', className: 'ev-c-status', rem: 7 },
+] as const satisfies readonly ColumnDef[];
+type EventListColumn = (typeof EVENT_LIST_COLUMNS)[number]['id'];
+
 export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
   if (rows.length === 0) {
     return (
@@ -75,20 +98,18 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
   // hold still while a filter narrows the rows; the date and the title stay
   // pinned if a narrower card has to scroll sideways (ADR-0136).
   return (
-    <TableScroll label="Events" fixed pin={2} minWidth="58rem">
+    <TableScrollFor
+      list={EVENT_LIST_KEY}
+      defs={EVENT_LIST_COLUMNS}
+      label="Events"
+      fixed
+      pin={2}
+      minWidth="58rem"
+    >
       <table className="tbl card-rows ev-list">
         <thead>
           <tr>
-            <th className="ev-c-date">Date</th>
-            <th>Event</th>
-            <th>Client · Venue</th>
-            {/* Scheduled times, so the column says which zone it is in (§1.8). */}
-            <th className="ev-c-window">Window (UK time)</th>
-            <th className="ev-c-roles">Roles · headcount (+buffer)</th>
-            <th className="ev-c-fill">Fill</th>
-            {/* PO under the status, as the venue sits under the client: a
-              column of its own pushed the list past a laptop's width. */}
-            <th className="ev-c-status">Status · PO</th>
+            <ColumnHeadsFor list={EVENT_LIST_KEY} defs={EVENT_LIST_COLUMNS} />
           </tr>
         </thead>
         <tbody>
@@ -97,98 +118,124 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
             const open = formatOpen(row.fill);
             return (
               <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
-                <td data-label="Date" className="ev-date">
-                  <b className={row.date === today ? 'cyan' : undefined}>
-                    {formatDayShort(row.date)}
-                  </b>
-                  {row.date === today ? <span className="sub">today</span> : null}
-                </td>
-                <td className={classes('cell-title', cancelled && 'muted')}>
-                  {cancelled ? (
-                    <s>{row.title}</s>
-                  ) : (
-                    <Link href={`/events/${row.id}`}>
-                      <b>{row.title}</b>
-                    </Link>
-                  )}
-                  {cancelled && row.cancelReason ? (
-                    <span className="sub">{row.cancelReason}</span>
-                  ) : null}
-                </td>
-                <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
-                  <span className="ev-clip" title={row.clientName}>
-                    {row.clientName}
-                  </span>
-                  <span className="sub ev-clip" title={row.venueName}>
-                    {row.venueName}
-                  </span>
-                </td>
-                <td
-                  data-label="Window (UK time)"
-                  className={classes('mono', 'sm', 'ev-window', cancelled && 'muted')}
-                >
-                  {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
-                  {row.windowIso ? (
-                    <ScheduledWindow
-                      separator="–"
-                      startsAt={row.windowIso.startsAt}
-                      endsAt={row.windowIso.endsAt}
-                    />
-                  ) : (
-                    row.windowLabel
-                  )}
-                  {row.endsNextDay ? <span className="sub">ends next day</span> : null}
-                </td>
-                <td data-label="Roles · headcount (+buffer)" className="cell-wide">
-                  <div className="roles">
-                    {row.roles.map((role, index) => (
-                      <div className="r" key={`${row.id}-${index}`}>
-                        <span className="chip" title={role.roleName}>
-                          {role.roleName}
-                        </span>
-                        <ScheduledWindow
-                          className="mono win"
-                          separator="–"
-                          startsAt={role.startsAt}
-                          endsAt={role.endsAt}
-                        />
-                        <span className="mono alloc">
-                          {formatAllocation(role.headcount, role.buffer)}
-                        </span>
-                      </div>
-                    ))}
-                    {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
-                  </div>
-                </td>
-                <td data-label="Fill" className="ev-fill">
-                  {cancelled ? (
-                    // §3.3: only a cancellation BEFORE the day is excluded; on
-                    // the day the scheduled hours are billed and paid in full.
-                    <span className="muted sm">
-                      {row.cancelledNote ?? 'excluded from financials'}
-                    </span>
-                  ) : (
-                    <>
-                      <FillPill row={row} />
-                      {open ? <span className="sub">{open}</span> : null}
-                      {row.fill.bufferConfirmed > 0 ? (
-                        <span className="sub">+{row.fill.bufferConfirmed} buffer confirmed</span>
-                      ) : null}
-                    </>
-                  )}
-                </td>
-                <td data-label="Status · PO" className="ev-status">
-                  <StatusPill status={row.status} />
-                  <span className={classes('sub', 'mono', !row.poNumber && 'muted')}>
-                    {row.poNumber ? `PO ${row.poNumber}` : 'No PO'}
-                  </span>
-                </td>
+                <ColumnCellsFor
+                  list={EVENT_LIST_KEY}
+                  defs={EVENT_LIST_COLUMNS}
+                  cells={
+                    {
+                      date: (
+                        <td data-label="Date" className="ev-date">
+                          <b className={row.date === today ? 'cyan' : undefined}>
+                            {formatDayShort(row.date)}
+                          </b>
+                          {row.date === today ? <span className="sub">today</span> : null}
+                        </td>
+                      ),
+                      event: (
+                        <td className={classes('cell-title', cancelled && 'muted')}>
+                          {cancelled ? (
+                            <s>{row.title}</s>
+                          ) : (
+                            <Link href={`/events/${row.id}`}>
+                              <b>{row.title}</b>
+                            </Link>
+                          )}
+                          {cancelled && row.cancelReason ? (
+                            <span className="sub">{row.cancelReason}</span>
+                          ) : null}
+                        </td>
+                      ),
+                      client: (
+                        <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
+                          <span className="ev-clip" title={row.clientName}>
+                            {row.clientName}
+                          </span>
+                          <span className="sub ev-clip" title={row.venueName}>
+                            {row.venueName}
+                          </span>
+                        </td>
+                      ),
+                      window: (
+                        <td
+                          data-label="Window (UK time)"
+                          className={classes('mono', 'sm', 'ev-window', cancelled && 'muted')}
+                        >
+                          {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
+                          {row.windowIso ? (
+                            <ScheduledWindow
+                              separator="–"
+                              startsAt={row.windowIso.startsAt}
+                              endsAt={row.windowIso.endsAt}
+                            />
+                          ) : (
+                            row.windowLabel
+                          )}
+                          {row.endsNextDay ? <span className="sub">ends next day</span> : null}
+                        </td>
+                      ),
+                      roles: (
+                        <td data-label="Roles · headcount (+buffer)" className="cell-wide">
+                          <div className="roles">
+                            {row.roles.map((role, index) => (
+                              <div className="r" key={`${row.id}-${index}`}>
+                                <span className="chip" title={role.roleName}>
+                                  {role.roleName}
+                                </span>
+                                <ScheduledWindow
+                                  className="mono win"
+                                  separator="–"
+                                  startsAt={role.startsAt}
+                                  endsAt={role.endsAt}
+                                />
+                                <span className="mono alloc">
+                                  {formatAllocation(role.headcount, role.buffer)}
+                                </span>
+                              </div>
+                            ))}
+                            {row.roles.length === 0 ? (
+                              <span className="muted sm">No roles yet</span>
+                            ) : null}
+                          </div>
+                        </td>
+                      ),
+                      fill: (
+                        <td data-label="Fill" className="ev-fill">
+                          {cancelled ? (
+                            // §3.3: only a cancellation BEFORE the day is excluded; on
+                            // the day the scheduled hours are billed and paid in full.
+                            <span className="muted sm">
+                              {row.cancelledNote ?? 'excluded from financials'}
+                            </span>
+                          ) : (
+                            <>
+                              <FillPill row={row} />
+                              {open ? <span className="sub">{open}</span> : null}
+                              {row.fill.bufferConfirmed > 0 ? (
+                                <span className="sub">
+                                  +{row.fill.bufferConfirmed} buffer confirmed
+                                </span>
+                              ) : null}
+                            </>
+                          )}
+                        </td>
+                      ),
+                      status: (
+                        <td data-label="Status · PO" className="ev-status">
+                          <StatusPill status={row.status} />
+                          <span className={classes('sub', 'mono', !row.poNumber && 'muted')}>
+                            {row.poNumber ? `PO ${row.poNumber}` : 'No PO'}
+                          </span>
+                        </td>
+                      ),
+                    } satisfies Record<EventListColumn, ReactNode>
+                  }
+                />
               </tr>
             );
           })}
         </tbody>
       </table>
-    </TableScroll>
+    </TableScrollFor>
   );
 }
 

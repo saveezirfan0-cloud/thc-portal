@@ -2,18 +2,24 @@
 
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Alert,
   Avatar,
   Button,
+  ColumnCells,
+  ColumnChooser,
+  ColumnHeads,
   EmptyState,
   Note,
   Pill,
   Select,
   TableScroll,
+  useColumns,
   useTimeFormat,
 } from '@thc/ui';
+import type { Columns, ColumnDef } from '@thc/ui';
 import {
   DOCUMENT_FILTERS,
   actionsFor,
@@ -34,6 +40,19 @@ import { useReviewDialogs } from './ReviewDialogs';
 import { oneOf, useListQuery } from '../_lib/listQuery';
 import { COMPLIANCE_QUERY, WHO } from './query';
 import type { ActionResult, QueueRow } from './types';
+
+/**
+ * The queue's columns, declared once (ADR-0139): Who stays first and the
+ * actions last; the rest can be hidden and reordered.
+ */
+const COLUMNS = [
+  { id: 'who', label: 'Who', required: true, width: 'l' },
+  { id: 'document', label: 'Document' },
+  { id: 'uploaded', label: 'Uploaded', width: 'm' },
+  { id: 'found', label: 'AI found' },
+  { id: 'actions', label: 'Actions', required: true, className: 'cell-actions' },
+] as const satisfies readonly ColumnDef[];
+type ColumnId = (typeof COLUMNS)[number]['id'];
 
 /**
  * Tab 1 · Needs review (§4.1).
@@ -66,6 +85,7 @@ export function ReviewTab({
   rows: QueueRow[];
   rtwCheckEnabled?: boolean;
 }) {
+  const columns = useColumns('compliance.review', COLUMNS);
   const router = useRouter();
   const [url, setUrl] = useListQuery(COMPLIANCE_QUERY);
   const query = url.q;
@@ -139,6 +159,7 @@ export function ReviewTab({
         </Select>
         <div className="right">
           <span className="muted sm">Oldest first · the menu counter is this number</span>
+          <ColumnChooser columns={columns} label="Needs review" />
         </div>
       </div>
 
@@ -166,15 +187,11 @@ export function ReviewTab({
               </p>
             </EmptyState>
           ) : (
-            <TableScroll label="Needs review" minWidth="56rem">
+            <TableScroll label="Needs review" minWidth={columns.minWidth('56rem')}>
               <table className="tbl card-rows">
                 <thead>
                   <tr>
-                    <th className="col-l">Who</th>
-                    <th>Document</th>
-                    <th className="col-m">Uploaded</th>
-                    <th>AI found</th>
-                    <th className="cell-actions">Actions</th>
+                    <ColumnHeads columns={columns} />
                   </tr>
                 </thead>
                 <tbody>
@@ -183,6 +200,7 @@ export function ReviewTab({
                       key={row.item_id}
                       row={row}
                       rtwCheckEnabled={rtwCheckEnabled}
+                      columns={columns}
                       busy={pendingId === row.item_id}
                       onVerify={() => verify(row)}
                       onReject={() => reject(row)}
@@ -211,12 +229,14 @@ export function ReviewTab({
 function QueueLine({
   row,
   rtwCheckEnabled,
+  columns,
   busy,
   onVerify,
   onReject,
 }: {
   row: QueueRow;
   rtwCheckEnabled: boolean;
+  columns: Columns<ColumnId>;
   busy: boolean;
   onVerify: () => void;
   onReject: () => void;
@@ -227,8 +247,8 @@ function QueueLine({
   const flag = reviewFlag(row);
   const hint = verifyHint(row);
   const actions = actionsFor(row);
-  return (
-    <tr>
+  const cells: Record<ColumnId, ReactNode> = {
+    who: (
       <td className="cell-title">
         <div className="person">
           <Avatar name={row.display_name} size="sm" />
@@ -248,6 +268,8 @@ function QueueLine({
           </div>
         </div>
       </td>
+    ),
+    document: (
       <td data-label="Document">
         <b>{row.item_label}</b>{' '}
         {row.kind === 'declaration' && row.declaration_source === 'in_employment' ? (
@@ -274,10 +296,14 @@ function QueueLine({
         {/* ADR-0070: Verify will also change the date of birth. */}
         {row.kind === 'document' ? <DobClaimNote claim={row.dob_claim} /> : null}
       </td>
+    ),
+    uploaded: (
       <td data-label="Uploaded" className="mono sm">
         {ukStamp(row.submitted_at, format)}
         <span className="sub">{uploadedLine(row)}</span>
       </td>
+    ),
+    found: (
       <td data-label="AI found">
         <span
           className={
@@ -304,6 +330,8 @@ function QueueLine({
           </>
         ) : null}
       </td>
+    ),
+    actions: (
       <td className="right-align cell-actions">
         {verifyAllowed(row) ? (
           <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
@@ -320,6 +348,11 @@ function QueueLine({
         ) : null}
         {hint ? <span className="sub muted xs">{hint}</span> : null}
       </td>
+    ),
+  };
+  return (
+    <tr>
+      <ColumnCells columns={columns} cells={cells} />
     </tr>
   );
 }
