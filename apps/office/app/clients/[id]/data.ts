@@ -36,6 +36,7 @@ const NOT_CONFIGURED =
 const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
   nameBadges: false,
+  lineupEmails: { confirmed: true, changed: true },
   rateCard: [],
   dressCodeLibrary: [],
   qualified: [],
@@ -141,11 +142,16 @@ export async function loadClientCard(
   ] = await Promise.all([
     supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
     // ADR-0081: one switch, read from the table rather than restating the view.
+    // ADR-0135 §3: and the two line-up email switches beside it.
     supabase
       .from('clients')
-      .select('name_badges')
+      .select('name_badges, lineup_confirmed_emails, lineup_changed_emails')
       .eq('id', id)
-      .maybeSingle<{ name_badges: boolean | null }>(),
+      .maybeSingle<{
+        name_badges: boolean | null;
+        lineup_confirmed_emails: boolean | null;
+        lineup_changed_emails: boolean | null;
+      }>(),
     ratesVisible
       ? supabase
           .from('clients_rate_card_v')
@@ -235,6 +241,10 @@ export async function loadClientCard(
   return {
     client: client.data ?? null,
     nameBadges: badges.data?.name_badges === true,
+    lineupEmails: {
+      confirmed: badges.data?.lineup_confirmed_emails !== false,
+      changed: badges.data?.lineup_changed_emails !== false,
+    },
     rateCard: rateCard.data ?? [],
     dressCodeLibrary: dressCodeLibrary(
       (library.data ?? []).map((card: { dress_codes: string[] | null }) => card.dress_codes),

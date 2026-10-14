@@ -32,8 +32,8 @@ select ok(pg_get_viewdef('client_account_v'::regclass) ~ 'client_portal_visible'
 select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_account_v' $$,
-  $$ values ('name'::text),('contact_emails') $$,
-  'client_account_v names exactly two columns: the company name and the document recipients — no terms, no phone, no money, nothing about workers');
+  $$ values ('name'::text),('contact_emails'),('lineup_confirmed_emails'),('lineup_changed_emails') $$,
+  'client_account_v names exactly four columns: the company name, the document recipients and whether the two line-up emails are on (ADR-0135 §3) — no terms, no phone, no money, nothing about workers');
 select ok(not has_table_privilege('anon', 'client_account_v', 'select'),
   'anon has no privilege on client_account_v');
 select ok(has_table_privilege('authenticated', 'client_account_v', 'select'),

@@ -76,8 +76,12 @@ const INVITE_EMAIL_CODES = ['IR1'];
 const CLIENT_REQUIREMENT_PUSH_CODES = ['CR1', 'CR2'];
 const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
 
-/** Client Portal additions (ADR-0135): the office told of a "Request again". */
-const CLIENT_PORTAL_EMAIL_CODES = ['CP1'];
+/**
+ * Client Portal additions (ADR-0135): the office told of a "Request again"
+ * (CP1); the customer told their line-up is full (CP2) or changed after the
+ * Allocation Timesheet went (CP3).
+ */
+const CLIENT_PORTAL_EMAIL_CODES = ['CP1', 'CP2', 'CP3'];
 
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
@@ -1361,5 +1365,47 @@ describe('E12 — documents approved, quiz ready (ADR-0075)', () => {
     expect(text).toMatch(/^Hello Aisha,/);
     expect(text).toMatch(/Health & Safety quiz/);
     expect(text).not.toMatch(/\{\w+\}/);
+  });
+});
+
+describe('Client Portal additions — CP1–CP3 (ADR-0135)', () => {
+  it('say "Not in §8" and name the ADR', () => {
+    for (const code of ['CP1', 'CP2', 'CP3'] as const) {
+      expect(TEMPLATES[code].trigger, code).toMatch(/Not in §8.*ADR-0135/);
+      expect(TEMPLATES[code].sender, code).toBe('admin');
+    }
+  });
+
+  it('CP1 goes to the office; CP2 and CP3 carry the event’s recipients on the row', () => {
+    expect(TEMPLATES.CP1.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
+    expect((TEMPLATES.CP2 as Template).recipients).toBeUndefined();
+    expect((TEMPLATES.CP3 as Template).recipients).toBeUndefined();
+  });
+
+  it('the customer emails carry no money and no worker name', () => {
+    for (const code of ['CP2', 'CP3'] as const) {
+      const copy = TEMPLATES[code].title + TEMPLATES[code].body;
+      expect(copy, code).not.toMatch(/\{(rate|charge|pay|margin|name|employeeId|buffer)\}|£/);
+      expect(copy, code).toContain('{sections}');
+      expect(copy, code).toContain('{link}');
+    }
+  });
+
+  it('render with every placeholder filled', () => {
+    const values = {
+      event: 'Autumn Gala',
+      date: 'Fri 18 Oct 2026',
+      time: '17:00–23:30',
+      venue: 'Leonardo Royal Hotel',
+      sections: 'Waiting Staff · 17:00–23:30 · 4 of 4 confirmed',
+      link: 'https://clients.example/client/events/x',
+    };
+    for (const code of ['CP2', 'CP3'] as const) {
+      expect(render(title(code), values)).not.toMatch(/\{\w+\}/);
+      expect(render(body(code), values)).not.toMatch(/\{\w+\}/);
+    }
+    expect(render(title('CP3'), values)).toBe(
+      'Line-up changed after your Allocation Timesheet was sent — Autumn Gala · Fri 18 Oct 2026',
+    );
   });
 });

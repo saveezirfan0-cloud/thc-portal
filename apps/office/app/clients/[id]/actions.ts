@@ -174,6 +174,19 @@ export async function setNameBadges(clientId: string, on: boolean): Promise<Acti
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
 }
 
+/** ADR-0135 §3: one of the two line-up emails to this client, on or off (audited). */
+export async function setLineupEmails(
+  clientId: string,
+  kind: 'confirmed' | 'changed',
+  on: boolean,
+): Promise<ActionResult> {
+  return callRpc(
+    'set_client_lineup_emails',
+    { p_client: clientId, p_kind: kind, p_on: on },
+    clientId,
+  );
+}
+
 /** ADR-0135 §2: a Client Portal "Request again" is dealt with (audited). */
 export async function markRequestHandled(clientId: string, id: string): Promise<ActionResult> {
   return callRpc('mark_client_worker_request_handled', { p_id: id }, clientId);

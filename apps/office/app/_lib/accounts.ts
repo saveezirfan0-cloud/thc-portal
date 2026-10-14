@@ -165,6 +165,8 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'client.name_badges': 'Switched name badges',
   // ADR-0135 §2.
   'client.worker_request_handled': 'Marked a Client Portal request handled',
+  // ADR-0135 §3.
+  'client.lineup_emails': 'Switched a line-up email',
   // Release audit D-M1 (20261014093200): every Back Office edit.
   'client.created': 'Created client',
   'client.updated': 'Edited client',

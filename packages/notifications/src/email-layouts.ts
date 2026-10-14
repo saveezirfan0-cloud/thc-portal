@@ -65,6 +65,9 @@ export const EMAIL_PRESENTATION = {
   CR3: { eyebrow: 'Client quiz' },
   // ADR-0135 §2: a customer asked for a worker again.
   CP1: { eyebrow: 'Client Portal request' },
+  // ADR-0135 §3: to the customer's timesheet recipients.
+  CP2: { eyebrow: 'Your line-up', buttons: { link: 'See who is coming' } },
+  CP3: { eyebrow: 'Line-up update', buttons: { link: 'See the current line-up' } },
 } as const satisfies Partial<Record<TemplateCode, EmailPresentation>>;
 
 /** Used only if a new email code is added without an entry above (the test catches that). */

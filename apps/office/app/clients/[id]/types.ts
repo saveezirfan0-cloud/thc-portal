@@ -147,6 +147,8 @@ export interface ClientCardData {
   client: Client | null;
   /** `clients.name_badges` (ADR-0081): badges go with every Allocation Timesheet. */
   nameBadges: boolean;
+  /** ADR-0135 §3: CP2 / CP3 to this client's timesheet recipients (both on by default). */
+  lineupEmails: { confirmed: boolean; changed: boolean };
   rateCard: RateCardRow[];
   /** Every dress code stored on any client's rate card, most-used first. */
   dressCodeLibrary: string[];

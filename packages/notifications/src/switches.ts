@@ -144,6 +144,20 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         label: 'Completed Allocation Timesheet',
         when: 'After the event — sent from the event page, or automatically',
       },
+      {
+        code: 'CP2',
+        label: 'Line-up fully confirmed',
+        when: 'Every role of an upcoming event is confirmed — once per event, 07:00–23:00 UK',
+        warning:
+          'No client is told their line-up is fully confirmed. Each client card also has its own switch.',
+      },
+      {
+        code: 'CP3',
+        label: 'Line-up changed after the Allocation Timesheet',
+        when: 'Someone joins or leaves after the timesheet went — at most hourly, 07:00–23:00 UK',
+        warning:
+          'No client is told their line-up changed after the timesheet went. Each client card also has its own switch.',
+      },
     ],
   },
   {

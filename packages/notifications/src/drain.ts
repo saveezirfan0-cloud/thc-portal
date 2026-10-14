@@ -28,7 +28,13 @@ import type { DocumentBucket, EmailWithAttachments } from './documents.ts';
 import { documentMessageFor, isDocumentEmail } from './documents.ts';
 import { inlineLogoAttachment } from './email-logo.ts';
 import type { EmailMessage, OutboxRow, PushMessage } from './outbox.ts';
-import { UnsendableRow, messageFor, outboxBackoffMs } from './outbox.ts';
+import {
+  UnsendableRow,
+  messageFor,
+  needsPortalLink,
+  outboxBackoffMs,
+  portalOrigin,
+} from './outbox.ts';
 import type { ResendAttachment } from './resend.ts';
 import { buildResendRequest, classifyResendStatus, toBase64 } from './resend.ts';
 import { resolveSender } from './senders.ts';
@@ -50,6 +56,12 @@ export interface DrainConfig {
   vapid: VapidKeys | null;
   /** Names of the secrets that are absent, for the one log line. */
   missing: string[];
+  /**
+   * The Client Portal's origin (CLIENT_PORTAL_URL), for CP2/CP3's link to
+   * the event page (ADR-0135 §3). Absent, those rows are held as
+   * unconfigured; every other row is unaffected, so it is not in `missing`.
+   */
+  clientPortalUrl?: string | null;
 }
 
 /** Read the secrets. Absent or blank is "not configured", never a throw. */
@@ -71,6 +83,7 @@ export function readDrainConfig(env: (name: string) => string | undefined): Drai
     resendApiKey,
     vapid: publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null,
     missing,
+    clientPortalUrl: portalOrigin(get('CLIENT_PORTAL_URL')),
   };
 }
 
@@ -254,8 +267,15 @@ export { signedBy } from './senders.ts';
  * `replyTo` is the monitored address the HTML footer — and a document
  * email's signature and reply button — names.
  */
-function renderEmail(row: OutboxRow, replyTo?: string): EmailMessage | EmailWithAttachments {
-  const options = replyTo ? { replyTo } : {};
+function renderEmail(
+  row: OutboxRow,
+  replyTo?: string,
+  clientPortalUrl?: string | null,
+): EmailMessage | EmailWithAttachments {
+  const options = {
+    ...(replyTo ? { replyTo } : {}),
+    ...(clientPortalUrl ? { clientPortalUrl } : {}),
+  };
   const message = isDocumentEmail(row.template)
     ? documentMessageFor(row, options)
     : messageFor(row, options);
@@ -270,6 +290,7 @@ async function sendEmail(
   apiKey: string,
   sendersSetting: unknown,
   ports: DrainPorts,
+  clientPortalUrl?: string | null,
 ): Promise<Settlement> {
   // Rendered first, so a row that can never be sent fails as such even when
   // Resend is not configured — the caller only reaches here with a key. The
@@ -277,7 +298,7 @@ async function sendEmail(
   // that sender's resolved reply-to address in the copy.
   const sender = resolveSender(renderEmail(row).sender, sendersSetting);
   if (sender.warning) ports.log(`notify-drain: ${sender.warning}; sending from ${sender.address}`);
-  const message = renderEmail(row, sender.replyTo);
+  const message = renderEmail(row, sender.replyTo, clientPortalUrl);
   const document = 'attachments' in message ? message : null;
 
   // The files first, then the header's logo, which travels with every email
@@ -338,6 +359,8 @@ async function sendEmail(
 
 export const NOT_CONFIGURED = {
   email: 'not configured: RESEND_API_KEY is not set — email is held, no attempt counted',
+  portal:
+    'not configured: CLIENT_PORTAL_URL is not set — the customer email has no portal link, so it is held, no attempt counted',
   push: 'not configured: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not all set — push is held, no attempt counted',
 } as const;
 
@@ -365,7 +388,14 @@ export async function drainRow(
         else messageFor(row);
         return { id: row.id, key: row.key, verdict: 'unconfigured', error: NOT_CONFIGURED.email };
       }
-      return await sendEmail(row, config.resendApiKey, sendersSetting, ports);
+      // ADR-0135 §3: a customer email whose button is the portal link is
+      // never sent without one. Rendered first, so a wrong row still fails.
+      const portal = portalOrigin(config.clientPortalUrl);
+      if (needsPortalLink(row.template) && !portal) {
+        messageFor(row);
+        return { id: row.id, key: row.key, verdict: 'unconfigured', error: NOT_CONFIGURED.portal };
+      }
+      return await sendEmail(row, config.resendApiKey, sendersSetting, ports, portal);
     }
     throw new UnsendableRow(`channel ${String(row.channel)} is neither push nor email`);
   } catch (cause) {

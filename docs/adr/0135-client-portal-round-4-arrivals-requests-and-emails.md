@@ -101,3 +101,55 @@ After a good event the customer wants the same people next time. Today that is a
 - The client role's writes are now two RPCs (`submit_client_feedback`, `client_request_worker`) plus its own password. It still holds no table policy.
 - `client_lineup_v` is restated with `worker_requested` (`050`, `832`).
 - A worker removed after a request: the open request stays for the office to close, shown as "Deleted account #id". The note is kept verbatim for the office, as feedback text is (§1.7).
+
+## 3 · Two emails to the customer: "fully confirmed" and "changed after the Allocation Timesheet"
+
+### Context
+§8 sends the customer two things only: the Allocation Timesheet and the Completed Allocation Timesheet. A customer learns that their line-up is complete, or that it changed after the sheet went, only by opening the portal or by phoning. The product owner approved two emails (P3).
+
+### Decision
+- **Two register entries** (`packages/notifications`, `CLIENT_PORTAL_CODES`), both from admin@:
+  - **CP2 · "Your line-up is fully confirmed — {event} · {date}"**. Sent once per event, when every role section of an **upcoming** event holds its headcount of confirmed workers.
+  - **CP3 · "Line-up changed after your Allocation Timesheet was sent — {event} · {date}"**. Sent when a confirmed worker leaves the line-up (withdrawn, cancelled, released at the cut-off) or a new one is confirmed, on an upcoming event whose Allocation Timesheet has already been queued (`event_documents` kind `allocation` with `queued_at`, sent by the office or automatically, ADR-0074/0088).
+- **Content.** Values only:
+  - the event's title, UK date, UK window and venue;
+  - one line per role section: "Waiting Staff · 17:00–23:30 · 4 of 4 confirmed". The count is the portal's: confirmed or worked, held to the headcount, so THC's buffer never appears;
+  - a **"See who is coming" / "See the current line-up"** button to `/client/events/:id`.
+  
+  The emails carry no worker names and no money. pgTAP 833 and `templates.test.ts` check both.
+- **Recipients.** The event's timesheet recipients, `coalesce(events.document_recipients, clients.contact_emails)`. This is `event_document_recipients()` (ADR-0089) to the letter. A Client Portal login is not a recipient unless its address is on that list. The recipients are written on the outbox row; the register names none for these two codes.
+- **Triggered in the database** (`20261014170200_client_lineup_emails.sql`):
+  - one internal function, `client_lineup_notices(event, change?, now)`, called by AFTER triggers on `bookings` (status into or out of confirmed / worked; worked from confirmed is not a change) and `shift_requirements` (a section added or removed, or a headcount changed, which can make or unmake "fully confirmed" but is not a change of who is coming);
+  - the function takes its clock as a parameter, so pgTAP holds the quiet hours and the debounce;
+  - a failure inside it is a WARNING and never blocks the booking change that set it off.
+- **Unique keys and timing:**
+  - **CP2: `CP2:event:<id>`, once per event.**
+    - If the line-up drops below full before the queued row is sent, the row is **withdrawn** (`failed_at`, "withdrawn: the line-up is no longer fully confirmed").
+    - It is revived when the line-up is full again.
+    - The customer is never told "fully confirmed" about a short line-up, and a sent CP2 is never repeated.
+  - **CP3: `CP3:event:<id>:<send epoch>`, at most one per event per hour.** A change is sent at the top of the next hour. Every further change before then refreshes that one queued row, so the email says where the line-up stands when it goes. The key is the send time, so a night of changes is one email.
+  - **Quiet hours.** Nothing is due between 23:00 and 07:00 UK. Such a send is queued for 07:00 UK (`client_email_send_time`), through BST and GMT.
+  - **Not after the start.** Nothing is queued whose send time would be at or after the event's first start: the customer is on site and the office phones.
+  - **Not for a cancelled event.** Nothing is queued, and cancelling an event withdraws whatever is still queued for it.
+- **Switches.**
+  - **Per client:** two switches on the client card ("Line-up emails"), both **on** by default (`clients.lineup_confirmed_emails`, `clients.lineup_changed_emails`). They are set through `set_client_lineup_emails()`: admin only, a viewer refused, audited as `client.lineup_emails`. Switching one off also withdraws that kind's queued rows.
+  - **Global:** the /settings switch per code (ADR-0083) still applies. CP2 and CP3 are in "Client emails" beside D1 and D2.
+- **The customer can see it.** `/client/account` gains **"Emails about your events"** (read-only), fed by `client_account_v`'s two new columns:
+  - the timesheets: always;
+  - "Line-up fully confirmed": On or Off, in words;
+  - "Line-up changed after your Allocation Timesheet was sent": On or Off, in words;
+  - who these go to, the quiet hours, and "email the office" to change them.
+- **The link.** The database does not know the portal's address, and a link must never come from a row: a row is data, and a link in it would be a phishing vector, as ADR-0058's set-up links were.
+  - The drain builds the link at send time: `CLIENT_PORTAL_URL` (a new optional Edge Function secret, docs/12), reduced to its origin, plus `/client/events/<eventId>`.
+  - `eventId` must be a uuid, or the row fails.
+  - A `link` in the payload is dropped.
+  - While `CLIENT_PORTAL_URL` is unset, CP2 and CP3 rows are held as **unconfigured**: no attempt is spent, as with a missing Resend key (ADR-0020 §4). Every other email is unaffected.
+- **Sending is off locally.** The rows queue and the drain holds them without keys, as for every other email.
+
+### Consequences
+- **No backfill.** An event that was already full when this deployed gets its CP2 on the first booking change afterwards, if it is still upcoming and full. There is no backfill job.
+- **CP3 and the updated Allocation Timesheet.** CP3 does not replace ADR-0088's updated Allocation Timesheet; the two can both arrive. CP3 promises nothing about it.
+- **Tests.**
+  - pgTAP 833: the quiet hours in BST and GMT; fully confirmed fires once and never says "3 of 2"; withdrawn and revived; a change after D1 fires; the hourly and overnight debounce; not after the start; both switches, with withdrawal and the audit row; the cancelled event withdrawn and silent; recipients from the event or the card.
+  - 606 holds `client_account_v`'s four columns.
+  - `drain.test.ts`: the link, the hostile payload link, the hold, and a bad event id.
