@@ -11,7 +11,7 @@
  *   applied under another one ("Possible match"), so they probably have;
  * - **waiting**: neither: invited, not applied yet.
  *
- * Two more cuts (ADR-0142): **Payroll ID** — whether the sheet gives one —
+ * Two more cuts (ADR-0143): **Payroll ID** — whether the sheet gives one —
  * and **Reason** — why an applied row has no Payroll ID yet (`kept`).
  */
 import { textCell } from '@thc/pdf/csv';
@@ -103,7 +103,7 @@ export function isFiltered(filter: RosterFilter): boolean {
 export interface RosterIndex {
   standing(row: RosterEntry): RosterStanding;
   match(row: RosterEntry): RosterMatch | undefined;
-  /** For an applied row: who applied and why they have no Payroll ID (ADR-0142). */
+  /** For an applied row: who applied and why they have no Payroll ID (ADR-0143). */
   kept(row: RosterEntry): RosterKept | undefined;
 }
 

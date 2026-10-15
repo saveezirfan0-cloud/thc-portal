@@ -141,7 +141,7 @@ describe('linkRosterEntry (ADR-0123)', () => {
     expect(result).toEqual({ ok: true, payrollId: '7153', spudbros: 'unchanged' });
   });
 
-  it('passes the office’s word that two different names are the same person (ADR-0142)', async () => {
+  it('passes the office’s word that two different names are the same person (ADR-0143)', async () => {
     rpc.mockResolvedValue({ data: { payrollId: '7053', spudbros: 'unchanged' }, error: null });
     const { linkRosterEntry } = await import('../actions');
     await linkRosterEntry('entry-2', 'staff-2', true);

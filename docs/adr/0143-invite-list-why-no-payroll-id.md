@@ -1,4 +1,4 @@
-# ADR-0142 · The invite list says why an applicant has no Payroll ID, and can Link them
+# ADR-0143 · The invite list says why an applicant has no Payroll ID, and can Link them
 
 **Status:** Accepted · **Refines:** ADR-0107 (the invite list), ADR-0123 (its report and Link), ADR-0138 (its filters) · **Owner request:** 15.10.2026
 
@@ -29,4 +29,4 @@ A row reading **Applied · no Payroll ID** is a person who applied with the list
 
 ## Consequences
 - ADR-0107's "the roster page does not yet flag rows that were kept or mismatched" is done.
-- pgTAP 841 (and 812, for the new signature); vitest `list.test.ts` and `actions.test.ts`.
+- pgTAP 842 (and 812, for the new signature); vitest `list.test.ts` and `actions.test.ts`.

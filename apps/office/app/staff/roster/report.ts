@@ -45,7 +45,7 @@ export interface RosterMatch {
 
 /**
  * Why somebody who applied with the listed email has no Payroll ID yet
- * (ADR-0142, `invite_roster_kept()`), first that fits.
+ * (ADR-0143, `invite_roster_kept()`), first that fits.
  */
 export type KeptReason =
   | 'payroll_id_taken'
@@ -124,7 +124,7 @@ export interface RosterReportData {
   reminders: Record<string, RosterReminder>;
   /** Ids of list rows whose person has applied with the listed email (kept for their Payroll ID). */
   applied: string[];
-  /** Why each of `applied` has no Payroll ID, and who applied (ADR-0142). */
+  /** Why each of `applied` has no Payroll ID, and who applied (ADR-0143). */
   kept: RosterKept[];
   matches: RosterMatch[];
 }

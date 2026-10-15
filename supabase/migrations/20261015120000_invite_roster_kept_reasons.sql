@@ -1,6 +1,6 @@
 -- =====================================================================
 -- /staff/roster: why an applicant has no Payroll ID yet, and Link for them
--- (ADR-0142; owner request, 15.10.2026)
+-- (ADR-0143; owner request, 15.10.2026)
 --
 -- "Applied · no Payroll ID" is a list row whose person applied WITH the
 -- listed email, but whose Payroll ID was held back (ADR-0107). The page said
@@ -34,7 +34,7 @@
 --    Otherwise unchanged from 20261013170000; the two-argument call still
 --    works (the third defaults to false).
 --
--- pgTAP: supabase/tests/841_invite_roster_kept.sql.
+-- pgTAP: supabase/tests/842_invite_roster_kept.sql.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -90,7 +90,7 @@ as $$
 $$;
 
 comment on function public.invite_roster_kept() is
-  'ADR-0142: each invite-list row whose person has applied with the listed email (kept, no Payroll ID given), with the applicant and why: payroll_id_taken (holder named), other_payroll_id, name_differs, already_has, no_payroll_id, not_applied. Internal: read through invite_roster_report().';
+  'ADR-0143: each invite-list row whose person has applied with the listed email (kept, no Payroll ID given), with the applicant and why: payroll_id_taken (holder named), other_payroll_id, name_differs, already_has, no_payroll_id, not_applied. Internal: read through invite_roster_report().';
 
 revoke all on function public.invite_roster_kept() from public, anon, authenticated;
 
@@ -190,7 +190,7 @@ begin
 end $$;
 
 comment on function public.invite_roster_report(timestamptz) is
-  'ADR-0123, /staff/roster: KPIs (not applied by group, applied from the list, rows kept after applying, possible matches; IR1 sent today/total, failed, queued, people reminded, applied after a reminder, last sent), a 14-day sent/failed series, per-email reminder counts and last failure, the ids of rows whose person has applied, why each has no Payroll ID (kept, ADR-0142), and possible matches. Office logins only.';
+  'ADR-0123, /staff/roster: KPIs (not applied by group, applied from the list, rows kept after applying, possible matches; IR1 sent today/total, failed, queued, people reminded, applied after a reminder, last sent), a 14-day sent/failed series, per-email reminder counts and last failure, the ids of rows whose person has applied, why each has no Payroll ID (kept, ADR-0143), and possible matches. Office logins only.';
 
 revoke all on function public.invite_roster_report(timestamptz) from public, anon;
 grant execute on function public.invite_roster_report(timestamptz) to authenticated, service_role;
@@ -297,7 +297,7 @@ begin
 end $$;
 
 comment on function public.link_invite_roster_entry(uuid, uuid, boolean) is
-  'ADR-0123, ADR-0142: the office links an invite-list row to the person who applied — under another email, or with the listed one but held back — applying the Payroll ID (numeric → Employee ID where system-issued) and SpudBros marking as load_invite_roster does for somebody already here, consuming the row (the IR1 reminders stop) and auditing roster.linked. Names must agree unless p_confirm_name (the office has seen both); a Payroll ID somebody else holds, or a different one already carried, is refused. Owner and manager only.';
+  'ADR-0123, ADR-0143: the office links an invite-list row to the person who applied — under another email, or with the listed one but held back — applying the Payroll ID (numeric → Employee ID where system-issued) and SpudBros marking as load_invite_roster does for somebody already here, consuming the row (the IR1 reminders stop) and auditing roster.linked. Names must agree unless p_confirm_name (the office has seen both); a Payroll ID somebody else holds, or a different one already carried, is refused. Owner and manager only.';
 
 revoke all on function public.link_invite_roster_entry(uuid, uuid, boolean) from public, anon;
 grant execute on function public.link_invite_roster_entry(uuid, uuid, boolean) to authenticated;

@@ -165,7 +165,7 @@ export function RosterScreen({
 
   /**
    * Link a row whose person applied with the listed email but has no Payroll
-   * ID (ADR-0142). A different name asks first, naming both: only the office
+   * ID (ADR-0143). A different name asks first, naming both: only the office
    * can say they are the same person.
    */
   const linkKept = (row: RosterEntry, kept: RosterKept) => {
@@ -487,7 +487,7 @@ function ReminderCell({
 }
 
 /**
- * An applied row with no Payroll ID (ADR-0142): the status, why, and who
+ * An applied row with no Payroll ID (ADR-0143): the status, why, and who
  * applied — or, for a taken Payroll ID, who holds it — each a link to the
  * profile where the office settles it.
  */

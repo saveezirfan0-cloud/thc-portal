@@ -107,7 +107,7 @@ export type LinkResult =
   { ok: true; payrollId: string | null; spudbros: string } | { ok: false; message: string };
 
 /**
- * Link a list row to the person who applied (ADR-0123, ADR-0142) — under
+ * Link a list row to the person who applied (ADR-0123, ADR-0143) — under
  * another email, or with the listed one but held back:
  * `link_invite_roster_entry()` applies the Payroll ID and group and consumes
  * the row, so the daily reminders stop. `confirmName` is the office's word,

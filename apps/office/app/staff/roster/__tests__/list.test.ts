@@ -134,7 +134,7 @@ describe('the invite list filter', () => {
   });
 });
 
-describe('the Payroll ID and Reason filters (ADR-0142)', () => {
+describe('the Payroll ID and Reason filters (ADR-0143)', () => {
   it('reads unknown values as "all", and counts as narrowing only what narrows', () => {
     const f = parseRosterFilter({ payroll: 'sideways', reason: 'gremlins' });
     expect([f.payroll, f.reason]).toEqual(['all', 'all']);
@@ -174,7 +174,7 @@ describe('the Payroll ID and Reason filters (ADR-0142)', () => {
   });
 });
 
-describe('why an applied row has no Payroll ID (ADR-0142)', () => {
+describe('why an applied row has no Payroll ID (ADR-0143)', () => {
   const kept = (reason: string, extra: Record<string, unknown> = {}) =>
     parseRosterReport({
       applied: ['x'],
@@ -226,7 +226,7 @@ describe('the invite list CSV', () => {
     expect(thc).toContain('THC,Not applied,,,,3,2026-10-14,,');
   });
 
-  it('says why an applied row has no Payroll ID, and who applied (ADR-0142)', () => {
+  it('says why an applied row has no Payroll ID, and who applied (ADR-0143)', () => {
     const csv = rosterCsv([rows[2]!], index, report);
     expect(csv.slice(1).split('\r\n')[1]).toContain(
       'Applied · no Payroll ID,Name differs from the sheet,Kept Hereford,kept@x.co,',
