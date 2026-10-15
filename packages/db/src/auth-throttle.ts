@@ -47,7 +47,7 @@ function keyKind(kind: AuthAttemptKind, key: ThrottleKey): [AuthAttemptKind, str
 /** The two RPCs, untyped until the generated types include them. */
 interface ThrottleRpc {
   rpc(
-    fn: 'auth_attempt_allowed' | 'record_auth_attempt',
+    fn: 'auth_attempt_allowed' | 'record_auth_attempt' | 'clear_sign_in_failures',
     args: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
@@ -196,6 +196,29 @@ export async function recoveryRequestAllowed(email: string): Promise<boolean> {
   if (!(await authAttemptAllowed('recover', keys))) return false;
   await recordAuthAttempt('recover', keys, true);
   return true;
+}
+
+/**
+ * A password was just set from an emailed one-time link (reset, activation,
+ * invitation): forget the account's sign-in failures. Without this, the
+ * wrong guesses made BEFORE the reset keep the new password refused, with
+ * the wrong-password words, for up to 15 minutes (20261015140000). Only the
+ * account's 'sign_in' count; the address, code and reset counts stay.
+ * Never throws: the password is already set, and a failure here only means
+ * the lockout runs out on its own.
+ */
+export async function clearSignInFailures(email: string | null | undefined): Promise<void> {
+  if (!email?.trim()) return;
+  try {
+    const { error } = await client().rpc('clear_sign_in_failures', {
+      p_key_hash: await emailKey(email),
+    });
+    if (error) throw new Error(error.message);
+  } catch (cause) {
+    console.error('[auth-throttle] clear_sign_in_failures failed', {
+      error: cause instanceof Error ? cause.message : String(cause),
+    });
+  }
 }
 
 /**

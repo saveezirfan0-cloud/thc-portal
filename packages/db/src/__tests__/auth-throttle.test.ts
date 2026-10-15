@@ -14,6 +14,7 @@ vi.mock('../admin', () => ({ createAdminClient: () => ({ rpc }) }));
 const {
   authAttemptAllowed,
   callerIp,
+  clearSignInFailures,
   emailKey,
   ipKey,
   isCredentialFailure,
@@ -148,5 +149,30 @@ describe('isCredentialFailure', () => {
     expect(isCredentialFailure({ status: 500 })).toBe(false);
     expect(isCredentialFailure({})).toBe(false);
     expect(isCredentialFailure(null)).toBe(false);
+  });
+});
+
+describe('clearSignInFailures', () => {
+  it("clears the account's sign_in failures, keyed like a sign-in", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+    await clearSignInFailures('  Marta@Example.COM ');
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('clear_sign_in_failures', {
+      p_key_hash: sha('marta@example.com'),
+    });
+  });
+
+  it('does nothing without an address', async () => {
+    await clearSignInFailures(null);
+    await clearSignInFailures('  ');
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('never throws: the password is already set', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    await expect(clearSignInFailures('a@b.c')).resolves.toBeUndefined();
+    rpc.mockRejectedValue(new Error('down'));
+    await expect(clearSignInFailures('a@b.c')).resolves.toBeUndefined();
+    expect(console.error).toHaveBeenCalled();
   });
 });
