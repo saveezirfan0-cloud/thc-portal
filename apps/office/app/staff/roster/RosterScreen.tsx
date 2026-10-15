@@ -6,6 +6,9 @@ import { Alert, Button, EmptyState, Panel, Pill, SearchInput, Select, TableScrol
 import { OfficeShell } from '../../_components/OfficeShell';
 import { useListQuery } from '../../_lib/listQuery';
 import { linkRosterEntry, loadRoster, removeRosterEntries, setRemindersEnabled } from './actions';
+import { EmailsPanel } from './EmailsPanel';
+import type { EmailPreview } from './email-previews';
+import type { StaffEmailReport } from './emails';
 import { MatchesPanel, ReminderPanel, RosterKpis } from './ReminderReport';
 import { reminderSummary } from './report';
 import type { RosterReportData } from './report';
@@ -39,6 +42,8 @@ import type { RosterIndex } from './list';
  * Above it (ADR-0123): where the invited people stand, the daily reminder
  * (IR1, ADR-0122) and what it has done, and the people who applied under
  * another email, with a Link that gives them their Payroll ID and group.
+ * Then every email staff receive while moving onto the new app, with its
+ * numbers and a View of the email itself (ADR-0141).
  *
  * The list filters by group, by where each person stands and by a search,
  * kept in the address bar, and Export CSV downloads exactly what is shown
@@ -47,13 +52,20 @@ import type { RosterIndex } from './list';
 export function RosterScreen({
   waiting,
   reminders,
+  emails,
+  previews,
   problem,
+  emailsProblem,
   canEdit,
   canWrite,
 }: {
   waiting: RosterEntry[];
   reminders: RosterReportData | null;
+  /** "Emails staff receive" (ADR-0141): the numbers, and each email rendered. */
+  emails: StaffEmailReport | null;
+  previews: EmailPreview[];
   problem: string | null;
+  emailsProblem: string | null;
   /** Owner or manager: load the list, remove rows, Link (Payroll IDs). */
   canEdit: boolean;
   /** Any office login that may write: turn the daily reminder on or off. */
@@ -173,6 +185,8 @@ export function RosterScreen({
           />
         </>
       ) : null}
+
+      <EmailsPanel report={emails} previews={previews} problem={emailsProblem} />
 
       <Panel title="Load the list">
         <p className="muted sm">

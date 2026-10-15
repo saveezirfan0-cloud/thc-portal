@@ -11320,6 +11320,7 @@ export type Database = {
           venue_name: string;
         }[];
       };
+      staff_email_report: { Args: { p_now?: string }; Returns: Json };
       staff_me: { Args: never; Returns: Json };
       staff_onboarding_only: {
         Args: { p_staff: string };

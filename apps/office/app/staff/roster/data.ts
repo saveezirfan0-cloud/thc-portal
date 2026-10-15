@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
+import { parseStaffEmailReport } from './emails';
+import type { StaffEmailReport } from './emails';
 import { parseRosterReport } from './report';
 import type { RosterReportData } from './report';
 
@@ -24,7 +26,11 @@ export interface RosterPageData {
   waiting: RosterEntry[];
   /** The reminder report and possible matches (ADR-0123); null when it could not be read. */
   report: RosterReportData | null;
+  /** "Emails staff receive" (ADR-0141); null when it could not be read. */
+  emails: StaffEmailReport | null;
   problem: string | null;
+  /** Why the email numbers are missing; the list and its export do not need them. */
+  emailsProblem: string | null;
 }
 
 /** PostgREST returns at most `max_rows` (1000) per request, so the list is read in pages. */
@@ -40,7 +46,7 @@ interface PageQuery extends PromiseLike<{
 
 interface ReadClient {
   from(table: 'invite_roster'): { select(columns: string): PageQuery };
-  rpc(fn: 'invite_roster_report'): PromiseLike<{
+  rpc(fn: 'invite_roster_report' | 'staff_email_report'): PromiseLike<{
     data: unknown;
     error: { message: string } | null;
   }>;
@@ -51,12 +57,15 @@ export async function loadRosterPage(): Promise<RosterPageData> {
     return {
       waiting: [],
       report: null,
+      emails: null,
+      emailsProblem: null,
       problem:
         'This environment has no Supabase project, so the invite list cannot be read. See docs/04-setup-github-vercel-supabase.md.',
     };
   }
   const supabase = createClient(await cookies()) as unknown as ReadClient;
   const reportCall = supabase.rpc('invite_roster_report');
+  const emailsCall = supabase.rpc('staff_email_report');
   const waiting: RosterEntry[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
@@ -65,15 +74,25 @@ export async function loadRosterPage(): Promise<RosterPageData> {
       .order('loaded_at', { ascending: false })
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1);
-    if (error) return { waiting: [], report: null, problem: error.message };
+    if (error)
+      return {
+        waiting: [],
+        report: null,
+        emails: null,
+        problem: error.message,
+        emailsProblem: null,
+      };
     waiting.push(...(data ?? []));
     if ((data?.length ?? 0) < PAGE) break;
   }
-  // The report is extra: if it fails, the list still shows, and says why.
-  const { data: reportData, error: reportError } = await reportCall;
+  // The reports are extra: if one fails, the list still shows, and says why.
+  const [{ data: reportData, error: reportError }, { data: emailData, error: emailError }] =
+    await Promise.all([reportCall, emailsCall]);
   return {
     waiting,
     report: reportError ? null : parseRosterReport(reportData),
+    emails: emailError ? null : parseStaffEmailReport(emailData),
     problem: reportError ? `The reminder report could not be read: ${reportError.message}` : null,
+    emailsProblem: emailError ? `The email numbers could not be read: ${emailError.message}` : null,
   };
 }
