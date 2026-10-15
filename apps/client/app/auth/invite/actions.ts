@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { isActivationToken, parseActivationType } from '@thc/db/activation';
+import { clearSignInFailures } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 
 /**
@@ -53,6 +54,10 @@ export async function acceptInvite(
       ? 'That password has appeared in a known data breach. Choose a different one — then use “Forgot password” on the sign-in screen, as this link is now used.'
       : 'Your login is ready but the password could not be saved. Use “Forgot password” on the sign-in screen to set one.';
   }
+
+  // The guesses made before this (an account with no password yet refuses
+  // every one) must not refuse the password just set (20261015140000).
+  await clearSignInFailures(data.user.email);
 
   redirect('/client');
 }

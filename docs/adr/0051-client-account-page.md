@@ -48,6 +48,12 @@ The codebase has no single "office email" the client can read. The office's mail
   network is not locked out by a few typos, `recover` 3 requests per hour
   (every call counts). Rows older than 24 hours are trimmed on each record. Pinned by
   `supabase/tests/796_sign_in_and_recover_throttled_per_account.sql`.
+  Setting a password from an emailed one-time link (A3 reset in all three apps, Staff App
+  activation, a Back Office or Client Portal invitation) then clears that account's `sign_in`
+  count through `clear_sign_in_failures(p_key_hash)`, service role only (`20261015140000`,
+  15.10.2026): an account with no password refuses every sign-in, so the tries made before
+  activating or resetting otherwise refused the new password, in the wrong-password words, for up
+  to 15 minutes. `sign_in_ip`, `verify` and `recover` are untouched. Pinned by `844`.
 - **A client login cannot change its own name** (`20261012120600`): `update_my_profile()`
   refuses `role = 'client'` with `client_profile_read_only`. Change password stays the portal's
   one account write besides §11.2 feedback, and a client's feedback comment is capped at 2,000

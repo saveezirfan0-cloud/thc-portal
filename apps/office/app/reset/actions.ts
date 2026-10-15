@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { readRecoverySession } from '@thc/db/recovery';
+import { clearSignInFailures } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 import { USE_ACCOUNT_SCREEN } from './copy';
 
@@ -64,6 +65,10 @@ export async function setPassword(
       ? 'That password has appeared in a known data breach. Choose a different one.'
       : 'We could not set that password. Try again, or request a new link.';
   }
+
+  // The guesses made before this (an account with no password yet refuses
+  // every one) must not refuse the password just set (20261015140000).
+  await clearSignInFailures(user.email);
 
   // Scope 'others': keep this session, drop the rest.
   await supabase.auth.signOut({ scope: 'others' });

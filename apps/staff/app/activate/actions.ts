@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { clearSignInFailures } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 import { clearTimeFormatCookie } from '@thc/db/time-format';
 import { isActivationToken, parseActivationType } from '@thc/db/activation';
@@ -136,6 +137,10 @@ export async function activateAccount(
           : 'We could not set that password. Try again.',
     };
   }
+
+  // The guesses made before this (an account with no password yet refuses
+  // every one) must not refuse the password just set (20261015140000).
+  await clearSignInFailures(user.email);
 
   jar.delete(MARKER);
   // §2.7: activated → "download the app". Activation does not move the

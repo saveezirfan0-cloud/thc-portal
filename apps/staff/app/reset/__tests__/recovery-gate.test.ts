@@ -22,6 +22,8 @@ vi.mock('next/navigation', () => ({
   },
 }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ auth }) }));
+const clearSignInFailures = vi.hoisted(() => vi.fn());
+vi.mock('@thc/db/auth-throttle', () => ({ clearSignInFailures }));
 
 const { setPassword } = await import('../actions');
 const { USE_SECURITY_SETTINGS } = await import('../copy');
@@ -53,7 +55,9 @@ afterAll(() => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
-  auth.getUser.mockResolvedValue({ data: { user: { id: 'u1', app_metadata: { role: 'staff' } } } });
+  auth.getUser.mockResolvedValue({
+    data: { user: { id: 'u1', email: 'a@b.example', app_metadata: { role: 'staff' } } },
+  });
   auth.updateUser.mockResolvedValue({ error: null });
 });
 
@@ -62,12 +66,30 @@ describe('setPassword: only a fresh reset-link session', () => {
     auth.getClaims.mockResolvedValue(amr('password', 5));
     expect(await submit()).toBe(`RETURNED:${USE_SECURITY_SETTINGS}`);
     expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 
   it('a recovery link opened within 15 minutes sets the password', async () => {
     auth.getClaims.mockResolvedValue(amr('recovery', 14 * 60));
     expect(await submit()).toBe('REDIRECT:/');
     expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Gala-Dinner-2026' });
+  });
+
+  it('clears the sign-in failures counted before the reset, after the password is set', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 10));
+    expect(await submit()).toBe('REDIRECT:/');
+    expect(clearSignInFailures).toHaveBeenCalledTimes(1);
+    expect(clearSignInFailures).toHaveBeenCalledWith('a@b.example');
+    expect(auth.updateUser.mock.invocationCallOrder[0]!).toBeLessThan(
+      clearSignInFailures.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('a password that is not saved clears nothing', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 10));
+    auth.updateUser.mockResolvedValue({ error: { status: 500, message: 'boom' } });
+    expect(await submit()).toMatch(/^RETURNED:/);
+    expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 
   it('the token_hash link (amr otp) counts as a recovery link', async () => {
@@ -79,11 +101,13 @@ describe('setPassword: only a fresh reset-link session', () => {
     auth.getClaims.mockResolvedValue(amr('otp', 16 * 60));
     expect(await submit()).toBe(`RETURNED:${USE_SECURITY_SETTINGS}`);
     expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 
   it('no verified claims at all reads as a spent link', async () => {
     auth.getClaims.mockResolvedValue({ data: null, error: null });
     expect(await submit()).toMatch(/^RETURNED:This link has expired/);
     expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 });
