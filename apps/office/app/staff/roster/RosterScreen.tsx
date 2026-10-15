@@ -4,24 +4,37 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Alert, Button, EmptyState, Panel, Pill, SearchInput, Select, TableScroll } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
-import { useListQuery } from '../../_lib/listQuery';
+import { Pager } from '../../_components/Pager';
+import { pageIndex, pageParam, sizeOf, useListQuery } from '../../_lib/listQuery';
 import { linkRosterEntry, loadRoster, removeRosterEntries, setRemindersEnabled } from './actions';
 import { EmailsPanel } from './EmailsPanel';
 import type { EmailPreview } from './email-previews';
 import type { StaffEmailReport } from './emails';
 import { MatchesPanel, ReminderPanel, RosterKpis } from './ReminderReport';
-import { reminderSummary } from './report';
-import type { RosterReportData } from './report';
+import {
+  KEPT_REASONS,
+  KEPT_REASON_LABEL,
+  keptExplanation,
+  keptLinkable,
+  reminderSummary,
+} from './report';
+import type { RosterKept, RosterReportData } from './report';
 import './roster.css';
 import { REASON_TEXT } from './reasons';
 import type { RosterReport } from './actions';
 import type { RosterEntry } from './data';
 import {
+  DEFAULT_ROSTER_PAGE_SIZE,
   GROUP_LABEL,
+  PAYROLL_LABEL,
+  ROSTER_PAGE_SIZES,
+  ROSTER_CLEARED,
   ROSTER_QUERY,
   STANDING_LABEL,
   filterRoster,
+  isFiltered,
   parseRosterFilter,
+  reasonCounts,
   rosterExportHref,
   rosterIndex,
   standingCounts,
@@ -104,11 +117,11 @@ export function RosterScreen({
   };
 
   const [linked, setLinked] = useState<string | null>(null);
-  const link = (entryId: string, staffId: string) => {
+  const link = (entryId: string, staffId: string, confirmName = false) => {
     setFailure(null);
     setLinked(null);
     start(async () => {
-      const result = await linkRosterEntry(entryId, staffId);
+      const result = await linkRosterEntry(entryId, staffId, confirmName);
       if (!result.ok) setFailure(result.message);
       else
         setLinked(
@@ -147,10 +160,37 @@ export function RosterScreen({
   // Without the report nobody can be told apart by status, so the Status
   // filter and the export (which needs it too) are not offered.
   const parsed = parseRosterFilter(url);
-  const filter = reminders ? parsed : { ...parsed, status: 'all' as const };
+  const filter = reminders ? parsed : { ...parsed, status: 'all' as const, reason: 'all' as const };
   const shown = filterRoster(waiting, filter, index);
+  // A page of what the filter keeps (ADR-0143): 888 rows at once was a very
+  // long page. Export CSV still takes everything the filter keeps.
+  const pageSize = sizeOf(url.size, ROSTER_PAGE_SIZES, DEFAULT_ROSTER_PAGE_SIZE);
+  const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(pageIndex(url.page), pages - 1);
+  const pageRows = shown.slice(current * pageSize, current * pageSize + pageSize);
   const counts = standingCounts(waiting, filter.grp, index);
-  const filtered = filter.grp !== 'all' || filter.status !== 'all' || filter.q !== '';
+  const cuts = reasonCounts(waiting, filter, index);
+  const filtered = isFiltered(filter);
+
+  /**
+   * Link a row whose person applied with the listed email but has no Payroll
+   * ID (ADR-0143). A different name asks first, naming both: only the office
+   * can say they are the same person.
+   */
+  const linkKept = (row: RosterEntry, kept: RosterKept) => {
+    if (kept.reason === 'name_differs') {
+      const sheet = [row.first_name, row.last_name].filter(Boolean).join(' ') || 'no name';
+      if (
+        !window.confirm(
+          `The sheet says ${sheet}; they applied as ${kept.staffName || 'no name'}. Link them only if they are the same person.${row.payroll_id ? ` They get Payroll ID ${row.payroll_id}` : ' They get their group'} and come off the list.`,
+        )
+      )
+        return;
+      link(row.id, kept.staffId, true);
+      return;
+    }
+    link(row.id, kept.staffId);
+  };
 
   return (
     <OfficeShell
@@ -233,7 +273,7 @@ export function RosterScreen({
               <Select
                 aria-label="Group"
                 value={filter.grp}
-                onChange={(event) => setUrl({ grp: event.target.value })}
+                onChange={(event) => setUrl({ grp: event.target.value, page: '1' })}
                 style={{ width: 190 }}
               >
                 <option value="all">All groups</option>
@@ -244,7 +284,7 @@ export function RosterScreen({
                 <Select
                   aria-label="Status"
                   value={filter.status}
-                  onChange={(event) => setUrl({ status: event.target.value })}
+                  onChange={(event) => setUrl({ status: event.target.value, page: '1' })}
                   style={{ width: 230 }}
                 >
                   <option value="all">Any status ({counts.all})</option>
@@ -259,11 +299,40 @@ export function RosterScreen({
                   </option>
                 </Select>
               ) : null}
+              <Select
+                aria-label="Payroll ID"
+                value={filter.payroll}
+                onChange={(event) => setUrl({ payroll: event.target.value, page: '1' })}
+                style={{ width: 230 }}
+              >
+                <option value="all">Any Payroll ID ({cuts.payroll.all})</option>
+                <option value="with">
+                  {PAYROLL_LABEL.with} ({cuts.payroll.with})
+                </option>
+                <option value="without">
+                  {PAYROLL_LABEL.without} ({cuts.payroll.without})
+                </option>
+              </Select>
+              {reminders ? (
+                <Select
+                  aria-label="Why no Payroll ID"
+                  value={filter.reason}
+                  onChange={(event) => setUrl({ reason: event.target.value, page: '1' })}
+                  style={{ width: 260 }}
+                >
+                  <option value="all">Any reason ({cuts.reason.all} applied)</option>
+                  {KEPT_REASONS.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {KEPT_REASON_LABEL[reason]} ({cuts.reason[reason]})
+                    </option>
+                  ))}
+                </Select>
+              ) : null}
               <SearchInput
                 aria-label="Search the invite list"
                 placeholder="Search name, email, Payroll ID"
                 value={url.q}
-                onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
+                onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
               />
               <div className="right">
                 {shown.length > 0 && reminders ? (
@@ -286,11 +355,7 @@ export function RosterScreen({
             {filtered ? (
               <p className="muted sm" role="status">
                 Showing {shown.length} of {waiting.length}.{' '}
-                <Button
-                  size="sm"
-                  tone="ghost"
-                  onClick={() => setUrl({ grp: 'all', status: 'all', q: '' })}
-                >
+                <Button size="sm" tone="ghost" onClick={() => setUrl(ROSTER_CLEARED)}>
                   Clear filters
                 </Button>
               </p>
@@ -298,7 +363,7 @@ export function RosterScreen({
             {shown.length === 0 ? (
               <EmptyState>
                 <h3>Nobody matches</h3>
-                <p>Nobody on the list fits this group, status and search.</p>
+                <p>Nobody on the list fits these filters and search.</p>
               </EmptyState>
             ) : (
               <TableScroll label="Invite list" minWidth="48rem">
@@ -309,13 +374,13 @@ export function RosterScreen({
                       <th>Name</th>
                       <th>Payroll ID</th>
                       <th>Group</th>
-                      <th>Daily reminder</th>
+                      <th>Status · daily reminder</th>
                       <th>Loaded</th>
                       {canEdit ? <th aria-label="Remove" className="cell-actions" /> : null}
                     </tr>
                   </thead>
                   <tbody>
-                    {shown.map((row) => (
+                    {pageRows.map((row) => (
                       <tr key={row.id}>
                         <td>{row.email}</td>
                         <td>{[row.first_name, row.last_name].filter(Boolean).join(' ') || '—'}</td>
@@ -331,6 +396,12 @@ export function RosterScreen({
                         <td className="sm muted">{ukDate(row.loaded_at)}</td>
                         {canEdit ? (
                           <td className="cell-actions">
+                            <KeptLink
+                              row={row}
+                              kept={index.kept(row)}
+                              pending={pending}
+                              onLink={linkKept}
+                            />
                             <Button
                               size="sm"
                               tone="ghost"
@@ -347,6 +418,16 @@ export function RosterScreen({
                 </table>
               </TableScroll>
             )}
+            {shown.length > 0 ? (
+              <Pager
+                total={shown.length}
+                page={current}
+                pageSize={pageSize}
+                sizes={ROSTER_PAGE_SIZES}
+                onPage={(next) => setUrl({ page: pageParam(next) })}
+                onPageSize={(size) => setUrl({ size: String(size), page: '1' })}
+              />
+            ) : null}
           </>
         )}
       </Panel>
@@ -404,7 +485,7 @@ function ReminderCell({
 }) {
   const standing = index.standing(row);
   const matched = standing === 'match';
-  if (standing === 'applied') return <Pill tone="amber">Applied · no Payroll ID</Pill>;
+  if (standing === 'applied') return <KeptCell row={row} kept={index.kept(row)} />;
   if (row.grp !== 'thc') return <span className="muted">Not reminded (SpudBros)</span>;
   const mine = reminders?.reminders[row.email];
   return (
@@ -421,5 +502,56 @@ function ReminderCell({
       ) : null}{' '}
       <span className={mine?.sent ? undefined : 'muted'}>{reminderSummary(mine)}</span>
     </>
+  );
+}
+
+/**
+ * An applied row with no Payroll ID (ADR-0143): the status, why, and who
+ * applied — or, for a taken Payroll ID, who holds it — each a link to the
+ * profile where the office settles it.
+ */
+function KeptCell({ row, kept }: { row: RosterEntry; kept: RosterKept | undefined }) {
+  return (
+    <div className="roster-kept">
+      <Pill tone="amber">Applied · no Payroll ID</Pill>
+      {kept ? (
+        <div className="sm muted">
+          {keptExplanation(kept, row.payroll_id)}{' '}
+          <Link href={`/staff/${kept.staffId}`}>Open {kept.staffName || 'their profile'}</Link>
+          {kept.reason === 'payroll_id_taken' && kept.holderId ? (
+            <>
+              {' · '}
+              <Link href={`/staff/${kept.holderId}`}>Open {kept.holderName || 'the holder'}</Link>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Link for an applied row Link can settle; none where the office must decide on a profile. */
+function KeptLink({
+  row,
+  kept,
+  pending,
+  onLink,
+}: {
+  row: RosterEntry;
+  kept: RosterKept | undefined;
+  pending: boolean;
+  onLink: (row: RosterEntry, kept: RosterKept) => void;
+}) {
+  if (!kept || !keptLinkable(kept)) return null;
+  return (
+    <Button
+      size="sm"
+      tone="primary"
+      disabled={pending}
+      onClick={() => onLink(row, kept)}
+      aria-label={`Link ${row.email} to ${kept.staffName || 'the person who applied'}`}
+    >
+      Link
+    </Button>
   );
 }

@@ -10,14 +10,20 @@
  * - **match**: nobody applied with that email, but somebody of the same name
  *   applied under another one ("Possible match"), so they probably have;
  * - **waiting**: neither: invited, not applied yet.
+ *
+ * Two more cuts (ADR-0143): **Payroll ID** — whether the sheet gives one —
+ * and **Reason** — why an applied row has no Payroll ID yet (`kept`).
  */
 import { textCell } from '@thc/pdf/csv';
 import type { RosterEntry } from './data';
-import type { RosterMatch, RosterReportData } from './report';
+import { KEPT_REASONS, KEPT_REASON_LABEL } from './report';
+import type { KeptReason, RosterKept, RosterMatch, RosterReportData } from './report';
 
 export type RosterGroupFilter = 'all' | 'spudbros' | 'thc';
 export type RosterStanding = 'waiting' | 'match' | 'applied';
 export type RosterStandingFilter = 'all' | RosterStanding;
+export type RosterPayrollFilter = 'all' | 'with' | 'without';
+export type RosterReasonFilter = 'all' | KeptReason;
 
 export const GROUP_FILTERS: readonly RosterGroupFilter[] = ['all', 'spudbros', 'thc'];
 export const STANDING_FILTERS: readonly RosterStandingFilter[] = [
@@ -27,11 +33,31 @@ export const STANDING_FILTERS: readonly RosterStandingFilter[] = [
   'applied',
 ];
 
+export const PAYROLL_FILTERS: readonly RosterPayrollFilter[] = ['all', 'with', 'without'];
+export const REASON_FILTERS: readonly RosterReasonFilter[] = ['all', ...KEPT_REASONS];
+
+export const PAYROLL_LABEL: Readonly<Record<Exclude<RosterPayrollFilter, 'all'>, string>> = {
+  with: 'Payroll ID on the sheet',
+  without: 'No Payroll ID on the sheet',
+};
+
 /** The filter's keys in the address bar, so a filtered list can be shared and exported. */
-export const ROSTER_QUERY = { grp: 'all', status: 'all', q: '' } as const satisfies Record<
-  string,
-  string
->;
+/** Rows per page on the screen (ADR-0143); the export takes every row the filter keeps. */
+export const ROSTER_PAGE_SIZES = [25, 50, 100, 250] as const;
+export const DEFAULT_ROSTER_PAGE_SIZE = 50;
+
+export const ROSTER_QUERY = {
+  grp: 'all',
+  status: 'all',
+  payroll: 'all',
+  reason: 'all',
+  q: '',
+  page: '1',
+  size: String(DEFAULT_ROSTER_PAGE_SIZE),
+} as const satisfies Record<string, string>;
+
+/** Every filter back to "all", for Clear filters. */
+export const ROSTER_CLEARED = { ...ROSTER_QUERY } as Record<string, string>;
 
 export const GROUP_LABEL = { spudbros: 'SpudBros Express', thc: 'THC' } as const;
 
@@ -44,6 +70,8 @@ export const STANDING_LABEL: Readonly<Record<RosterStanding, string>> = {
 export interface RosterFilter {
   grp: RosterGroupFilter;
   status: RosterStandingFilter;
+  payroll: RosterPayrollFilter;
+  reason: RosterReasonFilter;
   q: string;
 }
 
@@ -51,34 +79,57 @@ export interface RosterFilter {
 export function parseRosterFilter(values: {
   grp?: string | null;
   status?: string | null;
+  payroll?: string | null;
+  reason?: string | null;
   q?: string | null;
 }): RosterFilter {
-  const grp = values.grp ?? 'all';
-  const status = values.status ?? 'all';
+  const pick = <T extends string>(value: string | null | undefined, allowed: readonly T[]): T =>
+    (allowed as readonly string[]).includes(value ?? '') ? (value as T) : ('all' as T);
   return {
-    grp: (GROUP_FILTERS as readonly string[]).includes(grp) ? (grp as RosterGroupFilter) : 'all',
-    status: (STANDING_FILTERS as readonly string[]).includes(status)
-      ? (status as RosterStandingFilter)
-      : 'all',
+    grp: pick(values.grp, GROUP_FILTERS),
+    status: pick(values.status, STANDING_FILTERS),
+    payroll: pick(values.payroll, PAYROLL_FILTERS),
+    reason: pick(values.reason, REASON_FILTERS),
     q: (values.q ?? '').trim(),
   };
+}
+
+/** Whether any filter is narrowing the list. */
+export function isFiltered(filter: RosterFilter): boolean {
+  return (
+    filter.grp !== 'all' ||
+    filter.status !== 'all' ||
+    filter.payroll !== 'all' ||
+    filter.reason !== 'all' ||
+    filter.q !== ''
+  );
 }
 
 /** Each row's standing and, for a possible match, who applied under the other email. */
 export interface RosterIndex {
   standing(row: RosterEntry): RosterStanding;
   match(row: RosterEntry): RosterMatch | undefined;
+  /** For an applied row: who applied and why they have no Payroll ID (ADR-0143). */
+  kept(row: RosterEntry): RosterKept | undefined;
 }
 
 export function rosterIndex(report: RosterReportData | null): RosterIndex {
   const applied = new Set(report?.applied ?? []);
   const matches = new Map<string, RosterMatch>();
   for (const m of report?.matches ?? []) if (!matches.has(m.entryId)) matches.set(m.entryId, m);
+  const kept = new Map<string, RosterKept>();
+  for (const k of report?.kept ?? []) kept.set(k.entryId, k);
   return {
     standing: (row) =>
       applied.has(row.id) ? 'applied' : matches.has(row.id) ? 'match' : 'waiting',
     match: (row) => matches.get(row.id),
+    kept: (row) => (applied.has(row.id) ? kept.get(row.id) : undefined),
   };
+}
+
+function payrollFits(row: RosterEntry, payroll: RosterPayrollFilter): boolean {
+  if (payroll === 'all') return true;
+  return payroll === 'with' ? row.payroll_id !== null : row.payroll_id === null;
 }
 
 function fullName(row: RosterEntry): string {
@@ -103,6 +154,8 @@ export function filterRoster(
     (row) =>
       (filter.grp === 'all' || row.grp === filter.grp) &&
       (filter.status === 'all' || index.standing(row) === filter.status) &&
+      payrollFits(row, filter.payroll) &&
+      (filter.reason === 'all' || index.kept(row)?.reason === filter.reason) &&
       matchesSearch(row, filter.q),
   );
 }
@@ -120,6 +173,34 @@ export function standingCounts(
     counts[index.standing(row)] += 1;
   }
   return counts;
+}
+
+/**
+ * How many rows each reason, and each Payroll ID choice, has within the chosen
+ * group and status, for the filters' labels.
+ */
+export function reasonCounts(
+  rows: readonly RosterEntry[],
+  filter: Pick<RosterFilter, 'grp' | 'status'>,
+  index: RosterIndex,
+): { reason: Record<RosterReasonFilter, number>; payroll: Record<RosterPayrollFilter, number> } {
+  const reason = Object.fromEntries(REASON_FILTERS.map((r) => [r, 0])) as Record<
+    RosterReasonFilter,
+    number
+  >;
+  const payroll = { all: 0, with: 0, without: 0 };
+  for (const row of rows) {
+    if (filter.grp !== 'all' && row.grp !== filter.grp) continue;
+    if (filter.status !== 'all' && index.standing(row) !== filter.status) continue;
+    payroll.all += 1;
+    payroll[row.payroll_id !== null ? 'with' : 'without'] += 1;
+    const k = index.kept(row);
+    if (k) {
+      reason.all += 1;
+      reason[k.reason] += 1;
+    }
+  }
+  return { reason, payroll };
 }
 
 /** Surname, then first name, then email: how a spreadsheet of people reads. */
@@ -160,8 +241,21 @@ export const ROSTER_CSV_COLUMNS: readonly {
   { header: 'Payroll ID', value: (r) => r.payroll_id ?? '' },
   { header: 'Group', value: (r) => GROUP_LABEL[r.grp] },
   { header: 'Status', value: (r, i) => STANDING_LABEL[i.standing(r)] },
-  { header: 'Applied as', value: (r, i) => i.match(r)?.staffName ?? '' },
-  { header: 'Applied with email', value: (r, i) => i.match(r)?.staffEmail ?? '' },
+  {
+    header: 'Why no Payroll ID',
+    value: (r, i) => {
+      const k = i.kept(r);
+      return k ? KEPT_REASON_LABEL[k.reason] : '';
+    },
+  },
+  {
+    header: 'Applied as',
+    value: (r, i) => i.match(r)?.staffName ?? i.kept(r)?.staffName ?? '',
+  },
+  {
+    header: 'Applied with email',
+    value: (r, i) => i.match(r)?.staffEmail ?? i.kept(r)?.staffEmail ?? '',
+  },
   { header: 'Reminders sent', value: (r, _i, rep) => String(rep?.reminders[r.email]?.sent ?? 0) },
   {
     header: 'Last reminder (UK)',
@@ -203,6 +297,8 @@ export function rosterFileName(filter: RosterFilter, now: Date = new Date()): st
   if (filter.status === 'waiting') parts.push('not-applied');
   else if (filter.status === 'match') parts.push('possible-match');
   else if (filter.status === 'applied') parts.push('applied-no-payroll-id');
+  if (filter.payroll !== 'all') parts.push(`${filter.payroll}-payroll-id`);
+  if (filter.reason !== 'all') parts.push(filter.reason.replace(/_/g, '-'));
   if (filter.q !== '') parts.push('search');
   parts.push(ukDate(now.toISOString()));
   return `${parts.join('-')}.csv`;
@@ -213,6 +309,8 @@ export function rosterExportHref(filter: RosterFilter): string {
   const params = new URLSearchParams();
   if (filter.grp !== 'all') params.set('grp', filter.grp);
   if (filter.status !== 'all') params.set('status', filter.status);
+  if (filter.payroll !== 'all') params.set('payroll', filter.payroll);
+  if (filter.reason !== 'all') params.set('reason', filter.reason);
   if (filter.q !== '') params.set('q', filter.q);
   const query = params.toString();
   return `/staff/roster/export${query ? `?${query}` : ''}`;

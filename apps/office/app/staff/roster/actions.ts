@@ -107,17 +107,24 @@ export type LinkResult =
   { ok: true; payrollId: string | null; spudbros: string } | { ok: false; message: string };
 
 /**
- * Link a list row to the person who applied under another email (ADR-0123):
+ * Link a list row to the person who applied (ADR-0123, ADR-0143) — under
+ * another email, or with the listed one but held back:
  * `link_invite_roster_entry()` applies the Payroll ID and group and consumes
- * the row, so the daily reminders stop. Owner and manager only, in the
- * database.
+ * the row, so the daily reminders stop. `confirmName` is the office's word,
+ * given after seeing both names, that they are the same person; it lifts the
+ * name check and nothing else. Owner and manager only, in the database.
  */
-export async function linkRosterEntry(entryId: string, staffId: string): Promise<LinkResult> {
+export async function linkRosterEntry(
+  entryId: string,
+  staffId: string,
+  confirmName = false,
+): Promise<LinkResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const { data, error } = await supabase.rpc('link_invite_roster_entry', {
     p_entry: entryId,
     p_staff: staffId,
+    p_confirm_name: confirmName,
   });
   if (error)
     return {

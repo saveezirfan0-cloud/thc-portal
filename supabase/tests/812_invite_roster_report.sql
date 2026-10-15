@@ -59,7 +59,7 @@ insert into notification_outbox (key, channel, template, recipient_emails, paylo
 -- A · who can reach them
 -- =====================================================================
 select ok(not has_function_privilege('anon', 'invite_roster_report(timestamptz)', 'execute')
-      and not has_function_privilege('anon', 'link_invite_roster_entry(uuid, uuid)', 'execute')
+      and not has_function_privilege('anon', 'link_invite_roster_entry(uuid, uuid, boolean)', 'execute')
       and not has_function_privilege('authenticated', 'invite_roster_possible_matches()', 'execute'),
   'the public reaches neither; the matcher is internal');
 

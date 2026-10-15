@@ -136,13 +136,31 @@ describe('linkRosterEntry (ADR-0123)', () => {
     expect(rpc).toHaveBeenCalledWith('link_invite_roster_entry', {
       p_entry: 'entry-1',
       p_staff: 'staff-1',
+      p_confirm_name: false,
     });
     expect(result).toEqual({ ok: true, payrollId: '7153', spudbros: 'unchanged' });
   });
 
+  it('passes the office’s word that two different names are the same person (ADR-0143)', async () => {
+    rpc.mockResolvedValue({ data: { payrollId: '7053', spudbros: 'unchanged' }, error: null });
+    const { linkRosterEntry } = await import('../actions');
+    await linkRosterEntry('entry-2', 'staff-2', true);
+    expect(rpc).toHaveBeenCalledWith('link_invite_roster_entry', {
+      p_entry: 'entry-2',
+      p_staff: 'staff-2',
+      p_confirm_name: true,
+    });
+  });
+
   it('turns each refusal into a sentence', async () => {
     const { linkRosterEntry } = await import('../actions');
-    for (const code of ['name_mismatch', 'payroll_id_taken', 'not_permitted', 'unknown_entry']) {
+    for (const code of [
+      'name_mismatch',
+      'payroll_id_taken',
+      'has_other_payroll_id',
+      'not_permitted',
+      'unknown_entry',
+    ]) {
       rpc.mockResolvedValue({ data: null, error: { message: code } });
       const result = await linkRosterEntry('e', 's');
       expect(result.ok).toBe(false);

@@ -44,6 +44,8 @@ export async function GET(request: Request): Promise<Response> {
   const filter = parseRosterFilter({
     grp: params.get('grp'),
     status: params.get('status'),
+    payroll: params.get('payroll'),
+    reason: params.get('reason'),
     q: params.get('q'),
   });
   const index = rosterIndex(report);

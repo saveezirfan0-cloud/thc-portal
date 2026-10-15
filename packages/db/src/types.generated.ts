@@ -9509,7 +9509,7 @@ export type Database = {
         Returns: string;
       };
       link_invite_roster_entry: {
-        Args: { p_entry: string; p_staff: string };
+        Args: { p_confirm_name?: boolean; p_entry: string; p_staff: string };
         Returns: Json;
       };
       link_staff_account: {
