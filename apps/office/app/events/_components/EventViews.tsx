@@ -13,14 +13,18 @@ import { formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
 import {
   type DayBucket,
   type EventRow,
+  type RecordNews,
   WEEK_COLUMN_FOLD_AT,
   bandDay,
   fillTone,
+  formatShifts,
   isShortStaffed,
   monthCellModel,
+  totalShifts,
 } from '../view-model';
 import { ChipStatus } from './ChipStatus';
 import { MonthCellEvents } from './MonthCellEvents';
+import { RecordFlash } from './RecordFlash';
 import { ScheduledWindow } from './ScheduledWindow';
 import type { ReactNode } from 'react';
 
@@ -320,36 +324,81 @@ export function WeekView({
   days,
   buckets,
   today,
+  records = [],
+  recordDay = null,
 }: {
   days: string[];
   buckets: Map<string, DayBucket>;
   today: string;
+  /** The records this week holds, in words (ADR-0142). */
+  records?: RecordNews[];
+  /** The busiest day ever booked, when it is one of these seven. */
+  recordDay?: string | null;
+}) {
+  const week = days.reduce((sum, iso) => sum + (buckets.get(iso)?.shifts ?? 0), 0);
+  const events = days.reduce((sum, iso) => sum + (buckets.get(iso)?.count ?? 0), 0);
+  return (
+    <div className="stack tight">
+      <ShiftTotals shifts={week} events={events} label="This week" records={records} />
+      <div className="wk">
+        {days.map((iso) => {
+          const bucket = buckets.get(iso);
+          const count = bucket?.count ?? 0;
+          const open = bucket?.open ?? 0;
+          const record = iso === recordDay;
+          return (
+            <div className={classes('col', iso === today && 'today', record && 'record')} key={iso}>
+              <div className="ch">
+                <span className="d">
+                  {WEEKDAY_HEADS[weekdayIndex(iso)]} {Number(iso.slice(8, 10))}
+                  {iso === today ? ' · today' : ''}
+                </span>
+                <span className={classes('c', open === 0 && !bucket?.allCancelled && 'ok')}>
+                  {count === 0
+                    ? '0 ev'
+                    : bucket?.allCancelled
+                      ? `${count} ev · cancelled`
+                      : formatCounter(count, open)}
+                </span>
+                {/* ADR-0142: the day's shifts — its headcount, buffer apart. */}
+                <span className="s">
+                  {formatShifts(bucket?.shifts ?? 0)}
+                  {record ? <span className="rec"> · record</span> : null}
+                </span>
+              </div>
+              <WeekColumnBands rows={bucket?.events ?? []} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The Week and Day views' total line (ADR-0142): the period's shifts and
+ * events, and a badge for any all-time record it holds — the badge flashes
+ * up a congratulations the first time it is seen.
+ */
+function ShiftTotals({
+  shifts,
+  events,
+  label,
+  records,
+}: {
+  shifts: number;
+  events: number;
+  label: string;
+  records: RecordNews[];
 }) {
   return (
-    <div className="wk">
-      {days.map((iso) => {
-        const bucket = buckets.get(iso);
-        const count = bucket?.count ?? 0;
-        const open = bucket?.open ?? 0;
-        return (
-          <div className={classes('col', iso === today && 'today')} key={iso}>
-            <div className="ch">
-              <span className="d">
-                {WEEKDAY_HEADS[weekdayIndex(iso)]} {Number(iso.slice(8, 10))}
-                {iso === today ? ' · today' : ''}
-              </span>
-              <span className={classes('c', open === 0 && !bucket?.allCancelled && 'ok')}>
-                {count === 0
-                  ? '0 ev'
-                  : bucket?.allCancelled
-                    ? `${count} ev · cancelled`
-                    : formatCounter(count, open)}
-              </span>
-            </div>
-            <WeekColumnBands rows={bucket?.events ?? []} />
-          </div>
-        );
-      })}
+    <div className="shift-totals" aria-label={`${label}: ${formatShifts(shifts)}`}>
+      <span className="lbl">{label}</span>
+      <b className="num">{formatShifts(shifts)}</b>
+      <span className="muted sm">
+        across {events} event{events === 1 ? '' : 's'}
+      </span>
+      <RecordFlash records={records} />
     </div>
   );
 }
@@ -418,7 +467,7 @@ function WeekChip({ row }: { row: EventRow }) {
 // Day
 // ---------------------------------------------------------------------
 
-export function DayView({ rows }: { rows: EventRow[] }) {
+export function DayView({ rows, records = [] }: { rows: EventRow[]; records?: RecordNews[] }) {
   if (rows.length === 0) {
     return (
       <Panel>
@@ -429,6 +478,12 @@ export function DayView({ rows }: { rows: EventRow[] }) {
 
   return (
     <div className="stack tight">
+      <ShiftTotals
+        shifts={totalShifts(rows)}
+        events={rows.length}
+        label="This day"
+        records={records}
+      />
       {rows.map((row) => {
         const open = formatOpen(row.fill);
         return (
