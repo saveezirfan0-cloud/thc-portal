@@ -17,6 +17,7 @@ import {
 } from '../email-html';
 import { EMAIL_PRESENTATION } from '../email-layouts';
 import { INVITE_REMINDER_LOGO } from '../email-invite-reminder';
+import { axlr8DaysLeft, axlr8Values } from '../invite-reminder-copy';
 import { inlineLogoAttachment } from '../email-logo';
 import type { EmailMessage, OutboxRow } from '../outbox';
 import { UnsendableRow, messageFor } from '../outbox';
@@ -541,8 +542,17 @@ describe("IR1 — the owner's own design (ADR-0122)", () => {
     expect(html).toContain('bgcolor="#171b26"');
     expect(html).toContain('max-width:600px');
     expect(html).toContain(`<img src="${INVITE_REMINDER_LOGO}" height="52"`);
-    expect(html).toContain('⏰&nbsp; Daily reminder</span>');
-    expect(html).toContain('>AXLR8 is being switched off soon</h1>');
+    // The countdown tile and heading (owner, 15.10.2026); the date is pinned
+    // by the helper below, so the number is the days from today.
+    const days = axlr8DaysLeft(new Date());
+    if (days > 1) {
+      expect(html).toContain(`>${days}</div>`);
+      expect(html).toContain('>Days left</div>');
+      expect(html).toContain(`>AXLR8 stops working in ${days} days</h1>`);
+    } else if (days < 0) {
+      expect(html).toContain('⏰&nbsp; Daily reminder</span>');
+      expect(html).toContain('>AXLR8 has stopped working</h1>');
+    }
     expect(html).toContain('⚠️&nbsp; Action required');
     expect(html).toContain(
       'Without clicking the link below, actually taking the online interview and fully onboarding, we will be unable to offer you any more shifts going forwards.</div>',
@@ -631,9 +641,14 @@ describe('a value typed by a person can never change the layout', () => {
         .buttons ?? {},
     );
     const names = [...templateBody(code, variant).matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
-    return [...new Set(names)]
-      .filter((n) => !buttons.includes(n))
-      .map((n) => [label, n, code, variant] as const);
+    return (
+      [...new Set(names)]
+        .filter((n) => !buttons.includes(n))
+        // The AXLR8 countdown is worked out by messageFor, never typed, and a
+        // payload cannot set it (outbox.ts).
+        .filter((n) => !(n in axlr8Values(new Date())))
+        .map((n) => [label, n, code, variant] as const)
+    );
   });
 
   it('covers the free-text fields people type', () => {
