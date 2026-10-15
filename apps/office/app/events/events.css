@@ -831,6 +831,9 @@
   z-index: 51;
 }
 .record-confetti i {
+  /* Each piece's index and delay step, set inline by RecordFlash. */
+  --i: 0;
+  --d: 0;
   --x: calc(var(--i) * 2.77%);
   position: absolute;
   top: -16px;
