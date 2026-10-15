@@ -169,7 +169,7 @@ describe('linkRosterEntry (ADR-0123)', () => {
   });
 });
 
-describe('linkRosterEntries (ADR-0144)', () => {
+describe('linkRosterEntries (ADR-0145)', () => {
   const items = [
     { entryId: 'e1', staffId: 's1', confirmName: true },
     { entryId: 'e2', staffId: 's2', confirmName: false },
@@ -216,6 +216,31 @@ describe('linkRosterEntries (ADR-0144)', () => {
     const { linkRosterEntries } = await import('../actions');
     expect((await linkRosterEntries([])).ok).toBe(false);
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('loadEmailRecords (ADR-0144)', () => {
+  it('reads one page of the records behind a count through the office’s session', async () => {
+    rpc.mockResolvedValue({
+      data: { total: 2, offset: 0, rows: [{ email: 'a@x.co', name: 'Amara', at: null }] },
+      error: null,
+    });
+    const { loadEmailRecords } = await import('../actions');
+    const result = await loadEmailRecords('OC1:existing_repeat', 'failed', 100, 100);
+    expect(rpc).toHaveBeenCalledWith('staff_email_records', {
+      p_id: 'OC1:existing_repeat',
+      p_kind: 'failed',
+      p_limit: 100,
+      p_offset: 100,
+    });
+    expect(result.ok && result.page.rows[0]?.email).toBe('a@x.co');
+  });
+
+  it('turns a refusal into a sentence', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'not_authorised' } });
+    const { loadEmailRecords } = await import('../actions');
+    const result = await loadEmailRecords('IR1', 'sent', 0, 100);
+    expect(result).toEqual({ ok: false, message: 'Only the office can do this.' });
   });
 });
 

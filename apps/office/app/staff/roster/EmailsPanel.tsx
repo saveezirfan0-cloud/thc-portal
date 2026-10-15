@@ -16,13 +16,16 @@ import {
 import { ukStampFull } from '../../_lib/rtwCheck';
 import type { EmailPreview } from './email-previews';
 import { STAFF_EMAILS, countsFor } from './emails';
-import type { StaffEmail, StaffEmailReport } from './emails';
+import type { EmailRecordKind, StaffEmail, StaffEmailReport } from './emails';
+import { RecordsDialog } from './RecordsDialog';
 
 /**
  * "Emails staff receive" on /staff/roster (ADR-0141): every email THC's own
  * staff get while moving onto the new app, how many of each have gone, and
  * a View that shows the email itself — rendered on the server from the
- * register exactly as it is sent, with a sample first name.
+ * register exactly as it is sent, with a sample first name. Each number
+ * opens the records behind it (ADR-0144): who, when, and why for one not
+ * delivered.
  */
 export function EmailsPanel({
   report,
@@ -35,6 +38,22 @@ export function EmailsPanel({
 }) {
   const format = useTimeFormat();
   const [open, setOpen] = useState<string | null>(null);
+  const [records, setRecords] = useState<{ email: StaffEmail; kind: EmailRecordKind } | null>(null);
+  /** A count, as a link to its records when there are any to show. */
+  const count = (e: StaffEmail, kind: EmailRecordKind, n: number, label: string) =>
+    !report ? (
+      '—'
+    ) : n > 0 ? (
+      <Button
+        tone="link"
+        onClick={() => setRecords({ email: e, kind })}
+        aria-label={`${label}: ${n}. Show who, for ${e.name}`}
+      >
+        {n.toLocaleString('en-GB')}
+      </Button>
+    ) : (
+      0
+    );
   const byId = new Map(previews.map((p) => [p.id, p]));
   const email = STAFF_EMAILS.find((e) => e.id === open) ?? null;
   const preview = open ? (byId.get(open) ?? null) : null;
@@ -44,8 +63,8 @@ export function EmailsPanel({
     <Panel title="Emails staff receive">
       <p className="muted sm">
         What THC staff are sent while they move onto the new Staff App, and how many of each have
-        gone. View shows the email exactly as it is sent, with a sample name. Sent today counts from
-        midnight, UK time.
+        gone. Click a number to see who it went to. View shows the email exactly as it is sent, with
+        a sample name. Sent today counts from midnight, UK time.
       </p>
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
       {report ? (
@@ -113,16 +132,16 @@ export function EmailsPanel({
                   <td className="sm">
                     {e.to}.<div className="muted">{e.when}.</div>
                   </td>
-                  <td className="num">{report ? c.sentToday : '—'}</td>
+                  <td className="num">{count(e, 'sent_today', c.sentToday, 'Sent today')}</td>
                   <td className="num">
-                    {report ? c.sentTotal : '—'}
+                    {count(e, 'sent', c.sentTotal, 'Sent in all')}
                     {c.lastSentAt ? (
                       <div className="sm muted">last {ukStampFull(c.lastSentAt, format)}</div>
                     ) : null}
                   </td>
-                  <td className="num">{report ? c.people : '—'}</td>
-                  <td className="num">{report ? c.failedTotal : '—'}</td>
-                  <td className="num">{report ? c.queued : '—'}</td>
+                  <td className="num">{count(e, 'people', c.people, 'People')}</td>
+                  <td className="num">{count(e, 'failed', c.failedTotal, 'Not delivered')}</td>
+                  <td className="num">{count(e, 'queued', c.queued, 'Waiting')}</td>
                   <td className="cell-actions">
                     <Button
                       size="sm"
@@ -141,6 +160,14 @@ export function EmailsPanel({
         </table>
       </TableScroll>
       <PreviewDialog email={email} preview={preview} onClose={() => setOpen(null)} />
+      {records ? (
+        <RecordsDialog
+          key={`${records.email.id}:${records.kind}`}
+          email={records.email}
+          kind={records.kind}
+          onClose={() => setRecords(null)}
+        />
+      ) : null}
     </Panel>
   );
 }

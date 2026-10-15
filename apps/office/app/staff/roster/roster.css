@@ -133,7 +133,7 @@
 }
 
 /*
- * "Applied, no Payroll ID" (ADR-0144): the tick column, a row Link refused,
+ * "Applied, no Payroll ID" (ADR-0145): the tick column, a row Link refused,
  * and the pairs of names in the confirmation.
  */
 .roster-tick {
@@ -148,4 +148,15 @@
   overflow: auto;
   margin: 0;
   padding-left: var(--sp-16);
+}
+
+/*
+ * The records behind an email count (ADR-0144), in a dialog: scrolls
+ * sideways on its own, its header in the flow.
+ */
+.roster-records-wrap {
+  overflow-x: auto;
+}
+.roster-records-wrap .tbl {
+  min-width: 40rem;
 }

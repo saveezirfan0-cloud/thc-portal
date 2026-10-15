@@ -141,7 +141,7 @@ export function RosterScreen({
     });
   };
 
-  /** "Link ticked" (ADR-0144): resolves to the rows that could not be linked, which stay ticked. */
+  /** "Link ticked" (ADR-0145): resolves to the rows that could not be linked, which stay ticked. */
   const [linkFailures, setLinkFailures] = useState<ReadonlyMap<string, string>>(new Map());
   const linkMany = (items: LinkItem[]) =>
     new Promise<string[]>((resolve) => {

@@ -7,7 +7,7 @@ import { parseRosterReport } from '../report';
 import type { KeptReason, RosterKept } from '../report';
 
 /**
- * ADR-0144 · "Applied, no Payroll ID": tick many and Link them in one go.
+ * ADR-0145 · "Applied, no Payroll ID": tick many and Link them in one go.
  *
  *   · "safe" is exactly the rows Link settles with no question asked;
  *   · a name that differs is sent with the office's word, and only when ticked;

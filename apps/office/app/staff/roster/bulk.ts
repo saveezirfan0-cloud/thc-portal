@@ -1,5 +1,5 @@
 /**
- * Link many "Applied · no Payroll ID" rows at once (ADR-0144). Pure, so the
+ * Link many "Applied · no Payroll ID" rows at once (ADR-0145). Pure, so the
  * panel and the vitest suite read the one definition.
  *
  * A row is **safe** when Link needs nobody's word: the names agree, and the

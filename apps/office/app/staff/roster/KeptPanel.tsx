@@ -12,7 +12,7 @@ import type { RosterReportData } from './report';
 const GROUP_LABEL = { spudbros: 'SpudBros Express', thc: 'THC' } as const;
 
 /**
- * "Applied, no Payroll ID" (ADR-0144): everyone who applied with the listed
+ * "Applied, no Payroll ID" (ADR-0145): everyone who applied with the listed
  * email but was not given their Payroll ID, the sheet's name beside the
  * name they applied with, and why. Tick the right ones — "Tick all safe"
  * takes every row Link settles with no question — and Link them in one go.
