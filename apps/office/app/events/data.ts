@@ -574,3 +574,15 @@ export async function loadEventsInRange(from: string, to: string): Promise<Event
   }));
   return { events: listed, problem: null };
 }
+
+/**
+ * The busiest day and week ever booked (ADR-0142), for the Week and Day
+ * views' "record" flash-up. A failed read is quiet: it only means nothing
+ * is celebrated, and the shift totals themselves come from the period.
+ */
+export async function loadShiftRecords(): Promise<unknown> {
+  if (!supabaseConfigured()) return null;
+  const supabase = eventsDb(await cookies());
+  const { data, error } = await supabase.rpc('scheduling_shift_records');
+  return error ? null : data;
+}

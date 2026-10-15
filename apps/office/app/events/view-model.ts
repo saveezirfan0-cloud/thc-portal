@@ -25,6 +25,7 @@ import {
   needsDualZone,
   ukRoleWindow,
 } from '@thc/domain';
+import { formatDayShort } from './calendar';
 import type { ListedEvent } from './data';
 
 /**
@@ -176,6 +177,8 @@ export interface DayBucket {
   /** Events and open positions for the "N ev · M open" counter. */
   count: number;
   open: number;
+  /** The day's shifts (`rowShifts`), for the Week and Day totals (ADR-0142). */
+  shifts: number;
   /** A day whose only events are cancelled reads "1 ev · cancelled". */
   allCancelled: boolean;
 }
@@ -183,7 +186,10 @@ export interface DayBucket {
 /** Groups rows by their own date, for the month and week cells (§3.1). */
 export function bucketByDay(rows: EventRow[], days: string[]): Map<string, DayBucket> {
   const buckets = new Map<string, DayBucket>(
-    days.map((iso) => [iso, { iso, events: [], count: 0, open: 0, allCancelled: false }]),
+    days.map((iso) => [
+      iso,
+      { iso, events: [], count: 0, open: 0, shifts: 0, allCancelled: false },
+    ]),
   );
 
   for (const row of rows) {
@@ -194,6 +200,7 @@ export function bucketByDay(rows: EventRow[], days: string[]): Map<string, DayBu
     // A cancelled event is out of the staffing picture, so its unfilled
     // headcount is not something anyone still has to fill (§3.1).
     if (row.status !== 'cancelled') bucket.open += row.fill.open;
+    bucket.shifts += rowShifts(row);
   }
 
   for (const bucket of buckets.values()) {
@@ -201,6 +208,27 @@ export function bucketByDay(rows: EventRow[], days: string[]): Map<string, DayBu
       bucket.count > 0 && bucket.events.every((event) => event.status === 'cancelled');
   }
   return buckets;
+}
+
+/**
+ * An event's shifts (ADR-0142): one per position the client asked for —
+ * the headcount of its role sections. The buffer is not a shift of its own
+ * (it reads apart, "6 (+1)"), and a cancelled event has none. The same sum
+ * `scheduling_shift_records()` makes in the database, so the totals on
+ * screen and the records they are measured against agree.
+ */
+export function rowShifts(row: EventRow): number {
+  return row.status === 'cancelled' ? 0 : row.fill.headcount;
+}
+
+/** The shifts across a set of rows: a day's, or the week's grand total. */
+export function totalShifts(rows: EventRow[]): number {
+  return rows.reduce((sum, row) => sum + rowShifts(row), 0);
+}
+
+/** "1 shift", "312 shifts". */
+export function formatShifts(shifts: number): string {
+  return `${shifts.toLocaleString('en-GB')} shift${shifts === 1 ? '' : 's'}`;
 }
 
 /** The totals under the list: "13 events in September · 45 open positions". */
@@ -464,4 +492,123 @@ export function isShortStaffed(row: EventRow): boolean {
  */
 export function periodCrumb(date: string): string {
   return `${ukDayLabel(ukInstant(date, '12:00'))} ${date.slice(0, 4)}`;
+}
+
+// ---------------------------------------------------------------------
+// Records — the busiest day and week ever booked (ADR-0142)
+// ---------------------------------------------------------------------
+
+export interface ShiftRecordEntry {
+  /** The day, or the Monday of the week. */
+  date: string;
+  shifts: number;
+}
+
+/** `scheduling_shift_records()`: the top two of each, highest first. */
+export interface ShiftRecords {
+  days: ShiftRecordEntry[];
+  weeks: ShiftRecordEntry[];
+}
+
+function recordEntries(value: unknown): ShiftRecordEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const { date, shifts } = (entry ?? {}) as { date?: unknown; shifts?: unknown };
+    return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number(shifts) > 0
+      ? [{ date, shifts: Number(shifts) }]
+      : [];
+  });
+}
+
+/** The RPC's JSON, read defensively: anything unexpected is "no records". */
+export function parseShiftRecords(value: unknown): ShiftRecords {
+  const { days, weeks } = (value ?? {}) as { days?: unknown; weeks?: unknown };
+  return { days: recordEntries(days), weeks: recordEntries(weeks) };
+}
+
+export type RecordKind = 'day' | 'week';
+
+/** A record the period on screen holds, as the flash-up and the badge tell it. */
+export interface HeldRecord {
+  kind: RecordKind;
+  /** The day, or the week's Monday. */
+  date: string;
+  shifts: number;
+  /** The best of the rest, which this one beat (or equals, having got there first). */
+  previous: ShiftRecordEntry;
+  /** Remembers, per browser, that this record's flash-up has been seen. */
+  key: string;
+}
+
+/**
+ * Whether `date` (a day, or a week's Monday) holds the all-time record of
+ * its kind. The holder is the top of the table — the earlier date on a tie,
+ * so equalling a record is not a new one. With nothing else ever booked
+ * there is nothing to have beaten, and nothing to celebrate.
+ */
+export function heldRecord(
+  records: ShiftRecords,
+  kind: RecordKind,
+  date: string,
+): HeldRecord | null {
+  const [best, previous] = kind === 'day' ? records.days : records.weeks;
+  if (!best || !previous || best.date !== date) return null;
+  return { kind, date: best.date, shifts: best.shifts, previous, key: `${kind}:${best.date}` };
+}
+
+/**
+ * The records a Week or Day view holds: the week itself, and the busiest
+ * day if it falls inside the period. Week first — it is the bigger news.
+ */
+export function recordsInPeriod(
+  records: ShiftRecords,
+  view: 'week' | 'day',
+  days: string[],
+): HeldRecord[] {
+  const held: HeldRecord[] = [];
+  if (view === 'week' && days[0]) {
+    const week = heldRecord(records, 'week', days[0]);
+    if (week) held.push(week);
+  }
+  const busiestDay = records.days[0]?.date;
+  if (busiestDay && days.includes(busiestDay)) {
+    const day = heldRecord(records, 'day', busiestDay);
+    if (day) held.push(day);
+  }
+  return held;
+}
+
+/**
+ * A held record in words (ADR-0142), for the badge and the flash-up.
+ * Written here, on the server, from civil dates: "Sat 18 Oct" reads the same
+ * wherever the manager is.
+ */
+export interface RecordNews {
+  /** `day:2026-10-18` / `week:2026-10-12` — what "seen" is remembered by. */
+  key: string;
+  /** "Record week" / "Record day", on the badge. */
+  badge: string;
+  /** "412 shifts in the week of Mon 12 Oct — the most ever booked in one week." */
+  headline: string;
+  /** "Beating 380 in the week of Mon 5 Oct." */
+  detail: string;
+}
+
+export function recordNews(held: HeldRecord): RecordNews {
+  const when = (iso: string) =>
+    held.kind === 'week' ? `the week of ${formatDayShort(iso)}` : formatDayShort(iso);
+  const where = (iso: string) => (held.kind === 'week' ? `in ${when(iso)}` : `on ${when(iso)}`);
+  const most =
+    held.kind === 'week' ? 'the most ever booked in one week' : 'the busiest day ever booked';
+  // The holder of a tie got there first; the other only equalled it.
+  const detail =
+    held.previous.shifts === held.shifts
+      ? `Equalled by ${when(held.previous.date)} — but this one got there first.`
+      : `Beating the previous best of ${held.previous.shifts.toLocaleString('en-GB')} ${where(held.previous.date)}.`;
+  return {
+    key: held.key,
+    badge: held.kind === 'week' ? 'Record week' : 'Record day',
+    headline: `${formatShifts(held.shifts)} ${where(held.date)} — ${most}.`,
+    detail,
+  };
 }
