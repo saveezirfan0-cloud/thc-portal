@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { explainDbError } from '../../_lib/dbError';
 import { supabaseConfigured } from '../data';
+import type { BulkLinkOutcome, LinkItem } from './bulk';
 import { parseEmailRecords } from './emails';
 import type { EmailRecordKind, EmailRecordsPage } from './emails';
 import { parseRoster } from './parse';
@@ -145,6 +146,51 @@ export async function linkRosterEntry(
     payrollId: result.payrollId ?? null,
     spudbros: result.spudbros ?? 'unchanged',
   };
+}
+
+/** At most this many rows in one "Link ticked": the invite list's largest real batch is under 1,000. */
+const MAX_BULK_LINK = 1000;
+
+export type BulkLinkResult = ({ ok: true } & BulkLinkOutcome) | { ok: false; message: string };
+
+/**
+ * Link many applied rows in one go (ADR-0145): each through
+ * `link_invite_roster_entry()`, one at a time, so every row is refused or
+ * linked on its own and a refusal never undoes the others. The database
+ * checks each call exactly as a single Link (owner and manager only, names,
+ * a taken Payroll ID).
+ */
+export async function linkRosterEntries(items: LinkItem[]): Promise<BulkLinkResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  if (items.length === 0) return { ok: false, message: 'Tick at least one person to link.' };
+  if (items.length > MAX_BULK_LINK)
+    return { ok: false, message: `Up to ${MAX_BULK_LINK} at a time. Link them in parts.` };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const outcome: BulkLinkOutcome = { linked: 0, heldSpudbros: 0, failed: [] };
+  for (const item of items) {
+    const { data, error } = await supabase.rpc('link_invite_roster_entry', {
+      p_entry: item.entryId,
+      p_staff: item.staffId,
+      p_confirm_name: item.confirmName === true,
+    });
+    if (error) {
+      // Who may link is the same for every row: stop at the first refusal of the login itself.
+      if (['not_authorised', 'read_only', 'not_permitted'].includes(error.message))
+        return { ok: false, message: MESSAGES[error.message]! };
+      outcome.failed.push({
+        entryId: item.entryId,
+        message:
+          MESSAGES[error.message] ??
+          explainDbError(error, { codes: MESSAGES, log: '[invite roster]' }),
+      });
+      continue;
+    }
+    outcome.linked += 1;
+    if ((data as { spudbros?: string } | null)?.spudbros === 'held_upcoming_shifts')
+      outcome.heldSpudbros += 1;
+  }
+  if (outcome.linked > 0) revalidatePath('/staff/roster');
+  return { ok: true, ...outcome };
 }
 
 export type ToggleResult =
