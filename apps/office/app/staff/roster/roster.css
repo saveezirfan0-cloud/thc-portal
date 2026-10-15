@@ -131,3 +131,14 @@
   justify-items: start;
   max-width: 34rem;
 }
+
+/*
+ * The records behind an email count (ADR-0144), in a dialog: scrolls
+ * sideways on its own, its header in the flow.
+ */
+.roster-records-wrap {
+  overflow-x: auto;
+}
+.roster-records-wrap .tbl {
+  min-width: 40rem;
+}

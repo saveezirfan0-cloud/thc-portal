@@ -137,3 +137,80 @@ export function countsFor(report: StaffEmailReport | null, id: string): EmailCou
     }
   );
 }
+
+// ---------------------------------------------------------------------
+// staff_email_records() — the rows behind one count (ADR-0144)
+// ---------------------------------------------------------------------
+
+export type EmailRecordKind = 'sent_today' | 'sent' | 'people' | 'failed' | 'queued';
+
+/** What each count is called, for the dialog's title and its When column. */
+export const RECORD_KIND_LABEL: Readonly<Record<EmailRecordKind, { title: string; when: string }>> =
+  {
+    sent_today: { title: 'Sent today', when: 'Sent (UK)' },
+    sent: { title: 'Sent in all', when: 'Sent (UK)' },
+    people: { title: 'People reached', when: 'Last sent (UK)' },
+    failed: { title: 'Not delivered', when: 'Stopped (UK)' },
+    queued: { title: 'Waiting to send', when: 'Due (UK)' },
+  };
+
+/** A page of records at a time. */
+export const RECORDS_PAGE = 100;
+
+export interface EmailRecord {
+  email: string;
+  staffId: string | null;
+  name: string | null;
+  at: string | null;
+  /** `people`: how many of this email the address has had. */
+  times: number;
+  /** `failed`: why it was not delivered. */
+  error: string | null;
+}
+
+export interface EmailRecordsPage {
+  total: number;
+  offset: number;
+  rows: EmailRecord[];
+}
+
+/** Read the RPC's answer; anything missing reads as empty, never a crash. */
+export function parseEmailRecords(raw: unknown): EmailRecordsPage {
+  const r = obj(raw);
+  const rows = Array.isArray(r.rows) ? r.rows : [];
+  return {
+    total: num(r.total),
+    offset: num(r.offset),
+    rows: rows.flatMap((item) => {
+      const v = obj(item);
+      const email = str(v.email);
+      if (!email) return [];
+      return [
+        {
+          email,
+          staffId: str(v.staffId),
+          name: str(v.name),
+          at: str(v.at),
+          times: num(v.times) || 1,
+          error: str(v.error),
+        },
+      ];
+    }),
+  };
+}
+
+/**
+ * A plain-English reason for a failed send. The outbox keeps the provider's
+ * own words; the commonest ones get a sentence the office can act on, and
+ * the original follows in full.
+ */
+export function failureReason(error: string | null): string {
+  if (!error) return 'No reason recorded';
+  const e = error.toLowerCase();
+  if (e.includes('switched off')) return 'Cancelled: the email was switched off before it went';
+  if (e.includes('invalid') && e.includes('address')) return 'The email address is not valid';
+  if (e.includes('bounce')) return 'Bounced: the address does not accept mail';
+  if (e.includes('suppress'))
+    return 'The address had bounced or complained before, so it was not sent';
+  return error;
+}
