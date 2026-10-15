@@ -18,6 +18,7 @@ const auth = vi.hoisted(() => ({
   signOut: vi.fn(),
 }));
 const createClient = vi.hoisted(() => vi.fn());
+const clearSignInFailures = vi.hoisted(() => vi.fn());
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('next/navigation', () => ({
@@ -26,6 +27,7 @@ vi.mock('next/navigation', () => ({
   },
 }));
 vi.mock('@thc/db/server', () => ({ createClient }));
+vi.mock('@thc/db/auth-throttle', () => ({ clearSignInFailures }));
 // The middleware's own client: nobody is signed in when an invitee opens the link.
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
@@ -66,7 +68,13 @@ async function submit(fields: Parameters<typeof form>[0] = {}): Promise<string> 
 
 function signedInAs(role: string | undefined): void {
   auth.verifyOtp.mockResolvedValue({
-    data: { user: { id: 'u-new', app_metadata: role === undefined ? {} : { role } } },
+    data: {
+      user: {
+        id: 'u-new',
+        email: 'invitee@example.com',
+        app_metadata: role === undefined ? {} : { role },
+      },
+    },
     error: null,
   });
 }
@@ -155,6 +163,7 @@ describe('verifying the token', () => {
     });
     expect(await submit()).toBe(`RETURNED:${EXPIRED}`);
     expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 
   it('a verify that returns no user is treated the same', async () => {
@@ -172,6 +181,7 @@ describe('an invitation for another app', () => {
       expect(await submit()).toBe(`RETURNED:${WRONG_APP}`);
       expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
       expect(auth.updateUser).not.toHaveBeenCalled();
+      expect(clearSignInFailures).not.toHaveBeenCalled();
     },
   );
 });
@@ -183,6 +193,15 @@ describe('success', () => {
     expect(auth.signOut).not.toHaveBeenCalled();
     expect(auth.verifyOtp.mock.invocationCallOrder[0]!).toBeLessThan(
       auth.updateUser.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('clears the sign-in failures counted before the password existed, after it is set', async () => {
+    expect(await submit()).toBe(`REDIRECT:${HOME}`);
+    expect(clearSignInFailures).toHaveBeenCalledTimes(1);
+    expect(clearSignInFailures).toHaveBeenCalledWith('invitee@example.com');
+    expect(auth.updateUser.mock.invocationCallOrder[0]!).toBeLessThan(
+      clearSignInFailures.mock.invocationCallOrder[0]!,
     );
   });
 
@@ -200,6 +219,7 @@ describe('success', () => {
     expect(await submit()).toBe(
       'RETURNED:Your login is ready but the password could not be saved. Use “Forgot password” on the sign-in screen to set one.',
     );
+    expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 });
 

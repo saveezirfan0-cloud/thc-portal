@@ -8962,6 +8962,7 @@ export type Database = {
         }[];
       };
       clear_my_emergency_contact: { Args: never; Returns: Json };
+      clear_sign_in_failures: { Args: { p_key_hash: string }; Returns: undefined };
       client_portal_visible: { Args: { p_client_id: string }; Returns: boolean };
       close_filled_role_applications: {
         Args: { p_shift: string };

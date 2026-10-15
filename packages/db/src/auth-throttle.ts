@@ -44,7 +44,7 @@ function keyKind(kind: AuthAttemptKind, key: ThrottleKey): [AuthAttemptKind, str
   return typeof key === 'string' ? [kind, key] : [key.kind, key.key];
 }
 
-/** The two RPCs, untyped until the generated types include them. */
+/** The throttle's RPCs, typed here so this file does not depend on the generated types. */
 interface ThrottleRpc {
   rpc(
     fn: 'auth_attempt_allowed' | 'record_auth_attempt' | 'clear_sign_in_failures',
