@@ -212,23 +212,23 @@ select throws_ok(
   $$ select submit_application_as_caller('   ', '', 'd1@t681.test', '+447700968301', date '1995-01-01', true, null, 'K7M4Q2XP') $$,
   '22023', 'Enter your first name and surname.', 'D1: a blank name is still refused');
 select throws_ok(
-  $$ select submit_application_as_caller('A', 'B', 'not-an-email', '+447700968302', date '1995-01-01', true, null, 'K7M4Q2XP') $$,
+  $$ select submit_application_as_caller('Ann', 'Bell', 'not-an-email', '+447700968302', date '1995-01-01', true, null, 'K7M4Q2XP') $$,
   '22023', 'Enter a valid email address.', 'D1: a malformed email is still refused');
 select throws_ok(
-  $$ select submit_application_as_caller('A', 'B', 'd3@t681.test', '07700968303', date '1995-01-01', true, null, 'K7M4Q2XP') $$,
+  $$ select submit_application_as_caller('Ann', 'Bell', 'd3@t681.test', '07700968303', date '1995-01-01', true, null, 'K7M4Q2XP') $$,
   '22023', 'Enter a valid mobile number, including the country code.', 'D1: a mobile without its country code is still refused');
 select throws_ok(
-  $$ select submit_application_as_caller('A', 'B', 'd4@t681.test', '+447700968304', date '1995-01-01', false, null, 'K7M4Q2XP') $$,
+  $$ select submit_application_as_caller('Ann', 'Bell', 'd4@t681.test', '+447700968304', date '1995-01-01', false, null, 'K7M4Q2XP') $$,
   '22023', 'Tick the consent box to continue.', 'D1: no consent is still refused');
 select throws_ok(
-  $$ select submit_application_as_caller('A', 'B', 'd5@t681.test', '+447700968305', null::date, true, null, 'K7M4Q2XP') $$,
+  $$ select submit_application_as_caller('Ann', 'Bell', 'd5@t681.test', '+447700968305', null::date, true, null, 'K7M4Q2XP') $$,
   '22023', 'Enter your date of birth.', 'D1: a missing date of birth is still refused');
 select throws_ok(
-  $$ select submit_application_as_caller('A', 'B', 'd6@t681.test', '+447700968306',
+  $$ select submit_application_as_caller('Ann', 'Bell', 'd6@t681.test', '+447700968306',
        (current_date - interval '18 years' + interval '1 day')::date, true, null, 'K7M4Q2XP') $$,
   '22023', 'You must be 18 or over to apply.', 'D1: under 18 is still refused, code or no code');
 select throws_ok(
-  $$ select submit_application_as_caller('A', 'B', 'd7@t681.test', '+447700968307', date '1900-01-01', true, null, 'K7M4Q2XP') $$,
+  $$ select submit_application_as_caller('Ann', 'Bell', 'd7@t681.test', '+447700968307', date '1900-01-01', true, null, 'K7M4Q2XP') $$,
   '22023', 'Enter a real date of birth.', 'D1: over 100 is still refused');
 
 -- D2 · the caller hash: a digest or nothing

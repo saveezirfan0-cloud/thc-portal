@@ -329,6 +329,53 @@ export function toE164(dialCode: string, mobile: string): string {
   return `${dialCode}${national}`;
 }
 
+/** Trimmed, inner runs of spaces collapsed, lower case: how two names are compared. */
+function nameKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * True when a name is no name: nothing but spaces, punctuation, symbols and
+ * digits ("." or "-"), or a single Latin letter once those are gone ("K.").
+ * A single letter in another script is a whole name — 王 is a surname — so
+ * only a Latin one reads as an initial. The same test as the SQL.
+ */
+function isInitial(value: string): boolean {
+  const letters = Array.from(value.replace(/[\s\p{P}\p{S}\p{N}]/gu, ''));
+  return letters.length === 0 || (letters.length === 1 && /^[A-Za-zÀ-ÖØ-öø-ɏ]$/.test(letters[0]!));
+}
+
+/**
+ * The name rules (ADR-0146). Both boxes are required, and each must hold
+ * the name itself: applicants were getting through with only a first name
+ * — an initial or a dot in Surname, the first name typed twice, or the
+ * whole name in First name with the surname repeated. The database repeats
+ * these in `submit_application()`.
+ */
+export function nameProblems(
+  firstName: string,
+  lastName: string,
+): Partial<Record<'firstName' | 'lastName', string>> {
+  const errors: Partial<Record<'firstName' | 'lastName', string>> = {};
+  const first = nameKey(firstName);
+  const last = nameKey(lastName);
+
+  if (!first) errors.firstName = 'Enter your first name';
+  else if (isInitial(first)) errors.firstName = 'Enter your first name in full, not an initial';
+
+  if (!last) errors.lastName = 'Enter your surname';
+  else if (isInitial(last)) errors.lastName = 'Enter your surname in full, not an initial';
+
+  if (errors.firstName || errors.lastName) return errors;
+
+  if (first === last) {
+    errors.lastName = 'Enter your surname — it can’t be the same as your first name';
+  } else if (first.endsWith(` ${last}`)) {
+    errors.firstName = 'Enter only your first name here — your surname goes in Surname';
+  }
+  return errors;
+}
+
 /**
  * Everything the form and the server both check. Empty object = valid.
  * `today` is the UK civil date the age gate runs against — a parameter so a
@@ -337,8 +384,9 @@ export function toE164(dialCode: string, mobile: string): string {
 export function validate(values: ApplicationValues, today: Date = todayInUk()): FieldErrors {
   const errors: FieldErrors = {};
 
-  if (!values.firstName.trim()) errors.firstName = 'Enter your first name';
-  if (!values.lastName.trim()) errors.lastName = 'Enter your surname';
+  const nameErrors = nameProblems(values.firstName, values.lastName);
+  if (nameErrors.firstName) errors.firstName = nameErrors.firstName;
+  if (nameErrors.lastName) errors.lastName = nameErrors.lastName;
 
   const email = values.email.trim();
   if (!email) errors.email = 'Enter your email address';

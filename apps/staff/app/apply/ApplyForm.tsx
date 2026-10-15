@@ -112,6 +112,7 @@ export function ApplyForm({
           name="firstName"
           placeholder="e.g. Amara"
           autoComplete="given-name"
+          hint="As on your passport or ID"
           value={values.firstName}
           onChange={(e) => set('firstName', e.target.value)}
           error={errors.firstName}
@@ -121,6 +122,7 @@ export function ApplyForm({
           name="lastName"
           placeholder="e.g. Kalu"
           autoComplete="family-name"
+          hint="Your family name, in full"
           value={values.lastName}
           onChange={(e) => set('lastName', e.target.value)}
           error={errors.lastName}

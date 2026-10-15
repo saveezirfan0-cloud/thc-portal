@@ -290,6 +290,46 @@ describe('validate (§2.1, §1.7)', () => {
     expect(validate(values({ lastName: '' })).lastName).toBe('Enter your surname');
   });
 
+  describe('a first name alone does not pass for a full name (ADR-0146)', () => {
+    it('refuses an initial, a dot or a dash in either box', () => {
+      for (const lastName of ['I', 'I.', '.', '-', ' x ', '1', 'É.']) {
+        expect(validate(values({ firstName: 'Chukwuka', lastName })).lastName).toBe(
+          'Enter your surname in full, not an initial',
+        );
+      }
+      expect(validate(values({ firstName: 'C.', lastName: 'Igbokwe' })).firstName).toBe(
+        'Enter your first name in full, not an initial',
+      );
+    });
+
+    it('refuses the first name typed again as the surname, whatever its case or spacing', () => {
+      expect(validate(values({ firstName: 'Chukwuka', lastName: ' chukwuka ' })).lastName).toBe(
+        'Enter your surname — it can’t be the same as your first name',
+      );
+    });
+
+    it('refuses the whole name in First name with the surname repeated', () => {
+      expect(
+        validate(values({ firstName: 'Chukwuka  Igbokwe', lastName: 'igbokwe' })).firstName,
+      ).toBe('Enter only your first name here — your surname goes in Surname');
+    });
+
+    it('accepts short, hyphenated, apostrophised, accented and non-Latin names', () => {
+      for (const [firstName, lastName] of [
+        ['Jo', 'Ng'],
+        ['Amara', 'Kalu-Okafor'],
+        ['Siobhán', "O'Neill"],
+        ['Zoë', 'Ødegård'],
+        ['Mary Ann', 'Annan'],
+        ['Анна', 'Ли'],
+        ['美玲', '王'],
+      ]) {
+        const errors = validate(values({ firstName, lastName }));
+        expect([errors.firstName, errors.lastName]).toEqual([undefined, undefined]);
+      }
+    });
+  });
+
   it('distinguishes a missing email from a malformed one', () => {
     expect(validate(values({ email: '' })).email).toBe('Enter your email address');
     expect(validate(values({ email: 'not-an-email' })).email).toBe('Check your email address');

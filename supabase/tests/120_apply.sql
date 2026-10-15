@@ -85,10 +85,10 @@ select throws_ok(
   $$ select submit_application('   ','','x@rls.test','+447700900803', date '1995-05-05', true) $$,
   '22023', 'Enter your first name and surname.', 'a blank name is refused');
 select throws_ok(
-  $$ select submit_application('A','B','not-an-email','+447700900803', date '1995-05-05', true) $$,
+  $$ select submit_application('Ann','Bell','not-an-email','+447700900803', date '1995-05-05', true) $$,
   '22023', 'Enter a valid email address.', 'a malformed email is refused');
 select throws_ok(
-  $$ select submit_application('A','B','x@rls.test','07700900803', date '1995-05-05', true) $$,
+  $$ select submit_application('Ann','Bell','x@rls.test','07700900803', date '1995-05-05', true) $$,
   '22023', 'Enter a valid mobile number, including the country code.',
   'a mobile without its country code is refused — the column is E.164');
 reset role;
