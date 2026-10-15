@@ -57,7 +57,6 @@ export interface GovukPage {
    * Optional, like `screenshot`: used only to tidy the report (`fitReportToOnePage`),
    * so a scripted test page need not implement them.
    */
-  addStyleTag?(options: { content: string }): Promise<unknown>;
   emulateMedia?(options: { media: 'print' | 'screen' }): Promise<void>;
   setViewportSize?(size: { width: number; height: number }): Promise<void>;
   evaluate?(expression: string): Promise<unknown>;
@@ -461,9 +460,10 @@ const MARGIN = `${MARGIN_MM}mm`;
 /**
  * What is printed on the page but is not the result: the cookie banner (it
  * printed above the heading, ASSUMED class names — confirm on the live
- * service), the skip link, back link, beta/feedback banner and footer. The
- * GOV.UK header and everything in <main> stay. Kept in one place beside the
- * selectors, so a restyle is a one-line change.
+ * service; `TIDY_REPORT` also finds it by its words), the skip link, back
+ * link, beta/feedback banner and footer. The GOV.UK header and everything in
+ * <main> stay. Kept in one place beside the selectors, so a restyle is a
+ * one-line change.
  */
 const REPORT_HIDE = [
   '#global-cookie-message',
@@ -487,15 +487,72 @@ const REPORT_HIDE = [
  */
 const REPORT_WIDEN = '.govuk-width-container, .govuk-main-wrapper';
 
+/**
+ * Tidies the result page in the page itself, by setting each element's own
+ * style. Not a <style> tag: the service's Content-Security-Policy refuses
+ * inline styles, so an injected stylesheet never applied — the report printed
+ * with the cookie banner above it, the result in a two-thirds column and the
+ * rest running onto a second sheet. A script setting `element.style` is not
+ * subject to that policy.
+ *
+ * - hides the furniture (`REPORT_HIDE`), and the cookie banner by its words
+ *   ("Cookies on …" outside <main>) whatever its classes are;
+ * - releases the width container (`REPORT_WIDEN`);
+ * - drops empty grid columns, and gives a column left alone in its row the
+ *   whole row (the result sits in a two-thirds column beside an empty third);
+ * - prints on white rather than GOV.UK's grey page ground.
+ *
+ * A string, not a function, so no bundler or test transform can rewrite it
+ * before it reaches the browser. Exported for the DOM test.
+ */
+export const TIDY_REPORT = `(() => {
+  const set = (el, prop, value) => el.style.setProperty(prop, value, 'important');
+  const hide = (el) => set(el, 'display', 'none');
+  const shown = (el) => getComputedStyle(el).display !== 'none';
+  const main = document.querySelector('main') || document.querySelector('#main-content');
+  const isHeader = (el) => el.matches('header, .govuk-header, [role="banner"]');
+  document.querySelectorAll(${JSON.stringify(REPORT_HIDE)}).forEach(hide);
+  document.querySelectorAll('h1, h2, h3, h4, p').forEach((heading) => {
+    if (main && main.contains(heading)) return;
+    if (!/^\\s*cookies on\\b/i.test(heading.textContent || '')) return;
+    let banner = heading;
+    for (;;) {
+      const up = banner.parentElement;
+      if (!up || up === document.body || isHeader(up)) break;
+      if ((main && up.contains(main)) || up.querySelector('header, .govuk-header, [role="banner"]')) break;
+      banner = up;
+    }
+    hide(banner);
+  });
+  document.querySelectorAll(${JSON.stringify(REPORT_WIDEN)}).forEach((el) => set(el, 'max-width', 'none'));
+  const isColumn = (el) => /(^|\\s)govuk-grid-column-/.test(el.getAttribute('class') || '');
+  const scope = main || document.body;
+  const columns = [...scope.querySelectorAll('[class*="govuk-grid-column-"]')].filter(isColumn);
+  for (const column of columns) {
+    if (!(column.textContent || '').trim() && !column.querySelector('img, svg, canvas, picture')) hide(column);
+  }
+  for (const column of columns) {
+    if (!shown(column) || !column.parentElement) continue;
+    const alone = [...column.parentElement.children].filter((c) => isColumn(c) && shown(c)).length === 1;
+    if (alone) {
+      set(column, 'width', '100%');
+      set(column, 'float', 'none');
+    }
+  }
+  set(document.documentElement, 'background', '#fff');
+  set(document.body, 'background', '#fff');
+  return true;
+})()`;
+
 /** CSS px the viewport is measured at: low, so the page's own height is what is read, not the window's. */
 const MEASURE_HEIGHT = 100;
 
 class Unmeasurable extends Error {}
 
 /**
- * Tidy the result page for printing and return the PDF options that put all
- * of it on one A4 sheet: the page furniture is hidden and the rest is scaled
- * down only as far as it needs to be (never up).
+ * Tidy the result page for printing (`TIDY_REPORT`) and return the PDF
+ * options that put all of it on one A4 sheet: the page furniture is hidden
+ * and the rest is scaled down only as far as it needs to be (never up).
  *
  * Chrome prints a page scaled by `s` by laying it out `printable width / s`
  * px wide — wider than the sheet, so the text wraps less and the page is
@@ -504,27 +561,30 @@ class Unmeasurable extends Error {}
  * once at the sheet's width over-shrank the report: tiny text in a strip at
  * the top-left of the sheet, the rest of it empty.)
  *
- * Best effort: a page that cannot be tidied or measured prints as it was —
- * an untidy report beats none, and the checks never depend on it.
+ * Best effort, step by step: a page that cannot be tidied is still fitted to
+ * the sheet, and one that cannot be measured prints at full size — an untidy
+ * report beats none, and the checks never depend on it.
  */
 export async function fitReportToOnePage(page: GovukPage): Promise<{
   scale?: number;
   margin: { top: string; right: string; bottom: string; left: string };
 }> {
   const margin = { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN };
+  const { setViewportSize, evaluate } = page;
   try {
     await page.emulateMedia?.({ media: 'print' });
-    await page.addStyleTag?.({
-      content:
-        `${REPORT_HIDE} { display: none !important; } ` +
-        `${REPORT_WIDEN} { max-width: none !important; } ` +
-        // GOV.UK's grey page ground otherwise frames the result and fills
-        // whatever of the sheet it does not cover.
-        'html, body { background: #fff !important; }',
-    });
-    const { setViewportSize, evaluate } = page;
-    if (!setViewportSize || !evaluate) return { margin };
-    const printable = A4_PX.width - 2 * MARGIN_PX;
+  } catch {
+    // screen styles print too
+  }
+  if (!evaluate) return { margin };
+  try {
+    await evaluate.call(page, TIDY_REPORT);
+  } catch {
+    // printed as gov.uk drew it, still fitted to the sheet below
+  }
+  if (!setViewportSize) return { margin };
+  const printable = A4_PX.width - 2 * MARGIN_PX;
+  try {
     // 3 % spare for rounding between the layout we measured and the one Chrome prints.
     const room = (A4_PX.height - 2 * MARGIN_PX) * 0.97;
     const fits = async (percent: number): Promise<boolean> => {
@@ -551,11 +611,14 @@ export async function fitReportToOnePage(page: GovukPage): Promise<{
       if (await fits(mid)) low = mid;
       else high = mid;
     }
-    // Chrome prints at the paper size whatever the window is; put it back anyway.
-    await setViewportSize.call(page, { width: printable, height: A4_PX.height });
     return { scale: low / 100, margin };
   } catch {
     return { margin };
+  } finally {
+    // Chrome prints at the paper size whatever the window is; put it back anyway.
+    await setViewportSize
+      .call(page, { width: printable, height: A4_PX.height })
+      .catch(() => undefined);
   }
 }
 

@@ -7,6 +7,7 @@ import {
   driveGovuk,
   fitReportToOnePage,
   govukConfig,
+  TIDY_REPORT,
   govukPhoto,
   pageHint,
   recordNameFromPage,
@@ -668,33 +669,42 @@ describe('fitReportToOnePage', () => {
   const widths: number[] = [];
   /** A4 less two 10 mm margins, in CSS px. */
   const PRINTABLE = { width: 794 - 2 * 38, height: 1123 - 2 * 38 };
-  /** `height` is the page's height, or a function of the width it is laid out at. */
-  const reportPage = (height: unknown, fail = false): GovukPage => {
+  /**
+   * `height` is the page's height, or a function of the width it is laid out
+   * at. `failTidy` throws on the tidy script only, as a page that refuses it would.
+   */
+  const reportPage = (height: unknown, fail = false, failTidy = false): GovukPage => {
     let width = 0;
     return {
       emulateMedia: async () => void calls.push('media'),
-      addStyleTag: async ({ content }: { content: string }) => void calls.push(content),
       setViewportSize: async (size: { width: number }) => {
         width = size.width;
         widths.push(width);
       },
-      evaluate: async () => {
+      evaluate: async (expression: string) => {
+        calls.push(expression);
+        if (expression === TIDY_REPORT) {
+          if (failTidy) throw new Error('refused');
+          return true;
+        }
         if (fail) throw new Error('page closed');
         return typeof height === 'function' ? height(width) : height;
       },
     } as unknown as GovukPage;
   };
 
-  it('hides the cookie banner and page furniture, and lets the result use the whole sheet', async () => {
+  it("tidies the page with a script, not a <style> tag the page's CSP refuses, before it measures", async () => {
     calls.length = 0;
     await fitReportToOnePage(reportPage(500));
-    const css = calls.find((c) => c.includes('display: none'));
-    const hidden = css!.split('{ display: none')[0]!;
-    expect(hidden).toMatch(/cookie-banner/);
-    expect(hidden).toMatch(/footer/);
-    expect(hidden).not.toMatch(/\bmain\b(?!-)/);
-    expect(css).toMatch(/\.govuk-width-container[^{]*\{ max-width: none/);
-    expect(css).toMatch(/html, body \{ background: #fff/);
+    expect(calls[0]).toBe('media');
+    expect(calls[1]).toBe(TIDY_REPORT);
+    expect(calls.slice(2).every((c) => c !== TIDY_REPORT && /scrollHeight/.test(c))).toBe(true);
+  });
+
+  it('still fits the report to one sheet when the page will not be tidied', async () => {
+    const out = await fitReportToOnePage(reportPage(2000, false, true));
+    expect(out.scale).toBeGreaterThan(0.1);
+    expect(out.scale! * 2000).toBeLessThanOrEqual(PRINTABLE.height);
   });
 
   it('leaves a page that already fits at full size, measured at the sheet width', async () => {
@@ -702,7 +712,8 @@ describe('fitReportToOnePage', () => {
     const out = await fitReportToOnePage(reportPage(600));
     expect(out.scale).toBeUndefined();
     expect(out.margin.top).toBe('10mm');
-    expect(widths).toEqual([PRINTABLE.width]);
+    // Measured at the sheet width, then the window put back.
+    expect(widths).toEqual([PRINTABLE.width, PRINTABLE.width]);
   });
 
   it('scales a taller page down so it fits one A4 sheet, never below 0.1', async () => {
