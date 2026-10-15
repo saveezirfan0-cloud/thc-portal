@@ -95,6 +95,10 @@
 .roster-email-meta dd {
   margin: 0;
 }
+/* The As sent / Plain text toggle keeps its own width, not the dialog's. */
+.roster-email-view {
+  display: flex;
+}
 .roster-email-frame {
   display: block;
   width: 100%;

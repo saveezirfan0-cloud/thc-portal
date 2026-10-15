@@ -180,16 +180,18 @@ function PreviewDialog({
             <dt>When</dt>
             <dd>{email.when}</dd>
           </dl>
-          <SegToggle
-            small
-            aria-label="Show the email as"
-            value={view}
-            onChange={setView}
-            options={[
-              { value: 'html', label: 'As sent' },
-              { value: 'text', label: 'Plain text' },
-            ]}
-          />
+          <div className="roster-email-view">
+            <SegToggle
+              small
+              aria-label="Show the email as"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: 'html', label: 'As sent' },
+                { value: 'text', label: 'Plain text' },
+              ]}
+            />
+          </div>
           {view === 'html' ? (
             // No scripts, no same-origin: the email can do nothing to the page.
             // Its links may open in a new tab.
