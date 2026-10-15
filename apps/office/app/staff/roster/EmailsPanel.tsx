@@ -44,14 +44,13 @@ export function EmailsPanel({
     !report ? (
       '—'
     ) : n > 0 ? (
-      <button
-        type="button"
-        className="linkish"
+      <Button
+        tone="link"
         onClick={() => setRecords({ email: e, kind })}
         aria-label={`${label}: ${n}. Show who, for ${e.name}`}
       >
         {n.toLocaleString('en-GB')}
-      </button>
+      </Button>
     ) : (
       0
     );

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
-import { Alert, Button, EmptyState, Modal, TableScroll, useTimeFormat } from '@thc/ui';
+import { Alert, Button, EmptyState, Modal, useTimeFormat } from '@thc/ui';
 import { Pager } from '../../_components/Pager';
 import { ukStampFull } from '../../_lib/rtwCheck';
 import { loadEmailRecords } from './actions';
@@ -65,7 +65,14 @@ export function RecordsDialog({
         </EmptyState>
       ) : (
         <>
-          <TableScroll label={`${email.name}: ${label.title}`} minWidth="40rem">
+          {/* A plain sideways scroller: the page's TableScroll pins its header
+              to the window, which inside a dialog lands over the first row. */}
+          <div
+            className="roster-records-wrap"
+            role="region"
+            aria-label={`${email.name}: ${label.title}`}
+            tabIndex={0}
+          >
             <table className="tbl roster-records" aria-busy={pending}>
               <thead>
                 <tr>
@@ -101,7 +108,7 @@ export function RecordsDialog({
                 ))}
               </tbody>
             </table>
-          </TableScroll>
+          </div>
           {data.total > RECORDS_PAGE ? (
             <Pager total={data.total} page={page} pageSize={RECORDS_PAGE} onPage={setPage} />
           ) : null}
