@@ -24,7 +24,7 @@ import {
   ratingTone,
 } from '../../staff/staff';
 import { qualifyStaff, revokeQualification, setDoNotReturn } from './actions';
-import { grantedHow, groupByRole } from './card';
+import { BARRED_GROUP, grantedHow, groupByRole } from './card';
 import { useConfirm } from '../../_components/useConfirm';
 import type { QualifiedStaffRow, RateCardRow, StaffOption } from './types';
 
@@ -214,8 +214,12 @@ export function QualifiedStaff({
               >
                 <span className="muted">{collapsed[group.role] ? '▸' : '▾'}</span>
                 <h4>{group.role}</h4>
-                <span className="cnt">{group.count} qualified</span>
-                {group.workers.length !== group.count ? (
+                {group.role === BARRED_GROUP ? (
+                  <span className="muted xs">— barred, never in the pool</span>
+                ) : (
+                  <span className="cnt">{group.count} qualified</span>
+                )}
+                {group.role !== BARRED_GROUP && group.workers.length !== group.count ? (
                   <span className="muted xs">
                     — {group.workers.length - group.count} barred, not counted in the pool
                   </span>
@@ -243,7 +247,8 @@ export function QualifiedStaff({
                         // entry behind this group's row is the one at the
                         // role's index — never the first, which would remove
                         // a different role's clearance.
-                        const index = row.role_names.indexOf(group.role);
+                        // A bar-only worker has one entry, under no role.
+                        const index = row.bar_only ? 0 : row.role_names.indexOf(group.role);
                         const qualificationId = row.qualification_ids[index] ?? '';
                         return (
                           <tr
@@ -272,16 +277,20 @@ export function QualifiedStaff({
                                 four lines of chips on every group they
                                 appear in. The list opens in a pop-up.
                               */}
-                              <button
-                                type="button"
-                                className="chip roles-btn"
-                                aria-haspopup="dialog"
-                                title={row.role_names.join(', ')}
-                                onClick={() => setViewingRoles({ row, group: group.role })}
-                              >
-                                {row.role_names.length}{' '}
-                                {row.role_names.length === 1 ? 'role' : 'roles'}
-                              </button>
+                              {row.bar_only ? (
+                                <Chip>All roles</Chip>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="chip roles-btn"
+                                  aria-haspopup="dialog"
+                                  title={row.role_names.join(', ')}
+                                  onClick={() => setViewingRoles({ row, group: group.role })}
+                                >
+                                  {row.role_names.length}{' '}
+                                  {row.role_names.length === 1 ? 'role' : 'roles'}
+                                </button>
+                              )}
                             </td>
                             <td data-label="Rating">
                               {/*
@@ -297,7 +306,7 @@ export function QualifiedStaff({
                               {formatShowRate(row.reliability)}
                             </td>
                             <td data-label="How granted" className="sm">
-                              {grantedHow(row)}
+                              {row.bar_only ? 'barred — not cleared here' : grantedHow(row)}
                               {row.notes ? <span className="sub">{row.notes}</span> : null}
                             </td>
                             <td data-label="Date" className="mono sm">
