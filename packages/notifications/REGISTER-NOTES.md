@@ -256,6 +256,27 @@ OC chasers.
   onboarding, we will be unable to offer you any more shifts going forwards."
   (`INVITE_REMINDER_COPY.warning`, in the text and the HTML).
 
+## The AXLR8 countdown (owner, 15.10.2026)
+
+AXLR8 stops working on **Sunday 25 October 2026** (`AXLR8_SWITCH_OFF`,
+`invite-reminder-copy.ts`). IR1 and OC1's existing-staff wordings count down
+to it, in UK days, worked out by `messageFor` as each email goes (so a row
+queued one day and sent the next counts the day it goes; a payload cannot
+set it):
+
+- **IR1** (the owner's design of 14.10, restored): a tile with the number and
+  "Days left" ("Day left" on the 24th, "Today / Last day" on the 25th), the
+  heading "AXLR8 stops working in N days", "Please complete your registration
+  on the new Staff App before then", and the bold sentence "The AXLR8 Staff
+  App will stop working in N days, on Sunday 25 October." (`{axlr8Stops}` in
+  the text).
+- **OC1 existing_first / second / repeat / notice:** the line "AXLR8 stops
+  working in N days, on Sunday 25 October. Please do this before then."
+  (`{axlr8Line}`), after the no-more-shifts warning. New applicants' wording
+  never mentions AXLR8.
+- After the date: no tile; "AXLR8 has stopped working" and "AXLR8 stopped
+  working on Sunday 25 October, …".
+
 ## Where the office reads these emails (ADR-0141)
 
 `/staff/roster` → **Emails staff receive** lists IR1 and OC1's `existing_*`
