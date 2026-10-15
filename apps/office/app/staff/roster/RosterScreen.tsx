@@ -6,7 +6,16 @@ import { Alert, Button, EmptyState, Panel, Pill, SearchInput, Select, TableScrol
 import { OfficeShell } from '../../_components/OfficeShell';
 import { Pager } from '../../_components/Pager';
 import { pageIndex, pageParam, sizeOf, useListQuery } from '../../_lib/listQuery';
-import { linkRosterEntry, loadRoster, removeRosterEntries, setRemindersEnabled } from './actions';
+import {
+  linkRosterEntries,
+  linkRosterEntry,
+  loadRoster,
+  removeRosterEntries,
+  setRemindersEnabled,
+} from './actions';
+import { bulkSummary } from './bulk';
+import type { LinkItem } from './bulk';
+import { KeptPanel } from './KeptPanel';
 import { EmailsPanel } from './EmailsPanel';
 import type { EmailPreview } from './email-previews';
 import type { StaffEmailReport } from './emails';
@@ -132,6 +141,25 @@ export function RosterScreen({
     });
   };
 
+  /** "Link ticked" (ADR-0144): resolves to the rows that could not be linked, which stay ticked. */
+  const [linkFailures, setLinkFailures] = useState<ReadonlyMap<string, string>>(new Map());
+  const linkMany = (items: LinkItem[]) =>
+    new Promise<string[]>((resolve) => {
+      setFailure(null);
+      setLinked(null);
+      start(async () => {
+        const result = await linkRosterEntries(items);
+        if (!result.ok) {
+          setFailure(result.message);
+          resolve(items.map((item) => item.entryId));
+          return;
+        }
+        setLinkFailures(new Map(result.failed.map((f) => [f.entryId, f.message])));
+        setLinked(bulkSummary(result));
+        resolve(result.failed.map((f) => f.entryId));
+      });
+    });
+
   const toggle = (enabled: boolean) => {
     if (
       !enabled &&
@@ -222,6 +250,14 @@ export function RosterScreen({
             canEdit={canEdit}
             pending={pending}
             onLink={link}
+          />
+          <KeptPanel
+            report={reminders}
+            waiting={waiting}
+            canEdit={canEdit}
+            pending={pending}
+            failures={linkFailures}
+            onLinkMany={linkMany}
           />
         </>
       ) : null}

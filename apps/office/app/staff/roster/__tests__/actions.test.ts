@@ -169,6 +169,56 @@ describe('linkRosterEntry (ADR-0123)', () => {
   });
 });
 
+describe('linkRosterEntries (ADR-0144)', () => {
+  const items = [
+    { entryId: 'e1', staffId: 's1', confirmName: true },
+    { entryId: 'e2', staffId: 's2', confirmName: false },
+    { entryId: 'e3', staffId: 's3', confirmName: false },
+  ];
+
+  it('links each row through the same RPC, one at a time, and a refusal never stops the others', async () => {
+    rpc
+      .mockResolvedValueOnce({ data: { spudbros: 'unchanged' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'payroll_id_taken' } })
+      .mockResolvedValueOnce({ data: { spudbros: 'held_upcoming_shifts' }, error: null });
+    const { linkRosterEntries } = await import('../actions');
+    const result = await linkRosterEntries(items);
+    expect(rpc.mock.calls).toEqual([
+      ['link_invite_roster_entry', { p_entry: 'e1', p_staff: 's1', p_confirm_name: true }],
+      ['link_invite_roster_entry', { p_entry: 'e2', p_staff: 's2', p_confirm_name: false }],
+      ['link_invite_roster_entry', { p_entry: 'e3', p_staff: 's3', p_confirm_name: false }],
+    ]);
+    expect(result).toEqual({
+      ok: true,
+      linked: 2,
+      heldSpudbros: 1,
+      failed: [
+        {
+          entryId: 'e2',
+          message: 'Somebody else already has this Payroll ID. Check who on the Staff page.',
+        },
+      ],
+    });
+  });
+
+  it('stops at once when the login itself may not link', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'not_permitted' } });
+    const { linkRosterEntries } = await import('../actions');
+    const result = await linkRosterEntries(items);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      ok: false,
+      message: 'Only an owner or manager can change Payroll IDs.',
+    });
+  });
+
+  it('sends nothing when nothing is ticked', async () => {
+    const { linkRosterEntries } = await import('../actions');
+    expect((await linkRosterEntries([])).ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
 describe('setRemindersEnabled (ADR-0123)', () => {
   it('turns the daily reminder off, and says how many queued ones it stopped', async () => {
     rpc.mockResolvedValue({ data: { enabled: false, cancelled: 412 }, error: null });

@@ -55,7 +55,7 @@ export function RosterKpis({ report }: { report: RosterReportData }) {
         label="Applied, no Payroll ID"
         value={k.appliedKept}
         tone={k.appliedKept > 0 ? 'warn' : 'default'}
-        description={k.appliedKept > 0 ? 'Why, and Link, in the list below' : 'None'}
+        description={k.appliedKept > 0 ? 'Tick and Link them below' : 'None'}
       />
     </TileGrid>
   );
