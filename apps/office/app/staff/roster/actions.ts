@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { explainDbError } from '../../_lib/dbError';
 import { supabaseConfigured } from '../data';
+import { parseEmailRecords } from './emails';
+import type { EmailRecordKind, EmailRecordsPage } from './emails';
 import { parseRoster } from './parse';
 
 /**
@@ -46,6 +48,9 @@ const MESSAGES: Readonly<Record<string, string>> = {
   name_mismatch: 'The names do not agree, so they were not linked.',
   payroll_id_taken: 'Somebody else already has this Payroll ID. Check who on the Staff page.',
   has_other_payroll_id: 'This person already has a different Payroll ID.',
+  // staff_email_records (ADR-0144)
+  unknown_email: 'That email is not one this page lists. Reload the page.',
+  unknown_kind: 'That count is not one this page shows. Reload the page.',
 };
 
 interface RpcClient {
@@ -165,4 +170,36 @@ export async function setRemindersEnabled(enabled: boolean): Promise<ToggleResul
   revalidatePath('/staff/roster');
   const result = (data ?? {}) as { enabled?: boolean; cancelled?: number };
   return { ok: true, enabled: result.enabled ?? enabled, cancelled: Number(result.cancelled ?? 0) };
+}
+
+export type EmailRecordsResult =
+  { ok: true; page: EmailRecordsPage } | { ok: false; message: string };
+
+/**
+ * The records behind one count on "Emails staff receive" (ADR-0144): who,
+ * when, and why for one not delivered. A page at a time, read with the
+ * office's own session, so `staff_email_records()` decides who may see them.
+ */
+export async function loadEmailRecords(
+  id: string,
+  kind: EmailRecordKind,
+  offset: number,
+  limit: number,
+): Promise<EmailRecordsResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { data, error } = await supabase.rpc('staff_email_records', {
+    p_id: id,
+    p_kind: kind,
+    p_limit: limit,
+    p_offset: Math.max(0, Math.floor(offset)),
+  });
+  if (error)
+    return {
+      ok: false,
+      message:
+        MESSAGES[error.message] ??
+        explainDbError(error, { codes: MESSAGES, log: '[staff emails]' }),
+    };
+  return { ok: true, page: parseEmailRecords(data) };
 }

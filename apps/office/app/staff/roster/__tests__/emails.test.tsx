@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { TEMPLATES } from '@thc/notifications';
 import { EmailsPanel } from '../EmailsPanel';
 import { LOGO_DATA_URL, SAMPLE_NAME, emailPreviews } from '../email-previews';
-import { STAFF_EMAILS, countsFor, parseStaffEmailReport } from '../emails';
+import {
+  STAFF_EMAILS,
+  countsFor,
+  failureReason,
+  parseEmailRecords,
+  parseStaffEmailReport,
+} from '../emails';
 
 /**
  * ADR-0141 · /staff/roster "Emails staff receive": each email rendered from
@@ -116,7 +122,7 @@ describe('EmailsPanel', () => {
     );
     for (const e of STAFF_EMAILS) expect(html).toContain(`<b>${e.name}</b>`);
     expect(html).toContain('Important: complete your Willo interview to keep getting shifts');
-    expect(html).toContain('>2741<');
+    expect(html).toContain('>2,741<');
     expect(html).toContain('>41<');
     expect(html).toContain('aria-label="View the email: One-off interview notice"');
     // The dialog is shut until View.
@@ -138,5 +144,64 @@ describe('EmailsPanel', () => {
     );
     expect(html).toContain('The email numbers could not be read');
     expect(html).toContain('<td class="num">—</td>');
+  });
+});
+
+describe('the records behind each count (ADR-0144)', () => {
+  it('makes each count above zero a button that opens its records', () => {
+    const report = parseStaffEmailReport({
+      switches: { IR1: true, OC1: true },
+      emails: [
+        { id: 'OC1:existing_repeat', sentTotal: 59, people: 55, failedTotal: 49, queued: 0 },
+      ],
+    });
+    const html = renderToStaticMarkup(
+      <EmailsPanel
+        report={report}
+        previews={emailPreviews('https://x.example/apply')}
+        problem={null}
+      />,
+    );
+    expect(html).toContain(
+      'aria-label="Not delivered: 49. Show who, for Interview reminder · every day after"',
+    );
+    expect(html).toContain(
+      'aria-label="People: 55. Show who, for Interview reminder · every day after"',
+    );
+    // Nothing to show behind a zero.
+    expect(html).not.toContain('Waiting: 0.');
+  });
+
+  it('reads a page of records, and nothing as empty', () => {
+    const page = parseEmailRecords({
+      total: 49,
+      offset: 0,
+      rows: [
+        {
+          email: 'a@x.co',
+          staffId: 's1',
+          name: 'Amara K',
+          at: '2026-10-14T15:08:00Z',
+          times: 1,
+          error: 'Resend answered 422: invalid address',
+        },
+        { name: 'no address' },
+      ],
+    });
+    expect(page.total).toBe(49);
+    expect(page.rows).toHaveLength(1);
+    expect(page.rows[0]).toMatchObject({ email: 'a@x.co', staffId: 's1', times: 1 });
+    expect(parseEmailRecords(null)).toEqual({ total: 0, offset: 0, rows: [] });
+  });
+
+  it('puts the commonest failures in plain words, and keeps any other as it came', () => {
+    expect(failureReason('Resend answered 422: invalid address')).toBe(
+      'The email address is not valid',
+    );
+    expect(
+      failureReason('not sent: the daily reminder was switched off on /staff/roster'),
+    ).toContain('switched off');
+    expect(failureReason('Something new')).toBe('Something new');
+    expect(failureReason(null)).toBe('No reason recorded');
   });
 });

@@ -11321,6 +11321,10 @@ export type Database = {
           venue_name: string;
         }[];
       };
+      staff_email_records: {
+        Args: { p_id: string; p_kind: string; p_limit?: number; p_now?: string; p_offset?: number };
+        Returns: Json;
+      };
       staff_email_report: { Args: { p_now?: string }; Returns: Json };
       staff_me: { Args: never; Returns: Json };
       staff_onboarding_only: {
