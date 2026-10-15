@@ -76,6 +76,15 @@
   flex-wrap: wrap;
   gap: var(--sp-4);
 }
+.tbl .chips .chip.more {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: pointer;
+}
+.tbl .chips .chip.more:hover {
+  color: var(--text);
+}
 .tbl td.status .sub {
   display: block;
   color: var(--muted);

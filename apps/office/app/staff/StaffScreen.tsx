@@ -426,6 +426,7 @@ export function StaffScreen({
                           row={row}
                           picker={pickerFor(row)}
                           columns={inactiveColumns}
+                          lead={role}
                         />
                       ))}
                     </tbody>
@@ -452,6 +453,7 @@ export function StaffScreen({
                           row={row}
                           picker={pickerFor(row)}
                           columns={directoryColumns}
+                          lead={role}
                         />
                       ))}
                     </tbody>
@@ -532,14 +534,51 @@ function PickBox({ picker, name }: { picker: RowPicker | undefined; name: string
   );
 }
 
+/** How many role chips a directory row shows before folding the rest. */
+export const ROLES_SHOWN = 3;
+
+/**
+ * A worker can hold twenty roles; every one as a chip made each row a block
+ * of a dozen lines. The row shows the first few and a "+N more" toggle that
+ * opens the rest in place — the full list is also on the profile.
+ */
+export function RoleChips({ names, lead }: { names: readonly string[]; lead?: string }) {
+  const [open, setOpen] = useState(false);
+  const ordered = lead && names.includes(lead) ? [lead, ...names.filter((n) => n !== lead)] : names;
+  const folds = ordered.length > ROLES_SHOWN + 1;
+  const shown = folds && !open ? ordered.slice(0, ROLES_SHOWN) : ordered;
+  const hidden = ordered.length - ROLES_SHOWN;
+  return (
+    <div className="chips">
+      {shown.map((name) => (
+        <Chip key={name}>{name}</Chip>
+      ))}
+      {folds ? (
+        <button
+          type="button"
+          className="chip more"
+          aria-expanded={open}
+          title={open ? undefined : ordered.slice(ROLES_SHOWN).join(', ')}
+          onClick={() => setOpen((was) => !was)}
+        >
+          {open ? 'Show less' : `+${hidden} more`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function StaffTableRow({
   row,
   picker,
   columns,
+  lead,
 }: {
   row: StaffRow;
   picker?: RowPicker;
   columns: Columns<DirectoryColumn>;
+  /** The role the list is filtered by, shown first so the match is visible. */
+  lead?: string;
 }) {
   const tone = ratingTone(row.rating);
   const atLimit = limitReached(row);
@@ -585,11 +624,7 @@ function StaffTableRow({
     ),
     roles: (
       <td data-label="Role(s)">
-        <div className="chips">
-          {row.role_names.map((name) => (
-            <Chip key={name}>{name}</Chip>
-          ))}
-        </div>
+        <RoleChips names={row.role_names} lead={lead} />
       </td>
     ),
     rating: (
@@ -661,10 +696,13 @@ function InactiveTableRow({
   row,
   picker,
   columns,
+  lead,
 }: {
   row: StaffRow;
   picker?: RowPicker;
   columns: Columns<InactiveColumn>;
+  /** The role the list is filtered by, shown first so the match is visible. */
+  lead?: string;
 }) {
   const format = useTimeFormat();
   const cells: Record<InactiveColumn, ReactNode> = {
@@ -696,11 +734,7 @@ function InactiveTableRow({
     ),
     roles: (
       <td data-label="Role(s)">
-        <div className="chips">
-          {row.role_names.map((name) => (
-            <Chip key={name}>{name}</Chip>
-          ))}
-        </div>
+        <RoleChips names={row.role_names} lead={lead} />
       </td>
     ),
     'last-shift': (

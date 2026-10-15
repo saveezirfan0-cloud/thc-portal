@@ -173,3 +173,44 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     expect(html).toContain('The pending count could not be read');
   });
 });
+
+describe('a worker with many roles keeps a one-line row', () => {
+  const MANY = [
+    'Bar Staff',
+    'Barista',
+    'Cloakroom Staff',
+    'Runner',
+    'Team Leader',
+    'Waiting Staff',
+  ];
+
+  it('shows three chips and folds the rest into "+N more"', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[{ ...WORKER, role_names: MANY }]} students={[]} problem={null} />,
+    );
+    expect(html).toContain('Cloakroom Staff');
+    expect(html).not.toContain('<span class="chip">Runner</span>');
+    expect(html).toContain('+3 more');
+    expect(html).toContain('title="Runner, Team Leader, Waiting Staff"');
+  });
+
+  it('never folds a single chip — four roles all show', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen
+        staff={[{ ...WORKER, role_names: MANY.slice(0, 4) }]}
+        students={[]}
+        problem={null}
+      />,
+    );
+    expect(html).toContain('<span class="chip">Runner</span>');
+    expect(html).not.toContain('more</button>');
+  });
+
+  it('leads with the role the list is filtered by', () => {
+    nav.search = 'role=Waiting+Staff';
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[{ ...WORKER, role_names: MANY }]} students={[]} problem={null} />,
+    );
+    expect(html).toMatch(/<div class="chips"><span class="chip">Waiting Staff<\/span>/);
+  });
+});
