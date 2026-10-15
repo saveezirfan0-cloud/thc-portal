@@ -43,6 +43,78 @@ export interface RosterMatch {
   appliedAt: string;
 }
 
+/**
+ * Why somebody who applied with the listed email has no Payroll ID yet
+ * (ADR-0142, `invite_roster_kept()`), first that fits.
+ */
+export type KeptReason =
+  | 'payroll_id_taken'
+  | 'other_payroll_id'
+  | 'name_differs'
+  | 'already_has'
+  | 'no_payroll_id'
+  | 'not_applied';
+
+export const KEPT_REASONS: readonly KeptReason[] = [
+  'name_differs',
+  'payroll_id_taken',
+  'other_payroll_id',
+  'already_has',
+  'no_payroll_id',
+  'not_applied',
+];
+
+/** The Reason filter's words. */
+export const KEPT_REASON_LABEL: Readonly<Record<KeptReason, string>> = {
+  name_differs: 'Name differs from the sheet',
+  payroll_id_taken: 'Payroll ID held by someone else',
+  other_payroll_id: 'Has a different Payroll ID',
+  already_has: 'Already has this Payroll ID',
+  no_payroll_id: 'No Payroll ID on the sheet',
+  not_applied: 'Payroll ID not given yet',
+};
+
+/** One applied row the Payroll ID was held back from, and who applied. */
+export interface RosterKept {
+  entryId: string;
+  staffId: string;
+  staffName: string;
+  staffEmail: string;
+  status: string;
+  staffPayrollId: string | null;
+  reason: KeptReason;
+  /** For `payroll_id_taken`: who holds the sheet's Payroll ID. */
+  holderId: string | null;
+  holderName: string | null;
+}
+
+/**
+ * Whether Link can settle it. A Payroll ID somebody else holds, or another
+ * one the applicant already carries, means one of two records is wrong: the
+ * office decides which on the profile, so there is no Link.
+ */
+export function keptLinkable(k: RosterKept): boolean {
+  return k.reason !== 'payroll_id_taken' && k.reason !== 'other_payroll_id';
+}
+
+/** The sentence under the row's status: why, in the office's words. */
+export function keptExplanation(k: RosterKept, sheetPayrollId: string | null): string {
+  switch (k.reason) {
+    case 'name_differs':
+      return `Applied as ${k.staffName || 'someone without a name'}, a different name from the sheet. Link if they are the same person.`;
+    case 'payroll_id_taken':
+      return `Payroll ID ${sheetPayrollId ?? ''} is already ${k.holderName || 'someone else'}’s. Check which of the two is right on the payroll sheet.`;
+    case 'other_payroll_id':
+      return `Already has Payroll ID ${k.staffPayrollId ?? ''}, not ${sheetPayrollId ?? ''}. Check which is right on the payroll sheet.`;
+    case 'already_has':
+      return 'Already has this Payroll ID. Link to take them off the list.';
+    case 'no_payroll_id':
+      return 'The sheet gives no Payroll ID for them. Link gives them their group and takes them off the list.';
+    case 'not_applied':
+      return 'Their Payroll ID was never given to them. Link gives it now.';
+  }
+}
+
 export interface RosterReportData {
   today: string;
   /** `enabled`: the page's On/Off; `switchOn`: the IR1 switch on /settings → Notifications. */
@@ -52,6 +124,8 @@ export interface RosterReportData {
   reminders: Record<string, RosterReminder>;
   /** Ids of list rows whose person has applied with the listed email (kept for their Payroll ID). */
   applied: string[];
+  /** Why each of `applied` has no Payroll ID, and who applied (ADR-0142). */
+  kept: RosterKept[];
   matches: RosterMatch[];
 }
 
@@ -104,6 +178,25 @@ export function parseRosterReport(raw: unknown): RosterReportData {
     }),
     reminders,
     applied: arr(r.applied).filter((id): id is string => typeof id === 'string'),
+    kept: arr(r.kept).flatMap((k) => {
+      const v = obj(k);
+      const reason = str(v.reason);
+      const entryId = str(v.entryId);
+      if (!entryId || !reason || !(KEPT_REASONS as readonly string[]).includes(reason)) return [];
+      return [
+        {
+          entryId,
+          staffId: str(v.staffId) ?? '',
+          staffName: str(v.staffName) ?? '',
+          staffEmail: str(v.staffEmail) ?? '',
+          status: str(v.status) ?? '',
+          staffPayrollId: str(v.staffPayrollId),
+          reason: reason as KeptReason,
+          holderId: str(v.holderId),
+          holderName: str(v.holderName),
+        },
+      ];
+    }),
     matches: arr(r.matches).map((m) => {
       const v = obj(m);
       return {

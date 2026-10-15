@@ -7,10 +7,12 @@ import {
   rosterCsv,
   rosterExportHref,
   rosterFileName,
+  isFiltered,
+  reasonCounts,
   rosterIndex,
   standingCounts,
 } from '../list';
-import { parseRosterReport } from '../report';
+import { keptExplanation, keptLinkable, parseRosterReport } from '../report';
 
 /**
  * ADR-0138 · the invite list's filter and export: the screen and the CSV
@@ -48,6 +50,23 @@ const rows: RosterEntry[] = [
 const report = parseRosterReport({
   reminders: { 'thc@x.co': { sent: 3, lastSentAt: '2026-10-14T09:10:00Z', lastError: null } },
   applied: ['a1'],
+  kept: [
+    {
+      entryId: 'a1',
+      staffId: 's9',
+      staffName: 'Kept Hereford',
+      staffEmail: 'kept@x.co',
+      status: 'interview_requested',
+      staffPayrollId: null,
+      reason: 'name_differs',
+      holderId: null,
+      holderName: null,
+    },
+    // A reason for a row the report does not call applied is never shown.
+    { entryId: 'w1', staffId: 's8', reason: 'not_applied' },
+    // Nor one the page does not know.
+    { entryId: 'a1', staffId: 's7', reason: 'gremlins' },
+  ],
   matches: [
     {
       entryId: 'm1',
@@ -92,6 +111,8 @@ describe('the invite list filter', () => {
     expect(parseRosterFilter({ grp: 'other', status: '?' })).toEqual({
       grp: 'all',
       status: 'all',
+      payroll: 'all',
+      reason: 'all',
       q: '',
     });
   });
@@ -113,6 +134,73 @@ describe('the invite list filter', () => {
   });
 });
 
+describe('the Payroll ID and Reason filters (ADR-0142)', () => {
+  it('reads unknown values as "all", and counts as narrowing only what narrows', () => {
+    const f = parseRosterFilter({ payroll: 'sideways', reason: 'gremlins' });
+    expect([f.payroll, f.reason]).toEqual(['all', 'all']);
+    expect(isFiltered(f)).toBe(false);
+    expect(isFiltered(parseRosterFilter({ payroll: 'without' }))).toBe(true);
+  });
+
+  it('keeps the rows with, or without, a Payroll ID on the sheet', () => {
+    const ids = (payroll: string) =>
+      filterRoster(rows, parseRosterFilter({ payroll }), index).map((r) => r.id);
+    expect(ids('with')).toEqual(['w1', 'w2']);
+    expect(ids('without')).toEqual(['a1', 'm1', 't1']);
+  });
+
+  it('keeps the applied rows with that reason, and only those', () => {
+    const ids = (reason: string) =>
+      filterRoster(rows, parseRosterFilter({ reason }), index).map((r) => r.id);
+    expect(ids('name_differs')).toEqual(['a1']);
+    expect(ids('not_applied')).toEqual([]);
+    expect(index.kept(rows[0]!)).toBeUndefined();
+  });
+
+  it('counts each within the chosen group and status', () => {
+    const cuts = reasonCounts(rows, parseRosterFilter({ grp: 'spudbros' }), index);
+    expect(cuts.payroll).toEqual({ all: 4, with: 2, without: 2 });
+    expect(cuts.reason.all).toBe(1);
+    expect(cuts.reason.name_differs).toBe(1);
+    expect(reasonCounts(rows, parseRosterFilter({ status: 'waiting' }), index).reason.all).toBe(0);
+  });
+
+  it('carries both into the export link and the file name', () => {
+    const f = parseRosterFilter({ payroll: 'without', reason: 'name_differs' });
+    expect(rosterExportHref(f)).toBe('/staff/roster/export?payroll=without&reason=name_differs');
+    expect(rosterFileName(f, new Date('2026-10-15T10:00:00Z'))).toBe(
+      'invite-list-without-payroll-id-name-differs-2026-10-15.csv',
+    );
+  });
+});
+
+describe('why an applied row has no Payroll ID (ADR-0142)', () => {
+  const kept = (reason: string, extra: Record<string, unknown> = {}) =>
+    parseRosterReport({
+      applied: ['x'],
+      kept: [{ entryId: 'x', staffId: 's', staffName: 'Andreu Gaviria', reason, ...extra }],
+    }).kept[0]!;
+
+  it('offers Link only where Link can settle it', () => {
+    expect(keptLinkable(kept('name_differs'))).toBe(true);
+    expect(keptLinkable(kept('not_applied'))).toBe(true);
+    expect(keptLinkable(kept('already_has'))).toBe(true);
+    expect(keptLinkable(kept('no_payroll_id'))).toBe(true);
+    expect(keptLinkable(kept('payroll_id_taken'))).toBe(false);
+    expect(keptLinkable(kept('other_payroll_id'))).toBe(false);
+  });
+
+  it('says why in the office’s words, naming the people', () => {
+    expect(keptExplanation(kept('name_differs'), '7053')).toContain('Applied as Andreu Gaviria');
+    expect(
+      keptExplanation(kept('payroll_id_taken', { holderName: 'Holly Holder' }), '7053'),
+    ).toContain('Payroll ID 7053 is already Holly Holder’s');
+    expect(keptExplanation(kept('other_payroll_id', { staffPayrollId: 'Z9' }), '7053')).toContain(
+      'Already has Payroll ID Z9, not 7053',
+    );
+  });
+});
+
 describe('the invite list CSV', () => {
   it('has a BOM, a header, one CRLF line per person, sorted by surname', () => {
     const shown = filterRoster(
@@ -125,7 +213,7 @@ describe('the invite list CSV', () => {
     const lines = csv.slice(1).split('\r\n');
     expect(lines).toHaveLength(4);
     expect(lines[1]).toBe(
-      'Joshua,Allen,josh@x.co,5171,SpudBros Express,Not applied,,,0,,,2026-10-08',
+      'Joshua,Allen,josh@x.co,5171,SpudBros Express,Not applied,,,,0,,,2026-10-08',
     );
     expect(lines[2]?.startsWith('Daisy,Marsden,')).toBe(true);
     expect(lines[3]).toBe('');
@@ -134,8 +222,15 @@ describe('the invite list CSV', () => {
   it('names who applied under the other email, and the reminders sent', () => {
     const csv = rosterCsv([rows[3]!, rows[4]!], index, report);
     const [, match, thc] = csv.slice(1).split('\r\n');
-    expect(match).toContain('Possible match,Sam Spud,new@x.co,0,');
-    expect(thc).toContain('THC,Not applied,,,3,2026-10-14,,');
+    expect(match).toContain('Possible match,,Sam Spud,new@x.co,0,');
+    expect(thc).toContain('THC,Not applied,,,,3,2026-10-14,,');
+  });
+
+  it('says why an applied row has no Payroll ID, and who applied (ADR-0142)', () => {
+    const csv = rosterCsv([rows[2]!], index, report);
+    expect(csv.slice(1).split('\r\n')[1]).toContain(
+      'Applied · no Payroll ID,Name differs from the sheet,Kept Hereford,kept@x.co,',
+    );
   });
 
   it('defuses a cell that would run as a formula in Excel', () => {

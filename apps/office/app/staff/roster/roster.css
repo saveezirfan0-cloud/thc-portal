@@ -121,3 +121,13 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/*
+ * An applied row with no Payroll ID (ADR-0142): the pill, then why, under it.
+ */
+.roster-kept {
+  display: grid;
+  gap: var(--sp-4);
+  justify-items: start;
+  max-width: 34rem;
+}
