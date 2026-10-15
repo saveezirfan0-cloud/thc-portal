@@ -25,6 +25,7 @@ export const INVITE_REMINDER_COPY = {
     "This is your daily reminder – we haven't yet received your completed registration on our new Staff App.",
   stopping: {
     lead: 'The',
+    /** The countdown's own words take its place (`axlr8Countdown().stops`); this is the fallback. */
     strong: 'AXLR8 Staff App will stop working very soon.',
     rest: 'After that, every shift is offered, confirmed and checked in through the new THC Staff App only.',
   },
@@ -82,10 +83,99 @@ export const INVITE_REMINDER_COPY = {
 
 const C = INVITE_REMINDER_COPY;
 
-/** The plain-text body after the greeting, `{applyLink}` in place. */
+// ---------------------------------------------------------------------
+// The countdown to AXLR8 being switched off (owner, 15.10.2026)
+// ---------------------------------------------------------------------
+
+/**
+ * The day AXLR8 stops working: the owner's date, Sunday 25 October 2026.
+ * Every daily email to staff moving onto the new app counts down to it, in
+ * UK days, from the moment it is sent.
+ */
+export const AXLR8_SWITCH_OFF = { date: '2026-10-25', label: 'Sunday 25 October' } as const;
+
+/** Whole UK calendar days from `now` to the switch-off; 0 on the day, negative after. */
+export function axlr8DaysLeft(now: Date): number {
+  const uk = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  const [y, m, d] = uk.split('-').map(Number) as [number, number, number];
+  const [Y, M, D] = AXLR8_SWITCH_OFF.date.split('-').map(Number) as [number, number, number];
+  return Math.round((Date.UTC(Y, M - 1, D) - Date.UTC(y, m - 1, d)) / 86_400_000);
+}
+
+export interface Axlr8Countdown {
+  /** Days left; 0 on the day; negative once it has gone. */
+  days: number;
+  /** The big number in the tile, or null once it has gone ("Today" on the day). */
+  tileNumber: string | null;
+  /** Under the number: "Days left", "Day left", "Last day". */
+  tileLabel: string | null;
+  heading: string;
+  subheading: string;
+  /** IR1's bold sentence, in place of `stopping.strong`. */
+  stops: string;
+  preheader: string;
+  /** The line the interview reminders (OC1, existing staff) carry. */
+  line: string;
+}
+
+/** Every countdown wording for `days` left. */
+export function axlr8Countdown(days: number): Axlr8Countdown {
+  const date = AXLR8_SWITCH_OFF.label;
+  if (days < 0) {
+    return {
+      days,
+      tileNumber: null,
+      tileLabel: null,
+      heading: 'AXLR8 has stopped working',
+      subheading: 'Please complete your registration on the new Staff App today',
+      stops: `AXLR8 Staff App stopped working on ${date}.`,
+      preheader:
+        'AXLR8 has stopped working. Please complete your registration on the new THC Staff App today.',
+      line: `AXLR8 stopped working on ${date}, so the new Staff App is now the only way to be offered shifts.`,
+    };
+  }
+  const when =
+    days === 0
+      ? `today, ${date}`
+      : days === 1
+        ? `tomorrow, ${date}`
+        : `in ${days} days, on ${date}`;
+  const short = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+  return {
+    days,
+    tileNumber: days === 0 ? 'Today' : String(days),
+    tileLabel: days === 0 ? 'Last day' : days === 1 ? 'Day left' : 'Days left',
+    heading: `AXLR8 stops working ${short}`,
+    subheading:
+      days === 0
+        ? 'Please complete your registration on the new Staff App today'
+        : 'Please complete your registration on the new Staff App before then',
+    stops: `AXLR8 Staff App will stop working ${when}.`,
+    preheader: `AXLR8 stops working ${short}. Please complete your registration on the new THC Staff App today.`,
+    line: `AXLR8 stops working ${when}. Please do this before then.`,
+  };
+}
+
+/**
+ * The countdown as register placeholders, worked out when the email is
+ * rendered (so a row queued yesterday and sent today counts today):
+ * `{axlr8Stops}` for IR1, `{axlr8Line}` for OC1's existing-staff wordings,
+ * and `{axlr8Days}` for the HTML's tile.
+ */
+export function axlr8Values(now: Date): Record<string, string> {
+  const c = axlr8Countdown(axlr8DaysLeft(now));
+  return { axlr8Stops: c.stops, axlr8Line: c.line, axlr8Days: String(c.days) };
+}
+
+/** The plain-text body after the greeting, `{applyLink}` and `{axlr8Stops}` in place. */
 export const INVITE_REMINDER_TEXT = [
   C.intro,
-  `${C.stopping.lead} ${C.stopping.strong} ${C.stopping.rest}`,
+  `${C.stopping.lead} {axlr8Stops} ${C.stopping.rest}`,
   C.everyDay,
   `${C.action.label}\n${C.action.lead} ${C.action.accent} ${C.action.rest}\n\n${C.warning}`,
   `${C.stepsTitle}:`,

@@ -102,6 +102,8 @@ export function templateEmailHtml(
       name: values.variant === 'named' ? values.name : undefined,
       applyLink: values.applyLink ?? '',
       senderAddress,
+      // The countdown the text was rendered with, so the two agree.
+      ...(values.axlr8Days !== undefined ? { daysLeft: Number(values.axlr8Days) } : {}),
     });
   }
   const presentation = presentationFor(code);

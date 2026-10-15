@@ -1359,7 +1359,8 @@ describe('IR1 — invited, not applied yet (ADR-0122)', () => {
     expect(rest('named')).toBe(rest('unnamed'));
     expect(rest('named')).toContain('Register now: {applyLink}');
     for (const words of [
-      'AXLR8 Staff App will stop working very soon',
+      // The countdown sentence, filled as the email goes (invite-reminder-copy.ts).
+      'The {axlr8Stops} After that, every shift',
       'using this email address, so we can match you to your existing record',
       'Willo will email you the link',
       'WhatsApp shift messages are stopping',
