@@ -42,12 +42,18 @@ export const PAYROLL_LABEL: Readonly<Record<Exclude<RosterPayrollFilter, 'all'>,
 };
 
 /** The filter's keys in the address bar, so a filtered list can be shared and exported. */
+/** Rows per page on the screen (ADR-0143); the export takes every row the filter keeps. */
+export const ROSTER_PAGE_SIZES = [25, 50, 100, 250] as const;
+export const DEFAULT_ROSTER_PAGE_SIZE = 50;
+
 export const ROSTER_QUERY = {
   grp: 'all',
   status: 'all',
   payroll: 'all',
   reason: 'all',
   q: '',
+  page: '1',
+  size: String(DEFAULT_ROSTER_PAGE_SIZE),
 } as const satisfies Record<string, string>;
 
 /** Every filter back to "all", for Clear filters. */

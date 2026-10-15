@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Alert, Button, EmptyState, Panel, Pill, SearchInput, Select, TableScroll } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
-import { useListQuery } from '../../_lib/listQuery';
+import { Pager } from '../../_components/Pager';
+import { pageIndex, pageParam, sizeOf, useListQuery } from '../../_lib/listQuery';
 import { linkRosterEntry, loadRoster, removeRosterEntries, setRemindersEnabled } from './actions';
 import { EmailsPanel } from './EmailsPanel';
 import type { EmailPreview } from './email-previews';
@@ -23,8 +24,10 @@ import { REASON_TEXT } from './reasons';
 import type { RosterReport } from './actions';
 import type { RosterEntry } from './data';
 import {
+  DEFAULT_ROSTER_PAGE_SIZE,
   GROUP_LABEL,
   PAYROLL_LABEL,
+  ROSTER_PAGE_SIZES,
   ROSTER_CLEARED,
   ROSTER_QUERY,
   STANDING_LABEL,
@@ -159,6 +162,12 @@ export function RosterScreen({
   const parsed = parseRosterFilter(url);
   const filter = reminders ? parsed : { ...parsed, status: 'all' as const, reason: 'all' as const };
   const shown = filterRoster(waiting, filter, index);
+  // A page of what the filter keeps (ADR-0143): 888 rows at once was a very
+  // long page. Export CSV still takes everything the filter keeps.
+  const pageSize = sizeOf(url.size, ROSTER_PAGE_SIZES, DEFAULT_ROSTER_PAGE_SIZE);
+  const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(pageIndex(url.page), pages - 1);
+  const pageRows = shown.slice(current * pageSize, current * pageSize + pageSize);
   const counts = standingCounts(waiting, filter.grp, index);
   const cuts = reasonCounts(waiting, filter, index);
   const filtered = isFiltered(filter);
@@ -264,7 +273,7 @@ export function RosterScreen({
               <Select
                 aria-label="Group"
                 value={filter.grp}
-                onChange={(event) => setUrl({ grp: event.target.value })}
+                onChange={(event) => setUrl({ grp: event.target.value, page: '1' })}
                 style={{ width: 190 }}
               >
                 <option value="all">All groups</option>
@@ -275,7 +284,7 @@ export function RosterScreen({
                 <Select
                   aria-label="Status"
                   value={filter.status}
-                  onChange={(event) => setUrl({ status: event.target.value })}
+                  onChange={(event) => setUrl({ status: event.target.value, page: '1' })}
                   style={{ width: 230 }}
                 >
                   <option value="all">Any status ({counts.all})</option>
@@ -293,7 +302,7 @@ export function RosterScreen({
               <Select
                 aria-label="Payroll ID"
                 value={filter.payroll}
-                onChange={(event) => setUrl({ payroll: event.target.value })}
+                onChange={(event) => setUrl({ payroll: event.target.value, page: '1' })}
                 style={{ width: 230 }}
               >
                 <option value="all">Any Payroll ID ({cuts.payroll.all})</option>
@@ -308,7 +317,7 @@ export function RosterScreen({
                 <Select
                   aria-label="Why no Payroll ID"
                   value={filter.reason}
-                  onChange={(event) => setUrl({ reason: event.target.value })}
+                  onChange={(event) => setUrl({ reason: event.target.value, page: '1' })}
                   style={{ width: 260 }}
                 >
                   <option value="all">Any reason ({cuts.reason.all} applied)</option>
@@ -323,7 +332,7 @@ export function RosterScreen({
                 aria-label="Search the invite list"
                 placeholder="Search name, email, Payroll ID"
                 value={url.q}
-                onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
+                onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
               />
               <div className="right">
                 {shown.length > 0 && reminders ? (
@@ -371,7 +380,7 @@ export function RosterScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {shown.map((row) => (
+                    {pageRows.map((row) => (
                       <tr key={row.id}>
                         <td>{row.email}</td>
                         <td>{[row.first_name, row.last_name].filter(Boolean).join(' ') || '—'}</td>
@@ -409,6 +418,16 @@ export function RosterScreen({
                 </table>
               </TableScroll>
             )}
+            {shown.length > 0 ? (
+              <Pager
+                total={shown.length}
+                page={current}
+                pageSize={pageSize}
+                sizes={ROSTER_PAGE_SIZES}
+                onPage={(next) => setUrl({ page: pageParam(next) })}
+                onPageSize={(size) => setUrl({ size: String(size), page: '1' })}
+              />
+            ) : null}
           </>
         )}
       </Panel>
