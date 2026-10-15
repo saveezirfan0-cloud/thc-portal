@@ -43,7 +43,9 @@ beforeEach(() => {
       entry('4', 'Tia', 'Cole', 'thc'),
     ],
     report: parseRosterReport({ applied: ['3'] }),
+    emails: null,
     problem: null,
+    emailsProblem: null,
   };
 });
 
@@ -70,7 +72,10 @@ describe('GET /staff/roster/export', () => {
     expect(res.headers.get('content-disposition')).toMatch(
       /^attachment; filename="invite-list-spudbros-not-applied-\d{4}-\d{2}-\d{2}\.csv"$/,
     );
-    const lines = (await res.text()).replace(/^\uFEFF/, '').trimEnd().split('\r\n');
+    const lines = (await res.text())
+      .replace(/^\uFEFF/, '')
+      .trimEnd()
+      .split('\r\n');
     expect(lines.slice(1).map((l) => l.split(',').slice(0, 2).join(' '))).toEqual([
       'Joshua Allen',
       'Daisy Marsden',

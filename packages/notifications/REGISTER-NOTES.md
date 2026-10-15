@@ -255,6 +255,13 @@ OC chasers.
   clicking the link below, actually taking the online interview and fully
   onboarding, we will be unable to offer you any more shifts going forwards."
   (`INVITE_REMINDER_COPY.warning`, in the text and the HTML).
+
+## Where the office reads these emails (ADR-0141)
+
+`/staff/roster` → **Emails staff receive** lists IR1 and OC1's `existing_*`
+wordings with their numbers (`staff_email_report()`), and View shows each one
+rendered by `messageFor` from this register, as sent. A new email for THC's
+own staff goes in `STAFF_EMAILS` there too.
 - **The owner's own dark design**, the one exception to THC Light
   (`email-invite-reminder.ts`). Its words are in `invite-reminder-copy.ts`,
   which builds the plain text as well.
