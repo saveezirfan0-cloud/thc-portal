@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Alert, ColumnChooserFor, Panel } from '@thc/ui';
 import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
-import { loadClientNames, loadEventsInRange } from './data';
+import { loadClientNames, loadEventsInRange, loadShiftRecords } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
@@ -17,7 +17,16 @@ import {
 import { parseEventQuery } from './_lib/filters';
 import { SavedViewsBar } from './_lib/SavedViewsBar';
 import { listMySavedViews } from './_lib/saved-views-actions';
-import { bucketByDay, filterEventRows, periodCrumb, periodTotals, toEventRows } from './view-model';
+import {
+  bucketByDay,
+  filterEventRows,
+  parseShiftRecords,
+  periodCrumb,
+  periodTotals,
+  recordNews,
+  recordsInPeriod,
+  toEventRows,
+} from './view-model';
 import './shift-builder.css';
 import './events.css';
 
@@ -46,12 +55,15 @@ export default async function Page({
   const { view, date } = query;
 
   const { from, to } = periodRange(view, date);
-  const [reference, { events, problem }, savedViews, format] = await Promise.all([
+  const calendarDays = view === 'week' ? weekDays(date) : view === 'day' ? [date] : null;
+  const [reference, { events, problem }, savedViews, format, recordData] = await Promise.all([
     loadClientNames(),
     loadEventsInRange(from, to),
     // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),
     currentTimeFormat(),
+    // ADR-0142: the busiest day and week ever, for the Week and Day views.
+    calendarDays ? loadShiftRecords() : null,
   ]);
 
   const filters = { clientId: query.clientId, status: query.status, q: query.q };
@@ -59,6 +71,16 @@ export default async function Page({
   const rows = filterEventRows(toEventRows(events, new Date(), format), filters);
 
   const totals = periodTotals(rows);
+
+  // The records are all-time and unfiltered: a client filter narrows the
+  // rows, not what the business booked that week.
+  const records = parseShiftRecords(recordData);
+  const held =
+    calendarDays && (view === 'week' || view === 'day')
+      ? recordsInPeriod(records, view, calendarDays)
+      : [];
+  const news = held.map(recordNews);
+  const recordDay = held.find((record) => record.kind === 'day')?.date ?? null;
 
   return (
     <OfficeShell
@@ -130,10 +152,12 @@ export default async function Page({
             days={weekDays(date)}
             buckets={bucketByDay(rows, weekDays(date))}
             today={today}
+            records={news}
+            recordDay={recordDay}
           />
         ) : null}
 
-        {!problem && view === 'day' ? <DayView rows={rows} /> : null}
+        {!problem && view === 'day' ? <DayView rows={rows} records={news} /> : null}
       </div>
     </OfficeShell>
   );

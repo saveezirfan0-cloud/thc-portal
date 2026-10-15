@@ -10523,6 +10523,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      scheduling_shift_records: { Args: never; Returns: Json };
       self_cancel_booking: { Args: { p_booking: string }; Returns: Json };
       send_event_message: {
         Args: {
