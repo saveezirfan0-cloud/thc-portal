@@ -48,6 +48,7 @@ export async function loadSettings(): Promise<SettingsData> {
     weights: readWeights(null),
     willo: DEFAULT_WILLO,
     willoReviewUrlTemplate: null,
+    willoInterviewUrl: null,
     senders: DEFAULT_SENDERS,
     recipients: RECIPIENTS,
     bookedElsewhereGapMinutes: 120,
@@ -95,6 +96,10 @@ export async function loadSettings(): Promise<SettingsData> {
     willoReviewUrlTemplate:
       typeof byKey.get('willo_review_url_template') === 'string'
         ? (byKey.get('willo_review_url_template') as string)
+        : null,
+    willoInterviewUrl:
+      typeof byKey.get('willo_interview_public_url') === 'string'
+        ? (byKey.get('willo_interview_public_url') as string)
         : null,
     senders: object('senders', DEFAULT_SENDERS),
     recipients: RECIPIENTS,

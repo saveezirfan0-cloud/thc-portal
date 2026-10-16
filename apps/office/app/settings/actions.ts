@@ -14,6 +14,7 @@ import {
   validateSenders,
   validateWeights,
   validateWillo,
+  validateWilloInterviewUrl,
   validateWilloReviewUrlTemplate,
 } from './validate';
 import type { ActionResult, RotaGuardMode, ScoringWeights, Senders, WilloStageMap } from './types';
@@ -90,13 +91,28 @@ export async function saveWilloMap(map: WilloStageMap): Promise<ActionResult> {
 export async function saveWilloReviewUrlTemplate(value: string): Promise<ActionResult> {
   const invalid = validateWilloReviewUrlTemplate(value);
   if (invalid) return { ok: false, message: invalid };
-  const template = value.trim();
-  if (template !== '') return put('willo_review_url_template', template);
+  return putOrClear('willo_review_url_template', value.trim());
+}
+
+/**
+ * ADR-0149: the interview's public link, which the OC1 reminder email
+ * carries. Blank clears it, the same way as the review template: no row, no
+ * link in the email.
+ */
+export async function saveWilloInterviewUrl(value: string): Promise<ActionResult> {
+  const invalid = validateWilloInterviewUrl(value);
+  if (invalid) return { ok: false, message: invalid };
+  return putOrClear('willo_interview_public_url', value.trim());
+}
+
+/** A non-blank string is saved; blank deletes the row (`settings.value` is NOT NULL). */
+async function putOrClear(key: string, value: string): Promise<ActionResult> {
+  if (value !== '') return put(key, value);
 
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = settingsDb(await cookies());
-  const { error } = await supabase.from('settings').delete().eq('key', 'willo_review_url_template');
-  if (error) return saveRefusal('willo_review_url_template', error);
+  const { error } = await supabase.from('settings').delete().eq('key', key);
+  if (error) return saveRefusal(key, error);
   revalidatePath('/settings');
   return { ok: true };
 }

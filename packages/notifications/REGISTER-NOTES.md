@@ -216,6 +216,14 @@ rule: **email until the account exists, push in the app after.**
   who already work with us. Subjects `Action required: your Willo interview
   for our new Staff App`, `Action required: your Willo interview is still not
   done`, then `Reminder: your Willo interview for the new app is overdue`.
+- **OC1 carries the interview's public link** (ADR-0149, 20261016120000). When
+  `settings.willo_interview_public_url` is set (`/settings`), the OC1 row's payload
+  carries it as `interviewLink` and every daily wording (`first`, `second`,
+  `repeat`, `existing_*`) gains one paragraph after the one about Willo's
+  invitation: "You can also record your answers straight away with this link, on
+  your phone or computer. Please use the email address you applied with:" and the
+  link, drawn as a **Record my video interview** button. No link set, or a value
+  that is not http(s): the email is exactly as it was.
 - **Firmer for existing staff** (owner, 14.10.2026). Every existing_* rung
   says, word for word: "Without clicking the link in Willo's email, actually
   taking the online interview and fully onboarding on the new Staff App, we

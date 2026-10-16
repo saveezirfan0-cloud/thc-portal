@@ -434,6 +434,91 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(msg.body).not.toMatch(/\{\w+\}/);
   });
 
+  describe("OC1 and the interview's public link (ADR-0149)", () => {
+    const LINK = 'https://app.willo.video/i/abc123';
+    const oc1 = (variant: string, extra: Record<string, string> = {}) => {
+      const msg = messageFor(
+        email({
+          template: 'OC1',
+          key: `OC1:staff:s-1:1:${variant}`,
+          recipient_emails: ['ivy@example.com'],
+          payload: { name: 'Ivy', variant, ...extra },
+        }),
+      );
+      if (msg.kind !== 'email') throw new Error('not an email');
+      return msg;
+    };
+    const VARIANTS = [
+      'first',
+      'second',
+      'repeat',
+      'existing_first',
+      'existing_second',
+      'existing_repeat',
+    ];
+
+    it.each(VARIANTS)(
+      '%s: carries the link and asks for the email they applied with',
+      (variant) => {
+        const msg = oc1(variant, { interviewLink: LINK });
+        expect(msg.body).toContain(LINK);
+        expect(msg.body).toContain('Please use the email address you applied with');
+        expect(msg.body).not.toMatch(/\{\w+\}/);
+        // The invitation from Willo is still named: the link is a second way in.
+        expect(msg.body).toContain('Willo');
+        expect(msg.html).toContain(`href="${LINK}"`);
+        expect(msg.html).toContain('>Record my video interview</a>');
+      },
+    );
+
+    it.each(VARIANTS)('%s: is exactly as it was when the row has no link', (variant) => {
+      const without = oc1(variant);
+      expect(without.body).not.toContain('record your answers straight away');
+      expect(without.html).not.toContain('Record my video interview');
+      expect(without.body).not.toMatch(/\{\w+\}/);
+    });
+
+    it("puts the link after the paragraph about Willo's invitation, never after the sign-off", () => {
+      const body = oc1('first', { interviewLink: LINK }).body;
+      expect(body.indexOf('The invitation came by email from Willo')).toBeLessThan(
+        body.indexOf(LINK),
+      );
+      expect(body.indexOf(LINK)).toBeLessThan(body.indexOf("Once you've finished"));
+    });
+
+    it.each(VARIANTS)('%s: the link is never the last paragraph', (variant) => {
+      const paragraphs = oc1(variant, { interviewLink: LINK }).body.split('\n\n');
+      expect(paragraphs.at(-1)).not.toContain(LINK);
+    });
+
+    it('ignores a link that is not http(s), so no raw placeholder reaches the candidate', () => {
+      for (const bad of ['javascript:alert(1)', 'app.willo.video/i/abc', '', '  ']) {
+        const msg = oc1('first', { interviewLink: bad });
+        expect(msg.body, bad).not.toMatch(/\{\w+\}/);
+        expect(msg.body, bad).not.toContain('record your answers straight away');
+        expect(msg.html, bad).not.toContain('Record my video interview');
+      }
+    });
+
+    it('leaves the other chaser emails and the one-off notice alone', () => {
+      const oc2 = messageFor(
+        email({
+          template: 'OC2',
+          key: 'OC2:staff:s-1:1:1',
+          recipient_emails: ['ivy@example.com'],
+          payload: {
+            name: 'Amy',
+            variant: 'first',
+            link: 'https://staff.test/activate/abc',
+            installLink: 'https://staff.test/install',
+            interviewLink: LINK,
+          },
+        }),
+      );
+      expect(oc2.kind === 'email' && oc2.body).not.toContain(LINK);
+    });
+  });
+
   it('refuses a chaser email with no rung rather than guessing one', () => {
     expect(() =>
       messageFor(

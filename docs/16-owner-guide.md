@@ -958,6 +958,14 @@ select created_at, action, details
   on conflict (key) do update set value = excluded.value, updated_at = now();
   ```
 
+- **Interview public link** (ADR-0149; in the "video interview is still waiting"
+  reminder, so a candidate who cannot find Willo's invitation can still record):
+  Back Office `/settings` → **Willo stage map** → **Interview public link**. Paste
+  the interview's public link from Willo (the share link for the interview, the
+  same for everyone; https only). Blank leaves the reminder as it was. Candidates
+  are asked to use the email address they applied with, because that is how their
+  recording is matched to their application.
+
 ### 5.6 Enable the `willo-invite` schedule
 
 Done 28.09: `20261001206000` enables the row, with pgTAP `190` and `482` in the
