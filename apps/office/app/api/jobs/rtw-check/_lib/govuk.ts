@@ -57,7 +57,6 @@ export interface GovukPage {
    * Optional, like `screenshot`: used only to tidy the report (`fitReportToOnePage`),
    * so a scripted test page need not implement them.
    */
-  addStyleTag?(options: { content: string }): Promise<unknown>;
   emulateMedia?(options: { media: 'print' | 'screen' }): Promise<void>;
   setViewportSize?(size: { width: number; height: number }): Promise<void>;
   evaluate?(expression: string): Promise<unknown>;
@@ -483,9 +482,40 @@ const REPORT_HIDE = [
  * container stops at 960 px, so once the report is scaled down (and Chrome
  * lays it out wider, below) the result would sit in a strip with empty page
  * beside it. Released, the result uses the whole width of the sheet.
- * ASSUMED class names (GOV.UK Frontend's) — confirm on the live service.
+ * ASSUMED class names (GOV.UK Frontend's) — confirm on the live service; the
+ * ancestors of <main> are released whatever their class (`TIDY_REPORT`).
  */
 const REPORT_WIDEN = '.govuk-width-container, .govuk-main-wrapper';
+
+/** The print stylesheet the report is tidied with. */
+const REPORT_CSS =
+  `${REPORT_HIDE} { display: none !important; } ` +
+  `${REPORT_WIDEN} { max-width: none !important; } ` +
+  // GOV.UK's grey page ground otherwise frames the result and fills
+  // whatever of the sheet it does not cover.
+  'html, body { background: #fff !important; }';
+
+/**
+ * Applies `REPORT_CSS` and releases every box between <main> and <body>.
+ *
+ * Through the CSSOM — a constructed stylesheet and element styles set from
+ * script — never a <style> tag: gov.uk's Content-Security-Policy refuses an
+ * injected <style> (`style-src` without 'unsafe-inline'), Playwright's
+ * `addStyleTag` throws on it, and the report used to print untidied, unscaled
+ * and over several pages, cookie banner first. A page's CSP governs markup,
+ * not the CSSOM. Returns true once applied.
+ */
+const TIDY_REPORT = `(() => {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(${JSON.stringify(REPORT_CSS)});
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  for (let box = document.querySelector('main'); box && box !== document.body; box = box.parentElement) {
+    box.style.setProperty('max-width', 'none', 'important');
+    box.style.setProperty('width', 'auto', 'important');
+    box.style.setProperty('float', 'none', 'important');
+  }
+  return true;
+})()`;
 
 /** CSS px the viewport is measured at: low, so the page's own height is what is read, not the window's. */
 const MEASURE_HEIGHT = 100;
@@ -504,26 +534,25 @@ class Unmeasurable extends Error {}
  * once at the sheet's width over-shrank the report: tiny text in a strip at
  * the top-left of the sheet, the rest of it empty.)
  *
- * Best effort: a page that cannot be tidied or measured prints as it was —
- * an untidy report beats none, and the checks never depend on it.
+ * Best effort: a page that cannot be tidied is still scaled, and one that
+ * cannot be measured prints as it was — an untidy report beats none, and the
+ * checks never depend on it.
  */
 export async function fitReportToOnePage(page: GovukPage): Promise<{
   scale?: number;
   margin: { top: string; right: string; bottom: string; left: string };
 }> {
   const margin = { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN };
+  const { setViewportSize, evaluate } = page;
+  if (!evaluate) return { margin };
   try {
     await page.emulateMedia?.({ media: 'print' });
-    await page.addStyleTag?.({
-      content:
-        `${REPORT_HIDE} { display: none !important; } ` +
-        `${REPORT_WIDEN} { max-width: none !important; } ` +
-        // GOV.UK's grey page ground otherwise frames the result and fills
-        // whatever of the sheet it does not cover.
-        'html, body { background: #fff !important; }',
-    });
-    const { setViewportSize, evaluate } = page;
-    if (!setViewportSize || !evaluate) return { margin };
+    await evaluate.call(page, TIDY_REPORT);
+  } catch {
+    // Untidy, but still worth fitting to the sheet.
+  }
+  if (!setViewportSize) return { margin };
+  try {
     const printable = A4_PX.width - 2 * MARGIN_PX;
     // 3 % spare for rounding between the layout we measured and the one Chrome prints.
     const room = (A4_PX.height - 2 * MARGIN_PX) * 0.97;

@@ -668,17 +668,25 @@ describe('fitReportToOnePage', () => {
   const widths: number[] = [];
   /** A4 less two 10 mm margins, in CSS px. */
   const PRINTABLE = { width: 794 - 2 * 38, height: 1123 - 2 * 38 };
-  /** `height` is the page's height, or a function of the width it is laid out at. */
-  const reportPage = (height: unknown, fail = false): GovukPage => {
+  const isTidy = (expression: string) => expression.includes('adoptedStyleSheets');
+  /**
+   * `height` is the page's height, or a function of the width it is laid out
+   * at. `refuse` makes the tidy throw, as a page's CSP refuses a <style> tag.
+   */
+  const reportPage = (height: unknown, fail = false, refuse = false): GovukPage => {
     let width = 0;
     return {
       emulateMedia: async () => void calls.push('media'),
-      addStyleTag: async ({ content }: { content: string }) => void calls.push(content),
       setViewportSize: async (size: { width: number }) => {
         width = size.width;
         widths.push(width);
       },
-      evaluate: async () => {
+      evaluate: async (expression: string) => {
+        if (isTidy(expression)) {
+          calls.push(expression);
+          if (refuse) throw new Error('Refused to apply inline style');
+          return true;
+        }
         if (fail) throw new Error('page closed');
         return typeof height === 'function' ? height(width) : height;
       },
@@ -688,13 +696,30 @@ describe('fitReportToOnePage', () => {
   it('hides the cookie banner and page furniture, and lets the result use the whole sheet', async () => {
     calls.length = 0;
     await fitReportToOnePage(reportPage(500));
-    const css = calls.find((c) => c.includes('display: none'));
-    const hidden = css!.split('{ display: none')[0]!;
+    const tidy = calls.find(isTidy)!;
+    const css = JSON.parse(/replaceSync\(("(?:[^"\\]|\\.)*")\)/.exec(tidy)![1]!) as string;
+    const hidden = css.split('{ display: none')[0]!;
     expect(hidden).toMatch(/cookie-banner/);
     expect(hidden).toMatch(/footer/);
     expect(hidden).not.toMatch(/\bmain\b(?!-)/);
     expect(css).toMatch(/\.govuk-width-container[^{]*\{ max-width: none/);
     expect(css).toMatch(/html, body \{ background: #fff/);
+    // Whatever wraps <main> is released too, whatever its class.
+    expect(tidy).toMatch(/querySelector\('main'\)[\s\S]*max-width', 'none'/);
+  });
+
+  it("tidies through the CSSOM, never a <style> tag gov.uk's CSP refuses", async () => {
+    calls.length = 0;
+    await fitReportToOnePage(reportPage(500));
+    const tidy = calls.find(isTidy)!;
+    expect(tidy).toMatch(/new CSSStyleSheet\(\)/);
+    expect(tidy).not.toMatch(/createElement\(|<style/);
+  });
+
+  it('still fits the sheet when the tidy is refused', async () => {
+    const out = await fitReportToOnePage(reportPage(2000, false, true));
+    expect(out.scale).toBeGreaterThan(0.1);
+    expect(out.scale! * 2000).toBeLessThanOrEqual(PRINTABLE.height);
   });
 
   it('leaves a page that already fits at full size, measured at the sheet width', async () => {
