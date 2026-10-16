@@ -55,6 +55,11 @@ export interface QualifiedStaffRow {
   granted_from_event_title: string | null;
   granted_from_event_date: string | null;
   notes: string | null;
+  /**
+   * ADR-0146: barred at this client without being cleared here
+   * (bar_from_client). Absent before 20261015150000 is applied.
+   */
+  bar_only?: boolean;
 }
 
 export interface ClientEventRow {

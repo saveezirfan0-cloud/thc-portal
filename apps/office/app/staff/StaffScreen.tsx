@@ -427,6 +427,7 @@ export function StaffScreen({
                           row={row}
                           picker={pickerFor(row)}
                           columns={inactiveColumns}
+                          role={role}
                         />
                       ))}
                     </tbody>
@@ -453,6 +454,7 @@ export function StaffScreen({
                           row={row}
                           picker={pickerFor(row)}
                           columns={directoryColumns}
+                          role={role}
                         />
                       ))}
                     </tbody>
@@ -533,14 +535,56 @@ function PickBox({ picker, name }: { picker: RowPicker | undefined; name: string
   );
 }
 
+/** Roles shown before the rest fold behind "+N more" — a worker can hold a dozen. */
+const ROLE_CHIPS_SHOWN = 3;
+
+/**
+ * A worker's roles, folded. The role the list is filtered on is pinned first so
+ * the reason a row is listed is always visible; the rest expand in place.
+ */
+function RoleChips({ names, pinned }: { names: string[]; pinned: string }) {
+  const [open, setOpen] = useState(false);
+  const ordered =
+    pinned && names.includes(pinned) ? [pinned, ...names.filter((n) => n !== pinned)] : names;
+  const hidden = ordered.length - ROLE_CHIPS_SHOWN;
+  const visible = open || hidden <= 1 ? ordered : ordered.slice(0, ROLE_CHIPS_SHOWN);
+  const folded = ordered.length - visible.length;
+
+  return (
+    <div className="chips">
+      {visible.map((name) => (
+        <Chip key={name}>{name}</Chip>
+      ))}
+      {folded > 0 ? (
+        <button
+          type="button"
+          className="chip-more"
+          aria-expanded={false}
+          title={ordered.slice(visible.length).join(', ')}
+          onClick={() => setOpen(true)}
+        >
+          +{folded} more
+        </button>
+      ) : null}
+      {open && hidden > 1 ? (
+        <button type="button" className="chip-more" aria-expanded onClick={() => setOpen(false)}>
+          Show less
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function StaffTableRow({
   row,
   picker,
   columns,
+  role,
 }: {
   row: StaffRow;
   picker?: RowPicker;
   columns: Columns<DirectoryColumn>;
+  role: string;
 }) {
   const tone = ratingTone(row.rating);
   const atLimit = limitReached(row);
@@ -588,11 +632,7 @@ function StaffTableRow({
     ),
     roles: (
       <td data-label="Role(s)">
-        <div className="chips">
-          {row.role_names.map((name) => (
-            <Chip key={name}>{name}</Chip>
-          ))}
-        </div>
+        <RoleChips names={row.role_names} pinned={role} />
       </td>
     ),
     rating: (
@@ -664,10 +704,12 @@ function InactiveTableRow({
   row,
   picker,
   columns,
+  role,
 }: {
   row: StaffRow;
   picker?: RowPicker;
   columns: Columns<InactiveColumn>;
+  role: string;
 }) {
   const format = useTimeFormat();
   const cells: Record<InactiveColumn, ReactNode> = {
@@ -699,11 +741,7 @@ function InactiveTableRow({
     ),
     roles: (
       <td data-label="Role(s)">
-        <div className="chips">
-          {row.role_names.map((name) => (
-            <Chip key={name}>{name}</Chip>
-          ))}
-        </div>
+        <RoleChips names={row.role_names} pinned={role} />
       </td>
     ),
     'last-shift': (

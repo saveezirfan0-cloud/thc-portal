@@ -112,7 +112,14 @@ export function groupByRole(
   rows: QualifiedStaffRow[],
 ): { role: string; workers: QualifiedStaffRow[]; count: number }[] {
   const groups = new Map<string, QualifiedStaffRow[]>();
+  const barred: QualifiedStaffRow[] = [];
   for (const row of rows) {
+    // ADR-0146: barred here without being cleared here. The row's role is
+    // only a key, so it belongs to no role group — it goes last, on its own.
+    if (row.bar_only) {
+      barred.push(row);
+      continue;
+    }
     for (const role of row.role_names) {
       const list = groups.get(role);
       if (list) list.push(row);
@@ -125,8 +132,12 @@ export function groupByRole(
       workers,
       count: workers.filter((worker) => !worker.do_not_return).length,
     }))
-    .sort((a, b) => a.role.localeCompare(b.role));
+    .sort((a, b) => a.role.localeCompare(b.role))
+    .concat(barred.length > 0 ? [{ role: BARRED_GROUP, workers: barred, count: 0 }] : []);
 }
+
+/** The group for workers barred at a client they are not cleared at (ADR-0146). */
+export const BARRED_GROUP = 'Do not return · not cleared here';
 
 /** How §9.7 words the provenance of a qualification. */
 export function grantedHow(row: QualifiedStaffRow): string {

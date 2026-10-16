@@ -98,6 +98,11 @@ export interface QualificationRow {
   granted_at: string;
   do_not_return: boolean;
   note: string | null;
+  /**
+   * ADR-0146: the row only carries a bar (bar_from_client) — the worker is
+   * not cleared at the client. Absent before 20261015150000 is applied.
+   */
+  bar_only?: boolean;
 }
 
 export interface ShiftRow {

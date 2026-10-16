@@ -65,6 +65,7 @@ const STAFF_CODES: Readonly<Record<string, string>> = {
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   unknown_role: 'That role no longer exists. Refresh the page.',
   unknown_qualification: 'That qualification no longer exists. Refresh the page.',
+  unknown_client: 'That client no longer exists. Refresh the page.',
   reason_required: 'A reason is required.',
   not_blocked: 'This worker is not blocked — refresh the page.',
   not_resettable: 'Reset to candidate is only possible on a blocked, rejected or inactive record.',
@@ -227,6 +228,27 @@ export async function setDoNotReturn(
     await callRpc(
       'set_do_not_return',
       { p_id: id, p_on: on, p_reason: reason.trim() || null },
+      staffId,
+    ),
+  );
+}
+
+/**
+ * "Bar from a client" (ADR-0146): Do not return in one step, at a client
+ * the worker may have no entry at. The database bars every entry they
+ * have there, or writes one bar-only row that gates and never qualifies.
+ */
+export async function barFromClient(
+  staffId: string,
+  clientId: string,
+  reason: string,
+): Promise<ActionResult> {
+  if (clientId === '') return { ok: false, message: 'Choose a client.' };
+  if (reason.trim() === '') return { ok: false, message: 'Do not return needs a reason.' };
+  return said(
+    await callRpc(
+      'bar_from_client',
+      { p_staff: staffId, p_client: clientId, p_reason: reason.trim() },
       staffId,
     ),
   );
