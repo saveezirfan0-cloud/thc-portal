@@ -314,7 +314,7 @@ export interface WilloEvent {
    * The participant's email, lower-cased, when the delivery carries one.
    * Only used to find the candidate when the key is not ours (a second
    * participant the candidate made from the interview's public link,
-   * ADR-0147); never logged, never sent on to the database as details.
+   * ADR-0148); never logged, never sent on to the database as details.
    */
   email: string | null;
 }

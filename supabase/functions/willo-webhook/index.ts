@@ -186,7 +186,7 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
     // A key we never issued, but the candidate's own email: they recorded
     // the interview as a second participant (the interview's public link)
     // instead of through our invitation. Move the link to the key Willo is
-    // now reporting, then plan again (ADR-0147). One match or nothing.
+    // now reporting, then plan again (ADR-0148). One match or nothing.
     const { data: relinked, error: relinkError } = await db.rpc('willo_relink_by_email', {
       p_willo_candidate_id: keys[0],
       p_email: event.email,
