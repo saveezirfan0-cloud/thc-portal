@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BARRED_GROUP,
   chargeRateInputProblem,
   chargeRateProblem,
   marginPreview,
@@ -102,6 +103,18 @@ describe('the per-role pool counter (§9.7, §3.4)', () => {
     ]);
     expect(groups[0]?.count).toBe(1);
     expect(groups[0]?.workers).toHaveLength(2);
+  });
+
+  it('puts somebody barred but never cleared here in no role group (ADR-0146)', () => {
+    // A bar-only row's role is only a key; filing it under that role would
+    // say they were once cleared for it.
+    const groups = groupByRole([
+      worker({ staff_id: 'a' }),
+      worker({ staff_id: 'b', do_not_return: true, bar_only: true }),
+    ]);
+    expect(groups.map((g) => g.role)).toEqual(['Waiting Staff', BARRED_GROUP]);
+    expect(groups[0]?.workers.map((w) => w.staff_id)).toEqual(['a']);
+    expect(groups[1]).toMatchObject({ count: 0, workers: [{ staff_id: 'b' }] });
   });
 });
 
