@@ -173,3 +173,48 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     expect(html).toContain('The pending count could not be read');
   });
 });
+
+describe('the Payroll ID has a column of its own (ADR-0107)', () => {
+  const cells = (html: string) => [...html.matchAll(/data-label="Payroll ID"[^>]*>(.*?)<\/td>/g)];
+
+  it('heads the column after Employee ID and prints each worker’s ID in it', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen
+        staff={[
+          { ...WORKER, employee_id: 6096, payroll_id: '6096' },
+          { ...WORKER, id: 'w2', display_name: 'Ben L.', employee_id: 2200, payroll_id: '1641A' },
+        ]}
+        students={[]}
+        problem={null}
+      />,
+    );
+    expect(html.indexOf('>Employee ID</th>')).toBeLessThan(html.indexOf('>Payroll ID</th>'));
+    expect(cells(html).map((m) => m[1])).toEqual(['6096', '1641A']);
+    // The old second line under the Employee ID is gone: it said the same thing twice.
+    expect(html).not.toContain('Payroll 6096');
+  });
+
+  it('is a dash when there is none, and blank for a removed worker', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen
+        staff={[
+          { ...WORKER, payroll_id: null },
+          { ...WORKER, id: 'w2', removed: true, status: 'removed', payroll_id: '9' },
+        ]}
+        students={[]}
+        problem={null}
+      />,
+    );
+    expect(cells(html).map((m) => m[1])).toEqual([
+      '<span class="muted">—</span>',
+      '<span class="muted">—</span>',
+    ]);
+  });
+
+  it('keeps the tick and the avatar on one centred line', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[WORKER]} students={[]} problem={null} canMessage />,
+    );
+    expect(html).toMatch(/<td class="cell-lead"><div class="lead"><label class="pick-hit">/);
+  });
+});

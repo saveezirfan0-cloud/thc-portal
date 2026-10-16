@@ -74,17 +74,14 @@
 .tbl .chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-4);
 }
+/* "+N more" is a chip (`.chip.outline`), so it is the chips' own height, not
+   a smaller look-alike; a dashed edge and the pointer say it is a control. */
 .tbl .chip-more {
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--muted);
-  background: none;
-  border: 1px dashed var(--line);
-  border-radius: var(--r-pill);
-  padding: 1px var(--sp-8);
+  border-style: dashed;
+  line-height: inherit;
   cursor: pointer;
 }
 .tbl .chip-more:hover,
@@ -147,13 +144,28 @@
 .tbl th.pick input {
   width: 16px;
   height: 16px;
-  margin: 0 var(--sp-8) 0 0;
+  margin: 0;
   vertical-align: middle;
   accent-color: var(--cyan-ink);
   cursor: pointer;
 }
 .tbl td.cell-lead:has(input.pick) {
   white-space: nowrap;
+}
+/* The tick and the avatar are one row, centred on each other (they are
+   different kinds of inline box, which left the tick sitting low), and the
+   row's other cells centre on that line. */
+.tbl .lead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+/* The name and its SpudBros pill share a centred line and wrap together. */
+.tbl .name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4) var(--sp-8);
 }
 /* The tick's label is its hit area. On a touch screen it grows to the
    finger target (§1.2) around a box that stays 16px; so does the name. */
@@ -181,7 +193,7 @@
 /* The lead column holds the tick and the avatar, and an Employee ID is
    one token: "THC-00473" never breaks at its hyphen. */
 .tbl th.col-lead {
-  width: 5.25rem;
+  width: 5.75rem;
 }
 .tbl td.emp-id {
   white-space: nowrap;

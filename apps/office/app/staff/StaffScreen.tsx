@@ -40,7 +40,6 @@ import {
   matchesFilter,
   matchesGroup,
   matchesQuery,
-  payrollIdRepeatsEmployeeId,
   ratingTone,
   sortRows,
   statusLabel,
@@ -74,17 +73,19 @@ export interface StaffScreenProps {
 const DIRECTORY_COLUMNS = [
   { id: 'name', label: 'Name', required: true },
   { id: 'employee-id', label: 'Employee ID', width: 's' },
+  { id: 'payroll-id', label: 'Payroll ID', width: 's' },
   { id: 'roles', label: 'Role(s)' },
   { id: 'rating', label: 'Rating', width: 'xs' },
   { id: 'show-rate', label: 'Show-rate', width: 'xs' },
-  { id: 'status', label: 'Compliance status', width: 'l' },
-  { id: 'rtw', label: 'Right to work' },
+  { id: 'status', label: 'Compliance status', width: 'm' },
+  { id: 'rtw', label: 'Right to work', width: 'm' },
 ] as const satisfies readonly ColumnDef[];
 type DirectoryColumn = (typeof DIRECTORY_COLUMNS)[number]['id'];
 
 const INACTIVE_COLUMNS = [
   { id: 'name', label: 'Name', required: true },
   { id: 'employee-id', label: 'Employee ID', width: 's' },
+  { id: 'payroll-id', label: 'Payroll ID', width: 's' },
   { id: 'left', label: 'Left', width: 'm' },
   { id: 'reason', label: 'Reason given' },
   { id: 'roles', label: 'Role(s)' },
@@ -411,7 +412,7 @@ export function StaffScreen({
                   label="Inactive workers"
                   fixed
                   pin={2}
-                  minWidth={inactiveColumns.minWidth('66rem', LEAD_REM)}
+                  minWidth={inactiveColumns.minWidth('73rem', LEAD_REM)}
                 >
                   <table className="tbl card-rows">
                     <thead>
@@ -438,7 +439,7 @@ export function StaffScreen({
                   label="Staff"
                   fixed
                   pin={2}
-                  minWidth={directoryColumns.minWidth('56rem', LEAD_REM)}
+                  minWidth={directoryColumns.minWidth('68rem', LEAD_REM)}
                 >
                   <table className="tbl card-rows">
                     <thead>
@@ -535,6 +536,19 @@ function PickBox({ picker, name }: { picker: RowPicker | undefined; name: string
   );
 }
 
+/**
+ * ADR-0107: the payroll sheet's own ID, in a column of its own (it is not
+ * always the Employee ID — `1641A`). A removed worker's is cleared, so the
+ * cell reads as empty rather than as a gap.
+ */
+function PayrollIdCell({ row }: { row: StaffRow }) {
+  return (
+    <td data-label="Payroll ID" className="mono sm emp-id">
+      {row.payroll_id && !row.removed ? row.payroll_id : <span className="muted">—</span>}
+    </td>
+  );
+}
+
 /** Roles shown before the rest fold behind "+N more" — a worker can hold a dozen. */
 const ROLE_CHIPS_SHOWN = 3;
 
@@ -558,7 +572,7 @@ function RoleChips({ names, pinned }: { names: string[]; pinned: string }) {
       {folded > 0 ? (
         <button
           type="button"
-          className="chip-more"
+          className="chip outline chip-more"
           aria-expanded={false}
           title={ordered.slice(visible.length).join(', ')}
           onClick={() => setOpen(true)}
@@ -567,7 +581,12 @@ function RoleChips({ names, pinned }: { names: string[]; pinned: string }) {
         </button>
       ) : null}
       {open && hidden > 1 ? (
-        <button type="button" className="chip-more" aria-expanded onClick={() => setOpen(false)}>
+        <button
+          type="button"
+          className="chip outline chip-more"
+          aria-expanded
+          onClick={() => setOpen(false)}
+        >
           Show less
         </button>
       ) : null}
@@ -592,20 +611,19 @@ function StaffTableRow({
   const cells: Record<DirectoryColumn, ReactNode> = {
     name: (
       <td className="name cell-title">
-        {/*
-          §9.6: "The name is clickable → the profile." A removed worker's
-          is too — §1.7 keeps the record openable with its non-personal
-          history visible, and the label is already the anonymised one.
-        */}
-        <Link
-          href={`/staff/${row.id}`}
-          className={row.removed ? 'staff-name removed' : 'staff-name'}
-        >
-          {row.display_name}
-        </Link>
-        {row.spudbros_express && !row.removed ? (
-          <>
-            {' '}
+        <div className="name-line">
+          {/*
+            §9.6: "The name is clickable → the profile." A removed worker's
+            is too — §1.7 keeps the record openable with its non-personal
+            history visible, and the label is already the anonymised one.
+          */}
+          <Link
+            href={`/staff/${row.id}`}
+            className={row.removed ? 'staff-name removed' : 'staff-name'}
+          >
+            {row.display_name}
+          </Link>
+          {row.spudbros_express && !row.removed ? (
             <Pill
               tone="cyan"
               title={
@@ -616,20 +634,16 @@ function StaffTableRow({
             >
               SpudBros
             </Pill>
-          </>
-        ) : null}
+          ) : null}
+        </div>
       </td>
     ),
     'employee-id': (
       <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
-        {row.payroll_id &&
-        !row.removed &&
-        !payrollIdRepeatsEmployeeId(row.employee_id, row.payroll_id) ? (
-          <div className="xs muted">Payroll {row.payroll_id}</div>
-        ) : null}
       </td>
     ),
+    'payroll-id': <PayrollIdCell row={row} />,
     roles: (
       <td data-label="Role(s)">
         <RoleChips names={row.role_names} pinned={role} />
@@ -682,12 +696,14 @@ function StaffTableRow({
   return (
     <tr className={picker?.checked ? 'picked' : undefined}>
       <td className="cell-lead">
-        <PickBox picker={picker} name={row.display_name} />
-        <Avatar
-          name={row.removed ? '#' : row.display_name}
-          src={row.removed ? undefined : (row.photo_url ?? undefined)}
-          size="sm"
-        />
+        <div className="lead">
+          <PickBox picker={picker} name={row.display_name} />
+          <Avatar
+            name={row.removed ? '#' : row.display_name}
+            src={row.removed ? undefined : (row.photo_url ?? undefined)}
+            size="sm"
+          />
+        </div>
       </td>
       <ColumnCells columns={columns} cells={cells} />
     </tr>
@@ -725,6 +741,7 @@ function InactiveTableRow({
         {employeeId(row.employee_id)}
       </td>
     ),
+    'payroll-id': <PayrollIdCell row={row} />,
     left: (
       <td data-label="Left" className="mono sm">
         {formatUkStamp(row.left_at, format)}
@@ -775,8 +792,10 @@ function InactiveTableRow({
   return (
     <tr className={picker?.checked ? 'picked' : undefined}>
       <td className="cell-lead">
-        <PickBox picker={picker} name={row.display_name} />
-        <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
+        <div className="lead">
+          <PickBox picker={picker} name={row.display_name} />
+          <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
+        </div>
       </td>
       <ColumnCells columns={columns} cells={cells} />
     </tr>
