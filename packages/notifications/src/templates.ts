@@ -1255,3 +1255,30 @@ export function outboxKey(
 export function render(text: string, values: Record<string, string>): string {
   return text.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
+
+/**
+ * OC1's optional paragraph (ADR-0149): the interview's public Willo link,
+ * added to an OC1 email only when its row carries a valid `interviewLink`
+ * (set on /settings, written into the row by onboarding_chasers()). Willo's
+ * own invitation is still what the copy points at; this is the way in for
+ * someone who cannot find it. The email address matters: a candidate who
+ * records through the public link is matched back to their application by
+ * email (ADR-0148).
+ */
+export const OC1_INTERVIEW_LINK_BLOCK =
+  'You can also record your answers straight away with this link, on your phone or computer. Please use the email address you applied with:\n{interviewLink}';
+
+/**
+ * `copy` with the link paragraph added straight after the one that tells the
+ * candidate about Willo's invitation. When that paragraph is the last one
+ * (it carries the sign-off, "Can't find it? Reply…"), the link goes before it,
+ * so nothing follows the sign-off; with no such paragraph, before the last.
+ */
+export function withInterviewLink(copy: string): string {
+  const paragraphs = copy.split('\n\n');
+  const found = paragraphs.findIndex((p) => /invitation/i.test(p));
+  const last = paragraphs.length - 1;
+  const at = found === -1 || found === last ? Math.max(last, 0) : found + 1;
+  paragraphs.splice(at, 0, OC1_INTERVIEW_LINK_BLOCK);
+  return paragraphs.join('\n\n');
+}

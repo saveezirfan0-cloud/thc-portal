@@ -16,7 +16,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('../data', () => ({ supabaseConfigured: () => true }));
 vi.mock('../db', () => ({ settingsDb: () => ({ from: () => ({ upsert }) }) }));
 
-const { saveWilloReviewUrlTemplate } = await import('../actions');
+const { saveWilloInterviewUrl, saveWilloReviewUrlTemplate } = await import('../actions');
 const { READ_ONLY_MESSAGE } = await import('../../_lib/sessionRole');
 
 const TEMPLATE = 'https://app.willotalent.com/review/{id}';
@@ -47,5 +47,24 @@ describe('settings save refusals', () => {
       ok: false,
       message: READ_ONLY_MESSAGE,
     });
+  });
+
+  it('the interview public link is saved under its own key, trimmed', async () => {
+    expect(await saveWilloInterviewUrl('  https://app.willo.video/i/abc123 ')).toEqual({
+      ok: true,
+    });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'willo_interview_public_url',
+        value: 'https://app.willo.video/i/abc123',
+      }),
+      { onConflict: 'key' },
+    );
+  });
+
+  it('a link the reminder would not carry is refused before anything is written', async () => {
+    const result = await saveWilloInterviewUrl('http://app.willo.video/i/abc123');
+    expect(result.ok).toBe(false);
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

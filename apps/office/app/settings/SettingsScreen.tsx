@@ -34,6 +34,7 @@ import {
   saveVenueRadius,
   saveWeights,
   saveWilloMap,
+  saveWilloInterviewUrl,
   saveWilloReviewUrlTemplate,
 } from './actions';
 import {
@@ -44,6 +45,7 @@ import {
   validateClientPortalPhone,
   validateEscalationRadius,
   validateGap,
+  validateWilloInterviewUrl,
   validateWilloReviewUrlTemplate,
   weightTotal,
 } from './validate';
@@ -152,7 +154,11 @@ export function SettingsScreen({
             escalationMiles={data.escalationRadiusMiles}
           />
           <RotaGuardBlock mode={data.rotaGuardMode} />
-          <WilloBlock map={data.willo} reviewUrlTemplate={data.willoReviewUrlTemplate} />
+          <WilloBlock
+            map={data.willo}
+            reviewUrlTemplate={data.willoReviewUrlTemplate}
+            interviewUrl={data.willoInterviewUrl}
+          />
           <SendersBlock senders={data.senders} recipients={data.recipients} />
           <ClientPortalBlock phone={data.clientPortalPhone} />
           <RadiiBlock types={data.venueTypes} />
@@ -442,13 +448,17 @@ function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
 function WilloBlock({
   map,
   reviewUrlTemplate,
+  interviewUrl,
 }: {
   map: WilloStageMap;
   reviewUrlTemplate: string | null;
+  interviewUrl: string | null;
 }) {
   const [draft, setDraft] = useState<WilloStageMap>(map);
   const [template, setTemplate] = useState(reviewUrlTemplate ?? '');
+  const [publicUrl, setPublicUrl] = useState(interviewUrl ?? '');
   const link = useSave();
+  const interview = useSave();
   const { note, error, pending, run } = useSave();
 
   const rows: { key: keyof WilloStageMap; label: string; hint: string }[] = [
@@ -518,6 +528,35 @@ function WilloBlock({
           onClick={() => link.run(() => saveWilloReviewUrlTemplate(template))}
         >
           {link.pending ? 'Saving…' : 'Save Willo link'}
+        </Button>
+      </SaveAction>
+      <hr />
+      {/* ADR-0149: the interview's own public link, copied from Willo. The
+          reminder email (OC1) carries it so a candidate who cannot find
+          Willo's invitation can still record. */}
+      <Input
+        label="Interview public link — for the reminder email"
+        type="url"
+        value={publicUrl}
+        placeholder="https://…"
+        hint="The interview’s public link from Willo. The “video interview is still waiting” reminder then carries a Record my video interview button. Blank: the reminder only points at Willo’s invitation email."
+        error={
+          (interview.error && publicUrl.trim() && validateWilloInterviewUrl(publicUrl)) || undefined
+        }
+        onChange={(event) => setPublicUrl(event.target.value)}
+      />
+      <Feedback note={interview.note} error={interview.error} />
+      <SaveAction
+        id="willo-interview-link"
+        title="Interview public link"
+        dirty={publicUrl !== (interviewUrl ?? '')}
+      >
+        <Button
+          tone="primary"
+          disabled={interview.pending}
+          onClick={() => interview.run(() => saveWilloInterviewUrl(publicUrl))}
+        >
+          {interview.pending ? 'Saving…' : 'Save interview link'}
         </Button>
       </SaveAction>
     </Block>

@@ -45,7 +45,8 @@ export const EMAIL_PRESENTATION = {
   E10: { eyebrow: 'Self-cancellation' },
   E11: { eyebrow: 'Your login', buttons: { link: 'Set your password' } },
   E12: { eyebrow: 'Your onboarding' },
-  OC1: { eyebrow: 'Your video interview' },
+  // ADR-0149: the button appears only on a row that carries `interviewLink`.
+  OC1: { eyebrow: 'Your video interview', buttons: { interviewLink: 'Record my video interview' } },
   OC2: {
     eyebrow: 'Set up your account',
     buttons: { link: 'Set your password', installLink: 'Get the THC Staff App' },

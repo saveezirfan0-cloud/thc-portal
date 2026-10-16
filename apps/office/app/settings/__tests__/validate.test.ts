@@ -10,6 +10,7 @@ import {
   validateSenders,
   validateWeights,
   validateWillo,
+  validateWilloInterviewUrl,
   validateWilloReviewUrlTemplate,
   weightTotal,
 } from '../validate';
@@ -242,6 +243,40 @@ describe('the Willo review link template (§2.4)', () => {
   it('refuses a non-URL and a plain http link', () => {
     expect(validateWilloReviewUrlTemplate('willo {id}')).toMatch(/not a valid URL/);
     expect(validateWilloReviewUrlTemplate('http://app.willo.video/{id}')).toMatch(/https/);
+  });
+});
+
+describe('the interview public link in the OC1 reminder (ADR-0149)', () => {
+  it('accepts blank — no link, the reminder as it was — and one https URL', () => {
+    expect(validateWilloInterviewUrl('')).toBeNull();
+    expect(validateWilloInterviewUrl('   ')).toBeNull();
+    expect(validateWilloInterviewUrl('https://app.willo.video/i/abc123')).toBeNull();
+    expect(validateWilloInterviewUrl('  https://app.willo.video/i/abc123?x=1  ')).toBeNull();
+  });
+
+  it('refuses what the database would read back as no link', () => {
+    expect(validateWilloInterviewUrl('http://app.willo.video/i/abc')).toMatch(/https/);
+    expect(validateWilloInterviewUrl('app.willo.video/i/abc')).toMatch(/not a valid URL/);
+    expect(validateWilloInterviewUrl('https://app.willo.video/i/a b')).toMatch(/spaces/);
+    expect(validateWilloInterviewUrl('https://me@app.willo.video/i/abc')).toMatch(/login/);
+    expect(validateWilloInterviewUrl(`https://app.willo.video/${'a'.repeat(500)}`)).toMatch(
+      /500 characters/,
+    );
+    // Normalised by `new URL()` but not read back by the database.
+    expect(validateWilloInterviewUrl('HTTPS://app.willo.video/i/abc')).toMatch(/https/);
+    expect(validateWilloInterviewUrl('https:app.willo.video/i/abc')).toMatch(/not a valid URL/);
+    expect(validateWilloInterviewUrl('https:/app.willo.video/i/abc')).toMatch(/not a valid URL/);
+    expect(validateWilloInterviewUrl('https://app.willo.video?x=a@b')).toMatch(/login/);
+    expect(validateWilloInterviewUrl('https://a@app.willo.video/i/abc')).toMatch(/login/);
+    // The email would draw no button for these.
+    expect(validateWilloInterviewUrl('https://app.willo.video/i/a"b')).toMatch(/characters/);
+    expect(validateWilloInterviewUrl('https://app.willo.video/i/<b>')).toMatch(/characters/);
+  });
+
+  it('accepts exactly 500 characters', () => {
+    const exact = `https://app.willo.video/${'a'.repeat(500 - 'https://app.willo.video/'.length)}`;
+    expect(exact).toHaveLength(500);
+    expect(validateWilloInterviewUrl(exact)).toBeNull();
   });
 });
 

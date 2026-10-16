@@ -5,6 +5,7 @@ import {
   CLIENT_PORTAL_CODES,
   CLIENT_REQUIREMENT_CODES,
   MESSAGE_CODES,
+  OC1_INTERVIEW_LINK_BLOCK,
   EXTENSION_CODES,
   INVITE_CODES,
   REQUIREMENT_CODES,
@@ -15,6 +16,7 @@ import {
   render,
   template,
   title,
+  withInterviewLink,
 } from '../templates';
 import type { Template, TemplateCode } from '../templates';
 
@@ -1219,6 +1221,28 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(body('OC1', 'existing_notice')).toContain(
       "You've registered on our new Staff App, but you haven't taken your Willo video interview yet.",
     );
+  });
+
+  it("adds the interview's public link after the paragraph about Willo's invitation (ADR-0149)", () => {
+    for (const rung of [...RUNGS, ...EXISTING_RUNGS]) {
+      const withLink = withInterviewLink(body('OC1', rung));
+      expect(withLink, rung).toContain('{interviewLink}');
+      expect(withLink, rung).toContain('Please use the email address you applied with');
+      // Added, never replacing: every word of the original is still there, in order.
+      expect(withLink.replace(`\n\n${OC1_INTERVIEW_LINK_BLOCK}`, ''), rung).toBe(body('OC1', rung));
+      // On a line of its own, so the email can draw it as a button.
+      expect(withLink.split('\n'), rung).toContain('{interviewLink}');
+    }
+    // Never after the sign-off: with no paragraph about the invitation, or
+    // when it is the last, the link goes before the last paragraph.
+    expect(withInterviewLink('Hi,\n\nNo mention here.')).toBe(
+      `Hi,\n\n${OC1_INTERVIEW_LINK_BLOCK}\n\nNo mention here.`,
+    );
+    for (const rung of [...RUNGS, ...EXISTING_RUNGS]) {
+      const paragraphs = withInterviewLink(body('OC1', rung)).split('\n\n');
+      expect(paragraphs.at(-1), rung).not.toBe(OC1_INTERVIEW_LINK_BLOCK);
+      expect(paragraphs.indexOf(OC1_INTERVIEW_LINK_BLOCK), rung).toBeGreaterThan(1);
+    }
   });
 
   it('emails before sign-up from admin@, to the candidate the row names', () => {

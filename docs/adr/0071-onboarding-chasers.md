@@ -114,7 +114,7 @@ When the latest reminder could not be delivered (notifications off, a bounce), t
 - **An anchored Staff App origin check** on `onboarding_resend_activation`, `onboarding_accept_with_account` and `onboarding_chaser_activation`: a settings row holding the origin, and `^<origin>/activate/<token>$`. Onboarding, separately.
 - **Office writes to `staff.email` on a linked login** are neither audited nor guarded. The chasers no longer act on a mismatch, but the edit itself deserves an audit row. Onboarding, separately.
 
-- **No Willo link in OC1.** Willo sends the invite and nothing stores its URL, so OC1 points at that email. If Willo's API can re-send an invitation, OC1 could do that instead.
+- **No Willo link in OC1.** Willo sends the invite and nothing stores its URL, so OC1 points at that email. If Willo's API can re-send an invitation, OC1 could do that instead. *(Amended by ADR-0149, 16.10.2026: OC1 carries the interview's public link when one is set on `/settings`.)*
 - **No per-candidate "stop reminding" switch.** Rejecting the candidate stops the reminders, and so does the global setting.
 - **Not on `/onboarding/:id`.** The profile does not yet show the reminder history. The outbox rows are there if it is wanted.
 

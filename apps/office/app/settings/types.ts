@@ -24,6 +24,12 @@ export interface ScoringWeights {
  */
 export type WilloReviewUrlTemplate = string | null;
 
+/**
+ * ADR-0149: the interview's public link, carried by the OC1 reminder email.
+ * Null = none set, and the email is as it was.
+ */
+export type WilloInterviewUrl = string | null;
+
 /** §2.4, Appendix B: Willo's own stage names → the kanban's. */
 export interface WilloStageMap {
   new_response: string;
@@ -55,6 +61,7 @@ export interface SettingsData {
   weights: ScoringWeights;
   willo: WilloStageMap;
   willoReviewUrlTemplate: WilloReviewUrlTemplate;
+  willoInterviewUrl: WilloInterviewUrl;
   senders: Senders;
   /**
    * §8's fixed recipients for the office/payroll emails, read from the

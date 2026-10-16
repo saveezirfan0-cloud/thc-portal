@@ -11778,6 +11778,7 @@ export type Database = {
           staff_id: string;
         }[];
       };
+      willo_interview_public_url: { Args: never; Returns: string };
       willo_invite_failed: {
         Args: { p_error: string; p_staff: string };
         Returns: undefined;

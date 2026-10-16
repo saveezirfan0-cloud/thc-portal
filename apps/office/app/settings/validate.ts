@@ -140,6 +140,42 @@ export function validateWilloReviewUrlTemplate(value: string): string | null {
   return null;
 }
 
+/** ADR-0149. The same limit `willo_interview_public_url()` applies in the database. */
+export const WILLO_INTERVIEW_URL_MAX = 500;
+
+/**
+ * ADR-0149: the interview's public link, which the OC1 reminder email carries
+ * so a candidate who cannot find Willo's invitation can still record.
+ * Blank is allowed (no link, the email as it was). Otherwise one https URL:
+ * no spaces, no `user@` and at most 500 characters — what the database reads
+ * back as a link (`willo_interview_public_url()`), so a value this accepts is
+ * one the reminder will carry and one it refuses is never half-saved.
+ */
+export function validateWilloInterviewUrl(value: string): string | null {
+  const link = value.trim();
+  if (link === '') return null;
+  if (link.length > WILLO_INTERVIEW_URL_MAX) {
+    return `The interview link is longer than ${WILLO_INTERVIEW_URL_MAX} characters.`;
+  }
+  if (/\s/.test(link)) return 'The interview link must not contain spaces.';
+  if (/[<>"']/.test(link)) return 'The interview link must not contain < > " or \' characters.';
+  if (!/^https?:/i.test(link)) return 'The interview link is not a valid URL.';
+  if (!/^https:/.test(link)) return 'The interview link must be https.';
+  // The database's own rule (`willo_interview_public_url()`): a literal
+  // `https://`, then a host with no `@` before the first `/`.
+  if (!/^https:\/\/[^/\s@]+(\/\S*)?$/.test(link)) {
+    return /@/.test(link.split('/')[2] ?? '')
+      ? 'The interview link must not contain a login.'
+      : 'The interview link is not a valid URL.';
+  }
+  try {
+    new URL(link);
+  } catch {
+    return 'The interview link is not a valid URL.';
+  }
+  return null;
+}
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /**

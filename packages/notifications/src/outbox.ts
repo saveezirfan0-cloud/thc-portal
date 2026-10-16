@@ -14,7 +14,14 @@ import { isHttpUrl } from './email-html.ts';
 import { templateEmailHtml } from './email-layouts.ts';
 import { DEFAULT_SENDER_ADDRESSES } from './senders.ts';
 import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
-import { PORTAL_LINK_CODES, TEMPLATES, body, render, title } from './templates.ts';
+import {
+  PORTAL_LINK_CODES,
+  TEMPLATES,
+  body,
+  render,
+  title,
+  withInterviewLink,
+} from './templates.ts';
 
 /** A claimed row, as `claim_outbox_batch` returns it. */
 export interface OutboxRow {
@@ -184,6 +191,12 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
     copy = body(row.template as TemplateCode, variant);
   } catch (cause) {
     throw new UnsendableRow(`${row.template}: ${(cause as Error).message}`);
+  }
+  // ADR-0149: OC1 carries the interview's public link when the row has one.
+  // A value that is not http(s) is ignored, so the copy never shows a raw
+  // `{interviewLink}` and the email goes out as it always did.
+  if (row.template === 'OC1' && isHttpUrl(values.interviewLink ?? '')) {
+    copy = withInterviewLink(copy);
   }
   const heading = title(row.template as TemplateCode, variant);
 
