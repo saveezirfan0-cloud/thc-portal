@@ -17,6 +17,8 @@ const state = vi.hoisted(() => ({
   user: { id: 'u-admin' } as { id: string } | null,
   role: 'admin' as string | null,
   officeRole: 'manager' as string,
+  /** Calls made through the SESSION client, other than the role checks. */
+  sessionCalls: [] as [string, unknown][],
 }));
 
 const rpc = vi.fn(async (..._args: unknown[]) => ({ error: null as null | { message: string } }));
@@ -30,12 +32,14 @@ vi.mock('@thc/db/server', () => ({
     auth: { getUser: async () => ({ data: { user: state.user } }) },
     // The admin check asks current_app_role() (20261001200500).
     // ADR-0060: and office_can('write') before the service key — false for a viewer.
-    rpc: async (fn: string) =>
-      fn === 'current_app_role'
-        ? { data: state.role ?? null, error: null }
-        : fn === 'office_can'
-          ? { data: state.role === 'admin' && state.officeRole !== 'viewer', error: null }
-          : { data: null, error: null },
+    rpc: async (fn: string, args?: unknown) => {
+      if (fn === 'current_app_role') return { data: state.role ?? null, error: null };
+      if (fn === 'office_can') {
+        return { data: state.role === 'admin' && state.officeRole !== 'viewer', error: null };
+      }
+      state.sessionCalls.push([fn, args]);
+      return { data: null, error: null };
+    },
     from: () => ({
       select: () => ({
         eq: () => ({
@@ -53,6 +57,7 @@ beforeEach(() => {
   state.user = { id: 'u-admin' };
   state.role = 'admin';
   state.officeRole = 'manager';
+  state.sessionCalls = [];
   rpc.mockClear();
   rpc.mockImplementation(async () => ({ error: null }));
   createAdminClient.mockClear();
@@ -171,5 +176,30 @@ describe('a database refusal reaches the screen in words, never raw (NOTE 5)', (
     expect(JSON.stringify(result)).not.toContain('staff_pkey');
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
+  });
+});
+
+describe('Bar from a client (ADR-0146)', () => {
+  it('calls bar_from_client through the session, with the reason trimmed', async () => {
+    const { barFromClient } = await import('../actions');
+    expect(await barFromClient('s1', 'c1', '  Client asked  ')).toEqual({ ok: true });
+    expect(state.sessionCalls).toEqual([
+      ['bar_from_client', { p_staff: 's1', p_client: 'c1', p_reason: 'Client asked' }],
+    ]);
+    // The session's own client, never the service key: the definer checks
+    // the office login itself (20261015150000).
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('refuses before the database without a client or a reason', async () => {
+    const { barFromClient } = await import('../actions');
+    expect(await barFromClient('s1', '', 'Client asked')).toEqual({
+      ok: false,
+      message: 'Choose a client.',
+    });
+    expect(await barFromClient('s1', 'c1', '  ')).toEqual({
+      ok: false,
+      message: 'Do not return needs a reason.',
+    });
   });
 });

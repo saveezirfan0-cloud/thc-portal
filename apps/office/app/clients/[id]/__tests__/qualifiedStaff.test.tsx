@@ -74,4 +74,28 @@ describe('the + Add staff picker finds one worker among a thousand (release audi
     expect(pickerResults(staff, '873').map((w) => w.id)).toEqual(['w873']);
     expect(pickerResults(staff, '  ')).toHaveLength(1000);
   });
+
+  it('lists a worker barred but never cleared here on their own, as all roles (ADR-0146)', () => {
+    const html = renderToStaticMarkup(
+      <QualifiedStaff
+        clientId="c1"
+        rows={[
+          {
+            ...ROW,
+            role_names: ['Bar Staff'],
+            role_ids: ['r0'],
+            qualification_ids: ['q0'],
+            do_not_return: true,
+            bar_only: true,
+          },
+        ]}
+        rateCard={[]}
+        staff={[]}
+      />,
+    );
+    expect(html).toContain('Do not return · not cleared here');
+    expect(html).toContain('All roles');
+    expect(html).toContain('barred — not cleared here');
+    expect(html).not.toContain('0 qualified');
+  });
 });

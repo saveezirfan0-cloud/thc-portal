@@ -17,7 +17,7 @@ import {
 } from '@thc/ui';
 import { formatUkDate } from '../staff';
 import { useConfirm } from '../../_components/useConfirm';
-import { grantQualification, revokeQualification, setDoNotReturn } from './actions';
+import { barFromClient, grantQualification, revokeQualification, setDoNotReturn } from './actions';
 import type { ClientOption, ProfileRow, QualificationRow, RoleOption } from './types';
 
 /**
@@ -38,6 +38,11 @@ import type { ClientOption, ProfileRow, QualificationRow, RoleOption } from './t
  * The database enforces the distinction too — an entry carrying the flag
  * cannot be removed until it is switched off — so a mis-click here is
  * refused rather than silently un-barring somebody.
+ *
+ *   Bar from a client (ADR-0146) — Do not return at ANY client, in one
+ *   step, including one the worker has no entry at. That writes a
+ *   bar-only row, shown as "All roles · not cleared here"; switching it
+ *   off deletes it rather than leaving a clearance nobody gave.
  */
 export function Qualifications({
   profile,
@@ -52,6 +57,8 @@ export function Qualifications({
 }) {
   const [adding, setAdding] = useState(false);
   const [barring, setBarring] = useState<QualificationRow | null>(null);
+  const [barringClient, setBarringClient] = useState(false);
+  const [barClientId, setBarClientId] = useState('');
   const [clientId, setClientId] = useState('');
   // §9.6: "then one or more of that worker's roles" — a set, not a pick.
   const [roleIds, setRoleIds] = useState<string[]>([]);
@@ -92,6 +99,10 @@ export function Qualifications({
     setBarring(null);
     setDialogProblem(null);
   };
+  const closeBarringClient = () => {
+    setBarringClient(false);
+    setDialogProblem(null);
+  };
   // ADR-0137 §1: Remove used to happen on the click.
   const confirm = useConfirm();
 
@@ -109,6 +120,19 @@ export function Qualifications({
             </span>
             <Button
               size="sm"
+              tone="danger"
+              onClick={() => {
+                setDialogProblem(null);
+                setBarClientId('');
+                setReason('');
+                setBarringClient(true);
+              }}
+              disabled={profile.removed}
+            >
+              Bar from a client
+            </Button>
+            <Button
+              size="sm"
               tone="primary"
               onClick={() => {
                 setDialogProblem(null);
@@ -124,7 +148,8 @@ export function Qualifications({
       >
         {qualifications.length === 0 ? (
           <div className="empty">
-            Not cleared at any client yet. A clean shift adds the first entry by itself.
+            Not cleared at any client yet. A clean shift adds the first entry by itself. To keep
+            this worker away from a client, use <b>Bar from a client</b>.
           </div>
         ) : (
           <TableScroll label="Client qualification" minWidth="44rem">
@@ -149,10 +174,15 @@ export function Qualifications({
                       <b>{row.client_name}</b>
                     </td>
                     <td data-label="Role">
-                      <Chip>{row.role_name}</Chip>
+                      <Chip>{row.bar_only ? 'All roles' : row.role_name}</Chip>
                     </td>
                     <td data-label="Granted by" className="sm">
-                      {row.granted_how === 'automatic' ? (
+                      {row.bar_only ? (
+                        <>
+                          barred{row.granted_by_name ? ` by ${row.granted_by_name}` : ''} — not
+                          cleared here
+                        </>
+                      ) : row.granted_how === 'automatic' ? (
                         <>
                           automatically from{' '}
                           <b>{row.granted_from_event_title ?? 'a completed shift'}</b>
@@ -174,7 +204,7 @@ export function Qualifications({
                       <Switch
                         checked={row.do_not_return}
                         disabled={pending || profile.removed}
-                        aria-label={`Do not return · ${row.client_name} · ${row.role_name}`}
+                        aria-label={`Do not return · ${row.client_name} · ${row.bar_only ? 'All roles' : row.role_name}`}
                         onChange={(next) => {
                           if (next) {
                             // Switching it ON opens the reason dialog: an
@@ -233,8 +263,9 @@ export function Qualifications({
         <Note tone="coral">
           <b>Removing ≠ barring.</b> Removing an automatic grant does not stop it being re-granted
           by the next clean shift. To keep someone away from a client, switch <b>Do not return</b>{' '}
-          on: not invited in either wave, never on their Radar, cannot be invited manually — the
-          only hard gate on this tab.
+          on, or use <b>Bar from a client</b> for a client they have no entry at: not invited in
+          either wave, never on their Radar, cannot be invited manually — the only hard gate on this
+          tab.
         </Note>
       </div>
 
@@ -377,6 +408,71 @@ export function Qualifications({
             <>
               Shown under Unavailable → Do not return on this client&rsquo;s events. It is kept if
               the flag is ever switched off, because it is what the next decision rests on.
+            </>
+          }
+        />
+      </Modal>
+      <Modal
+        open={barringClient}
+        title="Bar from a client"
+        onClose={closeBarringClient}
+        footer={
+          <>
+            <Button tone="ghost" onClick={closeBarringClient}>
+              Cancel
+            </Button>
+            <Button
+              tone="danger"
+              solid
+              disabled={pending || barClientId === '' || reason.trim() === ''}
+              onClick={() =>
+                run(
+                  () => barFromClient(profile.id, barClientId, reason),
+                  () => {
+                    setBarringClient(false);
+                    toast('Marked Do not return', { tone: 'green' });
+                  },
+                  'dialog',
+                )
+              }
+            >
+              Do not return
+            </Button>
+          </>
+        }
+      >
+        {dialogProblem ? <Alert tone="coral">{dialogProblem}</Alert> : null}
+        <Alert tone="coral">
+          This is a hard gate, not a preference. {profile.display_name} will not be invited in
+          either wave, the client&rsquo;s shifts will never appear on their Radar, and they cannot
+          be invited manually to this client. It does not cancel a booking they already hold.
+        </Alert>
+        <Select
+          label="Client"
+          value={barClientId}
+          onChange={(event) => setBarClientId(event.target.value)}
+        >
+          <option value="">Choose a client…</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </Select>
+        <Textarea
+          label={
+            <>
+              Reason <span className="coral">*</span>
+            </>
+          }
+          aria-required="true"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="e.g. Client asked for them not to return, 15.10.2026"
+          hint={
+            <>
+              Shown under Unavailable → Do not return on this client&rsquo;s events. It does not
+              clear them for the client: switching the bar off later removes the entry again.
             </>
           }
         />
