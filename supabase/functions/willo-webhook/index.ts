@@ -182,6 +182,45 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
       break;
     }
   }
+  if (!plan && event.email && keys[0]) {
+    // A key we never issued, but the candidate's own email: they recorded
+    // the interview as a second participant (the interview's public link)
+    // instead of through our invitation. Move the link to the key Willo is
+    // now reporting, then plan again (ADR-0147). One match or nothing.
+    const { data: relinked, error: relinkError } = await db.rpc('willo_relink_by_email', {
+      p_willo_candidate_id: keys[0],
+      p_email: event.email,
+    });
+    if (relinkError) {
+      console.error('[willo-webhook] relink failed', {
+        candidate: keys[0],
+        event: event.eventKey,
+        error: relinkError.message,
+      });
+      return json(500, { error: 'relink failed' });
+    }
+    if (relinked) {
+      const { data, error: planError } = await db.rpc('willo_event_plan', {
+        p_willo_candidate_id: keys[0],
+        p_event: event.eventKey,
+      });
+      if (planError) {
+        console.error('[willo-webhook] plan failed', {
+          candidate: keys[0],
+          event: event.eventKey,
+          error: planError.message,
+        });
+        return json(500, { error: 'plan failed' });
+      }
+      console.log('[willo-webhook] relinked by email', {
+        candidate: keys[0],
+        staffId: relinked,
+        event: event.eventKey,
+      });
+      event.willoCandidateId = keys[0];
+      plan = data;
+    }
+  }
   const log = {
     delivery: event.deliveryId,
     candidate: event.willoCandidateId,

@@ -310,6 +310,13 @@ export interface WilloEvent {
   /** When Willo says it happened (ISO), or null → the receiver uses now. */
   occurredAt: string | null;
   details: { answersDone?: number; answersTotal?: number };
+  /**
+   * The participant's email, lower-cased, when the delivery carries one.
+   * Only used to find the candidate when the key is not ours (a second
+   * participant the candidate made from the interview's public link,
+   * ADR-0147); never logged, never sent on to the database as details.
+   */
+  email: string | null;
 }
 
 export type WilloEventFailure = 'not_json' | 'no_event_type' | 'no_candidate' | 'no_stage';
@@ -413,6 +420,21 @@ const STAGE_PATHS = [
 ];
 const TIME_PATHS = ['occurred_at', 'created_at', 'timestamp', 'data.created_at', 'data.updated_at'];
 const DELIVERY_PATHS = ['id', 'event_id', 'delivery_id', 'uuid'];
+const EMAIL_PATHS = [
+  'email',
+  'participant.email',
+  'candidate.email',
+  'data.email',
+  'data.participant.email',
+  'data.candidate.email',
+];
+
+/** The participant's email, or null: one `@`, no spaces, at most 254. */
+export function participantEmail(body: unknown): string | null {
+  const value = firstText(body, EMAIL_PATHS);
+  if (!value || value.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value)) return null;
+  return value.toLowerCase();
+}
 
 const WILLO_KEY = /^[0-9a-f]{32}$/i;
 const STAGE_KEYS = new Set(['stage', 'new_stage', 'to_stage', 'stage_name']);
@@ -590,6 +612,7 @@ export function parseWilloEvent(
       stage,
       occurredAt,
       details,
+      email: participantEmail(body),
     },
   };
 }
