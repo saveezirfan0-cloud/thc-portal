@@ -228,7 +228,7 @@ const DOC = {
         {
           kind: 'note',
           tone: 'warn',
-          text: '**Known quirk:** the tab has no way to bar a worker who has no row at that client, hence the add-then-bar workaround above. It is safe, but a direct “bar this client” action would be tidier. That would be a product change and is not built.',
+          text: '**Known quirk:** on main today the tab has no way to bar a worker who has no row at that client, hence the add-then-bar workaround above. A direct **Bar from a client** button is proposed in PR #253 (ADR-0146). Once that is merged and deployed, use it instead of steps 2–4, and regenerate this guide.',
         },
       ],
     },
