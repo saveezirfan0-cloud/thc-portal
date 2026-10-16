@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  participantEmail,
   describeShape,
   DEFAULT_API_BASE,
   eventTime,
@@ -263,6 +264,7 @@ describe('the payload → a settings.willo_stage_map key', () => {
         stage: 'Accepted',
         occurredAt: '2026-09-23T10:00:00.000Z',
         details: {},
+        email: null,
       },
     });
   });
@@ -359,6 +361,37 @@ describe('the payload → a settings.willo_stage_map key', () => {
       ok: true,
       event: { willoCandidateId: OURS, candidateKeys: [OURS, INTERVIEW] },
     });
+  });
+
+  it('carries the participant’s email, as Willo sends it, for a key we never issued', () => {
+    // The shape of a real stage-change delivery (16.10.2026): the
+    // participant at the top level, its key first, the interview nested.
+    const body = JSON.stringify({
+      key: OURS,
+      email: ' Jo.Self@Example.test ',
+      name: 'Jo',
+      status: 'Accepted',
+      custom_id: null,
+      interview: { key: INTERVIEW, title: 'Front of House' },
+      answers: [{ key: 'a'.repeat(32), status: 'processed' }],
+    });
+    expect(parseWilloEvent(body, { eventHint: 'stage_change' })).toMatchObject({
+      ok: true,
+      event: {
+        eventKey: 'accepted',
+        willoCandidateId: OURS,
+        email: 'jo.self@example.test',
+        details: {},
+      },
+    });
+  });
+
+  it('reads no email that is not one', () => {
+    expect(participantEmail({ email: 'not an email' })).toBeNull();
+    expect(participantEmail({ email: 'a@b@c' })).toBeNull();
+    expect(participantEmail({ email: `${'x'.repeat(250)}@b.uk` })).toBeNull();
+    expect(participantEmail({ participant: { email: 'P@Q.uk' } })).toBe('p@q.uk');
+    expect(participantEmail({})).toBeNull();
   });
 
   it('finds the stage under any stage key, before a bare status', () => {
