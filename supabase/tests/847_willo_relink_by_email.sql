@@ -1,6 +1,6 @@
 -- =====================================================================
--- 846 · A Willo participant we did not create, found by email
---       20261016100000 · ADR-0147 · §2.4
+-- 847 · A Willo participant we did not create, found by email
+--       20261016110000 · ADR-0148 · §2.4
 --
 -- willo_relink_by_email() moves a candidate's Willo link to a key we never
 -- issued only when exactly one candidate still awaiting the interview

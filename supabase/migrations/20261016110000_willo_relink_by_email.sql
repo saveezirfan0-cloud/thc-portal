@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261016100000 · A Willo participant we did not create, found
---                            by the candidate's email (ADR-0147, §2.4)
+-- Migration 20261016110000 · A Willo participant we did not create, found
+--                            by the candidate's email (ADR-0148, §2.4)
 --
 -- The receiver finds a candidate by the Willo key the invite sweep
 -- stored (willo_link_candidate / willo_invite_created). On 16.10.2026 a
@@ -72,7 +72,7 @@ begin
 end $$;
 
 comment on function public.willo_relink_by_email(text, text) is
-  '§2.4, ADR-0147: a Willo delivery for a key we never issued, carrying the email of exactly one candidate still awaiting the interview decision, moves that candidate''s Willo link to the key (audited willo_relinked). Null when there is not exactly one such candidate or the key is already held. Service role only (the willo-webhook Edge Function).';
+  '§2.4, ADR-0148: a Willo delivery for a key we never issued, carrying the email of exactly one candidate still awaiting the interview decision, moves that candidate''s Willo link to the key (audited willo_relinked). Null when there is not exactly one such candidate or the key is already held. Service role only (the willo-webhook Edge Function).';
 
 revoke execute on function public.willo_relink_by_email(text, text) from public, anon, authenticated;
 grant  execute on function public.willo_relink_by_email(text, text) to service_role;

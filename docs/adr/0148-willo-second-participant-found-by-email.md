@@ -1,8 +1,8 @@
-# ADR-0147 · A Willo participant we did not create is found by the candidate's email
+# ADR-0148 · A Willo participant we did not create is found by the candidate's email
 
 Status: accepted · 16.10.2026 · **Amends** ADR-0021 (refusals) and ADR-0066 §7 (finding the participant)
 
-Scope v1.6 §2.4 · `supabase/migrations/20261016100000_willo_relink_by_email.sql` ·
+Scope v1.6 §2.4 · `supabase/migrations/20261016110000_willo_relink_by_email.sql` ·
 `supabase/functions/willo-webhook/index.ts` · `packages/db/src/willo.ts`
 
 ## Context
