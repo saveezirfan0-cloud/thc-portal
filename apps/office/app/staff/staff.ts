@@ -218,6 +218,21 @@ export function employeeId(id: number | null): string {
   return id === null ? '—' : `THC-${String(id).padStart(5, '0')}`;
 }
 
+/**
+ * A numeric Payroll ID is issued as the Employee ID (ADR-0076), so beside
+ * `THC-06096` a second line reading `Payroll 6096` says the same thing twice.
+ * The line is for an ID the Employee ID does not already spell: one with a
+ * letter (`1641A`), or a number that differs. Payroll IDs carry no leading
+ * zeros (ADR-0107), so the digits are compared as numbers.
+ */
+export function payrollIdRepeatsEmployeeId(
+  employee: number | null,
+  payrollId: string | null | undefined,
+): boolean {
+  if (employee === null || !payrollId || !/^\d+$/.test(payrollId)) return false;
+  return Number(payrollId) === employee;
+}
+
 export function formatShowRate(reliability: number | null): string {
   return reliability === null ? '—' : `${Math.round(reliability)}%`;
 }

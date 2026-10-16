@@ -40,6 +40,7 @@ import {
   matchesFilter,
   matchesGroup,
   matchesQuery,
+  payrollIdRepeatsEmployeeId,
   ratingTone,
   sortRows,
   statusLabel,
@@ -622,7 +623,9 @@ function StaffTableRow({
     'employee-id': (
       <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
-        {row.payroll_id && !row.removed ? (
+        {row.payroll_id &&
+        !row.removed &&
+        !payrollIdRepeatsEmployeeId(row.employee_id, row.payroll_id) ? (
           <div className="xs muted">Payroll {row.payroll_id}</div>
         ) : null}
       </td>

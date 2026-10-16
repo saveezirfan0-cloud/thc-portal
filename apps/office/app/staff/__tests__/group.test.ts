@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchesGroup, matchesQuery } from '../staff';
+import { matchesGroup, matchesQuery, payrollIdRepeatsEmployeeId } from '../staff';
 import type { StaffRow } from '../types';
 
 /** ADR-0107 · the Staff directory's group filter and the Payroll ID search. */
@@ -49,5 +49,23 @@ describe('matchesQuery — the Payroll ID', () => {
   it('still finds by name and by role', () => {
     expect(matchesQuery(spud, 'sid')).toBe(true);
     expect(matchesQuery(spud, 'bar')).toBe(true);
+  });
+});
+
+describe('payrollIdRepeatsEmployeeId — the second line under the Employee ID', () => {
+  it('is hidden when a numeric Payroll ID is the Employee ID (THC-06096 / 6096)', () => {
+    expect(payrollIdRepeatsEmployeeId(6096, '6096')).toBe(true);
+    expect(payrollIdRepeatsEmployeeId(183, '183')).toBe(true);
+  });
+
+  it('is shown for an ID with a letter, or a number that differs', () => {
+    expect(payrollIdRepeatsEmployeeId(2200, '1641A')).toBe(false);
+    expect(payrollIdRepeatsEmployeeId(2200, '1641')).toBe(false);
+  });
+
+  it('is shown when there is no Employee ID yet, and absent when there is no Payroll ID', () => {
+    expect(payrollIdRepeatsEmployeeId(null, '6096')).toBe(false);
+    expect(payrollIdRepeatsEmployeeId(6096, null)).toBe(false);
+    expect(payrollIdRepeatsEmployeeId(6096, undefined)).toBe(false);
   });
 });
