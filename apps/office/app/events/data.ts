@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { type SeriesMember, UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
+import { readAllPages } from '@thc/db/paged';
 import { eventsDb, supabaseConfigured } from './db';
 
 /**
@@ -472,71 +473,85 @@ export interface EventsInRange {
   problem: string | null;
 }
 
+/** One office_event_sections row (20261018110000). */
+interface SectionCount {
+  section_id: string;
+  event_id: string;
+  role_id: string;
+  starts_at: string;
+  ends_at: string;
+  headcount: number;
+  buffer: number;
+  confirmed: number;
+}
+
+/** A 42-day Month grid at 15 events a day is ~630 events and ~1,900 sections. */
+const LIST_CEILING = 20_000;
+
 export async function loadEventsInRange(from: string, to: string): Promise<EventsInRange> {
   // No project is reported by loadReferenceData's `unavailable`, once.
   if (!supabaseConfigured()) return { events: [], problem: null };
 
   const supabase = eventsDb(await cookies());
 
-  // The client and role names do not depend on which events fall in the
-  // period, so they are read alongside it, not after it.
-  const [{ data: eventData, error: eventError }, clientRes, roleRes] = await Promise.all([
-    supabase
-      .from('events')
-      .select(
-        'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
-      )
-      .gte('event_date', from)
-      .lte('event_date', to)
-      .order('event_date'),
+  // Go-live audit B2: the sections and their confirmed counts used to be two
+  // more reads after the events — `in.(…)` over every event id, then every
+  // section id, past any URL limit on a Month grid, and cut at 1000 rows
+  // even when accepted. office_event_sections(from, to) (20261018110000)
+  // takes the same period, so it starts with the events instead of after
+  // them, and the database does the counting. Both lists are paged past
+  // max_rows in a total order; the client and role names are read alongside.
+  const [eventRes, sectionRes, clientRes, roleRes] = await Promise.all([
+    readAllPages<ListedEventRow>(
+      (range) =>
+        supabase
+          .from('events')
+          .select(
+            'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
+          )
+          .gte('event_date', from)
+          .lte('event_date', to)
+          .order('event_date')
+          .order('id')
+          .range(range.from, range.to),
+      { what: 'events', key: (row) => row.id, ceiling: LIST_CEILING },
+    ),
+    readAllPages<SectionCount>(
+      (range) =>
+        supabase
+          .rpc('office_event_sections', { p_from: from, p_to: to })
+          .range(range.from, range.to),
+      { what: 'role sections', key: (row) => row.section_id, ceiling: LIST_CEILING },
+    ),
     supabase.from('clients').select('id, name'),
     supabase.from('roles').select('id, name'),
   ]);
-  if (eventError) {
-    return { events: [], problem: `Events could not be loaded: ${eventError.message}` };
+  if (eventRes.error) {
+    return { events: [], problem: `Events could not be loaded: ${eventRes.error.message}` };
   }
-  const events = (eventData ?? []) as ListedEventRow[];
+  const events = eventRes.data;
   if (events.length === 0) return { events: [], problem: null };
 
-  const eventIds = events.map((e) => e.id);
-  const sectionRes = await supabase
-    .from('shift_requirements')
-    .select('id, event_id, role_id, starts_at, ends_at, headcount, buffer')
-    .in('event_id', eventIds)
-    .order('starts_at');
+  // Without the counts every fill chip would read "0 confirmed".
   const listError = sectionRes.error ?? clientRes.error ?? roleRes.error;
   if (listError) {
     return { events: [], problem: `Events could not be loaded: ${listError.message}` };
   }
 
-  const sections = (sectionRes.data ?? []) as {
-    id: string;
-    event_id: string;
-    role_id: string;
-    starts_at: string;
-    ends_at: string;
-    headcount: number;
-    buffer: number;
-  }[];
-
-  const confirmed = new Map<string, number>();
-  if (sections.length > 0) {
-    const { data: bookings, error: bookingError } = await supabase
-      .from('bookings')
-      .select('shift_id')
-      .eq('status', 'confirmed')
-      .in(
-        'shift_id',
-        sections.map((s) => s.id),
-      );
-    // Without the counts every fill chip would read "0 confirmed".
-    if (bookingError) {
-      return { events: [], problem: `Events could not be loaded: ${bookingError.message}` };
-    }
-    for (const booking of (bookings ?? []) as { shift_id: string }[]) {
-      confirmed.set(booking.shift_id, (confirmed.get(booking.shift_id) ?? 0) + 1);
-    }
-  }
+  // Fill counts ONLY confirmed: the function counts status = 'confirmed',
+  // exactly what this screen counted itself before.
+  const sections = (sectionRes.data ?? []).map((s) => ({
+    id: s.section_id,
+    event_id: s.event_id,
+    role_id: s.role_id,
+    starts_at: s.starts_at,
+    ends_at: s.ends_at,
+    headcount: s.headcount,
+    buffer: s.buffer,
+  }));
+  const confirmed = new Map<string, number>(
+    (sectionRes.data ?? []).map((s) => [s.section_id, Number(s.confirmed) || 0]),
+  );
 
   const clientNames = new Map(
     ((clientRes.data ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
