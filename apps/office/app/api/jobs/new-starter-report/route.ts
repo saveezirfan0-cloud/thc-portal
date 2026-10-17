@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@thc/db/admin';
-import { newStarterCsv } from '@thc/pdf';
-import type { NewStarterCsvRow } from '@thc/pdf';
+import { readAllPages } from '@thc/db/paged';
+import type { PageReply } from '@thc/db/paged';
+// The CSV builder only: the `@thc/pdf` barrel loads @react-pdf and pdfkit,
+// whose standard fonts this route does not ship, and every run logged
+// "Cannot find module …/pdfkit/js/standard-fonts/Helvetica.cjs" (go-live
+// audit M9). reports/export/route.ts imports the same subpath.
+import { newStarterCsv } from '@thc/pdf/csv';
+import type { NewStarterCsvRow } from '@thc/pdf/csv';
 import { checkJobSecret } from '../_lib/auth';
 import { runNewStarterReport } from './_lib/run';
 import type { Prepared } from './_lib/run';
@@ -37,11 +43,11 @@ function json(status: number, body: Record<string, unknown>) {
 }
 
 /** Read through the same generated-types gap every office RPC call works round. */
+interface RpcQuery extends PromiseLike<{ data: unknown; error: { message: string } | null }> {
+  range(from: number, to: number): RpcQuery;
+}
 interface RpcClient {
-  rpc(
-    fn: string,
-    args?: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(fn: string, args?: Record<string, unknown>): RpcQuery;
 }
 
 export async function POST(request: Request) {
@@ -78,8 +84,20 @@ export async function POST(request: Request) {
     const counts = await runNewStarterReport({
       due: async () => (await call('new_starter_report_due', { p_now: now })) === true,
       prepare: async () => (await call('prepare_new_starter_report', { p_now: now })) as Prepared,
-      rows: async (sendId) =>
-        ((await call('new_starter_report_rows', { p_send: sendId })) ?? []) as NewStarterCsvRow[],
+      // A set-returning RPC: PostgREST cuts it at max_rows (1000) without an
+      // error, so it is read in pages, in its own order (new_starter_rows
+      // ends on employee_id), and a short read fails the run.
+      rows: async (sendId) => {
+        const read = await readAllPages<NewStarterCsvRow>(
+          (range) =>
+            db
+              .rpc('new_starter_report_rows', { p_send: sendId })
+              .range(range.from, range.to) as unknown as PromiseLike<PageReply<NewStarterCsvRow>>,
+          { what: 'new starters' },
+        );
+        if (read.error) throw new Error(`new_starter_report_rows: ${read.error.message}`);
+        return read.data;
+      },
       csv: newStarterCsv,
       upload: async (path, csv) => {
         const { error } = await admin.storage
