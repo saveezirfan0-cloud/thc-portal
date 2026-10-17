@@ -143,7 +143,12 @@ export async function StaffShell({
       <AppBody className={open ? undefined : 'center'}>
         {open ? (
           <>
-            {pushStatus ? <PushStatus onboardingOnly={profile?.onboardingOnly === true} /> : null}
+            {pushStatus ? (
+              <PushStatus
+                onboardingOnly={profile?.onboardingOnly === true}
+                staffId={profile?.staffId ?? null}
+              />
+            ) : null}
             {children}
           </>
         ) : (

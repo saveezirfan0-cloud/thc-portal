@@ -7,6 +7,7 @@ import type { SignOutProps } from '@thc/ui';
 import { forgetThisDevice } from '../../lib/push';
 import { forgetPushSubscription } from '../notifications/actions';
 import { WAS_ON_KEY } from './push-banner';
+import { SAVED_KEY } from './push-save-memo';
 
 /**
  * Sign out, for the Staff App (§1.4) — `@thc/ui`'s `SignOut`, plus the one
@@ -47,6 +48,9 @@ export function StaffSignOut({
         // A sign-out turned notifications off on purpose; the next person
         // on this phone is not shown "notifications have stopped".
         window.localStorage?.removeItem(WAS_ON_KEY);
+        // And the record no longer holds this device: whoever signs in next,
+        // the same worker included, sends it again.
+        window.localStorage?.removeItem(SAVED_KEY);
       } catch {
         // Never in the way of signing out.
       } finally {
