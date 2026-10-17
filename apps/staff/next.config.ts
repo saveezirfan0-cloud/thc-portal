@@ -32,7 +32,14 @@ const withSerwist = withSerwistInit({
   // above; pages are not. (Nothing to do with the CDN: Vercel already serves
   // sw.js revalidated on every load.)
   cacheOnNavigation: false,
-  reloadOnOnline: true,
+  // Off (go-live audit H5). On, every page reloaded whenever the phone
+  // regained signal — on venue signal and every wifi/4G handover that is
+  // the shift screen reloading mid-check-in, dropping the in-flight press
+  // and the off-site check-out confirmation, and hundreds of phones
+  // reloading in step. The offline shell reloads itself instead
+  // (app/offline/ReloadWhenOnline.tsx); the list screens refresh on their
+  // own when back online (AutoRefresh).
+  reloadOnOnline: false,
 });
 
 const nextConfig: NextConfig = {
