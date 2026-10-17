@@ -36,7 +36,7 @@ import {
   portalOrigin,
 } from './outbox.ts';
 import type { ResendAttachment } from './resend.ts';
-import { buildResendRequest, classifyResendStatus, toBase64 } from './resend.ts';
+import { RESEND_ENDPOINT, buildResendRequest, classifyResendStatus, toBase64 } from './resend.ts';
 import { resolveSender } from './senders.ts';
 import type { PushSubscriptionKeys, VapidKeys } from './webpush.ts';
 import { buildPushRequest, classifyPushStatus } from './webpush.ts';
@@ -415,10 +415,11 @@ export interface DrainCounts {
 }
 
 /**
- * Drain one claimed batch. Rows go one at a time: a batch is at most a few
- * dozen, and serial sends keep Resend's per-second rate limit out of the
- * picture. The missing-configuration line is logged once per run, not once
- * per row.
+ * Drain one claimed batch, one row at a time, and return every verdict at
+ * the end. The Edge Function no longer uses this — `drainRun` settles each
+ * row as it goes — but it is the plain form of the same decisions, and the
+ * per-row tests read it. The missing-configuration line is logged once per
+ * call, not once per row.
  */
 export async function drainBatch(
   rows: readonly OutboxRow[],
@@ -447,4 +448,270 @@ export async function drainBatch(
     else counts.unconfigured += 1;
   }
   return { settlements, counts };
+}
+
+// ---------------------------------------------------------------------------
+// one run: claim in rounds, send a few at a time, settle each as it lands
+// ---------------------------------------------------------------------------
+
+/**
+ * The outbox as a run sees it — `claim_outbox_batch`, the four settle
+ * calls behind `settle`, and `release_outbox_claims`. The Edge Function
+ * implements it with RPCs; the tests with an in-memory table.
+ */
+export interface OutboxStore {
+  /** Lease up to `limit` due rows, urgent first, oldest first within a class. */
+  claim(limit: number): Promise<OutboxRow[]>;
+  /** Write one verdict. Throws when it could not be written. */
+  settle(settlement: Settlement): Promise<void>;
+  /** Hand back claimed rows that were never started: due at once, no attempt counted. */
+  release(ids: readonly number[]): Promise<void>;
+}
+
+export interface RunLimits {
+  /** Rows per claim. Small, so a run re-reads the priority order often. */
+  batch: number;
+  /** Sends in flight at once. */
+  concurrency: number;
+  /** After this many ms from the start of the run, no new claim is made. */
+  claimForMs: number;
+  /** After this many ms, no new send starts; what is left is released. */
+  sendForMs: number;
+  /** The least gap between two Resend calls from this run (its rate limit). */
+  emailIntervalMs: number;
+}
+
+/**
+ * The defaults, and why.
+ *
+ * pg_cron starts a run every minute, and the Edge Runtime kills an isolate
+ * at 150 s of wall clock (Free; 400 s on Paid). A run stops STARTING work
+ * at 50 s, so it is normally finished before the next one starts — one
+ * drain at a time keeps the Resend rate below its limit — and the slowest
+ * send in flight then (the function's HTTP timeout, plus its settle) ends
+ * far inside the wall clock: nothing a run sends is left unrecorded by the
+ * kill.
+ *
+ * Six sends at a time: push calls take ~100–500 ms, so a run moves a few
+ * hundred pushes where the serial drain moved 40. Email is held to two
+ * calls a second, Resend's default team rate limit.
+ */
+export const DEFAULT_RUN_LIMITS: RunLimits = {
+  batch: 30,
+  concurrency: 6,
+  claimForMs: 45_000,
+  sendForMs: 50_000,
+  emailIntervalMs: 500,
+};
+
+/** The send window's ceiling: 30 s and more of the 150 s wall clock is always left. */
+export const MAX_SEND_FOR_MS = 110_000;
+
+/**
+ * The limits, from the environment where it sets them
+ * (NOTIFY_DRAIN_SEND_FOR_MS, NOTIFY_DRAIN_CONCURRENCY,
+ * RESEND_REQUESTS_PER_SECOND — for a Resend plan with a raised limit).
+ * Anything absent, unreadable or out of bounds keeps the default.
+ */
+export function readRunLimits(env: (name: string) => string | undefined): RunLimits {
+  const num = (name: string, min: number, max: number): number | null => {
+    const raw = env(name);
+    if (raw === undefined || raw.trim() === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= min && n <= max ? n : null;
+  };
+  const limits = { ...DEFAULT_RUN_LIMITS };
+  const sendFor = num('NOTIFY_DRAIN_SEND_FOR_MS', 5_000, MAX_SEND_FOR_MS);
+  if (sendFor !== null) {
+    limits.sendForMs = sendFor;
+    limits.claimForMs = Math.max(0, sendFor - 5_000);
+  }
+  const concurrency = num('NOTIFY_DRAIN_CONCURRENCY', 1, 16);
+  if (concurrency !== null) limits.concurrency = Math.trunc(concurrency);
+  const perSecond = num('RESEND_REQUESTS_PER_SECOND', 0.1, 50);
+  if (perSecond !== null) limits.emailIntervalMs = Math.ceil(1000 / perSecond);
+  return limits;
+}
+
+export interface RunClock {
+  now(): number;
+  sleep(ms: number): Promise<void>;
+}
+
+const REAL_CLOCK: RunClock = {
+  now: () => Date.now(),
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+};
+
+export interface RunCounts extends DrainCounts {
+  /** Claimed but not started: handed back through `release`. */
+  released: number;
+  /** Claims made. */
+  batches: number;
+  /**
+   * Why the run ended: the due queue ran dry, the time budget ran out, or
+   * Resend's 429 held a batch that was all email.
+   */
+  stoppedBy: 'empty' | 'budget' | 'throttled';
+  /** Set when Resend answered 429 and the run held its remaining email. */
+  emailThrottled?: true;
+}
+
+export interface RunResult {
+  counts: RunCounts;
+  /** One message per verdict or release that could not be written. */
+  unsettled: string[];
+}
+
+/**
+ * One drain run.
+ *
+ * It claims a small batch, sends it `concurrency` rows at a time, and
+ * settles every row the moment its send returns — so an isolate killed
+ * mid-run has recorded everything it finished, and only what was in flight
+ * at that instant can come back after the lease. Then it claims again,
+ * until the queue is empty or `claimForMs` has passed; every claim reads
+ * the priority order afresh, so an N9 queued mid-run waits for at most one
+ * batch. A row claimed but not started when `sendForMs` passes is handed
+ * back through `release`, due at once with its attempt refunded, so the
+ * next run takes it in priority order instead of after the lease.
+ *
+ * Rate limits. Resend calls are spaced `emailIntervalMs` apart. A 429 from
+ * Resend is still that row's retry with the shared backoff, as before, and
+ * it also holds every other email in this run: those rows are handed back
+ * unattempted rather than each spending an attempt on the same 429. A push
+ * service's 429 stays a per-row retry: those limits are per device or per
+ * sender, and `concurrency` is the bound.
+ */
+export async function drainRun(
+  store: OutboxStore,
+  config: DrainConfig,
+  sendersSetting: unknown,
+  ports: DrainPorts,
+  limits: RunLimits = DEFAULT_RUN_LIMITS,
+  clock: RunClock = REAL_CLOCK,
+): Promise<RunResult> {
+  const start = clock.now();
+  const elapsed = () => clock.now() - start;
+  const counts: RunCounts = {
+    claimed: 0,
+    sent: 0,
+    retried: 0,
+    failed: 0,
+    unconfigured: 0,
+    released: 0,
+    batches: 0,
+    stoppedBy: 'empty',
+  };
+  const unsettled: string[] = [];
+  let loggedMissing = false;
+  let emailHeld = false;
+  let nextEmailAt = 0;
+
+  // The ports, with Resend's 429 noticed on the way past.
+  const watched: DrainPorts = {
+    ...ports,
+    async http(request) {
+      const response = await ports.http(request);
+      if (request.url === RESEND_ENDPOINT && response.status === 429) {
+        emailHeld = true;
+        counts.emailThrottled = true;
+      }
+      return response;
+    },
+  };
+
+  const usesResend = (row: OutboxRow) => row.channel === 'email' && config.resendApiKey !== null;
+
+  /** Wait for this run's next Resend slot; false when sending should not go ahead. */
+  async function emailSlot(): Promise<boolean> {
+    const now = clock.now();
+    const at = Math.max(now, nextEmailAt);
+    nextEmailAt = at + limits.emailIntervalMs;
+    if (at > now) await clock.sleep(at - now);
+    return !emailHeld && elapsed() < limits.sendForMs;
+  }
+
+  async function record(settlement: Settlement): Promise<void> {
+    if (settlement.verdict === 'sent') counts.sent += 1;
+    else if (settlement.verdict === 'retry') counts.retried += 1;
+    else if (settlement.verdict === 'failed') counts.failed += 1;
+    else counts.unconfigured += 1;
+    if (settlement.verdict === 'retry' || settlement.verdict === 'failed') {
+      ports.log(`notify-drain: ${settlement.key} ${settlement.verdict}: ${settlement.error}`);
+    }
+    try {
+      await store.settle(settlement);
+    } catch (cause) {
+      // The row stays leased and comes back when the lease ends — at worst
+      // one repeat, never a lost send. Resend's Idempotency-Key (the outbox
+      // key) absorbs the repeat for email.
+      unsettled.push(`settling ${settlement.key}: ${describe(cause)}`);
+    }
+  }
+
+  /** Send one claimed batch; returns the ids that were never started. */
+  async function sendAll(rows: readonly OutboxRow[]): Promise<number[]> {
+    const queue = [...rows];
+    const notStarted: number[] = [];
+    async function worker(): Promise<void> {
+      for (let row = queue.shift(); row !== undefined; row = queue.shift()) {
+        const go =
+          elapsed() < limits.sendForMs &&
+          !(emailHeld && usesResend(row)) &&
+          (!usesResend(row) || (await emailSlot()));
+        if (!go) {
+          notStarted.push(row.id);
+          continue;
+        }
+        await record(await drainRow(row, config, sendersSetting, watched));
+      }
+    }
+    const workers = Math.max(1, Math.min(limits.concurrency, rows.length));
+    await Promise.all(Array.from({ length: workers }, () => worker()));
+    return notStarted;
+  }
+
+  for (;;) {
+    if (elapsed() >= limits.claimForMs) {
+      counts.stoppedBy = 'budget';
+      break;
+    }
+    const rows = await store.claim(limits.batch);
+    counts.batches += 1;
+    if (rows.length === 0) break;
+    counts.claimed += rows.length;
+    if (!loggedMissing && config.missing.length > 0) {
+      loggedMissing = true;
+      ports.log(
+        `notify-drain: not configured — ${config.missing.join(', ')} missing; affected rows are held without counting an attempt`,
+      );
+    }
+
+    const notStarted = await sendAll(rows);
+    if (notStarted.length > 0) {
+      try {
+        await store.release(notStarted);
+        counts.released += notStarted.length;
+      } catch (cause) {
+        // Not lost: they come back when their lease ends.
+        unsettled.push(`releasing ${notStarted.length} unsent claims: ${describe(cause)}`);
+      }
+    }
+    if (elapsed() >= limits.sendForMs) {
+      counts.stoppedBy = 'budget';
+      break;
+    }
+    // Email held after a 429 and a batch of nothing but email: claiming on
+    // would only lease and hand back the same kind of row until the budget
+    // ran out. The next run, a minute on, starts with a clean slate.
+    if (notStarted.length === rows.length) {
+      counts.stoppedBy = 'throttled';
+      break;
+    }
+    // A short claim means nothing more is due; the next run is a minute away.
+    if (rows.length < limits.batch) break;
+  }
+
+  return { counts, unsettled };
 }
