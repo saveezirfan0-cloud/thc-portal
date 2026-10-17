@@ -13,6 +13,7 @@ import {
 import type { TimeFormat } from '@thc/domain';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
+import { preloadShell } from '../_components/preloadShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { LoadProblem } from '../_components/LoadProblem';
@@ -52,6 +53,8 @@ export const metadata = { title: 'Radar · THC Staff' };
  * this week's hours under "This week".
  */
 export default async function Page() {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const format = await getTimeFormat();
   const [
     { rows: shifts, problem },

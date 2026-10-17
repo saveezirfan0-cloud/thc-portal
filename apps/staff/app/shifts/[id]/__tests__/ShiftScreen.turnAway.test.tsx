@@ -12,8 +12,10 @@ import type { ShiftDetail } from '../types';
  * booking reads `turned_away`. This pins the moment before that: the worker
  * presses Check in, `attempt_check_in()` answers `decision: 'turned_away'`
  * with RULE-15's minutes, and "Thanks for coming" must be on screen from
- * that reply alone — the props here never change and `router.refresh()` is
- * a spy that hands nothing down, so nothing but the reply can put it there.
+ * that reply alone — the props here never change (in the app the action's
+ * revalidated response hands the new booking down later), so nothing but
+ * the reply can put it there. No `router.refresh()` is made on top of the
+ * action's own re-render (go-live audit B3).
  * Whether the "paid for 4 hours" sentence appears is the reply's minutes,
  * never this test's (or the phone's) clock.
  *
@@ -140,9 +142,9 @@ describe('the check-in press turned away by the strict buffer (§3.2, RULE-15)',
     // The live controls are gone, and not as a message over them.
     expect(container.textContent).not.toContain('Check in — verify GPS');
     expect(container.querySelector('.alert')).toBeNull();
-    // The refresh was asked for but delivered nothing: the props above
-    // still read `confirmed`, so the screen came from the RPC's answer.
-    expect(router.refresh).toHaveBeenCalledTimes(1);
+    // The props above still read `confirmed`, so the screen came from the
+    // RPC's answer; and no second render was asked for.
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it('late: the same screen with 0 minutes, and no four-hour sentence', async () => {
@@ -159,7 +161,7 @@ describe('the check-in press turned away by the strict buffer (§3.2, RULE-15)',
     expect(container.textContent).not.toContain(PAID);
     expect(container.textContent).not.toContain('4 hours');
     expect(container.textContent).not.toContain('Check in — verify GPS');
-    expect(router.refresh).toHaveBeenCalledTimes(1);
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it('is not triggered by an ordinary check-in reply', async () => {

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Alert } from '@thc/ui';
 import { StaffShell } from '../_components/StaffShell';
+import { preloadShell } from '../_components/preloadShell';
 import { DocumentsOnlyNotice } from '../_components/DocumentsLock';
 import { DocumentsHub } from './_components/DocumentsHub';
 import { PullToRefresh } from './_components/PullToRefresh';
@@ -51,6 +52,8 @@ const FLASH: Record<string, string> = {
 };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { sent } = await searchParams;
   const gate = await documentsGate();
 

@@ -16,6 +16,7 @@ import {
 import type { TimeFormat } from '@thc/domain';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
+import { preloadShell } from '../_components/preloadShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { CancelShift } from '../_components/CancelShift';
@@ -31,7 +32,7 @@ import {
   quizzesOutstanding,
   requirementsByBooking,
 } from '../data';
-import type { BookingRow, ShiftRequirementRow } from '../data';
+import type { BookingRow, Loaded, OpenShift, ShiftRequirementRow } from '../data';
 import { KitMessage, QuizPrompt } from '../_components/ShiftRequirements';
 import { getTimeFormat } from '../_lib/timeFormat';
 import { WeekMeter } from '../radar/WeekMeter';
@@ -46,6 +47,8 @@ import { checkInWindow } from './[id]/phase';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
+
+const NOT_SHOWN: Loaded<OpenShift> = { rows: [], problem: null };
 export const metadata = { title: 'Shifts · THC Staff' };
 
 /**
@@ -70,6 +73,8 @@ export const metadata = { title: 'Shifts · THC Staff' };
  * `staff_week_meter()` and `WeekMeter` Radar shows, so the two agree.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { tab } = await searchParams;
   const open = tab === 'open';
   const format = await getTimeFormat();
@@ -82,7 +87,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     { rows: requirementRows, problem: requirementsProblem },
   ] = await Promise.all([
     loadBookings(),
-    loadOpenShifts(),
+    // `staff_open_shifts()` is the slowest read the app makes, and only the
+    // Open tab shows it. My shifts — the landing tab, the home-screen
+    // start_url and every "I'm ready" / "Confirm" re-render — never waits on it.
+    open ? loadOpenShifts() : Promise.resolve(NOT_SHOWN),
     loadWeekMeter(),
     // ADR-0046: the open offer on each confirmed booking, for the chip.
     loadBookingOffers(),

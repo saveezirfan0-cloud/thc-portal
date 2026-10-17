@@ -24,10 +24,22 @@ vi.mock('@supabase/ssr', () => ({
     { cookies }: { cookies: { setAll: (toSet: unknown[]) => void } },
   ) => ({
     auth: {
-      getUser: async () => {
+      // getClaims() is what refreshes the token in the middleware now
+      // (ADR-0108, go-live audit H2); getUser() is the once-a-minute check.
+      getClaims: async () => {
         cookies.setAll(state.refreshWrites);
-        return { data: { user: { app_metadata: { role: 'staff' } } } };
+        return {
+          data: {
+            claims: {
+              sub: 'staff-1',
+              session_id: `s-${Math.random()}`,
+              app_metadata: { role: 'staff' },
+            },
+          },
+          error: null,
+        };
       },
+      getUser: async () => ({ data: { user: { app_metadata: { role: 'staff' } } } }),
     },
   }),
 }));

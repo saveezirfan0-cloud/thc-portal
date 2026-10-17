@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { payableMinutes } from '@thc/domain';
 import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
@@ -39,14 +40,15 @@ export type ProfileRead =
   | { kind: 'ok'; profile: StaffProfile }
   | { kind: 'problem'; message: string };
 
-export async function readProfile(): Promise<ProfileRead> {
+/** `React.cache`d: the shell, the page and the documents gate share one `staff_me()` per request. */
+export const readProfile = cache(async (): Promise<ProfileRead> => {
   if (!supabaseConfigured()) return { kind: 'unconfigured' };
   const supabase = staffDb(await cookies());
   const { data, error } = await supabase.rpc('staff_me');
   if (error) return { kind: 'problem', message: error.message || 'staff_me failed' };
   if (!data) return { kind: 'problem', message: 'staff_me returned no row' };
   return { kind: 'ok', profile: toProfile(data as Record<string, unknown>) };
-}
+});
 
 /**
  * The profile, or null where no project is configured. A failed read

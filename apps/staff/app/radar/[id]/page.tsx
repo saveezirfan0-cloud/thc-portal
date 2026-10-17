@@ -10,6 +10,7 @@ import {
   sectionHours,
 } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
+import { preloadShell } from '../../_components/preloadShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
@@ -38,6 +39,8 @@ export const metadata = { title: 'Open shift · THC Staff' };
  * how a worker sees a shift that fits, and how close it comes.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { id } = await params;
   const [{ row: shift, problem }, { rows: bookings }] = await Promise.all([
     findOpenShift(id),

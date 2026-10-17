@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal } from '@thc/ui';
 import type { ButtonTone } from '@thc/ui';
 import type { ActionResult, Refusal } from '../actions';
+import { isStaleDeploy, reloadForNewBuild } from '../_lib/stale-deploy';
+
+/**
+ * Go-live audit B5: the press got no answer at all (no signal, a gateway
+ * timeout). Without this the rejection escaped to error.tsx and replaced
+ * the whole screen.
+ */
+export const NO_ANSWER: Refusal = {
+  title: 'That didn’t go through',
+  body: 'We couldn’t reach THC. Check your signal and try again.',
+};
 
 /**
  * One of the worker's buttons, with the confirmation dialog §10.4 puts in
@@ -54,7 +65,16 @@ export function ActionButton({
 
   function run() {
     start(async () => {
-      const result = await action();
+      let result: ActionResult;
+      try {
+        result = await action();
+      } catch (e) {
+        setAsking(false);
+        // A phone on an older build than the server: load the new one.
+        if (isStaleDeploy(e) && reloadForNewBuild()) return;
+        setRefusal(NO_ANSWER);
+        return;
+      }
       setAsking(false);
       if ('refusal' in result) setRefusal(result.refusal);
       else if (result.note) setNote(result.note);

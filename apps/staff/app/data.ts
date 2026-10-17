@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { DEFAULT_TIME_FORMAT, UK_ZONE, formatTimeIn, overlapVerdict } from '@thc/domain';
 import type {
@@ -118,13 +119,18 @@ export interface Found<T> {
   problem: string | null;
 }
 
-export async function loadBookings(): Promise<Loaded<BookingRow>> {
+/**
+ * The loaders below are `React.cache`d: within one server render the shell,
+ * the page and `findBooking` / `findOpenShift` share one RPC each (go-live
+ * audit H1). Outside a render — a server action — `cache` does not memoise.
+ */
+export const loadBookings = cache(async (): Promise<Loaded<BookingRow>> => {
   if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
   const { data, error } = await supabase.rpc('staff_bookings');
   if (error) return { rows: [], problem: error.message || 'staff_bookings failed' };
   return { rows: toBookings(data), problem: null };
-}
+});
 
 /** `staff_bookings()` rows in the screens' shape. */
 export function toBookings(data: unknown): BookingRow[] {
@@ -192,13 +198,13 @@ export interface ShiftRequirementRow {
   kitAcknowledgedAt: Date | null;
 }
 
-export async function loadShiftRequirements(): Promise<Loaded<ShiftRequirementRow>> {
+export const loadShiftRequirements = cache(async (): Promise<Loaded<ShiftRequirementRow>> => {
   if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
   const { data, error } = await supabase.rpc('staff_shift_requirements');
   if (error) return { rows: [], problem: error.message || 'staff_shift_requirements failed' };
   return { rows: toShiftRequirements(data), problem: null };
-}
+});
 
 /** `staff_shift_requirements()` rows in the screens' shape. */
 export function toShiftRequirements(data: unknown): ShiftRequirementRow[] {
@@ -239,13 +245,13 @@ export function quizzesOutstanding(rows: ShiftRequirementRow[]): ShiftRequiremen
   });
 }
 
-export async function loadOpenShifts(): Promise<Loaded<OpenShift>> {
+export const loadOpenShifts = cache(async (): Promise<Loaded<OpenShift>> => {
   if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
   const { data, error } = await supabase.rpc('staff_open_shifts');
   if (error) return { rows: [], problem: error.message || 'staff_open_shifts failed' };
   return { rows: toOpenShifts(data), problem: null };
-}
+});
 
 /** `staff_open_shifts()` rows in the screens' shape. */
 export function toOpenShifts(data: unknown): OpenShift[] {
@@ -289,7 +295,7 @@ function coordinate(value: unknown): number | null {
  * say (no week yet); `problem` says the read itself failed, so the strip is
  * not silently dropped as if the worker had no cap (audit D18).
  */
-export async function loadWeekMeter(): Promise<Found<WeekMeter>> {
+export const loadWeekMeter = cache(async (): Promise<Found<WeekMeter>> => {
   if (!supabaseConfigured()) return { row: null, problem: null };
   const supabase = staffDb(await cookies());
   const { data, error } = await supabase.rpc('staff_week_meter');
@@ -307,7 +313,7 @@ export async function loadWeekMeter(): Promise<Found<WeekMeter>> {
     },
     problem: null,
   };
-}
+});
 
 export async function findBooking(bookingId: string): Promise<Found<BookingRow>> {
   const { rows, problem } = await loadBookings();
