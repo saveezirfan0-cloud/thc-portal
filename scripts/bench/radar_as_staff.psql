@@ -1,0 +1,34 @@
+-- Included by radar_and_pool_at_scale.sql with :who set to 1, 2 or 3.
+-- Radar as that staff user (their own session, RLS on): the whole list
+-- three times, then — when the database has the single-section read —
+-- /radar/[id] for twenty open sections, whether or not the worker sees them.
+select set_config('request.jwt.claims',
+                  json_build_object('sub', md5('bench-user-' || :'who')::uuid, 'role', 'authenticated')::text, true);
+set local role authenticated;
+-- No limit here, so a body that is over the app's 8 s limit is measured
+-- rather than cancelled; the report flags it.
+set local statement_timeout = 0;
+select set_config('bench.who', :'who', true);
+do $$
+declare
+  t timestamptz; n int; i int; r record;
+  label text := 'radar: staff_open_shifts() worker ' || current_setting('bench.who');
+  one   boolean := to_regprocedure('public.staff_open_shifts(uuid,uuid)') is not null;
+begin
+  for i in 1..3 loop
+    t := clock_timestamp();
+    select count(*) into n from staff_open_shifts();
+    insert into bench_clock (what, n, ms) values (label, n, extract(epoch from clock_timestamp() - t) * 1000);
+  end loop;
+  if one then
+    for r in select o.id from bench_open o order by o.rn limit 20 loop
+      t := clock_timestamp();
+      execute 'select count(*) from staff_open_shifts(p_shift => $1)' into n using r.id;
+      insert into bench_clock (what, n, ms)
+      values ('radar/[id]: staff_open_shifts(p_shift) worker ' || current_setting('bench.who'), n,
+              extract(epoch from clock_timestamp() - t) * 1000);
+    end loop;
+  end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims', '', true);
