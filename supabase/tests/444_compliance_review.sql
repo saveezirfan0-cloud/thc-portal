@@ -56,20 +56,20 @@ update staff set removed_at = now() - interval '1 day' where id = :'w_rem';
 -- Jonah: the passport AND the visa are both dead. Two verified documents,
 -- both expired, both from before the block.
 insert into compliance_docs (id, staff_id, doc_type, uploaded_at, expiry_date, review_status) values
-  (:'d_pass_old', :'w_blk', 'passport',      now() - interval '3 years', current_date - 10, 'verified'),
-  (:'d_visa_old', :'w_blk', 'visa_document', now() - interval '3 years', current_date - 3,  'verified'),
+  (:'d_pass_old', :'w_blk', 'passport',      now() - interval '3 years', (now() at time zone 'Europe/London')::date - 10, 'verified'),
+  (:'d_visa_old', :'w_blk', 'visa_document', now() - interval '3 years', (now() at time zone 'Europe/London')::date - 3,  'verified'),
   -- He re-uploads the passport only.
-  (:'d_pass_new', :'w_blk', 'passport',      now() - interval '1 hour',  current_date + 3000, 'pending'),
+  (:'d_pass_new', :'w_blk', 'passport',      now() - interval '1 hour',  (now() at time zone 'Europe/London')::date + 3000, 'pending'),
   -- The candidate: NI evidence and a term letter waiting on the office.
   (:'d_cand_ni',  :'w_cand', 'ni_evidence',  now() - interval '2 days', null, 'pending'),
   (:'d_cand_term',:'w_cand', 'university_term_dates_letter', now() - interval '3 days', null, 'pending'),
   -- Rejected and removed people's pending documents drop out (§4.1).
-  (:'d_rej',      :'w_rej',  'passport',     now() - interval '5 days', current_date + 900, 'pending'),
-  (:'d_rem',      :'w_rem',  'passport',     now() - interval '5 days', current_date + 900, 'pending'),
+  (:'d_rej',      :'w_rej',  'passport',     now() - interval '5 days', (now() at time zone 'Europe/London')::date + 900, 'pending'),
+  (:'d_rem',      :'w_rem',  'passport',     now() - interval '5 days', (now() at time zone 'Europe/London')::date + 900, 'pending'),
   -- A share code report with a right-to-work date on it.
   (:'d_share',    :'w_cand', 'share_code_report', now() - interval '1 day', null, 'pending'),
   -- A passport that has already run out by the time it is reviewed.
-  (:'d_expired',  :'w_cand', 'passport',     now() - interval '1 day', current_date - 1, 'pending');
+  (:'d_expired',  :'w_cand', 'passport',     now() - interval '1 day', (now() at time zone 'Europe/London')::date - 1, 'pending');
 update compliance_docs
    set term_dates = array[daterange(date '2026-12-13', date '2027-01-10', '[]')]
  where id = :'d_cand_term';
@@ -133,7 +133,7 @@ select is((select reason from compliance_blockers(:'w_blk')), 'document_expired:
 
 -- He uploads the visa; the office verifies it; nothing else is pressed.
 insert into compliance_docs (id, staff_id, doc_type, uploaded_at, expiry_date, review_status)
-values (:'d_visa_new', :'w_blk', 'visa_document', now(), current_date + 700, 'pending');
+values (:'d_visa_new', :'w_blk', 'visa_document', now(), (now() at time zone 'Europe/London')::date + 700, 'pending');
 select is(compliance_verify_document(:'d_visa_new') ->> 'unblocked', 'true',
   '§4.3: verifying the last outstanding document runs the full re-check and unblocks him automatically');
 select is((select status::text from staff where id = :'w_blk'), 'compliant', 'Jonah is compliant');
@@ -247,7 +247,7 @@ values ('c6000000-0000-4000-8000-000000000007', 96007, 'Tom', 'Radar', 'tr@cq.te
         date '1990-01-01', 'compliant', 'uk_irish');
 insert into compliance_docs (id, staff_id, doc_type, uploaded_at, expiry_date, review_status) values
   ('c6100000-0000-4000-8000-0000000000d1', 'c6000000-0000-4000-8000-000000000007', 'passport',
-   now() - interval '5 years', current_date + 7, 'verified');
+   now() - interval '5 years', (now() at time zone 'Europe/London')::date + 7, 'verified');
 insert into notification_outbox (key, channel, template, recipient_staff_id)
 values ('N3:doc:c6100000-0000-4000-8000-0000000000d1', 'push', 'N3', 'c6000000-0000-4000-8000-000000000007');
 

@@ -225,7 +225,7 @@ select throws_ok(
   '22023', 'Enter your date of birth.', 'D1: a missing date of birth is still refused');
 select throws_ok(
   $$ select submit_application_as_caller('A', 'B', 'd6@t681.test', '+447700968306',
-       (current_date - interval '18 years' + interval '1 day')::date, true, null, 'K7M4Q2XP') $$,
+       ((now() at time zone 'Europe/London')::date - interval '18 years' + interval '1 day')::date, true, null, 'K7M4Q2XP') $$,
   '22023', 'You must be 18 or over to apply.', 'D1: under 18 is still refused, code or no code');
 select throws_ok(
   $$ select submit_application_as_caller('A', 'B', 'd7@t681.test', '+447700968307', date '1900-01-01', true, null, 'K7M4Q2XP') $$,
