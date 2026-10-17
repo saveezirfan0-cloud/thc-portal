@@ -147,4 +147,33 @@ describe('middleware · session gate', () => {
     expect((await get('/login')).status).toBe(200);
     expect(getUser).not.toHaveBeenCalled();
   });
+
+  it('GoTrue unreachable: an aal1 session gets a retryable 503, not /login, and nothing is cached', async () => {
+    signIn();
+    getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 0 },
+    } as never);
+    const res = await get('/events');
+    expect(res.status).toBe(503);
+    expect(res.headers.get('retry-after')).toBe('5');
+    expect(location(res)).toBeNull();
+    // The next request asks again and, GoTrue back, is let through.
+    const again = await get('/events');
+    expect(again.status).toBe(200);
+    expect(getUser).toHaveBeenCalledTimes(2);
+  });
+
+  it('GoTrue unreachable: an aal2 session goes on, and is asked again next time', async () => {
+    signIn({ aal: 'aal2' });
+    getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 0 },
+    } as never);
+    const res = await get('/events');
+    expect(res.status).toBe(200);
+    expect(location(res)).toBeNull();
+    await get('/events');
+    expect(getUser).toHaveBeenCalledTimes(2);
+  });
 });

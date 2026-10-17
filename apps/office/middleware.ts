@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { WRONG_APP_PATH, WRONG_APP_ROLE_HEADER, isRole, withSessionPersistence } from '@thc/db';
+import {
+  SESSION_CHECK_TIMEOUT_MS,
+  WRONG_APP_PATH,
+  WRONG_APP_ROLE_HEADER,
+  createRequestTimeoutFetch,
+  isRole,
+  isTransientAuthFailure,
+  withSessionPersistence,
+} from '@thc/db';
 import { createSessionCheckCache, sessionKey } from './app/login/session-check';
 import { nextLevelFor, twoStepDecision, verifyStepPath } from './app/login/two-step';
 
@@ -109,6 +117,10 @@ export async function middleware(request: NextRequest) {
   // after an emailed link) gets 30 days, never the library's 400: the
   // Back Office is capped (packages/db/src/session.ts).
   const supabase = createServerClient(url, anonKey, {
+    // Reads give up after 10 s and the GoTrue session check after 4 s
+    // (ADR-0152): on 17.10 a stalled call held the middleware to Vercel's
+    // 25 s limit and the page answered 504. Writes are never cut off.
+    global: { fetch: createRequestTimeoutFetch({ getUserMs: SESSION_CHECK_TIMEOUT_MS }) },
     cookies: withSessionPersistence(
       {
         getAll: () => request.cookies.getAll(),
@@ -185,7 +197,17 @@ export async function middleware(request: NextRequest) {
     if (!check) {
       const {
         data: { user },
+        error,
       } = await supabase.auth.getUser();
+      if (!user && isTransientAuthFailure(error)) {
+        // GoTrue slow, down or rate-limiting is no answer about the session,
+        // so it is not cached as "signed out" (ADR-0152). A token already
+        // past the code step goes on: it was verified above, and RLS decides
+        // every row. Below aal2 we cannot tell whether a code step is owed,
+        // so it fails closed — a short "try again", never a skipped step.
+        if (claims.aal === 'aal2') return response;
+        return tryAgain(response);
+      }
       check = { valid: !!user, secondStep: nextLevelFor(user?.factors) === 'aal2' };
       sessionChecks.set(key, check);
     }
@@ -210,6 +232,21 @@ export async function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+/**
+ * GoTrue could not be asked about this session. A 503 the browser can retry,
+ * carrying any refreshed cookies, instead of a trip to /login that would
+ * lose the manager's place.
+ */
+function tryAgain(from: NextResponse): NextResponse {
+  return withCookies(
+    new NextResponse('Sign-in is taking longer than usual. Please try again in a moment.', {
+      status: 503,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'retry-after': '5' },
+    }),
+    from,
+  );
 }
 
 /**

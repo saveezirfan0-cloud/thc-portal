@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { WRONG_APP_PATH, WRONG_APP_ROLE_HEADER, isRole, withSessionPersistence } from '@thc/db';
+import {
+  SESSION_CHECK_TIMEOUT_MS,
+  WRONG_APP_PATH,
+  WRONG_APP_ROLE_HEADER,
+  createRequestTimeoutFetch,
+  isRole,
+  isTransientAuthFailure,
+  withSessionPersistence,
+} from '@thc/db';
 import { createSessionCheckCache, sessionKey } from './app/login/session-check';
 
 /**
@@ -106,6 +114,10 @@ export async function middleware(request: NextRequest) {
   // The Staff App has no box, so there is no choice to keep: `fallback: null`
   // passes the library's options through and a worker stays signed in.
   const supabase = createServerClient(url, anonKey, {
+    // Reads give up after 10 s and the GoTrue session check after 4 s
+    // (ADR-0152): on 17.10 a stalled call held the middleware to Vercel's
+    // 25 s limit and the page answered 504. Writes are never cut off.
+    global: { fetch: createRequestTimeoutFetch({ getUserMs: SESSION_CHECK_TIMEOUT_MS }) },
     cookies: withSessionPersistence(
       {
         getAll: () => request.cookies.getAll(),
@@ -165,7 +177,13 @@ export async function middleware(request: NextRequest) {
     if (!check) {
       const {
         data: { user },
+        error,
       } = await supabase.auth.getUser();
+      // GoTrue slow, down or rate-limiting is no answer about the session:
+      // not cached, and not a sign-out (ADR-0152). The token was verified
+      // above and RLS decides every row, so the worker carries on; the next
+      // request asks again.
+      if (!user && isTransientAuthFailure(error)) return response;
       check = { valid: !!user };
       sessionChecks.set(key, check);
     }

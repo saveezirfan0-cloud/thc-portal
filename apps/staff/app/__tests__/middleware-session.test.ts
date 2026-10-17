@@ -151,4 +151,17 @@ describe('middleware · what it steps aside for', () => {
     const res = await get('/shifts');
     expect(res.status).toBe(503);
   });
+
+  it('GoTrue unreachable: the worker carries on, and is asked again next time', async () => {
+    signIn();
+    getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 0 },
+    } as never);
+    const res = await get('/shifts');
+    expect(res.status).toBe(200);
+    expect(location(res)).toBeNull();
+    await get('/shifts');
+    expect(getUser).toHaveBeenCalledTimes(2);
+  });
 });
