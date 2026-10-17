@@ -314,9 +314,18 @@ export async function findBooking(bookingId: string): Promise<Found<BookingRow>>
   return { row: rows.find((b) => b.bookingId === bookingId) ?? null, problem };
 }
 
+/**
+ * One Radar card for `/radar/[id]`. `staff_open_shifts(p_shift)` is the same
+ * list narrowed to one section in SQL (20261018140100, ADR-0154), so the
+ * detail page no longer reads every open section to show one. A section the
+ * worker cannot see comes back as no row — "not found", not a failure.
+ */
 export async function findOpenShift(shiftId: string): Promise<Found<OpenShift>> {
-  const { rows, problem } = await loadOpenShifts();
-  return { row: rows.find((s) => s.shiftId === shiftId) ?? null, problem };
+  if (!supabaseConfigured()) return { row: null, problem: null };
+  const supabase = staffDb(await cookies());
+  const { data, error } = await supabase.rpc('staff_open_shifts', { p_shift: shiftId });
+  if (error) return { row: null, problem: error.message || 'staff_open_shifts failed' };
+  return { row: toOpenShifts(data).find((s) => s.shiftId === shiftId) ?? null, problem: null };
 }
 
 /**
