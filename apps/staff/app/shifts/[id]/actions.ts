@@ -40,10 +40,20 @@ interface RpcClient {
  */
 const NO_SUCH_FUNCTION = 'PGRST202';
 
+/**
+ * `revalidate`: whether the press changed what the screen shows. When it
+ * did, `revalidatePath` makes Next render the shift page into this action's
+ * own response, so the screen has the booking as the database now has it
+ * the moment the press returns — no second `router.refresh()` render. A
+ * location ping changes nothing on screen, so it must not pay for a page
+ * render (go-live audit B3: 8–9 Supabase calls per ping, every 2 minutes,
+ * for every worker on shift).
+ */
 async function call(
   fn: string,
   args: Record<string, string | number | null>,
   bookingId: string,
+  { revalidate = true }: { revalidate?: boolean } = {},
 ): Promise<RpcResult> {
   if (!configured()) return { error: NO_SUPABASE };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
@@ -53,7 +63,7 @@ async function call(
     ({ data, error } = await supabase.rpc(fn, withoutAccuracy));
   }
   if (error) return { error: REASONS[error.message] ?? error.message };
-  revalidatePath(`/shifts/${bookingId}`);
+  if (revalidate) revalidatePath(`/shifts/${bookingId}`);
   return { ok: true, result: (data ?? {}) as Record<string, unknown> };
 }
 
@@ -133,6 +143,8 @@ export async function recordPing(
     'record_ping',
     { p_booking: bookingId, p_lat: lat, p_lng: lng, p_accuracy: accuracyOf(accuracy) },
     bookingId,
+    // The trail is read by check-out, not drawn on this screen.
+    { revalidate: false },
   );
 }
 

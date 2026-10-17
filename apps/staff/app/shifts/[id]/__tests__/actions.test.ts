@@ -17,10 +17,11 @@ const rpc = vi.hoisted(() =>
 );
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+const revalidatePath = vi.hoisted(() => vi.fn());
+vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 
-const { checkIn, checkOut, recordPing } = await import('../actions');
+const { checkIn, checkOut, finishBreak, recordPing, startBreak } = await import('../actions');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -128,5 +129,38 @@ describe('the database is still on the three-argument functions (deploy order)',
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'staff_not_compliant' } });
     await checkOut('bk-1', 51.5, -0.1, 12);
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * Go-live audit B3. A press that changes the booking revalidates, so the
+ * fresh page comes back inside the action's own response (and the screen
+ * calls no `router.refresh()` on top). A ping changes nothing on screen and
+ * must not re-render the page every two minutes for every worker on shift.
+ */
+describe('which presses re-render the shift page', () => {
+  beforeEach(() => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+  });
+
+  it('check-in, check-out and both break presses revalidate the shift', async () => {
+    await checkIn('bk-1', 51.5, -0.1, 12);
+    await checkOut('bk-1', null, null);
+    await startBreak('bk-1');
+    await finishBreak('bk-1');
+    expect(revalidatePath).toHaveBeenCalledTimes(4);
+    for (const call of revalidatePath.mock.calls) expect(call).toEqual(['/shifts/bk-1']);
+  });
+
+  it('a location ping goes to the database and revalidates nothing', async () => {
+    expect(await recordPing('bk-1', 51.5, -0.1, 12)).toEqual({ ok: true, result: {} });
+    expect(rpc).toHaveBeenCalledWith('record_ping', expect.anything());
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('a refused press revalidates nothing either', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'not_checked_in' } });
+    await startBreak('bk-1');
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });
