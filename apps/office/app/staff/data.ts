@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
+import type { PageReply } from '@thc/db/paged';
 import { signStaffPhotos } from '../_lib/photos';
 import type { StaffRow, StudentRow } from './types';
 
@@ -36,6 +38,17 @@ const STAFF_COLUMNS =
 const STUDENT_COLUMNS =
   'id, display_name, employee_id, photo_path, status, weekly_cap_hours, weekly_cap_band, weekly_booked_hours, right_to_work_until, graduated_at, wtr_optout, term_letter_verified_at, term_letter_expires_at, completion_letter_verified_at, completion_letter_in_review, below_degree_level, course_completion_date, completion_letter_status, completion_letter_rejection, completion_date_claimed, completion_effective_from, wtr_optout_cancelled_from, optout_eligible, rtw_days_left';
 
+/** Every worker, candidate and leaver the office will ever hold, with room to spare. */
+export const DIRECTORY_CEILING = 20_000;
+
+interface DirectoryQuery {
+  order(column: string): DirectoryQuery;
+  range(from: number, to: number): unknown;
+}
+interface DirectoryClient {
+  from(view: string): { select(columns: string): DirectoryQuery };
+}
+
 export async function loadStaff(): Promise<StaffPageData> {
   if (!supabaseConfigured()) {
     return {
@@ -46,18 +59,27 @@ export async function loadStaff(): Promise<StaffPageData> {
     };
   }
 
-  const supabase = createClient(await cookies());
+  const supabase = createClient(await cookies()) as unknown as DirectoryClient;
+  // PostgREST answers at most max_rows (1000) per request, without an
+  // error, and the directory passes that with the roster still to arrive:
+  // whoever sorted last by name dropped off the list, its search, its filter
+  // counts and the Send push picker (go-live audit 17.10.2026, B3). Both
+  // views are read in pages, by name and then id so no two rows tie across a
+  // page boundary, as /staff/roster already reads invite_roster.
+  const pageOf = <T>(view: string, columns: string) =>
+    readAllPages<T>(
+      (range) =>
+        supabase
+          .from(view)
+          .select(columns)
+          .order('display_name')
+          .order('id')
+          .range(range.from, range.to) as unknown as PromiseLike<PageReply<T>>,
+      { what: 'staff', key: (row) => (row as { id: string }).id, ceiling: DIRECTORY_CEILING },
+    );
   const [staff, students] = await Promise.all([
-    supabase
-      .from('staff_directory_v')
-      .select(STAFF_COLUMNS)
-      .order('display_name')
-      .returns<StaffRow[]>(),
-    supabase
-      .from('student_visa_v')
-      .select(STUDENT_COLUMNS)
-      .order('display_name')
-      .returns<StudentRow[]>(),
+    pageOf<StaffRow>('staff_directory_v', STAFF_COLUMNS),
+    pageOf<StudentRow>('student_visa_v', STUDENT_COLUMNS),
   ]);
 
   const error = staff.error ?? students.error;

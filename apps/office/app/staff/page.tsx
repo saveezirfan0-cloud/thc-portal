@@ -33,9 +33,10 @@ export default async function Page() {
   return (
     <>
       {/* Compliance, blocks and new starters change without the manager
-          doing anything: re-read every 15 s. Filters, search and ticked
+          doing anything: re-read every 60 s (the whole directory and every
+          face is re-read each time, go-live audit H4). Filters, search and ticked
           workers survive the refresh. */}
-      <AutoRefresh everyMs={15_000} />
+      <AutoRefresh everyMs={60_000} />
       <StaffScreen
         staff={staff}
         students={students}
