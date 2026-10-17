@@ -12,7 +12,7 @@
 -- At go-live size it does not fit. On a local cluster with 1,000 workers,
 -- 600 open sections and ~30 worked shifts each (scripts/bench/
 -- radar_and_pool_at_scale.sql) one section's pool took 1.2–2.0 s as
--- service_role and 2.9–4.4 s as the board's admin (now 0.14 s and 0.22 s).
+-- service_role and 2.9–4.4 s as the board's admin (now 0.12 s and 0.20 s).
 -- Per worker it ran:
 --   * weekly_cap_would_breach() — rota_guard_verdict() and its chain,
 --     re-planned on every call (a nested SQL function is), ~2.7 ms;

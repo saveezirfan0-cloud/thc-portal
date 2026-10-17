@@ -14,7 +14,7 @@
 --     reachable?" read the pool for every qualified worker, every time,
 --     for every section the viewer is not qualified at — and a new starter
 --     is qualified nowhere. On the 1,000-worker bench a two-role worker's
---     Radar took 69 s and a new starter's 22 s (now 1.3 s and 0.7 s).
+--     Radar took 69 s and a new starter's 22 s (now 1.3 s and 0.5 s).
 --
 -- Now, re-created from the LIVE body with targeted replacements (docs/10
 -- §3b), each pattern required to match exactly once:
@@ -30,7 +30,9 @@
 --      qualified worker who already holds a booking on the section, does
 --      not hold the role or is not compliant cannot be reachable (the pool's
 --      booking_status, wrong_role, blocked), so the pool is not asked about
---      them; it is asked, one worker at a time, about the rest;
+--      them; it is asked, one worker at a time, about the rest. The cheap
+--      tests sit behind OFFSET 0 so the pool is never planned onto a hash
+--      join's build side, where it would be asked about everyone first;
 --   3. a second, optional argument p_shift narrows the list to one section,
 --      the way staff_open_offers(p_offer) does: /radar/[id] read the whole
 --      Radar to show one card. The function is dropped and re-created for
@@ -38,7 +40,10 @@
 --      read exactly as before;
 --   4. jit off for the body, as for the pool (20261018140000);
 --   5. the ORDER BY ends on the section id, so two sections at the same
---      distance starting at the same moment no longer swap between loads.
+--      distance starting at the same moment no longer swap between loads;
+--   6. the week meter on each card (booked hours and cap for the section's
+--      Mon-Sun week) is asked once per UK day the candidates start on, not
+--      once per card: a 500-card Radar spent 0.7 s re-asking it.
 --
 -- auto_assign_candidates(), the list wrapper the board and the rounds read,
 -- returns its rows in staff_id order, so a reader paging through it sees a
@@ -94,8 +99,23 @@ begin
                              where sro.staff_id = me.id and sro.role_id = sr.role_id)
                 and (select count(*) from bookings b
                       where b.shift_id = sr.id and b.status in ('confirmed', 'worked')) < sr.headcount))
+  ),
+  -- 20261018140100: the Limit-reached figures (§10.4) for each UK day a
+  -- candidate section starts on, asked once per day rather than once per
+  -- card: the same two functions with the same arguments.
+  meter as materialized (
+    select x.d, weekly_booked_hours(me.id, x.d) as booked_hours, weekly_cap_hours(me.id, x.d) as cap_hours
+      from me
+     cross join (select distinct (sr.starts_at at time zone 'Europe/London')::date as d
+                   from cand join shift_requirements sr on sr.id = cand.id) x
   )
 $r$),
+
+      -- 6 · the cards read the week meter by day
+      ('    weekly_booked_hours\(me\.id, \(sr\.starts_at at time zone ''Europe/London''\)::date\),\n    weekly_cap_hours\(me\.id, \(sr\.starts_at at time zone ''Europe/London''\)::date\),\n',
+       E'    mtr.booked_hours,\n    mtr.cap_hours,\n'),
+      ('\n    cross join lateral shift_fill\(sr\.id\) f\n',
+       E'\n    cross join lateral shift_fill(sr.id) f\n    left join meter mtr on mtr.d = (sr.starts_at at time zone ''Europe/London'')::date\n'),
 
       -- 2 · RULE-17 stops at the first reachable qualified worker
       ('            else not coalesce\(\(\n.*?\)\) w\), false\)\n',
@@ -107,17 +127,22 @@ $r$),
             -- pool is not asked about them; it decides for the rest.
             else not exists (
               select 1
-                from client_qualifications cq
-                join staff qs on qs.id = cq.staff_id
-               where cq.client_id = ev.client_id and cq.role_id = sr.role_id
-                 and not cq.do_not_return
-                 and qs.status = 'compliant'
-                 and exists (select 1 from staff_roles qr
-                              where qr.staff_id = cq.staff_id and qr.role_id = sr.role_id)
-                 and not exists (select 1 from bookings qb
-                                  where qb.shift_id = sr.id and qb.staff_id = cq.staff_id)
-                 and exists (select 1
-                               from auto_assign_candidates_pool(sr.id, false, array[cq.staff_id]) w
+                from (select cq.staff_id
+                        from client_qualifications cq
+                        join staff qs on qs.id = cq.staff_id
+                       where cq.client_id = ev.client_id and cq.role_id = sr.role_id
+                         and not cq.do_not_return
+                         and qs.status = 'compliant'
+                         and exists (select 1 from staff_roles qr
+                                      where qr.staff_id = cq.staff_id and qr.role_id = sr.role_id)
+                         and not exists (select 1 from bookings qb
+                                          where qb.shift_id = sr.id and qb.staff_id = cq.staff_id)
+                      -- OFFSET 0 keeps the pool out of this join: planned
+                      -- into it, it can land on a hash join's build side and
+                      -- be asked about every worker before the first answer.
+                      offset 0) q
+               where exists (select 1
+                               from auto_assign_candidates_pool(sr.id, false, array[q.staff_id]) w
                               where w.gate is null and w.qualified and w.booking_status is null))
 $r$),
 
@@ -143,7 +168,7 @@ $r$),
 
   execute format('comment on function public.staff_open_shifts(uuid, uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261018140100 (ADR-0154) the pool is asked only about the sections the worker could be shown (their own application, or not started, not full and in a role they hold), RULE-17''s wave check stops at the first reachable qualified worker, and p_shift narrows the list to one section for /radar/[id].');
+    || ' Since 20261018140100 (ADR-0154) the pool is asked only about the sections the worker could be shown (their own application, or not started, not full and in a role they hold), RULE-17''s wave check stops at the first reachable qualified worker, the week meter is asked once per day, and p_shift narrows the list to one section for /radar/[id].');
 end;
 $$;
 
