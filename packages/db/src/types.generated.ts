@@ -2361,6 +2361,7 @@ export type Database = {
           key: string;
           last_attempt_at: string | null;
           payload: Json;
+          priority: number;
           queued_at: string;
           recipient_emails: string[] | null;
           recipient_staff_id: string | null;
@@ -2377,6 +2378,7 @@ export type Database = {
           key: string;
           last_attempt_at?: string | null;
           payload?: Json;
+          priority?: number;
           queued_at?: string;
           recipient_emails?: string[] | null;
           recipient_staff_id?: string | null;
@@ -2393,6 +2395,7 @@ export type Database = {
           key?: string;
           last_attempt_at?: string | null;
           payload?: Json;
+          priority?: number;
           queued_at?: string;
           recipient_emails?: string[] | null;
           recipient_staff_id?: string | null;
@@ -8937,6 +8940,7 @@ export type Database = {
           key: string;
           last_attempt_at: string | null;
           payload: Json;
+          priority: number;
           queued_at: string;
           recipient_emails: string[] | null;
           recipient_staff_id: string | null;
@@ -9635,6 +9639,14 @@ export type Database = {
       };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
+      notification_priorities: {
+        Args: never;
+        Returns: {
+          code: string;
+          priority: number;
+        }[];
+      };
+      notification_priority: { Args: { p_template: string }; Returns: number };
       notification_switched_on: {
         Args: { p_template: string };
         Returns: boolean;
@@ -10335,6 +10347,7 @@ export type Database = {
         Args: { p_error: string; p_id: number; p_retry_in?: string };
         Returns: undefined;
       };
+      release_outbox_claims: { Args: { p_ids: number[] }; Returns: number };
       release_unready_bookings: { Args: { p_now?: string }; Returns: number };
       released_shift_lines: {
         Args: { p_at: string; p_cause: string; p_staff: string };
