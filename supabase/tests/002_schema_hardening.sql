@@ -14,7 +14,7 @@
 -- Scope refs: §1.7 security, §3.4/§4.4 (the cap functions), §8 (outbox).
 -- =====================================================================
 begin;
-select plan(12);
+select plan(14);
 
 -- ---------------------------------------------------------------------
 -- 1. EVERY function this repo owns in `public` pins its search_path.
@@ -44,6 +44,17 @@ select plan(12);
 --    If this fails, the fix is one `alter function … set search_path =
 --    public, extensions` line in a new migration, next to the fourteen
 --    in 20260922183014. It is not to add a name to an exclusion list.
+--
+--    ADR-0153 (20261018130000) made one deliberate class of exception,
+--    and it is a SHAPE, not a list: a SECURITY INVOKER, non-volatile SQL
+--    function whose every name is schema-qualified. A SET clause stops
+--    the planner inlining a SQL function, and RULE-20's pure helpers were
+--    being re-planned on every nested call because of it. Assertion 1b
+--    proves the "every name is qualified" half for each such function by
+--    running it under an EMPTY search_path, where an unqualified `staff`
+--    or `weekly_cap_for` cannot be found at all; assertion 2b proves a
+--    decoy in front of public changes nothing. A definer function, a
+--    volatile one or a plpgsql one with no pin still fails here.
 -- ---------------------------------------------------------------------
 select is_empty(
   $$ select p.proname::text || '(' || pg_get_function_identity_arguments(p.oid) || ')'
@@ -54,9 +65,71 @@ select is_empty(
                          where d.classid = 'pg_proc'::regclass
                            and d.objid = p.oid and d.deptype = 'e')
         and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c
-                         where c like 'search\_path=%') $$,
-  'every function in public that this repo owns pins its search_path'
+                         where c like 'search\_path=%')
+        and (p.prosecdef
+             or p.provolatile = 'v'
+             or p.prolang <> (select l.oid from pg_language l where l.lanname = 'sql')) $$,
+  'every function in public that this repo owns pins its search_path, unless it is an invoker, non-volatile SQL helper (ADR-0153)'
 );
+
+-- ---------------------------------------------------------------------
+-- 1b. ... and every such helper resolves under an EMPTY search_path.
+--
+--    Each one is called, with a typed literal for every argument, while
+--    search_path is ''. Only pg_catalog is searched then, so any name in
+--    its body that is not schema-qualified fails to resolve and the call
+--    errors. Literals rather than nulls: a STRICT function given a null is
+--    answered without its body ever being read. A new argument type with
+--    no sample below fails loudly rather than passing untested.
+-- ---------------------------------------------------------------------
+create temp table d002_unpinned (fn text, err text);
+do $$
+declare
+  f      record;
+  v_args text;
+  v_sql  text;
+begin
+  for f in
+    select n.nspname, p.proname, p.proargtypes::oid[] as types
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.prokind = 'f'
+       and not exists (select 1 from pg_depend d
+                        where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+       and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\_path=%')
+  loop
+    select string_agg(
+             case
+               when t.typtype = 'e' then
+                 quote_literal((select e.enumlabel from pg_enum e where e.enumtypid = t.oid
+                                 order by e.enumsortorder limit 1))
+                 || '::' || quote_ident(tn.nspname) || '.' || quote_ident(t.typname)
+               when t.oid = 'date'::regtype        then $s$date '2026-10-19'$s$
+               when t.oid = 'timestamptz'::regtype then $s$timestamptz '2026-10-19 12:00+00'$s$
+               when t.oid = 'boolean'::regtype     then 'false'
+               when t.oid = 'uuid'::regtype        then $s$uuid '00000000-0000-4000-8000-000000000000'$s$
+               when t.oid = 'text'::regtype        then $s$''$s$
+               when t.oid = 'integer'::regtype     then '1'
+               when t.oid = 'numeric'::regtype     then '1.0'
+               when t.oid = 'daterange[]'::regtype then $s$'{}'::pg_catalog.daterange[]$s$
+               else 'no_sample_for_' || t.typname
+             end, ', ' order by a.ord)
+      into v_args
+      from unnest(f.types) with ordinality a(typ, ord)
+      join pg_type t on t.oid = a.typ
+      join pg_namespace tn on tn.oid = t.typnamespace;
+    v_sql := format('select %I.%I(%s)', f.nspname, f.proname, coalesce(v_args, ''));
+    begin
+      perform set_config('search_path', '', true);
+      execute v_sql;
+      perform set_config('search_path', 'public, extensions', true);
+    exception when others then
+      perform set_config('search_path', 'public, extensions', true);
+      insert into d002_unpinned values (v_sql, sqlerrm);
+    end;
+  end loop;
+end $$;
+select is_empty($$ select fn || ' -> ' || err from d002_unpinned $$,
+  'every unpinned helper runs under an empty search_path: nothing in its body depends on the caller''s path');
 
 -- ---------------------------------------------------------------------
 -- 2. And the pin actually holds under a hostile search_path.
@@ -82,6 +155,25 @@ select is(
   (select public.weekly_cap_hours(:'staffa', date '2026-09-21')),
   48,
   'weekly_cap_hours ignores a decoy weekly_cap_for() sitting in front of public on the search_path'
+);
+set local search_path to public, extensions;
+
+-- 2b. The same decoy test for the helpers ADR-0153 unpinned. They are
+--     inlined into the caller's query, so the caller's path is the one in
+--     force while their bodies are read, which is why every name in them
+--     is qualified: a decoy cap_week_start() and weekly_cap() sitting in
+--     front of public are never reached.
+create function decoy.cap_week_start(p_date date) returns date
+  language sql immutable as $$ select date '1999-01-01' $$;
+create function decoy.weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean,
+  p_optout_48h boolean, p_week_start date, p_below_degree_level boolean, p_completion_date date, p_visa_expiry date,
+  p_optout_cancelled_from date, p_under18 boolean, p_verified_on date, p_visa_hour_limit integer)
+  returns public.cap_assessment language sql immutable as $$ select row(999, 'uncapped')::public.cap_assessment $$;
+set local search_path to decoy, public, extensions;
+select is(
+  (select public.weekly_cap(false, 'none', false, false)::text || ' ' || public.cap_week_start(date '2026-10-22')),
+  '(48,standard_48) 2026-10-19',
+  'the inlined weekly_cap() and cap_week_start() ignore decoys sitting in front of public on the search_path'
 );
 set local search_path to public, extensions;
 
