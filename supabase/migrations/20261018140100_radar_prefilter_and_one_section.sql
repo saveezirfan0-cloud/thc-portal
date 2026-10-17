@@ -14,7 +14,7 @@
 --     reachable?" read the pool for every qualified worker, every time,
 --     for every section the viewer is not qualified at — and a new starter
 --     is qualified nowhere. On the 1,000-worker bench a two-role worker's
---     Radar took 83 s and a new starter's 25 s.
+--     Radar took 69 s and a new starter's 22 s (now 1.3 s and 0.7 s).
 --
 -- Now, re-created from the LIVE body with targeted replacements (docs/10
 -- §3b), each pattern required to match exactly once:
