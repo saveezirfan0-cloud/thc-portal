@@ -43,6 +43,11 @@
 import { runJob } from '../_shared/job.ts';
 import { payrollCsv } from '../../../packages/pdf/src/csv.ts';
 import type { PayrollCsvRow } from '../../../packages/pdf/src/csv.ts';
+import { DEFAULT_ROW_CEILING, readAllPages } from '../../../packages/db/src/paged.ts';
+import type { PageReply } from '../../../packages/db/src/paged.ts';
+
+/** One payroll_export_rows row: the CSV columns plus the shift it is. */
+type ExportRow = PayrollCsvRow & { booking_id: string };
 
 interface Prepared {
   alreadyPrepared: boolean;
@@ -73,12 +78,31 @@ Deno.serve((request) =>
 
     // Payroll — always, even for a week with no shifts: finance should get
     // an empty file on Monday rather than wonder whether the job ran.
-    const { data: payrollRows, error: payrollError } = await db.rpc('payroll_export_rows', {
-      p_send: run.payrollSendId,
-    });
-    if (payrollError) throw new Error(`payroll_export_rows: ${payrollError.message}`);
+    //
+    // Read in pages: PostgREST cuts a set-returning function at max_rows
+    // (1000) without an error, and a week at full volume is up to ~2,100
+    // lines — the file used to stop at 1,000 and the surnames after that
+    // went unpaid (go-live audit 17.10.2026, B1). The count the run stamped
+    // is the check: a file with any other number of lines is neither
+    // uploaded nor queued, so the job fails, says why, and the next tick
+    // tries again — finance never receives a short payroll.
+    const payroll = await readAllPages<ExportRow>(
+      (range) =>
+        db
+          .rpc('payroll_export_rows', { p_send: run.payrollSendId })
+          .range(range.from, range.to) as unknown as PromiseLike<PageReply<ExportRow>>,
+      {
+        what: 'payroll lines',
+        expected: run.rows,
+        key: (row) => row.booking_id,
+        ceiling: Math.max(DEFAULT_ROW_CEILING, run.rows ?? 0),
+      },
+    );
+    if (payroll.error) {
+      throw new Error(`payroll_export_rows (${run.rows} stamped): ${payroll.error.message}`);
+    }
     const payrollPath = `payroll/${run.periodStart}_${run.periodEnd}.csv`;
-    await upload(db, payrollPath, payrollCsv((payrollRows ?? []) as PayrollCsvRow[]));
+    await upload(db, payrollPath, payrollCsv(payroll.data));
 
     const { data: queued, error: queueError } = await db.rpc('queue_finance_report_email', {
       p_payroll_send: run.payrollSendId,
