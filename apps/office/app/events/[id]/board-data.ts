@@ -12,6 +12,8 @@ import {
   seriesPositionLabel,
   showsUnderUnavailable,
 } from '@thc/domain';
+import { readAllPages } from '@thc/db/paged';
+import type { PageReply } from '@thc/db/paged';
 import { signStaffPhotos } from '../../_lib/photos';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
@@ -211,21 +213,34 @@ async function selectIn<T>(
   columns: string,
   column: string,
   ids: readonly string[],
+  /** A total order for the chunk's rows, so a chunk past max_rows pages without loss. */
+  order: readonly string[],
   equals: Readonly<Record<string, string>> = {},
+  alsoIn: Readonly<Record<string, readonly string[]>> = {},
 ): Promise<{ rows: T[]; error: string | null }> {
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK) chunks.push(ids.slice(i, i + IN_CHUNK));
+  // A chunk of 150 workers × every role they hold can pass PostgREST's
+  // 1000-row cap, which cuts without an error (go-live audit M3): each chunk
+  // is read in pages.
   const results = await Promise.all(
-    chunks.map((chunk) => {
-      let query = supabase.from(table).select(columns).in(column, chunk);
-      for (const [key, value] of Object.entries(equals)) query = query.eq(key, value);
-      return query;
-    }),
+    chunks.map((chunk) =>
+      readAllPages<T>((range) => {
+        let query = supabase.from(table).select(columns).in(column, chunk);
+        for (const [key, value] of Object.entries(equals)) query = query.eq(key, value);
+        for (const [key, values] of Object.entries(alsoIn)) query = query.in(key, [...values]);
+        for (const key of order) query = query.order(key);
+        return query.range(range.from, range.to) as unknown as PromiseLike<PageReply<T>>;
+      }),
+    ),
   );
   const failed = results.find((r) => r.error);
   if (failed?.error) return { rows: [], error: failed.error.message };
-  return { rows: results.flatMap((r) => (r.data ?? []) as T[]), error: null };
+  return { rows: results.flatMap((r) => r.data ?? []), error: null };
 }
+
+/** Far past any directory THC will hold; past it a pool read is an error, never a cut. */
+const POOL_CEILING = 20_000;
 
 export async function loadBoard(
   eventId: string,
@@ -236,38 +251,18 @@ export async function loadBoard(
   if (!supabaseConfigured()) return { event: null, problem: NO_SUPABASE };
   const supabase = eventsDb(await cookies());
 
-  const { data: eventRow, error: eventError } = await supabase
-    .from('events')
-    .select(
-      'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, series_id, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
-    )
-    .eq('id', eventId)
-    .maybeSingle();
-  if (eventError)
-    return { event: null, problem: `The event could not be read: ${eventError.message}` };
-  if (!eventRow) return { event: null, problem: null };
-  const event = eventRow as Record<string, string | boolean | null>;
-
-  // ADR-0117: "Day 2 of 3", read live with the page. Only a context line, so a
-  // failed read drops it rather than the board.
-  let seriesLabel: string | null = null;
-  if (event['series_id']) {
-    const { data: days } = await supabase
+  // Go-live audit H2: the board used to read in six steps, one after
+  // another. Everything that needs only the event id now starts with the
+  // event itself; what needs the event row (its client, its series) starts
+  // with the bookings and pools, which need only the section ids.
+  const [eventRes, sectionRes, roleRes, settingRes, rateRes] = await Promise.all([
+    supabase
       .from('events')
-      .select('id, event_date, cancelled_at')
-      .eq('series_id', event['series_id'] as string);
-    const members: SeriesMember[] = (
-      (days ?? []) as {
-        id: string;
-        event_date: string;
-        cancelled_at: string | null;
-      }[]
-    ).map((d) => ({ eventId: d.id, date: d.event_date, cancelled: d.cancelled_at !== null }));
-    const position = seriesPosition(eventId, members);
-    seriesLabel = position ? seriesPositionLabel(position) : null;
-  }
-
-  const [sectionRes, clientRes, roleRes, settingRes, rateRes] = await Promise.all([
+      .select(
+        'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, series_id, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
+      )
+      .eq('id', eventId)
+      .maybeSingle(),
     supabase
       .from('shift_requirements')
       .select(
@@ -275,11 +270,6 @@ export async function loadBoard(
       )
       .eq('event_id', eventId)
       .order('starts_at'),
-    supabase
-      .from('clients')
-      .select('name, name_badges, contact_emails')
-      .eq('id', event['client_id'] as string)
-      .maybeSingle(),
     supabase.from('roles').select('id, name'),
     supabase.from('settings').select('value').eq('key', 'scoring_weights').maybeSingle(),
     // ADR-0061: the rates are not selectable on shift_requirements; this
@@ -289,7 +279,27 @@ export async function loadBoard(
       .select('shift_id, pay_rate, charge_rate')
       .eq('event_id', eventId),
   ]);
-  const firstError = sectionRes.error ?? clientRes.error ?? roleRes.error ?? rateRes.error;
+  const { data: eventRow, error: eventError } = eventRes;
+  if (eventError)
+    return { event: null, problem: `The event could not be read: ${eventError.message}` };
+  if (!eventRow) return { event: null, problem: null };
+  const event = eventRow as Record<string, string | boolean | null>;
+
+  // ADR-0117: "Day 2 of 3", read live with the page. Only a context line, so a
+  // failed read drops it rather than the board.
+  const seriesRead = event['series_id']
+    ? supabase
+        .from('events')
+        .select('id, event_date, cancelled_at')
+        .eq('series_id', event['series_id'] as string)
+    : null;
+  const clientRead = supabase
+    .from('clients')
+    .select('name, name_badges, contact_emails')
+    .eq('id', event['client_id'] as string)
+    .maybeSingle();
+
+  const firstError = sectionRes.error ?? roleRes.error ?? rateRes.error;
   if (firstError) {
     return { event: null, problem: `The event board could not be read: ${firstError.message}` };
   }
@@ -311,6 +321,7 @@ export async function loadBoard(
     ((roleRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
   );
   const sectionIds = sections.map((s) => s['id'] as string);
+  const sectionRoleIds = [...new Set(sections.map((s) => s['role_id'] as string))];
   const escalating = new Set(
     sections
       .filter((s) =>
@@ -323,27 +334,44 @@ export async function loadBoard(
   );
 
   // Bookings, the candidate pool and the availability calendar per
-  // section — each computed now.
-  const [bookingRes, candidateRes, awayRes, offerRes] = await Promise.all([
+  // section — each computed now — with the client and series reads that
+  // waited for the event row.
+  const [bookingRes, candidateRes, awayRes, offerRes, clientRes, seriesRes] = await Promise.all([
     sectionIds.length
-      ? supabase
-          .from('bookings')
-          .select(
-            'id, shift_id, staff_id, status, source, created_at, confirmed_at, day_before_confirmed_at, applied_at, reconfirm_required, cancel_cause',
-          )
-          .in('shift_id', sectionIds)
+      ? readAllPages<Record<string, string | boolean | null>>(
+          (range) =>
+            supabase
+              .from('bookings')
+              .select(
+                'id, shift_id, staff_id, status, source, created_at, confirmed_at, day_before_confirmed_at, applied_at, reconfirm_required, cancel_cause',
+              )
+              .in('shift_id', sectionIds)
+              .order('id')
+              .range(range.from, range.to) as unknown as PromiseLike<
+              PageReply<Record<string, string | boolean | null>>
+            >,
+          { what: 'bookings', key: (row) => row['id'] as string },
+        )
       : Promise.resolve({ data: [], error: null }),
     // One row per worker in the directory comes back, most of them
     // wrong_role — which never produces a row on the board (§6), nor does
     // the other gender on a gender-only section (ADR-0079), nor a worker
-    // who does not speak a language the event needs (ADR-0080). Filtered in the
-    // database, so the response stays far inside PostgREST's row cap and
-    // only the workers the board can show cross the wire.
+    // who does not speak a language the event needs (ADR-0080). Filtered in
+    // the database, so only the workers the board can show cross the wire —
+    // and paged by staff_id (unique per row; the function has no ORDER BY
+    // of its own), because at full roster even those pass PostgREST's
+    // 1000-row cap (go-live audit H5).
     Promise.all(
       sectionIds.map((id) =>
-        supabase
-          .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
-          .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only,language_not_spoken)'),
+        readAllPages<CandidateRow>(
+          (range) =>
+            supabase
+              .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
+              .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only,language_not_spoken)')
+              .order('staff_id')
+              .range(range.from, range.to) as unknown as PromiseLike<PageReply<CandidateRow>>,
+          { what: 'candidates', key: (row) => row.staff_id, ceiling: POOL_CEILING },
+        ),
       ),
     ),
     // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
@@ -365,7 +393,27 @@ export async function loadBoard(
           .in('shift_id', sectionIds)
           .in('status', ['open', 'taken'])
       : Promise.resolve({ data: [], error: null }),
+    clientRead,
+    seriesRead,
   ]);
+  if (clientRes.error) {
+    return {
+      event: null,
+      problem: `The event board could not be read: ${clientRes.error.message}`,
+    };
+  }
+  let seriesLabel: string | null = null;
+  if (seriesRes) {
+    const members: SeriesMember[] = (
+      (seriesRes.data ?? []) as {
+        id: string;
+        event_date: string;
+        cancelled_at: string | null;
+      }[]
+    ).map((d) => ({ eventId: d.id, date: d.event_date, cancelled: d.cancelled_at !== null }));
+    const position = seriesPosition(eventId, members);
+    seriesLabel = position ? seriesPositionLabel(position) : null;
+  }
   if (bookingRes.error) {
     return {
       event: null,
@@ -447,6 +495,7 @@ export async function loadBoard(
       'id, first_name, last_name, removed_at, employee_id, photo_path',
       'id',
       staffIds,
+      ['id'],
     ),
     selectIn<{ staff_id: string; role_id: string }>(
       supabase,
@@ -454,12 +503,22 @@ export async function loadBoard(
       'staff_id, role_id',
       'staff_id',
       staffIds,
+      ['staff_id', 'role_id'],
     ),
-    supabase
-      .from('client_qualifications')
-      .select('staff_id, role_id')
-      .eq('client_id', event['client_id'] as string)
-      .eq('do_not_return', false),
+    // The Wave 1 chip: qualified at this client for one of THIS event's
+    // roles, for the workers the board names — never the client's whole
+    // qualification set, which is staff × roles and passes 1000 rows
+    // (go-live audit M3), turning Wave 1 labels into Wave 2.
+    selectIn<{ staff_id: string; role_id: string }>(
+      supabase,
+      'client_qualifications',
+      'staff_id, role_id',
+      'staff_id',
+      staffIds,
+      ['staff_id', 'role_id'],
+      { client_id: event['client_id'] as string, do_not_return: 'false' },
+      { role_id: sectionRoleIds },
+    ),
     selectIn<{
       booking_id: string;
       type: string;
@@ -472,6 +531,7 @@ export async function loadBoard(
       'booking_id, type, resolved, minutes_late, actual_finish_at',
       'booking_id',
       bookingIds,
+      ['id'],
     ),
     selectIn<{
       booking_id: string;
@@ -485,6 +545,7 @@ export async function loadBoard(
       'booking_id, outcome, check_in_at, check_out_at, manager_finish_at',
       'booking_id',
       bookingIds,
+      ['id'],
     ),
   ]);
   // A failed read of the no-show badges or the attendance must not show
@@ -493,7 +554,7 @@ export async function loadBoard(
   const peopleError =
     staffRes.error ??
     staffRoleRes.error ??
-    qualRes.error?.message ??
+    qualRes.error ??
     violationRes.error ??
     checkLogRes.error;
   if (peopleError) {
@@ -529,11 +590,7 @@ export async function loadBoard(
       },
     ]),
   );
-  const qualified = new Set(
-    ((qualRes.data ?? []) as { staff_id: string; role_id: string }[]).map(
-      (q) => `${q.staff_id}:${q.role_id}`,
-    ),
-  );
+  const qualified = new Set(qualRes.rows.map((q) => `${q.staff_id}:${q.role_id}`));
   const violationsByBooking = new Map<string, ViolationRow[]>();
   for (const v of violationRes.rows) {
     const list = violationsByBooking.get(v.booking_id) ?? [];
