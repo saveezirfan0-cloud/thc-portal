@@ -4,6 +4,7 @@ import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../_lib/photos';
 import { type LogQuery, VIOLATION_PAGE_SIZE, flaggedAs, pageRange, ukDayBounds } from './log';
 import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /checkin (§9.5).
@@ -70,7 +71,7 @@ async function queryViolations(
   query = query.order('detected_at', { ascending: false }).order('id', { ascending: false });
   const range = scope.log ? pageRange(scope.log.page) : null;
   const result = await (range ? query.range(range.from, range.to) : query.limit(500));
-  if (result.error) return { rows: [], hasMore: false, error: result.error.message };
+  if (result.error) return { rows: [], hasMore: false, error: readProblem(result.error) };
   const data = (result.data ?? []) as unknown[];
   const hasMore = range !== null && data.length > VIOLATION_PAGE_SIZE;
   const page = hasMore ? data.slice(0, VIOLATION_PAGE_SIZE) : data;
@@ -193,7 +194,7 @@ export async function loadMonitor(
       violations: [],
       unresolvedCount: 0,
       hasMore: false,
-      problem: monitor.error.message,
+      problem: readProblem(monitor.error),
     };
   }
 
@@ -246,6 +247,6 @@ export async function loadMonitor(
         ? violationRows.filter((v) => !v.resolved).length
         : unresolved.count,
     hasMore: violations.hasMore,
-    problem: violations.error ?? unresolved.error?.message ?? null,
+    problem: readProblem(violations.error ?? unresolved.error),
   };
 }

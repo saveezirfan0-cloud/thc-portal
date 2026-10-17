@@ -31,6 +31,7 @@ import type {
   CandidateQualification,
 } from './types';
 import { candidateReferral, referredOnBoard } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /onboarding and /onboarding/:id (§2.2, §2.3).
@@ -124,7 +125,7 @@ export async function loadBoardReferrals(
       ),
     );
     const failed = answers.find((answer) => answer.error)?.error;
-    if (failed) return { referred: referredOnBoard([]), problem: failed.message };
+    if (failed) return { referred: referredOnBoard([]), problem: readProblem(failed) };
     return {
       referred: referredOnBoard(answers.flatMap((answer) => answer.data ?? [])),
       problem: null,
@@ -144,7 +145,7 @@ export async function loadCandidateReferral(
       .select(REFERRAL_COLUMNS)
       .eq('candidate_staff_id', staffId);
     return answer.error
-      ? { referral: null, problem: answer.error.message }
+      ? { referral: null, problem: readProblem(answer.error) }
       : { referral: candidateReferral(answer.data ?? []), problem: null };
   } catch (error) {
     return { referral: null, problem: messageOf(error) };
@@ -152,7 +153,7 @@ export async function loadCandidateReferral(
 }
 
 function messageOf(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'the read failed';
+  return error instanceof Error && error.message ? readProblem(error.message) : 'the read failed';
 }
 
 // ---------------------------------------------------------------------
@@ -189,7 +190,7 @@ export async function loadBoardChasers(
           .range(range.from, range.to),
       { what: 'reminder states', ceiling: BOARD_CEILING },
     );
-    if (answer.error) return { chasers: {}, problem: answer.error.message };
+    if (answer.error) return { chasers: {}, problem: readProblem(answer.error) };
     return {
       chasers: Object.fromEntries(answer.data.map((row) => [row.staff_id, row])),
       problem: null,
@@ -320,7 +321,7 @@ export async function loadBoard(): Promise<BoardData> {
   ]);
 
   const error = candidates.error ?? returning.error ?? roles.error;
-  if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
+  if (error) return { candidates: [], returning: [], roles: [], problem: readProblem(error) };
   const [referrals, chasers] = await Promise.all([
     loadBoardReferrals(supabase as unknown as ReferralReader, [
       ...(candidates.data ?? []).map((row) => row.id),
@@ -539,7 +540,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc.error ??
     application.error ??
     roles.error;
-  if (error) return { ...EMPTY, problem: error.message };
+  if (error) return { ...EMPTY, problem: readProblem(error) };
 
   const raw = candidate.data ?? null;
   // §2.12 step 3: the previous period's attempts are history, not this
@@ -571,7 +572,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     )
       .limit(1)
       .maybeSingle<ContractVersion>();
-    if (version.error) return { ...EMPTY, problem: version.error.message };
+    if (version.error) return { ...EMPTY, problem: readProblem(version.error) };
     contract = version.data ?? null;
   }
 

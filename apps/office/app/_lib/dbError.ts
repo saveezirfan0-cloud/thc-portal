@@ -104,6 +104,70 @@ function classify(error: DbError): 'unique' | 'fk' | 'check' | 'denied' | 'gone'
   return null;
 }
 
+// ---------------------------------------------------------------------
+// The database did not answer (go-live audit 17.10.2026, M1)
+//
+// Under load the 8 s statement limit cancels a slow read, and the screen
+// printed PostgREST's text as it came: "canceling statement due to
+// statement timeout". A fetch that never got an answer (aborted, the
+// gateway's "upstream request timeout", a dropped connection) came through
+// as "AbortError: …" or "TypeError: fetch failed". Neither is anything a
+// manager can act on except "wait and refresh", so both say exactly that.
+// ---------------------------------------------------------------------
+
+export const TIMED_OUT =
+  'This took too long to load — the database is busy. Refresh in a minute; if it keeps happening, tell a developer.';
+export const UNREACHABLE =
+  'The Back Office could not reach the database just now. Refresh in a minute; if it keeps happening, tell a developer.';
+
+/** SQLSTATE 57014 query_canceled — the statement_timeout, as PostgREST reports it. */
+export function isStatementTimeout(error: DbError | string): boolean {
+  const err = typeof error === 'string' ? { message: error } : error;
+  return err.code === '57014' || /canceling statement due to statement timeout/i.test(err.message);
+}
+
+/** No answer at all: aborted, timed out on the way, or the connection dropped. */
+export function isUnreachable(error: DbError | string): boolean {
+  const err = typeof error === 'string' ? { message: error, details: null } : error;
+  const text = `${err.message ?? ''}\n${err.details ?? ''}`;
+  return (
+    /^\s*(AbortError|TimeoutError|FetchError)\b/.test(err.message ?? '') ||
+    /\bfetch failed\b|operation was aborted|request was aborted|upstream request timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|UND_ERR_/i.test(
+      text,
+    )
+  );
+}
+
+function timeoutOrUnreachable(error: DbError): string | null {
+  if (isStatementTimeout(error)) return TIMED_OUT;
+  if (isUnreachable(error)) return UNREACHABLE;
+  return null;
+}
+
+/**
+ * The `problem` a loader shows when a read fails. A timeout or a fetch that
+ * never answered becomes one of the two sentences above; anything else is
+ * the database's message as before, after `context` when one is given
+ * ("The event could not be read: …"). Null in, null out, so
+ * `readProblem(a.error ?? b.error)` reads like the `?.message ?? null`
+ * chains it replaces.
+ */
+export function readProblem(error: DbError | string, context?: string): string;
+export function readProblem(
+  error: DbError | string | null | undefined,
+  context?: string,
+): string | null;
+export function readProblem(
+  error: DbError | string | null | undefined,
+  context?: string,
+): string | null {
+  if (error === null || error === undefined) return null;
+  const err: DbError = typeof error === 'string' ? { message: error } : error;
+  const busy = timeoutOrUnreachable(err);
+  if (busy) return busy;
+  return context ? `${context}: ${err.message}` : err.message;
+}
+
 /**
  * The sentence for the screen. Everything that is not our own sentence is
  * logged with its detail, so a refusal nobody mapped can still be found.
@@ -115,6 +179,15 @@ export function explainDbError(error: DbError | string, wording: DbWording = {})
 
   const own = wording.codes?.[token] ?? SHARED_CODES[token];
   if (own) return own;
+
+  const busy = timeoutOrUnreachable(err);
+  if (busy) {
+    console.error(`${wording.log ?? '[office]'} database did not answer in time`, {
+      code: err.code ?? null,
+      message,
+    });
+    return busy;
+  }
 
   const log = (said: string) => {
     console.error(`${wording.log ?? '[office]'} database refusal shown as a sentence`, {

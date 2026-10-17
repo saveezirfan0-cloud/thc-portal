@@ -3,6 +3,7 @@ import { createClient } from '@thc/db/server';
 import { TEMPLATES, switchedOff } from '@thc/notifications';
 import { readWeights } from './validate';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /settings (§6, §2.4, §9.11, §9.12).
@@ -72,7 +73,7 @@ export async function loadSettings(): Promise<SettingsData> {
       .returns<VenueTypeRadius[]>(),
   ]);
 
-  const problem = settings.error?.message ?? venueTypes.error?.message ?? null;
+  const problem = readProblem(settings.error ?? venueTypes.error);
   if (problem) return { ...empty, problem };
 
   const byKey = new Map((settings.data ?? []).map((row) => [row.key, row.value]));

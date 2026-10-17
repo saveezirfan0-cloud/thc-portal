@@ -3,6 +3,7 @@ import { createClient } from '@thc/db/server';
 import { loadPayFloorPence } from '../_lib/payFloor';
 import { DEFAULT_PAY_FLOOR_PENCE } from './money';
 import type { Role } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /roles (§9.8).
@@ -44,6 +45,6 @@ export async function loadRoles(): Promise<RolesPageData> {
     loadPayFloorPence(supabase),
   ]);
 
-  if (error) return { roles: [], problem: error.message, payFloorPence };
+  if (error) return { roles: [], problem: readProblem(error), payFloorPence };
   return { roles: data ?? [], problem: null, payFloorPence };
 }

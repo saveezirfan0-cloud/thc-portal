@@ -5,6 +5,7 @@ import type { TimeFormat } from '@thc/domain';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { verifiedTotp } from '../login/two-step';
+import { readProblem } from '../_lib/dbError';
 
 /** Two-step sign-in on this login (ADR-0057): the authenticator, if one is set up. */
 export interface MyTwoStep {
@@ -69,7 +70,7 @@ export async function loadMyAccount(): Promise<AccountPageData> {
     .eq('id', user.id)
     .returns<ProfileRow[]>()
     .maybeSingle();
-  if (error) return { account: null, problem: error.message };
+  if (error) return { account: null, problem: readProblem(error) };
 
   // ADR-0085: the profile is the record; the device cookie is only its cache,
   // so it is the fallback when the profile cannot be read.

@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import type { Client } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /clients (§9.7).
@@ -37,6 +38,6 @@ export async function loadClients(): Promise<ClientsPageData> {
     .order('name')
     .returns<Client[]>();
 
-  if (error) return { clients: [], problem: error.message };
+  if (error) return { clients: [], problem: readProblem(error) };
   return { clients: data ?? [], problem: null };
 }

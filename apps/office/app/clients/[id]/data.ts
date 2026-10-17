@@ -15,6 +15,7 @@ import type {
   StaffOption,
   WorkerRequestRow,
 } from './types';
+import { readProblem } from '../../_lib/dbError';
 
 /**
  * Reads for /clients/:id (§9.7).
@@ -224,7 +225,7 @@ export async function loadClientCard(
     requirements.error ??
     quizResults.error ??
     workerRequests.error;
-  if (error) return { ...EMPTY, problem: error.message };
+  if (error) return { ...EMPTY, problem: readProblem(error) };
 
   const payOf = new Map(
     ((payRates.data ?? []) as { role_id: string | null; pay_rate: number | null }[]).map((r) => [

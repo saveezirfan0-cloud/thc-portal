@@ -33,6 +33,7 @@ import {
   sectionInEscalation,
   shortName,
 } from './board-model';
+import { readProblem } from '../../_lib/dbError';
 
 /**
  * Everything the event board reads — Scope §3.3.
@@ -281,7 +282,7 @@ export async function loadBoard(
   ]);
   const { data: eventRow, error: eventError } = eventRes;
   if (eventError)
-    return { event: null, problem: `The event could not be read: ${eventError.message}` };
+    return { event: null, problem: readProblem(eventError, 'The event could not be read') };
   if (!eventRow) return { event: null, problem: null };
   const event = eventRow as Record<string, string | boolean | null>;
 
@@ -301,7 +302,7 @@ export async function loadBoard(
 
   const firstError = sectionRes.error ?? roleRes.error ?? rateRes.error;
   if (firstError) {
-    return { event: null, problem: `The event board could not be read: ${firstError.message}` };
+    return { event: null, problem: readProblem(firstError, 'The event board could not be read') };
   }
   // A missing or unreadable weights row falls back to the §6 default — the
   // same rule the engine applies (parseWeights), so the two cannot differ.
@@ -399,7 +400,7 @@ export async function loadBoard(
   if (clientRes.error) {
     return {
       event: null,
-      problem: `The event board could not be read: ${clientRes.error.message}`,
+      problem: readProblem(clientRes.error, 'The event board could not be read'),
     };
   }
   let seriesLabel: string | null = null;
@@ -417,14 +418,14 @@ export async function loadBoard(
   if (bookingRes.error) {
     return {
       event: null,
-      problem: `The bookings on this event could not be read: ${bookingRes.error.message}`,
+      problem: readProblem(bookingRes.error, 'The bookings on this event could not be read'),
     };
   }
   // An unread offer must not look like "nobody has offered anything up".
   if (offerRes.error) {
     return {
       event: null,
-      problem: `The shift offers on this event could not be read: ${offerRes.error.message}`,
+      problem: readProblem(offerRes.error, 'The shift offers on this event could not be read'),
     };
   }
   const bookings = (bookingRes.data ?? []) as Record<string, string | boolean | null>[];
@@ -445,7 +446,7 @@ export async function loadBoard(
         res.error
           ? {
               rows: null,
-              problem: `The candidate pool could not be computed: ${res.error.message}`,
+              problem: readProblem(res.error, 'The candidate pool could not be computed'),
             }
           : { rows: (res.data ?? []) as CandidateRow[], problem: null },
       ];
@@ -469,7 +470,7 @@ export async function loadBoard(
         {
           windows,
           problem: res.error
-            ? `The availability calendar could not be read: ${res.error.message}`
+            ? readProblem(res.error, 'The availability calendar could not be read')
             : null,
         },
       ];
@@ -558,7 +559,10 @@ export async function loadBoard(
     violationRes.error ??
     checkLogRes.error;
   if (peopleError) {
-    return { event: null, problem: `The workers on this event could not be read: ${peopleError}` };
+    return {
+      event: null,
+      problem: readProblem(peopleError, 'The workers on this event could not be read'),
+    };
   }
 
   // The selfie is a key in the private `photos` bucket, not a URL: one

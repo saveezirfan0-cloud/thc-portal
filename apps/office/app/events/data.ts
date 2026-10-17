@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { type SeriesMember, UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
 import { readAllPages } from '@thc/db/paged';
 import { eventsDb, supabaseConfigured } from './db';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Everything the Shift Builder reads — Scope §3.2.
@@ -130,7 +131,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       clients: [],
       venues: [],
       roles: [],
-      unavailable: `Clients, venues and roles could not be loaded: ${failed.message}`,
+      unavailable: readProblem(failed, 'Clients, venues and roles could not be loaded'),
     };
   }
 
@@ -201,7 +202,7 @@ export async function loadClientNames(): Promise<{ clients: ClientName[]; unavai
   if (error) {
     return {
       clients: [],
-      unavailable: `Clients could not be loaded: ${error.message}`,
+      unavailable: readProblem(error, 'Clients could not be loaded'),
     };
   }
   return { clients: (data ?? []) as ClientName[] };
@@ -527,7 +528,7 @@ export async function loadEventsInRange(from: string, to: string): Promise<Event
     supabase.from('roles').select('id, name'),
   ]);
   if (eventRes.error) {
-    return { events: [], problem: `Events could not be loaded: ${eventRes.error.message}` };
+    return { events: [], problem: readProblem(eventRes.error, 'Events could not be loaded') };
   }
   const events = eventRes.data;
   if (events.length === 0) return { events: [], problem: null };
@@ -535,7 +536,7 @@ export async function loadEventsInRange(from: string, to: string): Promise<Event
   // Without the counts every fill chip would read "0 confirmed".
   const listError = sectionRes.error ?? clientRes.error ?? roleRes.error;
   if (listError) {
-    return { events: [], problem: `Events could not be loaded: ${listError.message}` };
+    return { events: [], problem: readProblem(listError, 'Events could not be loaded') };
   }
 
   // Fill counts ONLY confirmed: the function counts status = 'confirmed',

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { BoardData, CandidateRow, ChaserState } from '../types';
+import { UNREACHABLE } from '../../_lib/dbError';
 
 /**
  * Onboarding chasers on the office board (ADR-0071): the reminder a
@@ -141,7 +142,8 @@ describe('loadBoardChasers()', () => {
     const throwing = readerOf(async (): Promise<never> => {
       throw new Error('fetch failed');
     });
-    expect(await loadBoardChasers(throwing)).toEqual({ chasers: {}, problem: 'fetch failed' });
+    // A fetch that never answered reads as the one sentence (go-live audit M1).
+    expect(await loadBoardChasers(throwing)).toEqual({ chasers: {}, problem: UNREACHABLE });
   });
 });
 

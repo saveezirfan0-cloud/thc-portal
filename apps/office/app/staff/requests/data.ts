@@ -3,6 +3,7 @@ import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../../_lib/photos';
 import { supabaseConfigured } from '../data';
 import type { ChangeRequestRow, ChangeRequestView } from './types';
+import { readProblem } from '../../_lib/dbError';
 
 /**
  * Reads for the change-request queue (/staff/requests) and the /staff/:id
@@ -55,7 +56,7 @@ export async function readChangeRequests(
       p_limit: options.limit ?? 200,
     },
   );
-  if (error) return { rows: [], problem: error.message };
+  if (error) return { rows: [], problem: readProblem(error) };
 
   const rows = data ?? [];
   const urls = await signStaffPhotos(

@@ -4,6 +4,7 @@ import { DEFAULT_ROW_CEILING, readAllPages } from '@thc/db/paged';
 import type { PageReply, ReadAllResult } from '@thc/db/paged';
 import type { FinancialCsvRow, NewStarterCsvRow, PayrollCsvRow } from '@thc/pdf';
 import type { ReportSend, ReportView } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /reports — Scope §9.9.
@@ -244,10 +245,10 @@ const SEND_COLUMNS =
 const NO_SUPABASE =
   'This environment has no Supabase project, so there is nothing to report on. See docs/04-setup-github-vercel-supabase.md.';
 
-function explain(message: string): string {
-  return message.includes('admins_only')
+function explain(error: { code?: string | null; message: string }): string {
+  return error.message.includes('admins_only')
     ? 'Reports are for the office only. This account is not an admin.'
-    : message;
+    : readProblem(error);
 }
 
 export interface ReportsData {
@@ -284,7 +285,7 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
       readFinance(db, view.from, view.to, view.by),
       sendsQuery,
     ]);
-    if (finance.error) return { ...empty, problem: explain(finance.error.message) };
+    if (finance.error) return { ...empty, problem: explain(finance.error) };
     return {
       ...empty,
       finance: finance.data,
@@ -299,7 +300,7 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
       sendsQuery,
     ]);
     const error = lines.error ?? people.error;
-    if (error) return { ...empty, problem: explain(error.message) };
+    if (error) return { ...empty, problem: explain(error) };
     return {
       ...empty,
       lines: lines.data ?? [],
@@ -309,7 +310,7 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
   }
 
   const [starters, sends] = await Promise.all([readNewStarters(db, view.date), sendsQuery]);
-  if (starters.error) return { ...empty, problem: explain(starters.error.message) };
+  if (starters.error) return { ...empty, problem: explain(starters.error) };
   return {
     ...empty,
     starters: starters.data,

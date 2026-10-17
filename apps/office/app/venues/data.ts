@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import type { Venue, VenueType } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /venues (§9.11).
@@ -55,7 +56,7 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
   ]);
 
   const error = venues.error ?? venueTypes.error;
-  if (error) return { venues: [], venueTypes: [], problem: error.message };
+  if (error) return { venues: [], venueTypes: [], problem: readProblem(error) };
 
   return { venues: venues.data ?? [], venueTypes: venueTypes.data ?? [], problem: null };
 }

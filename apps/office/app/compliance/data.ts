@@ -10,6 +10,7 @@ import { EMPTY_MONITOR } from './checks';
 import { loadCheckMonitor } from './checksData';
 import { withLatestCheck } from './queue';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /compliance (§4.1).
@@ -77,7 +78,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     loadCheckMonitor(supabase, new Date().toISOString()),
   ]);
 
-  const problem = queue.error?.message ?? radar.error?.message ?? warnings.error?.message ?? null;
+  const problem = readProblem(queue.error ?? radar.error ?? warnings.error);
   if (problem) return { ...empty, problem };
 
   // ADR-0041: the recommendation, the suggested N8 text and the photo live on
@@ -139,6 +140,6 @@ export async function loadAuditTrail(): Promise<{ rows: AuditRow[]; problem: str
         .returns<AuditRow[]>(),
     { what: 'audit trail rows', key: (row) => String(row.id), ceiling: AUDIT_TRAIL_CEILING },
   );
-  if (error) return { rows: [], problem: error.message };
+  if (error) return { rows: [], problem: readProblem(error) };
   return { rows: data, problem: null };
 }

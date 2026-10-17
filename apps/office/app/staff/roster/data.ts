@@ -5,6 +5,7 @@ import { parseStaffEmailReport } from './emails';
 import type { StaffEmailReport } from './emails';
 import { parseRosterReport } from './report';
 import type { RosterReportData } from './report';
+import { readProblem } from '../../_lib/dbError';
 
 /**
  * Reads for /staff/roster (ADR-0107): the people on the invite list who have
@@ -79,7 +80,7 @@ export async function loadRosterPage(): Promise<RosterPageData> {
         waiting: [],
         report: null,
         emails: null,
-        problem: error.message,
+        problem: readProblem(error),
         emailsProblem: null,
       };
     waiting.push(...(data ?? []));
@@ -92,7 +93,7 @@ export async function loadRosterPage(): Promise<RosterPageData> {
     waiting,
     report: reportError ? null : parseRosterReport(reportData),
     emails: emailError ? null : parseStaffEmailReport(emailData),
-    problem: reportError ? `The reminder report could not be read: ${reportError.message}` : null,
-    emailsProblem: emailError ? `The email numbers could not be read: ${emailError.message}` : null,
+    problem: readProblem(reportError, 'The reminder report could not be read'),
+    emailsProblem: readProblem(emailError, 'The email numbers could not be read'),
   };
 }

@@ -10,6 +10,7 @@ import {
   groupByEvent,
   money,
 } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /dashboard — Scope §9.1.
@@ -82,7 +83,7 @@ export async function loadDashboard({ finance: withFinance = true } = {}): Promi
 
   const failure = kpis.error ?? finance.error ?? upcoming.error;
   if (failure) {
-    return { kpis: null, finance: null, upcoming: [], problem: failure.message };
+    return { kpis: null, finance: null, upcoming: [], problem: readProblem(failure) };
   }
 
   // The three views are not in the generated `Database` type: they are

@@ -4,6 +4,7 @@ import { readAllPages } from '@thc/db/paged';
 import type { PageReply } from '@thc/db/paged';
 import { signStaffPhotos } from '../_lib/photos';
 import type { StaffRow, StudentRow } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /staff (§9.6, §4.5).
@@ -83,7 +84,7 @@ export async function loadStaff(): Promise<StaffPageData> {
   ]);
 
   const error = staff.error ?? students.error;
-  if (error) return { staff: [], students: [], problem: error.message };
+  if (error) return { staff: [], students: [], problem: readProblem(error) };
 
   // The selfie is a key in the private `photos` bucket, not a URL: both
   // lists are signed in one batch, and a path that cannot be signed leaves
