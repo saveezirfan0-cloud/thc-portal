@@ -25,6 +25,7 @@ import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc
 import type { TimeFormat } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import { RejectSelfie } from '../_components/RejectSelfie';
+import { TERM_LETTER_RUN_OUT_REASON, offersRunOutReason } from '../_lib/termLetterReject';
 import {
   RTW_LABEL,
   employeeId,
@@ -505,6 +506,22 @@ export function CandidateScreen({
                     The automatic gov.uk check recommends Reject. The reason below is its suggestion
                     — edit it before it goes to the worker.
                   </Note>
+                ) : null}
+                {offersRunOutReason(reject.doc.doc_type) ? (
+                  // Points a graduate to the completion letter (ADR-0112).
+                  <div className="row">
+                    <Button
+                      size="sm"
+                      tone="ghost"
+                      disabled={reason === TERM_LETTER_RUN_OUT_REASON}
+                      onClick={() => setReason(TERM_LETTER_RUN_OUT_REASON)}
+                    >
+                      Use “Letter has run out”
+                    </Button>
+                    <span className="xs muted">
+                      Tells a graduate to upload a completion letter instead.
+                    </span>
+                  </div>
                 ) : null}
               </>
             ) : null}

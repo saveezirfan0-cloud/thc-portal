@@ -226,6 +226,8 @@ describe('Needs review (§4.1)', () => {
     });
     expect(verifyHint(expired)).toContain('Verify is refused');
     expect(verifyHint(expired)).toContain('Reject');
+    // A graduate has no newer letter: the hint names the completion route.
+    expect(verifyHint(expired)).toContain('completion letter');
     // Verify and Reject are still offered: the database refuses the first,
     // the reviewer takes the second.
     expect(actionsFor(expired)).toEqual({ verify: 'Verify', reject: true });

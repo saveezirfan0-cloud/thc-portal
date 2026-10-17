@@ -523,7 +523,7 @@ export function verifyHint(row: QueueRow): string | null {
   if (row.kind === 'document' && row.manual_review_reason === LETTER_EXPIRED) {
     // compliance_verify_document() raises term_letter_expired on this row
     // (20260928110300); the screen says so before the button does.
-    return 'Verify is refused — an already-expired letter is not accepted · Reject → N8 with Re-upload, the worker sends the current year’s letter';
+    return 'Verify is refused — an already-expired letter is not accepted · Reject → N8 with Re-upload: the reason is pre-filled — the current letter, or a completion letter if the course has finished';
   }
   if (row.kind === 'declaration' && row.declaration_source === 'in_employment') {
     return 'Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block';

@@ -25,6 +25,7 @@ import {
 } from './conditions';
 import {
   EVIDENCE_FORM_LABEL,
+  LETTER_EXPIRED,
   queueRowLockedUntil,
   rejectPrefill,
   ukDate,
@@ -33,6 +34,7 @@ import {
 } from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
 import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
+import { TERM_LETTER_RUN_OUT_REASON, offersRunOutReason } from '../_lib/termLetterReject';
 import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
 
@@ -328,7 +330,13 @@ function RejectModal({
   // its suggested N8 text — the admin reads it, edits it if need be, and it
   // reaches the worker only when they press Reject.
   const suggested = rejectPrefill(row);
-  const [reason, setReason] = useState(suggested);
+  // A term letter the extractor flagged as expired opens with the run-out
+  // reason, which points a graduate to the completion letter (ADR-0112).
+  const runOut = row.kind === 'document' && offersRunOutReason(row.item_type);
+  const [reason, setReason] = useState(
+    suggested ||
+      (runOut && row.manual_review_reason === LETTER_EXPIRED ? TERM_LETTER_RUN_OUT_REASON : ''),
+  );
   const inEmployment = row.kind === 'declaration' && row.declaration_source === 'in_employment';
   const niCheck = row.kind === 'ni_check';
   return (
@@ -372,6 +380,19 @@ function RejectModal({
           {row.rtw_check_reason ?? 'Check the gov.uk report first.'} The reason below is its
           suggestion — edit it before it goes to the worker.
         </Note>
+      ) : null}
+      {runOut ? (
+        <div className="row">
+          <Button
+            size="sm"
+            tone="ghost"
+            disabled={reason === TERM_LETTER_RUN_OUT_REASON}
+            onClick={() => setReason(TERM_LETTER_RUN_OUT_REASON)}
+          >
+            Use “Letter has run out”
+          </Button>
+          <span className="xs muted">Tells a graduate to upload a completion letter instead.</span>
+        </div>
       ) : null}
       <Textarea
         label={

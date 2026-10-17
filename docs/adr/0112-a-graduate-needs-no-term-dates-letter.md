@@ -29,3 +29,9 @@ For the International student branch:
 - The step 4 row reads "Covered by your Completion Letter below once the office approves it" while the letter is pending, and "Not needed" once it is verified.
 - The Back Office wording of the blocker is unchanged. If the office wants a dedicated "waiting for the completion date" line, it is a `blockerLabel` addition and a token here.
 - The wireframe (`staff/onboarding-1.html`) has no notice above the list and no "Not needed" state; this ADR is the deviation record.
+
+## Addendum, 17.10.2026 · the Reject box points a graduate to the completion letter
+
+A candidate whose term letter ended on the day it was reviewed was rejected with a hand-typed reason, and N8 ("Document rejected — [reason]. Re-upload.") sent her back for another term letter she did not have. She wrote in asking for a manual override until her results came out. The route already existed; the rejection never named it.
+
+Both Reject boxes (Compliance queue and the candidate profile) now offer, on a University Term Dates Letter only, a one-click **Use “Letter has run out”** reason (`apps/office/app/_lib/termLetterReject.ts`): still studying → the current letter; course finished → the completion letter, transcript or university email, showing the **course completion date** (an award-only date lifts the cap from the award instead), with no wait for results. A letter the extractor flagged `letter expired` opens with it pre-filled in the queue. The reviewer can still edit it before it is sent. N8's copy and the register are unchanged. The wireframes have no such button; this addendum is the deviation record.
