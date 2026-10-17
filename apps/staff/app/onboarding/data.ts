@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
 import { mapOnboardingState } from './state';
@@ -12,7 +13,7 @@ import type { HmrcGender } from '@thc/domain';
 
 export { supabaseConfigured };
 
-export async function loadOnboarding(): Promise<OnboardingState | null> {
+export const loadOnboarding = cache(async (): Promise<OnboardingState | null> => {
   if (!supabaseConfigured()) return null;
   const supabase = staffDb(await cookies());
   const { data, error } = await supabase.rpc('onboarding_state');
@@ -20,7 +21,7 @@ export async function loadOnboarding(): Promise<OnboardingState | null> {
   // it goes to the error boundary, which offers the retry.
   if (error) throw new StaffLoadError(error.message || 'onboarding_state failed');
   return mapOnboardingState(data);
-}
+});
 
 /**
  * The gender already on the caller's row (step 7 re-opened), through the

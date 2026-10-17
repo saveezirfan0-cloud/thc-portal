@@ -16,6 +16,7 @@ import {
 import type { TimeFormat } from '@thc/domain';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
+import { preloadShell } from '../_components/preloadShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { CancelShift } from '../_components/CancelShift';
@@ -72,6 +73,8 @@ export const metadata = { title: 'Shifts · THC Staff' };
  * `staff_week_meter()` and `WeekMeter` Radar shows, so the two agree.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { tab } = await searchParams;
   const open = tab === 'open';
   const format = await getTimeFormat();

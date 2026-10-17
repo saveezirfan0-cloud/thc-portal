@@ -66,11 +66,14 @@ export async function StaffShell({
   pushStatus?: boolean;
   children: ReactNode;
 }) {
-  const read = await readProfile();
+  // Both are `React.cache`d per request, so a page that read the profile
+  // itself, or started both with `preloadShell()`, pays for neither again;
+  // and they run side by side, not one after the other.
+  //
   // ADR-0085: every working screen reads times on the worker's clock. Read
   // here (cached per request, a cookie after the first) and not in the root
   // layout, so a static page such as /offline stays static for the PWA.
-  const { format, remember } = await timeFormatChoice();
+  const [read, { format, remember }] = await Promise.all([readProfile(), timeFormatChoice()]);
   const withClock = (frame: ReactNode) => (
     <TimeFormatProvider format={format} remember={remember}>
       {frame}
