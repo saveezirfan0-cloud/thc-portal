@@ -27,7 +27,8 @@
 --
 --   * the facts that come from the booking history are worked out ONCE per
 --     call as grouped joins: show-rate (staff_show_rate()'s sample and
---     formula), shifts at this venue, the hours booked in the section's
+--     formula), confirmed shifts to come, shifts at this venue, the hours
+--     booked in the section's
 --     Mon–Sun week (booking_counts_toward_cap() still says what counts),
 --     who self-cancelled off this event, and who holds a confirmed or
 --     worked booking near this section;
@@ -163,6 +164,19 @@ begin
       ) vb on vb.booking_id = h.id
      where h.status in ('worked', 'turned_away') or coalesce(vb.no_show, false)
      group by h.staff_id
+  ),
+  -- Confirmed shifts still to come (§6 fair rotation).
+  future_src as (
+    select b.staff_id
+      from shift_requirements sr3 join bookings b on b.shift_id = sr3.id
+     where p_only is null and sr3.starts_at > now() and b.status = 'confirmed'
+    union all
+    select b.staff_id
+      from bookings b join shift_requirements sr3 on sr3.id = b.shift_id
+     where b.staff_id = any (p_only) and b.status = 'confirmed' and sr3.starts_at > now()
+  ),
+  future as (
+    select f.staff_id, count(*)::int as n from future_src f group by f.staff_id
   ),
   -- Shifts worked at this venue (§6 venue history).
   venue_src as (
@@ -322,13 +336,13 @@ begin
     coalesce(sh.rate, 90)::numeric,
     coalesce(s.rating, 4.0)::numeric,
     coalesce(st_distance(s.home_location, sec.venue_location) / 1000.0, 9999)::numeric,
-    (select count(*) from bookings b join shift_requirements sr3 on sr3.id = b.shift_id
-      where b.staff_id = s.id and b.status = 'confirmed' and sr3.starts_at > now())::int,
+    coalesce(fu.n, 0)::int,
     coalesce(vn.n, 0)::int,
     mine.cancel_cause as booking_cause
   from pool s cross join sec cross join rad
   left join mine     on mine.staff_id = s.id
   left join shows sh on sh.staff_id = s.id
+  left join future fu on fu.staff_id = s.id
   left join venue vn on vn.staff_id = s.id
   left join week  wk on wk.staff_id = s.id
   where s.removed_at is null and s.left_at is null
