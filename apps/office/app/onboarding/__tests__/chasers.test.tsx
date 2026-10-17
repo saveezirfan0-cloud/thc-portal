@@ -90,10 +90,33 @@ describe('chaserLine()', () => {
   });
 });
 
+/** A reader whose rpc() is a chainable query, sliced by range like PostgREST (max 1000). */
+function readerOf(
+  answer: (
+    from: number,
+    to: number,
+  ) => Promise<{ data: ChaserState[] | null; error: { message: string } | null }>,
+) {
+  const rpc = vi.fn(() => {
+    let range: [number, number] = [0, 999];
+    const query = {
+      order: () => query,
+      range: (from: number, to: number) => {
+        range = [from, to];
+        return query;
+      },
+      then: (ok: (v: unknown) => unknown, fail?: (e: unknown) => unknown) =>
+        answer(...range).then(ok, fail),
+    };
+    return query;
+  });
+  return { rpc } as unknown as Parameters<typeof loadBoardChasers>[0] & { rpc: typeof rpc };
+}
+
 describe('loadBoardChasers()', () => {
   it('keys the rows by candidate', async () => {
     const rows = [state(), state({ staff_id: 'c-2', stalled: true, rungs_sent: 3 })];
-    const reader = { rpc: vi.fn(async () => ({ data: rows, error: null })) };
+    const reader = readerOf(async () => ({ data: rows, error: null }));
     const { chasers, problem } = await loadBoardChasers(reader);
     expect(reader.rpc).toHaveBeenCalledWith('onboarding_chaser_state');
     expect(problem).toBeNull();
@@ -101,14 +124,23 @@ describe('loadBoardChasers()', () => {
     expect(chasers['c-2']!.stalled).toBe(true);
   });
 
+  it('reads every candidate past PostgREST’s 1,000-row cap (go-live audit H3)', async () => {
+    const rows = Array.from({ length: 1300 }, (_, n) => state({ staff_id: `c-${n}` }));
+    const reader = readerOf(async (from, to) => ({
+      data: rows.slice(from, Math.min(to + 1, from + 1000)),
+      error: null,
+    }));
+    const { chasers } = await loadBoardChasers(reader);
+    expect(Object.keys(chasers)).toHaveLength(1300);
+    expect(chasers['c-1299']).toBeDefined();
+  });
+
   it('reports a failed read as a problem, not as "never reminded"', async () => {
-    const reader = { rpc: async () => ({ data: null, error: { message: 'forbidden' } }) };
+    const reader = readerOf(async () => ({ data: null, error: { message: 'forbidden' } }));
     expect(await loadBoardChasers(reader)).toEqual({ chasers: {}, problem: 'forbidden' });
-    const throwing = {
-      rpc: async (): Promise<never> => {
-        throw new Error('fetch failed');
-      },
-    };
+    const throwing = readerOf(async (): Promise<never> => {
+      throw new Error('fetch failed');
+    });
     expect(await loadBoardChasers(throwing)).toEqual({ chasers: {}, problem: 'fetch failed' });
   });
 });

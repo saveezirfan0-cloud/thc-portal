@@ -188,8 +188,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
     >
       <div className="stack">
-        {/* Accepts, ready confirmations and check-ins arrive while the manager watches. */}
-        <AutoRefresh />
+        {/* Accepts, ready confirmations and check-ins arrive while the manager
+            watches. Every 60 s: each refresh recomputes every section's pool
+            (go-live audit H2). */}
+        <AutoRefresh everyMs={60_000} />
         {autosendLine || recipientsLine ? (
           <div className="stack" style={{ gap: 2, textAlign: 'right' }}>
             {autosendLine ? <span className="xs muted">{autosendLine}</span> : null}

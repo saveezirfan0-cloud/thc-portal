@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
 import { loadRtwChecks } from '../_lib/rtwCheckData';
 import type { Database } from '@thc/db';
 import { supabaseConfigured } from '../staff/data';
@@ -102,6 +103,9 @@ const REFERRAL_COLUMNS =
 /** Ids per request: keeps `in.(…)` well inside any URL limit. */
 const REFERRAL_CHUNK = 100;
 
+/** Far past any intake THC runs; past it the board says so instead of hiding cards. */
+const BOARD_CEILING = 20_000;
+
 export async function loadBoardReferrals(
   reader: ReferralReader,
   staffIds: readonly string[],
@@ -157,21 +161,37 @@ function messageOf(error: unknown): string {
 // for the same reason as the referrals: the pipeline view is not restated.
 // A failed read is said out loud, never shown as "nobody was reminded".
 // ---------------------------------------------------------------------
+interface ChaserQuery extends PromiseLike<{
+  data: ChaserState[] | null;
+  error: { message: string } | null;
+}> {
+  order(column: string): ChaserQuery;
+  range(from: number, to: number): ChaserQuery;
+}
+
 export interface ChaserReader {
-  rpc(fn: 'onboarding_chaser_state'): PromiseLike<{
-    data: ChaserState[] | null;
-    error: { message: string } | null;
-  }>;
+  rpc(fn: 'onboarding_chaser_state'): ChaserQuery;
 }
 
 export async function loadBoardChasers(
   reader: ChaserReader,
 ): Promise<{ chasers: Record<string, ChaserState>; problem: string | null }> {
   try {
-    const answer = await reader.rpc('onboarding_chaser_state');
+    // One row per candidate in the pipeline: past 1000 at full intake, so it
+    // is paged like the board itself (go-live audit H3) — a card cut off
+    // here would read "never reminded".
+    const answer = await readAllPages<ChaserState>(
+      (range) =>
+        reader
+          .rpc('onboarding_chaser_state')
+          .order('staff_id')
+          .order('track')
+          .range(range.from, range.to),
+      { what: 'reminder states', ceiling: BOARD_CEILING },
+    );
     if (answer.error) return { chasers: {}, problem: answer.error.message };
     return {
-      chasers: Object.fromEntries((answer.data ?? []).map((row) => [row.staff_id, row])),
+      chasers: Object.fromEntries(answer.data.map((row) => [row.staff_id, row])),
       problem: null,
     };
   } catch (error) {
@@ -267,18 +287,35 @@ export async function loadBoard(): Promise<BoardData> {
   // The chaser read needs nothing from the others, so it starts with them
   // instead of waiting behind the referrals.
   const chasersRead = loadBoardChasers(supabase as unknown as ChaserReader);
+  // Go-live audit H3: the board passes PostgREST's 1000-row cap once the
+  // invite roster arrives (~1,300 candidates), and the cut — newest stage
+  // first — would drop the OLDEST candidates without a word. Every card is
+  // read, in pages, in a total order (the id breaks ties); a column with
+  // hundreds of cards is the board's to fold, never the read's to hide.
   const [candidates, returning, roles] = await Promise.all([
-    supabase
-      .from('onboarding_candidates_v')
-      .select(BOARD_COLUMNS)
-      .in('status', ON_BOARD)
-      .order('stage_entered_at', { ascending: false })
-      .returns<BoardCandidateRow[]>(),
-    supabase
-      .from('onboarding_returning_v')
-      .select('*')
-      .order('applied_at', { ascending: false })
-      .returns<ReturningRow[]>(),
+    readAllPages<BoardCandidateRow>(
+      (range) =>
+        supabase
+          .from('onboarding_candidates_v')
+          .select(BOARD_COLUMNS)
+          .in('status', ON_BOARD)
+          .order('stage_entered_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<BoardCandidateRow[]>(),
+      { what: 'candidates', key: (row) => row.id, ceiling: BOARD_CEILING },
+    ),
+    readAllPages<ReturningRow>(
+      (range) =>
+        supabase
+          .from('onboarding_returning_v')
+          .select('*')
+          .order('applied_at', { ascending: false })
+          .order('application_id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<ReturningRow[]>(),
+      { what: 'returning applicants', key: (row) => row.application_id, ceiling: BOARD_CEILING },
+    ),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
   ]);
 

@@ -160,8 +160,9 @@ export function OnboardingBoard({
 }) {
   const router = useRouter();
   // Cards move on their own (Willo webhook, documents verified, quiz passed),
-  // so the board re-reads every 30 s and when the tab regains focus.
-  useAutoRefresh();
+  // so the board re-reads every 60 s (the candidates view is heavy — go-live
+  // audit H3) and when the tab regains focus.
+  useAutoRefresh(60_000);
   const at = useMemo(() => new Date(now), [now]);
   const [url, setUrl] = useListQuery(QUERY);
   const filter = oneOf(url.view, VIEWS, 'active');
