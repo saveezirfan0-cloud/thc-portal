@@ -31,7 +31,7 @@ import {
   quizzesOutstanding,
   requirementsByBooking,
 } from '../data';
-import type { BookingRow, ShiftRequirementRow } from '../data';
+import type { BookingRow, Loaded, OpenShift, ShiftRequirementRow } from '../data';
 import { KitMessage, QuizPrompt } from '../_components/ShiftRequirements';
 import { getTimeFormat } from '../_lib/timeFormat';
 import { WeekMeter } from '../radar/WeekMeter';
@@ -46,6 +46,8 @@ import { checkInWindow } from './[id]/phase';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
+
+const NOT_SHOWN: Loaded<OpenShift> = { rows: [], problem: null };
 export const metadata = { title: 'Shifts · THC Staff' };
 
 /**
@@ -82,7 +84,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     { rows: requirementRows, problem: requirementsProblem },
   ] = await Promise.all([
     loadBookings(),
-    loadOpenShifts(),
+    // `staff_open_shifts()` is the slowest read the app makes, and only the
+    // Open tab shows it. My shifts — the landing tab, the home-screen
+    // start_url and every "I'm ready" / "Confirm" re-render — never waits on it.
+    open ? loadOpenShifts() : Promise.resolve(NOT_SHOWN),
     loadWeekMeter(),
     // ADR-0046: the open offer on each confirmed booking, for the chip.
     loadBookingOffers(),
