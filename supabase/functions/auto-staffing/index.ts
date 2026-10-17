@@ -49,6 +49,14 @@ import {
   type CandidateRow,
 } from '../../../packages/domain/src/autoAssign.ts';
 import { parseWeights } from '../../../packages/domain/src/scoring.ts';
+import { readAllPages } from '../../../packages/db/src/paged.ts';
+import type { PageReply } from '../../../packages/db/src/paged.ts';
+
+/** Far past any directory THC will hold; past it a pool read is an error, never a cut. */
+const POOL_CEILING = 20_000;
+
+/** How many failures one run lists in job_runs.counts (all are counted). */
+const MAX_FAILURES_LISTED = 20;
 
 type Mode = 'hourly' | 'cutoff' | 'escalation';
 
@@ -116,6 +124,20 @@ Deno.serve((request) =>
     };
     if (onlyEvent) counts.event = onlyEvent;
 
+    // Per-section and per-offer failures (go-live audit H4): logged, counted
+    // and listed (the first few) in job_runs, never a reason to stop the round.
+    counts.failedSections = 0;
+    counts.failedOffers = 0;
+    const failures: { kind: string; id: string; error: string }[] = [];
+    const failed = (kind: 'section' | 'offer', id: string, cause: unknown) => {
+      const error = (cause instanceof Error ? cause.message : String(cause)).slice(0, 300);
+      console.error(`[auto-staffing] ${mode}: ${kind} ${id} failed`, { error });
+      if (kind === 'section') counts.failedSections = (counts.failedSections as number) + 1;
+      else counts.failedOffers = (counts.failedOffers as number) + 1;
+      if (failures.length < MAX_FAILURES_LISTED) failures.push({ kind, id, error });
+      counts.failures = failures;
+    };
+
     if (mode === 'cutoff') {
       const { data: released, error } = await db.rpc('release_unready_bookings');
       if (error) throw new Error(`release_unready_bookings: ${error.message}`);
@@ -146,61 +168,88 @@ Deno.serve((request) =>
     ).filter((section) => onlyEvent === null || section.event_id === onlyEvent);
 
     for (const section of sections) {
-      // §3.4: the escalation pool is "every worker qualified for that role
-      // within a 3-mile radius of the venue" — the radius is
-      // settings.escalation_radius_miles, applied in SQL as the
-      // `outside_radius` gate, which selectInvitees skips like any other.
-      const { data: pool, error: poolError } = await db.rpc('auto_assign_candidates', {
-        p_shift: section.shift_id,
-        p_escalation: mode === 'escalation',
-      });
-      if (poolError) throw new Error(`auto_assign_candidates: ${poolError.message}`);
+      // Go-live audit H4: one section's failure — its pool hitting the 8 s
+      // statement limit, one refused invite — used to throw out of the loop
+      // and abort the whole round, so every later section (in starts_at
+      // order) got nothing this hour, and every hour while it repeated.
+      // Each section now stands alone: the failure is logged and counted in
+      // job_runs (`failedSections`, `failures`) and the round goes on.
+      try {
+        // §3.4: the escalation pool is "every worker qualified for that role
+        // within a 3-mile radius of the venue" — the radius is
+        // settings.escalation_radius_miles, applied in SQL as the
+        // `outside_radius` gate, which selectInvitees skips like any other.
+        //
+        // Only the gate-free rows, every one of them (go-live audit H5): a
+        // gated row is never invited (rankPool drops it), and the unfiltered
+        // pool is one row per worker in the directory — past PostgREST's
+        // 1000-row cap at full roster, which silently dropped the same tail
+        // of workers from every round. Paged by staff_id, which is unique
+        // per row, because auto_assign_candidates has no ORDER BY of its own.
+        const pool = await readAllPages<CandidateRow>(
+          (range) =>
+            db
+              .rpc('auto_assign_candidates', {
+                p_shift: section.shift_id,
+                p_escalation: mode === 'escalation',
+              })
+              .is('gate', null)
+              .order('staff_id')
+              .range(range.from, range.to) as unknown as PromiseLike<PageReply<CandidateRow>>,
+          { what: 'candidates', key: (row) => row.staff_id, ceiling: POOL_CEILING },
+        );
+        if (pool.error) throw new Error(`auto_assign_candidates: ${pool.error.message}`);
 
-      // ADR-0043: the calendar is a hard gate on every round the machine
-      // runs — hourly, first round, cutoff refill and escalation alike —
-      // measured against this ROLE SECTION's window (RULE-18). It is not a
-      // sixth score: the §6 weights are untouched and the workers are
-      // simply skipped, like any other gate. A manager can still invite
-      // them by hand from the board.
-      const { data: away, error: awayError } = await db.rpc('auto_assign_unavailable', {
-        p_shift: section.shift_id,
-      });
-      if (awayError) throw new Error(`auto_assign_unavailable: ${awayError.message}`);
-      const unavailable = new Set(((away ?? []) as { staff_id: string }[]).map((r) => r.staff_id));
-      const rows = (pool ?? []) as CandidateRow[];
-      counts.unavailableSkipped =
-        (counts.unavailableSkipped as number) +
-        rows.filter(
-          (row) =>
-            row.gate === null && row.booking_status === null && unavailable.has(row.staff_id),
-        ).length;
-
-      const invitees = selectInvitees(rows, {
-        allocation: section.allocation,
-        weights,
-        // §3.4: after the start, "proximity to the venue matters more than
-        // the match score" — nearest first within each wave.
-        proximityFirst: mode === 'escalation',
-        unavailable,
-      });
-
-      for (const staffId of invitees) {
-        const { data: result, error: inviteError } = await db.rpc('invite_worker', {
+        // ADR-0043: the calendar is a hard gate on every round the machine
+        // runs — hourly, first round, cutoff refill and escalation alike —
+        // measured against this ROLE SECTION's window (RULE-18). It is not a
+        // sixth score: the §6 weights are untouched and the workers are
+        // simply skipped, like any other gate. A manager can still invite
+        // them by hand from the board.
+        const { data: away, error: awayError } = await db.rpc('auto_assign_unavailable', {
           p_shift: section.shift_id,
-          p_staff: staffId,
-          // 'escalation' also makes invite_worker re-check the radius at
-          // the insert, and records how the replacement was found.
-          p_source: mode === 'escalation' ? 'escalation' : 'auto',
-          // §3.4: escalation invites "ignoring the headcount + buffer cap".
-          // Never set by the hourly round, which is what keeps the cap
-          // meaningful before a shift starts.
-          p_ignore_target: mode === 'escalation',
         });
-        if (inviteError) throw new Error(`invite_worker: ${inviteError.message}`);
-        if (result?.invited === true) counts.invited = (counts.invited as number) + 1;
-      }
+        if (awayError) throw new Error(`auto_assign_unavailable: ${awayError.message}`);
+        const unavailable = new Set(
+          ((away ?? []) as { staff_id: string }[]).map((r) => r.staff_id),
+        );
+        const rows = pool.data;
+        counts.unavailableSkipped =
+          (counts.unavailableSkipped as number) +
+          rows.filter(
+            (row) =>
+              row.gate === null && row.booking_status === null && unavailable.has(row.staff_id),
+          ).length;
 
-      counts.sections = (counts.sections as number) + 1;
+        const invitees = selectInvitees(rows, {
+          allocation: section.allocation,
+          weights,
+          // §3.4: after the start, "proximity to the venue matters more than
+          // the match score" — nearest first within each wave.
+          proximityFirst: mode === 'escalation',
+          unavailable,
+        });
+
+        for (const staffId of invitees) {
+          const { data: result, error: inviteError } = await db.rpc('invite_worker', {
+            p_shift: section.shift_id,
+            p_staff: staffId,
+            // 'escalation' also makes invite_worker re-check the radius at
+            // the insert, and records how the replacement was found.
+            p_source: mode === 'escalation' ? 'escalation' : 'auto',
+            // §3.4: escalation invites "ignoring the headcount + buffer cap".
+            // Never set by the hourly round, which is what keeps the cap
+            // meaningful before a shift starts.
+            p_ignore_target: mode === 'escalation',
+          });
+          if (inviteError) throw new Error(`invite_worker: ${inviteError.message}`);
+          if (result?.invited === true) counts.invited = (counts.invited as number) + 1;
+        }
+
+        counts.sections = (counts.sections as number) + 1;
+      } catch (cause) {
+        failed('section', section.shift_id, cause);
+      }
     }
 
     // ADR-0046: the offer rounds, on the hourly run only (a first round for
@@ -225,30 +274,56 @@ Deno.serve((request) =>
         shift_id: string;
         allocation: number;
       }[]) {
-        const [pool, notices, away] = await Promise.all([
-          db.rpc('offer_candidates', { p_offer: offer.offer_id }),
-          db.from('shift_offer_notices').select('staff_id').eq('offer_id', offer.offer_id),
-          db.rpc('auto_assign_unavailable', { p_shift: offer.shift_id }),
-        ]);
-        if (pool.error) throw new Error(`offer_candidates: ${pool.error.message}`);
-        if (notices.error) throw new Error(`shift_offer_notices: ${notices.error.message}`);
-        if (away.error) throw new Error(`auto_assign_unavailable: ${away.error.message}`);
+        // One offer's failure no longer stops the others (as for sections).
+        try {
+          const [pool, notices, away] = await Promise.all([
+            // Gate-free rows only, every one of them, as for the sections.
+            readAllPages<CandidateRow>(
+              (range) =>
+                db
+                  .rpc('offer_candidates', { p_offer: offer.offer_id })
+                  .is('gate', null)
+                  .order('staff_id')
+                  .range(range.from, range.to) as unknown as PromiseLike<PageReply<CandidateRow>>,
+              { what: 'offer candidates', key: (row) => row.staff_id, ceiling: POOL_CEILING },
+            ),
+            // Everyone already told: a short list would push them twice.
+            readAllPages<{ staff_id: string }>(
+              (range) =>
+                db
+                  .from('shift_offer_notices')
+                  .select('staff_id')
+                  .eq('offer_id', offer.offer_id)
+                  .order('staff_id')
+                  .range(range.from, range.to) as unknown as PromiseLike<
+                  PageReply<{ staff_id: string }>
+                >,
+              { what: 'offer notices', ceiling: POOL_CEILING },
+            ),
+            db.rpc('auto_assign_unavailable', { p_shift: offer.shift_id }),
+          ]);
+          if (pool.error) throw new Error(`offer_candidates: ${pool.error.message}`);
+          if (notices.error) throw new Error(`shift_offer_notices: ${notices.error.message}`);
+          if (away.error) throw new Error(`auto_assign_unavailable: ${away.error.message}`);
 
-        const recipients = selectOfferRecipients((pool.data ?? []) as CandidateRow[], {
-          allocation: offer.allocation,
-          notified: ((notices.data ?? []) as { staff_id: string }[]).map((n) => n.staff_id),
-          unavailable: ((away.data ?? []) as { staff_id: string }[]).map((r) => r.staff_id),
-          weights,
-        });
-        counts.offers = (counts.offers as number) + 1;
-        if (recipients.length === 0) continue;
+          const recipients = selectOfferRecipients(pool.data, {
+            allocation: offer.allocation,
+            notified: notices.data.map((n) => n.staff_id),
+            unavailable: ((away.data ?? []) as { staff_id: string }[]).map((r) => r.staff_id),
+            weights,
+          });
+          counts.offers = (counts.offers as number) + 1;
+          if (recipients.length === 0) continue;
 
-        const { data: pushed, error: pushError } = await db.rpc('notify_offer_candidates', {
-          p_offer: offer.offer_id,
-          p_staff: recipients,
-        });
-        if (pushError) throw new Error(`notify_offer_candidates: ${pushError.message}`);
-        counts.offerPushes = (counts.offerPushes as number) + Number(pushed ?? 0);
+          const { data: pushed, error: pushError } = await db.rpc('notify_offer_candidates', {
+            p_offer: offer.offer_id,
+            p_staff: recipients,
+          });
+          if (pushError) throw new Error(`notify_offer_candidates: ${pushError.message}`);
+          counts.offerPushes = (counts.offerPushes as number) + Number(pushed ?? 0);
+        } catch (cause) {
+          failed('offer', offer.offer_id, cause);
+        }
       }
     }
 

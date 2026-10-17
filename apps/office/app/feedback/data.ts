@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { PAGE_SIZE, ilikePattern } from './view-model';
 import type { FeedbackEntry, FeedbackQuery, Option } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /feedback (§9.10).
@@ -98,7 +99,7 @@ export async function loadFeedback(query: FeedbackQuery): Promise<FeedbackPageDa
   // A page past the end is a PostgREST range error (416); show the empty
   // list and let the pager take the manager back, rather than an error.
   if (error && !(entries.error && entries.status === 416)) {
-    return { ...EMPTY, problem: error.message };
+    return { ...EMPTY, problem: readProblem(error) };
   }
 
   return {

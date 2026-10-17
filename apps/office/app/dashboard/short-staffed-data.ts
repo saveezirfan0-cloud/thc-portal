@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { type ShortStaffedRole, type ShortStaffedRow, toShortStaffed } from './short-staffed';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * The read behind "Short-staffed — next 48 hours".
@@ -40,7 +41,7 @@ export async function loadShortStaffed(): Promise<ShortStaffedData> {
     )
     .order('starts_at', { ascending: true });
 
-  if (error) return { roles: null, problem: error.message };
+  if (error) return { roles: null, problem: readProblem(error) };
 
   // Must match 20261001200400_dashboard_short_staffed.sql.
   return { roles: toShortStaffed((data ?? []) as unknown as ShortStaffedRow[]), problem: null };

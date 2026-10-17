@@ -6,6 +6,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { type InboxStatus, type Period, periodStart } from './filters';
 import type { InboxRow } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 export const PAGE_SIZE = 50;
 
@@ -79,6 +80,6 @@ export async function loadInbox(filters: InboxFilters, now = new Date()): Promis
     rows: data,
     failedInPeriod: failures.count ?? 0,
     nextBefore: data.length === PAGE_SIZE ? (data[data.length - 1]?.id ?? null) : null,
-    problem: rows.error?.message ?? failures.error?.message ?? null,
+    problem: readProblem(rows.error ?? failures.error),
   };
 }

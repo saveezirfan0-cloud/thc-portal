@@ -25,6 +25,7 @@ import type {
   ShiftRow,
   ViolationRow,
 } from './types';
+import { readProblem } from '../../_lib/dbError';
 
 /**
  * Reads for /staff/:id (§9.6).
@@ -257,7 +258,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     declarations.error ??
     roles.error ??
     clients.error;
-  if (error) return { ...EMPTY, problem: error.message };
+  if (error) return { ...EMPTY, problem: readProblem(error) };
 
   // The header selfie: a private-bucket key, signed here (_lib/photos.ts).
   const photoPath = profile.data?.photo_path ?? null;
@@ -272,7 +273,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // A failed read must not take the whole profile down; the tab says why
     // there are no review buttons instead.
     reviewQueue: reviewQueue.error ? [] : (reviewQueue.data ?? []),
-    reviewQueueProblem: reviewQueue.error ? reviewQueue.error.message : null,
+    reviewQueueProblem: readProblem(reviewQueue.error),
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],
     violations: violations.data ?? [],
@@ -300,15 +301,15 @@ export async function loadProfile(id: string): Promise<ProfileData> {
             : {}),
         }),
     emergencyContact: emergency.error ? null : (emergency.data ?? null),
-    emergencyContactProblem: emergency.error ? emergency.error.message : null,
+    emergencyContactProblem: readProblem(emergency.error),
     referrals: referrals.error ? null : (referrals.data ?? null),
-    referralsProblem: referrals.error ? referrals.error.message : null,
+    referralsProblem: readProblem(referrals.error),
     availability: availability.error ? [] : (availability.data ?? []),
-    availabilityProblem: availability.error ? availability.error.message : null,
+    availabilityProblem: readProblem(availability.error),
     changeRequests: changeRequests.rows,
     changeRequestsProblem: changeRequests.problem,
     payRate: payRate.error ? null : (payRate.data ?? null),
-    payRateProblem: payRate.error ? payRate.error.message : null,
+    payRateProblem: readProblem(payRate.error),
     payFloorPence,
     problem: null,
   };

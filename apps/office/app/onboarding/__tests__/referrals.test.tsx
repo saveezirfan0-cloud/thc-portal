@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { CandidateData, CandidateRow, ReferralRow, ReturningRow } from '../types';
+import { UNREACHABLE } from '../../_lib/dbError';
 
 /**
  * Refer a friend on the office side (ADR-0047, docs/19 §5):
@@ -267,7 +268,8 @@ describe('loadBoardReferrals()', () => {
     const db = reader(() => {
       throw new Error('fetch failed');
     });
-    expect((await loadBoardReferrals(db, ['c-1'])).problem).toBe('fetch failed');
+    // A fetch that never answered reads as the one sentence (go-live audit M1).
+    expect((await loadBoardReferrals(db, ['c-1'])).problem).toBe(UNREACHABLE);
   });
 
   it('asks nothing for an empty board', async () => {

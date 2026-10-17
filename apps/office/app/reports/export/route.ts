@@ -1,7 +1,13 @@
 import { financialCsv, newStarterCsv, payrollCsv } from '@thc/pdf/csv';
-import { reportsDb, supabaseConfigured } from '../data';
+import {
+  EXPORT_ROW_CEILING,
+  readFinance,
+  readNewStarters,
+  readPayrollLines,
+  reportsDb,
+  supabaseConfigured,
+} from '../data';
 import { explainDbError } from '../../_lib/dbError';
-import type { FinanceRow, NewStarter, PayrollLine } from '../data';
 import { newStarterPeriod, parseReportView, todayInUk } from '../view-model';
 
 /**
@@ -36,29 +42,28 @@ export async function GET(request: Request) {
   );
   const db = await reportsDb();
 
-  let csv: string;
+  // Every read is paged past PostgREST's max_rows and checked against the
+  // exact count (reports/data.ts): a file is complete or it is an error,
+  // never a payroll that quietly stops at line 1,000 (RULE-14).
+  let csv = '';
   let name: string;
-  let error: { message: string } | null;
+  let error: { code?: string | null; message: string } | null;
 
   if (report === 'payroll') {
-    const result = await db.rpc('payroll_report', { p_from: view.from, p_to: view.to });
+    const result = await readPayrollLines(db, view.from, view.to, EXPORT_ROW_CEILING);
     error = result.error;
-    csv = payrollCsv(((result.data ?? []) as PayrollLine[]).filter((row) => row.in_export));
+    if (result.data) csv = payrollCsv(result.data.filter((row) => row.in_export));
     name = `THC payroll ${view.from} to ${view.to}.csv`;
   } else if (report === 'newstarter') {
-    const result = await db.rpc('new_starter_report', { p_date: view.date });
+    const result = await readNewStarters(db, view.date, EXPORT_ROW_CEILING);
     error = result.error;
-    csv = newStarterCsv((result.data ?? []) as NewStarter[]);
+    if (result.data) csv = newStarterCsv(result.data);
     const period = newStarterPeriod(view.date);
     name = `THC new starters (HMRC) ${period.from} to ${period.to}.csv`;
   } else if (report === 'financial') {
-    const result = await db.rpc('finance_report', {
-      p_from: view.from,
-      p_to: view.to,
-      p_by: view.by,
-    });
+    const result = await readFinance(db, view.from, view.to, view.by, EXPORT_ROW_CEILING);
     error = result.error;
-    csv = financialCsv((result.data ?? []) as FinanceRow[]);
+    if (result.data) csv = financialCsv(result.data);
     name = `THC financial ${view.from} to ${view.to} by ${view.by}.csv`;
   } else {
     return new Response('Unknown report.', { status: 400 });

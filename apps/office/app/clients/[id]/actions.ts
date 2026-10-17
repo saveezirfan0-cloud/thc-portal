@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { type DbError, explainDbError } from '../../_lib/dbError';
+import { BULK_CONCURRENCY, mapPool } from '../../_lib/pool';
 import { supabaseConfigured } from '../data';
 import { chargeRateProblem } from './card';
 import type { ActionResult } from './types';
@@ -122,19 +123,21 @@ export async function qualifyStaff(
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies()) as unknown as RpcClient;
-  const failures: string[] = [];
-
-  for (const staffId of staffIds) {
-    for (const roleId of roleIds) {
-      const { error } = await supabase.rpc('grant_client_qualification', {
-        p_staff: staffId,
-        p_client: clientId,
-        p_role: roleId,
-        p_note: note.trim() || null,
-      });
-      if (error) failures.push(explainDbError(error, CARD_WORDING));
-    }
-  }
+  // Each pair is still its own call, refused or granted on its own — eight
+  // at a time rather than one after another (go-live audit M5): twelve
+  // workers × three roles is 36 round trips.
+  const pairs = staffIds.flatMap((staffId) => roleIds.map((roleId) => ({ staffId, roleId })));
+  const replies = await mapPool(pairs, BULK_CONCURRENCY, async ({ staffId, roleId }) =>
+    supabase.rpc('grant_client_qualification', {
+      p_staff: staffId,
+      p_client: clientId,
+      p_role: roleId,
+      p_note: note.trim() || null,
+    }),
+  );
+  const failures = replies.flatMap((reply) =>
+    reply?.error ? [explainDbError(reply.error, CARD_WORDING)] : [],
+  );
 
   revalidatePath(`/clients/${clientId}`);
   // Partial success is reported rather than swallowed: a worker who does

@@ -3,6 +3,7 @@ import type { RtwCheckRow } from '../_lib/rtwCheck';
 import { loadRtwChecksForDocuments } from '../_lib/rtwCheckData';
 import { EMPTY_MONITOR } from './checks';
 import type { CheckMonitorData, MonitorCheck, RunnerRun, WaitingDoc } from './checks';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for the gov.uk check monitor (ADR-0025). Every source is an
@@ -66,7 +67,7 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
         .limit(1),
     ]);
 
-    if (checksRead.error) return { ...EMPTY_MONITOR, now, problem: checksRead.error.message };
+    if (checksRead.error) return { ...EMPTY_MONITOR, now, problem: readProblem(checksRead.error) };
 
     const checks: RtwCheckRow[] = rowsOf(checksRead)
       .map(parseRtwCheckRow)
@@ -149,7 +150,8 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
     return {
       ...EMPTY_MONITOR,
       now,
-      problem: error instanceof Error ? error.message : 'The checks could not be read.',
+      problem:
+        error instanceof Error ? readProblem(error.message) : 'The checks could not be read.',
     };
   }
 }

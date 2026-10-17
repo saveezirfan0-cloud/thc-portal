@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
 import {
   loadDobClaimsForDocuments,
   loadRtwCheckEnabled,
@@ -9,6 +10,7 @@ import { EMPTY_MONITOR } from './checks';
 import { loadCheckMonitor } from './checksData';
 import { withLatestCheck } from './queue';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /compliance (§4.1).
@@ -46,11 +48,21 @@ export async function loadCompliance(): Promise<CompliancePageData> {
       .select('*')
       .order('submitted_at', { ascending: true })
       .returns<QueueRow[]>(),
-    supabase
-      .from('compliance_radar_v')
-      .select('*')
-      .order('days_left', { ascending: true })
-      .returns<RadarRow[]>(),
+    // Every dated document on a live worker — about two per worker, so past
+    // PostgREST's 1000-row cap at full roster. Read whole, so "All N", the
+    // tab counts and the valid list are right (go-live audit H7); doc_id
+    // breaks ties in days_left so no row is lost at a page boundary.
+    readAllPages<RadarRow>(
+      (range) =>
+        supabase
+          .from('compliance_radar_v')
+          .select('*')
+          .order('days_left', { ascending: true })
+          .order('doc_id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<RadarRow[]>(),
+      { what: 'dated documents', key: (row) => row.doc_id },
+    ),
     supabase
       .from('rota_guard_warnings_v')
       .select('*')
@@ -66,7 +78,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     loadCheckMonitor(supabase, new Date().toISOString()),
   ]);
 
-  const problem = queue.error?.message ?? radar.error?.message ?? warnings.error?.message ?? null;
+  const problem = readProblem(queue.error ?? radar.error ?? warnings.error);
   if (problem) return { ...empty, problem };
 
   // ADR-0041: the recommendation, the suggested N8 text and the photo live on
@@ -107,16 +119,27 @@ export async function loadCompliance(): Promise<CompliancePageData> {
   };
 }
 
+/** Years of evidence events; past it the export says so rather than cut the file. */
+export const AUDIT_TRAIL_CEILING = 200_000;
+
 /** The whole trail, for the CSV export (acceptance criterion 7). */
 export async function loadAuditTrail(): Promise<{ rows: AuditRow[]; problem: string | null }> {
   if (!supabaseConfigured()) return { rows: [], problem: NOT_CONFIGURED };
   const supabase = createClient(await cookies());
-  const { data, error } = await supabase
-    .from('compliance_evidence_audit_v')
-    .select('*')
-    .order('at', { ascending: true })
-    .order('id', { ascending: true })
-    .returns<AuditRow[]>();
-  if (error) return { rows: [], problem: error.message };
-  return { rows: data ?? [], problem: null };
+  // Oldest first, so a single read past PostgREST's 1000-row cap dropped
+  // the NEWEST verifications — the ones an auditor asks for (go-live audit
+  // H6). Read whole, by (at, id); a trail too long to export is an error.
+  const { data, error } = await readAllPages<AuditRow>(
+    (range) =>
+      supabase
+        .from('compliance_evidence_audit_v')
+        .select('*')
+        .order('at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(range.from, range.to)
+        .returns<AuditRow[]>(),
+    { what: 'audit trail rows', key: (row) => String(row.id), ceiling: AUDIT_TRAIL_CEILING },
+  );
+  if (error) return { rows: [], problem: readProblem(error) };
+  return { rows: data, problem: null };
 }
