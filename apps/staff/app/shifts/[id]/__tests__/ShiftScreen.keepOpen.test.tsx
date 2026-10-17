@@ -145,7 +145,8 @@ describe('keep this screen open (docs/06 Option A)', () => {
   it('releases the lock on check-out, with the screen still open', async () => {
     await mount(shift());
     expect(release).not.toHaveBeenCalled();
-    // router.refresh() hands the checked-out booking down to the same screen.
+    // The check-out action's revalidated response hands the checked-out
+    // booking down to the same screen.
     await mount(shift({ checkOutAt: new Date().toISOString(), status: 'worked' }));
     expect(release).toHaveBeenCalledTimes(1);
     expect(container.textContent).not.toContain(BAR);
