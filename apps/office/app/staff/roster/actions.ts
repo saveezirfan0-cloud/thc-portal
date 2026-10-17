@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { explainDbError } from '../../_lib/dbError';
+import { BULK_CONCURRENCY, mapPool } from '../../_lib/pool';
 import { supabaseConfigured } from '../data';
 import type { BulkLinkOutcome, LinkItem } from './bulk';
 import { parseEmailRecords } from './emails';
@@ -155,11 +156,14 @@ export type BulkLinkResult = ({ ok: true } & BulkLinkOutcome) | { ok: false; mes
 
 /**
  * Link many applied rows in one go (ADR-0145): each through
- * `link_invite_roster_entry()`, one at a time, so every row is refused or
+ * `link_invite_roster_entry()`, eight at a time, so every row is refused or
  * linked on its own and a refusal never undoes the others. The database
  * checks each call exactly as a single Link (owner and manager only, names,
  * a taken Payroll ID).
  */
+const loginRefused = (error: { message: string } | null | undefined): boolean =>
+  Boolean(error && ['not_authorised', 'read_only', 'not_permitted'].includes(error.message));
+
 export async function linkRosterEntries(items: LinkItem[]): Promise<BulkLinkResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   if (items.length === 0) return { ok: false, message: 'Tick at least one person to link.' };
@@ -167,16 +171,28 @@ export async function linkRosterEntries(items: LinkItem[]): Promise<BulkLinkResu
     return { ok: false, message: `Up to ${MAX_BULK_LINK} at a time. Link them in parts.` };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const outcome: BulkLinkOutcome = { linked: 0, heldSpudbros: 0, failed: [] };
-  for (const item of items) {
-    const { data, error } = await supabase.rpc('link_invite_roster_entry', {
-      p_entry: item.entryId,
-      p_staff: item.staffId,
-      p_confirm_name: item.confirmName === true,
-    });
+  // Eight at a time, not one after another (go-live audit M5): a full batch
+  // of 1,000 took long enough to time the function out halfway. Each row is
+  // still its own call, linked or refused on its own.
+  const replies = await mapPool(
+    items,
+    BULK_CONCURRENCY,
+    async (item) =>
+      supabase.rpc('link_invite_roster_entry', {
+        p_entry: item.entryId,
+        p_staff: item.staffId,
+        p_confirm_name: item.confirmName === true,
+      }),
+    // Who may link is the same for every row: a refusal of the login itself
+    // starts no more calls.
+    (reply) => loginRefused(reply.error),
+  );
+  for (const [index, reply] of replies.entries()) {
+    if (!reply) continue; // never started, after a refusal of the login
+    const item = items[index]!;
+    const { data, error } = reply;
     if (error) {
-      // Who may link is the same for every row: stop at the first refusal of the login itself.
-      if (['not_authorised', 'read_only', 'not_permitted'].includes(error.message))
-        return { ok: false, message: MESSAGES[error.message]! };
+      if (loginRefused(error)) return { ok: false, message: MESSAGES[error.message]! };
       outcome.failed.push({
         entryId: item.entryId,
         message:
