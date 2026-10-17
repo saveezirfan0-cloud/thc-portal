@@ -33,3 +33,13 @@ export type {
   SessionPersistence,
   SessionPersistenceOptions,
 } from './session';
+export {
+  DEFAULT_READ_TIMEOUT_MS,
+  RequestTimeoutError,
+  SESSION_CHECK_TIMEOUT_MS,
+  createRequestTimeoutFetch,
+  isRequestTimeoutError,
+  isTransientAuthFailure,
+  requestTimeoutFor,
+} from './request-timeout';
+export type { RequestTimeoutOptions } from './request-timeout';
