@@ -42,7 +42,11 @@ export interface BookingRow extends StaffBooking {
   onsiteContact: string | null;
   notes: string | null;
   paysBreaks: boolean | null;
-  /** RULE-20, read live for the week this SECTION falls in (§10.4, §4.4). */
+  /**
+   * RULE-20, read live for the week this SECTION falls in (§10.4, §4.4).
+   * Computed for an invitation or a booking still to end; on the history
+   * behind them the three cap columns are null (ADR-0153), so `false` here.
+   */
   hoursLimit: boolean;
   weekStart: string | null;
   bookedHours: number | null;
