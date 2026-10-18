@@ -7,8 +7,8 @@
 -- and every changed function is compared with its old self:
 --
 --   A · the pure helpers, over every combination of their inputs that
---       the rule tells apart (weekly_cap: 13,122 argument rows per
---       overload, through every band; cap_week_start: every day of 51
+--       the rule tells apart (weekly_cap: 176,400 argument rows for the
+--       12-argument form, through every band, and its two shorter overloads; cap_week_start: every day of 51
 --       years and the infinities, under four session time zones);
 --   B · the table readers, over a generated agency (_shared/cap_dataset:
 --       120 workers in every RULE-20 branch — term / holiday / straddling
@@ -78,7 +78,7 @@ select va, ts, cv, oo, ws, bd, cd, ve, oc, u18, vo, vh
    and (oo is not null or bd)                         -- every pair of classes still meets
    and (cd is null or vo is not null or u18)
    and (ve is null or oc is null or vh is null);
-select ok((select count(*) from d853_wc) > 13000, 'A: the weekly_cap grid has more than 13,000 argument rows');
+select is((select count(*)::int from d853_wc), 176400, 'A: the weekly_cap grid has 176,400 argument rows');
 select is_empty($$
   select 1 from d853_wc
    where public.weekly_cap(va, ts, cv, oo, ws, bd, cd, ve, oc, u18, vo, vh)

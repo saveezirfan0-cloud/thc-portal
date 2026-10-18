@@ -154,7 +154,7 @@ the visa beating the opt-out; a right to work expiring mid-week and this Thursda
 evidence for `can_roster_staff`), ten weeks of history and six ahead in every booking status,
 overnight and Sunday-night sections, resolved and unresolved No check-outs.
 
-- `853`: `cap_week_start` 18,628 days × 4 zones; `weekly_cap` over a 13,000+-row grid of every
+- `853`: `cap_week_start` 18,628 days × 4 zones; `weekly_cap` over a 176,400-row grid of every
   input class (all eight bands reached), its 10- and 4-argument overloads; `cap_under_18`,
   `can_roster`, `booking_counts_toward_cap`, `booking_reopenable_by`,
   `booked_elsewhere_conflict`, `rota_guard_decide`, `cap_term_state` over their grids;
