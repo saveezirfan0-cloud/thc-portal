@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
  */
 vi.mock('../actions', () => ({ requestReset: vi.fn() }));
 vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   const { RESET_LIMIT_REACHED } = await import('../copy');
   return { ...actual, useActionState: () => [RESET_LIMIT_REACHED, vi.fn(), false] };
 });

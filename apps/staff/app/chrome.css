@@ -133,6 +133,16 @@
   text-decoration: none;
   white-space: nowrap;
 }
+button.push-banner-cta {
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.push-banner-cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .push-banner-cta::before {
   content: '';
   position: absolute;
