@@ -28,7 +28,7 @@ vi.mock('@thc/db/auth-throttle', () => ({ clearSignInFailures }));
 
 const { setPassword } = await import('../actions');
 const { default: ResetPage } = await import('../page');
-const { USE_ACCOUNT_SCREEN } = await import('../copy');
+const { USE_ACCOUNT_SCREEN, SAME_PASSWORD, otherApp } = await import('../copy');
 
 const NOW_S = () => Math.floor(Date.now() / 1000);
 const amr = (method: string, secondsAgo: number) => ({
@@ -92,6 +92,48 @@ describe('setPassword: only a fresh reset-link session', () => {
     auth.updateUser.mockResolvedValue({ error: { status: 500, message: 'boom' } });
     expect(await submit()).toMatch(/^RETURNED:/);
     expect(clearSignInFailures).not.toHaveBeenCalled();
+  });
+
+  it('a worker (non-admin) is refused BEFORE anything changes and told which app is theirs', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 10));
+    auth.getUser.mockResolvedValue({
+      data: { user: { id: 'u2', email: 'w@b.example', app_metadata: { role: 'staff' } } },
+    });
+    const saved = process.env['NEXT_PUBLIC_STAFF_URL'];
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://staff.example.com/';
+    try {
+      expect(await submit()).toBe(`RETURNED:${otherApp('https://staff.example.com/')}`);
+      expect(await submit()).toContain('at https://staff.example.com ');
+    } finally {
+      if (saved === undefined) delete process.env['NEXT_PUBLIC_STAFF_URL'];
+      else process.env['NEXT_PUBLIC_STAFF_URL'] = saved;
+    }
+    expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(auth.signOut).not.toHaveBeenCalled();
+    expect(clearSignInFailures).not.toHaveBeenCalled();
+  });
+
+  it('the password already set is said plainly, not as a failure', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 10));
+    auth.updateUser.mockResolvedValue({
+      error: {
+        status: 422,
+        code: 'same_password',
+        message: 'New password should be different from the old password.',
+      },
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await submit()).toBe(`RETURNED:${SAME_PASSWORD}`);
+    expect(clearSignInFailures).not.toHaveBeenCalled();
+  });
+
+  it('any other failure stays generic and never shows Supabase’s text', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 10));
+    auth.updateUser.mockResolvedValue({ error: { status: 500, message: 'pq: deadlock' } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await submit()).toBe(
+      'RETURNED:We could not set that password. Try again, or request a new link.',
+    );
   });
 
   it('the token_hash link (amr otp) counts as a recovery link', async () => {

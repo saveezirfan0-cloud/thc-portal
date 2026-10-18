@@ -6,7 +6,7 @@ import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { readRecoverySession } from '@thc/db/recovery';
 import { clearSignInFailures } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
-import { USE_ACCOUNT_SCREEN } from './copy';
+import { SAME_PASSWORD, USE_ACCOUNT_SCREEN, otherApp } from './copy';
 
 /**
  * A3 Set new password — §10.2, `wireframes/public/activate.html` (reset,
@@ -21,8 +21,10 @@ import { USE_ACCOUNT_SCREEN } from './copy';
  * when the reason is a lost laptop or a shared password.
  *
  * Then routed by role (§1.4). An admin lands on the dashboard. Anybody
- * else who reset through this app has a new password for THEIR app, and is
- * signed out here rather than shown the wrong-app page.
+ * else is refused BEFORE anything changes and told which app their login is
+ * for (the Client Portal does the same): changing the password and then
+ * signing them out sent a worker round the reset loop, because the sign-in
+ * screen cannot say "wrong app" without confirming the password was right.
  */
 export async function setPassword(
   _prev: string | null,
@@ -56,10 +58,17 @@ export async function setPassword(
     return 'This link has expired or has already been used. Request a new one from the sign-in screen.';
   }
   if (recovery.state !== 'recent') return USE_ACCOUNT_SCREEN;
+  if (user.app_metadata?.['role'] !== 'admin')
+    return otherApp(process.env['NEXT_PUBLIC_STAFF_URL']);
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
-    console.error('[reset] update failed', { status: error.status, message: error.message });
+    console.error('[reset] update failed', {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
+    if (error.code === 'same_password') return SAME_PASSWORD;
     const reason = error.message.toLowerCase();
     return reason.includes('weak') || reason.includes('pwned')
       ? 'That password has appeared in a known data breach. Choose a different one.'
@@ -72,11 +81,6 @@ export async function setPassword(
 
   // Scope 'others': keep this session, drop the rest.
   await supabase.auth.signOut({ scope: 'others' });
-
-  if (user.app_metadata?.['role'] !== 'admin') {
-    await supabase.auth.signOut({ scope: 'local' });
-    redirect('/login');
-  }
 
   redirect('/dashboard');
 }
