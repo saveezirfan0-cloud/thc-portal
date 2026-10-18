@@ -1,5 +1,6 @@
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
+import { staffUrlIsOffice } from '../../_lib/staffUrl';
 import { loadRosterPage } from './data';
 import { emailPreviews } from './email-previews';
 import { RosterScreen } from './RosterScreen';
@@ -23,11 +24,13 @@ export const dynamic = 'force-dynamic';
  * the live address stands in, since a preview only shows the link.
  */
 function applyLink(): string {
+  const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
   const origin =
-    process.env['NEXT_PUBLIC_STAFF_URL'] ??
-    (process.env.NODE_ENV === 'production'
-      ? 'https://staff.thehospitalitycompany.co.uk'
-      : 'http://127.0.0.1:3001');
+    explicit && !staffUrlIsOffice()
+      ? explicit
+      : process.env.NODE_ENV === 'production'
+        ? 'https://staff.thehospitalitycompany.co.uk'
+        : 'http://127.0.0.1:3001';
   return `${origin.replace(/\/$/, '')}/apply`;
 }
 

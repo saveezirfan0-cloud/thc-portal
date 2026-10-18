@@ -63,7 +63,7 @@ beforeEach(() => {
 
 describe('the activation link is never built on the Back Office itself', () => {
   const LINK_MISSING =
-    'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.';
+    'The activation link could not be built — NEXT_PUBLIC_STAFF_URL on the Back Office is missing, or points at the Back Office itself instead of the Staff App.';
 
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -87,6 +87,19 @@ describe('the activation link is never built on the Back Office itself', () => {
   it('a Staff App origin different from the office goes through', async () => {
     expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: true });
     expect(acceptWithAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it('the same host on another port or scheme is another origin, and goes through', async () => {
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://office.test:8443';
+    expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: true });
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'http://office.test';
+    expect(await resendActivationLink('s1')).toEqual({ ok: true });
+  });
+
+  it('with no office address configured there is nothing to compare, so the guard is inert', async () => {
+    delete process.env['NEXT_PUBLIC_OFFICE_URL'];
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://office.test';
+    expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: true });
   });
 });
 

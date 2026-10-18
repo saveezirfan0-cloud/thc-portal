@@ -6,6 +6,7 @@ import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { readRecoverySession } from '@thc/db/recovery';
 import { clearSignInFailures } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
+import { staffUrlIsOffice } from '../_lib/staffUrl';
 import { SAME_PASSWORD, USE_ACCOUNT_SCREEN, otherApp } from './copy';
 
 /**
@@ -58,8 +59,11 @@ export async function setPassword(
     return 'This link has expired or has already been used. Request a new one from the sign-in screen.';
   }
   if (recovery.state !== 'recent') return USE_ACCOUNT_SCREEN;
-  if (user.app_metadata?.['role'] !== 'admin')
-    return otherApp(process.env['NEXT_PUBLIC_STAFF_URL']);
+  const role = user.app_metadata?.['role'];
+  if (role !== 'admin') {
+    const staffUrl = process.env['NEXT_PUBLIC_STAFF_URL'];
+    return otherApp(role, staffUrl && !staffUrlIsOffice() ? staffUrl : undefined);
+  }
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {

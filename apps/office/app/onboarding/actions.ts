@@ -10,6 +10,7 @@ import { periodToRange, periodsProblem } from './view-model';
 import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
 import { explainDbError } from '../_lib/dbError';
+import { staffUrlIsOffice } from '../_lib/staffUrl';
 import type { AcceptRpc, AdminAuth, ResendRpc } from './activation';
 import type { Period } from './view-model';
 import type { ActionResult } from './types';
@@ -49,7 +50,7 @@ const MESSAGES: Record<string, string> = {
   roles_required: 'Pick at least one role type before accepting.',
   reason_required: 'A reason is required.',
   activation_link_required:
-    'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.',
+    'The activation link could not be built — NEXT_PUBLIC_STAFF_URL on the Back Office is missing, or points at the Back Office itself instead of the Staff App.',
   term_dates_invalid: 'Every period needs a start and an end date.',
   already_resolved: 'This entry has already been dealt with.',
   // Accept's login (§1.4, §2.7) — activation.ts and 20260923180000.
@@ -68,7 +69,7 @@ const MESSAGES: Record<string, string> = {
   account_linked_elsewhere:
     'This email address’s login already belongs to another staff record — possibly a duplicate. Check before accepting.',
   activation_link_not_personal:
-    'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.',
+    'The activation link could not be built — NEXT_PUBLIC_STAFF_URL on the Back Office is missing, or points at the Back Office itself instead of the Staff App.',
   // Resend activation link (20260924110000)
   not_accepted:
     'There is no activation link to resend yet — the candidate receives it when they are accepted.',
@@ -124,15 +125,6 @@ function paths(staffId: string): string[] {
   return ['/onboarding', `/onboarding/${staffId}`];
 }
 
-function isSameOrigin(a: string, b: string | undefined): boolean {
-  if (!b?.trim()) return false;
-  try {
-    return new URL(a).origin === new URL(b.trim()).origin;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Where E3's links point. The Staff App is a different deployment from
  * the Back Office, so its origin is configuration — the same variable the
@@ -141,17 +133,9 @@ function isSameOrigin(a: string, b: string | undefined): boolean {
 function staffOrigin(): string | null {
   const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
   if (explicit) {
-    const origin = explicit.trim().replace(/\/+$/, '');
-    // On 13.10.2026 this was set to the Back Office's own address, and every
-    // manual Accept for five days sent a worker an /activate and /install link
-    // on an app that has neither. Refused here, before a login is minted.
-    if (isSameOrigin(origin, process.env['NEXT_PUBLIC_OFFICE_URL'])) {
-      console.error('[onboarding] NEXT_PUBLIC_STAFF_URL is the Back Office, not the Staff App', {
-        origin,
-      });
-      return null;
-    }
-    return origin;
+    // Refused before a login is minted: see _lib/staffUrl.ts.
+    if (staffUrlIsOffice()) return null;
+    return explicit.trim().replace(/\/+$/, '');
   }
   if (process.env.NODE_ENV === 'production') return null;
   return 'http://127.0.0.1:3001';

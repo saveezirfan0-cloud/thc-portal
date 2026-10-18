@@ -1,3 +1,4 @@
+import { staffUrlIsOffice } from '../_lib/staffUrl';
 import { loadBoard } from './data';
 import { OnboardingBoard } from './OnboardingBoard';
 
@@ -25,7 +26,7 @@ export default async function Page() {
  */
 function applyUrl(): string | null {
   const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
-  if (explicit) return `${explicit.replace(/\/$/, '')}/apply`;
+  if (explicit) return staffUrlIsOffice() ? null : `${explicit.replace(/\/$/, '')}/apply`;
   if (process.env.NODE_ENV === 'production') return null;
   return 'http://127.0.0.1:3001/apply';
 }

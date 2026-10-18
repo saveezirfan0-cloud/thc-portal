@@ -12,9 +12,16 @@ export const USE_ACCOUNT_SCREEN =
  * changed. A worker who reset here would otherwise be signed out and dropped
  * on the sign-in screen, whose refusal reads "password incorrect" for a
  * password that is right.
+ *
+ * Only a worker is told which app is theirs, and only with an address that is
+ * not the Back Office's own. Any other role (a client, a login with no role)
+ * gets the Client Portal's neutral line, which names no app (§1.4).
  */
-export function otherApp(staffUrl?: string): string {
-  const where = staffUrl ? ` at ${staffUrl.replace(/\/$/, '')}` : '';
+export function otherApp(role: unknown, staffUrl?: string): string {
+  if (role !== 'staff') {
+    return 'This reset link is for a different THC app. Open the link you were sent for that app. Nothing was changed here.';
+  }
+  const where = staffUrl ? ` at ${staffUrl.trim().replace(/\/+$/, '')}` : '';
   return `This is the Back Office, for THC office staff. Your login is for the Staff App — open it${where} and sign in there. Nothing was changed here.`;
 }
 

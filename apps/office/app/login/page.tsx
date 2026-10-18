@@ -1,5 +1,6 @@
 import { isSafeRelativePath } from '@thc/db';
 import { AuthCard } from '@thc/ui';
+import { staffUrlIsOffice } from '../_lib/staffUrl';
 import { LoginForm } from './LoginForm';
 
 export const metadata = { title: 'Sign in · THC Back Office' };
@@ -10,9 +11,14 @@ export const metadata = { title: 'Sign in · THC Back Office' };
  * Unset in production means no link rather than one to localhost.
  */
 function privacyHref(): string | null {
-  const origin =
-    process.env['NEXT_PUBLIC_STAFF_URL'] ??
-    (process.env.NODE_ENV === 'production' ? null : 'http://127.0.0.1:3001');
+  const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
+  const origin = explicit
+    ? staffUrlIsOffice()
+      ? null
+      : explicit
+    : process.env.NODE_ENV === 'production'
+      ? null
+      : 'http://127.0.0.1:3001';
   return origin ? `${origin.replace(/\/$/, '')}/privacy` : null;
 }
 

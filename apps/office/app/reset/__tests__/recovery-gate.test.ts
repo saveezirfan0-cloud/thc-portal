@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * A3 (/reset) sets a password with no current password, so only a session
@@ -94,23 +94,81 @@ describe('setPassword: only a fresh reset-link session', () => {
     expect(clearSignInFailures).not.toHaveBeenCalled();
   });
 
-  it('a worker (non-admin) is refused BEFORE anything changes and told which app is theirs', async () => {
-    auth.getClaims.mockResolvedValue(amr('otp', 10));
-    auth.getUser.mockResolvedValue({
-      data: { user: { id: 'u2', email: 'w@b.example', app_metadata: { role: 'staff' } } },
+  describe('a login that is not an admin is refused BEFORE anything changes', () => {
+    const asRole = (role: string | undefined) =>
+      auth.getUser.mockResolvedValue({
+        data: {
+          user: {
+            id: 'u2',
+            email: 'w@b.example',
+            app_metadata: role === undefined ? {} : { role },
+          },
+        },
+      });
+    // Only the two this block sets: the file's own Supabase variables (set in
+    // beforeAll) must survive it.
+    const KEYS = ['NEXT_PUBLIC_OFFICE_URL', 'NEXT_PUBLIC_STAFF_URL'] as const;
+    const savedEnv = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
+    beforeEach(() => {
+      auth.getClaims.mockResolvedValue(amr('otp', 10));
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      delete process.env['NEXT_PUBLIC_OFFICE_URL'];
+      delete process.env['NEXT_PUBLIC_STAFF_URL'];
     });
-    const saved = process.env['NEXT_PUBLIC_STAFF_URL'];
-    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://staff.example.com/';
-    try {
-      expect(await submit()).toBe(`RETURNED:${otherApp('https://staff.example.com/')}`);
-      expect(await submit()).toContain('at https://staff.example.com ');
-    } finally {
-      if (saved === undefined) delete process.env['NEXT_PUBLIC_STAFF_URL'];
-      else process.env['NEXT_PUBLIC_STAFF_URL'] = saved;
-    }
-    expect(auth.updateUser).not.toHaveBeenCalled();
-    expect(auth.signOut).not.toHaveBeenCalled();
-    expect(clearSignInFailures).not.toHaveBeenCalled();
+    afterEach(() => {
+      for (const k of KEYS) {
+        if (savedEnv[k] === undefined) delete process.env[k];
+        else process.env[k] = savedEnv[k];
+      }
+    });
+    const nothingChanged = () => {
+      expect(auth.updateUser).not.toHaveBeenCalled();
+      expect(auth.signOut).not.toHaveBeenCalled();
+      expect(clearSignInFailures).not.toHaveBeenCalled();
+    };
+
+    it('a worker is told the Staff App is theirs, at its address', async () => {
+      asRole('staff');
+      process.env['NEXT_PUBLIC_OFFICE_URL'] = 'https://office.example.com';
+      process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://staff.example.com/';
+      expect(await submit()).toBe(`RETURNED:${otherApp('staff', 'https://staff.example.com/')}`);
+      expect(otherApp('staff', 'https://staff.example.com/')).toContain(
+        'open it at https://staff.example.com and sign in',
+      );
+      nothingChanged();
+    });
+
+    it('a worker with no Staff App address configured is told the app, not a place', async () => {
+      asRole('staff');
+      const text = otherApp('staff');
+      expect(text).toContain('Your login is for the Staff App — open it and sign in there.');
+      expect(text).not.toContain(' at ');
+      expect(await submit()).toBe(`RETURNED:${text}`);
+      nothingChanged();
+    });
+
+    it('a worker is never sent to the Back Office when the Staff App address is wrong', async () => {
+      asRole('staff');
+      process.env['NEXT_PUBLIC_OFFICE_URL'] = 'https://office.example.com';
+      process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://office.example.com';
+      const result = await submit();
+      expect(result).toBe(`RETURNED:${otherApp('staff')}`);
+      expect(result).not.toContain('office.example.com');
+      nothingChanged();
+    });
+
+    it.each([['client'], [undefined]])(
+      'a %s login gets the neutral line and no app is named (§1.4)',
+      async (role) => {
+        asRole(role);
+        process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://staff.example.com';
+        const result = await submit();
+        expect(result).toBe(`RETURNED:${otherApp(role)}`);
+        expect(result).toContain('This reset link is for a different THC app.');
+        expect(result).not.toMatch(/Staff App|Client Portal|staff\.example\.com/);
+        nothingChanged();
+      },
+    );
   });
 
   it('the password already set is said plainly, not as a failure', async () => {
