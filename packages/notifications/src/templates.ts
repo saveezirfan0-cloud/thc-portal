@@ -840,9 +840,9 @@ export const TEMPLATES = {
     sender: 'admin',
     recipients: OFFICE,
     title: 'Client quiz not passed — {name}, Employee ID {employeeId}',
-    body: '{name} has used all {attempts} attempts at "{quiz}" for {client} without passing (best: {best}).\n\nRoles this quiz covers: {roles}\n\nThey stay booked. Decide whether to replace them on their {client} shifts, or give them their attempts back from the client card (Shift requirements → Reset).',
+    body: '{name} has used all {attempts} attempts at "{quiz}" for {client} without passing (best: {best}).\n\nRoles this quiz covers: {roles}\n\nThey cannot be confirmed on {client} shifts until you give them their attempts back from the client card (Shift requirements → Reset). Anything they are already confirmed on is unchanged.',
     trigger:
-      'A worker fails the last attempt at a client quiz (submit_client_quiz_attempt). Not in §8: ADR-0110',
+      'A worker fails the last attempt at a client quiz (submit_client_quiz_attempt). Not in §8: ADR-0110, ADR-0150',
     timing: 'on the failed last attempt, once',
   },
 

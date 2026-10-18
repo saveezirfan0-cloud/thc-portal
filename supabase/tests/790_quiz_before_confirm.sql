@@ -17,7 +17,7 @@
 --      and a worker already confirmed stays confirmed.
 -- =====================================================================
 begin;
-select plan(33);
+select plan(34);
 \ir _shared/fixtures.psql
 
 \set sq_inv   '79000000-0000-4000-8000-000000000001'
@@ -78,6 +78,10 @@ update client_quizzes set active = false where id = :'quiz_id';
 select is(client_quiz_gate(:'sq_inv', :'staffb'), null::uuid,
   'B: an inactive quiz asks nothing');
 update client_quizzes set active = true where id = :'quiz_id';
+update client_quiz_questions set active = false where quiz_id = :'quiz_id';
+select is(client_quiz_gate(:'sq_inv', :'staffb'), null::uuid,
+  'B: a quiz with no live question asks nothing — it could never be passed, so it must not lock everyone out');
+update client_quiz_questions set active = true where quiz_id = :'quiz_id';
 select ok(not has_function_privilege('authenticated', 'public.client_quiz_gate(uuid, uuid)', 'execute')
       and not has_function_privilege('anon', 'public.client_quiz_gate(uuid, uuid)', 'execute'),
   'B: internal — no signed-in caller reads another worker''s standing through it');

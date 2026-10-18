@@ -63,7 +63,7 @@ export function QuizPrompt({ requirement }: { requirement: ShiftRequirementRow }
         ) : (
           <>
             {requirement.clientName} asks everyone on {requirement.roleName} shifts to pass a short
-            quiz before they can be confirmed on one. Read the menu, then answer ten questions —{' '}
+            quiz before their first one. Read the menu, then answer ten questions —{' '}
             {requirement.quizAttemptsUsed === 0
               ? `you have ${left} attempts.`
               : `you have ${left} ${left === 1 ? 'attempt' : 'attempts'} left.`}

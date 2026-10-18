@@ -35,6 +35,9 @@ as $$
     join client_role_requirements r on r.client_id = e.client_id and r.role_id = s.role_id
     join client_quizzes q on q.id = r.quiz_id and q.active
    where s.id = p_shift
+     -- A quiz with no live question can never be passed (submit refuses it), so
+     -- it must not lock every worker out until the office switches it off.
+     and exists (select 1 from client_quiz_questions x where x.quiz_id = q.id and x.active)
      and not client_quiz_passed(q.id, p_staff)
    limit 1
 $$;
@@ -157,13 +160,6 @@ begin
     return jsonb_build_object('ok', false, 'reason', v_gate);
   end if;
 
-  -- ADR-0150: a client's quiz comes before the confirmation. The invitation
-  -- is left live (never withdrawn): the worker sits the quiz, then accepts.
-  v_quiz := client_quiz_gate(b.shift_id, b.staff_id);
-  if v_quiz is not null then
-    return jsonb_build_object('ok', false, 'reason', 'quiz_required', 'quizId', v_quiz);
-  end if;
-
   -- §3.4 safety net: "blocks Accept on a shift that already overlaps a
   -- just-confirmed booking" — and a booking the worker has already
   -- checked in to is at least as confirmed (20260930110000, D2).
@@ -189,6 +185,16 @@ begin
       return jsonb_build_object('ok', false, 'reason', 'rtw_expired');
     end if;
     return jsonb_build_object('ok', false, 'reason', 'hours_limit');
+  end if;
+
+  -- ADR-0150: a client's quiz comes before the confirmation. Read last, after
+  -- every hard gate and the two re-reads above (overlap, hours), so a worker
+  -- who is blocked or over their hours is told that, not "pass the quiz". The
+  -- invitation is left live (never withdrawn): the worker sits the quiz, then
+  -- accepts.
+  v_quiz := client_quiz_gate(b.shift_id, b.staff_id);
+  if v_quiz is not null then
+    return jsonb_build_object('ok', false, 'reason', 'quiz_required', 'quizId', v_quiz);
   end if;
 
   update bookings set status = 'confirmed', confirmed_at = now() where id = b.id;
@@ -260,13 +266,6 @@ begin
     return jsonb_build_object('ok', false, 'reason', v_gate);
   end if;
 
-  -- ADR-0150: a client's quiz comes before the application, as before the
-  -- confirmation it asks for.
-  v_quiz := client_quiz_gate(p_shift, v_me);
-  if v_quiz is not null then
-    return jsonb_build_object('ok', false, 'reason', 'quiz_required', 'quizId', v_quiz);
-  end if;
-
   -- The live re-check. Seats, not the invitation target: Radar offers a
   -- shift while confirmed (or checked in) < headcount, and applications
   -- close at the same point (close_filled_role_applications,
@@ -274,6 +273,14 @@ begin
   select * into v_fill from shift_fill(p_shift);
   if v_fill.confirmed >= sr.headcount then
     return jsonb_build_object('ok', false, 'reason', 'full');
+  end if;
+
+  -- ADR-0150: a client's quiz comes before the application, as before the
+  -- confirmation it asks for. After the fill check: a worker turned away
+  -- because the shift is full is told that, not sent to a quiz for nothing.
+  v_quiz := client_quiz_gate(p_shift, v_me);
+  if v_quiz is not null then
+    return jsonb_build_object('ok', false, 'reason', 'quiz_required', 'quizId', v_quiz);
   end if;
 
   -- A LIVE booking blocks a second one. An ended one is REOPENED rather
@@ -608,4 +615,23 @@ begin
                              'toStaffId', v_me, 'toBookingId', v_taker));
 
   return jsonb_build_object('ok', true, 'bookingId', v_taker, 'withdrawn', v_withdrawn);
+end $$;
+
+-- ---------------------------------------------------------------------
+-- 7 · The notes the repo keeps on a function (appended, never replaced)
+-- ---------------------------------------------------------------------
+do $$
+declare
+  f text;
+begin
+  foreach f in array array[
+    'public.accept_invite(uuid)',
+    'public.apply_to_shift(uuid, uuid)',
+    'public.accept_application(uuid)',
+    'public.take_offered_shift(uuid)'
+  ] loop
+    execute format('comment on function %s is %L', f,
+      coalesce(obj_description(f::regprocedure, 'pg_proc') || ' ', '')
+      || 'ADR-0150 (20261018120000): refuses with reason quiz_required (and quizId) while the client''s quiz for this (client, role) is not passed, after the hard gates; nothing is withdrawn.');
+  end loop;
 end $$;
