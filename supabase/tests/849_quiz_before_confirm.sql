@@ -160,14 +160,9 @@ values (:'quiz_id', :'staffb', 1, 9, 10, 90, true, '{}'::jsonb),
        (:'quiz_id', :'staffa', 1, 10, 10, 100, true, '{}'::jsonb);
 select is(client_quiz_gate(:'sq_inv', :'staffb'), null::uuid, 'D: a pass clears the gate');
 
-select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
-set local role authenticated;
-select is((accept_invite(:'b_inv') ->> 'ok'), 'true', 'D: accept_invite confirms');
-select is((take_offered_shift(:'offer') ->> 'ok'), 'true', 'D: and a Radar take confirms');
-reset role;
-select is((select status::text from bookings where id = :'b_inv'), 'confirmed', 'D: the invitation became a confirmed booking');
-select is((select status from shift_offers where id = :'offer'), 'taken', 'D: the offer was taken');
-
+-- Staff A first: staff B's take below hands staff A's booking over, which bars
+-- staff A from the whole event afterwards (RULE-04), and these two would then
+-- be refused for that, correctly, rather than for the quiz.
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is((apply_to_shift(:'sq_app') ->> 'ok'), 'true', 'D: Radar apply records the application');
@@ -180,6 +175,14 @@ set local role authenticated;
 select is((accept_application(:'b_acc') ->> 'ok'), 'true', 'D: the office can now confirm the applicant');
 reset role;
 select is((select status::text from bookings where id = :'b_acc'), 'confirmed', 'D: confirmed');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((accept_invite(:'b_inv') ->> 'ok'), 'true', 'D: accept_invite confirms');
+select is((take_offered_shift(:'offer') ->> 'ok'), 'true', 'D: and a Radar take confirms');
+reset role;
+select is((select status::text from bookings where id = :'b_inv'), 'confirmed', 'D: the invitation became a confirmed booking');
+select is((select status from shift_offers where id = :'offer'), 'taken', 'D: the offer was taken');
 
 -- A pass for good: another role naming the same quiz asks nothing more.
 select is(client_quiz_gate(:'sq_take', :'staffb'), null::uuid,
