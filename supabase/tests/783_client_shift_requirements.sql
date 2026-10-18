@@ -151,7 +151,7 @@ select is((select staff_client_quiz(:'quiz_id') ->> 'attemptsLeft'), '3',
 reset role;
 
 -- ADR-0150: a worker who holds a role that names the quiz may open it before
--- any booking does (790). Staff B holds the fixture role, so it is taken off
+-- any booking does (849). Staff B holds the fixture role, so it is taken off
 -- them for the refusal, and given back after.
 delete from staff_roles where staff_id = :'staffb' and role_id = :'role_id';
 select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);

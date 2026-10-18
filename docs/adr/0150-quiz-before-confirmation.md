@@ -20,7 +20,7 @@ On 18.10.2026 the office reported that Bar Staff and Wine Waiting Service worker
 - **A worker who holds a role that names the quiz may open and sit it without a booking** (`client_quiz_required_for`, which previously needed a live booking naming it). Without this a worker turned away at Radar or Apply would have no way to the quiz.
 - **A pass is still for good**, covers every role that names the quiz, and three failures still email the office (CR3). Because the worker is no longer confirmed, a worker who has used every attempt now cannot be confirmed until the office uses **Reset attempts** on the client card — the same control, now with consequence.
 - **Staff App.** An invitation that needs the quiz shows the note and a "Take the quiz to accept" button in place of Accept (list and detail); with every attempt used it reads "Quiz not passed" and is disabled. A refusal from Accept, Apply or Take reads "Pass the quiz first" with a "Take the quiz" link, from the `quizId` the database returns. Back Office: `accept_application`'s refusal names the quiz and says the application stays.
-- **Domain.** `acceptApplication` takes `quizPending` and refuses `quiz_required` after the gates, as the database does. `takeOffer` and its shared vectors are not changed: the take is held to the gate by pgTAP `790` instead.
+- **Domain.** `acceptApplication` takes `quizPending` and refuses `quiz_required` after the gates, as the database does. `takeOffer` and its shared vectors are not changed: the take is held to the gate by pgTAP `849` instead.
 
 ## Not done, on purpose
 
@@ -33,4 +33,4 @@ On 18.10.2026 the office reported that Bar Staff and Wine Waiting Service worker
 - A worker invited to a Leonardo Bar or Wine Waiting Service shift cannot be confirmed without passing, and first has to see that. THC may want to nudge them: CR1 still goes only on confirmation, so an invitation does not push "a quiz is waiting" — a follow-up if THC asks.
 - The two Leonardo roles share one quiz, so one pass clears both.
 - Any other client that names a quiz in `client_role_requirements` gets the same rule.
-- pgTAP `783` assertion C (a worker with no booking cannot open the quiz) now removes the worker's role first; `790_quiz_before_confirm.sql` holds the four paths, the access rule and what did not change.
+- pgTAP `783` assertion C (a worker with no booking cannot open the quiz) now removes the worker's role first; `849_quiz_before_confirm.sql` holds the four paths, the access rule and what did not change.
