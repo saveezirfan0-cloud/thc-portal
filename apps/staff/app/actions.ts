@@ -26,6 +26,8 @@ import { COVER_REFUSAL_COPY, takeRefusalCopy, withdrawOfferRefusalCopy } from '.
 export interface Refusal {
   title: string;
   body: string;
+  /** A way forward the dialog offers beside OK — "Take the quiz" (ADR-0150). */
+  action?: { label: string; href: string };
 }
 export type ActionResult = { ok: true; note?: string } | { refusal: Refusal };
 
@@ -50,6 +52,17 @@ function refresh() {
 }
 
 type Rpc = Record<string, unknown> | null;
+
+/**
+ * ADR-0150: a client's quiz comes before the confirmation. The RPC names the
+ * quiz; the dialog that says so also takes the worker to it.
+ */
+function quizRefusal(copy: { title: string; body: string }, result: Rpc): Refusal {
+  const quizId = result?.['quizId'];
+  return typeof quizId === 'string'
+    ? { ...copy, action: { label: 'Take the quiz', href: `/quiz/${quizId}` } }
+    : copy;
+}
 
 /** Accept an invitation (§3.4, §3.5 stage 1). First to confirm takes the slot. */
 export async function acceptInvite(bookingId: string): Promise<ActionResult> {
@@ -82,7 +95,9 @@ export async function acceptInvite(bookingId: string): Promise<ActionResult> {
   }
   const reason = String(result?.['reason'] ?? '');
   refresh();
-  return { refusal: ACCEPT_REFUSAL_COPY[reason as AcceptRefusal] ?? UNKNOWN };
+  const copy = ACCEPT_REFUSAL_COPY[reason as AcceptRefusal];
+  if (copy && reason === 'quiz_required') return { refusal: quizRefusal(copy, result) };
+  return { refusal: copy ?? UNKNOWN };
 }
 
 /** Decline (§10.4). Always available, no show-rate impact. */
@@ -189,7 +204,9 @@ export async function applyForShift(shiftId: string): Promise<ActionResult> {
   refresh();
   if (result?.['ok'] === true) return { ok: true };
   const reason = String(result?.['reason'] ?? '');
-  return { refusal: APPLY_REFUSAL_COPY[reason as ApplyRefusal] ?? UNKNOWN };
+  const copy = APPLY_REFUSAL_COPY[reason as ApplyRefusal];
+  if (copy && reason === 'quiz_required') return { refusal: quizRefusal(copy, result) };
+  return { refusal: copy ?? UNKNOWN };
 }
 
 /** Withdraw a pending application (§10.4). Never sets the RULE-04 bar. */
@@ -290,5 +307,8 @@ export async function takeOfferedShift(offerId: string): Promise<ActionResult> {
   if (result?.['ok'] === true && typeof result['bookingId'] === 'string') {
     redirect(`/shifts/${result['bookingId']}`);
   }
-  return { refusal: takeRefusalCopy(String(result?.['reason'] ?? '')) ?? UNKNOWN };
+  const reason = String(result?.['reason'] ?? '');
+  const copy = takeRefusalCopy(reason);
+  if (copy && reason === 'quiz_required') return { refusal: quizRefusal(copy, result) };
+  return { refusal: copy ?? UNKNOWN };
 }

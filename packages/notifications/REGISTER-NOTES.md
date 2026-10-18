@@ -288,7 +288,7 @@ None is `mandatory`.
 | --- | --- | --- | --- | --- |
 | CR1 | push · worker → `/quiz/{quizId}` | `Quiz before your first shift` | `{client} asks everyone on {roles} shifts to pass a short quiz first: {quiz}. You have three attempts — tap to take it before your shift.` | the moment a booking is confirmed on a role that names a quiz the worker has not passed (trigger on `bookings`) · `CR1:quiz:<quiz>:<staff>`, once per worker per quiz ever |
 | CR2 | push · worker → `/shifts/{bookingId}` | `For your shift today` | `{message}` — the client's words, as the office wrote them on the role | 07:00 UK on the day, or three hours before an early start, never before the UK day begins, until acknowledged (`client_kit_reminder_tick`, every minute with booking-tick) · `booking_reminder_key('CR2', …)` as N6/N7 |
-| CR3 | email · admin@ only (from admin@) | `Client quiz not passed — {name}, Employee ID {employeeId}` | who, which client and quiz, the attempts, their best, the roles it covers, and "They stay booked" with where to reset | on the failed last attempt, once · `CR3:quiz:<quiz>:<staff>:<attempt>` |
+| CR3 | email · admin@ only (from admin@) | `Client quiz not passed — {name}, Employee ID {employeeId}` | who, which client and quiz, the attempts, their best, the roles it covers, and "They cannot be confirmed on {client} shifts until you reset" with where to reset (ADR-0150; ADR-0110 said "They stay booked") | on the failed last attempt, once · `CR3:quiz:<quiz>:<staff>:<attempt>` |
 
 
 ## Client Portal additions (ADR-0135)

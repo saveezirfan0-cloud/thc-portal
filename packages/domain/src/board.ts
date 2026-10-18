@@ -207,6 +207,9 @@ export const ACCEPT_APPLICATION_REFUSAL_COPY: Readonly<Record<ApplicationAcceptR
   hours_limit: 'This shift would take the worker over their weekly hours limit.',
   not_available_all_days:
     'The client asked for the same staff on all days, and this worker cannot do every day of this job (a booking, a block, a day marked unavailable or the weekly hours limit on another day).',
+  // ADR-0150.
+  quiz_required:
+    'This worker has not passed the client’s quiz for this role yet, so they cannot be confirmed. Their application stays; accept it once they have passed (the client card’s Shift requirements block shows who has).',
 };
 
 export function acceptApplicationRefusal(reason: string): string {

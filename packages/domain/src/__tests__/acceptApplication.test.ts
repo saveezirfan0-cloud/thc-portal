@@ -53,6 +53,20 @@ describe('acceptApplication', () => {
     });
   });
 
+  it('ADR-0150: a quiz the worker has not passed refuses after the gates, and keeps the application', () => {
+    expect(acceptApplication({ ...base, confirmed: 1, quizPending: true }, NOW)).toEqual({
+      ok: false,
+      reason: 'quiz_required',
+    });
+    // Passed, or no quiz named: nothing changes.
+    expect(acceptApplication({ ...base, confirmed: 1, quizPending: false }, NOW).ok).toBe(true);
+    // The hard gates are read first, as accept_application() does.
+    expect(
+      acceptApplication({ ...base, confirmed: 1, quizPending: true, gate: 'blocked' }, NOW),
+    ).toEqual({ ok: false, reason: 'blocked' });
+    expect(acceptApplicationRefusal('quiz_required')).toMatch(/quiz/);
+  });
+
   it('refuses in the database order: cancelled, not applied, ended, full, then the gates', () => {
     const everything: ApplicationAcceptInput = {
       status: 'closed',

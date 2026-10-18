@@ -7,7 +7,8 @@ vi.mock('../../actions', () => ({ acknowledgeKit: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock('../useViewerZone', () => ({ useViewerZone: () => 'Europe/London' }));
 
-const { KitMessage, QuizPrompt, ShiftRequirements } = await import('../ShiftRequirements');
+const { AcceptNeedsQuiz, KitMessage, QuizBeforeAcceptNote, QuizPrompt, ShiftRequirements } =
+  await import('../ShiftRequirements');
 
 const requirement = (over: Partial<ShiftRequirementRow> = {}): ShiftRequirementRow => ({
   bookingId: 'b1',
@@ -50,6 +51,40 @@ describe('QuizPrompt', () => {
     expect(markup).toContain('Quiz not passed');
     expect(markup).toContain('The office has been told');
     expect(markup).not.toContain('href="/quiz/q1"');
+  });
+});
+
+describe('ADR-0150 · the quiz before Accept', () => {
+  it('stands a Take the quiz link in for the Accept button, and counts the attempt', () => {
+    const fresh = renderToStaticMarkup(<AcceptNeedsQuiz requirement={requirement()} size="lg" />);
+    expect(fresh).toContain('href="/quiz/q1"');
+    expect(fresh).toContain('Take the quiz to accept');
+    expect(fresh).toContain('class="btn primary block lg"');
+    const again = renderToStaticMarkup(
+      <AcceptNeedsQuiz requirement={requirement({ quizAttemptsUsed: 1 })} />,
+    );
+    expect(again).toContain('Try the quiz again');
+  });
+
+  it('with every attempt used, a disabled button and no link', () => {
+    const markup = renderToStaticMarkup(
+      <AcceptNeedsQuiz requirement={requirement({ quizAttemptsUsed: 3 })} />,
+    );
+    expect(markup).toContain('disabled=""');
+    expect(markup).toContain('Quiz not passed');
+    expect(markup).not.toContain('href=');
+  });
+
+  it('the note names the client and the role, and says the invitation stays open', () => {
+    const note = renderToStaticMarkup(<QuizBeforeAcceptNote requirement={requirement()} />);
+    expect(note).toContain('Leonardo Hotel St Pauls');
+    expect(note).toContain('Bar Staff');
+    expect(note).toContain('this invitation stays open');
+    const failed = renderToStaticMarkup(
+      <QuizBeforeAcceptNote requirement={requirement({ quizAttemptsUsed: 3 })} />,
+    );
+    expect(failed).toContain('used all 3 attempts');
+    expect(failed).toContain('The office has been told');
   });
 });
 
