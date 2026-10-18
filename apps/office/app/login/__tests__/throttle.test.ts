@@ -4,8 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 /**
  * The per-account throttle at the Back Office's doors
  * (packages/db/src/auth-throttle.ts): checked BEFORE GoTrue is asked,
- * refused with the same answer a wrong password / a sent link gets (§1.7),
- * and only real guesses counted afterwards.
+ * refused with the answer a wrong password gets (§1.7; forgot password says
+ * to wait an hour instead, ADR-0157), and only real guesses counted afterwards.
  */
 const auth = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),

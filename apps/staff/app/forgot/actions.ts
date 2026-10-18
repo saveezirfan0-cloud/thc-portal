@@ -14,7 +14,8 @@ import { RESET_LIMIT_REACHED, SENT_TO_COOKIE, SENT_TO_MAX_AGE } from './copy';
  * The outcome is IDENTICAL whether or not the address is registered, and
  * that is the whole design: a "no account with that email" message turns
  * this screen into a tool for testing which of 1,000 workers exists (§1.7,
- * the same reason A0's error never says which field was wrong).
+ * the same reason A0's error never says which field was wrong). That holds
+ * for the wait-an-hour answer too: it is the same for every address (ADR-0157).
  *
  * The email itself is Supabase Auth's recovery mail, which lands on
  * /auth/confirm and hands off to A3. §9.12's sender (admin@) is therefore

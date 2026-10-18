@@ -13,7 +13,8 @@ import { RESET_LIMIT_REACHED } from './copy';
  * The outcome is IDENTICAL whether or not the address is registered: a "no
  * account with that email" message turns this screen into a tool for
  * testing who has a Back Office login (§1.7; the same reason the sign-in
- * error never says which field was wrong).
+ * error never says which field was wrong). The wait-an-hour answer is the
+ * same for every address too (ADR-0157).
  *
  * The email is Supabase Auth's recovery mail, which lands on this app's
  * /auth/confirm and hands off to A3 (/reset). The sender, admin@ (§9.12),

@@ -24,4 +24,5 @@ It cost us on 18.10.2026. A worker who had been sent the wrong app's link, and t
 ## Consequences
 
 - A person can learn that a given address has been requested three times in the hour. That is not a fact about an account and the same is true of any address.
+- Anyone can use up an address's three requests to lock its owner out for an hour. That was already so; the owner is now told why instead of waiting for mail that is not coming.
 - The wireframes (`wireframes/staff/auth.html`, `backoffice/login.html`, `client/login.html`) draw no over-limit state; this is the one added, in the shape the forms already use for an error.
