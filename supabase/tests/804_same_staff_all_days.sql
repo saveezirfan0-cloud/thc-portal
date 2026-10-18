@@ -299,10 +299,10 @@ select is((select count(*)::int
             where pg_get_functiondef(f) like '%auto_assign_worker_gate(%'
               and pg_get_functiondef(f) not like '%auto_assign_candidates(%'),
   6, 'B: the six callers that judge one worker read auto_assign_worker_gate (one pool row) and none reads the list - if this fails a later migration re-created one from an older body');
-select ok(pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) like '%series_gate_for(%'
-      and pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) like '%auto_assign_candidates_pool(%'
-      and pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) like '%effective_pay_rate(%'
-      and pg_get_functiondef('public.staff_open_shifts(uuid)'::regprocedure) not like '%auto_assign_candidates(%',
+select ok(pg_get_functiondef('public.staff_open_shifts(uuid,uuid)'::regprocedure) like '%series_gate_for(%'
+      and pg_get_functiondef('public.staff_open_shifts(uuid,uuid)'::regprocedure) like '%auto_assign_candidates_pool(%'
+      and pg_get_functiondef('public.staff_open_shifts(uuid,uuid)'::regprocedure) like '%effective_pay_rate(%'
+      and pg_get_functiondef('public.staff_open_shifts(uuid,uuid)'::regprocedure) not like '%auto_assign_candidates(%',
   'B: Radar gates the viewing worker per worker, reads no sibling pool, and still carries the worker''s own pay rate (re-created from its live body)');
 select ok(has_function_privilege('service_role', 'public.auto_assign_candidates(uuid,boolean)', 'execute')
       and has_function_privilege('authenticated', 'public.auto_assign_candidates(uuid,boolean)', 'execute')
