@@ -150,13 +150,18 @@ select is((select staff_client_quiz(:'quiz_id') ->> 'attemptsLeft'), '3',
   'C: three attempts left');
 reset role;
 
+-- ADR-0150: a worker who holds a role that names the quiz may open it before
+-- any booking does (790). Staff B holds the fixture role, so it is taken off
+-- them for the refusal, and given back after.
+delete from staff_roles where staff_id = :'staffb' and role_id = :'role_id';
 select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is((select count(*)::int from staff_shift_requirements()), 0,
   'C: staff B (booked at client B only) is asked nothing');
 select throws_ok(format($$ select staff_client_quiz(%L) $$, :'quiz_id'), '42501', 'quiz_not_required',
-  'C: and cannot read a quiz no booking of theirs names');
+  'C: and cannot read a quiz no booking or role of theirs names');
 reset role;
+insert into staff_roles (staff_id, role_id) values (:'staffb', :'role_id');
 
 -- =====================================================================
 -- D · CR1 once, when a booking is confirmed

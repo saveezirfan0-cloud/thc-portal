@@ -7,7 +7,16 @@ import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { acceptInvite, declineInvite } from '../../actions';
-import { loadBookings, openInvites, overlapWarning, shiftsBadge } from '../../data';
+import {
+  loadBookings,
+  loadShiftRequirements,
+  openInvites,
+  overlapWarning,
+  quizBeforeAccept,
+  requirementsByBooking,
+  shiftsBadge,
+} from '../../data';
+import { AcceptNeedsQuiz, QuizBeforeAcceptNote } from '../../_components/ShiftRequirements';
 import { getTimeFormat } from '../../_lib/timeFormat';
 import '../../staff-app.css';
 
@@ -46,6 +55,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       })
     : null;
   const overlap = overlapWarning(invite, all, await getTimeFormat());
+  // ADR-0150: the client's quiz comes before Accept.
+  const { rows: requirementRows } = await loadShiftRequirements();
+  const quiz = quizBeforeAccept(requirementsByBooking(requirementRows).get(invite.bookingId));
 
   return (
     <StaffShell
@@ -107,6 +119,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
       {overlap ? <Alert tone="amber">{overlap}. Only your confirmed bookings count.</Alert> : null}
 
+      {quiz ? (
+        <Alert tone="amber">
+          <b>Quiz needed.</b> <QuizBeforeAcceptNote requirement={quiz} />
+        </Alert>
+      ) : null}
+
       {invite.hoursLimit ? (
         <Alert tone="coral">
           <b>Limit Reached.</b> {limit} The limit is calculated from your verified documents and
@@ -133,21 +151,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             keepLabel: 'Keep it',
           }}
         />
-        <ActionButton
-          label="Accept"
-          tone="primary"
-          block
-          size="lg"
-          disabled={invite.hoursLimit}
-          disabledLabel="Limit Reached"
-          action={acceptInvite.bind(null, invite.bookingId)}
-          confirm={{
-            title: 'Accept this shift?',
-            body: `You’ll be booked for ${invite.eventTitle} · ${invite.role} at ${invite.venueName}. Any other invitation that overlaps this time will be withdrawn automatically.`,
-            confirmLabel: 'Accept shift',
-            keepLabel: 'Not now',
-          }}
-        />
+        {quiz && !invite.hoursLimit ? (
+          <AcceptNeedsQuiz requirement={quiz} size="lg" />
+        ) : (
+          <ActionButton
+            label="Accept"
+            tone="primary"
+            block
+            size="lg"
+            disabled={invite.hoursLimit}
+            disabledLabel="Limit Reached"
+            action={acceptInvite.bind(null, invite.bookingId)}
+            confirm={{
+              title: 'Accept this shift?',
+              body: `You’ll be booked for ${invite.eventTitle} · ${invite.role} at ${invite.venueName}. Any other invitation that overlaps this time will be withdrawn automatically.`,
+              confirmLabel: 'Accept shift',
+              keepLabel: 'Not now',
+            }}
+          />
+        )}
       </div>
     </StaffShell>
   );

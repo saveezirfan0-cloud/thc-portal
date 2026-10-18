@@ -63,7 +63,7 @@ export function QuizPrompt({ requirement }: { requirement: ShiftRequirementRow }
         ) : (
           <>
             {requirement.clientName} asks everyone on {requirement.roleName} shifts to pass a short
-            quiz before their first one. Read the menu, then answer ten questions —{' '}
+            quiz before they can be confirmed on one. Read the menu, then answer ten questions —{' '}
             {requirement.quizAttemptsUsed === 0
               ? `you have ${left} attempts.`
               : `you have ${left} ${left === 1 ? 'attempt' : 'attempts'} left.`}
@@ -76,6 +76,56 @@ export function QuizPrompt({ requirement }: { requirement: ShiftRequirementRow }
         </Link>
       )}
     </div>
+  );
+}
+
+/**
+ * ADR-0150: on an invitation, the quiz comes before Accept. The sentence under
+ * the card; the button that stands in for Accept is `AcceptNeedsQuiz`.
+ */
+export function QuizBeforeAcceptNote({ requirement }: { requirement: ShiftRequirementRow }) {
+  const failed = requirement.quizAttemptsUsed >= requirement.quizAttemptsMax;
+  return (
+    <>
+      {failed ? (
+        <>
+          You’ve used all {requirement.quizAttemptsMax} attempts at the {requirement.clientName}{' '}
+          quiz, so you can’t accept this yet. The office has been told and will be in touch.
+        </>
+      ) : (
+        <>
+          {requirement.clientName} asks everyone on {requirement.roleName} shifts to pass a short
+          quiz before they can be confirmed. Pass it, then accept — this invitation stays open.
+        </>
+      )}
+    </>
+  );
+}
+
+/** Stands in for the Accept button until the quiz is passed. */
+export function AcceptNeedsQuiz({
+  requirement,
+  size,
+}: {
+  requirement: ShiftRequirementRow;
+  size?: 'lg';
+}) {
+  const failed = requirement.quizAttemptsUsed >= requirement.quizAttemptsMax;
+  if (failed) {
+    return (
+      <button type="button" className={`btn block${size ? ` ${size}` : ''}`} disabled>
+        Quiz not passed
+      </button>
+    );
+  }
+  return (
+    <Link
+      className={`btn primary block${size ? ` ${size}` : ''}`}
+      href={`/quiz/${requirement.quizId}`}
+      data-testid="accept-needs-quiz"
+    >
+      {requirement.quizAttemptsUsed === 0 ? 'Take the quiz to accept' : 'Try the quiz again'}
+    </Link>
   );
 }
 

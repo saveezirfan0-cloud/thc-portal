@@ -343,7 +343,13 @@ export type AcceptRefusal =
    * another day of it no longer works for the worker. The invitation is left
    * live (never withdrawn); Accept refuses.
    */
-  | 'not_available_all_days';
+  | 'not_available_all_days'
+  /**
+   * ADR-0150: the client asks everyone on this role to pass a quiz before
+   * they are confirmed, and this worker has not. The invitation is left live
+   * (never withdrawn); Accept refuses until they have.
+   */
+  | 'quiz_required';
 
 /**
  * RULE-03 (§3.4): "a popup appears in the app: 'Sorry, this shift has been
@@ -419,6 +425,11 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
     title: 'This job needs you free for every day of it.',
     body: 'The client asked for the same people on every day of this job, and one of the other days doesn’t work for you: a booking, a day you marked unavailable, or your weekly hours limit. Please contact the office if you think this is wrong.',
   },
+  // ADR-0150: the client's quiz comes before the confirmation.
+  quiz_required: {
+    title: 'Pass the quiz first',
+    body: 'This client asks everyone on this role to pass a short quiz before they can be confirmed on a shift. Take the quiz, then come back and accept — your invitation stays open.',
+  },
 };
 
 /** The refusals `apply_to_shift` can return (§10.4, Radar). */
@@ -439,7 +450,8 @@ export type ApplyRefusal =
   | 'gender_not_recorded'
   | 'language_not_spoken'
   | 'languages_not_recorded'
-  | 'not_available_all_days';
+  | 'not_available_all_days'
+  | 'quiz_required';
 
 export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: string }> = {
   full: {
@@ -495,6 +507,11 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
   languages_not_recorded: ACCEPT_REFUSAL_COPY.languages_not_recorded,
   // ADR-0117. Radar does not list the section to them; this is the race.
   not_available_all_days: ACCEPT_REFUSAL_COPY.not_available_all_days,
+  // ADR-0150: Radar lists the shift, so a worker who has not passed meets this.
+  quiz_required: {
+    title: 'Pass the quiz first',
+    body: 'This client asks everyone on this role to pass a short quiz before they can apply for or take one of its shifts. Take the quiz, then come back.',
+  },
 };
 
 /** One row of `staff_open_shifts()`, as Radar and Open shifts read it. */
