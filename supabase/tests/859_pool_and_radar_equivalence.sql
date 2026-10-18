@@ -1,5 +1,5 @@
 -- =====================================================================
--- 854 · The auto-assign pool and Radar, old bodies against new (ADR-0154)
+-- 859 · The auto-assign pool and Radar, old bodies against new (ADR-0154)
 --   20261018140000_auto_assign_pool_set_based.sql
 --   20261018140100_radar_prefilter_and_one_section.sql
 --
@@ -453,7 +453,7 @@ insert into events (id, client_id, venue_id, venue_name, venue_address, venue_lo
   (:'ev5b', :'clientb', :'venue_id', 'V1', 'a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'P854 series Sat', :'w'::date + 5, true, true, array['English'], :'ser', null),
   (:'ev6',  :'clientb', :'ve3',      'V3', 'c', st_setsrid(st_makepoint( 0.2500, 51.5000), 4326)::geography, 150, 'P854 student week', :'w'::date, true, true, array['English'], null, null),
   (:'ev7',  :'clienta', :'venue_id', 'V1', 'a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'P854 Thursday',   :'w'::date + 3, true, true, array['English'], null, null),
-  (:'ev8',  :'clienta', :'venue_id', 'V1', 'a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'P854 running',    current_date,   true, true, array['English'], null, null),
+  (:'ev8',  :'clienta', :'venue_id', 'V1', 'a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'P854 running',    (now() at time zone 'Europe/London')::date, true, true, array['English'], null, null),
   (:'ev9',  :'clienta', :'venue_id', 'V1', 'a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'P854 cancelled',  :'w'::date + 2, true, true, array['English'], null, now()),
   (:'ev10', :'clientb', :'venue_id', 'V1', 'a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'P854 Sunday',     :'w'::date + 6, true, true, array['English'], null, null);
 

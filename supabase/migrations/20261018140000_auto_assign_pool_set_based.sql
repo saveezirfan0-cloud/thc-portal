@@ -23,7 +23,7 @@
 -- and the same for wrong-role workers, whose row the board never shows.
 --
 -- Now, with every gate, its order, its code, the wave and the five score
--- inputs exactly as before (pgTAP 854 compares this body with the old one
+-- inputs exactly as before (pgTAP 859 compares this body with the old one
 -- over a dataset that reaches every gate):
 --
 --   * the facts that come from the booking history are worked out ONCE per
