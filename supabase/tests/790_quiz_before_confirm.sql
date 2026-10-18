@@ -17,7 +17,7 @@
 --      and a worker already confirmed stays confirmed.
 -- =====================================================================
 begin;
-select plan(31);
+select plan(33);
 \ir _shared/fixtures.psql
 
 \set sq_inv   '79000000-0000-4000-8000-000000000001'
@@ -55,6 +55,17 @@ select ok(client_quiz_required_for(:'quiz_id', :'staffb'),
   'A: and may sit it (client_quiz_required_for)');
 select ok(not client_quiz_required_for(:'quiz_id', gen_random_uuid()),
   'A: a stranger may not');
+-- Someone still being onboarded holds the role (the office gives it at Accept)
+-- but is not a worker yet.
+insert into staff (id, first_name, last_name, email, phone, dob, status) values
+  ('79300000-0000-4000-8000-000000000001', 'Doc', 'Stage', 'docstage@q790.test', '+447700979001', date '1995-01-01', 'documents');
+insert into staff_roles (staff_id, role_id) values ('79300000-0000-4000-8000-000000000001', :'role_id');
+select ok(not client_quiz_required_for(:'quiz_id', '79300000-0000-4000-8000-000000000001'),
+  'A: nor may someone still being onboarded, even holding the role');
+select ok(not has_function_privilege('authenticated', 'public.client_quiz_required_for(uuid, uuid)', 'execute')
+      and not has_function_privilege('authenticated', 'public.client_quiz_passed(uuid, uuid)', 'execute')
+      and not has_function_privilege('authenticated', 'public.client_quiz_attempts_used(uuid, uuid)', 'execute'),
+  'A: and no signed-in caller can ask where another worker stands through the helpers');
 
 -- =====================================================================
 -- B · The gate

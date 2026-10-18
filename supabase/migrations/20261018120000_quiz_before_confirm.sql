@@ -66,13 +66,27 @@ as $$
        and e.cancelled_at is null
        and b.status in ('invited', 'confirmed', 'worked'))
   or exists (
+    -- A worker, not someone still being onboarded (the office gives the roles
+    -- at Accept, before the documents) and not someone who has left.
     select 1
       from client_role_requirements r
       join staff_roles sr on sr.role_id = r.role_id
+      join staff st on st.id = sr.staff_id
      where r.quiz_id = p_quiz
-       and sr.staff_id = p_staff)
+       and sr.staff_id = p_staff
+       and st.status in ('compliant', 'blocked')
+       and st.removed_at is null
+       and st.left_at is null)
 $$;
-revoke execute on function public.client_quiz_required_for(uuid, uuid) from public, anon;
+
+-- Internal: staff_client_quiz, submit_client_quiz_attempt, staff_shift_requirements,
+-- the CR1 trigger and client_quiz_gate are all definer (or owner-run), so no
+-- signed-in caller needs these three, and none can ask them about another
+-- worker. Before this they were open to authenticated, safe only because RLS
+-- hides the tables they read.
+revoke execute on function public.client_quiz_required_for(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.client_quiz_passed(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.client_quiz_attempts_used(uuid, uuid) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- 3 · accept_invite — the quiz before the confirmation
