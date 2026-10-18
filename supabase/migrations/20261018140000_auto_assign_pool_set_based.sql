@@ -70,11 +70,16 @@
 -- dropping a rule it has not seen (docs/10 §3b).
 -- =====================================================================
 
+-- The fingerprint is of the CODE: line comments dropped and whitespace
+-- collapsed, so a comment that differs on live (an ASCII dash for a middle
+-- dot has been seen in another body) does not stop the deploy, while any
+-- change to what the body does still does.
 do $$
 begin
-  if (select md5(p.prosrc) from pg_proc p
+  if (select md5(btrim(regexp_replace(regexp_replace(p.prosrc, '--[^\n]*', '', 'g'), '\s+', ' ', 'g')))
+        from pg_proc p
        where p.oid = 'public.auto_assign_candidates_pool(uuid, boolean, uuid[])'::regprocedure)
-     is distinct from '280fa079085d82deb53ba0484bc9252d' then
+     is distinct from 'c1bee8baa26e519b64f7555a62473722' then
     raise exception '20261018140000: auto_assign_candidates_pool() is not the body this migration replaces (20261012140000). Something changed it since; merge that change into this migration''s body first.';
   end if;
 end;
