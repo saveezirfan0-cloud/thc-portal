@@ -124,6 +124,15 @@ function paths(staffId: string): string[] {
   return ['/onboarding', `/onboarding/${staffId}`];
 }
 
+function isSameOrigin(a: string, b: string | undefined): boolean {
+  if (!b?.trim()) return false;
+  try {
+    return new URL(a).origin === new URL(b.trim()).origin;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Where E3's links point. The Staff App is a different deployment from
  * the Back Office, so its origin is configuration — the same variable the
@@ -131,7 +140,19 @@ function paths(staffId: string): string[] {
  */
 function staffOrigin(): string | null {
   const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
-  if (explicit) return explicit.replace(/\/$/, '');
+  if (explicit) {
+    const origin = explicit.trim().replace(/\/+$/, '');
+    // On 13.10.2026 this was set to the Back Office's own address, and every
+    // manual Accept for five days sent a worker an /activate and /install link
+    // on an app that has neither. Refused here, before a login is minted.
+    if (isSameOrigin(origin, process.env['NEXT_PUBLIC_OFFICE_URL'])) {
+      console.error('[onboarding] NEXT_PUBLIC_STAFF_URL is the Back Office, not the Staff App', {
+        origin,
+      });
+      return null;
+    }
+    return origin;
+  }
   if (process.env.NODE_ENV === 'production') return null;
   return 'http://127.0.0.1:3001';
 }
