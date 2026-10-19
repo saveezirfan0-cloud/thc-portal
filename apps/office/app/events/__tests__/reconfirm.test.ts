@@ -48,6 +48,21 @@ describe('planReconfirmations', () => {
     expect(plan!.window).toBe('10:00 – 14:00 (UK)');
   });
 
+  it('a date move names the new day in the N11 push, not just the same hours (§8 N11)', () => {
+    // Friday 02.10 → Saturday 03.10, the same 09:00–14:00. Without the day
+    // the push read "now 09:00 – 14:00 (UK)", the hours the worker had.
+    const [plan] = planReconfirmations(
+      '2026-10-03',
+      [role('09:00', '14:00')],
+      [stored('09:00', '14:00')],
+      { ...unchanged, dateChanged: true },
+    );
+    expect(plan!.code).toBe('N11');
+    expect(plan!.window).toBe('Sat 03 Oct 09:00 – 14:00 (UK)');
+    const [row] = reconfirmOutboxRows(plan!, [{ id: 'b-1', staff_id: 's-1' }], 'save-1');
+    expect(row!.payload.window).toBe('Sat 03 Oct 09:00 – 14:00 (UK)');
+  });
+
   it('an end move is N11 too — either end triggers it (§8 N11)', () => {
     const [plan] = planReconfirmations(
       DATE,
