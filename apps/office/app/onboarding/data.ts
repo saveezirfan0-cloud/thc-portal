@@ -362,24 +362,59 @@ const EMPTY: Omit<CandidateData, 'problem'> = {
  * `staff.visa_weekly_hour_limit` is newer than the generated types (docs/14
  * §4), so the facts are read through a narrow hand-written shape.
  */
-interface FactsRead {
-  from(table: 'staff'): {
+export interface FactsRead {
+  from(table: 'staff' | 'staff_identity_v'): {
     select(columns: string): {
       eq(
-        column: 'id',
+        column: 'id' | 'staff_id',
         value: string,
       ): {
         maybeSingle(): PromiseLike<{
-          data: {
-            ni_number: string | null;
-            below_degree_level: boolean | null;
-            visa_weekly_hour_limit: number | null;
-            languages: string[] | null;
-          } | null;
+          data: Record<string, unknown> | null;
           error: { message: string } | null;
         }>;
       };
     };
+  };
+}
+
+interface FactsRow {
+  ni_number: string | null;
+  below_degree_level: boolean | null;
+  visa_weekly_hour_limit: number | null;
+  languages: string[] | null;
+}
+
+/**
+ * D43's full NI number beside the NI evidence, and D32/D36's conditions.
+ * Since ADR-0163 no API role may read `staff.ni_number` off the table, so
+ * the number comes from the owner-rights `staff_identity_v` (admin only)
+ * and the rest from `staff` — two reads, answered as the one row the
+ * candidate screen always had. Either failing fails the card, never the page.
+ */
+export async function loadCandidateFacts(
+  reader: FactsRead,
+  staffId: string,
+): Promise<{ data: FactsRow | null; error: { message: string } | null }> {
+  const [rest, identity] = await Promise.all([
+    reader
+      .from('staff')
+      .select('below_degree_level, visa_weekly_hour_limit, languages')
+      .eq('id', staffId)
+      .maybeSingle(),
+    reader.from('staff_identity_v').select('ni_number').eq('staff_id', staffId).maybeSingle(),
+  ]);
+  const error = rest.error ?? identity.error;
+  if (error) return { data: null, error };
+  if (!rest.data) return { data: null, error: null };
+  return {
+    data: {
+      ni_number: typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
+      below_degree_level: (rest.data['below_degree_level'] as boolean | null) ?? null,
+      visa_weekly_hour_limit: (rest.data['visa_weekly_hour_limit'] as number | null) ?? null,
+      languages: (rest.data['languages'] as string[] | null) ?? null,
+    },
+    error: null,
   };
 }
 
@@ -503,11 +538,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     // Who referred them (ADR-0047); best-effort, never an error panel.
     loadCandidateReferral(supabase as unknown as ReferralReader, id),
     // D43: the full NI number beside the NI evidence; D32/D36: the conditions.
-    (supabase as unknown as FactsRead)
-      .from('staff')
-      .select('ni_number, below_degree_level, visa_weekly_hour_limit, languages')
-      .eq('id', id)
-      .maybeSingle(),
+    loadCandidateFacts(supabase as unknown as FactsRead, id),
     // ADR-0077: who marked the interview complete without Willo, and why.
     // Best-effort, like the two above: a failed read only loses the line.
     (supabase as unknown as OverrideRead)
@@ -605,12 +636,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
   };
 }
 
-function toFacts(row: {
-  ni_number: string | null;
-  below_degree_level: boolean | null;
-  visa_weekly_hour_limit: number | null;
-  languages: string[] | null;
-}): CandidateFacts {
+function toFacts(row: FactsRow): CandidateFacts {
   return {
     niNumber: row.ni_number,
     belowDegreeLevel: row.below_degree_level === true,

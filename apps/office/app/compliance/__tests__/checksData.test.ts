@@ -44,7 +44,7 @@ describe('loadCheckMonitor', () => {
   it('lists a filed code with no check as waiting, names the person, and asks only for coded documents', async () => {
     const { client, calls } = fake({
       rtw_checks_latest_v: { data: [check] },
-      compliance_docs: {
+      compliance_doc_review_v: {
         data: [
           { id: 'd-checked', staff_id: 's1', uploaded_at: '2026-09-30T13:00:00Z' },
           { id: 'd-waiting', staff_id: 's2', uploaded_at: '2026-09-30T13:05:00Z' },
@@ -74,7 +74,10 @@ describe('loadCheckMonitor', () => {
       counts: { claimed: 1 },
       error: null,
     });
-    const docs = calls.find((c) => c.table === 'compliance_docs');
+    // ADR-0163: the share code is filtered through the owner-rights view,
+    // never off compliance_docs, whose share_code no API role may read.
+    expect(calls.some((c) => c.table === 'compliance_docs')).toBe(false);
+    const docs = calls.find((c) => c.table === 'compliance_doc_review_v');
     expect(docs?.not).toContainEqual(['share_code', 'is', null]);
   });
 

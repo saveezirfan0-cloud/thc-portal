@@ -22,7 +22,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(14);
+select plan(15);
 \ir _shared/fixtures.psql
 \set cap_n 20
 \set cap_cands 150
@@ -61,11 +61,19 @@ select is_empty($$
   'current_compliance_docs gives every candidate the same current document per type as before');
 
 -- ---- the office ------------------------------------------------------------
+-- Since 20261020120000 (ADR-0163) no API role holds staff.dob, share_code
+-- or ni_number, which the `_old` reference copy reads directly. Each new
+-- answer is taken first, under the caller's real rights; only then are the
+-- three granted back, inside this transaction, for the reference copy.
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-create temp table d855_old as select * from _old.onboarding_candidates_v;
 create temp table d855_new as select * from public.onboarding_candidates_v;
 reset role;
+grant select (dob, share_code, ni_number) on public.staff to authenticated;
+set local role authenticated;
+create temp table d855_old as select * from _old.onboarding_candidates_v;
+reset role;
+revoke select (dob, share_code, ni_number) on public.staff from authenticated;
 
 select is((select count(*) from d855_new), (select count(*) from d855_old), 'the office sees as many candidates as before');
 select is_empty($$
@@ -90,17 +98,33 @@ update staff set user_id = :'staffb_uid'
  where id = (select id from staff where email like 'cand%@capset.test' and rejection_reason is not null order by id limit 1);
 select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is_empty($$
-  (select * from _old.onboarding_candidates_v except all select * from public.onboarding_candidates_v)
-  union all
-  (select * from public.onboarding_candidates_v except all select * from _old.onboarding_candidates_v) $$,
-  'a candidate reading their own row sees what they saw before');
+create temp table d855_self_new as select * from public.onboarding_candidates_v;
 select is((select count(*)::int from public.onboarding_candidates_v where rejection_reason is not null), 0,
   'and the rejection reason is still not theirs to read (20260923220000)');
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
-select is((select count(*) from public.onboarding_candidates_v), (select count(*) from _old.onboarding_candidates_v),
+create temp table d855_client_new as select * from public.onboarding_candidates_v;
+reset role;
+grant select (dob, share_code, ni_number) on public.staff to authenticated;
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+-- ADR-0163: the four identity-derived columns are the office's now, so a
+-- candidate's own row shows them empty; everything else is as before.
+select is_empty($$
+  (select to_jsonb(o) - array['dob', 'age', 'share_code', 'ni_entered'] from _old.onboarding_candidates_v o
+   except all select to_jsonb(n) - array['dob', 'age', 'share_code', 'ni_entered'] from d855_self_new n)
+  union all
+  (select to_jsonb(n) - array['dob', 'age', 'share_code', 'ni_entered'] from d855_self_new n
+   except all select to_jsonb(o) - array['dob', 'age', 'share_code', 'ni_entered'] from _old.onboarding_candidates_v o) $$,
+  'a candidate reading their own row sees what they saw before, but for the identity columns');
+select ok((select count(*) from d855_self_new) = 1
+          and not exists (select 1 from d855_self_new where dob is not null or age is not null
+                                                         or share_code is not null or ni_entered),
+  '... which ADR-0163 empties for them: their date of birth and share code are read through staff_me() and onboarding_state()');
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+select is((select count(*) from d855_client_new), (select count(*) from _old.onboarding_candidates_v),
   'a client sees as many rows as before');
 reset role;
+revoke select (dob, share_code, ni_number) on public.staff from authenticated;
 
 -- ---- what the planner does with it ---------------------------------------------
 create temp table d855_plan (what text, line text);
