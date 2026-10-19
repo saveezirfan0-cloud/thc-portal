@@ -5,11 +5,12 @@ import type { QualifiedStaffRow } from '../types';
 // Outside Next there is no server; the actions are not under test.
 vi.mock('../actions', () => ({
   qualifyStaff: vi.fn(),
+  searchQualifyPicker: vi.fn(async () => ({ ok: true, workers: [], total: 0 })),
   revokeQualification: vi.fn(),
   setDoNotReturn: vi.fn(),
 }));
 
-const { QualifiedStaff, pickerResults } = await import('../QualifiedStaff');
+const { QualifiedStaff } = await import('../QualifiedStaff');
 
 const ROLES = ['Bar Staff', 'Barista', 'Cloakroom Staff', 'Runner', 'Waiting Staff'];
 
@@ -36,9 +37,7 @@ const ROW: QualifiedStaffRow = {
 
 describe('qualified staff (§9.7, ADR-0125)', () => {
   it('collapses a worker’s roles to one "N roles" button instead of a chip per role', () => {
-    const html = renderToStaticMarkup(
-      <QualifiedStaff clientId="c1" rows={[ROW]} rateCard={[]} staff={[]} />,
-    );
+    const html = renderToStaticMarkup(<QualifiedStaff clientId="c1" rows={[ROW]} rateCard={[]} />);
     expect(html).toContain('5 roles');
     expect(html).toContain('aria-haspopup="dialog"');
     // The full list is only in the tooltip until the pop-up opens.
@@ -52,7 +51,6 @@ describe('qualified staff (§9.7, ADR-0125)', () => {
         clientId="c1"
         rows={[{ ...ROW, role_names: ['Bar Staff'], role_ids: ['r0'], qualification_ids: ['q0'] }]}
         rateCard={[]}
-        staff={[]}
       />,
     );
     expect(html).toContain('1 role');
@@ -60,21 +58,7 @@ describe('qualified staff (§9.7, ADR-0125)', () => {
   });
 });
 
-describe('the + Add staff picker finds one worker among a thousand (release audit D-M6)', () => {
-  const staff = Array.from({ length: 1000 }, (_, i) => ({
-    id: `w${i}`,
-    display_name: i === 873 ? 'Amara Kalu' : `Worker ${i}`,
-    employee_id: i,
-    role_names: ['Waiting Staff'],
-  }));
-
-  it('searches by name, Employee ID or the bare number', () => {
-    expect(pickerResults(staff, 'amara').map((w) => w.id)).toEqual(['w873']);
-    expect(pickerResults(staff, 'THC-00873').map((w) => w.id)).toEqual(['w873']);
-    expect(pickerResults(staff, '873').map((w) => w.id)).toEqual(['w873']);
-    expect(pickerResults(staff, '  ')).toHaveLength(1000);
-  });
-
+describe('the qualified list (ADR-0146)', () => {
   it('lists a worker barred but never cleared here on their own, as all roles (ADR-0146)', () => {
     const html = renderToStaticMarkup(
       <QualifiedStaff
@@ -90,7 +74,6 @@ describe('the + Add staff picker finds one worker among a thousand (release audi
           },
         ]}
         rateCard={[]}
-        staff={[]}
       />,
     );
     expect(html).toContain('Do not return · not cleared here');

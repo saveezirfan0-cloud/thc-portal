@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import {
   Alert,
   Avatar,
@@ -23,8 +23,8 @@ import {
   formatUkDate,
   ratingTone,
 } from '../../staff/staff';
-import { qualifyStaff, revokeQualification, setDoNotReturn } from './actions';
-import { BARRED_GROUP, grantedHow, groupByRole } from './card';
+import { qualifyStaff, revokeQualification, searchQualifyPicker, setDoNotReturn } from './actions';
+import { BARRED_GROUP, PICKER_PAGE, grantedHow, groupByRole } from './card';
 import { useConfirm } from '../../_components/useConfirm';
 import type { QualifiedStaffRow, RateCardRow, StaffOption } from './types';
 
@@ -42,31 +42,28 @@ import type { QualifiedStaffRow, RateCardRow, StaffOption } from './types';
  * outright, so counting them would overstate the pool by exactly the
  * people auto-assign will refuse.
  */
-/** How many workers the picker draws at a time (release audit D-M6). */
-const PICKER_PAGE = 50;
+/** How long the picker waits after a keystroke before it asks the server. */
+export const PICKER_DEBOUNCE_MS = 250;
 
-/** The workers whose name or Employee ID ("THC-00873", "873") contains the search. */
-export function pickerResults(staff: StaffOption[], query: string): StaffOption[] {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return staff;
-  return staff.filter(
-    (worker) =>
-      worker.display_name.toLowerCase().includes(needle) ||
-      employeeId(worker.employee_id).toLowerCase().includes(needle) ||
-      String(worker.employee_id ?? '').includes(needle),
-  );
+/** What the picker holds of the server's answer (`searchQualifyPicker`). */
+interface PickerState {
+  workers: StaffOption[];
+  /** The server's count for the search; null until the first page lands. */
+  total: number | null;
+  loading: boolean;
+  problem: string | null;
 }
+
+const PICKER_EMPTY: PickerState = { workers: [], total: null, loading: false, problem: null };
 
 export function QualifiedStaff({
   clientId,
   rows,
   rateCard,
-  staff,
 }: {
   clientId: string;
   rows: QualifiedStaffRow[];
   rateCard: RateCardRow[];
-  staff: StaffOption[];
 }) {
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -76,12 +73,51 @@ export function QualifiedStaff({
     row: QualifiedStaffRow;
     group: string;
   } | null>(null);
-  const [pickedStaff, setPickedStaff] = useState<string[]>([]);
+  // Ticked workers, kept whole: a tick survives a new search, and Add sends
+  // them whatever the list below shows now.
+  const [picked, setPicked] = useState<ReadonlyMap<string, StaffOption>>(new Map());
   // Release audit D-M6: the picker listed every worker, unsearchable, at
   // ~1,000. It searches by name or Employee ID and draws the results a
-  // page at a time.
+  // page at a time — and since go-live audit M2 the SERVER searches, a page
+  // at a time, instead of the browser filtering the whole directory.
   const [pickQuery, setPickQuery] = useState('');
-  const [pickLimit, setPickLimit] = useState(PICKER_PAGE);
+  const [picker, setPicker] = useState<PickerState>(PICKER_EMPTY);
+  // Only the latest search may land: an answer to an older one is dropped.
+  const ticket = useRef(0);
+  const searchPicker = useCallback((search: string, offset: number) => {
+    const mine = ++ticket.current;
+    setPicker((current) => ({ ...current, loading: true, problem: null }));
+    searchQualifyPicker(search, offset)
+      .then((page) => {
+        if (mine !== ticket.current) return;
+        setPicker((current) =>
+          page.ok
+            ? {
+                workers: offset === 0 ? page.workers : [...current.workers, ...page.workers],
+                total: page.total,
+                loading: false,
+                problem: null,
+              }
+            : { ...current, loading: false, problem: page.message },
+        );
+      })
+      .catch(() => {
+        if (mine !== ticket.current) return;
+        setPicker((current) => ({
+          ...current,
+          loading: false,
+          problem: 'The workers could not be searched just now. Try again in a moment.',
+        }));
+      });
+  }, []);
+  useEffect(() => {
+    if (!adding) return;
+    const timer = setTimeout(
+      () => searchPicker(pickQuery, 0),
+      pickQuery.trim() ? PICKER_DEBOUNCE_MS : 0,
+    );
+    return () => clearTimeout(timer);
+  }, [adding, pickQuery, searchPicker]);
   const [pickedRoles, setPickedRoles] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
@@ -139,22 +175,33 @@ export function QualifiedStaff({
   const eligible = (worker: StaffOption) =>
     chosenNames.length === 0 || chosenNames.some((name) => worker.role_names.includes(name));
 
-  const results = pickerResults(staff, pickQuery);
-  const visible = results.slice(0, pickLimit);
-  const selectable = results.filter(eligible);
-  const allSelected =
-    selectable.length > 0 && selectable.every((worker) => pickedStaff.includes(worker.id));
+  const visible = picker.workers;
+  const total = picker.total ?? visible.length;
+  const selectable = visible.filter(eligible);
+  const allSelected = selectable.length > 0 && selectable.every((worker) => picked.has(worker.id));
   // Ticked, and still able to take one of the chosen roles: what Add sends.
-  const sending = staff.filter((worker) => pickedStaff.includes(worker.id) && eligible(worker));
-  const toggleWorker = (id: string, on: boolean) =>
-    setPickedStaff((current) =>
-      on ? [...new Set([...current, id])] : current.filter((other) => other !== id),
-    );
-  const toggleResults = (on: boolean) =>
-    setPickedStaff((current) => {
-      const ids = new Set(selectable.map((worker) => worker.id));
-      return on ? [...new Set([...current, ...ids])] : current.filter((id) => !ids.has(id));
+  const sending = [...picked.values()].filter(eligible);
+  const toggleWorker = (worker: StaffOption, on: boolean) =>
+    setPicked((current) => {
+      const next = new Map(current);
+      if (on) next.set(worker.id, worker);
+      else next.delete(worker.id);
+      return next;
     });
+  const toggleResults = (on: boolean) =>
+    setPicked((current) => {
+      const next = new Map(current);
+      for (const worker of selectable) {
+        if (on) next.set(worker.id, worker);
+        else next.delete(worker.id);
+      }
+      return next;
+    });
+  const resetPicker = () => {
+    setPicked(new Map());
+    setPickQuery('');
+    setPicker(PICKER_EMPTY);
+  };
 
   return (
     <Panel
@@ -401,10 +448,8 @@ export function QualifiedStaff({
                     ),
                   () => {
                     setAdding(false);
-                    setPickedStaff([]);
+                    resetPicker();
                     setPickedRoles([]);
-                    setPickQuery('');
-                    setPickLimit(PICKER_PAGE);
                     setNote('');
                   },
                   'dialog',
@@ -455,10 +500,10 @@ export function QualifiedStaff({
             </span>
             <span className="label-action sm" aria-live="polite">
               <b>{sending.length}</b> selected
-              {pickedStaff.length > 0 ? (
+              {picked.size > 0 ? (
                 <>
                   {' · '}
-                  <Button size="sm" tone="link" onClick={() => setPickedStaff([])}>
+                  <Button size="sm" tone="link" onClick={() => setPicked(new Map())}>
                     Clear
                   </Button>
                 </>
@@ -469,11 +514,9 @@ export function QualifiedStaff({
             aria-label="Search workers by name or Employee ID"
             placeholder="Search name or Employee ID"
             value={pickQuery}
-            onChange={(event) => {
-              setPickQuery(event.target.value);
-              setPickLimit(PICKER_PAGE);
-            }}
+            onChange={(event) => setPickQuery(event.target.value)}
           />
+          {picker.problem ? <Alert tone="coral">{picker.problem}</Alert> : null}
           <label className="pick-row pick-all">
             <input
               type="checkbox"
@@ -481,21 +524,27 @@ export function QualifiedStaff({
               disabled={selectable.length === 0}
               onChange={(event) => toggleResults(event.target.checked)}
             />
-            Select all {selectable.length.toLocaleString('en-GB')}{' '}
+            Select all {selectable.length.toLocaleString('en-GB')} shown{' '}
             {pickQuery.trim() ? 'in these results' : 'who can be added'}
           </label>
-          <ul className="picker" aria-labelledby="picker-label">
+          <ul className="picker" aria-labelledby="picker-label" aria-busy={picker.loading}>
             {visible.length === 0 ? (
-              <li className="muted sm">No worker matches “{pickQuery.trim()}”.</li>
+              <li className="muted sm">
+                {picker.loading || picker.total === null
+                  ? 'Searching…'
+                  : pickQuery.trim()
+                    ? `No compliant worker matches “${pickQuery.trim()}”.`
+                    : 'No compliant worker to add.'}
+              </li>
             ) : (
               visible.map((worker) => (
                 <li key={worker.id}>
                   <label className="pick-row">
                     <input
                       type="checkbox"
-                      checked={pickedStaff.includes(worker.id)}
+                      checked={picked.has(worker.id)}
                       disabled={!eligible(worker)}
-                      onChange={(event) => toggleWorker(worker.id, event.target.checked)}
+                      onChange={(event) => toggleWorker(worker, event.target.checked)}
                     />
                     <span className="pick-name">{worker.display_name}</span>
                     <span className="muted xs mono">{employeeId(worker.employee_id)}</span>
@@ -508,13 +557,17 @@ export function QualifiedStaff({
             )}
           </ul>
           <div className="row picker-more">
-            <span className="muted xs">
-              Showing {visible.length.toLocaleString('en-GB')} of{' '}
-              {results.length.toLocaleString('en-GB')}
+            <span className="muted xs" aria-live="polite">
+              Showing {visible.length.toLocaleString('en-GB')} of {total.toLocaleString('en-GB')}
             </span>
-            {results.length > visible.length ? (
-              <Button size="sm" tone="ghost" onClick={() => setPickLimit(pickLimit + PICKER_PAGE)}>
-                Show {Math.min(PICKER_PAGE, results.length - visible.length)} more
+            {total > visible.length ? (
+              <Button
+                size="sm"
+                tone="ghost"
+                disabled={picker.loading}
+                onClick={() => searchPicker(pickQuery, visible.length)}
+              >
+                Show {Math.min(PICKER_PAGE, total - visible.length)} more
               </Button>
             ) : null}
           </div>

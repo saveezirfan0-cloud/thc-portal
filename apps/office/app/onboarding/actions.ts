@@ -11,6 +11,7 @@ import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
 import { explainDbError } from '../_lib/dbError';
 import { staffUrlIsOffice } from '../_lib/staffUrl';
+import { BULK_CONCURRENCY, mapPool } from '../_lib/pool';
 import type { AcceptRpc, AdminAuth, ResendRpc } from './activation';
 import type { Period } from './view-model';
 import type { ActionResult } from './types';
@@ -329,24 +330,25 @@ export async function grantClientQualifications(
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = createClient(await cookies()) as unknown as RpcClient;
   const pairs = clientIds.flatMap((client) => roleIds.map((role) => [client, role] as const));
-  const BATCH = 8;
-  for (let at = 0; at < pairs.length; at += BATCH) {
-    const results = await Promise.all(
-      pairs.slice(at, at + BATCH).map(([client, role]) =>
+  // Eight in flight at a time, a new one starting as each lands — not
+  // batches of eight that each wait for their slowest (go-live audit M5).
+  // The first refusal starts nothing new and is the one reported.
+  const results = await mapPool(
+    pairs,
+    BULK_CONCURRENCY,
+    ([client, role]) =>
+      Promise.resolve(
         supabase.rpc('grant_client_qualification', {
           p_staff: staffId,
           p_client: client,
           p_role: role,
         }),
       ),
-    );
-    const failed = results.find((result) => result.error);
-    if (failed?.error) {
-      for (const path of paths(staffId)) revalidatePath(path);
-      return { ok: false, message: explain(failed.error.message) };
-    }
-  }
+    (result) => Boolean(result.error),
+  );
   for (const path of paths(staffId)) revalidatePath(path);
+  const failed = results.find((result) => result?.error);
+  if (failed?.error) return { ok: false, message: explain(failed.error.message) };
   return { ok: true };
 }
 

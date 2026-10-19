@@ -24,6 +24,7 @@ import {
 import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
+import { CandidateCrumbs } from './chrome';
 import { RejectSelfie } from '../_components/RejectSelfie';
 import {
   RTW_LABEL,
@@ -150,6 +151,7 @@ export function CandidateScreen({
   now,
   canCorrectDob = false,
   canMarkInterview = false,
+  bare = false,
 }: {
   data: CandidateData;
   now: string;
@@ -157,6 +159,12 @@ export function CandidateScreen({
   canCorrectDob?: boolean;
   /** ADR-0077: `canMarkInterviewComplete(role)` — owners and managers may skip Willo. */
   canMarkInterview?: boolean;
+  /**
+   * ADR-0161: the page has drawn the `OfficeShell` itself, around the
+   * Suspense this screen streams in behind, so the screen draws only its
+   * body. Rendered whole (the default) it draws the shell too.
+   */
+  bare?: boolean;
 }) {
   const router = useRouter();
   const at = useMemo(() => new Date(now), [now]);
@@ -247,16 +255,8 @@ export function CandidateScreen({
     onOpen: open,
   };
 
-  return (
-    <OfficeShell
-      activeHref="/onboarding"
-      title="Candidate"
-      crumbs={
-        <>
-          <Link href="/onboarding">Onboarding</Link> / <b>{row.display_name}</b>
-        </>
-      }
-    >
+  const body = (
+    <>
       <div className="stack">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
@@ -533,6 +533,16 @@ export function CandidateScreen({
           </div>
         ) : null}
       </Modal>
+    </>
+  );
+  if (bare) return body;
+  return (
+    <OfficeShell
+      activeHref="/onboarding"
+      title="Candidate"
+      crumbs={<CandidateCrumbs name={row.display_name} />}
+    >
+      {body}
     </OfficeShell>
   );
 }

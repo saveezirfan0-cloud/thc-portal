@@ -32,7 +32,7 @@ const CONFETTI = 36;
  * The "record" badge in the Week / Day totals bar, and the congratulations
  * it flashes up the first time this browser opens a period that holds a
  * record. The badge stays (and opens the message again); the flash-up does
- * not repeat on every 15-second refresh, or every visit.
+ * not repeat on every 60-second refresh, or every visit.
  */
 export function RecordFlash({ records }: { records: RecordNews[] }) {
   const [open, setOpen] = useState(false);

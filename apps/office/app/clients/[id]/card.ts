@@ -239,3 +239,37 @@ export function defaultDressCodes(rows: { dress_codes: string[] | null }[]): str
   }
   return [...seen.values()].filter((entry) => entry.uses * 2 > rows.length).map((e) => e.code);
 }
+
+/** How many workers the "+ Add staff" picker reads and draws at a time (release audit D-M6). */
+export const PICKER_PAGE = 50;
+
+/** What the picker's search box asks the database for. */
+export interface PickerSearch {
+  /** Each must be in the first or the last name. */
+  words: string[];
+  /** "THC-00873", "00873" or "873": that Employee ID, exactly. */
+  employeeId: number | null;
+}
+
+/**
+ * The picker's box, read for a narrow server search (go-live audit M2): it
+ * used to filter the whole compliant directory in the browser, read off
+ * `staff_directory_v`, which computes the weekly cap for every row only to
+ * show a name. A number — bare or written "THC-00873" — is an Employee ID;
+ * anything else is words, each matched in the first or the last name, so
+ * "amara kalu" finds Amara Kalu. Characters PostgREST's filter syntax
+ * reserves, and LIKE's own `%` and `_`, are dropped, never passed through:
+ * only letters, digits, apostrophes and hyphens reach the query.
+ */
+export function pickerSearch(query: string): PickerSearch {
+  const trimmed = query.trim();
+  const id = /^(?:thc-?)?0*(\d{1,9})$/i.exec(trimmed);
+  if (id) return { words: [], employeeId: Number(id[1]) };
+  const words = trimmed
+    .normalize('NFC')
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{M}\p{N}'’-]/gu, ''))
+    .filter(Boolean)
+    .slice(0, 4);
+  return { words, employeeId: null };
+}

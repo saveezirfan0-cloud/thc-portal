@@ -23,6 +23,7 @@ import {
   type CheckLogRow,
   type EndedBooking,
   type Handover,
+  type PendingApplication,
   type PoolEntry,
   type UnavailableEntry,
   type UnavailableWindow,
@@ -51,6 +52,15 @@ import { readProblem } from '../../_lib/dbError';
  * (`p_escalation`): the radius gate and nearest-first, as the 10-minute
  * job sees it (§3.4). Attendance on Confirmed rows is read from
  * `check_logs` and `violations` on the same open.
+ *
+ * Two reads, because the pool is the slow part (ADR-0161; go-live audit H2:
+ * one `auto_assign_candidates` call per section, 0.2–7.5 s each under load,
+ * was what held the whole board on 17.10). `loadBoard` reads the event, its
+ * sections and everyone booked on them — the header, Confirmed, Invited and
+ * the Radar applicants — and decides between the board and a 404.
+ * `loadSectionPools` reads ONE section's pool and calendar; the board
+ * streams each behind its own Suspense (`SectionPools`), so a slow pool
+ * never holds the line-up, nor one section another.
  *
  * A failed query is reported, never mistaken for an empty or missing
  * event: the page shows `problem` in an Alert. Only a query that SUCCEEDS
@@ -108,6 +118,38 @@ export interface BoardSection {
    * worker who also applied is one row in `invited`, never here too.
    */
   applied: BoardBooking[];
+  /** ADR-0046: completed hand-overs on this section, oldest first. */
+  handovers: Handover[];
+  /** Under way: the pool is the escalation pool (radius, nearest first, §3.4). */
+  escalation: boolean;
+  /** What this section's streamed pool needs from the first read (`loadSectionPools`). */
+  poolInput: SectionPoolInput;
+}
+
+/**
+ * One section's pool, from the board's first read: who is booked here and
+ * how, so the pool and Unavailable can leave them out or label them.
+ */
+export interface SectionPoolInput {
+  shiftId: string;
+  /** Under way: the escalation pool (radius gate, nearest first, §3.4). */
+  escalation: boolean;
+  /** Pending Radar self-applications, for the pool's Applied marker. */
+  applications: PendingApplication[];
+  /** Cancelled and closed bookings here (D33: most are invitable again). */
+  ended: EndedBooking[];
+  /** Workers with a live booking here: listed in its own blocks, never in Unavailable. */
+  live: string[];
+}
+
+/** The people the first read already named, and the role catalogue's names. */
+export interface BoardPeople {
+  people: ReadonlyMap<string, BoardPersonName>;
+  roleNames: ReadonlyMap<string, string>;
+}
+
+/** One section's Potential pool and Unavailable list (`loadSectionPools`). */
+export interface SectionPools {
   /** The ranked Potential pool, or null when the candidates could not be read. */
   pool: PoolEntry[] | null;
   /** Why `pool` is null — shown on the section rather than hidden. */
@@ -118,10 +160,6 @@ export interface BoardSection {
    * pool is still shown, but it may list workers the engine will skip.
    */
   calendarProblem: string | null;
-  /** ADR-0046: completed hand-overs on this section, oldest first. */
-  handovers: Handover[];
-  /** Under way: the pool is the escalation pool (radius, nearest first, §3.4). */
-  escalation: boolean;
 }
 
 export interface BoardEvent {
@@ -157,6 +195,8 @@ export interface BoardEvent {
   /** §6 weights as `settings.scoring_weights` holds them, for the legend. */
   weights: ScoreWeights;
   sections: BoardSection[];
+  /** Everyone booked on the event, by staff id, and the role names: the pools reuse them. */
+  known: BoardPeople;
 }
 
 export interface BoardLoad {
@@ -197,15 +237,22 @@ interface OfferRow {
   taken_by_booking_id: string | null;
 }
 
+/** One `auto_assign_unavailable` row: an entry overlapping the section's window. */
+interface AwayRow {
+  staff_id: string;
+  starts_at: string;
+  ends_at: string;
+}
+
+/** A paged read the board can order and range — table, view or RPC alike. */
+interface PagedQuery<T> extends PromiseLike<PageReply<T>> {
+  order(column: string): PagedQuery<T>;
+  range(from: number, to: number): PagedQuery<T>;
+}
+
 /** `auto_assign_unavailable` (20260930201000), not yet in the generated types. */
 interface UnavailableRpc {
-  rpc(
-    fn: 'auto_assign_unavailable',
-    args: { p_shift: string },
-  ): PromiseLike<{
-    data: { staff_id: string; starts_at: string; ends_at: string }[] | null;
-    error: { message: string } | null;
-  }>;
+  rpc(fn: 'auto_assign_unavailable', args: { p_shift: string }): PagedQuery<AwayRow>;
 }
 
 async function selectIn<T>(
@@ -243,12 +290,7 @@ async function selectIn<T>(
 /** Far past any directory THC will hold; past it a pool read is an error, never a cut. */
 const POOL_CEILING = 20_000;
 
-export async function loadBoard(
-  eventId: string,
-  now: Date = new Date(),
-  /** The operator's clock (ADR-0085), for the times written into row labels. */
-  format?: TimeFormat,
-): Promise<BoardLoad> {
+export async function loadBoard(eventId: string, now: Date = new Date()): Promise<BoardLoad> {
   if (!supabaseConfigured()) return { event: null, problem: NO_SUPABASE };
   const supabase = eventsDb(await cookies());
 
@@ -334,10 +376,11 @@ export async function loadBoard(
       .map((s) => s['id'] as string),
   );
 
-  // Bookings, the candidate pool and the availability calendar per
-  // section — each computed now — with the client and series reads that
-  // waited for the event row.
-  const [bookingRes, candidateRes, awayRes, offerRes, clientRes, seriesRes] = await Promise.all([
+  // The bookings and offers on every section, with the client and series
+  // reads that waited for the event row. The candidate pool and the
+  // calendar are NOT read here: each section streams its own
+  // (`loadSectionPools`), so the line-up never waits for them.
+  const [bookingRes, offerRes, clientRes, seriesRes] = await Promise.all([
     sectionIds.length
       ? readAllPages<Record<string, string | boolean | null>>(
           (range) =>
@@ -354,46 +397,25 @@ export async function loadBoard(
           { what: 'bookings', key: (row) => row['id'] as string },
         )
       : Promise.resolve({ data: [], error: null }),
-    // One row per worker in the directory comes back, most of them
-    // wrong_role — which never produces a row on the board (§6), nor does
-    // the other gender on a gender-only section (ADR-0079), nor a worker
-    // who does not speak a language the event needs (ADR-0080). Filtered in
-    // the database, so only the workers the board can show cross the wire —
-    // and paged by staff_id (unique per row; the function has no ORDER BY
-    // of its own), because at full roster even those pass PostgREST's
-    // 1000-row cap (go-live audit H5).
-    Promise.all(
-      sectionIds.map((id) =>
-        readAllPages<CandidateRow>(
-          (range) =>
-            supabase
-              .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
-              .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only,language_not_spoken)')
-              .order('staff_id')
-              .range(range.from, range.to) as unknown as PromiseLike<PageReply<CandidateRow>>,
-          { what: 'candidates', key: (row) => row.staff_id, ceiling: POOL_CEILING },
-        ),
-      ),
-    ),
-    // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
-    // A new RPC, typed locally until the Phase 2 type regeneration.
-    Promise.all(
-      sectionIds.map((id) =>
-        (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
-      ),
-    ),
     // ADR-0046: open offers (the Confirmed-row chips) and completed
     // hand-overs (the section's history line). The office reads
-    // shift_offers through its admin_read policy.
+    // shift_offers through its admin_read policy. Paged by id: a long-lived
+    // section collects taken hand-overs, and a cut list would drop a chip.
     sectionIds.length
-      ? supabase
-          .from('shift_offers')
-          .select(
-            'id, booking_id, shift_id, mode, status, note, expires_at, closed_at, taken_by_booking_id',
-          )
-          .in('shift_id', sectionIds)
-          .in('status', ['open', 'taken'])
-      : Promise.resolve({ data: [], error: null }),
+      ? readAllPages<OfferRow>(
+          (range) =>
+            supabase
+              .from('shift_offers')
+              .select(
+                'id, booking_id, shift_id, mode, status, note, expires_at, closed_at, taken_by_booking_id',
+              )
+              .in('shift_id', sectionIds)
+              .in('status', ['open', 'taken'])
+              .order('id')
+              .range(range.from, range.to) as unknown as PromiseLike<PageReply<OfferRow>>,
+          { what: 'shift offers', key: (row) => row.id },
+        )
+      : Promise.resolve({ data: [] as OfferRow[], error: null }),
     clientRead,
     seriesRead,
   ]);
@@ -429,7 +451,7 @@ export async function loadBoard(
     };
   }
   const bookings = (bookingRes.data ?? []) as Record<string, string | boolean | null>[];
-  const offerRows = (offerRes.data ?? []) as OfferRow[];
+  const offerRows = offerRes.data ?? [];
   const openOffers = new Map<string, BoardOffer>(
     offerRows
       .filter((o) => o.status === 'open')
@@ -438,55 +460,9 @@ export async function loadBoard(
         { offerId: o.id, mode: o.mode, expiresAt: o.expires_at, note: o.note },
       ]),
   );
-  const candidates = new Map<string, { rows: CandidateRow[] | null; problem: string | null }>(
-    sectionIds.map((id, i) => {
-      const res = candidateRes[i]!;
-      return [
-        id,
-        res.error
-          ? {
-              rows: null,
-              problem: readProblem(res.error, 'The candidate pool could not be computed'),
-            }
-          : { rows: (res.data ?? []) as CandidateRow[], problem: null },
-      ];
-    }),
-  );
-
-  const away = new Map<
-    string,
-    { windows: Map<string, UnavailableWindow[]>; problem: string | null }
-  >(
-    sectionIds.map((id, i) => {
-      const res = awayRes[i]!;
-      const windows = new Map<string, UnavailableWindow[]>();
-      for (const row of res.data ?? []) {
-        const list = windows.get(row.staff_id) ?? [];
-        list.push({ startsAt: row.starts_at, endsAt: row.ends_at });
-        windows.set(row.staff_id, list);
-      }
-      return [
-        id,
-        {
-          windows,
-          problem: res.error
-            ? readProblem(res.error, 'The availability calendar could not be read')
-            : null,
-        },
-      ];
-    }),
-  );
-
-  // Everyone the board will name: booked on a section, or a candidate the
-  // pool or Unavailable will show. wrong_role and the other gender never
-  // produce a row (§6, ADR-0079), so those workers are not even looked up.
-  const named = new Set<string>(bookings.map((b) => b['staff_id'] as string));
-  for (const { rows } of candidates.values()) {
-    for (const row of rows ?? []) {
-      if (!row.gate || showsUnderUnavailable(row.gate as HardGate)) named.add(row.staff_id);
-    }
-  }
-  const staffIds = [...named];
+  // Everyone the line-up names: booked on a section. The candidates the
+  // pool and Unavailable show are named by `loadSectionPools`.
+  const staffIds = [...new Set<string>(bookings.map((b) => b['staff_id'] as string))];
 
   const bookingIds = bookings.map((b) => b['id'] as string);
   const [staffRes, staffRoleRes, qualRes, violationRes, checkLogRes] = await Promise.all([
@@ -565,35 +541,7 @@ export async function loadBoard(
     };
   }
 
-  // The selfie is a key in the private `photos` bucket, not a URL: one
-  // batched signing for everyone the board names, and an unsigned path
-  // leaves that row on initials (_lib/photos.ts). A removed worker shows no
-  // face (§1.7), whatever the column still holds.
-  const facePath = (s: StaffRow) => (s.removed_at === null ? s.photo_path : null);
-  const photoUrls = await signStaffPhotos(staffRes.rows.map(facePath));
-
-  const rolesByStaff = new Map<string, string[]>();
-  for (const sr of staffRoleRes.rows) {
-    const list = rolesByStaff.get(sr.staff_id) ?? [];
-    list.push(roleNames.get(sr.role_id) ?? 'Role');
-    rolesByStaff.set(sr.staff_id, list);
-  }
-  const people = new Map<string, BoardPersonName>(
-    staffRes.rows.map((s) => [
-      s.id,
-      {
-        staffId: s.id,
-        name: shortName({
-          first: s.first_name,
-          last: s.last_name,
-          removed: s.removed_at !== null,
-          employeeId: s.employee_id,
-        }),
-        roles: (rolesByStaff.get(s.id) ?? []).sort(),
-        photoUrl: photoUrls.get(facePath(s) ?? '') ?? null,
-      },
-    ]),
-  );
+  const people = await namePeople(staffRes.rows, staffRoleRes.rows, roleNames);
   const qualified = new Set(qualRes.rows.map((q) => `${q.staff_id}:${q.role_id}`));
   const violationsByBooking = new Map<string, ViolationRow[]>();
   for (const v of violationRes.rows) {
@@ -697,6 +645,7 @@ export async function loadBoard(
       cancelReason: (event['cancel_reason'] as string) ?? '',
       payrollExportedAt: (event['payroll_exported_at'] as string) ?? null,
       weights,
+      known: { people, roleNames },
       sections: sections.map((section) => {
         const id = section['id'] as string;
         const roleId = section['role_id'] as string;
@@ -705,15 +654,14 @@ export async function loadBoard(
           .filter((b) => b['status'] === 'applied')
           .map((b) => toBooking(b, roleId))
           .sort((a, b) => (a.appliedAt ?? a.createdAt).localeCompare(b.appliedAt ?? b.createdAt));
-        const { rows, problem } = candidates.get(id)!;
-        const calendar = away.get(id)!;
-
         // Everyone with a live booking here is listed in its own section.
-        const live = new Set(
-          mine
-            .filter((b) => b['status'] !== 'cancelled' && b['status'] !== 'closed')
-            .map((b) => b['staff_id'] as string),
-        );
+        const live = [
+          ...new Set(
+            mine
+              .filter((b) => b['status'] !== 'cancelled' && b['status'] !== 'closed')
+              .map((b) => b['staff_id'] as string),
+          ),
+        ];
         const ended: EndedBooking[] = mine
           .filter((b) => b['status'] === 'cancelled' || b['status'] === 'closed')
           .map((b) => ({
@@ -747,31 +695,194 @@ export async function loadBoard(
             .map((b) => toBooking(b, roleId)),
           invited: mine.filter((b) => b['status'] === 'invited').map((b) => toBooking(b, roleId)),
           applied,
-          pool: rows
-            ? buildPool(
-                rows,
-                people,
-                applied.map((a) => ({
-                  staffId: a.staffId,
-                  bookingId: a.bookingId,
-                  appliedAt: a.appliedAt,
-                  createdAt: a.createdAt,
-                })),
-                weights,
-                {
-                  ended,
-                  proximityFirst: escalating.has(id),
-                  unavailable: new Set(calendar.windows.keys()),
-                },
-              )
-            : null,
-          poolProblem: problem,
-          unavailable: buildUnavailable(rows, ended, people, live, calendar.windows, format),
-          calendarProblem: calendar.problem,
           handovers: handovers(id),
           escalation: escalating.has(id),
+          poolInput: {
+            shiftId: id,
+            escalation: escalating.has(id),
+            applications: applied.map((a) => ({
+              staffId: a.staffId,
+              bookingId: a.bookingId,
+              appliedAt: a.appliedAt,
+              createdAt: a.createdAt,
+            })),
+            ended,
+            live,
+          },
         };
       }),
     },
+  };
+}
+
+/**
+ * Board rows for these workers: a short name (§1.7's anonymisation for a
+ * removed worker), the roles they hold, and the selfie. The selfie is a key
+ * in the private `photos` bucket, not a URL: one batched signing (reused
+ * across refreshes, _lib/photos.ts), and an unsigned path leaves that row on
+ * initials. A removed worker shows no face, whatever the column still holds.
+ */
+async function namePeople(
+  staff: readonly StaffRow[],
+  staffRoles: readonly { staff_id: string; role_id: string }[],
+  roleNames: ReadonlyMap<string, string>,
+): Promise<Map<string, BoardPersonName>> {
+  const facePath = (s: StaffRow) => (s.removed_at === null ? s.photo_path : null);
+  const photoUrls = await signStaffPhotos(staff.map(facePath));
+  const rolesByStaff = new Map<string, string[]>();
+  for (const sr of staffRoles) {
+    const list = rolesByStaff.get(sr.staff_id) ?? [];
+    list.push(roleNames.get(sr.role_id) ?? 'Role');
+    rolesByStaff.set(sr.staff_id, list);
+  }
+  return new Map(
+    staff.map((s) => [
+      s.id,
+      {
+        staffId: s.id,
+        name: shortName({
+          first: s.first_name,
+          last: s.last_name,
+          removed: s.removed_at !== null,
+          employeeId: s.employee_id,
+        }),
+        roles: (rolesByStaff.get(s.id) ?? []).sort(),
+        photoUrl: photoUrls.get(facePath(s) ?? '') ?? null,
+      },
+    ]),
+  );
+}
+
+/**
+ * One section's Potential pool and Unavailable list (§3.3, §3.4, ADR-0043),
+ * read and ranked now — the board streams each section's behind its own
+ * Suspense (ADR-0161), so this is the only call that waits for
+ * `auto_assign_candidates`.
+ *
+ * A failed candidate read is `pool: null` with the reason (the section says
+ * so, and still offers its Radar applicants); a failed calendar read is
+ * `calendarProblem` beside a pool that may list workers the engine will
+ * skip. Neither takes the board down.
+ */
+export async function loadSectionPools(
+  input: SectionPoolInput,
+  known: BoardPeople,
+  weights: ScoreWeights,
+  /** The operator's clock (ADR-0085), for the windows Unavailable names. */
+  format?: TimeFormat,
+): Promise<SectionPools> {
+  if (!supabaseConfigured()) {
+    return { pool: null, poolProblem: NO_SUPABASE, unavailable: [], calendarProblem: null };
+  }
+  const supabase = eventsDb(await cookies());
+
+  const [candidateRes, awayRes] = await Promise.all([
+    // One row per worker in the directory comes back, most of them
+    // wrong_role — which never produces a row on the board (§6), nor does
+    // the other gender on a gender-only section (ADR-0079), nor a worker
+    // who does not speak a language the event needs (ADR-0080). Filtered in
+    // the database, so only the workers the board can show cross the wire —
+    // and paged by staff_id (unique per row; the function has no ORDER BY
+    // of its own), because at full roster even those pass PostgREST's
+    // 1000-row cap (go-live audit H5).
+    readAllPages<CandidateRow>(
+      (range) =>
+        supabase
+          .rpc('auto_assign_candidates', {
+            p_shift: input.shiftId,
+            p_escalation: input.escalation,
+          })
+          .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only,language_not_spoken)')
+          .order('staff_id')
+          .range(range.from, range.to) as unknown as PromiseLike<PageReply<CandidateRow>>,
+      { what: 'candidates', key: (row) => row.staff_id, ceiling: POOL_CEILING },
+    ),
+    // ADR-0043: who marked this ROLE SECTION's window unavailable (RULE-18).
+    // A new RPC, typed locally until the Phase 2 type regeneration. One row
+    // per entry, and a holiday week takes in most of the roster: paged in a
+    // total order, so the 1,001st entry is not silently "available".
+    readAllPages<AwayRow>(
+      (range) =>
+        (supabase as unknown as UnavailableRpc)
+          .rpc('auto_assign_unavailable', { p_shift: input.shiftId })
+          .order('staff_id')
+          .order('starts_at')
+          .order('ends_at')
+          .range(range.from, range.to),
+      { what: 'availability entries', ceiling: POOL_CEILING },
+    ),
+  ]);
+
+  const windows = new Map<string, UnavailableWindow[]>();
+  for (const row of awayRes.data ?? []) {
+    const list = windows.get(row.staff_id) ?? [];
+    list.push({ startsAt: row.starts_at, endsAt: row.ends_at });
+    windows.set(row.staff_id, list);
+  }
+  const calendarProblem = awayRes.error
+    ? readProblem(awayRes.error, 'The availability calendar could not be read')
+    : null;
+  if (candidateRes.error) {
+    return {
+      pool: null,
+      poolProblem: readProblem(candidateRes.error, 'The candidate pool could not be computed'),
+      unavailable: [],
+      calendarProblem,
+    };
+  }
+  const rows = candidateRes.data;
+
+  // The candidates the pool or Unavailable will show and the first read did
+  // not name. wrong_role and the other gender never produce a row (§6,
+  // ADR-0079), so those workers are not even looked up.
+  const unnamed = [
+    ...new Set(
+      rows
+        .filter((row) => !row.gate || showsUnderUnavailable(row.gate as HardGate))
+        .map((row) => row.staff_id)
+        .filter((id) => !known.people.has(id)),
+    ),
+  ];
+  const [staffRes, staffRoleRes] = await Promise.all([
+    selectIn<StaffRow>(
+      supabase,
+      'staff',
+      'id, first_name, last_name, removed_at, employee_id, photo_path',
+      'id',
+      unnamed,
+      ['id'],
+    ),
+    selectIn<{ staff_id: string; role_id: string }>(
+      supabase,
+      'staff_roles',
+      'staff_id, role_id',
+      'staff_id',
+      unnamed,
+      ['staff_id', 'role_id'],
+    ),
+  ]);
+  const namesError = staffRes.error ?? staffRoleRes.error;
+  if (namesError) {
+    return {
+      pool: null,
+      poolProblem: readProblem(namesError, 'The workers in the candidate pool could not be read'),
+      unavailable: [],
+      calendarProblem,
+    };
+  }
+  const people = new Map(known.people);
+  for (const [id, person] of await namePeople(staffRes.rows, staffRoleRes.rows, known.roleNames)) {
+    people.set(id, person);
+  }
+
+  return {
+    pool: buildPool(rows, people, input.applications, weights, {
+      ended: input.ended,
+      proximityFirst: input.escalation,
+      unavailable: new Set(windows.keys()),
+    }),
+    poolProblem: null,
+    unavailable: buildUnavailable(rows, input.ended, people, new Set(input.live), windows, format),
+    calendarProblem,
   };
 }

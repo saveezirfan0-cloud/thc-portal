@@ -43,11 +43,24 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     // `*` is every column of the view, in QueueRow's shape — including
     // review_reason (20260927160000) and manual_review_reason
     // (20260928110900), which the row renders beside the AI badge.
-    supabase
-      .from('compliance_review_queue_v')
-      .select('*')
-      .order('submitted_at', { ascending: true })
-      .returns<QueueRow[]>(),
+    //
+    // Paged: at full intake (the invite roster arriving, several documents
+    // each) the queue passes PostgREST's 1000-row cap, and oldest-first the
+    // cut would drop the NEWEST uploads without a word. A row is one item of
+    // one kind, so (submitted_at, kind, item_id) is a total order. The menu's
+    // "Needs review" badge is a separate HEAD count (navCounts.ts).
+    readAllPages<QueueRow>(
+      (range) =>
+        supabase
+          .from('compliance_review_queue_v')
+          .select('*')
+          .order('submitted_at', { ascending: true })
+          .order('kind', { ascending: true })
+          .order('item_id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<QueueRow[]>(),
+      { what: 'items to review', key: (row) => `${row.kind}:${row.item_id}` },
+    ),
     // Every dated document on a live worker — about two per worker, so past
     // PostgREST's 1000-row cap at full roster. Read whole, so "All N", the
     // tab counts and the valid list are right (go-live audit H7); doc_id
