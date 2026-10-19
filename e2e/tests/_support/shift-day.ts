@@ -126,7 +126,17 @@ export function createWorker(tag: string, firstName: string, login: boolean): Wo
  */
 export function createStartedDay(
   tag: string,
-  opts: { headcount: number; buffer: number; strictBuffer: boolean },
+  opts: {
+    headcount: number;
+    buffer: number;
+    strictBuffer: boolean;
+    /**
+     * How long ago the four-hour section started; ten minutes by default.
+     * A section that started more than eight hours ago is past its
+     * check-out lock (end + 4 h, RULE-02).
+     */
+    startedMinAgo?: number;
+  },
 ): Day {
   const eventTitle = `E2E Day ${tag}`;
   const row = sql(`
@@ -137,7 +147,7 @@ export function createStartedDay(
               array[${lit(`client.${tag}@example.test`)}], true, ${opts.strictBuffer ? 'false' : 'true'})
       returning id
     ), s as (
-      select now() - interval '10 minutes' as starts_at
+      select now() - make_interval(mins => ${opts.startedMinAgo ?? 10}) as starts_at
     ), e as (
       insert into events (client_id, venue_id, venue_name, venue_address, venue_location,
                           geofence_radius_m, title, event_date, onsite_contact, pays_breaks,

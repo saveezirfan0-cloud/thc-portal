@@ -252,3 +252,123 @@ test.describe('strict buffer: the headcount is already on site (§3.2, RULE-15)'
     await expect(page.getByRole('button', { name: /Check in/ })).toHaveCount(0);
   });
 });
+
+test.describe('out of radius: the distance in red and no check-in (§5.1)', () => {
+  let day: Day | null = null;
+  let worker: Worker | null = null;
+  let booking = '';
+
+  test.beforeAll(() => {
+    if (databaseUnreachable()) return;
+    const tag = runTag('or');
+    day = createStartedDay(tag, { headcount: 2, buffer: 0, strictBuffer: false });
+    worker = createWorker(tag, 'Lapwing', true);
+    booking = bookConfirmed(day, worker);
+  });
+
+  test.afterAll(() => {
+    removeDay(day, [worker]);
+    day = null;
+    worker = null;
+  });
+
+  test('1.1 km away the button is disabled and the chip gives the distance; walking in turns it on', async ({
+    context,
+    page,
+  }) => {
+    await skipWithoutStack(page);
+    await context.grantPermissions(['geolocation']);
+    // 0.01° of latitude north of the venue: about 1.1 km, far outside 150 m.
+    await context.setGeolocation({
+      latitude: day!.venue.latitude + 0.01,
+      longitude: day!.venue.longitude,
+      accuracy: 10,
+    });
+    await openAs(page, `/shifts/${booking}`, worker!.email, PASSWORD);
+
+    const checkIn = page.getByRole('button', { name: 'Check in — verify GPS' });
+    await expect(checkIn).toBeDisabled();
+    // GpsChip's off-site state is the red one (`.gps.bad`, packages/ui).
+    const chip = page.locator('.gps.bad');
+    await expect(chip).toContainText('You’re 1.1 km from the venue.');
+    await expect(chip).toContainText(`Check-in opens within ${day!.venue.radiusM} m`);
+    // Nothing was pressed, so nothing is logged (§1.5).
+    expect(sql(`select count(*) from check_logs where booking_id = ${lit(booking)}`)).toBe('0');
+
+    // ADR-0152: the screen follows the worker; at the door the button turns on.
+    await context.setGeolocation({
+      latitude: day!.venue.latitude,
+      longitude: day!.venue.longitude,
+      accuracy: 10,
+    });
+    await page.getByRole('button', { name: 'Refresh location' }).click();
+    await expect(checkIn).toBeEnabled();
+    await expect(page.locator('.gps.bad')).toHaveCount(0);
+  });
+});
+
+test.describe('never checked out: booking_tick raises No check-out at end + 4 h (RULE-02, BG-09)', () => {
+  let day: Day | null = null;
+  let worker: Worker | null = null;
+  let booking = '';
+
+  test.beforeAll(() => {
+    if (databaseUnreachable()) return;
+    const tag = runTag('nc');
+    // A four-hour section that started 8 h 5 min ago: it ended 4 h 5 min
+    // ago, so the check-out button locked five minutes ago.
+    day = createStartedDay(tag, {
+      headcount: 2,
+      buffer: 0,
+      strictBuffer: false,
+      startedMinAgo: 8 * 60 + 5,
+    });
+    worker = createWorker(tag, 'Curlew', true);
+    booking = bookConfirmed(day, worker);
+    // Checked in on site at the start, and never checked out.
+    sql(`
+      insert into check_logs (booking_id, attempted_at, outcome, location, distance_m,
+                              check_in_at, on_site_verified)
+      select b.id, sr.starts_at, 'checked_in', e.venue_location, 0, sr.starts_at, true
+        from bookings b join shift_requirements sr on sr.id = b.shift_id
+        join events e on e.id = sr.event_id
+       where b.id = ${lit(booking)};
+      update bookings set status = 'worked' where id = ${lit(booking)};`);
+  });
+
+  test.afterAll(() => {
+    removeDay(day, [worker]);
+    day = null;
+    worker = null;
+  });
+
+  test('the tick raises it, writes no finish, and the worker sees the §10.4 screen', async ({
+    page,
+  }) => {
+    await skipWithoutStack(page);
+    // What pg_cron runs every minute (supabase/functions/booking-tick calls
+    // the same function). Idempotent: a second run raises nothing twice.
+    sql(`select booking_tick()`);
+    sql(`select booking_tick()`);
+    expect(
+      sql(`select count(*) || '|' || bool_and(not resolved) from violations
+            where booking_id = ${lit(booking)} and type = 'no_checkout'`),
+    ).toBe('1|true');
+    // RULE-02: never a silent default to the scheduled end.
+    expect(
+      sql(`select coalesce(check_out_at::text, 'none') || '|' || coalesce(manager_finish_at::text, 'none')
+             from check_logs where booking_id = ${lit(booking)} and check_in_at is not null`),
+    ).toBe('none|none');
+    expect(
+      sql(`select pay ->> 'status' from payable_shifts_v where booking_id = ${lit(booking)}`),
+    ).toBe('undetermined');
+
+    await openAs(page, `/shifts/${booking}`, worker!.email, PASSWORD);
+    const screen = page.locator('[data-static="no_checkout"]');
+    await expect(screen).toBeVisible();
+    await expect(screen).toContainText(
+      'We didn’t receive your check-out for this shift — the office is following up with you directly.',
+    );
+    await expect(page.getByRole('button', { name: 'Check out' })).toHaveCount(0);
+  });
+});
