@@ -36,7 +36,7 @@
 -- ---------------------------------------------------------------------
 -- 1 · RULE-17 for many sections: is a qualified worker still reachable?
 -- ---------------------------------------------------------------------
-create or replace function public.auto_assign_wave1_reachable(p_shifts uuid[])
+create or replace function public.auto_assign_wave1_reachable(p_shifts uuid[], p_series boolean default false)
 returns table (shift_id uuid)
 language plpgsql
 stable
@@ -59,6 +59,10 @@ begin
   -- a booking on the section cannot be reachable (the pool's blocked,
   -- wrong_role and booking_status), so only the rest are asked about, in
   -- staff_id order, the next v_step of them per section each round.
+  -- With p_series the series days count too, as auto_assign_worker_gate()
+  -- and auto_assign_candidates() judge a worker: no gate on the section
+  -- itself, then none from series_gate_for(). Radar reads the section's
+  -- own pool alone (p_series false), as it always has.
   while cardinality(v_left) > 0 loop
     select array_agg(q.shift_id order by q.shift_id, q.staff_id),
            array_agg(q.staff_id order by q.shift_id, q.staff_id)
@@ -87,7 +91,8 @@ begin
     v_open := v_open || array(
       select distinct c.shift_id
         from auto_assign_candidates_pool_pairs(v_ps, v_pw, false) c
-       where c.gate is null and c.qualified and c.booking_status is null);
+       where c.gate is null and c.qualified and c.booking_status is null
+         and (not p_series or series_gate_for(c.staff_id, c.shift_id) is null));
 
     -- still open: sections that had someone to ask this round and are not
     -- answered yet
@@ -100,11 +105,11 @@ begin
 end
 $function$;
 
-revoke execute on function public.auto_assign_wave1_reachable(uuid[]) from public, anon;
-grant  execute on function public.auto_assign_wave1_reachable(uuid[]) to authenticated, service_role;
+revoke execute on function public.auto_assign_wave1_reachable(uuid[], boolean) from public, anon;
+grant  execute on function public.auto_assign_wave1_reachable(uuid[], boolean) to authenticated, service_role;
 
-comment on function public.auto_assign_wave1_reachable(uuid[]) is
-  'RULE-17 for many sections at once (ADR-0159): the sections of p_shifts on which a worker qualified at the client and role is still reachable - no gate, qualified and holding no booking there, in auto_assign_candidates_pool_pairs()''s words. Stops asking about a section at its first reachable worker. SECURITY INVOKER; Radar reads it.';
+comment on function public.auto_assign_wave1_reachable(uuid[], boolean) is
+  'RULE-17 for many sections at once (ADR-0159): the sections of p_shifts on which a worker qualified at the client and role is still reachable - no gate, qualified and holding no booking there, in auto_assign_candidates_pool_pairs()''s words (with p_series, series_gate_for() too, as auto_assign_worker_gate() says). Stops asking about a section at its first reachable worker. SECURITY INVOKER; Radar reads it.';
 
 -- ---------------------------------------------------------------------
 -- 2 · staff_open_shifts(p_staff, p_shift)
