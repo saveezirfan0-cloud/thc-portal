@@ -350,7 +350,9 @@ export async function changePassword(
  * value the browser sends can keep one of their own and nothing more. The
  * endpoint is a bearer capability: never logged.
  */
-export async function signOutOtherDevices(keepEndpoint: string | null = null): Promise<ActionResult> {
+export async function signOutOtherDevices(
+  keepEndpoint: string | null = null,
+): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
   const { error } = await supabase.auth.signOut({ scope: 'others' });

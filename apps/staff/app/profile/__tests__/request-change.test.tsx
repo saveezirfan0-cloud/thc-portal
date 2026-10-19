@@ -61,7 +61,10 @@ beforeEach(() => {
       : { data: { ok: true, id: 'r1' }, error: null },
   );
   createSignedUploadUrl.mockResolvedValue({
-    data: { token: 'tok', signedUrl: 'http://127.0.0.1:54321/storage/v1/object/upload/sign/x?token=tok' },
+    data: {
+      token: 'tok',
+      signedUrl: 'http://127.0.0.1:54321/storage/v1/object/upload/sign/x?token=tok',
+    },
     error: null,
   });
 });
