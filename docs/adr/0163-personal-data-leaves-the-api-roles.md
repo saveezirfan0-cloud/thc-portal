@@ -23,7 +23,7 @@ RLS filters rows, never columns, and admin and worker are the same Postgres role
 5. **The worker's screens are unchanged.** `staff_me()`, `onboarding_state()` and `staff_documents()` are definers and already return what each wireframe shows — Profile's Bank & payroll form is drawn prefilled with the full sort code and account number, the onboarding review hub prints the share code, the NI number is masked. L3's one change there: `onboarding_state()` no longer carries `needsManualReview`, which no worker screen read.
 6. **A disabled login stops reading its rows at once** (`20261020120100`). The ten `staff_self*` policies match on `(select staff_caller())` — the caller's staff id only while the token's session exists and the login is not banned, the test every worker RPC already makes. One initplan per statement, cheaper than the per-policy subquery on `staff` it replaces.
 7. **anon holds nothing on any table, view or sequence in public** (`20261020120200`), and the migration role's default privileges stop handing it to the next one. Every logged-out route was checked: `/apply`, `/activate`, the throttles and every job use the service key; `/forgot` and `/reset` are GoTrue. USAGE on the schema stays (PostgREST needs it; the two RLS helpers live there).
-8. **L5:** `892` pins the 189 definers `authenticated` can execute, by signature, and asserts no definer outside `public` is reachable. A new one fails by name until it is reviewed and added.
+8. **L5:** `892` pins the definers (189 at ADR-0163; 191 with ADR-0164) `authenticated` can execute, by signature, and asserts no definer outside `public` is reachable. A new one fails by name until it is reviewed and added.
 
 ## Not done, on purpose
 

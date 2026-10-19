@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 189 functions on 20.10.2026, docs/14 §4 — so a new one fails here BY
+-- 191 functions on 20.10.2026 (189 + ADR-0164's two), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -83,6 +83,7 @@ select bag_eq(
             ('event_document_data(uuid)'),
             ('finance_report(date,date,text)'),
             ('finish_break(uuid)'),
+            ('forget_other_push_subscriptions(text)'),
             ('forget_push_subscription(text)'),
             ('invite_roster_report(timestamp with time zone)'),
             ('invite_worker(uuid,uuid,booking_source,boolean)'),
@@ -112,6 +113,7 @@ select bag_eq(
             ('office_profile_change_requests(uuid,boolean,integer)'),
             ('office_reject_selfie(uuid,text)'),
             ('office_save_emergency_contact(uuid,text,text,text)'),
+            ('office_session_policy()'),
             ('office_staff_referrals(uuid)'),
             ('office_staff_unavailability(uuid,timestamp with time zone,timestamp with time zone)'),
             ('office_submit_completion_letter(uuid,text,date,text,text)'),
@@ -225,7 +227,7 @@ select bag_eq(
             ('withdraw_booking(uuid)'),
             ('withdraw_profile_change(uuid)'),
             ('withdraw_shift_offer(uuid)') $$,
-  'the security definer functions a signed-in caller can execute are exactly these 189 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
+  'the security definer functions a signed-in caller can execute are exactly these 191 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
 );
 
 select is_empty(
