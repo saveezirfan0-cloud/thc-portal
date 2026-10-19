@@ -26,6 +26,7 @@ import type { Columns, ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { Pager } from '../_components/Pager';
 import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
+import { ChangeRequestsLink, StaffActions, StaffCrumbs, directoryCounts } from './chrome';
 import { SendPush } from './SendPush';
 import { StudentVisaView } from './StudentVisaView';
 import {
@@ -64,6 +65,12 @@ export interface StaffScreenProps {
    * may write. send_staff_message() refuses a viewer whatever this says.
    */
   canMessage?: boolean;
+  /**
+   * ADR-0161: the page has drawn the `OfficeShell` itself, around the
+   * Suspense this screen streams in behind, so the screen draws only its
+   * body. Rendered whole (the default) it draws the shell too.
+   */
+  bare?: boolean;
 }
 
 /**
@@ -145,6 +152,7 @@ export function StaffScreen({
   problem,
   pendingRequests = 0,
   canMessage = false,
+  bare = false,
 }: StaffScreenProps) {
   const [url, setUrl] = useListQuery(QUERY);
   const view = url.view === 'student' ? 'student' : 'directory';
@@ -167,16 +175,7 @@ export function StaffScreen({
   // listed here (`isWorker`).
   const staff = useMemo(() => everyone.filter(isWorker), [everyone]);
 
-  const counts = useMemo(
-    () => ({
-      all: staff.length,
-      compliant: staff.filter((row) => matchesFilter(row, 'compliant')).length,
-      blocked: staff.filter((row) => matchesFilter(row, 'blocked')).length,
-      inactive: staff.filter((row) => matchesFilter(row, 'inactive')).length,
-      removed: staff.filter((row) => matchesFilter(row, 'removed')).length,
-    }),
-    [staff],
-  );
+  const counts = useMemo(() => directoryCounts(staff), [staff]);
 
   const roles = useMemo(() => [...new Set(staff.flatMap((row) => row.role_names))].sort(), [staff]);
 
@@ -242,38 +241,8 @@ export function StaffScreen({
   const reset = (patch: Partial<Record<keyof typeof QUERY, string>>) =>
     setUrl({ ...patch, page: '1' });
 
-  return (
-    <OfficeShell
-      activeHref="/staff"
-      title="Staff"
-      crumbs={
-        <>
-          directory · <b>{counts.all.toLocaleString('en-GB')} workers</b> · {counts.compliant}{' '}
-          compliant · {counts.blocked} blocked · {counts.inactive} inactive · {counts.removed}{' '}
-          removed
-        </>
-      }
-      // In the top bar, not a band of their own above the status tabs that
-      // was empty but for two links on the right (release audit L19).
-      actions={
-        <span className="row staff-requests-link">
-          {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
-          <Link
-            href="/staff/requests"
-            className="btn sm ghost"
-            {...(pendingRequests === null
-              ? { title: 'The pending count could not be read — open the queue to see it.' }
-              : {})}
-          >
-            Change requests ({pendingRequests ?? '?'})
-          </Link>
-          {/* ADR-0107: who is SpudBros Express, and each person's Payroll ID. */}
-          <Link href="/staff/roster" className="btn sm ghost">
-            Invite list
-          </Link>
-        </span>
-      }
-    >
+  const body = (
+    <>
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
       <div className="toolbar filters">
@@ -510,6 +479,17 @@ export function StaffScreen({
           </Note>
         </>
       )}
+    </>
+  );
+  if (bare) return body;
+  return (
+    <OfficeShell
+      activeHref="/staff"
+      title="Staff"
+      crumbs={<StaffCrumbs counts={counts} />}
+      actions={<StaffActions requests={<ChangeRequestsLink count={pendingRequests} />} />}
+    >
+      {body}
     </OfficeShell>
   );
 }

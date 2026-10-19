@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { type BadgeNavigator, clearAppBadge } from '../../lib/app-badge';
 import { registerServiceWorker } from '../../lib/push';
+import { watchForStaleChunks } from '../_lib/stale-deploy';
 
 /**
  * Registers the service worker on every page — §10.5, ADR-0001.
@@ -18,6 +19,10 @@ import { registerServiceWorker } from '../../lib/push';
  * whenever the app is open in front of the worker — on launch, and each
  * time it comes back from the background — because that is when what the
  * pushes said has been seen.
+ *
+ * And, being on every page, it watches for a chunk of an older build that
+ * is gone (go-live audit M4): a tab left open over a deploy reloads onto
+ * the new build once, instead of breaking on its next screen.
  *
  * Renders nothing. `register()` is idempotent, and the failure path logs
  * once rather than breaking the page (docs/06: no SW means no offline shell
@@ -36,7 +41,13 @@ export function ServiceWorkerRegistrar() {
     };
     seen();
     document.addEventListener('visibilitychange', seen);
-    return () => document.removeEventListener('visibilitychange', seen);
+    // A tab older than the service worker asks for chunks the new build
+    // does not have; reload it onto the new one, once (app/_lib/stale-deploy.ts).
+    const stopWatching = watchForStaleChunks(window);
+    return () => {
+      document.removeEventListener('visibilitychange', seen);
+      stopWatching();
+    };
   }, []);
   return null;
 }

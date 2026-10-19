@@ -31,7 +31,7 @@ select set_config('request.jwt.claims', '', true);
 set local role service_role;
 -- Untrimmed, mixed case and spaced out on purpose: this is what a phone
 -- keyboard produces.
-select submit_application('Nadia', 'Testwood', '  Nadia.Testwood@RLS.test ', '+44 7010 000456', (current_date - interval '24 years')::date, true);
+select submit_application('Nadia', 'Testwood', '  Nadia.Testwood@RLS.test ', '+44 7010 000456', ((now() at time zone 'Europe/London')::date - interval '24 years')::date, true);
 reset role;
 
 select is((select count(*)::int from staff where email = 'nadia.testwood@rls.test'), 1,
@@ -40,7 +40,7 @@ select is((select status::text from staff where email = 'nadia.testwood@rls.test
   '§2.1 there is no "Applied" stage: the candidate lands straight in Interview requested');
 select is((select phone from staff where last_name = 'Testwood'), '+447010000456',
   'the mobile is stored in E.164, as the form promises');
-select is((select dob from staff where last_name = 'Testwood'), (current_date - interval '24 years')::date,
+select is((select dob from staff where last_name = 'Testwood'), ((now() at time zone 'Europe/London')::date - interval '24 years')::date,
   'the candidate carries the date of birth from creation (ADR-0008), which is what §2.6 needs for the share-code check');
 select is((select applied_age_band from staff where last_name = 'Testwood'), '24',
   'and the age band beside it is derived from that date, not asked for separately');
@@ -58,11 +58,11 @@ select is((select count(*)::int from audit_log where action = 'application_submi
 -- ---------------------------------------------------------------------
 set local role service_role;
 select throws_ok(
-  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', (current_date - interval '18 years' + interval '1 day')::date, true) $$,
+  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', ((now() at time zone 'Europe/London')::date - interval '18 years' + interval '1 day')::date, true) $$,
   '22023', 'You must be 18 or over to apply.',
   '§2.1 under 18 is rejected on the server, so a tampered form still fails');
 select throws_ok(
-  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', (current_date + interval '1 day')::date, true) $$,
+  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', ((now() at time zone 'Europe/London')::date + interval '1 day')::date, true) $$,
   '22023', 'Enter a real date of birth.',
   'a date in the future is refused as impossible, not as under-age');
 select throws_ok(
@@ -135,12 +135,12 @@ select is((select count(*)::int from staff where email = 'someone.newagain@rls.t
 -- The same number with a different date is a different person — a recycled
 -- number, or a second person in one household — and must not be matched.
 set local role service_role;
-select submit_application('Not','Thesame','not.thesame@rls.test','+447700900108', (current_date - interval '55 years')::date, true);
+select submit_application('Not','Thesame','not.thesame@rls.test','+447700900108', ((now() at time zone 'Europe/London')::date - interval '55 years')::date, true);
 reset role;
 select is((select outcome::text from applications where email = 'not.thesame@rls.test'), 'candidate_created',
   '§2.12 the same mobile with a different date of birth is a new candidate, not a match');
 
-select is((select dob from applications where email = 'not.thesame@rls.test'), (current_date - interval '55 years')::date,
+select is((select dob from applications where email = 'not.thesame@rls.test'), ((now() at time zone 'Europe/London')::date - interval '55 years')::date,
   'the date of birth is stored on the application row, which is what the match reads');
 
 select is((select age_band from applications where email = 'not.thesame@rls.test'), '51_60',
@@ -183,7 +183,7 @@ reset role;
 -- nothing to check until a date of birth exists, and then it bites.
 select throws_ok(
   $$ insert into staff (first_name, last_name, email, phone, dob)
-     values ('Too','Young','ty@rls.test','+447700900807', current_date - interval '17 years') $$,
+     values ('Too','Young','ty@rls.test','+447700900807', (now() at time zone 'Europe/London')::date - interval '17 years') $$,
   '23514', null,
   '§2.1 age_18 still rejects an under-18 date of birth once one is supplied');
 

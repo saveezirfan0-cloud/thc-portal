@@ -31,6 +31,14 @@ export const CHECK_IN_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Go-live audit B5 / ADR-0152: a press that got no answer at all (no
+ * signal, a gateway timeout). Pressing again is safe — every shift-screen
+ * RPC answers a repeat with "already done" and records nothing twice.
+ */
+export const NOT_SENT =
+  'We couldn’t reach THC — check your signal and press again. It’s safe to press twice.';
+
+/**
  * §5.1 / RULE-02 second trigger, word for word: off site, and no on-site
  * fix after check-in. The full-screen state (FullScreens.tsx) and the
  * message table say the same sentence.

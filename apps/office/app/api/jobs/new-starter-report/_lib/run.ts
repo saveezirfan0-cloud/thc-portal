@@ -1,4 +1,4 @@
-import type { NewStarterCsvRow } from '@thc/pdf';
+import type { NewStarterCsvRow } from '@thc/pdf/csv';
 
 /**
  * One run of the New Starter (HMRC) report job (ADR-0091), with its I/O

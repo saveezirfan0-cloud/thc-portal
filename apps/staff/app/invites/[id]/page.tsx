@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
+import { preloadShell } from '../../_components/preloadShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { LoadProblem } from '../../_components/LoadProblem';
@@ -32,6 +33,8 @@ export const metadata = { title: 'Invitation · THC Staff' };
  * empty tells the worker there is something there and when they get it.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { id } = await params;
   const { rows: all, problem } = await loadBookings();
   const invite = all.find((b) => b.bookingId === id) ?? null;

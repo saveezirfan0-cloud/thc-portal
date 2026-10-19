@@ -21,6 +21,13 @@ export interface FactorLike {
 /** Where a session at aal1 with a verified factor is sent (a public path). */
 export const VERIFY_PATH = '/login/verify';
 
+/**
+ * Where a session at aal1 with NO verified factor is sent while two-step is
+ * compulsory (ADR-0164): set up the authenticator, then carry on. A public
+ * path, under /login like the code step, so it cannot loop either.
+ */
+export const ENROL_PATH = '/login/enrol';
+
 /** Where sign-in lands when no `next` was asked for. */
 export const DEFAULT_LANDING = '/dashboard';
 
@@ -71,18 +78,22 @@ export function aalFromAccessToken(token: string | null | undefined): AssuranceL
   }
 }
 
-export type TwoStepDecision = 'pass' | 'verify';
+export type TwoStepDecision = 'pass' | 'verify' | 'enrol';
 
 /**
  * The one rule: a user who CAN reach aal2 and has not yet, types a code.
- * A user with no verified factor passes at aal1 (two-step is opt-in today,
- * ADR-0057). An unknown current level is never taken as aal2.
+ * A user with no verified factor passes at aal1 while two-step is optional
+ * (ADR-0057), and is sent to set one up while it is compulsory (`required`,
+ * ADR-0164). An unknown current level is never taken as aal2.
  */
 export function twoStepDecision(levels: {
   currentLevel: AssuranceLevel | null | undefined;
   nextLevel: AssuranceLevel | null | undefined;
+  required?: boolean;
 }): TwoStepDecision {
-  return levels.nextLevel === 'aal2' && levels.currentLevel !== 'aal2' ? 'verify' : 'pass';
+  if (levels.currentLevel === 'aal2') return 'pass';
+  if (levels.nextLevel === 'aal2') return 'verify';
+  return levels.required ? 'enrol' : 'pass';
 }
 
 /**
@@ -119,6 +130,14 @@ export function verifyStepPath(next: string): string {
   return landing === DEFAULT_LANDING
     ? VERIFY_PATH
     : `${VERIFY_PATH}?next=${encodeURIComponent(landing)}`;
+}
+
+/** The enrol step's URL (ADR-0164), built the same way. */
+export function enrolStepPath(next: string): string {
+  const landing = landingAfterVerify(next);
+  return landing === DEFAULT_LANDING
+    ? ENROL_PATH
+    : `${ENROL_PATH}?next=${encodeURIComponent(landing)}`;
 }
 
 /** GoTrue's refusal, in words for a manager. The real reason goes to the log. */

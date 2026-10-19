@@ -1,0 +1,439 @@
+-- =====================================================================
+-- The definitions 20261020150000 .. 20261020150300 replace, as they were
+-- (ADR-0166), recreated as public._old_* inside the caller's transaction
+-- for the equivalence tests (pgTAP 885, 886, 887) and the same-run "before"
+-- column of scripts/bench/office_views_at_scale.sql.
+--
+-- Verbatim from the definitions on the database before those migrations
+-- (pg_get_functiondef / pg_get_viewdef), with only the names changed: every
+-- replaced object is `_old_<name>`, and an old object reads the OLD version
+-- of anything below it that was replaced, so each old reader is the old
+-- chain end to end. Views over a replaced view that were not themselves
+-- changed (student_visa_v, staff_profile_v, clients_qualified_staff_v,
+-- compliance_review_queue_v, onboarding_returning_v) are re-read from this
+-- database and pointed at the _old_ view they read, at the end.
+--
+-- Options and privileges are the originals': the views keep
+-- security_invoker / security_barrier (owner rights) as they had them, and
+-- authenticated may read them as it may read the originals.
+-- =====================================================================
+
+-- ---- functions (20261020150000: cap_band_until; 20261020150200: the
+--      compliance_blockers chain, as LANGUAGE sql) -------------------------
+CREATE FUNCTION public._old_cap_band_until(p_holidays daterange[], p_date date)
+ RETURNS date
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  with this_week as (select cap_week_start(p_date) as w),
+       -- Every day of this Mon-Sun week (n = 0) and of the 53 after it.
+       days as (
+         select t.w + g.i as d, g.i / 7 as n
+           from this_week t, generate_series(0, 54 * 7 - 1) as g(i)
+       ),
+       marked as (
+         select days.n,
+                exists (select 1
+                          from unnest(coalesce(p_holidays, '{}'::daterange[])) r
+                         where days.d <@ r) as in_holiday
+           from days
+       ),
+       -- cap_term_state(), week by week, from those days.
+       states as (
+         select n,
+                case when bool_and(in_holiday) then 'holiday'
+                     when bool_or(in_holiday)  then 'straddle'
+                     else 'term' end as state
+           from marked
+          group by n
+       ),
+       -- The band of each state, worked out once: the cap rule is still
+       -- weekly_cap(), not a copy of it. `term` and `straddle` give the same
+       -- band (§4.4: a straddling week takes the lower cap).
+       bands as materialized (
+         select v.state, (weekly_cap(true, v.state, false, false)).band as band
+           from (values ('term'), ('straddle'), ('holiday')) as v(state)
+       ),
+       weeks as (
+         select s.n, t.w + s.n * 7 as w, b.band
+           from states s
+           join bands b on b.state = s.state
+          cross join this_week t
+       )
+  select min(w) - 1
+    from weeks
+   where n >= 1
+     and band is distinct from (select band from weeks where n = 0)
+$function$;
+
+CREATE FUNCTION public._old_term_letter_last_day(p_ranges daterange[])
+ RETURNS date
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select max(upper(r) - 1)
+    from unnest(p_ranges) r
+   where not isempty(r) and not upper_inf(r)
+$function$;
+
+CREATE FUNCTION public._old_doc_expires_on(p_doc_type doc_type, p_expiry date, p_doc_rtw date, p_staff_rtw date, p_uploaded_at timestamp with time zone, p_term_dates daterange[])
+ RETURNS date
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  with up as (
+    select (p_uploaded_at at time zone 'Europe/London')::date as d
+  )
+  select case p_doc_type
+    when 'university_term_dates_letter' then
+      coalesce(
+        _old_term_letter_last_day(p_term_dates),
+        -- No readable dates: the calendar rule of ADR-0011.
+        (select make_date(
+           extract(year from d)::int + case when extract(month from d) >= 11 then 1 else 0 end,
+           12, 31)
+           from up))
+    when 'share_code_report' then coalesce(p_doc_rtw, p_staff_rtw, p_expiry)
+    else p_expiry
+  end
+$function$;
+
+CREATE FUNCTION public._old_term_letter_applies(p_staff uuid, p_on date DEFAULT CURRENT_DATE)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select not exists (
+    select 1 from staff s
+     where s.id = p_staff
+       and (
+         (s.rtw_branch is not null and s.rtw_branch <> 'international_student')
+         or (s.graduated_at is not null
+             and s.graduated_at <= p_on
+             and (s.course_completion_date is null or s.course_completion_date <= p_on))))
+$function$;
+
+CREATE FUNCTION public._old_current_verified_docs(p_staff uuid)
+ RETURNS TABLE(doc_id uuid, doc_type doc_type, expires_on date)
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select distinct on (d.doc_type)
+         d.id,
+         d.doc_type,
+         _old_doc_expires_on(d.doc_type, d.expiry_date, d.right_to_work_until,
+                        s.right_to_work_until, d.uploaded_at, d.term_dates)
+    from compliance_docs d
+    join staff s on s.id = d.staff_id
+   where d.staff_id = p_staff
+     and d.review_status = 'verified'
+   order by d.doc_type, d.uploaded_at desc, d.id
+$function$;
+
+CREATE FUNCTION public._old_compliance_blockers(p_staff uuid, p_on date DEFAULT CURRENT_DATE)
+ RETURNS TABLE(reason text)
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select 'document_expired:' || d.doc_type::text
+    from _old_current_verified_docs(p_staff) d
+   where d.expires_on is not null
+     and d.expires_on <= p_on
+     and (d.doc_type <> 'university_term_dates_letter'
+          or _old_term_letter_applies(p_staff, p_on))
+  union all
+  select 'document_unverified:' || d.doc_type::text
+    from current_compliance_docs(p_staff) d
+   where d.status <> 'verified'
+     and d.doc_type <> 'university_completion_letter'
+     and (d.doc_type <> 'university_term_dates_letter'
+          or _old_term_letter_applies(p_staff, p_on))
+  union all
+  select 'conviction_unreviewed'
+    from (
+      select c.answer, c.review_status
+        from criminal_declarations c
+       where c.staff_id = p_staff
+         and not c.superseded
+       order by c.declared_at desc, c.id desc
+       limit 1
+    ) c
+   where c.answer and c.review_status = 'pending'
+$function$;
+
+CREATE FUNCTION public._old_onboarding_quiz_blockers(p_staff uuid)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select coalesce(onboarding_documents_missing(p_staff), '{}')
+         || coalesce((select array_agg(b.reason order by b.reason)
+                        from _old_compliance_blockers(p_staff, (now() at time zone 'Europe/London')::date) b),
+                     '{}')
+         || coalesce((select array['conviction_rejected']
+                        from (select c.answer, c.review_status
+                                from criminal_declarations c
+                               where c.staff_id = p_staff
+                                 and not c.superseded
+                               order by c.declared_at desc, c.id desc
+                               limit 1) c
+                       where c.answer and c.review_status = 'rejected'),
+                     '{}')
+         || coalesce((select array['document_unverified:university_completion_letter']
+                        from staff s
+                       where s.id = p_staff
+                         and s.rtw_branch = 'international_student'
+                         and _old_term_letter_applies(p_staff, (now() at time zone 'Europe/London')::date)
+                         and not exists (select 1 from current_compliance_docs(p_staff) c
+                                          where c.doc_type = 'university_term_dates_letter')
+                         and exists (select 1 from current_compliance_docs(p_staff) c
+                                      where c.doc_type = 'university_completion_letter'
+                                        and c.status <> 'rejected')),
+                     '{}')
+$function$;
+
+grant execute on function public._old_cap_band_until(daterange[], date),
+  public._old_term_letter_last_day(daterange[]),
+  public._old_doc_expires_on(doc_type, date, date, date, timestamptz, daterange[]),
+  public._old_term_letter_applies(uuid, date),
+  public._old_current_verified_docs(uuid),
+  public._old_compliance_blockers(uuid, date),
+  public._old_onboarding_quiz_blockers(uuid)
+  to authenticated, service_role;
+
+-- ---- staff_block_reason_v before 20261020150300 (the gate per row) --------
+create view public._old_staff_block_reason_v with (security_barrier = true) as
+ SELECT id AS staff_id,
+        CASE
+            WHEN removed_at IS NULL THEN block_reason
+            ELSE NULL::text
+        END AS block_reason
+   FROM staff s
+  WHERE current_app_role() = 'admin'::app_role;
+revoke all on public._old_staff_block_reason_v from anon, authenticated;
+grant select on public._old_staff_block_reason_v to authenticated;
+
+-- ---- staff_directory_v before 20261020150000 -------------------------------
+create view public._old_staff_directory_v with (security_invoker = true) as
+ SELECT s.id,
+    s.employee_id,
+    s.status,
+    s.removed_at IS NOT NULL AS removed,
+        CASE
+            WHEN s.removed_at IS NOT NULL THEN deleted_account_label(s.employee_id)
+            ELSE (s.first_name || ' '::text) || s.last_name
+        END AS display_name,
+        CASE
+            WHEN s.removed_at IS NULL THEN s.photo_path
+            ELSE NULL::text
+        END AS photo_path,
+    s.rating,
+    staff_show_rate(s.id)::numeric(5,2) AS reliability,
+    s.block_kind,
+    br.block_reason,
+    s.rtw_branch,
+    s.right_to_work_until,
+    s.graduated_at,
+    s.wtr_optout,
+    s.left_at,
+        CASE
+            WHEN s.removed_at IS NULL THEN s.leave_reason
+            ELSE NULL::text
+        END AS leave_reason,
+    COALESCE(( SELECT array_agg(r.name ORDER BY r.name) AS array_agg
+           FROM staff_roles sr
+             JOIN roles r ON r.id = sr.role_id
+          WHERE sr.staff_id = s.id), '{}'::text[]) AS role_names,
+    (( SELECT count(*) AS count
+           FROM violations v
+          WHERE v.staff_id = s.id AND NOT v.resolved))::integer AS unresolved_violations,
+    COALESCE(( SELECT array_agg(DISTINCT c.name ORDER BY c.name) AS array_agg
+           FROM client_qualifications q
+             JOIN clients c ON c.id = q.client_id
+          WHERE q.staff_id = s.id AND q.do_not_return), '{}'::text[]) AS do_not_return_clients,
+    cap.cap_hours AS weekly_cap_hours,
+    cap.band AS weekly_cap_band,
+    weekly_booked_hours(s.id, (now() AT TIME ZONE 'Europe/London'::text)::date) AS weekly_booked_hours,
+        CASE
+            WHEN cap.band = ANY (ARRAY['student_term_10'::cap_band, 'student_term_20'::cap_band, 'student_holiday_48'::cap_band]) THEN _old_cap_band_until(s.term_dates, (now() AT TIME ZONE 'Europe/London'::text)::date)
+            ELSE NULL::date
+        END AS weekly_cap_until,
+    ( SELECT max(sr.ends_at) AS max
+           FROM bookings b
+             JOIN shift_requirements sr ON sr.id = b.shift_id
+          WHERE b.staff_id = s.id AND b.status = 'worked'::booking_status) AS last_shift_at,
+    (( SELECT count(*) AS count
+           FROM bookings b
+          WHERE b.staff_id = s.id AND b.status = 'cancelled'::booking_status AND (b.cancel_cause = ANY (ARRAY['ready_cutoff'::text, 'left'::text, 'blocked'::text, 'gdpr'::text]))))::integer AS released_shift_count,
+        CASE
+            WHEN s.status = 'inactive'::staff_status THEN s.left_at
+            ELSE NULL::timestamp with time zone
+        END AS p45_requested_at,
+    ( SELECT COALESCE(sum(EXTRACT(epoch FROM sr.ends_at - sr.starts_at) / 3600.0), 0::numeric) AS "coalesce"
+           FROM bookings b
+             JOIN shift_requirements sr ON sr.id = b.shift_id
+          WHERE b.staff_id = s.id AND b.status = 'worked'::booking_status AND (sr.starts_at AT TIME ZONE 'Europe/London'::text)::date >= cap_week_start((now() AT TIME ZONE 'Europe/London'::text)::date) AND (sr.starts_at AT TIME ZONE 'Europe/London'::text)::date <= (cap_week_start((now() AT TIME ZONE 'Europe/London'::text)::date) + 6)) AS weekly_worked_hours,
+    s.spudbros_express,
+    s.thc_shifts_enabled,
+    s.payroll_id
+   FROM staff s
+     LEFT JOIN _old_staff_block_reason_v br ON br.staff_id = s.id
+     LEFT JOIN LATERAL ( SELECT max(c.cap_hours) AS cap_hours,
+            max(c.band) AS band
+           FROM weekly_cap_for(s.id, (now() AT TIME ZONE 'Europe/London'::text)::date) c(cap_hours, band)) cap ON true;
+grant select on public._old_staff_directory_v to authenticated, service_role;
+
+-- ---- onboarding_candidates_v before 20261020150100 (as 20261020120000,
+--      ADR-0163, left it: identity columns through staff_identity_v) ----------
+create view public._old_onboarding_candidates_v with (security_invoker = true) as
+ SELECT s.id,
+    s.first_name,
+    s.last_name,
+    (s.first_name || ' '::text) || s.last_name AS display_name,
+    s.email,
+    s.phone,
+    si.dob,
+        CASE
+            WHEN si.dob IS NOT NULL THEN EXTRACT(year FROM age((now() AT TIME ZONE 'Europe/London'::text)::date::timestamp with time zone, si.dob::timestamp with time zone))::integer
+            ELSE NULL::integer
+        END AS age,
+    s.applied_age_band,
+    s.photo_path,
+    s.status,
+    s.stage_entered_at,
+    s.onboarding_started_at,
+    s.created_at AS applied_at,
+    s.gdpr_consent_at,
+    s.employee_id,
+    s.rtw_branch,
+    s.right_to_work_until,
+    si.share_code,
+    COALESCE(staff_account_activated(s.id), false) AS activated,
+    COALESCE(( SELECT array_agg(r.name ORDER BY r.name) AS array_agg
+           FROM staff_roles sr
+             JOIN roles r ON r.id = sr.role_id
+          WHERE sr.staff_id = s.id), '{}'::text[]) AS role_names,
+    COALESCE(( SELECT array_agg(sr.role_id) AS array_agg
+           FROM staff_roles sr
+          WHERE sr.staff_id = s.id), '{}'::uuid[]) AS role_ids,
+    s.willo_candidate_id IS NOT NULL AS willo_linked,
+        CASE
+            WHEN s.willo_candidate_id IS NOT NULL AND jsonb_typeof(( SELECT settings.value
+               FROM settings
+              WHERE settings.key = 'willo_review_url_template'::text)) = 'string'::text THEN replace(( SELECT settings.value #>> '{}'::text[]
+               FROM settings
+              WHERE settings.key = 'willo_review_url_template'::text), '{id}'::text, s.willo_candidate_id)
+            ELSE NULL::text
+        END AS willo_review_url,
+    s.willo_invited_at,
+    s.willo_answers_done,
+    s.willo_answers_total,
+    s.willo_completed_at,
+    s.willo_decision,
+    s.willo_decided_at,
+    s.willo_decided_via,
+    docs.docs_total,
+    docs.docs_verified,
+    docs.docs_pending,
+    docs.docs_rejected,
+    ( SELECT max(c.reviewed_at) AS max
+           FROM compliance_docs c
+          WHERE c.staff_id = s.id AND c.review_status = 'rejected'::review_status) AS last_doc_rejected_at,
+    onboarding_documents_missing(s.id) AS docs_missing,
+    _old_onboarding_quiz_blockers(s.id) AS quiz_blockers,
+    ( SELECT c.answer
+           FROM criminal_declarations c
+          WHERE c.staff_id = s.id AND NOT c.superseded
+          ORDER BY c.declared_at DESC
+         LIMIT 1) AS declaration_answer,
+    ( SELECT c.review_status
+           FROM criminal_declarations c
+          WHERE c.staff_id = s.id AND NOT c.superseded
+          ORDER BY c.declared_at DESC
+         LIMIT 1) AS declaration_status,
+    quiz.quiz_attempts_used,
+    quiz.quiz_best_score,
+    quiz.quiz_passed_at,
+    ( SELECT h.submitted_at
+           FROM hmrc_checklists h
+          WHERE h.staff_id = s.id AND NOT h.superseded) AS hmrc_submitted_at,
+    (( SELECT count(*) AS count
+           FROM staff_references r
+          WHERE r.staff_id = s.id))::integer AS references_count,
+    (EXISTS ( SELECT 1
+           FROM bank_details b
+          WHERE b.staff_id = s.id)) AS bank_saved,
+    si.ni_number IS NOT NULL AS ni_entered,
+    s.contract_signed_at,
+    s.contract_version,
+    s.rejected_at,
+    s.rejected_from,
+    s.rejection_cause,
+    ( SELECT r.rejection_reason
+           FROM staff_rejection_reason_v r
+          WHERE r.staff_id = s.id) AS rejection_reason,
+    p.full_name AS rejected_by_name,
+    staff_account_activated_at(s.id) AS activated_at,
+    ( SELECT
+                CASE
+                    WHEN p_1.hmrc_at IS NOT NULL AND p_1.references_at IS NOT NULL AND p_1.bank_at IS NOT NULL THEN GREATEST(p_1.hmrc_at, p_1.references_at, p_1.bank_at)
+                    ELSE NULL::timestamp with time zone
+                END AS "case"
+           FROM onboarding_progress p_1
+          WHERE p_1.staff_id = s.id) AS additional_info_done_at,
+    COALESCE(quiz.quiz_scores, '{}'::integer[]) AS quiz_scores,
+    s.spudbros_express,
+    s.thc_shifts_enabled,
+    s.payroll_id
+   FROM staff s
+     LEFT JOIN profiles p ON p.id = s.rejected_by
+     LEFT JOIN staff_identity_v si ON si.staff_id = s.id
+     LEFT JOIN LATERAL ( SELECT count(*)::integer AS docs_total,
+            count(*) FILTER (WHERE d.status = 'verified'::review_status)::integer AS docs_verified,
+            count(*) FILTER (WHERE d.status = 'pending'::review_status)::integer AS docs_pending,
+            count(*) FILTER (WHERE d.status = 'rejected'::review_status)::integer AS docs_rejected
+           FROM current_compliance_docs(s.id) d(doc_id, doc_type, status)) docs ON true
+     LEFT JOIN LATERAL ( SELECT count(*)::integer AS quiz_attempts_used,
+            max(q.score) AS quiz_best_score,
+            min(q.taken_at) FILTER (WHERE q.passed) AS quiz_passed_at,
+            array_agg(round(q.score)::integer ORDER BY q.attempt_no) AS quiz_scores
+           FROM quiz_attempts q
+          WHERE q.staff_id = s.id AND q.taken_at >= s.onboarding_started_at) quiz ON true
+  WHERE s.removed_at IS NULL;
+
+grant select on public._old_onboarding_candidates_v to authenticated, service_role;
+
+-- ---- the unchanged readers, pointed at the old views they read --------------
+do $old$
+declare
+  v record;
+  v_def text;
+begin
+  for v in
+    select * from (values
+      ('student_visa_v',            'staff_directory_v'),
+      ('staff_profile_v',           'staff_directory_v'),
+      ('clients_qualified_staff_v', 'staff_directory_v'),
+      ('compliance_review_queue_v', 'staff_block_reason_v'),
+      ('onboarding_returning_v',    'staff_block_reason_v')
+    ) as x(name, reads)
+  loop
+    v_def := pg_get_viewdef(('public.' || v.name)::regclass, true);
+    if v_def !~ ('(?<![.\w])' || v.reads || '(?!\w)') then
+      raise exception '_old_%: % no longer reads %', v.name, v.name, v.reads;
+    end if;
+    v_def := regexp_replace(v_def, '(?<![.\w])' || v.reads || '(?!\w)', '_old_' || v.reads, 'g');
+    execute format('create view public.%I with (%s) as %s', '_old_' || v.name,
+                   (select array_to_string(c.reloptions, ', ') from pg_class c
+                     where c.oid = ('public.' || v.name)::regclass), v_def);
+    execute format('grant select on public.%I to authenticated, service_role', '_old_' || v.name);
+  end loop;
+end
+$old$;

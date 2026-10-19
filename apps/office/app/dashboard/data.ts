@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
+import type { PageReply } from '@thc/db/paged';
 import {
   type FinanceRow,
   type KpiRow,
@@ -10,6 +12,7 @@ import {
   groupByEvent,
   money,
 } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /dashboard — Scope §9.1.
@@ -65,24 +68,34 @@ export async function loadDashboard({ finance: withFinance = true } = {}): Promi
     withFinance
       ? supabase.from('dashboard_week_finance_v').select('*').maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    supabase
-      .from('dashboard_upcoming_v')
-      .select('*')
-      // A cancelled event never appears on the Dashboard (ADR-0102). The
-      // row is kept for the record; this screen just does not list it.
-      .is('cancelled_at', null)
-      // By date, then by the event's own window, then by when the role
-      // section starts — the order §9.1 asks for and the order a manager
-      // reads the day in.
-      .order('event_date', { ascending: true })
-      .order('event_starts_at', { ascending: true })
-      .order('starts_at', { ascending: true })
-      .order('role_name', { ascending: true }),
+    // One row per role section over ten days: 15 events × several roles ×
+    // ten days passes PostgREST's 1000-row cap, which would cut the LAST
+    // days off the list without a word (go-live audit M11). Paged, with the
+    // section id closing the order so no row is lost at a page boundary.
+    readAllPages<UpcomingRow>(
+      (range) =>
+        supabase
+          .from('dashboard_upcoming_v')
+          .select('*')
+          // A cancelled event never appears on the Dashboard (ADR-0102). The
+          // row is kept for the record; this screen just does not list it.
+          .is('cancelled_at', null)
+          // By date, then by the event's own window, then by when the role
+          // section starts — the order §9.1 asks for and the order a manager
+          // reads the day in.
+          .order('event_date', { ascending: true })
+          .order('event_starts_at', { ascending: true })
+          .order('starts_at', { ascending: true })
+          .order('role_name', { ascending: true })
+          .order('shift_id', { ascending: true })
+          .range(range.from, range.to) as unknown as PromiseLike<PageReply<UpcomingRow>>,
+      { what: 'role sections', key: (row) => row.shift_id },
+    ),
   ]);
 
   const failure = kpis.error ?? finance.error ?? upcoming.error;
   if (failure) {
-    return { kpis: null, finance: null, upcoming: [], problem: failure.message };
+    return { kpis: null, finance: null, upcoming: [], problem: readProblem(failure) };
   }
 
   // The three views are not in the generated `Database` type: they are
@@ -91,7 +104,7 @@ export async function loadDashboard({ finance: withFinance = true } = {}): Promi
   // 20260922182000_dashboard_kpis.sql.
   const kpiRow = kpis.data as unknown as KpiRow | null;
   const financeRow = finance.data as unknown as FinanceRow | null;
-  const rows = (upcoming.data ?? []) as unknown as UpcomingRow[];
+  const rows = upcoming.data ?? [];
 
   return {
     kpis: kpiRow && {

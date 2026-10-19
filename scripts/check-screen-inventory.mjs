@@ -38,7 +38,9 @@ const APPS = ['apps/office/app', 'apps/staff/app', 'apps/client/app'];
  * Client Portal's `/client/session`, a 204 the feedback dialog probes to tell
  * an expired session from a lost connection (ADR-0133).
  */
-const NOT_SCREENS = [/^\/auth\//, /^\/client\/session$/];
+// /api/csp-report: the browser POSTs Content-Security-Policy violation reports
+// there (ADR-0164); nobody visits it.
+const NOT_SCREENS = [/^\/auth\//, /^\/client\/session$/, /^\/api\/csp-report$/];
 
 /** Every `page.tsx` and `route.ts` under a directory, as a Next.js route. */
 function routesOf(appDir) {

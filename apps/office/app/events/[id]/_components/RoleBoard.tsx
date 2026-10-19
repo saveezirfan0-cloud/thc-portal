@@ -1,12 +1,11 @@
-import type { ReactNode } from 'react';
-import { Avatar, Pill } from '@thc/ui';
+import { Suspense } from 'react';
+import { Pill } from '@thc/ui';
 import {
   type EventStatus,
   type ScoreWeights,
   type TimeFormat,
   SERIES_LABEL,
   UK_ZONE,
-  appliedAgo,
   canCancelBooking,
   canMarkNoShow,
   formatAllocationPair,
@@ -18,9 +17,8 @@ import {
   sectionHours,
   showsCandidatePools,
 } from '@thc/domain';
-import type { BoardBooking, BoardSection } from '../board-data';
+import type { BoardBooking, BoardPeople, BoardSection } from '../board-data';
 import {
-  type UnavailableEntry,
   canToggleAutoAssign,
   handedOverLine,
   offerChip,
@@ -28,31 +26,13 @@ import {
   roleBlockOpen,
 } from '../board-model';
 import { ScheduledWindow } from '../../_components/ScheduledWindow';
-import { ApplicationActions } from './ApplicationActions';
 import { AttendancePills, AttendanceStamp } from './Attendance';
 import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
-import { InviteAnyway } from './InviteAnyway';
-import { PotentialPool } from './PotentialPool';
+import { Person, appliedMarker } from './Person';
 import { RoleBlock } from './RoleBlock';
-import { StaffRoles } from './StaffRoles';
+import { SectionPools, SectionPoolsSkeleton } from './SectionPools';
 import { REQUIRED_GENDER_LABEL } from '../../draft';
-
-function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: ReactNode }) {
-  return (
-    <>
-      <Avatar
-        name={person.name}
-        src={person.photoUrl ?? undefined}
-        deleted={person.name.startsWith('Deleted account')}
-      />
-      <div className="who">
-        <div className="n">{person.name}</div>
-        <div className="s">{sub}</div>
-      </div>
-    </>
-  );
-}
 
 /**
  * One role section of the board — Scope §3.3.
@@ -71,6 +51,11 @@ function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub:
  * `violations` — On shift / Checked out HH:MM / Late / Left early / No
  * check-out with the way to the Violation log — and "No show" only once
  * the section has started (`canMarkNoShow`).
+ *
+ * The Potential pool and Unavailable stream in behind their own Suspense
+ * (`SectionPools`, ADR-0161): everything above them is drawn from the
+ * board's first read. A section that shows neither — the event over or
+ * cancelled — never asks for its pool at all.
  */
 export function RoleBoard({
   section,
@@ -80,6 +65,7 @@ export function RoleBoard({
   eventAutoAssign,
   weights,
   payrollExported,
+  known,
   format,
   now = new Date(),
 }: {
@@ -90,6 +76,8 @@ export function RoleBoard({
   eventAutoAssign: boolean;
   weights: ScoreWeights;
   payrollExported: boolean;
+  /** Everyone the board's first read named, for the streamed pool to reuse. */
+  known: BoardPeople;
   /** The operator's clock (ADR-0085): this is a server component, so the page passes it down. */
   format?: TimeFormat;
   now?: Date;
@@ -300,90 +288,22 @@ export function RoleBoard({
         </div>
       ) : null}
 
-      {showPools && section.pool ? (
-        <PotentialPool
-          eventId={eventId}
-          shiftId={section.id}
-          clientName={clientName}
-          roleName={section.roleName}
-          entries={section.pool}
-          weights={weights}
-          problem={null}
-          canInvite={canInvite}
-          escalation={section.escalation}
-        />
-      ) : null}
-
-      {showPools && !section.pool ? (
-        // The candidates could not be computed: say so, and still offer the
-        // Radar applicants, who are known from their bookings alone.
-        <div className="sub">
-          <div className="subh">Potential pool</div>
-          <div className="prow coral sm" role="alert">
-            {section.poolProblem ?? 'The candidate pool could not be computed.'}
-          </div>
-          {section.applied.map((booking) => (
-            <div className="prow" key={booking.bookingId}>
-              <Person person={booking} sub={`${section.roleName} · self-applied via Radar`} />
-              <span className="applied">{appliedMarker(booking)}</span>
-              <div className="right">
-                {canInvite ? (
-                  <ApplicationActions
-                    eventId={eventId}
-                    bookingId={booking.bookingId}
-                    name={booking.name}
-                  />
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {live && (section.unavailable.length > 0 || section.calendarProblem) ? (
-        // Collapsed by default (wireframe "Unavailable ▸ collapsed") — but
-        // open when the calendar could not be read, so that is not hidden.
-        <details className="sub" open={section.calendarProblem ? true : undefined}>
-          <summary className="subh">
-            <span className="car" aria-hidden="true" />
-            Unavailable <span className="n">{section.unavailable.length}</span>
-            <span className="right muted sm">wrong-role never produces a row here</span>
-          </summary>
-          {section.calendarProblem ? (
-            // ADR-0043: without the calendar the pool above may list workers
-            // the engine will skip. Say so rather than show a quiet list.
-            <div className="prow coral sm" role="alert">
-              {section.calendarProblem}
-            </div>
-          ) : null}
-          {section.unavailable.map((person) => (
-            <div className="prow" key={person.staffId}>
-              <Person
-                person={person}
-                sub={
-                  <StaffRoles name={person.name} roles={person.roles} roleName={section.roleName} />
-                }
-              />
-              {person.appliedAt ? (
-                <span className="applied">{appliedAgo(new Date(person.appliedAt))}</span>
-              ) : null}
-              <div className="right">
-                <Pill tone={person.tone}>{person.label}</Pill>
-                {person.detail ? <span className="muted xs">{person.detail}</span> : null}
-                {/* ADR-0043: the calendar holds back the machine, not the
-                    office — behind a confirm, the ordinary manual invite. */}
-                {person.inviteAnyway && canInvite && showPools ? (
-                  <InviteAnyway
-                    eventId={eventId}
-                    shiftId={section.id}
-                    staffId={person.staffId}
-                    name={person.name}
-                  />
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </details>
+      {showPools || live ? (
+        <Suspense
+          fallback={<SectionPoolsSkeleton showPools={showPools} roleName={section.roleName} />}
+        >
+          <SectionPools
+            section={section}
+            known={known}
+            weights={weights}
+            eventId={eventId}
+            clientName={clientName}
+            showPools={showPools}
+            live={live}
+            canInvite={canInvite}
+            format={format}
+          />
+        </Suspense>
       ) : null}
     </RoleBlock>
   );
@@ -405,11 +325,6 @@ function confirmedLine(booking: BoardBooking, roleName: string, format?: TimeFor
   // ADR-0046: booked by taking a cover request the office opened to the pool.
   if (booking.source === 'offer') parts.push('took an offered shift');
   return parts.join(' · ');
-}
-
-/** "Applied 2h ago" (§3.3), computed on each render — never a snapshot. */
-function appliedMarker(booking: BoardBooking): string {
-  return booking.appliedAt ? appliedAgo(new Date(booking.appliedAt)) : 'Applied';
 }
 
 function invitedLine(booking: BoardBooking, format?: TimeFormat): string {

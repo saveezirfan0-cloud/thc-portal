@@ -21,6 +21,7 @@ import {
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { ApplyFormLink, OnboardingCrumbs } from './chrome';
 import { useAutoRefresh } from '../_components/useAutoRefresh';
 import { oneOf, useListQuery } from '../_lib/listQuery';
 import { employeeId, formatRating, formatShowRate } from '../staff/staff';
@@ -152,16 +153,24 @@ export function OnboardingBoard({
   data,
   now,
   applyUrl,
+  bare = false,
 }: {
   data: BoardData;
   now: string;
   /** Null when the Staff App's origin is not configured in production. */
   applyUrl: string | null;
+  /**
+   * ADR-0161: the page has drawn the `OfficeShell` itself, around the
+   * Suspense this screen streams in behind, so the screen draws only its
+   * body. Rendered whole (the default) it draws the shell too.
+   */
+  bare?: boolean;
 }) {
   const router = useRouter();
   // Cards move on their own (Willo webhook, documents verified, quiz passed),
-  // so the board re-reads every 30 s and when the tab regains focus.
-  useAutoRefresh();
+  // so the board re-reads every 60 s (the candidates view is heavy — go-live
+  // audit H3) and when the tab regains focus.
+  useAutoRefresh(60_000);
   const at = useMemo(() => new Date(now), [now]);
   const [url, setUrl] = useListQuery(QUERY);
   const filter = oneOf(url.view, VIEWS, 'active');
@@ -231,23 +240,8 @@ export function OnboardingBoard({
     });
   };
 
-  return (
-    <OfficeShell
-      activeHref="/onboarding"
-      title="Onboarding"
-      crumbs={
-        <>
-          candidate pipeline · <b>{counts.active} active</b> · {counts.rejected} rejected
-        </>
-      }
-      actions={
-        applyUrl ? (
-          <a className="btn sm" href={applyUrl} target="_blank" rel="noreferrer">
-            Open /apply form ↗
-          </a>
-        ) : null
-      }
-    >
+  const body = (
+    <>
       <div className="stack">
         {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
         {data.referredProblem ? (
@@ -449,6 +443,17 @@ export function OnboardingBoard({
           </div>
         ) : null}
       </Modal>
+    </>
+  );
+  if (bare) return body;
+  return (
+    <OfficeShell
+      activeHref="/onboarding"
+      title="Onboarding"
+      crumbs={<OnboardingCrumbs active={counts.active} rejected={counts.rejected} />}
+      actions={<ApplyFormLink url={applyUrl} />}
+    >
+      {body}
     </OfficeShell>
   );
 }

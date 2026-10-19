@@ -45,10 +45,38 @@ export const PERSONAL_CACHES = [
 ] as const;
 
 export async function deletePersonalCaches(storage: CacheStorage): Promise<void> {
+  await deleteNamed(storage, PERSONAL_CACHES);
+}
+
+/**
+ * The build's own content-hashed files (`/_next/static/…`), kept
+ * cache-first in one cache of their own (sw.ts, go-live audit M4). A
+ * subset of `isStaticAsset`.
+ */
+export const BUILD_ASSET_CACHE = 'next-static';
+export function isBuildAsset(url: URL): boolean {
+  return url.pathname.startsWith('/_next/static/');
+}
+
+/**
+ * `defaultCache`'s caches for build files, from before they had
+ * `BUILD_ASSET_CACHE`. Nothing personal is in them, but nothing writes to
+ * them any more either, so their expiry never runs again. They are
+ * deleted on activate rather than left on the phone for good.
+ */
+export const SUPERSEDED_CACHES = [
+  'next-static-js-assets',
+  'static-style-assets',
+  'static-font-assets',
+] as const;
+
+export async function deleteSupersededCaches(storage: CacheStorage): Promise<void> {
+  await deleteNamed(storage, SUPERSEDED_CACHES);
+}
+
+async function deleteNamed(storage: CacheStorage, doomed: readonly string[]): Promise<void> {
   const names = await storage.keys();
   await Promise.all(
-    names
-      .filter((name) => (PERSONAL_CACHES as readonly string[]).includes(name))
-      .map((name) => storage.delete(name)),
+    names.filter((name) => doomed.includes(name)).map((name) => storage.delete(name)),
   );
 }

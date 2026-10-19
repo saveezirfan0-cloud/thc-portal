@@ -3,6 +3,7 @@ import { EmptyState, Pill } from '@thc/ui';
 import { explainLimit, formatDistance, sectionHours } from '@thc/domain';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
+import { preloadShell } from '../_components/preloadShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { LoadProblem } from '../_components/LoadProblem';
@@ -48,6 +49,8 @@ export const metadata = { title: 'Invites · THC Staff' };
  *     worker taps. `accept_invite` still refuses it; the line is a warning.
  */
 export default async function Page() {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { rows: bookings, problem } = await loadBookings();
   const { rows: requirementRows } = await loadShiftRequirements();
   const requirements = requirementsByBooking(requirementRows);
@@ -98,7 +101,7 @@ export default async function Page() {
                   <ShiftTime startsAt={invite.startsAt} endsAt={invite.endsAt} withDate />
                 </span>
               </div>
-              <Link className="t" href={`/invites/${invite.bookingId}`}>
+              <Link className="t" href={`/invites/${invite.bookingId}`} prefetch={false}>
                 {invite.eventTitle} · {invite.role}
               </Link>
               <div className="m">

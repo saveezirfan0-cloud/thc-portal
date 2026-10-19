@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CHECK_OUT_FIX, getFix } from '../geo';
+import { CHECK_OUT_FIX, WATCH_FIX, getFix, watchFix } from '../geo';
 
 /**
  * §5.1 · one GPS reading, with a deadline. Driven by a fake `Geolocation`,
@@ -66,5 +66,73 @@ describe('getFix()', () => {
     const why = vi.fn();
     expect(await getFix(undefined, CHECK_OUT_FIX, why)).toBeNull();
     expect(why).toHaveBeenCalledWith('unsupported');
+  });
+});
+
+/** Go-live audit B4: the check-in window's live location line. */
+describe('watchFix()', () => {
+  function watchGeo() {
+    let onFix: Success = () => {};
+    let onError: Failure = () => {};
+    const options: PositionOptions[] = [];
+    const clearWatch = vi.fn();
+    const geo = {
+      getCurrentPosition: vi.fn(),
+      watchPosition: (ok: Success, fail: Failure, o: PositionOptions) => {
+        onFix = ok;
+        onError = fail;
+        options.push(o);
+        return 42;
+      },
+      clearWatch,
+    } as unknown as Geolocation;
+    return {
+      geo,
+      options,
+      clearWatch,
+      fix: (p: GeolocationPosition) => onFix(p),
+      fail: (e: GeolocationPositionError) => onError(e),
+    };
+  }
+
+  it('hands on each position: high accuracy, recent readings allowed, no timeout', () => {
+    const w = watchGeo();
+    const fixes: unknown[] = [];
+    watchFix(w.geo, (f) => fixes.push(f));
+    w.fix(position(51.5, -0.1, 7.6));
+    w.fix(position(51.6, -0.2, 3));
+    expect(fixes).toEqual([
+      { lat: 51.5, lng: -0.1, accuracyM: 8 },
+      { lat: 51.6, lng: -0.2, accuracyM: 3 },
+    ]);
+    expect(w.options[0]).toEqual({ enableHighAccuracy: true, maximumAge: WATCH_FIX.maximumAgeMs });
+    expect(w.options[0]).not.toHaveProperty('timeout');
+  });
+
+  it('stopping it clears that watch', () => {
+    const w = watchGeo();
+    const stop = watchFix(w.geo, () => {});
+    stop();
+    expect(w.clearWatch).toHaveBeenCalledWith(42);
+  });
+
+  it('reports a refused permission, but not a temporary miss', () => {
+    const w = watchGeo();
+    const why: string[] = [];
+    watchFix(
+      w.geo,
+      () => {},
+      (reason) => why.push(reason),
+    );
+    w.fail(failure(3));
+    w.fail(failure(2));
+    w.fail(failure(1));
+    expect(why).toEqual(['denied']);
+  });
+
+  it('no geolocation, or one that cannot watch: a no-op', () => {
+    expect(() => watchFix(null, () => {})()).not.toThrow();
+    const oneShotOnly = { getCurrentPosition: vi.fn() } as unknown as Geolocation;
+    expect(() => watchFix(oneShotOnly, () => {})()).not.toThrow();
   });
 });

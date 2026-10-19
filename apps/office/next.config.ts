@@ -30,11 +30,14 @@ const nextConfig: NextConfig = {
   // tracing does not follow, so on Vercel every PDF failed with "Cannot find
   // module …/pdfkit/js/standard-fonts/Helvetica.cjs" (the event-documents job
   // gave up on the first event after eight tries, ADR-0074). About 0.8 MB.
+  // Every route that draws a PDF needs it: the New Starter report job was
+  // missed and failed the same way every 15 minutes until it was added.
   outputFileTracingIncludes: {
     '/api/jobs/rtw-check': [
       '../../node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**',
     ],
     '/api/jobs/event-documents': PDFKIT_FILES,
+    '/api/jobs/new-starter-report': PDFKIT_FILES,
     '/api/documents/**': PDFKIT_FILES,
   },
   env: { APP_TZ: process.env.APP_TZ ?? 'Europe/London' },

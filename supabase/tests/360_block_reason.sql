@@ -84,8 +84,8 @@ select ok(not has_column_privilege('anon', 'public.staff', 'block_reason', 'sele
 
 select ok(has_column_privilege('authenticated', 'public.staff', 'id', 'select'),
   'the rest of the row is untouched: staff_self (0001) still has a column to select');
-select ok(has_column_privilege('authenticated', 'public.staff', 'dob', 'select'),
-  'including the personal columns a worker legitimately reads about themselves — the cut is one column wide, not a narrowing of `staff`');
+select ok(has_column_privilege('authenticated', 'public.staff', 'first_name', 'select'),
+  'including the columns a worker legitimately reads about themselves — the cut is one column wide, not a narrowing of `staff` (the identity columns went later, by ADR-0163, and are read through staff_me())');
 
 select ok(has_table_privilege('authenticated', 'public.staff_block_reason_v', 'select'),
   'the view is granted to authenticated, because admin and worker are the same Postgres role; the gate is in its body, per ADR-0004');

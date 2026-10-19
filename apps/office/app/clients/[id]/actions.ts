@@ -4,9 +4,10 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { type DbError, explainDbError } from '../../_lib/dbError';
+import { BULK_CONCURRENCY, mapPool } from '../../_lib/pool';
 import { supabaseConfigured } from '../data';
-import { chargeRateProblem } from './card';
-import type { ActionResult } from './types';
+import { PICKER_PAGE, chargeRateProblem, pickerSearch } from './card';
+import type { ActionResult, PickerPage, StaffOption } from './types';
 
 /**
  * Writes for /clients/:id (§9.7).
@@ -122,19 +123,21 @@ export async function qualifyStaff(
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies()) as unknown as RpcClient;
-  const failures: string[] = [];
-
-  for (const staffId of staffIds) {
-    for (const roleId of roleIds) {
-      const { error } = await supabase.rpc('grant_client_qualification', {
-        p_staff: staffId,
-        p_client: clientId,
-        p_role: roleId,
-        p_note: note.trim() || null,
-      });
-      if (error) failures.push(explainDbError(error, CARD_WORDING));
-    }
-  }
+  // Each pair is still its own call, refused or granted on its own — eight
+  // at a time rather than one after another (go-live audit M5): twelve
+  // workers × three roles is 36 round trips.
+  const pairs = staffIds.flatMap((staffId) => roleIds.map((roleId) => ({ staffId, roleId })));
+  const replies = await mapPool(pairs, BULK_CONCURRENCY, async ({ staffId, roleId }) =>
+    supabase.rpc('grant_client_qualification', {
+      p_staff: staffId,
+      p_client: clientId,
+      p_role: roleId,
+      p_note: note.trim() || null,
+    }),
+  );
+  const failures = replies.flatMap((reply) =>
+    reply?.error ? [explainDbError(reply.error, CARD_WORDING)] : [],
+  );
 
   revalidatePath(`/clients/${clientId}`);
   // Partial success is reported rather than swallowed: a worker who does
@@ -203,4 +206,97 @@ export async function resetQuizAttempts(
   staffId: string,
 ): Promise<ActionResult> {
   return callRpc('reset_client_quiz_attempts', { p_quiz: quizId, p_staff: staffId }, clientId);
+}
+
+/** The picker's reads, typed narrowly: `staff`, `staff_roles` and `roles` by name. */
+interface PickerQuery<T> extends PromiseLike<{
+  data: T[] | null;
+  error: DbError | null;
+  count?: number | null;
+}> {
+  eq(column: string, value: string | number): PickerQuery<T>;
+  is(column: string, value: null): PickerQuery<T>;
+  or(filters: string): PickerQuery<T>;
+  in(column: string, values: readonly string[]): PickerQuery<T>;
+  order(column: string): PickerQuery<T>;
+  range(from: number, to: number): PickerQuery<T>;
+}
+interface PickerClient {
+  from(table: 'staff'): {
+    select(
+      columns: string,
+      options: { count: 'exact' },
+    ): PickerQuery<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      employee_id: number | null;
+    }>;
+  };
+  from(table: 'staff_roles'): {
+    select(columns: string): PickerQuery<{ staff_id: string; role_id: string }>;
+  };
+  from(table: 'roles'): { select(columns: string): PickerQuery<{ id: string; name: string }> };
+}
+
+/**
+ * "+ Add staff" (§9.7): one page of the compliant workers whose first or
+ * last name holds every word typed, or whose Employee ID it is — with the
+ * roles each holds, so the dialog can grey out who cannot take the chosen
+ * role. Read off `staff` and `staff_roles` (admin_all / admin_read), a
+ * narrow indexed read, instead of the whole `staff_directory_v` — which
+ * computed the weekly cap for all ~1,000 workers to fill a name list, and
+ * was cut at 1,000 by name (go-live audit M2). A removed worker is never
+ * offered (§1.7). `total` is the server's exact count, for "Showing N of M".
+ */
+export async function searchQualifyPicker(query: string, offset = 0): Promise<PickerPage> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as PickerClient;
+  const { words, employeeId } = pickerSearch(String(query ?? ''));
+  const from = Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
+
+  let read = supabase
+    .from('staff')
+    .select('id, first_name, last_name, employee_id', { count: 'exact' })
+    .eq('status', 'compliant')
+    .is('removed_at', null);
+  if (employeeId !== null) read = read.eq('employee_id', employeeId);
+  // `*` is PostgREST's ilike wildcard; pickerSearch has already dropped every
+  // character its filter syntax reserves.
+  for (const word of words) read = read.or(`first_name.ilike.*${word}*,last_name.ilike.*${word}*`);
+  const page = await read
+    .order('first_name')
+    .order('last_name')
+    .order('id')
+    .range(from, from + PICKER_PAGE - 1);
+  if (page.error) return { ok: false, message: explainDbError(page.error, CARD_WORDING) };
+
+  const rows = page.data ?? [];
+  const ids = rows.map((row) => row.id);
+  const [held, roles] = ids.length
+    ? await Promise.all([
+        supabase.from('staff_roles').select('staff_id, role_id').in('staff_id', ids),
+        supabase.from('roles').select('id, name'),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+  const failed = held.error ?? roles.error;
+  if (failed) return { ok: false, message: explainDbError(failed, CARD_WORDING) };
+
+  const roleName = new Map((roles.data ?? []).map((role) => [role.id, role.name]));
+  const rolesOf = new Map<string, string[]>();
+  for (const { staff_id, role_id } of held.data ?? []) {
+    const list = rolesOf.get(staff_id) ?? [];
+    list.push(roleName.get(role_id) ?? 'Role');
+    rolesOf.set(staff_id, list);
+  }
+  const workers: StaffOption[] = rows.map((row) => ({
+    id: row.id,
+    display_name: `${row.first_name} ${row.last_name}`,
+    employee_id: row.employee_id,
+    role_names: (rolesOf.get(row.id) ?? []).sort(),
+  }));
+  return { ok: true, workers, total: page.count ?? from + workers.length };
 }

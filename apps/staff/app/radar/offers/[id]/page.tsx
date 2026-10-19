@@ -4,6 +4,7 @@ import { Pill } from '@thc/ui';
 import { formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { LoadProblem } from '../../../_components/LoadProblem';
 import { StaffShell } from '../../../_components/StaffShell';
+import { preloadShell } from '../../../_components/preloadShell';
 import { ShiftTime } from '../../../_components/ShiftTime';
 import { ActionButton } from '../../../_components/ActionButton';
 import { takeOfferedShift } from '../../../actions';
@@ -36,6 +37,8 @@ export const metadata = { title: 'Up for grabs · THC Staff' };
  * and the break policy appear once booked, on the shift screen (§3.2).
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  // The shell's staff_me() and clock, in the same wave as this page's reads.
+  preloadShell();
   const { id } = await params;
   const format = await getTimeFormat();
   const [{ row: offer, problem }, { rows: bookings, problem: bookingsProblem }] = await Promise.all(

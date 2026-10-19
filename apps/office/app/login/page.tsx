@@ -1,7 +1,8 @@
 import { isSafeRelativePath } from '@thc/db';
-import { AuthCard } from '@thc/ui';
+import { Alert, AuthCard } from '@thc/ui';
 import { staffUrlIsOffice } from '../_lib/staffUrl';
 import { LoginForm } from './LoginForm';
+import { sessionEndedNotice } from './copy';
 
 export const metadata = { title: 'Sign in · THC Back Office' };
 
@@ -22,8 +23,12 @@ function privacyHref(): string | null {
   return origin ? `${origin.replace(/\/$/, '')}/privacy` : null;
 }
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; expired?: string }>;
+}) {
+  const { next, expired } = await searchParams;
   const privacy = privacyHref();
   return (
     <AuthCard
@@ -41,6 +46,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
         </>
       }
     >
+      {/* The middleware ended a sign-in past its maximum age (ADR-0164). */}
+      {expired !== undefined ? <Alert tone="amber">{sessionEndedNotice(expired)}</Alert> : null}
       {/* Not reflected into the form unless it is a path on this app (§1.4). */}
       <LoginForm next={isSafeRelativePath(next) ? next : undefined} />
     </AuthCard>

@@ -18,7 +18,6 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../actions', () => ({}));
-vi.mock('@thc/db/browser', () => ({ createClient: vi.fn() }));
 
 const { RtwStep } = await import('../_components/RtwStep');
 const { AddressStep } = await import('../_components/AddressStep');

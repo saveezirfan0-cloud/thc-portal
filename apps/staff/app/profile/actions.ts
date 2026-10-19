@@ -337,8 +337,18 @@ export async function changePassword(
   return { ok: true, note: 'Password updated.' };
 }
 
-/** Sign out of every other device (§10.1's Signed-in devices row). */
-export async function signOutOtherDevices(): Promise<ActionResult> {
+/**
+ * Sign out of every other device (§10.1's Signed-in devices row).
+ *
+ * And stop their notifications (ADR-0164, security audit M4): a phone
+ * signed out because it was stolen must not go on receiving every shift
+ * push. `keepEndpoint` is THIS device's push subscription, read by the
+ * browser (null when it has none: then every one of the worker's goes). The
+ * database deletes only the caller's own rows (`staff_caller()`), so the
+ * value the browser sends can keep one of their own and nothing more. The
+ * endpoint is a bearer capability: never logged.
+ */
+export async function signOutOtherDevices(keepEndpoint: string | null = null): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
   const { error } = await supabase.auth.signOut({ scope: 'others' });
@@ -349,7 +359,18 @@ export async function signOutOtherDevices(): Promise<ActionResult> {
     });
     return { ok: false, message: TRY_AGAIN };
   }
-  return { ok: true, note: 'Signed out everywhere else.' };
+  const keep = typeof keepEndpoint === 'string' && keepEndpoint.trim() ? keepEndpoint : null;
+  const forgot = await supabase.rpc('forget_other_push_subscriptions', { p_keep_endpoint: keep });
+  if (forgot.error) {
+    // The sessions are ended; only their notifications are left. Say so.
+    console.error('[profile] other devices’ push not removed', { code: forgot.error.code });
+    return {
+      ok: false,
+      message:
+        'Signed out everywhere else, but the other devices may still get notifications. Try again.',
+    };
+  }
+  return { ok: true, note: 'Signed out everywhere else. Those devices get no more notifications.' };
 }
 
 export type PhotoSlot = { ok: true; path: string } | { ok: false; message: string };

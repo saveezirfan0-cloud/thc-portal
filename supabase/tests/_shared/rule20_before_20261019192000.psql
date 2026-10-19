@@ -1,0 +1,578 @@
+-- =====================================================================
+-- The RULE-20 helpers, staff_bookings(), current_compliance_docs() and
+-- the two onboarding views AS THEY WERE before 20261019192000 ..
+-- 20261019192200 (ADR-0155), recreated in a schema `_old` inside the
+-- calling test's transaction, for the equivalence tests 853-855.
+--
+-- Verbatim: pg_get_functiondef() / pg_get_viewdef() of a cluster built
+-- from main at 16aed2d0, with only the schema renamed and each function's
+-- search_path led by `_old`, so an old helper calls the OLD helpers
+-- below it — the whole old chain, not a mix. Do not edit these bodies:
+-- they are the reference the new ones are held to.
+--
+-- .psql so pg_prove does not run it as a test of its own. Rolled back
+-- with the caller.
+-- =====================================================================
+create schema _old;
+grant usage on schema _old to authenticated, service_role;
+
+CREATE FUNCTION _old.booked_elsewhere_conflict(p_cand_starts_at timestamp with time zone, p_cand_ends_at timestamp with time zone, p_cand_venue uuid, p_held_starts_at timestamp with time zone, p_held_ends_at timestamp with time zone, p_held_venue uuid, p_gap_minutes integer)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select case
+    when p_cand_starts_at < p_held_ends_at and p_held_starts_at < p_cand_ends_at
+      then 'intersects'
+    when p_cand_venue is not null and p_held_venue is not null and p_cand_venue = p_held_venue
+      then 'clear'
+    when least(p_cand_starts_at, p_held_starts_at) = p_cand_starts_at
+      then case when p_held_starts_at - p_cand_ends_at < make_interval(mins => p_gap_minutes)
+                then 'gap_too_short' else 'clear' end
+    else case when p_cand_starts_at - p_held_ends_at < make_interval(mins => p_gap_minutes)
+              then 'gap_too_short' else 'clear' end
+  end
+$function$
+;
+
+CREATE FUNCTION _old.booking_counts_toward_cap(p_status booking_status, p_cancelled_at timestamp with time zone, p_cancel_cause text)
+ RETURNS boolean
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select p_status in ('confirmed', 'worked')
+      or (p_status = 'closed' and p_cancelled_at is null and p_cancel_cause is null)
+$function$
+;
+
+CREATE FUNCTION _old.booking_reopenable_by(p_status booking_status, p_cause text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select case
+    when p_status = 'closed' then
+      case coalesce(p_cause, '')
+        when 'slot_taken' then 'anyone'
+        else 'person'                     -- declined · withdrawn_by_worker · legacy null
+      end
+    when p_status = 'cancelled' then
+      case coalesce(p_cause, '')
+        when 'self_cancel'     then 'never'
+        when 'handed_over'     then 'never'   -- ADR-0046: sets self_cancelled, the same bar
+        when 'event_cancelled' then 'never'
+        when 'gdpr'            then 'never'
+        when 'gdpr_invite'     then 'never'
+        when 'overlap_auto_withdraw' then 'anyone'
+        when 'blocked'         then 'anyone'
+        when 'blocked_invite'  then 'anyone'
+        when 'left'            then 'anyone'
+        when 'left_invite'     then 'anyone'
+        else 'person'                     -- office_withdraw · ready_cutoff · legacy null
+      end
+    else null                             -- a live row: invited, applied, confirmed, worked, turned_away
+  end
+$function$
+;
+
+CREATE FUNCTION _old.can_roster(p_shift_date date, p_visa_expiry date)
+ RETURNS boolean
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select p_visa_expiry is null or p_shift_date <= p_visa_expiry
+$function$
+;
+
+CREATE FUNCTION _old.can_roster_staff(p_staff uuid, p_shift_date date)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select case
+    when s.id is null then can_roster(p_shift_date, null)
+    when s.right_to_work_until is null
+     and s.rtw_branch is distinct from 'uk_irish'::rtw_branch
+     and (select d.right_to_work_until is null and not coalesce(d.rtw_no_time_limit, false)
+            from compliance_docs d
+           where d.staff_id = s.id
+             and d.doc_type in ('share_code_report', 'visa_document', 'status_document')
+             and d.review_status = 'verified'
+           order by d.reviewed_at desc nulls last, d.uploaded_at desc
+           limit 1)
+      then false
+    else can_roster(p_shift_date, s.right_to_work_until)
+  end
+    from (select p_staff as id) q
+    left join staff s on s.id = q.id
+$function$
+;
+
+CREATE FUNCTION _old.cap_term_state(p_holidays daterange[], p_date date)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  with days as (
+    select generate_series(cap_week_start(p_date), cap_week_start(p_date) + 6, interval '1 day')::date as d
+  ), marked as (
+    select exists (
+      select 1 from unnest(coalesce(p_holidays, '{}'::daterange[])) r where days.d <@ r
+    ) as in_holiday
+    from days
+  )
+  select case when bool_and(in_holiday) then 'holiday'
+              when bool_or(in_holiday)  then 'straddle'
+              else 'term' end
+  from marked
+$function$
+;
+
+CREATE FUNCTION _old.cap_under_18(p_dob date, p_week_start date)
+ RETURNS boolean
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select p_dob is not null
+     and p_week_start is not null
+     and p_week_start < (p_dob + interval '18 years')::date
+$function$
+;
+
+CREATE FUNCTION _old.cap_week_start(p_date date)
+ RETURNS date
+ LANGUAGE sql
+ IMMUTABLE STRICT
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select date_trunc('week', p_date)::date
+$function$
+;
+
+CREATE FUNCTION _old.current_compliance_docs(p_staff uuid)
+ RETURNS TABLE(doc_id uuid, doc_type doc_type, status review_status)
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select distinct on (d.doc_type) d.id, d.doc_type, d.review_status
+    from compliance_docs d
+   where d.staff_id = p_staff
+     and d.review_status <> 'superseded'
+   order by d.doc_type, d.uploaded_at desc, d.id
+$function$
+;
+
+CREATE FUNCTION _old.rota_guard_decide(p_can_roster boolean, p_cap_hours integer, p_band cap_band, p_booked numeric, p_shift_hours numeric, p_mode text)
+ RETURNS TABLE(verdict text, reason text)
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  with f as (
+    select not coalesce(p_can_roster, false)                              as rtw_stop,
+           p_cap_hours is not null
+             and p_shift_hours > greatest(0::numeric, p_cap_hours - coalesce(p_booked, 0))
+                                                                          as over,
+           p_band in ('student_term_20', 'student_term_10', 'visa_limit', 'visa_expired_0') as visa_band
+  )
+  select case when f.rtw_stop then 'block'
+              when not f.over then 'ok'
+              when f.visa_band then 'block'
+              when p_mode = 'warn' then 'warn'
+              else 'block' end,
+         case when f.rtw_stop then 'rtw_expired'
+              when not f.over then null
+              when f.visa_band then 'visa_cap'
+              else 'wtr_cap' end
+    from f
+$function$
+;
+
+CREATE FUNCTION _old.rota_guard_mode()
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  -- Anything other than an explicit 'warn' is 'block': a deleted or
+  -- mistyped setting must fail closed.
+  select case when (select s.value #>> '{}' from settings s where s.key = 'rota_guard_mode') = 'warn'
+              then 'warn' else 'block' end
+$function$
+;
+
+CREATE FUNCTION _old.rota_guard_verdict(p_staff uuid, p_shift uuid)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select jsonb_build_object(
+           'verdict',     g.verdict,
+           'reason',      g.reason,
+           'capHours',    c.cap_hours,
+           'band',        c.band::text,
+           'bookedHours', x.booked,
+           'shiftHours',  x.hours,
+           'shiftDate',   x.starts_on,
+           'mode',        x.mode)
+    from shift_requirements sr
+    cross join lateral (
+      select (sr.starts_at at time zone 'Europe/London')::date                          as starts_on,
+             ((sr.ends_at - interval '1 second') at time zone 'Europe/London')::date    as ends_on,
+             round((extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0)::numeric, 2) as hours,
+             weekly_booked_hours_except(p_staff, (sr.starts_at at time zone 'Europe/London')::date,
+                                        sr.id)                                          as booked,
+             rota_guard_mode()                                                          as mode
+    ) x
+    cross join lateral weekly_cap_for(p_staff, x.starts_on) c
+    cross join lateral rota_guard_decide(
+      can_roster_staff(p_staff, x.starts_on) and can_roster_staff(p_staff, x.ends_on),
+      c.cap_hours, c.band, x.booked, x.hours, x.mode) g
+   where sr.id = p_shift
+$function$
+;
+
+CREATE FUNCTION _old.staff_bookings(p_staff uuid DEFAULT NULL::uuid)
+ RETURNS TABLE(booking_id uuid, status text, source text, created_at timestamp with time zone, confirmed_at timestamp with time zone, day_before_confirmed_at timestamp with time zone, on_day_confirmed_at timestamp with time zone, reconfirm_required boolean, reconfirm_reason text, applied_at timestamp with time zone, cancelled_at timestamp with time zone, cancel_cause text, shift_id uuid, starts_at timestamp with time zone, ends_at timestamp with time zone, pay_rate numeric, dress_code text, headcount integer, buffer integer, confirmed_count integer, role text, event_id uuid, event_title text, event_date date, venue_name text, venue_address text, event_cancelled_at timestamp with time zone, distance_km numeric, onsite_contact text, notes text, pays_breaks boolean, no_checkout_open boolean, hours_limit boolean, week_start date, booked_hours numeric, cap_hours numeric)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  with me as (select staff_caller(p_staff) as id)
+  select
+    b.id, b.status::text, b.source::text, b.created_at, b.confirmed_at,
+    b.day_before_confirmed_at, b.on_day_confirmed_at,
+    b.reconfirm_required, b.reconfirm_reason, b.applied_at,
+    b.cancelled_at, b.cancel_cause,
+    sr.id, sr.starts_at, sr.ends_at, case when (select current_app_role() is distinct from 'admin'::app_role or office_can('finance')) then effective_pay_rate(b.staff_id, sr.pay_rate) end, sr.dress_code,
+    sr.headcount, sr.buffer,
+    (select count(*) filter (where o.status = 'confirmed')::int
+       from bookings o where o.shift_id = sr.id),
+    r.name, ev.id, ev.title, ev.event_date, ev.venue_name, ev.venue_address,
+    ev.cancelled_at,
+    round((st_distance(s.home_location, ev.venue_location) / 1000.0)::numeric, 1),
+    -- Withheld until the shift is accepted (§10.4, §3.2, §5.2b).
+    case when b.status in ('confirmed', 'worked') then ev.onsite_contact end,
+    case when b.status in ('confirmed', 'worked') then ev.notes end,
+    case when b.status in ('confirmed', 'worked') then ev.pays_breaks end,
+    -- RULE-02: check-out never pressed, 4 hours after the scheduled end.
+    -- The booking stays `worked`, so the card does NOT disappear — it shows
+    -- the static screen in place of the check-out controls until a manager
+    -- resolves the violation (§5.2, §9.5).
+    exists (select 1 from violations v
+             where v.booking_id = b.id and v.type = 'no_checkout' and not v.resolved),
+    -- §10.4: "Accept is blocked and shows 'Limit Reached' instead". The
+    -- screen cannot ask this itself — the cap is derived from documents a
+    -- worker's own RLS does not reach — so it is answered here, for the
+    -- Mon-Sun week the SECTION falls in, not the week today falls in.
+    weekly_cap_would_breach(b.staff_id, b.shift_id),
+    cap_week_start((sr.starts_at at time zone 'Europe/London')::date),
+    weekly_booked_hours(b.staff_id, (sr.starts_at at time zone 'Europe/London')::date),
+    weekly_cap_hours(b.staff_id, (sr.starts_at at time zone 'Europe/London')::date)
+  from me
+    join staff s                on s.id = me.id
+    join bookings b             on b.staff_id = me.id
+    join shift_requirements sr  on sr.id = b.shift_id
+    join events ev              on ev.id = sr.event_id
+    join roles r                on r.id = sr.role_id
+  order by sr.starts_at
+$function$
+;
+
+CREATE FUNCTION _old.weekly_booked_hours(p_staff uuid, p_date date)
+ RETURNS numeric
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select coalesce(sum(extract(epoch from (w.ends_at - w.starts_at)) / 3600.0), 0)::numeric
+    from (
+      -- This worker's shifts that START in the week, whatever their booking.
+      -- OFFSET 0 keeps the planner from moving the rule below back onto
+      -- every booking the worker has ever had.
+      select sr.starts_at, sr.ends_at, b.status, b.cancelled_at, b.cancel_cause
+        from bookings b
+        join shift_requirements sr on sr.id = b.shift_id
+       where b.staff_id = p_staff
+         and (sr.starts_at at time zone 'Europe/London')::date
+             between (select cap_week_start(p_date))
+                 and (select cap_week_start(p_date)) + 6
+      offset 0
+    ) w
+   where booking_counts_toward_cap(w.status, w.cancelled_at, w.cancel_cause)
+$function$
+;
+
+CREATE FUNCTION _old.weekly_booked_hours_except(p_staff uuid, p_date date, p_shift uuid)
+ RETURNS numeric
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric
+  from bookings b
+  join shift_requirements sr on sr.id = b.shift_id
+  where b.staff_id = p_staff
+    and b.shift_id is distinct from p_shift
+    and booking_counts_toward_cap(b.status, b.cancelled_at, b.cancel_cause)
+    and (sr.starts_at at time zone 'Europe/London')::date
+        between cap_week_start(p_date) and cap_week_start(p_date) + 6
+$function$
+;
+
+CREATE FUNCTION _old.weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean, p_optout_48h boolean)
+ RETURNS cap_assessment
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select weekly_cap(p_visa_limited, p_term_state, p_completion_letter_verified, p_optout_48h,
+                    null::date, false, null::date, null::date, null::date, false)
+$function$
+;
+
+CREATE FUNCTION _old.weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean, p_optout_48h boolean, p_week_start date, p_below_degree_level boolean, p_completion_date date, p_visa_expiry date, p_optout_cancelled_from date, p_under18 boolean)
+ RETURNS cap_assessment
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select weekly_cap(p_visa_limited, p_term_state, p_completion_letter_verified, p_optout_48h,
+                    p_week_start, p_below_degree_level, p_completion_date, p_visa_expiry,
+                    p_optout_cancelled_from, p_under18, null::date, null::int)
+$function$
+;
+
+CREATE FUNCTION _old.weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean, p_optout_48h boolean, p_week_start date, p_below_degree_level boolean, p_completion_date date, p_visa_expiry date, p_optout_cancelled_from date, p_under18 boolean, p_verified_on date, p_visa_hour_limit integer)
+ RETURNS cap_assessment
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  with in_force as (
+    select
+      -- completionInForce() in cap.ts: verified, never before the Monday
+      -- on or after the verification (a week verified part-way through
+      -- keeps the lower cap), and only from the completion date.
+      coalesce(p_completion_letter_verified, false)
+        and (p_week_start is null
+             or ((p_verified_on is null or p_week_start >= p_verified_on)
+                 and (p_completion_date is null or p_week_start >= p_completion_date)))
+                                                                  as completion,
+      -- optOutInForce() in cap.ts, unchanged.
+      coalesce(p_optout_48h, false)
+        and not coalesce(p_under18, false)
+        and (p_optout_cancelled_from is null
+             or p_week_start is null
+             or p_week_start + 6 < p_optout_cancelled_from)       as optout
+  )
+  select case
+    when p_visa_expiry is not null and p_week_start is not null
+         and p_week_start > p_visa_expiry
+      then row(0, 'visa_expired_0')::cap_assessment
+    when coalesce(p_visa_limited, false) and not in_force.completion
+         and p_term_state is distinct from 'holiday'
+      then case when coalesce(p_below_degree_level, false)
+                then row(10, 'student_term_10')::cap_assessment
+                else row(20, 'student_term_20')::cap_assessment
+           end
+    when p_visa_hour_limit is not null
+      then row(least(p_visa_hour_limit, 48), 'visa_limit')::cap_assessment
+    when in_force.optout
+      then row(null, 'uncapped')::cap_assessment
+    when coalesce(p_visa_limited, false) and in_force.completion
+      then row(48, 'graduated_48')::cap_assessment
+    when coalesce(p_visa_limited, false)
+      then row(48, 'student_holiday_48')::cap_assessment
+    else row(48, 'standard_48')::cap_assessment
+  end
+  from in_force
+$function$
+;
+
+CREATE FUNCTION _old.weekly_cap_for(p_staff uuid, p_date date)
+ RETURNS cap_assessment
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select weekly_cap(
+    s.rtw_branch is not distinct from 'international_student'::rtw_branch,
+    cap_term_state(s.term_dates, p_date),
+    s.graduated_at is not null,
+    s.wtr_optout,
+    cap_week_start(p_date),
+    s.below_degree_level,
+    s.course_completion_date,
+    s.right_to_work_until,
+    s.wtr_optout_cancelled_from,
+    cap_under_18(s.dob, cap_week_start(p_date)),
+    s.graduated_at,
+    case when s.rtw_branch in ('work_visa'::rtw_branch, 'dependant_other'::rtw_branch)
+         then s.visa_weekly_hour_limit end
+  )
+  from staff s where s.id = p_staff
+$function$
+;
+
+CREATE FUNCTION _old.weekly_cap_hours(p_staff uuid, p_date date)
+ RETURNS integer
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select c.cap_hours from weekly_cap_for(p_staff, p_date) c
+$function$
+;
+
+CREATE FUNCTION _old.weekly_cap_would_breach(p_staff uuid, p_shift uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SET search_path TO '_old', 'public', 'extensions'
+AS $function$
+  select coalesce((rota_guard_verdict(p_staff, p_shift) ->> 'verdict') = 'block', false)
+$function$
+;
+
+
+-- ---- the views (security options as they were) ---------------------------
+set local search_path = _old, public, extensions;
+create view _old.staff_rejection_reason_v with (security_barrier = true) as
+SELECT id AS staff_id,
+        CASE
+            WHEN removed_at IS NULL THEN rejection_reason
+            ELSE NULL::text
+        END AS rejection_reason
+   FROM staff s
+  WHERE current_app_role() = 'admin'::app_role;
+create view _old.onboarding_candidates_v with (security_invoker = true) as
+SELECT s.id,
+    s.first_name,
+    s.last_name,
+    (s.first_name || ' '::text) || s.last_name AS display_name,
+    s.email,
+    s.phone,
+    s.dob,
+        CASE
+            WHEN s.dob IS NOT NULL THEN EXTRACT(year FROM age((now() AT TIME ZONE 'Europe/London'::text)::date::timestamp with time zone, s.dob::timestamp with time zone))::integer
+            ELSE NULL::integer
+        END AS age,
+    s.applied_age_band,
+    s.photo_path,
+    s.status,
+    s.stage_entered_at,
+    s.onboarding_started_at,
+    s.created_at AS applied_at,
+    s.gdpr_consent_at,
+    s.employee_id,
+    s.rtw_branch,
+    s.right_to_work_until,
+    s.share_code,
+    COALESCE(staff_account_activated(s.id), false) AS activated,
+    COALESCE(( SELECT array_agg(r.name ORDER BY r.name) AS array_agg
+           FROM staff_roles sr
+             JOIN roles r ON r.id = sr.role_id
+          WHERE sr.staff_id = s.id), '{}'::text[]) AS role_names,
+    COALESCE(( SELECT array_agg(sr.role_id) AS array_agg
+           FROM staff_roles sr
+          WHERE sr.staff_id = s.id), '{}'::uuid[]) AS role_ids,
+    s.willo_candidate_id IS NOT NULL AS willo_linked,
+        CASE
+            WHEN s.willo_candidate_id IS NOT NULL AND jsonb_typeof(( SELECT settings.value
+               FROM settings
+              WHERE settings.key = 'willo_review_url_template'::text)) = 'string'::text THEN replace(( SELECT settings.value #>> '{}'::text[]
+               FROM settings
+              WHERE settings.key = 'willo_review_url_template'::text), '{id}'::text, s.willo_candidate_id)
+            ELSE NULL::text
+        END AS willo_review_url,
+    s.willo_invited_at,
+    s.willo_answers_done,
+    s.willo_answers_total,
+    s.willo_completed_at,
+    s.willo_decision,
+    s.willo_decided_at,
+    s.willo_decided_via,
+    (( SELECT count(*) AS count
+           FROM current_compliance_docs(s.id) current_compliance_docs(doc_id, doc_type, status)))::integer AS docs_total,
+    (( SELECT count(*) AS count
+           FROM current_compliance_docs(s.id) d(doc_id, doc_type, status)
+          WHERE d.status = 'verified'::review_status))::integer AS docs_verified,
+    (( SELECT count(*) AS count
+           FROM current_compliance_docs(s.id) d(doc_id, doc_type, status)
+          WHERE d.status = 'pending'::review_status))::integer AS docs_pending,
+    (( SELECT count(*) AS count
+           FROM current_compliance_docs(s.id) d(doc_id, doc_type, status)
+          WHERE d.status = 'rejected'::review_status))::integer AS docs_rejected,
+    ( SELECT max(c.reviewed_at) AS max
+           FROM compliance_docs c
+          WHERE c.staff_id = s.id AND c.review_status = 'rejected'::review_status) AS last_doc_rejected_at,
+    onboarding_documents_missing(s.id) AS docs_missing,
+    onboarding_quiz_blockers(s.id) AS quiz_blockers,
+    ( SELECT c.answer
+           FROM criminal_declarations c
+          WHERE c.staff_id = s.id AND NOT c.superseded
+          ORDER BY c.declared_at DESC
+         LIMIT 1) AS declaration_answer,
+    ( SELECT c.review_status
+           FROM criminal_declarations c
+          WHERE c.staff_id = s.id AND NOT c.superseded
+          ORDER BY c.declared_at DESC
+         LIMIT 1) AS declaration_status,
+    (( SELECT count(*) AS count
+           FROM quiz_attempts q
+          WHERE q.staff_id = s.id AND q.taken_at >= s.onboarding_started_at))::integer AS quiz_attempts_used,
+    ( SELECT max(q.score) AS max
+           FROM quiz_attempts q
+          WHERE q.staff_id = s.id AND q.taken_at >= s.onboarding_started_at) AS quiz_best_score,
+    ( SELECT min(q.taken_at) AS min
+           FROM quiz_attempts q
+          WHERE q.staff_id = s.id AND q.passed AND q.taken_at >= s.onboarding_started_at) AS quiz_passed_at,
+    ( SELECT h.submitted_at
+           FROM hmrc_checklists h
+          WHERE h.staff_id = s.id AND NOT h.superseded) AS hmrc_submitted_at,
+    (( SELECT count(*) AS count
+           FROM staff_references r
+          WHERE r.staff_id = s.id))::integer AS references_count,
+    (EXISTS ( SELECT 1
+           FROM bank_details b
+          WHERE b.staff_id = s.id)) AS bank_saved,
+    s.ni_number IS NOT NULL AS ni_entered,
+    s.contract_signed_at,
+    s.contract_version,
+    s.rejected_at,
+    s.rejected_from,
+    s.rejection_cause,
+    ( SELECT r.rejection_reason
+           FROM staff_rejection_reason_v r
+          WHERE r.staff_id = s.id) AS rejection_reason,
+    p.full_name AS rejected_by_name,
+    staff_account_activated_at(s.id) AS activated_at,
+    ( SELECT
+                CASE
+                    WHEN p_1.hmrc_at IS NOT NULL AND p_1.references_at IS NOT NULL AND p_1.bank_at IS NOT NULL THEN GREATEST(p_1.hmrc_at, p_1.references_at, p_1.bank_at)
+                    ELSE NULL::timestamp with time zone
+                END AS "case"
+           FROM onboarding_progress p_1
+          WHERE p_1.staff_id = s.id) AS additional_info_done_at,
+    COALESCE(( SELECT array_agg(round(q.score)::integer ORDER BY q.attempt_no) AS array_agg
+           FROM quiz_attempts q
+          WHERE q.staff_id = s.id AND q.taken_at >= s.onboarding_started_at), '{}'::integer[]) AS quiz_scores,
+    s.spudbros_express,
+    s.thc_shifts_enabled,
+    s.payroll_id
+   FROM staff s
+     LEFT JOIN profiles p ON p.id = s.rejected_by
+  WHERE s.removed_at IS NULL;
+reset search_path;
+grant select on _old.staff_rejection_reason_v, _old.onboarding_candidates_v to authenticated, service_role;
+grant execute on all functions in schema _old to authenticated, service_role;

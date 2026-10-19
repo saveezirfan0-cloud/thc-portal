@@ -1,13 +1,28 @@
+import { Suspense, cache } from 'react';
 import { notFound } from 'next/navigation';
-import { Alert } from '@thc/ui';
+import {
+  Alert,
+  Skeleton,
+  SkeletonPanel,
+  SkeletonScreen,
+  SkeletonText,
+  SkeletonToolbar,
+} from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
+import type { OfficeRole } from '../../_lib/permissions';
 import { loadProfile } from './data';
+import { loadProfileHead } from './head';
 import { canMessageWorker } from '../message';
+import { ProfileCrumbs } from './chrome';
 import { ProfileScreen } from './ProfileScreen';
+import './profile.css';
 
 export const metadata = { title: 'Staff profile · THC Back Office' };
+
+/** The whole profile, once per request: started by the page, read by the body. */
+const profileView = cache(loadProfile);
 
 /**
  * /staff/:id — §9.6, `wireframes/backoffice/staff-profile.html`.
@@ -20,19 +35,56 @@ export const metadata = { title: 'Staff profile · THC Back Office' };
  * fault the manager can do anything about. A worker who exists but cannot
  * be read — no Supabase project, or a policy refusing — is, so that stays
  * a message.
+ *
+ * Streaming (ADR-0161). The profile is two dozen reads (`loadProfile`); the
+ * page starts them, then waits only for the profile's first read — one row
+ * of the same view — and answers the 404 there, before anything streams.
+ * The shell and the topbar's name paint at once; the profile streams in
+ * behind a skeleton of its header. The tabs change `?tab=` through the
+ * History API (`useListQuery`), never a router navigation, so the boundary
+ * never sits under a query-only navigation (ADR-0109).
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [data, role] = await Promise.all([loadProfile(id), currentOfficeRole()]);
+  // Started now, so the profile's reads run while the head is read below.
+  // The body awaits the same promise; a failure is its to show.
+  profileView(id).catch(() => undefined);
+  const [head, role] = await Promise.all([loadProfileHead(id), currentOfficeRole()]);
 
-  if (data.problem) {
+  if (head.problem) {
     return (
       <OfficeShell activeHref="/staff" title="Staff">
-        <Alert tone="coral">{data.problem}</Alert>
+        <Alert tone="coral">{head.problem}</Alert>
       </OfficeShell>
     );
   }
-  if (!data.profile) notFound();
+  // Decided before the Suspense below, so the answer is a real 404.
+  if (!head.profile) notFound();
+
+  return (
+    <OfficeShell
+      activeHref="/staff"
+      title="Staff"
+      crumbs={
+        <ProfileCrumbs name={head.profile.display_name} employee={head.profile.employee_id} />
+      }
+    >
+      <Suspense fallback={<ProfileSkeleton />}>
+        <Profile id={id} role={role} />
+      </Suspense>
+    </OfficeShell>
+  );
+}
+
+async function Profile({ id, role }: { id: string; role: OfficeRole | null }) {
+  const data = await profileView(id);
+  if (data.problem) return <Alert tone="coral">{data.problem}</Alert>;
+  // Read a moment ago by the head; gone now (a removal in between).
+  if (!data.profile) {
+    return (
+      <Alert tone="coral">This worker can no longer be found. Go back to the directory.</Alert>
+    );
+  }
 
   // ADR-0070: "Correct" on the date of birth is for owners and managers;
   // office_correct_dob() refuses everyone else whatever this says.
@@ -44,6 +96,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const finance = officeCan(role, 'finance');
   return (
     <ProfileScreen
+      bare
       data={data}
       canCorrectDob={officeCan(role, 'identity')}
       canEditGender={officeCan(role, 'write')}
@@ -55,5 +108,21 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       canEditPayRate={finance && officeCan(role, 'write')}
       canMessage={canMessageWorker(data.profile.status, officeCan(role, 'write'))}
     />
+  );
+}
+
+/** The profile's shape while it is read: its header, the tabs, a panel. */
+function ProfileSkeleton() {
+  return (
+    <SkeletonScreen label="Loading the profile">
+      <div className="phead">
+        <Skeleton shape="avatar" />
+        <div className="who">
+          <SkeletonText lines={3} />
+        </div>
+      </div>
+      <SkeletonToolbar controls={5} />
+      <SkeletonPanel rows={5} />
+    </SkeletonScreen>
   );
 }

@@ -75,7 +75,8 @@ select ok((select count(*)::int from contract_versions) >= 1, 'and the office re
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
-select is((select count(*)::int from contract_versions), 0, 'anon reads none');
+select throws_ok($$ select count(*) from contract_versions $$, '42501', null,
+  'anon reads none — and since ADR-0163 the privilege itself is gone, so the read fails rather than returning nothing');
 reset role;
 
 select * from finish();

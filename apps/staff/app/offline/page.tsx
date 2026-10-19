@@ -1,4 +1,5 @@
 import { AppBody, AppFrame, Logo } from '@thc/ui';
+import { ReloadWhenOnline } from './ReloadWhenOnline';
 import '../chrome.css';
 
 export const metadata = { title: 'Offline · THC Staff' };
@@ -19,6 +20,7 @@ export default function Page() {
   return (
     <AppFrame>
       <AppBody className="center">
+        <ReloadWhenOnline />
         <div className="static-screen">
           <Logo size="lg" />
           <h2>You’re offline</h2>

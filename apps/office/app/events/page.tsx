@@ -100,8 +100,12 @@ export default async function Page({
       }
     >
       <div className="stack">
-        {/* Fill moves as staff accept and the office books: re-read every 15 s. */}
-        <AutoRefresh everyMs={15_000} />
+        {/* Fill moves as staff accept and the office books: re-read every
+            60 s while the tab is visible, and at once when it regains focus
+            (useVisibleInterval) — as /staff, /onboarding and the board do.
+            Every 15 s re-ran the period's reads for each open tab
+            (go-live audit 17.10.2026, B2). */}
+        <AutoRefresh everyMs={60_000} />
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}

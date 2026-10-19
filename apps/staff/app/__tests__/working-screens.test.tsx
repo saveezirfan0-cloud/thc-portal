@@ -55,12 +55,16 @@ vi.mock('../_components/StaffShell', () => ({
 
 let bookings: Loaded<BookingRow> = { rows: [], problem: null };
 let openShifts: Loaded<OpenShift> = { rows: [], problem: null };
+const openShiftReads = vi.fn();
 vi.mock('../data', async (importOriginal) => {
   const actual: Record<string, unknown> = await importOriginal();
   return {
     ...actual,
     loadBookings: async () => bookings,
-    loadOpenShifts: async () => openShifts,
+    loadOpenShifts: async () => {
+      openShiftReads();
+      return openShifts;
+    },
   };
 });
 
@@ -116,6 +120,22 @@ async function render(page: Promise<unknown> | unknown): Promise<string> {
 beforeEach(() => {
   bookings = { rows: [], problem: null };
   openShifts = { rows: [], problem: null };
+  openShiftReads.mockClear();
+});
+
+describe('/shifts · only the Open tab reads staff_open_shifts() (go-live audit B2)', () => {
+  it('My shifts (the landing tab and every action re-render) never asks for open shifts', async () => {
+    // Even a failing read must not leak onto My shifts: it is not called.
+    openShifts = { rows: [], problem: 'timeout' };
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(openShiftReads).not.toHaveBeenCalled();
+    expect(html).not.toContain('We couldn’t load open shifts');
+  });
+
+  it('the Open tab reads it once', async () => {
+    await render(ShiftsPage({ searchParams: Promise.resolve({ tab: 'open' }) }));
+    expect(openShiftReads).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('audit D18 · a failed read is not an empty list', () => {

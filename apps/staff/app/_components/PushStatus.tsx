@@ -21,6 +21,8 @@ import {
   writeStored,
 } from './push-banner';
 import type { BannerInput, PushBanner } from './push-banner';
+import { SAVED_KEY, fingerprint, savedRecord, shouldSave } from './push-save-memo';
+import type { Fingerprintable } from './push-save-memo';
 import '../chrome.css';
 
 /**
@@ -45,15 +47,58 @@ import '../chrome.css';
  * /notifications, whose whole body is this message, leaves it out
  * (`StaffShell pushStatus={false}`).
  */
-export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolean } = {}) {
+export function PushStatus({
+  onboardingOnly = false,
+  staffId = null,
+}: {
+  onboardingOnly?: boolean;
+  /**
+   * Who is signed in, so a re-save is skipped only for the same worker's
+   * unchanged subscription (push-save-memo.ts). Without it every sync saves.
+   */
+  staffId?: string | null;
+} = {}) {
   const [input, setInput] = useState<BannerInput | null>(null);
   const [record, setRecord] = useState<{ value: string | null; now: number } | null>(null);
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    // A return to the app fires both `visibilitychange` and `focus`: one sync.
+    let syncing = false;
+
+    /**
+     * Send the subscription to the record — only when it, or the worker, has
+     * changed, or a day has passed (go-live audit H4). Answers whether the
+     * record holds it; a request that never got an answer is not a "no".
+     */
+    const save = async (
+      subscription: Parameters<typeof savePushSubscription>[0] & Fingerprintable,
+      force = false,
+    ): Promise<boolean> => {
+      const print = await fingerprint(subscription, staffId);
+      if (!force && !shouldSave(readStored(SAVED_KEY), print, Date.now())) return true;
+      try {
+        const saved = await savePushSubscription(subscription);
+        if (saved.ok && print) writeStored(SAVED_KEY, savedRecord(print, Date.now()));
+        return saved.ok;
+      } catch {
+        // No signal, or a newer deploy: the next sync tries again.
+        return true;
+      }
+    };
 
     const sync = async () => {
+      if (syncing) return;
+      syncing = true;
+      try {
+        await syncOnce();
+      } finally {
+        syncing = false;
+      }
+    };
+
+    const syncOnce = async () => {
       const env = readEnvironment();
       const base: BannerInput = {
         state: pushState(env),
@@ -89,9 +134,9 @@ export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolea
           return;
         }
         writeStored(WAS_ON_KEY, '1');
-        const saved = await savePushSubscription(subscription);
+        const saved = await save(subscription);
         // The record did not take it, so this device is not reachable.
-        if (!saved.ok && !cancelled) setInput({ ...base, lapsed: true });
+        if (!saved && !cancelled) setInput({ ...base, lapsed: true });
       }
     };
 
@@ -118,7 +163,8 @@ export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolea
         navigator.userAgent,
         data.oldEndpoint ?? undefined,
       );
-      if (serialised) void savePushSubscription(serialised);
+      // A rotation is always sent: the record has to learn the new endpoint.
+      if (serialised) void save(serialised, true);
     };
 
     navigator.serviceWorker?.addEventListener('message', onMessage);
@@ -128,7 +174,7 @@ export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolea
       window.removeEventListener('focus', onVisible);
       navigator.serviceWorker?.removeEventListener('message', onMessage);
     };
-  }, [onboardingOnly]);
+  }, [onboardingOnly, staffId]);
 
   if (!input || !record || hidden) return null;
   const banner = visibleBanner(input, record.value, record.now);

@@ -55,7 +55,7 @@ insert into roles (id, name, pay_rate) values (:'role2', 'Second Fixture Role', 
 insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
                     title, event_date, pays_breaks, pays_buffer, po_number)
 values (:'past_ev', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
-        st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Running Event', current_date, true, true, '753-R');
+        st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Running Event', ((now() - interval '2 hours') at time zone 'Europe/London')::date, true, true, '753-R');
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate) values
   (:'past_sh',  :'past_ev', :'role_id', now() - interval '2 hours', now() + interval '3 hours', 3, 0, 22.97, 14.00),
   (:'past_sh2', :'past_ev', :'role_id', now() - interval '2 hours', now() + interval '3 hours', 1, 0, 22.97, 14.00);
@@ -83,9 +83,8 @@ select is(
     where a.attrelid in ('public.roles'::regclass, 'public.shift_requirements'::regclass, 'public.client_rate_cards'::regclass)
       and a.attnum > 0 and not a.attisdropped
       and a.attname not in ('pay_rate', 'charge_rate')
-      and not (has_column_privilege('authenticated', a.attrelid, a.attname, 'select')
-               and has_column_privilege('anon', a.attrelid, a.attname, 'select'))),
-  0, 'every other column of the three tables is still selectable (a new column needs its grant — this fails until it has one)');
+      and not has_column_privilege('authenticated', a.attrelid, a.attname, 'select')),
+  0, 'every other column of the three tables is still selectable by a signed-in caller (a new column needs its grant — this fails until it has one); anon holds none of them since ADR-0163');
 select ok(has_table_privilege('authenticated', 'public.shift_requirements', 'insert')
       and has_table_privilege('authenticated', 'public.shift_requirements', 'update')
       and has_column_privilege('authenticated', 'public.roles', 'pay_rate', 'update')
@@ -249,9 +248,9 @@ select ok((select count(*) > 0 and count(pay_rate) = 0 from staff_open_shifts(:'
   'scheduler: staff_open_shifts(any worker) returns the open shifts without a pay rate');
 select is((with r as (select check_out(:'bk_sched', 51.5, -0.1) as j) select (j ? 'payRate') and j -> 'payRate' = 'null'::jsonb from r), true,
   'scheduler: check_out answers no payRate');
-select throws_ok($$ select * from finance_report(current_date, current_date) $$, '42501', 'not_permitted',
+select throws_ok($$ select * from finance_report(((now() - interval '2 hours') at time zone 'Europe/London')::date, ((now() - interval '2 hours') at time zone 'Europe/London')::date) $$, '42501', 'not_permitted',
   'scheduler: finance_report is refused');
-select throws_ok($$ select * from payroll_report(current_date, current_date) $$, '42501', 'not_permitted',
+select throws_ok($$ select * from payroll_report(((now() - interval '2 hours') at time zone 'Europe/London')::date, ((now() - interval '2 hours') at time zone 'Europe/London')::date) $$, '42501', 'not_permitted',
   'scheduler: payroll_report is refused');
 select ok((select event_document_data(:'past_ev')::text !~* '(rate|charge|margin|holiday|pay)'),
   'scheduler: the §11.3 document data carries no money');
@@ -268,26 +267,26 @@ select is((select pay_rate from staff_bookings(:'staffa') where booking_id = :'b
   'manager: staff_bookings(any worker) carries the pay rate');
 select is((select check_out(:'bk_mgr', 51.5, -0.1) ->> 'payRate'), '14.00',
   'manager: check_out answers the payRate');
-select lives_ok($$ select * from finance_report(current_date - 1, current_date + 14) $$, 'manager runs the financial report');
-select ok((select count(*) > 0 and count(rate) = count(*) from payroll_report(current_date, current_date)),
+select lives_ok($$ select * from finance_report(((now() - interval '2 hours') at time zone 'Europe/London')::date - 1, ((now() - interval '2 hours') at time zone 'Europe/London')::date + 14) $$, 'manager runs the financial report');
+select ok((select count(*) > 0 and count(rate) = count(*) from payroll_report(((now() - interval '2 hours') at time zone 'Europe/London')::date, ((now() - interval '2 hours') at time zone 'Europe/London')::date)),
   'manager: the payroll report prices every line (the engine reads payable_shifts_v as its owner)');
 select lives_ok(format($$ select resolve_violation(%L, 'Signal lost') $$, :'violation_b'),
   'manager resolves a violation');
 
 -- ---- owner ------------------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
-select ok((select count(*) > 0 and count(rate) = count(*) from payroll_report(current_date, current_date)),
+select ok((select count(*) > 0 and count(rate) = count(*) from payroll_report(((now() - interval '2 hours') at time zone 'Europe/London')::date, ((now() - interval '2 hours') at time zone 'Europe/London')::date)),
   'owner: the payroll report prices every line');
 select ok((select count(*) > 0 and count(*) = count(pay_rate) from staff_open_shifts(:'staffb')),
   'owner: staff_open_shifts(any worker) carries the rate');
 
 -- ---- client and staff: the finance RPCs stay refused --------------------
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
-select throws_ok($$ select * from finance_report(current_date, current_date) $$, '42501', null, 'client: finance_report is refused');
+select throws_ok($$ select * from finance_report(((now() - interval '2 hours') at time zone 'Europe/London')::date, ((now() - interval '2 hours') at time zone 'Europe/London')::date) $$, '42501', null, 'client: finance_report is refused');
 select throws_ok(format($$ select * from staff_bookings(%L) $$, :'staffa'), '42501', null,
   'client: cannot read a worker''s shifts at all');
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
-select throws_ok($$ select * from payroll_report(current_date, current_date) $$, '42501', null, 'worker: payroll_report is refused');
+select throws_ok($$ select * from payroll_report(((now() - interval '2 hours') at time zone 'Europe/London')::date, ((now() - interval '2 hours') at time zone 'Europe/London')::date) $$, '42501', null, 'worker: payroll_report is refused');
 select throws_ok(format($$ select * from staff_bookings(%L) $$, :'staffb'), '42501', null,
   'worker: cannot read another worker''s shifts (and so their rate)');
 

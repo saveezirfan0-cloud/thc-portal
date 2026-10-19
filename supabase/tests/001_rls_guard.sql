@@ -57,6 +57,8 @@
 -- client_quiz_questions (the answer key), client_quiz_attempts,
 -- client_role_requirements, booking_kit_acknowledgements — each admin_all
 -- only: the worker's every read and write is a definer RPC (783).
+-- 20261020130200 (ADR-0164) added willo_deliveries to assertions 1 and 3:
+-- admin_read only, written by willo_record_event() alone (897).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -98,8 +100,9 @@ select bag_eq(
             ('client_quizzes'),('client_quiz_slides'),('client_quiz_questions'),
             ('client_quiz_attempts'),('client_role_requirements'),('booking_kit_acknowledgements'),
             ('client_quiz_draws'),
-            ('client_worker_requests') $$,
-  'RLS is enabled on all 61 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100)'
+            ('client_worker_requests'),
+            ('willo_deliveries') $$,
+  'RLS is enabled on all 62 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100) and willo_deliveries (ADR-0164, 20261020130200)'
 );
 
 -- ---------------------------------------------------------------------
@@ -188,7 +191,8 @@ select bag_eq(
             ('client_quizzes'),('client_quiz_slides'),('client_quiz_questions'),
             ('client_quiz_attempts'),('client_role_requirements'),('booking_kit_acknowledgements'),
             ('client_quiz_draws'),
-            ('client_worker_requests') $$,
+            ('client_worker_requests'),
+            ('willo_deliveries') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -307,8 +311,8 @@ select is_empty(
       where n.nspname = 'public'
         and c.relname in ('roles', 'shift_requirements', 'bookings', 'staff')
         and (coalesce(pg_get_expr(p.polqual, p.polrelid), '')
-          || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ '''admin''|auth\.uid\(\)' $$,
-  'ADR-0004: every policy on those four tables restricts to admin or to the caller''s own row, so none of them is open to "any signed-in role"'
+          || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ '''admin''|auth\.uid\(\)|staff_caller\(\)' $$,
+  'ADR-0004: every policy on those four tables restricts to admin or to the caller''s own row (auth.uid(), or since ADR-0163 staff_caller(), which also asks for a live session and an unbanned login), so none of them is open to "any signed-in role"'
 );
 
 -- ---------------------------------------------------------------------
@@ -472,8 +476,10 @@ select bag_eq(
             ('client_role_sections_v'), ('event_windows'), ('feedback_authors_v'),
             ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
-            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'the owner-rights views in public are exactly these nineteen (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135); a new one is a reviewed addition'
+            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
+            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v'),
+            ('staff_account_activation_v') $$,
+  'the owner-rights views in public are exactly these twenty-three (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135; the identity, bank-mask and document-review views ADR-0163, pinned by 890; staff_account_activation_v ADR-0166, pinned by 886); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text
@@ -491,8 +497,10 @@ select bag_eq(
             ('client_portal_contact_v'), ('client_worker_requests_v'),
             ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
-            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'sixteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
+            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
+            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v'),
+            ('staff_account_activation_v') $$,
+  'twenty of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();

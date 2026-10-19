@@ -9,6 +9,7 @@ import { HELP_EMAIL } from '../profile/types';
 import { ReviewHub } from './_components/ReviewHub';
 import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
 import { loadMyRtwChecks } from '../_lib/rtwCheck';
+import type { MyRtwChecks } from '../_lib/rtwCheck';
 import { WizardFrame, workerFor } from './_components/Wizard';
 import { loadOnboarding, supabaseConfigured } from './data';
 import { completionLetterDoc, requirementRows, shareCodeDoc, wizardFacts } from './state';
@@ -57,16 +58,38 @@ export default async function Page() {
     );
   }
 
-  const worker = workerFor(state.firstName, state.lastName, await signOwnPhoto(state.photoPath));
   const lock = appLock(profile);
-
-  if (
+  const terminal =
     lock === 'quiz_failed' ||
     lock === 'rejected' ||
     lock === 'hold' ||
     lock === 'leaver' ||
-    lock === 'removed'
-  ) {
+    lock === 'removed';
+  const facts = wizardFacts(state);
+  const phase = wizardPhase(facts);
+
+  // Where the worker goes on is decided from the two reads above, so a
+  // worker passing through (the usual visit: on to their step, or out to
+  // the app) waits for nothing more (go-live audit M5). The lock comes
+  // first, as before: a terminal lock is shown whatever the phase says.
+  if (!terminal) {
+    if (phase === 'complete' || phase === 'closed') redirect('/shifts');
+    if (phase !== 'awaiting_interview' && phase !== 'awaiting_review') {
+      redirect(`/onboarding/${currentStep(facts) ?? 1}`);
+    }
+  }
+
+  // A screen is drawn: sign the header photo and, while the documents are
+  // with the office, read the share-code check alongside it rather than
+  // after it. Never for a locked worker, whose screen shows no documents.
+  const shareDoc = !terminal && phase === 'awaiting_review' ? shareCodeDoc(state) : null;
+  const [photoUrl, checks] = await Promise.all([
+    signOwnPhoto(state.photoPath),
+    shareDoc ? loadMyRtwChecks() : Promise.resolve<MyRtwChecks>({}),
+  ]);
+  const worker = workerFor(state.firstName, state.lastName, photoUrl);
+
+  if (terminal) {
     return (
       <WizardFrame worker={worker} title="The Hospitality Company" center>
         <LockScreen
@@ -97,11 +120,6 @@ export default async function Page() {
     );
   }
 
-  const facts = wizardFacts(state);
-  const phase = wizardPhase(facts);
-
-  if (phase === 'complete' || phase === 'closed') redirect('/shifts');
-
   if (phase === 'awaiting_interview') {
     return (
       <WizardFrame worker={worker} center>
@@ -124,8 +142,6 @@ export default async function Page() {
   }
 
   if (phase === 'awaiting_review') {
-    const shareDoc = shareCodeDoc(state);
-    const checks = shareDoc ? await loadMyRtwChecks() : {};
     const shareCheck = shareDoc ? (checks[shareDoc.id] ?? null) : null;
     return (
       <WizardFrame worker={worker} title="Documents">

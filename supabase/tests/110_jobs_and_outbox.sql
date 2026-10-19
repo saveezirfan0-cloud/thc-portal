@@ -203,9 +203,11 @@ select is(
 -- ---------------------------------------------------------------------
 -- §1.7: the Storage half of removal is a queue drained by a job, and until
 -- 20260927160400 no schedule named that job — every removed worker's
--- passport scan and selfie stayed in Storage for ever.
+-- passport scan and selfie stayed in Storage for ever. Still every five
+-- minutes, at :03, :08, … since 20261019191100 (off the :00/:05 grid,
+-- ADR-0154; 861 pins every registry minute).
 select is((select cron_expression || ' ' || edge_path from job_schedules where job = 'gdpr-purge' and enabled),
-  '*/5 * * * * gdpr-purge',
+  '3-59/5 * * * * gdpr-purge',
   'the gdpr-purge job is registered and enabled, so storage_deletions is actually drained (§1.7)');
 
 select set_config('request.jwt.claims',

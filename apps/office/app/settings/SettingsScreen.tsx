@@ -29,6 +29,7 @@ import { NotificationsTab } from './NotificationsTab';
 import {
   saveAutoAssignNumbers,
   saveClientPortalPhone,
+  saveOfficeSignIn,
   saveRotaGuardMode,
   saveSenders,
   saveVenueRadius,
@@ -41,10 +42,13 @@ import {
   CLIENT_PORTAL_PHONE_MAX,
   MAX_RADIUS_M,
   MIN_RADIUS_M,
+  SESSION_HOURS_MAX,
+  SESSION_HOURS_MIN,
   WEIGHT_FIELDS,
   validateClientPortalPhone,
   validateEscalationRadius,
   validateGap,
+  validateSessionHours,
   validateWilloInterviewUrl,
   validateWilloReviewUrlTemplate,
   weightTotal,
@@ -161,6 +165,10 @@ export function SettingsScreen({
           />
           <SendersBlock senders={data.senders} recipients={data.recipients} />
           <ClientPortalBlock phone={data.clientPortalPhone} />
+          <SignInSecurityBlock
+            twoStepRequired={data.officeTwoStepRequired}
+            sessionMaxHours={data.officeSessionMaxHours}
+          />
           <RadiiBlock types={data.venueTypes} />
         </div>
 
@@ -646,6 +654,70 @@ function ClientPortalBlock({ phone }: { phone: string }) {
           onClick={() => run(() => saveClientPortalPhone(draft))}
         >
           {pending ? 'Saving…' : 'Save phone number'}
+        </Button>
+      </SaveAction>
+    </Block>
+  );
+}
+
+/**
+ * ADR-0164 (security audit H1, M4): Back Office sign-in. Two-step is
+ * required by default; switching it off is an owner's decision, audited
+ * like every setting here. The session length is enforced by the database
+ * from the moment of the password, however often the session is used.
+ */
+function SignInSecurityBlock({
+  twoStepRequired,
+  sessionMaxHours,
+}: {
+  twoStepRequired: boolean;
+  sessionMaxHours: number;
+}) {
+  const [required, setRequired] = useState(twoStepRequired ? 'required' : 'optional');
+  const [hours, setHours] = useState(sessionMaxHours);
+  const { note, error, pending, run } = useSave();
+  const dirty = (required === 'required') !== twoStepRequired || hours !== sessionMaxHours;
+
+  return (
+    <Block
+      title="Back Office sign-in"
+      sub="Who must use two-step sign-in, and how long one sign-in lasts. Staff App and Client Portal logins are not affected."
+    >
+      <Select
+        label="Two-step sign-in"
+        value={required}
+        onChange={(event) => setRequired(event.target.value)}
+        hint="Required: a Back Office login without an authenticator app is asked to set one up before it can open anything."
+      >
+        <option value="required">Required for every Back Office login (default)</option>
+        <option value="optional">Optional — each person chooses on My account</option>
+      </Select>
+      <Input
+        label="A sign-in lasts (hours)"
+        type="number"
+        step="1"
+        min={String(SESSION_HOURS_MIN)}
+        max={String(SESSION_HOURS_MAX)}
+        mono
+        value={String(hours)}
+        hint="Counted from the password, not from the last click; after it, sign in again — so a copied sign-in stops working. Shortening it signs out anyone already signed in for longer, you included."
+        error={(error && validateSessionHours(hours)) || undefined}
+        onChange={(event) => setHours(Number(event.target.value))}
+      />
+      {required === 'optional' ? (
+        <Note>
+          Optional means one leaked password is enough to open pay, bank details and every
+          worker’s documents, unless that person has set up two-step themselves.
+        </Note>
+      ) : null}
+      <Feedback note={note} error={error} />
+      <SaveAction id="sign-in" title="Back Office sign-in" dirty={dirty}>
+        <Button
+          tone="primary"
+          disabled={pending || !dirty}
+          onClick={() => run(() => saveOfficeSignIn(required === 'required', hours))}
+        >
+          {pending ? 'Saving…' : 'Save sign-in rules'}
         </Button>
       </SaveAction>
     </Block>

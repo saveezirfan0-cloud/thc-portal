@@ -12,6 +12,7 @@ import {
   validateGap,
   validateRadius,
   validateSenders,
+  validateSessionHours,
   validateWeights,
   validateWillo,
   validateWilloInterviewUrl,
@@ -207,6 +208,30 @@ export async function saveClientPortalPhone(value: string): Promise<ActionResult
   const invalid = validateClientPortalPhone(value);
   if (invalid) return { ok: false, message: invalid };
   return put('client_portal_phone', value.trim());
+}
+
+/**
+ * ADR-0164 (audit H1, M4): two-step sign-in compulsory for every Back
+ * Office login, and how long one sign-in lasts. Both rows are written
+ * together; the settings_audit trigger records who changed what.
+ *
+ * Turning two-step off, or lengthening a sign-in, takes effect for the
+ * database at once and for the middleware within a minute (ADR-0108's
+ * recheck). Switching it on sends every office login without an
+ * authenticator to the enrol step on its next page.
+ */
+export async function saveOfficeSignIn(
+  twoStepRequired: boolean,
+  sessionMaxHours: number,
+): Promise<ActionResult> {
+  if (typeof twoStepRequired !== 'boolean') {
+    return { ok: false, message: 'Choose whether two-step sign-in is required.' };
+  }
+  const invalid = validateSessionHours(sessionMaxHours);
+  if (invalid) return { ok: false, message: invalid };
+  const hours = await put('office_session_max_hours', sessionMaxHours);
+  if (!hours.ok) return hours;
+  return put('office_two_step_required', twoStepRequired);
 }
 
 /**

@@ -313,15 +313,40 @@ describe('runtime caching never keeps a personal response', () => {
   });
 
   it.each([
-    ['the build’s hashed script', '/_next/static/chunks/app-1a2b.js', 'next-static-js-assets'],
-    ['the build’s stylesheet', '/_next/static/css/9f8e.css', 'static-style-assets'],
-    ['a self-hosted font', '/_next/static/media/jakarta.woff2', 'static-font-assets'],
+    ['the build’s hashed script', '/_next/static/chunks/app-1a2b.js', 'next-static'],
+    ['a route chunk nobody precached', '/_next/static/chunks/app/apply/page-9f.js', 'next-static'],
+    ['the build’s stylesheet', '/_next/static/css/9f8e.css', 'next-static'],
+    ['a self-hosted font', '/_next/static/media/jakarta.woff2', 'next-static'],
     ['an app icon', '/icon-192.png', 'static-image-assets'],
     ['an induction slide', '/induction/slide-01.webp', 'static-image-assets'],
   ])('%s is still cached (the offline shell needs it)', (_label, href, cacheName) => {
     const handler = handlerFor(href);
     expect(handler?.kind).not.toBe('NetworkOnly');
     expect(handler?.cacheName).toBe(cacheName);
+  });
+
+  // Go-live audit M4: the precache holds the working tabs only, so every
+  // other build file is fetched once and must then come from the cache.
+  // Content-hashed, so cache first can never serve a stale one.
+  it('serves the build’s own files cache-first, from one cache', () => {
+    for (const href of [
+      '/_next/static/chunks/app/onboarding/%5Bstep%5D/page-1.js',
+      '/_next/static/css/a.css',
+      '/_next/static/media/inter.woff2',
+    ]) {
+      expect(handlerFor(href)).toEqual({ kind: 'CacheFirst', cacheName: 'next-static' });
+    }
+  });
+
+  it('keeps nothing cache-first that is not a build file', () => {
+    for (const href of [
+      '/_next/image?url=%2Fx.png&w=64',
+      '/_next/data/b/shifts.json',
+      '/shifts/b1/calendar.ics',
+      'https://abc.supabase.co/_next/static/chunks/x.js',
+    ]) {
+      expect(handlerFor(href)?.kind).toBe('NetworkOnly');
+    }
   });
 
   it('keeps the /offline fallback for documents', () => {
@@ -348,7 +373,10 @@ describe('activate clears what an earlier worker cached', () => {
       'static-data-assets',
       'serwist-precache-v2-https://staff.example/',
       'static-image-assets',
+      'next-static',
       'next-static-js-assets',
+      'static-style-assets',
+      'static-font-assets',
       'thc-app-badge',
     ]) {
       sw.cacheNames.add(name);
@@ -356,9 +384,11 @@ describe('activate clears what an earlier worker cached', () => {
     const waited: Promise<unknown>[] = [];
     sw.handlers.get('activate')!({ waitUntil: (p: Promise<unknown>) => waited.push(p) });
     await Promise.all(waited);
+    // The three build-file caches `next-static` replaced go too: nothing
+    // writes to them any more, so they would never expire.
     expect([...sw.cacheNames].sort()).toEqual(
       [
-        'next-static-js-assets',
+        'next-static',
         'serwist-precache-v2-https://staff.example/',
         'static-image-assets',
         'thc-app-badge',

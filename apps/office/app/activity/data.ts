@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { type ActivityFilters, type ActivityRow, periodStart } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 export type { ActivityFilters } from './view-model';
 
@@ -58,7 +59,7 @@ export async function loadActivity(filters: ActivityFilters): Promise<ActivityPa
     entities: facetData.entities ?? [],
     actors: facetData.actors ?? [],
     nextBefore: list.length === PAGE_SIZE ? (list[list.length - 1]?.id ?? null) : null,
-    problem: rows.error?.message ?? facets.error?.message ?? null,
+    problem: readProblem(rows.error ?? facets.error),
   };
 }
 

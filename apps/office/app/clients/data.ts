@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
 import type { Client } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /clients (§9.7).
@@ -29,14 +31,22 @@ export async function loadClients(): Promise<ClientsPageData> {
   }
 
   const supabase = createClient(await cookies());
-  const { data, error } = await supabase
-    .from('clients_directory_v')
-    .select(
-      'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct, created_at, created_by, created_by_name',
-    )
-    .order('name')
-    .returns<Client[]>();
+  // Paged by (name, id): PostgREST stops at 1000 rows without an error, and
+  // whoever sorted last would vanish from the directory and its search.
+  const { data, error } = await readAllPages<Client>(
+    (range) =>
+      supabase
+        .from('clients_directory_v')
+        .select(
+          'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct, created_at, created_by, created_by_name',
+        )
+        .order('name')
+        .order('id')
+        .range(range.from, range.to)
+        .returns<Client[]>(),
+    { what: 'clients', key: (row) => row.id },
+  );
 
-  if (error) return { clients: [], problem: error.message };
+  if (error) return { clients: [], problem: readProblem(error) };
   return { clients: data ?? [], problem: null };
 }

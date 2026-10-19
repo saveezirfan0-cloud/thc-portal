@@ -1,7 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
+import type { PageReply } from '@thc/db/paged';
 import { type ShortStaffedRole, type ShortStaffedRow, toShortStaffed } from './short-staffed';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * The read behind "Short-staffed — next 48 hours".
@@ -33,15 +36,23 @@ export async function loadShortStaffed(): Promise<ShortStaffedData> {
   // types are regenerated after 20261001200400, and the typed client refuses
   // a relation it does not know. The row shape is asserted below instead.
   const supabase = createClient(await cookies()) as unknown as SupabaseClient;
-  const { data, error } = await supabase
-    .from('dashboard_short_staffed_v')
-    .select(
-      'shift_id, event_id, event_title, event_date, client_name, venue_name, role_name, starts_at, ends_at, headcount, confirmed, open_positions',
-    )
-    .order('starts_at', { ascending: true });
+  // Paged (go-live audit M11): one row per short section, by its own start
+  // and then its id, so a busy 48 hours never loses its last rows quietly.
+  const { data, error } = await readAllPages<ShortStaffedRow>(
+    (range) =>
+      supabase
+        .from('dashboard_short_staffed_v')
+        .select(
+          'shift_id, event_id, event_title, event_date, client_name, venue_name, role_name, starts_at, ends_at, headcount, confirmed, open_positions',
+        )
+        .order('starts_at', { ascending: true })
+        .order('shift_id', { ascending: true })
+        .range(range.from, range.to) as unknown as PromiseLike<PageReply<ShortStaffedRow>>,
+    { what: 'short-staffed sections', key: (row) => row.shift_id },
+  );
 
-  if (error) return { roles: null, problem: error.message };
+  if (error) return { roles: null, problem: readProblem(error) };
 
   // Must match 20261001200400_dashboard_short_staffed.sql.
-  return { roles: toShortStaffed((data ?? []) as unknown as ShortStaffedRow[]), problem: null };
+  return { roles: toShortStaffed(data), problem: null };
 }

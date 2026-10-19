@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { staffDb, supabaseConfigured } from '../db';
 import type { Found, Loaded } from '../data';
@@ -44,12 +45,12 @@ export function toBookingOffer(row: Record<string, unknown>): BookingOffer {
 }
 
 /** The caller's live confirmed bookings, each with its open offer (audit D18: or the failure). */
-export async function loadBookingOffers(): Promise<Loaded<BookingOffer>> {
+export const loadBookingOffers = cache(async (): Promise<Loaded<BookingOffer>> => {
   if (!supabaseConfigured()) return { rows: [], problem: null };
   const { data, error } = await (await db()).rpc('staff_booking_offers');
   if (error) return { rows: [], problem: error.message || 'staff_booking_offers failed' };
   return { rows: ((data ?? []) as Record<string, unknown>[]).map(toBookingOffer), problem: null };
-}
+});
 
 /** `loadBookingOffers()` rows by booking id — the chip's and the panel's lookup. */
 export function offersByBooking(rows: readonly BookingOffer[]): Map<string, BookingOffer> {
@@ -114,12 +115,12 @@ export function toOpenOffer(row: Record<string, unknown>): OpenOffer {
  * "Up for grabs" — the open offers this worker may take (RULE-17
  * visibility, decided in SQL), or the failure (audit D18).
  */
-export async function loadOpenOffers(): Promise<Loaded<OpenOffer>> {
+export const loadOpenOffers = cache(async (): Promise<Loaded<OpenOffer>> => {
   if (!supabaseConfigured()) return { rows: [], problem: null };
   const { data, error } = await (await db()).rpc('staff_open_offers', { p_offer: null });
   if (error) return { rows: [], problem: error.message || 'staff_open_offers failed' };
   return { rows: ((data ?? []) as Record<string, unknown>[]).map(toOpenOffer), problem: null };
-}
+});
 
 /**
  * One offer by id — or nothing, when this worker may not see it. "Could

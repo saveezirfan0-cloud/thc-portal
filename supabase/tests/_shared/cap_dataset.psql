@@ -1,0 +1,218 @@
+-- =====================================================================
+-- A generated population for the RULE-20 equivalence tests and the
+-- scripts/bench timings (20261019192000 .. 20261019192200, ADR-0155).
+--
+-- Included with \ir after _shared/fixtures.psql (it reuses its client,
+-- role, venue and admin). Every row is created inside the caller's
+-- transaction and rolled back with it.
+--
+-- Parameters (psql variables, set before the \ir):
+--   cap_n      workers                         (e.g. 200 in pgTAP, 1000 in the bench)
+--   cap_cands  onboarding candidates           (e.g. 60 / 300)
+--   cap_back   days of history before Monday   (e.g. 70 / 300)
+--   cap_ahead  days of sections after Monday   (e.g. 42 / 42)
+--
+-- `:mon` is set here: the Monday of the current UK week.
+--
+-- Every RULE-20 branch is represented, by g % 20:
+--    0-7  UK / Irish, no limit                          → standard_48
+--    8    UK, signed 48 h opt-out                       → uncapped
+--    9    UK, opt-out cancelled, notice ending mid-week → uncapped, then 48 from the week AFTER
+--   10    UK, opt-out, turned 18 a few weeks ago        → 48 in the weeks before the birthday, uncapped after
+--   11    student, term with holidays (Thursday edges)  → 20 / 48 / straddle 20
+--   12    student below degree level                    → 10 in term
+--   13    student, completion letter, date in the past  → graduated_48
+--   14    student, letter verified, date in the FUTURE  → 20 until the completion date's week
+--   15    student with an opt-out                       → 20 in term (the opt-out lifts nothing), uncapped in holidays
+--   16    work visa, 20 h written on it, expiry mid-week → visa_limit 20, then visa_expired_0
+--   17    dependant visa 30 h + opt-out                 → visa_limit 30 (the visa still wins)
+--   18    EU settled, no date on the row                → can_roster_staff from the latest verified evidence
+--   19    student whose visa expires THIS Thursday       → 20, then 0; can_roster false after Thursday
+--
+-- Bookings: about one day in three per worker, across every status the
+-- cap rule distinguishes (worked, confirmed, invited, applied, closed by a
+-- decline, closed by a lost race with no stamp, cancelled), some with an
+-- unresolved or resolved No check-out, overnight and Sunday-night sections
+-- that cross a week boundary.
+--
+-- User triggers on the seeded tables are switched off while seeding (the
+-- guards would refuse a worker's past over-cap week, which is exactly the
+-- data a cap test needs) and back on before the caller runs anything.
+-- =====================================================================
+
+select cap_week_start((now() at time zone 'Europe/London')::date) as mon \gset
+
+alter table staff disable trigger user;
+alter table events disable trigger user;
+alter table shift_requirements disable trigger user;
+alter table bookings disable trigger user;
+alter table compliance_docs disable trigger user;
+alter table quiz_attempts disable trigger user;
+alter table violations disable trigger user;
+
+-- ---- workers ----------------------------------------------------------
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch,
+                   home_location, term_dates, below_degree_level, graduated_at,
+                   course_completion_date, right_to_work_until, wtr_optout,
+                   wtr_optout_cancelled_from, visa_weekly_hour_limit, employee_id)
+select ('ca9d0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+       'Cap' || g, 'Worker' || g, 'cap' || g || '@capset.test', '+4477055' || lpad(g::text, 5, '0'),
+       case when g % 20 = 10 then ((now() at time zone 'Europe/London')::date - interval '18 years')::date - (7 + g % 40)
+            else date '1990-01-01' + (g % 3000) end,
+       'compliant',
+       case when g % 20 between 11 and 15 or g % 20 = 19 then 'international_student'::rtw_branch
+            when g % 20 = 16 then 'work_visa'::rtw_branch
+            when g % 20 = 17 then 'dependant_other'::rtw_branch
+            when g % 20 = 18 then 'eu_settled'::rtw_branch
+            else 'uk_irish'::rtw_branch end,
+       st_setsrid(st_makepoint(-0.1 + (g % 50) / 500.0, 51.5 + (g % 7) / 300.0), 4326)::geography,
+       -- Holidays that open and close on varying weekdays, so weeks straddle.
+       case when g % 20 between 11 and 15 or g % 20 = 19 then
+              array[daterange(:'mon'::date - 60 + g % 7, :'mon'::date - 25 + g % 5),
+                    daterange(:'mon'::date + 10 + g % 9, :'mon'::date + 31 + g % 4)]
+            else '{}'::daterange[] end,
+       g % 20 = 12,
+       case when g % 20 = 13 then :'mon'::date - 30 - g % 11
+            when g % 20 = 14 then :'mon'::date - 3 - g % 4 end,
+       case when g % 20 = 13 then :'mon'::date - 20 - g % 9
+            when g % 20 = 14 then :'mon'::date + 9 + g % 25 end,
+       case when g % 20 between 11 and 15 then :'mon'::date + 200
+            when g % 20 = 16 then :'mon'::date + (g % 6) * 7 + g % 7
+            when g % 20 = 17 then :'mon'::date + 60
+            when g % 20 = 19 then :'mon'::date + 3 end,
+       g % 20 in (8, 9, 10, 15, 17),
+       case when g % 20 = 9 then :'mon'::date + (g % 9) * 3 - 6 end,
+       case when g % 20 = 16 then 20 when g % 20 = 17 then 30 end,
+       700000 + g
+  from generate_series(1, :cap_n) g;
+
+-- g % 20 = 18: the evidence can_roster_staff reads when the row has no date.
+-- Half say "no time limit", half are a verified report with no date at all.
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, reviewed_at, uploaded_at,
+                             right_to_work_until, rtw_no_time_limit)
+select ('ca9d0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid, 'share_code_report',
+       'documents/capset/' || g || '.pdf', 'verified', now() - interval '20 days', now() - interval '21 days',
+       null, g % 40 = 18
+  from generate_series(1, :cap_n) g where g % 20 = 18;
+
+-- ---- onboarding candidates -----------------------------------------------
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, share_code,
+                   onboarding_started_at, created_at, stage_entered_at, rejected_at, rejection_cause,
+                   rejection_reason, rejected_by, willo_candidate_id)
+select ('ca9e0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+       'Cand' || g, 'Applicant' || g, 'cand' || g || '@capset.test', '+4477066' || lpad(g::text, 5, '0'),
+       date '1998-01-01' + (g % 900),
+       (array['interview_requested','interview_completed','documents','quiz','additional_info',
+              'contract','rejected','documents','quiz'])[1 + g % 9]::staff_status,
+       (array[null,'uk_irish','eu_settled','international_student','work_visa','dependant_other'])[1 + g % 6]::rtw_branch,
+       case when g % 4 = 0 then null else 'W' || lpad(g::text, 8, '0') end,
+       now() - make_interval(days => 3 + g % 30), now() - make_interval(days => 40 + g % 30),
+       now() - make_interval(days => g % 20),
+       case when g % 9 = 6 then now() - interval '2 days' end,
+       case when g % 9 = 6 then 'manager' end,
+       case when g % 9 = 6 then 'No-show at interview #' || g end,
+       case when g % 9 = 6 then :'admin_uid'::uuid end,
+       case when g % 3 = 0 then 'willo-' || g end
+  from generate_series(1, :cap_cands) g;
+insert into staff_roles (staff_id, role_id)
+select id, :'role_id' from staff where email like '%@capset.test';
+
+-- Documents: each type at most twice (a superseded or older upload behind
+-- the current one), every review status.
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, reviewed_at)
+select ('ca9e0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+       (array['passport','birth_certificate','ni_evidence','national_id','university_term_dates_letter',
+              'university_completion_letter','visa_document'])[1 + (g + k) % 7]::doc_type,
+       'documents/capset/c' || g || '-' || k || '.pdf',
+       (array['pending','verified','rejected','superseded','verified'])[1 + (g * 3 + k) % 5]::review_status,
+       now() - make_interval(days => 10 - k, secs => g),
+       case when (g * 3 + k) % 5 <> 0 then now() - make_interval(days => 9 - k) end
+  from generate_series(1, :cap_cands) g cross join generate_series(0, 1 + g % 5) k;
+
+insert into criminal_declarations (staff_id, source, answer, review_status, declared_at, superseded)
+select ('ca9e0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid, 'onboarding', g % 5 = 0,
+       (array['pending','verified','rejected'])[1 + g % 3]::review_status,
+       now() - make_interval(days => k), k = 1
+  from generate_series(1, :cap_cands) g cross join generate_series(0, g % 2) k
+ where g % 7 <> 0;
+
+-- Quiz attempts: some before onboarding started (a reset), some superseded.
+insert into quiz_attempts (staff_id, attempt_no, score, passed, answers, taken_at, superseded)
+select ('ca9e0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid, k,
+       50 + (g * 7 + k * 13) % 50, (g * 7 + k * 13) % 50 >= 30, '{}'::jsonb,
+       now() - make_interval(days => case when k = 1 and g % 4 = 3 then 60 else 3 - k end, secs => g),
+       k = 1 and g % 4 = 3
+  from generate_series(1, :cap_cands) g cross join generate_series(1, g % 4) k;
+
+insert into staff_references (staff_id, name, relationship, phone, email)
+select ('ca9e0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid, 'Ref ' || g, 'Tutor',
+       '+4477077' || lpad(g::text, 5, '0'), 'ref' || g || '@capset.test'
+  from generate_series(1, :cap_cands) g where g % 3 = 1;
+
+-- ---- sections: three a day, one overnight, one late on Sundays --------
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location,
+                    geofence_radius_m, title, event_date, pays_breaks, pays_buffer, cancelled_at)
+select ('ca9f0000-0000-4000-8000-' || lpad((d + 100000)::text, 12, '0'))::uuid,
+       :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+       st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Capset ' || d,
+       :'mon'::date + d, true, true,
+       case when d % 37 = 5 then now() - interval '1 day' end
+  from generate_series(-:cap_back, :cap_ahead) d;
+
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour)
+select ('ca9a0000-0000-4000-8000-' || lpad(((d + 100000) * 10 + k)::text, 12, '0'))::uuid,
+       ('ca9f0000-0000-4000-8000-' || lpad((d + 100000)::text, 12, '0'))::uuid, :'role_id',
+       ((:'mon'::date + d) + case k when 0 then time '09:00' when 1 then time '12:00' else time '19:30' end)
+         at time zone 'Europe/London',
+       ((:'mon'::date + d) + case k when 0 then time '13:00' when 1 then time '20:00' else time '19:30' end
+         + case k when 2 then interval '8 hours 30 minutes' else interval '0' end)
+         at time zone 'Europe/London',
+       200, 2, 30, 15, 1
+  from generate_series(-:cap_back, :cap_ahead) d cross join generate_series(0, 2) k;
+
+-- ---- bookings -------------------------------------------------------------
+-- One section on about one day in three; status by where the day falls.
+insert into bookings (shift_id, staff_id, status, source, confirmed_at, cancelled_at, cancel_cause, applied_at, created_at)
+select ('ca9a0000-0000-4000-8000-' || lpad(((d + 100000) * 10 + ((g + d) % 3 + 3) % 3)::text, 12, '0'))::uuid,
+       ('ca9d0000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+       x.status::booking_status, 'auto',
+       case when x.status in ('confirmed','worked') then now() - interval '30 days' end,
+       case when x.status = 'cancelled' or (x.status = 'closed' and x.cause is not null) then now() - interval '20 days' end,
+       x.cause,
+       case when x.status = 'applied' then now() - interval '1 day' end,
+       now() - interval '40 days'
+  from generate_series(1, :cap_n) g
+  cross join generate_series(-:cap_back, :cap_ahead) d
+  cross join lateral (
+    select case
+             when d < 0 then (array['worked','worked','worked','worked','worked','worked','closed','closed','cancelled','confirmed'])[1 + abs(g * 7 + d * 3) % 10]
+             else (array['invited','invited','confirmed','confirmed','applied','closed','invited','cancelled','worked','invited'])[1 + abs(g * 5 + d * 11) % 10]
+           end as status
+  ) s0
+  cross join lateral (
+    select s0.status,
+           case when s0.status = 'closed' and (g + d) % 2 = 0 then 'declined'
+                when s0.status = 'closed' then null                       -- lost the race: counts (booking_counts_toward_cap)
+                when s0.status = 'cancelled' then (array['self_cancel','office_withdraw','blocked','ready_cutoff'])[1 + abs(g + d) % 4]
+           end as cause
+  ) x
+ where abs(g * 31 + d * 17) % 3 = 0;
+
+-- RULE-02: an unresolved No check-out on some worked rows, a resolved one on others.
+insert into violations (staff_id, booking_id, type, resolved)
+select b.staff_id, b.id, 'no_checkout', abs(hashtext(b.id::text)) % 2 = 0
+  from bookings b join staff s on s.id = b.staff_id
+ where s.email like 'cap%@capset.test' and b.status = 'worked'
+   and abs(hashtext(b.id::text)) % 23 = 0;
+
+alter table staff enable trigger user;
+alter table events enable trigger user;
+alter table shift_requirements enable trigger user;
+alter table bookings enable trigger user;
+alter table compliance_docs enable trigger user;
+alter table quiz_attempts enable trigger user;
+alter table violations enable trigger user;
+
+analyze staff; analyze bookings; analyze shift_requirements; analyze compliance_docs;
+analyze quiz_attempts; analyze criminal_declarations; analyze violations; analyze events;

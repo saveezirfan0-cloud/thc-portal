@@ -68,8 +68,8 @@ async function call<T extends object = object>(
 }
 
 /** The caller's staff id, from the session — never from the request. */
-async function sessionStaffId(): Promise<string | null> {
-  const supabase = await db();
+async function sessionStaffId(client?: SupabaseClient): Promise<string | null> {
+  const supabase = client ?? (await db());
   const { data } = await supabase.rpc('staff_me');
   const staffId = (data as Record<string, unknown> | null)?.['staffId'];
   return typeof staffId === 'string' ? staffId : null;
@@ -235,16 +235,32 @@ export async function lookupPostcode(
 // 3/11 Profile selfie
 // ---------------------------------------------------------------------
 
-/** Where the selfie goes — built from the session, never taken from the browser. */
-export async function startSelfieUpload(): Promise<Result<{ path: string }>> {
+/**
+ * Where the selfie goes, built from the session and never taken from the
+ * browser, and a signed upload URL for exactly that object.
+ *
+ * The URL is signed by the worker's OWN session, not the service key:
+ * Storage checks `photos_worker_insert_own` before it signs, and records
+ * the worker as the object's owner, just as the session's own upload did.
+ * The browser then sends the JPEG in one PUT (app/_lib/signed-upload.ts)
+ * and needs no Supabase client of its own (go-live audit L1).
+ */
+export async function startSelfieUpload(): Promise<Result<{ path: string; url: string }>> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  const staffId = await sessionStaffId();
+  const supabase = await db();
+  const staffId = await sessionStaffId(supabase);
   if (!staffId) return { ok: false, message: reasonMessage('unknown_staff') };
-  return { ok: true, path: photoPathFor(staffId) };
+  const path = photoPathFor(staffId);
+  const { data: slot, error } = await supabase.storage.from('photos').createSignedUploadUrl(path);
+  if (error || !slot?.signedUrl) {
+    return { ok: false, message: 'That upload couldn’t start. Please try again.' };
+  }
+  return { ok: true, path, url: slot.signedUrl };
 }
 
 /**
- * The photo is uploaded by the worker's own session (photos_worker_insert_own).
+ * The photo is uploaded under the worker's own session's signed URL
+ * (photos_worker_insert_own, checked by Storage when it signed).
  * Its first bytes are read back through the same session
  * (photos_worker_read_own) and must be a JPEG, as its name says — the
  * Content-Type Storage recorded is only the browser's claim (security
@@ -273,7 +289,7 @@ export async function confirmSelfie(): Promise<Result> {
 // The `documents` bucket has no worker policy (20260922183015), so the
 // file goes up through a signed upload URL minted here with the service
 // key, for a path built here from the session. The browser uploads
-// straight to Storage — a 10 MB scan never passes through a function with
+// straight to Storage in one PUT — a 10 MB scan never passes through a function with
 // a body limit — and then `finishDocumentUpload` records it AS THE WORKER,
 // with the size and type Storage measured rather than the ones the
 // browser claimed. `onboarding_attach_document()` checks the rest.
@@ -292,7 +308,7 @@ export async function startDocumentUpload(input: {
   fileName: string;
   fileSize: number;
   fileType: string;
-}): Promise<Result<{ path: string; token: string; contentType: string }>> {
+}): Promise<Result<{ path: string; url: string; contentType: string }>> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   // The path is built from this field (§2.5 pt 7, paths.ts): a docType
   // that is not one of ours must never reach `documentPath`, or a signed
@@ -310,12 +326,14 @@ export async function startDocumentUpload(input: {
 
   const path = documentPath(staffId, input.docType, randomUUID(), kind);
   const { data: slot, error } = await admin.storage.from('documents').createSignedUploadUrl(path);
-  if (error || !slot)
+  if (error || !slot?.signedUrl)
     return { ok: false, message: 'That upload couldn’t start. Please try again.' };
 
   const contentType =
     Object.entries(UPLOAD_MIME).find(([, ext]) => ext === kind)?.[0] ?? 'application/octet-stream';
-  return { ok: true, path: slot.path, token: slot.token, contentType };
+  // The browser PUTs the file to `url` with this type (app/_lib/signed-upload.ts),
+  // so Storage records the type the server derived, not the picker's guess.
+  return { ok: true, path: slot.path, url: slot.signedUrl, contentType };
 }
 
 export async function finishDocumentUpload(input: {

@@ -13,3 +13,14 @@ export const PASSWORD_HINT = 'Check your password — it is case-sensitive.';
 
 /** login.html:39 — ticked by default. */
 export const REMEMBER_LABEL = 'Keep me signed in on this device';
+
+/**
+ * ADR-0164 (audit M4): a Back Office sign-in lasts
+ * settings.office_session_max_hours from the password, however often it is
+ * used. Shown above the form when the middleware has just ended one.
+ */
+export function sessionEndedNotice(hours: string | undefined): string {
+  const n = Number(hours);
+  const length = Number.isInteger(n) && n >= 1 && n <= 24 ? `${n} hour${n === 1 ? '' : 's'}` : 'a set time';
+  return `For security, a Back Office sign-in lasts ${length}. Sign in again to carry on where you were.`;
+}

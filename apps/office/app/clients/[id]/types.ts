@@ -93,6 +93,10 @@ export interface StaffOption {
   role_names: string[];
 }
 
+/** One page of the "+ Add staff" picker's search (`searchQualifyPicker`). */
+export type PickerPage =
+  { ok: true; workers: StaffOption[]; total: number } | { ok: false; message: string };
+
 /** One role's ask of a worker (ADR-0110): `clients_shift_requirements_v`. */
 export interface ShiftRequirementRow {
   id: string;
@@ -165,7 +169,6 @@ export interface ClientCardData {
   workerRequests: WorkerRequestRow[];
   events: ClientEventRow[];
   roles: RoleOption[];
-  staff: StaffOption[];
   problem: string | null;
 }
 

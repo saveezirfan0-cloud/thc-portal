@@ -81,3 +81,47 @@ export async function getFix(
     );
   });
 }
+
+/**
+ * While check-in is open: keep the screen's location line live (go-live
+ * audit B4). A worker who opened the shift on the bus, or whose first
+ * reading timed out in a basement, would otherwise be stuck behind a
+ * greyed-out button until they reloaded.
+ *
+ * `maximumAge` lets the browser hand back a reading from the last few
+ * seconds; there is deliberately no `timeout` — a watch that cannot see the
+ * sky simply waits, rather than painting a fresh error every few seconds
+ * over a reading the worker already has. The one-off `getFix()` on mount
+ * and the "Refresh location" press are what report a timeout.
+ *
+ * This only moves the screen. The press still takes its own reading
+ * (`CHECK_IN_FIX`), and `attempt_check_in()` recomputes the geofence from
+ * that, so nothing about the rule depends on the watch.
+ */
+export const WATCH_FIX = { maximumAgeMs: 5_000 } as const;
+
+/** Start watching; answers the function that stops it. No geolocation = a no-op. */
+export function watchFix(
+  geo: Geolocation | undefined | null,
+  onFix: (fix: Fix) => void,
+  onFailure?: (why: FixFailure) => void,
+): () => void {
+  if (!geo || typeof geo.watchPosition !== 'function') return () => {};
+  const id = geo.watchPosition(
+    (pos) =>
+      onFix({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracyM: Math.round(pos.coords.accuracy),
+      }),
+    (err) => {
+      // A temporary miss is not news while the watch keeps trying; only a
+      // refused permission is something the worker has to act on.
+      if (err.code === err.PERMISSION_DENIED) onFailure?.('denied');
+    },
+    { enableHighAccuracy: true, maximumAge: WATCH_FIX.maximumAgeMs },
+  );
+  return () => {
+    if (typeof geo.clearWatch === 'function') geo.clearWatch(id);
+  };
+}

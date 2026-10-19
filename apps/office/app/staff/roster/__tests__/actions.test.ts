@@ -176,7 +176,7 @@ describe('linkRosterEntries (ADR-0145)', () => {
     { entryId: 'e3', staffId: 's3', confirmName: false },
   ];
 
-  it('links each row through the same RPC, one at a time, and a refusal never stops the others', async () => {
+  it('links each row through its own RPC call, and a refusal never stops the others', async () => {
     rpc
       .mockResolvedValueOnce({ data: { spudbros: 'unchanged' }, error: null })
       .mockResolvedValueOnce({ data: null, error: { message: 'payroll_id_taken' } })
@@ -201,11 +201,18 @@ describe('linkRosterEntries (ADR-0145)', () => {
     });
   });
 
-  it('stops at once when the login itself may not link', async () => {
+  it('starts no more calls once the login itself may not link', async () => {
+    // Eight run at a time (go-live audit M5): the first wave is in flight
+    // when the refusal comes back, and nothing after it is started.
     rpc.mockResolvedValue({ data: null, error: { message: 'not_permitted' } });
     const { linkRosterEntries } = await import('../actions');
-    const result = await linkRosterEntries(items);
-    expect(rpc).toHaveBeenCalledTimes(1);
+    const many = Array.from({ length: 40 }, (_, n) => ({
+      entryId: `e${n}`,
+      staffId: `s${n}`,
+      confirmName: false,
+    }));
+    const result = await linkRosterEntries(many);
+    expect(rpc.mock.calls.length).toBeLessThanOrEqual(8);
     expect(result).toEqual({
       ok: false,
       message: 'Only an owner or manager can change Payroll IDs.',

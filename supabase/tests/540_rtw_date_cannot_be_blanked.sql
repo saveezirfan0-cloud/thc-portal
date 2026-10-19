@@ -113,6 +113,9 @@ select throws_like(format($$ update compliance_docs set expiry_date = null where
 -- Let anon and a non-admin authenticated user reach the row, so that the
 -- answer comes from the trigger and not from RLS or a missing grant.
 grant update on compliance_docs to anon, authenticated;
+-- anon holds no SELECT of its own since ADR-0163 / 20261020120200; the
+-- WHERE below needs the id, so the probe grants exactly that.
+grant select (id) on compliance_docs to anon;
 create policy t540_anon_upd on compliance_docs for update to anon using (true) with check (true);
 create policy t540_anon_sel on compliance_docs for select to anon using (true);
 create policy t540_auth_upd on compliance_docs for update to authenticated using (true) with check (true);

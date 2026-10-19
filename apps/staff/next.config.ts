@@ -1,6 +1,7 @@
 import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
 import { securityHeaderRules } from '@thc/db/security-headers';
+import { precacheWorkingTabs } from './lib/sw-precache';
 
 /**
  * The Staff App is the PWA (ADR-0001, docs/06). `sw.ts` is compiled to
@@ -25,6 +26,11 @@ const withSerwist = withSerwistInit({
   // A fresh revision per build: the offline shell must not be the one from
   // three deploys ago.
   additionalPrecacheEntries: [{ url: '/offline', revision: crypto.randomUUID() }],
+  // Only the App Router runtime, the root layout, the working tabs and the
+  // offline shell's own chunks: not every route's, and no fonts (go-live
+  // audit M4, ADR-0162; lib/sw-precache.ts). The rest of `_next/static`
+  // loads when first used and is then kept cache-first (sw.ts).
+  manifestTransforms: [precacheWorkingTabs()],
   // Off. `cacheOnNavigation` makes every client-side navigation post its URL
   // to the worker, which then fetches and stores the page — a signed-in
   // worker's shifts, documents and payment details, left in Cache Storage on
@@ -32,7 +38,14 @@ const withSerwist = withSerwistInit({
   // above; pages are not. (Nothing to do with the CDN: Vercel already serves
   // sw.js revalidated on every load.)
   cacheOnNavigation: false,
-  reloadOnOnline: true,
+  // Off (go-live audit H5). On, every page reloaded whenever the phone
+  // regained signal — on venue signal and every wifi/4G handover that is
+  // the shift screen reloading mid-check-in, dropping the in-flight press
+  // and the off-site check-out confirmation, and hundreds of phones
+  // reloading in step. The offline shell reloads itself instead
+  // (app/offline/ReloadWhenOnline.tsx); the list screens refresh on their
+  // own when back online (AutoRefresh).
+  reloadOnOnline: false,
 });
 
 const nextConfig: NextConfig = {

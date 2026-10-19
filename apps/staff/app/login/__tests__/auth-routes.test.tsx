@@ -22,7 +22,10 @@ const auth = vi.hoisted(() => ({
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
-    auth: { getUser: async () => ({ data: { user: null } }) },
+    auth: {
+      getClaims: async () => ({ data: null, error: null }),
+      getUser: async () => ({ data: { user: null } }),
+    },
   }),
 }));
 vi.mock('next/headers', () => ({

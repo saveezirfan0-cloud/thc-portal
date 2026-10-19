@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer, useTimeFormat } from '@thc/ui';
 import {
   UK_ZONE,
@@ -11,10 +10,11 @@ import {
   needsDualZone,
   viewerZone,
 } from '@thc/domain';
-import { CHECK_IN_FIX, TRACKING_FIX, getFix } from '../../../lib/geo';
+import { CHECK_IN_FIX, TRACKING_FIX, getFix, watchFix } from '../../../lib/geo';
 import type { Fix, FixFailure, FixOptions } from '../../../lib/geo';
 import { CancelShift } from '../../_components/CancelShift';
 import { UkTime } from '../../_components/UkTime';
+import { isStaleDeploy, reloadForNewBuild } from '../../_lib/stale-deploy';
 import { checkIn, checkOut, finishBreak, recordPing, startBreak } from './actions';
 import type { RpcResult } from './actions';
 import { formatDuration, shiftEarnings, totalBreakMinutes } from './earnings';
@@ -24,7 +24,7 @@ import {
   OffSiteCheckOutScreen,
   ShiftCompleteScreen,
 } from './FullScreens';
-import { rpcMessage } from './messages';
+import { NOT_SENT, rpcMessage } from './messages';
 import {
   checkInWindow,
   checkOutLocksAt,
@@ -112,13 +112,13 @@ export function ShiftScreen({
   /** `staff_booking_offers()` failed: say so, never guess the panel (audit D18). */
   offerProblem?: boolean;
 }) {
-  const router = useRouter();
-  // `shift` is read straight from props, not copied into state: after a
-  // press, `router.refresh()` hands down the booking as the server now has
-  // it, and a copy in state would keep showing the check-in button to a
-  // worker who has just checked in.
+  // `shift` is read straight from props, not copied into state: a press's
+  // server action revalidates the page, so its response hands down the
+  // booking as the server now has it, and a copy in state would keep
+  // showing the check-in button to a worker who has just checked in.
   const [fix, setFix] = useState<Fix | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -163,6 +163,36 @@ export function ShiftScreen({
     if (!dead) void locate(TRACKING_FIX);
   }, [locate, dead]);
 
+  // Go-live audit B4: while check-in is open the location line follows the
+  // worker, so arriving at the door turns the button on (and the today
+  // card's auto check-in goes) without a reload. Started when the 15 s tick
+  // moves the screen from before_window into the window; stopped once they
+  // are checked in, when the pings below take over. The press still takes
+  // its own reading and the database re-checks the geofence with it.
+  const watching = !dead && phase === 'check_in';
+  useEffect(() => {
+    if (!watching) return;
+    const geo = typeof navigator === 'undefined' ? null : navigator.geolocation;
+    return watchFix(
+      geo,
+      (next) => {
+        setFix(next);
+        setGpsError(null);
+      },
+      (why) => setGpsError(gpsSentence(why)),
+    );
+  }, [watching]);
+
+  /** "Refresh location": a new reading on demand, for a watch that has gone quiet. */
+  async function refreshLocation() {
+    setLocating(true);
+    try {
+      await locate(CHECK_IN_FIX);
+    } finally {
+      setLocating(false);
+    }
+  }
+
   // §5.1 background tracking, as far as a PWA can do it: a fix whenever the
   // worker has the screen open during the shift. Off-site check-out reads
   // this trail, so even this much is the difference between recording their
@@ -176,7 +206,15 @@ export function ShiftScreen({
     let cancelled = false;
     const send = async () => {
       const f = await locate(TRACKING_FIX);
-      if (f && !cancelled) await recordPing(shift.bookingId, f.lat, f.lng, f.accuracyM);
+      if (!f || cancelled) return;
+      try {
+        await recordPing(shift.bookingId, f.lat, f.lng, f.accuracyM);
+      } catch (e) {
+        // A lost ping is retried by the next one. A ping refused because
+        // the phone is on an older build than the server would be refused
+        // every time, leaving check-out with no trail — load the new build.
+        if (isStaleDeploy(e)) reloadForNewBuild();
+      }
     };
     // Back from another app or a locked screen: a fix now, not up to two
     // minutes later — the gap is exactly what the trail is missing.
@@ -197,33 +235,56 @@ export function ShiftScreen({
   const metres = fix ? distanceM(fix, venue) : null;
   const inside = metres !== null && metres <= shift.geofenceRadiusM;
 
+  /**
+   * One press. The fresh booking comes back inside the action's response
+   * (actions.ts revalidates the page), so there is no `router.refresh()`
+   * here — that was a second full render of the page after every press.
+   *
+   * Go-live audit B5: the button is never left reading "Checking in…". A
+   * press that gets no answer — venue signal, a gateway timeout — says so
+   * and asks for another press, which is safe: `attempt_check_in` answers
+   * `already_checked_in`, `check_out` `already_checked_out`, the break
+   * presses `already_on_break` / `not_on_break`, so a second press never
+   * records anything twice. A press refused because the phone is on an
+   * older build than the server reloads onto the new one.
+   */
   async function run(fn: () => Promise<RpcResult>): Promise<Record<string, unknown> | null> {
     setBusy(true);
     setError(null);
     setMessage(null);
-    const result = await fn();
-    setBusy(false);
-    if ('error' in result) {
-      setError(result.error);
+    try {
+      const result = await fn();
+      if ('error' in result) {
+        setError(result.error);
+        return null;
+      }
+      const away = turnedAwayReply(result.result);
+      if (away) {
+        setTurnedAway(away);
+      } else {
+        setMessage(rpcMessage(result.result, local));
+      }
+      return result.result;
+    } catch (e) {
+      if (!(isStaleDeploy(e) && reloadForNewBuild())) setError(NOT_SENT);
       return null;
+    } finally {
+      setBusy(false);
     }
-    const away = turnedAwayReply(result.result);
-    if (away) {
-      setTurnedAway(away);
-    } else {
-      setMessage(rpcMessage(result.result, local));
-    }
-    router.refresh();
-    return result.result;
   }
 
   /** A reading AT the press, then the RPC with it (§5.1). */
   async function pressCheckIn() {
     setBusy(true);
-    const at = await locate(CHECK_IN_FIX);
-    setBusy(false);
+    let at: Fix | null = null;
+    try {
+      at = await locate(CHECK_IN_FIX);
+    } finally {
+      setBusy(false);
+    }
     if (!at) return;
-    await run(() => checkIn(shift.bookingId, at.lat, at.lng, at.accuracyM));
+    const { lat, lng, accuracyM } = at;
+    await run(() => checkIn(shift.bookingId, lat, lng, accuracyM));
   }
   // The auto check-in below runs from an effect; it calls the latest press.
   const pressRef = useRef(pressCheckIn);
@@ -448,6 +509,20 @@ export function ShiftScreen({
 
       {gpsError ? <Alert tone="coral">{gpsError}</Alert> : null}
       {gps}
+      {/* ADR-0152: before check-in, a way to take a new reading without
+          reloading — the first one may have been on the bus, or timed out. */}
+      {phase === 'before_window' || phase === 'check_in' ? (
+        <div className="shift-links">
+          <Button
+            size="sm"
+            tone="outline"
+            disabled={locating || busy}
+            onClick={() => void refreshLocation()}
+          >
+            {locating ? 'Finding you…' : 'Refresh location'}
+          </Button>
+        </div>
+      ) : null}
 
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {message ? (

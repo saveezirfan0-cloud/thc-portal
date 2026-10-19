@@ -31,7 +31,23 @@ export interface RtwChecksRead {
   dobClaims: DobClaim[];
 }
 
-const DOB_CLAIM_COLUMNS = 'document_id, staff_id, claimed_dob, profile_dob, opt_out_signed_under_18';
+const DOB_CLAIM_COLUMNS =
+  'document_id, staff_id, claimed_dob, profile_dob, opt_out_signed_under_18';
+
+/**
+ * Document ids per `in.(…)` read. PostgREST carries the list in the URL, and
+ * a full review queue holds hundreds of share codes: chunked, as the board
+ * and the onboarding referrals are, so the request line stays well inside
+ * every proxy's limit. Each chunk is at most one row per document (the
+ * latest check; one pending claim), far under the 1000-row cap.
+ */
+export const DOCUMENT_CHUNK = 100;
+
+function chunks(ids: readonly string[]): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += DOCUMENT_CHUNK) out.push(ids.slice(i, i + DOCUMENT_CHUNK));
+  return out;
+}
 
 function claimsFrom(result: { data: unknown; error: unknown }): DobClaim[] {
   if (result.error) return [];
@@ -53,7 +69,11 @@ export async function loadRtwChecks(client: unknown, staffId: string): Promise<R
       : ((rows.data as Record<string, unknown>[] | null) ?? [])
           .map(parseRtwCheckRow)
           .filter((r): r is RtwCheckRow => r !== null);
-    return { checks, enabled: !enabled.error && enabled.data === true, dobClaims: claimsFrom(claims) };
+    return {
+      checks,
+      enabled: !enabled.error && enabled.data === true,
+      dobClaims: claimsFrom(claims),
+    };
   } catch {
     return { checks: [], enabled: false, dobClaims: [] };
   }
@@ -71,9 +91,10 @@ export async function loadRtwCheckEnabled(client: unknown): Promise<boolean> {
 /**
  * The latest check of each of these documents, keyed by document id — for
  * /compliance, whose queue view names the check but not what ADR-0041 added
- * to it (the recommendation, the suggested N8 text, the photo). One
- * `in('document_id', …)` read; best-effort, so a failure leaves the queue as
- * it was (the date typed by hand, an empty Reject box).
+ * to it (the recommendation, the suggested N8 text, the photo). Read by
+ * `in('document_id', …)` in chunks of DOCUMENT_CHUNK; best-effort, so a
+ * failure leaves the queue as it was (the date typed by hand, an empty
+ * Reject box).
  */
 export async function loadRtwChecksForDocuments(
   client: unknown,
@@ -83,14 +104,20 @@ export async function loadRtwChecksForDocuments(
   const ids = [...new Set(documentIds.filter(Boolean))];
   if (ids.length === 0) return map;
   try {
-    const { data, error } = await (client as Client)
-      .from('rtw_checks_latest_v')
-      .select(RTW_CHECK_COLUMNS)
-      .in('document_id', ids);
-    if (error) return map;
-    for (const raw of (data as Record<string, unknown>[] | null) ?? []) {
-      const row = parseRtwCheckRow(raw);
-      if (row) map.set(row.document_id, row);
+    const answers = await Promise.all(
+      chunks(ids).map((chunk) =>
+        (client as Client)
+          .from('rtw_checks_latest_v')
+          .select(RTW_CHECK_COLUMNS)
+          .in('document_id', chunk),
+      ),
+    );
+    if (answers.some((answer) => answer.error)) return map;
+    for (const { data } of answers) {
+      for (const raw of (data as Record<string, unknown>[] | null) ?? []) {
+        const row = parseRtwCheckRow(raw);
+        if (row) map.set(row.document_id, row);
+      }
     }
   } catch {
     return map;
@@ -111,11 +138,18 @@ export async function loadDobClaimsForDocuments(
   const ids = [...new Set(documentIds.filter(Boolean))];
   if (ids.length === 0) return map;
   try {
-    const result = await (client as Client)
-      .from('share_code_dob_claims_v')
-      .select(DOB_CLAIM_COLUMNS)
-      .in('document_id', ids);
-    for (const claim of claimsFrom(result)) map.set(claim.documentId, claim);
+    const answers = await Promise.all(
+      chunks(ids).map((chunk) =>
+        (client as Client)
+          .from('share_code_dob_claims_v')
+          .select(DOB_CLAIM_COLUMNS)
+          .in('document_id', chunk),
+      ),
+    );
+    if (answers.some((answer) => answer.error)) return map;
+    for (const answer of answers) {
+      for (const claim of claimsFrom(answer)) map.set(claim.documentId, claim);
+    }
   } catch {
     return map;
   }

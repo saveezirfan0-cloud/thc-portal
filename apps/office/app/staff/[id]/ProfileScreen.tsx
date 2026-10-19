@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useId, useState, useTransition } from 'react';
 import {
   Alert,
@@ -18,6 +17,7 @@ import {
   toast,
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { ProfileCrumbs } from './chrome';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { useConfirm } from '../../_components/useConfirm';
 import { oneOf, useListQuery } from '../../_lib/listQuery';
@@ -107,6 +107,7 @@ export function ProfileScreen({
   showPayRate = false,
   canEditPayRate = false,
   canMessage = false,
+  bare = false,
 }: {
   data: ProfileData;
   /**
@@ -130,6 +131,12 @@ export function ProfileScreen({
   canEditPayRate?: boolean;
   /** ADR-0082: Send push — `canMessageWorker()`, any office login that may write. */
   canMessage?: boolean;
+  /**
+   * ADR-0161: the page has drawn the `OfficeShell` itself, around the
+   * Suspense this screen streams in behind, so the screen draws only its
+   * body. Rendered whole (the default) it draws the shell too.
+   */
+  bare?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
   const [url, setUrl] = useListQuery(QUERY);
@@ -182,17 +189,8 @@ export function ProfileScreen({
     setConfirmation('');
   };
 
-  return (
-    <OfficeShell
-      activeHref="/staff"
-      title="Staff"
-      crumbs={
-        <>
-          <Link href="/staff">Directory</Link> / <b>{profile.display_name}</b> ·{' '}
-          {employeeId(profile.employee_id)}
-        </>
-      }
-    >
+  const body = (
+    <>
       <div className="stack">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
@@ -746,6 +744,16 @@ export function ProfileScreen({
         </div>
       </Modal>
       {confirm.dialog}
+    </>
+  );
+  if (bare) return body;
+  return (
+    <OfficeShell
+      activeHref="/staff"
+      title="Staff"
+      crumbs={<ProfileCrumbs name={profile.display_name} employee={profile.employee_id} />}
+    >
+      {body}
     </OfficeShell>
   );
 }

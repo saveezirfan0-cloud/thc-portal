@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
 import { loadRtwChecks } from '../_lib/rtwCheckData';
 import type { Database } from '@thc/db';
 import { supabaseConfigured } from '../staff/data';
@@ -30,6 +31,7 @@ import type {
   CandidateQualification,
 } from './types';
 import { candidateReferral, referredOnBoard } from './view-model';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /onboarding and /onboarding/:id (§2.2, §2.3).
@@ -102,6 +104,9 @@ const REFERRAL_COLUMNS =
 /** Ids per request: keeps `in.(…)` well inside any URL limit. */
 const REFERRAL_CHUNK = 100;
 
+/** Far past any intake THC runs; past it the board says so instead of hiding cards. */
+const BOARD_CEILING = 20_000;
+
 export async function loadBoardReferrals(
   reader: ReferralReader,
   staffIds: readonly string[],
@@ -120,7 +125,7 @@ export async function loadBoardReferrals(
       ),
     );
     const failed = answers.find((answer) => answer.error)?.error;
-    if (failed) return { referred: referredOnBoard([]), problem: failed.message };
+    if (failed) return { referred: referredOnBoard([]), problem: readProblem(failed) };
     return {
       referred: referredOnBoard(answers.flatMap((answer) => answer.data ?? [])),
       problem: null,
@@ -140,7 +145,7 @@ export async function loadCandidateReferral(
       .select(REFERRAL_COLUMNS)
       .eq('candidate_staff_id', staffId);
     return answer.error
-      ? { referral: null, problem: answer.error.message }
+      ? { referral: null, problem: readProblem(answer.error) }
       : { referral: candidateReferral(answer.data ?? []), problem: null };
   } catch (error) {
     return { referral: null, problem: messageOf(error) };
@@ -148,7 +153,7 @@ export async function loadCandidateReferral(
 }
 
 function messageOf(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'the read failed';
+  return error instanceof Error && error.message ? readProblem(error.message) : 'the read failed';
 }
 
 // ---------------------------------------------------------------------
@@ -157,21 +162,37 @@ function messageOf(error: unknown): string {
 // for the same reason as the referrals: the pipeline view is not restated.
 // A failed read is said out loud, never shown as "nobody was reminded".
 // ---------------------------------------------------------------------
+interface ChaserQuery extends PromiseLike<{
+  data: ChaserState[] | null;
+  error: { message: string } | null;
+}> {
+  order(column: string): ChaserQuery;
+  range(from: number, to: number): ChaserQuery;
+}
+
 export interface ChaserReader {
-  rpc(fn: 'onboarding_chaser_state'): PromiseLike<{
-    data: ChaserState[] | null;
-    error: { message: string } | null;
-  }>;
+  rpc(fn: 'onboarding_chaser_state'): ChaserQuery;
 }
 
 export async function loadBoardChasers(
   reader: ChaserReader,
 ): Promise<{ chasers: Record<string, ChaserState>; problem: string | null }> {
   try {
-    const answer = await reader.rpc('onboarding_chaser_state');
-    if (answer.error) return { chasers: {}, problem: answer.error.message };
+    // One row per candidate in the pipeline: past 1000 at full intake, so it
+    // is paged like the board itself (go-live audit H3) — a card cut off
+    // here would read "never reminded".
+    const answer = await readAllPages<ChaserState>(
+      (range) =>
+        reader
+          .rpc('onboarding_chaser_state')
+          .order('staff_id')
+          .order('track')
+          .range(range.from, range.to),
+      { what: 'reminder states', ceiling: BOARD_CEILING },
+    );
+    if (answer.error) return { chasers: {}, problem: readProblem(answer.error) };
     return {
-      chasers: Object.fromEntries((answer.data ?? []).map((row) => [row.staff_id, row])),
+      chasers: Object.fromEntries(answer.data.map((row) => [row.staff_id, row])),
       problem: null,
     };
   } catch (error) {
@@ -267,23 +288,40 @@ export async function loadBoard(): Promise<BoardData> {
   // The chaser read needs nothing from the others, so it starts with them
   // instead of waiting behind the referrals.
   const chasersRead = loadBoardChasers(supabase as unknown as ChaserReader);
+  // Go-live audit H3: the board passes PostgREST's 1000-row cap once the
+  // invite roster arrives (~1,300 candidates), and the cut — newest stage
+  // first — would drop the OLDEST candidates without a word. Every card is
+  // read, in pages, in a total order (the id breaks ties); a column with
+  // hundreds of cards is the board's to fold, never the read's to hide.
   const [candidates, returning, roles] = await Promise.all([
-    supabase
-      .from('onboarding_candidates_v')
-      .select(BOARD_COLUMNS)
-      .in('status', ON_BOARD)
-      .order('stage_entered_at', { ascending: false })
-      .returns<BoardCandidateRow[]>(),
-    supabase
-      .from('onboarding_returning_v')
-      .select('*')
-      .order('applied_at', { ascending: false })
-      .returns<ReturningRow[]>(),
+    readAllPages<BoardCandidateRow>(
+      (range) =>
+        supabase
+          .from('onboarding_candidates_v')
+          .select(BOARD_COLUMNS)
+          .in('status', ON_BOARD)
+          .order('stage_entered_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<BoardCandidateRow[]>(),
+      { what: 'candidates', key: (row) => row.id, ceiling: BOARD_CEILING },
+    ),
+    readAllPages<ReturningRow>(
+      (range) =>
+        supabase
+          .from('onboarding_returning_v')
+          .select('*')
+          .order('applied_at', { ascending: false })
+          .order('application_id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<ReturningRow[]>(),
+      { what: 'returning applicants', key: (row) => row.application_id, ceiling: BOARD_CEILING },
+    ),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
   ]);
 
   const error = candidates.error ?? returning.error ?? roles.error;
-  if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
+  if (error) return { candidates: [], returning: [], roles: [], problem: readProblem(error) };
   const [referrals, chasers] = await Promise.all([
     loadBoardReferrals(supabase as unknown as ReferralReader, [
       ...(candidates.data ?? []).map((row) => row.id),
@@ -324,24 +362,59 @@ const EMPTY: Omit<CandidateData, 'problem'> = {
  * `staff.visa_weekly_hour_limit` is newer than the generated types (docs/14
  * §4), so the facts are read through a narrow hand-written shape.
  */
-interface FactsRead {
-  from(table: 'staff'): {
+export interface FactsRead {
+  from(table: 'staff' | 'staff_identity_v'): {
     select(columns: string): {
       eq(
-        column: 'id',
+        column: 'id' | 'staff_id',
         value: string,
       ): {
         maybeSingle(): PromiseLike<{
-          data: {
-            ni_number: string | null;
-            below_degree_level: boolean | null;
-            visa_weekly_hour_limit: number | null;
-            languages: string[] | null;
-          } | null;
+          data: Record<string, unknown> | null;
           error: { message: string } | null;
         }>;
       };
     };
+  };
+}
+
+interface FactsRow {
+  ni_number: string | null;
+  below_degree_level: boolean | null;
+  visa_weekly_hour_limit: number | null;
+  languages: string[] | null;
+}
+
+/**
+ * D43's full NI number beside the NI evidence, and D32/D36's conditions.
+ * Since ADR-0163 no API role may read `staff.ni_number` off the table, so
+ * the number comes from the owner-rights `staff_identity_v` (admin only)
+ * and the rest from `staff` — two reads, answered as the one row the
+ * candidate screen always had. Either failing fails the card, never the page.
+ */
+export async function loadCandidateFacts(
+  reader: FactsRead,
+  staffId: string,
+): Promise<{ data: FactsRow | null; error: { message: string } | null }> {
+  const [rest, identity] = await Promise.all([
+    reader
+      .from('staff')
+      .select('below_degree_level, visa_weekly_hour_limit, languages')
+      .eq('id', staffId)
+      .maybeSingle(),
+    reader.from('staff_identity_v').select('ni_number').eq('staff_id', staffId).maybeSingle(),
+  ]);
+  const error = rest.error ?? identity.error;
+  if (error) return { data: null, error };
+  if (!rest.data) return { data: null, error: null };
+  return {
+    data: {
+      ni_number: typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
+      below_degree_level: (rest.data['below_degree_level'] as boolean | null) ?? null,
+      visa_weekly_hour_limit: (rest.data['visa_weekly_hour_limit'] as number | null) ?? null,
+      languages: (rest.data['languages'] as string[] | null) ?? null,
+    },
+    error: null,
   };
 }
 
@@ -465,11 +538,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     // Who referred them (ADR-0047); best-effort, never an error panel.
     loadCandidateReferral(supabase as unknown as ReferralReader, id),
     // D43: the full NI number beside the NI evidence; D32/D36: the conditions.
-    (supabase as unknown as FactsRead)
-      .from('staff')
-      .select('ni_number, below_degree_level, visa_weekly_hour_limit, languages')
-      .eq('id', id)
-      .maybeSingle(),
+    loadCandidateFacts(supabase as unknown as FactsRead, id),
     // ADR-0077: who marked the interview complete without Willo, and why.
     // Best-effort, like the two above: a failed read only loses the line.
     (supabase as unknown as OverrideRead)
@@ -502,7 +571,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc.error ??
     application.error ??
     roles.error;
-  if (error) return { ...EMPTY, problem: error.message };
+  if (error) return { ...EMPTY, problem: readProblem(error) };
 
   const raw = candidate.data ?? null;
   // §2.12 step 3: the previous period's attempts are history, not this
@@ -534,7 +603,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     )
       .limit(1)
       .maybeSingle<ContractVersion>();
-    if (version.error) return { ...EMPTY, problem: version.error.message };
+    if (version.error) return { ...EMPTY, problem: readProblem(version.error) };
     contract = version.data ?? null;
   }
 
@@ -567,12 +636,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
   };
 }
 
-function toFacts(row: {
-  ni_number: string | null;
-  below_degree_level: boolean | null;
-  visa_weekly_hour_limit: number | null;
-  languages: string[] | null;
-}): CandidateFacts {
+function toFacts(row: FactsRow): CandidateFacts {
   return {
     niNumber: row.ni_number,
     belowDegreeLevel: row.below_degree_level === true,

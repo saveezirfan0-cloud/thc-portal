@@ -605,7 +605,8 @@ select is((select count(*)::int from payroll_export_lines), 0, '§11.1 a client 
 reset role;
 select set_config('request.jwt.claims', '', true);
 set local role anon;
-select is((select count(*)::int from payroll_export_lines), 0, 'anon reads none');
+select throws_ok($$ select count(*) from payroll_export_lines $$, '42501', null,
+  'anon reads none — and since ADR-0163 the privilege itself is gone, so the read fails rather than returning nothing');
 reset role;
 
 select * from finish();

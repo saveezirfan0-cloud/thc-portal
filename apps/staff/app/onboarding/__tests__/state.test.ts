@@ -59,7 +59,6 @@ const raw = {
       rightToWorkUntil: null,
       rejectionReason: null,
       reviewedAt: null,
-      needsManualReview: true,
       termDates: null,
       shareCode: null,
     },

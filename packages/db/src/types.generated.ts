@@ -2361,6 +2361,7 @@ export type Database = {
           key: string;
           last_attempt_at: string | null;
           payload: Json;
+          priority: number;
           queued_at: string;
           recipient_emails: string[] | null;
           recipient_staff_id: string | null;
@@ -2377,6 +2378,7 @@ export type Database = {
           key: string;
           last_attempt_at?: string | null;
           payload?: Json;
+          priority?: number;
           queued_at?: string;
           recipient_emails?: string[] | null;
           recipient_staff_id?: string | null;
@@ -2393,6 +2395,7 @@ export type Database = {
           key?: string;
           last_attempt_at?: string | null;
           payload?: Json;
+          priority?: number;
           queued_at?: string;
           recipient_emails?: string[] | null;
           recipient_staff_id?: string | null;
@@ -5391,6 +5394,38 @@ export type Database = {
             columns: ['staff_id'];
             isOneToOne: false;
             referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      willo_deliveries: {
+        Row: {
+          applied_at: string;
+          delivery_key: string;
+          event: string;
+          staff_id: string | null;
+          willo_candidate_id: string;
+        };
+        Insert: {
+          applied_at?: string;
+          delivery_key: string;
+          event: string;
+          staff_id?: string | null;
+          willo_candidate_id: string;
+        };
+        Update: {
+          applied_at?: string;
+          delivery_key?: string;
+          event?: string;
+          staff_id?: string | null;
+          willo_candidate_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
             referencedColumns: ['id'];
           },
         ];
@@ -8940,6 +8975,7 @@ export type Database = {
           key: string;
           last_attempt_at: string | null;
           payload: Json;
+          priority: number;
           queued_at: string;
           recipient_emails: string[] | null;
           recipient_staff_id: string | null;
@@ -9336,6 +9372,10 @@ export type Database = {
       };
       finance_reports_due: { Args: { p_now?: string }; Returns: boolean };
       finish_break: { Args: { p_booking: string }; Returns: Json };
+      forget_other_push_subscriptions: {
+        Args: { p_keep_endpoint?: string };
+        Returns: number;
+      };
       forget_push_subscription: {
         Args: { p_endpoint: string };
         Returns: undefined;
@@ -9658,6 +9698,14 @@ export type Database = {
       };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
+      notification_priorities: {
+        Args: never;
+        Returns: {
+          code: string;
+          priority: number;
+        }[];
+      };
+      notification_priority: { Args: { p_template: string }; Returns: number };
       notification_switched_on: {
         Args: { p_template: string };
         Returns: boolean;
@@ -9757,6 +9805,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      office_session_policy: { Args: never; Returns: Json };
       office_saved_view_query_ok: {
         Args: { p_query: Json; p_scope: string };
         Returns: boolean;
@@ -10362,6 +10411,7 @@ export type Database = {
         Args: { p_error: string; p_id: number; p_retry_in?: string };
         Returns: undefined;
       };
+      release_outbox_claims: { Args: { p_ids: number[] }; Returns: number };
       release_unready_bookings: { Args: { p_now?: string }; Returns: number };
       released_shift_lines: {
         Args: { p_at: string; p_cause: string; p_staff: string };
@@ -11785,6 +11835,7 @@ export type Database = {
       willo_accept_with_account: {
         Args: {
           p_at: string;
+          p_delivery_key?: string;
           p_details: Json;
           p_event: string;
           p_user: string;
@@ -11792,6 +11843,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      willo_delivery_seen: { Args: { p_key: string }; Returns: boolean };
       willo_event_plan: {
         Args: { p_event: string; p_willo_candidate_id: string };
         Returns: Json;
@@ -11829,6 +11881,7 @@ export type Database = {
       willo_record_event: {
         Args: {
           p_at?: string;
+          p_delivery_key?: string;
           p_details?: Json;
           p_event: string;
           p_willo_candidate_id: string;

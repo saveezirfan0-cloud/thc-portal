@@ -13,6 +13,14 @@ let gotrueUser: {
   factors: { id: string; factor_type: string; status: string }[];
 } | null = null;
 const getUser = vi.fn(async () => ({ data: { user: gotrueUser } }));
+/**
+ * office_session_policy() (ADR-0164). The tests above the "compulsory"
+ * block are ADR-0057's opt-in world, so the default here is "optional";
+ * each new block sets what it needs.
+ */
+let policy: Record<string, unknown> | null = null;
+let policyError: { code: string; message: string } | null = null;
+const rpc = vi.fn(async (_name: string) => ({ data: policy, error: policyError }));
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
@@ -20,6 +28,7 @@ vi.mock('@supabase/ssr', () => ({
       getClaims: async () => ({ data: claims ? { claims } : null, error: null }),
       getUser,
     },
+    rpc,
   }),
 }));
 
@@ -56,6 +65,9 @@ beforeEach(() => {
   claims = null;
   gotrueUser = { id: 'admin-1', factors: [] };
   getUser.mockClear();
+  policy = { twoStepRequired: false, sessionMaxHours: 12, sessionStartedAt: null };
+  policyError = null;
+  rpc.mockClear();
 });
 
 describe('middleware · session gate', () => {
@@ -146,5 +158,34 @@ describe('middleware · session gate', () => {
     signIn();
     expect((await get('/login')).status).toBe(200);
     expect(getUser).not.toHaveBeenCalled();
+  });
+
+  it('GoTrue unreachable: an aal1 session gets a retryable 503, not /login, and nothing is cached', async () => {
+    signIn();
+    getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 0 },
+    } as never);
+    const res = await get('/events');
+    expect(res.status).toBe(503);
+    expect(res.headers.get('retry-after')).toBe('5');
+    expect(location(res)).toBeNull();
+    // The next request asks again and, GoTrue back, is let through.
+    const again = await get('/events');
+    expect(again.status).toBe(200);
+    expect(getUser).toHaveBeenCalledTimes(2);
+  });
+
+  it('GoTrue unreachable: an aal2 session goes on, and is asked again next time', async () => {
+    signIn({ aal: 'aal2' });
+    getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 0 },
+    } as never);
+    const res = await get('/events');
+    expect(res.status).toBe(200);
+    expect(location(res)).toBeNull();
+    await get('/events');
+    expect(getUser).toHaveBeenCalledTimes(2);
   });
 });

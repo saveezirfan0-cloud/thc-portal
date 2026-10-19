@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import type { OfficeRole } from '../_lib/permissions';
+import { readProblem } from '../_lib/dbError';
 
 /** One login, as `admin_accounts()` (20261001200000, 20261001200100, 20261001201200) returns it. */
 export interface AccountRow {
@@ -58,6 +59,6 @@ export async function loadUsers(): Promise<UsersPageData> {
     accounts: (accounts.data ?? []) as AccountRow[],
     clients: clients.data ?? [],
     selfId: auth?.claims?.sub ?? null,
-    problem: accounts.error?.message ?? clients.error?.message ?? null,
+    problem: readProblem(accounts.error ?? clients.error),
   };
 }

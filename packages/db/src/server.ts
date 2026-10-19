@@ -4,6 +4,8 @@
 import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAnonKey, supabaseUrl } from './env';
+import { createRequestTimeoutFetch } from './request-timeout';
+import type { RequestTimeoutOptions } from './request-timeout';
 import { withSessionPersistence } from './session';
 import type { SessionFallback, SessionPersistence } from './session';
 import type { Database } from './types.generated';
@@ -36,6 +38,14 @@ export interface CreateClientOptions {
    * the Back Office and Staff App keep @supabase/ssr's readable cookies.
    */
   httpOnly?: boolean;
+  /**
+   * Request timeouts (ADR-0154, packages/db/src/request-timeout.ts). Left
+   * out, PostgREST and GoTrue reads (GET/HEAD) are aborted after 10 s and
+   * nothing else is. Pass `readOnlyRpcs` to bound named RPCs that only
+   * read, `getUserMs` for a shorter `auth.getUser()`, or `false` for no
+   * timeouts at all.
+   */
+  requestTimeout?: RequestTimeoutOptions | false;
 }
 
 /** The app's build-time opt-in, read as a literal so Next can inline it. */
@@ -53,7 +63,9 @@ export function defaultAuthCookiesHttpOnly(): boolean {
  */
 export function createClient(cookies: CookieStore, options: CreateClientOptions = {}) {
   const httpOnly = options.httpOnly ?? defaultAuthCookiesHttpOnly();
+  const timeouts = options.requestTimeout ?? {};
   return createServerClient<Database>(supabaseUrl(), supabaseAnonKey(), {
+    ...(timeouts === false ? {} : { global: { fetch: createRequestTimeoutFetch(timeouts) } }),
     cookies: withSessionPersistence(
       {
         getAll: () => cookies.getAll(),

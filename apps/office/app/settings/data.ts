@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { TEMPLATES, switchedOff } from '@thc/notifications';
-import { readWeights } from './validate';
+import { readWeights, validateSessionHours } from './validate';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
+import { readProblem } from '../_lib/dbError';
 
 /**
  * Reads for /settings (§6, §2.4, §9.11, §9.12).
@@ -43,6 +44,10 @@ const RECIPIENTS = {
   e7: [...(TEMPLATES.E7.recipients ?? [])],
 };
 
+function sessionHoursOf(raw: unknown): number {
+  return typeof raw === 'number' && validateSessionHours(raw) === null ? raw : 12;
+}
+
 export async function loadSettings(): Promise<SettingsData> {
   const empty: SettingsData = {
     weights: readWeights(null),
@@ -57,6 +62,8 @@ export async function loadSettings(): Promise<SettingsData> {
     rotaGuardMode: 'block',
     notificationsOff: [],
     clientPortalPhone: '',
+    officeTwoStepRequired: true,
+    officeSessionMaxHours: 12,
     problem: null,
   };
 
@@ -72,7 +79,7 @@ export async function loadSettings(): Promise<SettingsData> {
       .returns<VenueTypeRadius[]>(),
   ]);
 
-  const problem = settings.error?.message ?? venueTypes.error?.message ?? null;
+  const problem = readProblem(settings.error ?? venueTypes.error);
   if (problem) return { ...empty, problem };
 
   const byKey = new Map((settings.data ?? []).map((row) => [row.key, row.value]));
@@ -115,6 +122,10 @@ export async function loadSettings(): Promise<SettingsData> {
       typeof byKey.get('client_portal_phone') === 'string'
         ? (byKey.get('client_portal_phone') as string)
         : '',
+    // office_security_settings()'s reading: only a JSON false is off, and
+    // anything but a whole number from 1 to 24 is the default 12.
+    officeTwoStepRequired: byKey.get('office_two_step_required') !== false,
+    officeSessionMaxHours: sessionHoursOf(byKey.get('office_session_max_hours')),
     problem: null,
   };
 }

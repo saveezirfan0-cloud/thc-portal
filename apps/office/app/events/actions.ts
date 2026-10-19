@@ -17,6 +17,7 @@ import { pastDateIssue } from './draft';
 import { HELD_BOOKING_STATUSES } from './data';
 import { planReconfirmations, reconfirmOutboxRows } from './reconfirm';
 import { explainDbError } from '../_lib/dbError';
+import { BULK_CONCURRENCY, mapPool } from '../_lib/pool';
 
 /**
  * Saving an event — Scope §3.2, §3.5.
@@ -360,15 +361,26 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
   // reading it.
   const eventId = input.id;
   const storedIds = new Set(before.map((s) => s.id));
-  for (const role of input.roles) {
-    if (!role.id || !storedIds.has(role.id)) continue;
-    const { error: updateError } = await supabase
-      .from('shift_requirements')
-      .update(sectionRow(eventId, input.date, role))
-      .eq('id', role.id)
-      .eq('event_id', eventId);
-    if (updateError) return { error: refusal(updateError) };
-  }
+  // One UPDATE per stored section, a few at a time rather than one after
+  // another (go-live audit M5): each is its own row, refused or saved on its
+  // own. The first refusal starts nothing new and is the one reported, in
+  // the builder's order.
+  const kept = input.roles.filter((role) => role.id && storedIds.has(role.id));
+  const updates = await mapPool(
+    kept,
+    BULK_CONCURRENCY,
+    async (role) =>
+      (
+        await supabase
+          .from('shift_requirements')
+          .update(sectionRow(eventId, input.date, role))
+          .eq('id', role.id!)
+          .eq('event_id', eventId)
+      ).error,
+    (updateError) => Boolean(updateError),
+  );
+  const updateError = updates.find(Boolean);
+  if (updateError) return { error: refusal(updateError) };
   // A section with no stored row — new in the builder, or one that
   // disappeared under it — is inserted, as the upsert used to.
   const added = input.roles.filter((role) => !role.id || !storedIds.has(role.id));
@@ -437,7 +449,10 @@ async function flagReconfirmations(
   // One marker per save: two saves are two messages, one save is one.
   const saveMarker = new Date().toISOString();
 
-  for (const section of affected) {
+  // Each section is its own flag-and-queue, independent of the others, so
+  // they run a few at a time (go-live audit M5); every section is still
+  // flagged whatever another one's queueing did, as before.
+  const outcomes = await mapPool(affected, BULK_CONCURRENCY, async (section) => {
     const { data: rows } = await supabase
       .from('bookings')
       .update({ reconfirm_required: true, reconfirm_reason: section.reason })
@@ -446,7 +461,7 @@ async function flagReconfirmations(
       .select('id, staff_id');
 
     const bookings = (rows ?? []) as { id: string; staff_id: string }[];
-    if (bookings.length === 0) continue;
+    if (bookings.length === 0) return null;
 
     // Through the RPC rather than the table: `notification_outbox` carries
     // only `admin_read`, so a direct insert reaches RLS and is rejected.
@@ -458,8 +473,9 @@ async function flagReconfirmations(
       p_rows: reconfirmOutboxRows(section, bookings, saveMarker),
     });
     // supabase-js returns `{ data, error }` and never throws.
-    if (queueError) failures.push(queueError.message);
-  }
+    return queueError ? queueError.message : null;
+  });
+  for (const failure of outcomes) if (failure) failures.push(failure);
 
   return failures.length > 0 ? failures[0]! : null;
 }

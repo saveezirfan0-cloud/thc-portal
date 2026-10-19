@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Panel, Pill } from '@thc/ui';
@@ -54,11 +55,19 @@ export const metadata = { title: 'Event board · THC Back Office' };
  * reads like the running order of the day (RULE-18). Slot counts are
  * confirmed only. The client's Break and Buffer policies stay visible in the
  * header after creation, not only while the event was being built (§3.2).
+ *
+ * Streaming (ADR-0161, after ADR-0109). The page awaits only the board's
+ * first read — the event, its sections and everyone booked — and decides
+ * there between the board and a real 404, before anything streams. Each
+ * section's candidate pool (the slow part: `auto_assign_candidates`) and
+ * the documents' auto-send line then stream in behind their own Suspense,
+ * inside the one `OfficeShell`. Nothing on the board navigates by query, so
+ * no boundary sits under a query-only navigation.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const format = await currentTimeFormat();
-  const { event, problem } = await loadBoard(id, new Date(), format);
+  // The clock is a cookie read; it starts with the board rather than before it.
+  const [format, { event, problem }] = await Promise.all([currentTimeFormat(), loadBoard(id)]);
   // A read that FAILED is not a missing event: say what went wrong instead
   // of a 404 that tells the manager the event does not exist.
   if (problem) {
@@ -98,19 +107,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     })),
   );
   const open = formatOpen(fill);
-  // ADR-0074: when the two documents go out on their own (or went).
-  const autosend =
-    status === 'cancelled'
-      ? { allocation: null, signout: null }
-      : await loadAutosendHints(
-          event.id,
-          {
-            started: status === 'ongoing' || status === 'completed',
-            ended: status === 'completed',
-          },
-          format,
-        );
-  const autosendLine = [autosend.allocation, autosend.signout].filter(Boolean).join(' · ');
   // ADR-0089: the people the timesheets go to — this event's own list, else the client card.
   const documentRecipients = event.documentRecipients ?? event.clientContactEmails;
   const recipientsLine =
@@ -188,14 +184,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
     >
       <div className="stack">
-        {/* Accepts, ready confirmations and check-ins arrive while the manager watches. */}
-        <AutoRefresh />
-        {autosendLine || recipientsLine ? (
-          <div className="stack" style={{ gap: 2, textAlign: 'right' }}>
-            {autosendLine ? <span className="xs muted">{autosendLine}</span> : null}
-            {recipientsLine ? <span className="xs muted">{recipientsLine}</span> : null}
-          </div>
-        ) : null}
+        {/* Accepts, ready confirmations and check-ins arrive while the manager
+            watches. Every 60 s: each refresh recomputes every section's pool
+            (go-live audit H2). */}
+        <AutoRefresh everyMs={60_000} />
+        {/* ADR-0074: when the two documents go out on their own (or went) —
+            its own read, streamed; the recipients line needs none. */}
+        {status === 'cancelled' ? (
+          <DocumentHints autosendLine="" recipientsLine={recipientsLine} />
+        ) : (
+          <Suspense fallback={<DocumentHints autosendLine="" recipientsLine={recipientsLine} />}>
+            <AutosendHints
+              eventId={event.id}
+              started={status === 'ongoing' || status === 'completed'}
+              ended={status === 'completed'}
+              format={format}
+              recipientsLine={recipientsLine}
+            />
+          </Suspense>
+        )}
         {status === 'cancelled' ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> {event.cancelReason ? `"${event.cancelReason}" — ` : ''}
@@ -313,6 +320,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               eventAutoAssign={event.autoAssign}
               weights={event.weights}
               payrollExported={Boolean(event.payrollExportedAt)}
+              known={event.known}
               format={format}
             />
           ))
@@ -322,6 +330,46 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <RecordHistory entity="event" id={event.id} deferred />
       </div>
     </OfficeShell>
+  );
+}
+
+/** The auto-send hint (ADR-0074), read behind its own Suspense. */
+async function AutosendHints({
+  eventId,
+  started,
+  ended,
+  format,
+  recipientsLine,
+}: {
+  eventId: string;
+  started: boolean;
+  ended: boolean;
+  format: TimeFormat;
+  recipientsLine: string | null;
+}) {
+  const autosend = await loadAutosendHints(eventId, { started, ended }, format);
+  return (
+    <DocumentHints
+      autosendLine={[autosend.allocation, autosend.signout].filter(Boolean).join(' · ')}
+      recipientsLine={recipientsLine}
+    />
+  );
+}
+
+/** The two quiet lines above the Event panel: when the documents go, and to whom. */
+function DocumentHints({
+  autosendLine,
+  recipientsLine,
+}: {
+  autosendLine: string;
+  recipientsLine: string | null;
+}) {
+  if (!autosendLine && !recipientsLine) return null;
+  return (
+    <div className="stack" style={{ gap: 2, textAlign: 'right' }}>
+      {autosendLine ? <span className="xs muted">{autosendLine}</span> : null}
+      {recipientsLine ? <span className="xs muted">{recipientsLine}</span> : null}
+    </div>
   );
 }
 
