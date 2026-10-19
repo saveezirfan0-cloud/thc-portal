@@ -527,3 +527,48 @@ describe('onboarding chasers (ADR-0071)', () => {
     ).toThrow(/needs a variant/);
   });
 });
+
+describe('payload values that are not text (jsonb numbers and booleans)', () => {
+  // submit_client_quiz_attempt() writes `'attempts', v_attempts` — a jsonb
+  // number. render() threw a TypeError on it, which is not an UnsendableRow,
+  // so the drain retried CR3 to its ceiling and the office was never told.
+  const cr3 = email({
+    key: 'CR3:quiz:q-1:s-1:a-3',
+    template: 'CR3',
+    recipient_emails: ['admin@thehospitalitycompany.co.uk'],
+    payload: {
+      name: 'Staff Alpha',
+      employeeId: '90001',
+      quiz: 'Bar menu',
+      client: 'Leonardo Royal',
+      roles: 'Bar Staff',
+      best: '6 of 10',
+      attempts: 3,
+    } as unknown as Record<string, string>,
+  });
+
+  it('renders CR3 with a numeric attempts count', () => {
+    const msg = messageFor(cr3);
+    if (msg.kind !== 'email') throw new Error('expected an email');
+    expect(msg.subject).toBe('Client quiz not passed — Staff Alpha, Employee ID 90001');
+    expect(msg.body).toContain('has used all 3 attempts at "Bar menu" for Leonardo Royal');
+    expect(msg.html).toContain('3 attempts');
+    expect(msg.body).not.toMatch(/\{\w+\}/);
+  });
+
+  it('leaves a null or nested value unfilled rather than writing "null"', () => {
+    const msg = messageFor(
+      push({
+        template: 'N9b',
+        key: 'N9b:booking:b-1',
+        payload: { event: null, bookingId: 'b-1', extra: { a: 1 } } as unknown as Record<
+          string,
+          string
+        >,
+      }),
+    );
+    if (msg.kind !== 'push') throw new Error('expected a push');
+    expect(msg.body).toContain('{event}');
+    expect(msg.url).toBe('/shifts/b-1');
+  });
+});
