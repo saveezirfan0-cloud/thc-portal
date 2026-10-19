@@ -303,6 +303,36 @@ describe('the candidate profile, Documents phase', () => {
     );
   });
 
+  it('a candidate rejected after the interview is read-only there: no Accept, no second Reject, no "Awaiting"', () => {
+    const rejectedAt = (cause: 'manager' | 'willo') =>
+      render(
+        data({
+          candidate: {
+            ...ROW,
+            status: 'rejected',
+            rejected_from: 'interview_completed',
+            rejection_cause: cause,
+            rejected_at: '2026-09-22T09:00:00Z',
+            role_ids: [],
+            role_names: [],
+            docs_total: 0,
+          } as unknown as CandidateRow,
+        }),
+      );
+    for (const html of [rejectedAt('manager'), rejectedAt('willo')]) {
+      expect(html).not.toContain('Accept — move to Documents');
+      expect(html).not.toContain('Reject (E2)');
+      expect(html).not.toContain('Awaiting');
+      expect(html).toContain('None picked.');
+    }
+    expect(rejectedAt('manager')).toContain('Rejected by the office');
+    expect(rejectedAt('willo')).toContain('Rejected — made inside Willo');
+    // Still offered while the decision really is awaited.
+    const awaiting = render(data({ candidate: { ...ROW, status: 'interview_completed' } }));
+    expect(awaiting).toContain('Accept — move to Documents');
+    expect(awaiting).toContain('Reject (E2)');
+  });
+
   it('renders no builder annotations', () => {
     const html = render(data());
     expect(html).not.toContain('class="annot');
