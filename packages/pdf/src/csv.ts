@@ -299,8 +299,10 @@ export function financialCsv(rows: readonly FinancialCsvRow[]): string {
 /**
  * What THC keys into its own accounting tool: the event and its PO, the
  * worker, the hours and the charge. No pay rate — this file is about what
- * the client is charged. A total row per event closes each block, so the
- * figure on an invoice can be read straight off the file.
+ * the client is charged. A total row per event closes each block, its
+ * figure in its own Event total column, so the figure on an invoice reads
+ * straight off the file and a sum of the Amount column still adds up.
+ * The total is the sum of the database-priced lines, in pence.
  */
 export const INVOICE_CSV_COLUMNS = [
   'Event date',
@@ -317,6 +319,7 @@ export const INVOICE_CSV_COLUMNS = [
   'Payable hours',
   'Charge rate',
   'Amount',
+  'Event total',
 ] as const;
 
 export interface InvoiceCsvRow {
@@ -365,6 +368,7 @@ export function invoiceCsvRows(rows: readonly InvoiceCsvRow[]): string[][] {
       '',
       decimalHours(minutes),
       '',
+      '',
       money(pence / 100),
     ]);
     block = [];
@@ -388,6 +392,7 @@ export function invoiceCsvRows(rows: readonly InvoiceCsvRow[]): string[][] {
       decimalHours(row.payable_min),
       money(row.charge_rate),
       money(row.invoicing),
+      '',
     ]);
   }
   close();

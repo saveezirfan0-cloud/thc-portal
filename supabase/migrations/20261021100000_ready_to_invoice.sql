@@ -14,9 +14,12 @@
 --   1 · open         the check-out window is closed: now() is past the
 --                    last section's end + 4 h (RULE-02). Before that a
 --                    worker can still check out and change the hours.
---   2 · missing      no shift is pending — an unresolved No check-out
---                    leaves the hours unknown (RULE-02), and an amount
---                    is never guessed (report_payroll_lines_v).
+--   2 · missing      no shift is pending and no No check-out is
+--                    unresolved. A pending line has unknown hours and is
+--                    never priced (report_payroll_lines_v); a No check-out
+--                    raised on a stale fix (D15, ADR-0035) has a recorded
+--                    finish but is still unresolved, and is never invoiced
+--                    on that default (RULE-02).
 --   3 · review       a manager has signed the event off for invoicing,
 --                    with a note, AND nothing has changed since: the
 --                    sign-off stores a fingerprint of every violation on
@@ -97,7 +100,11 @@ create or replace function public.invoice_event_fingerprint(p_event uuid)
 returns text
 language sql
 stable
+-- row()::text writes a timestamptz in the session's zone and style; fixed
+-- here so every session computes the same fingerprint.
 set search_path = public, extensions
+set timezone = 'UTC'
+set datestyle = 'ISO, YMD'
 as $$
   -- row(...)::text keeps every field positional, NULLs included, so a
   -- pending line can never encode the same as a settled one.
@@ -146,6 +153,7 @@ returns table (
   invoicing          numeric,
   violations         int,
   unresolved         int,
+  no_checkouts       int,
   status             text,
   fingerprint        text,
   signed_off_at      timestamptz,
@@ -187,13 +195,18 @@ begin
                                                                                  as payable_min,
            coalesce(sum(l.invoicing), 0)                                         as invoicing
       from report_payroll_lines_v l
-     where l.event_id in (select id from ev)
+     -- = any(array(...)) is an init-plan parameter, so the filter reaches
+     -- the bookings under the security-barrier view; `in (select …)` is a
+     -- join, and the view would be computed for every booking ever made.
+     where l.event_id = any (array(select id from ev))
      group by l.event_id
   ),
   viol as (
     select sr.event_id,
            count(*)::int                             as violations,
-           count(*) filter (where not v.resolved)::int as unresolved
+           count(*) filter (where not v.resolved)::int as unresolved,
+           count(*) filter (where not v.resolved and v.type = 'no_checkout')::int
+                                                     as no_checkouts
       from violations v
       join bookings b            on b.id = v.booking_id
       join shift_requirements sr on sr.id = b.shift_id
@@ -204,6 +217,7 @@ begin
     select ev.*, li.shifts, li.billable_shifts, li.pending, li.no_shows, li.turned_away,
            li.payable_min, li.invoicing,
            coalesce(vi.violations, 0) as violations, coalesce(vi.unresolved, 0) as unresolved,
+           coalesce(vi.no_checkouts, 0) as no_checkouts,
            ev.last_end_at + interval '4 hours' as closes_at,
            invoice_event_fingerprint(ev.id) as fp,
            s.signed_off_at, p.full_name as signer, s.note, s.invoicing as signed_invoicing,
@@ -219,9 +233,9 @@ begin
   select x.id, x.event_date, x.title, x.client_name, x.po_number, x.venue_name, x.cancelled,
          x.last_end_at, x.closes_at,
          x.shifts, x.billable_shifts, x.pending, x.no_shows, x.turned_away,
-         x.payable_min, x.invoicing, x.violations, x.unresolved,
+         x.payable_min, x.invoicing, x.violations, x.unresolved, x.no_checkouts,
          case when now() < x.closes_at          then 'open'
-              when x.pending > 0                then 'missing'
+              when x.pending > 0 or x.no_checkouts > 0 then 'missing'
               when x.signed_fp is distinct from x.fp then 'review'
               else 'ready' end,
          x.fp,
@@ -232,7 +246,7 @@ begin
 end $$;
 
 comment on function public.invoice_events(date, date) is
-  'ADR-0168: one row per event dated in the range that has shift lines, with its invoice amount (report_payroll_lines_v.invoicing), counts, violations and status: open (check-out window not closed) → missing (an unresolved No check-out) → review (not signed off, or changed since) → ready. Finance callers only.';
+  'ADR-0168: one row per event dated in the range that has shift lines, with its invoice amount (report_payroll_lines_v.invoicing), counts, violations and status: open (check-out window not closed) → missing (a pending line, or any unresolved No check-out, including a stale-fix one with a recorded finish) → review (not signed off, or changed since) → ready. Finance callers only.';
 
 revoke execute on function public.invoice_events(date, date) from public, anon;
 grant execute on function public.invoice_events(date, date) to authenticated, service_role;
@@ -256,6 +270,7 @@ returns table (
   status           text,
   late_check_in    boolean,
   early_check_out  boolean,
+  no_check_out_unresolved boolean,
   unpaid_break_min int,
   payable_min      int,
   floor_applied    boolean,
@@ -273,7 +288,7 @@ begin
   return query
   select l.booking_id, l.staff_name, l.employee_id, l.removed, l.role_name, l.shift_date,
          l.starts_at, l.ends_at, l.check_in_at, l.check_out_at, l.kind, l.status,
-         l.late_check_in, l.early_check_out, l.unpaid_break_min,
+         l.late_check_in, l.early_check_out, l.no_check_out_unresolved, l.unpaid_break_min,
          case when l.status = 'settled' then l.payable_min end,
          l.floor_applied, l.charge_rate, l.invoicing
     from report_payroll_lines_v l
@@ -452,14 +467,19 @@ as $$
 begin
   perform assert_finance_caller();
   return query
+  with ready as (
+    select i.* from invoice_events(p_from, p_to) i
+     where i.status = 'ready'
+       and (p_event is null or i.event_id = p_event)
+  )
   select i.event_id, i.event_date, i.event_title, i.client_name, i.po_number,
          l.booking_id, l.employee_id, l.staff_name, l.role_name, l.shift_date,
          l.starts_at, l.ends_at, l.check_in_at, l.check_out_at, l.kind,
          l.unpaid_break_min, l.payable_min, l.charge_rate, l.invoicing
-    from invoice_events(p_from, p_to) i
+    from ready i
     join report_payroll_lines_v l on l.event_id = i.event_id
-   where i.status = 'ready'
-     and (p_event is null or i.event_id = p_event)
+   -- The same init-plan filter as invoice_events (see there).
+   where l.event_id = any (array(select event_id from ready))
      and l.kind in ('worked', 'cancelled_on_day')
    order by i.event_date, i.client_name, i.event_title, i.event_id,
             l.starts_at, l.role_name, l.removed, l.sort_surname nulls last, l.staff_name, l.booking_id;

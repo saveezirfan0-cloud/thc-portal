@@ -11,11 +11,15 @@
 --   E4 No-show   one worked shift and one unresolved No-show → review:
 --                the no-show blocks nothing and is never invoiced
 --   E5 Gone      cancelled the day before → no lines, not listed
+--   E6 Stale     checked out off-site on a stale fix (D15): a finish is
+--                recorded AND a No check-out is unresolved → missing
+--   E7 SameDay   cancelled on its own day → charged in full (§3.3)
+--   E4 also has a buffer worker turned away (RULE-15) → never charged
 --
 -- Charge: Waiting £22.97/h, so 4 h = 91.88.
 -- =====================================================================
 begin;
-select plan(51);
+select plan(65);
 \ir _shared/fixtures.psql
 
 \set r_wait '89900000-0000-4000-8000-000000000001'
@@ -114,6 +118,26 @@ insert into bk values
 insert into violations (staff_id, booking_id, type)
   select :'w4', id, 'no_show' from bk where name = 'e4w4';
 
+-- E4 · plus a buffer worker turned away on arrival (RULE-15: paid, never charged)
+insert into bk values
+  ('e4w2', pg_temp.booking((select shift_id from ev where name = 'NoShow'), :'w2', 'turned_away'));
+insert into check_logs (booking_id, attempted_at, outcome)
+  select id, '2024-11-14 11:50+00', 'turned_away' from bk where name = 'e4w2';
+
+-- E6 · checked out off-site: the stale fix is recorded as the finish and a
+-- No check-out is raised for review (D15, ADR-0035)
+select pg_temp.event('Stale', '2024-11-16 12:00+00', 4);
+insert into bk values
+  ('e6w3', pg_temp.booking((select shift_id from ev where name = 'Stale'), :'w3', 'worked',
+                           '2024-11-16 12:00+00', '2024-11-16 12:05+00'));
+insert into violations (staff_id, booking_id, type)
+  select :'w3', id, 'no_checkout' from bk where name = 'e6w3';
+
+-- E7 · cancelled on its own day, 08:00, with a confirmed worker
+select pg_temp.event('SameDay', '2024-11-17 12:00+00', 4, '2024-11-17 08:00+00');
+insert into bk values
+  ('e7w4', pg_temp.booking((select shift_id from ev where name = 'SameDay'), :'w4', 'confirmed'));
+
 -- E5 · cancelled the day before, with a confirmed worker
 select pg_temp.event('Gone', '2024-11-15 12:00+00', 4, '2024-11-14 09:00+00');
 insert into bk values
@@ -179,6 +203,17 @@ select is((select status from il where name = 'NoShow'), 'review',
 select is((select invoicing from il where name = 'NoShow'), 91.88::numeric, 'only the worked shift is invoiced');
 select is((select no_shows from il where name = 'NoShow'), 1, 'the no-show is counted');
 select is((select billable_shifts from il where name = 'NoShow'), 1, 'the no-show is not billable');
+select is((select turned_away from il where name = 'NoShow'), 1, 'the turned-away worker is counted');
+
+select is((select status from il where name = 'Stale'), 'missing',
+  'a No check-out on a stale fix blocks the event, though a finish is recorded (D15, RULE-02)');
+select is((select pending from il where name = 'Stale'), 0, 'its line is not pending');
+select is((select no_checkouts from il where name = 'Stale'), 1, 'and the unresolved No check-out is counted');
+
+select is((select status from il where name = 'SameDay'), 'review', 'an event cancelled on the day is invoiced');
+select is((select invoicing from il where name = 'SameDay'), 91.88::numeric,
+  'in full, for the scheduled hours (§3.3)');
+select is((select cancelled from il where name = 'SameDay'), true, 'and says it was cancelled');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -189,14 +224,18 @@ select is((select status from invoice_events(current_date - 1, current_date + 1)
 -- =====================================================================
 -- 25-31 · Lines and violations
 -- =====================================================================
-select is((select count(*)::int from invoice_event_lines((select event_id from ev where name = 'NoShow'))), 2,
-  'the event''s lines include the no-show');
+select is((select count(*)::int from invoice_event_lines((select event_id from ev where name = 'NoShow'))), 3,
+  'the event''s lines include the no-show and the turn-away');
 select is((select invoicing from invoice_event_lines((select event_id from ev where name = 'NoShow'))
             where kind = 'no_show'), 0::numeric, 'a no-show line is invoiced at nothing');
 select is((select charge_rate from invoice_event_lines((select event_id from ev where name = 'Clean')) limit 1),
   22.97::numeric, 'each line carries the charge rate');
 select is((select payable_min from invoice_event_lines((select event_id from ev where name = 'Held'))), null::int,
   'a pending line has no payable minutes');
+select is((select invoicing from invoice_event_lines((select event_id from ev where name = 'NoShow'))
+            where kind = 'turned_away'), 0::numeric, 'a turn-away is never charged');
+select is((select no_check_out_unresolved from invoice_event_lines((select event_id from ev where name = 'Stale'))),
+  true, 'the stale-fix line says its No check-out is unresolved');
 select is((select count(*)::int from invoice_event_violations((select event_id from ev where name = 'NoShow'))), 1,
   'the no-show is in the review list');
 select is((select type from invoice_event_violations((select event_id from ev where name = 'NoShow'))), 'no_show',
@@ -216,6 +255,10 @@ select throws_ok(
          (select event_id from ev where name = 'Held'), (select fingerprint from il where name = 'Held')),
   'P0001', 'check_out_missing', 'an event with an unresolved No check-out cannot be signed off');
 select throws_ok(
+  format($$ select sign_off_event_invoice(%L, 'checked', %L) $$,
+         (select event_id from ev where name = 'Stale'), (select fingerprint from il where name = 'Stale')),
+  'P0001', 'check_out_missing', 'nor one with a stale-fix No check-out');
+select throws_ok(
   format($$ select sign_off_event_invoice(%L, 'checked', 'x') $$, (select event_id from ev where name = 'Open')),
   'P0001', 'check_out_open', 'an event inside its check-out window cannot be signed off');
 select throws_ok(
@@ -229,7 +272,7 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is((select count(*)::int from invoice_events('2024-11-01', '2024-11-30') i
-            where i.event_id in (select event_id from ev)), 3, 'a viewer can read the list');
+            where i.event_id in (select event_id from ev)), 5, 'a viewer can read the list');
 select throws_ok(
   format($$ select sign_off_event_invoice(%L, 'checked', %L) $$,
          (select event_id from ev where name = 'Clean'), (select fingerprint from il where name = 'Clean')),
@@ -252,6 +295,24 @@ select is((select signoff_note from invoice_events('2024-11-12', '2024-11-12') i
   'the note is kept, trimmed');
 select is((select count(*)::int from event_invoice_signoffs where event_id = (select event_id from ev where name = 'Clean')), 1,
   'a finance admin reads the sign-off');
+
+select throws_ok(
+  $$ insert into event_invoice_signoffs (event_id, signed_off_by, note, fingerprint, invoicing, payable_min)
+     values ((select event_id from ev where name = 'NoShow'), auth.uid(), 'x', 'x', 0, 0) $$,
+  '42501', null, 'nobody writes a sign-off but sign_off_event_invoice()');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from event_invoice_signoffs), 0, 'a worker reads no sign-off once one exists');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from event_invoice_signoffs), 0, 'nor does a client (ADR-0004)');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'sched_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from event_invoice_signoffs), 0, 'nor a scheduler (ADR-0056)');
 reset role;
 
 select is((select count(*)::int from audit_log where action = 'invoice.signed_off'

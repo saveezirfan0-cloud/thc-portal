@@ -169,7 +169,7 @@ export const INVOICE_STATUS_TONE: Readonly<
 export const INVOICE_STATUS_HINT: Readonly<Record<InvoiceStatus, string>> = {
   open: 'Workers can still check out until 4 hours after the last shift ends.',
   missing:
-    'A worker never checked out. Resolve the No check-out on the Check-in screen with their actual finish time.',
+    'A worker’s hours are not settled: resolve their No check-out on the Check-in screen with the actual finish time, or correct their check-in/out.',
   review: 'Review the violations and the lines below, then mark the event reviewed for invoicing.',
   ready: 'Signed off. The lines are in the invoicing CSV.',
 };

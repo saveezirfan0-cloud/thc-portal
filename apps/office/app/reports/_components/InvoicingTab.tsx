@@ -137,7 +137,7 @@ export function InvoicingTab({
         <Note>
           <b>Amount</b> = payable hours × the role&apos;s charge rate, the same figure as the
           Financial tab. Unpaid breaks are deducted; buffer staff turned away and no-shows are never
-          charged; a section cancelled on the day is charged in full.
+          charged; an event cancelled on the day is charged in full.
         </Note>
         <Note>
           <b>Export ready CSV</b> has one row per shift of every Ready event in the period, with the

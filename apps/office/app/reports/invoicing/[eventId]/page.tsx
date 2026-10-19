@@ -299,11 +299,16 @@ function LineRow({ line }: { line: InvoiceLine }) {
             <ActualTime at={line.check_in_at} className="mono" />
           </td>
           <td className={line.early_check_out ? 'rp-amber' : undefined}>
-            {pending ? (
+            {pending && !line.check_out_at ? (
               <Pill tone="coral">No check-out</Pill>
             ) : (
               <ActualTime at={line.check_out_at} className="mono" />
             )}
+            {line.no_check_out_unresolved && line.check_out_at ? (
+              <div>
+                <Pill tone="coral">No check-out · unresolved</Pill>
+              </div>
+            ) : null}
           </td>
         </>
       ) : (

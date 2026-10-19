@@ -84,6 +84,7 @@ function event(over: Partial<InvoiceEvent> = {}): InvoiceEvent {
     invoicing: '183.76',
     violations: 1,
     unresolved: 1,
+    no_checkouts: 0,
     status: 'review',
     fingerprint: 'fp-1',
     signed_off_at: null,
@@ -111,6 +112,7 @@ function line(over: Partial<InvoiceLine> = {}): InvoiceLine {
     status: 'settled',
     late_check_in: false,
     early_check_out: false,
+    no_check_out_unresolved: false,
     unpaid_break_min: 0,
     payable_min: 240,
     floor_applied: false,
@@ -220,6 +222,18 @@ describe('/reports/invoicing/:eventId', () => {
     expect(html).toContain('Missing check-out');
     expect(html).toContain('Pending');
     expect(html).toContain('No check-out');
+    expect(html).not.toContain('sign-off:');
+  });
+
+  it('a stale-fix No check-out shows the recorded finish and says it is unresolved', async () => {
+    state.detail.event = event({ status: 'missing', no_checkouts: 1 });
+    state.detail.lines = [
+      line({ check_out_at: '2026-10-14T18:05:00Z', no_check_out_unresolved: true }),
+    ];
+    const html = await render();
+    expect(html).toContain('Missing check-out');
+    expect(html).toContain('at:2026-10-14T18:05:00Z');
+    expect(html).toContain('No check-out · unresolved');
     expect(html).not.toContain('sign-off:');
   });
 

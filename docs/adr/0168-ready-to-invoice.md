@@ -19,7 +19,7 @@ events are finished and settled, and having their lines in a form it can key in.
 
 The money already existed. `report_payroll_lines_v.invoicing` prices every shift at payable
 minutes (RULE-01, breaks deducted) × the section's charge rate. A turn-away and a no-show are
-never charged, and a section cancelled on the day is charged in full. The Financial tab sums it
+never charged, and an event cancelled on the day is charged in full (§3.3). The Financial tab sums it
 by day, client or role as a forecast. Nothing summed it per event, and nothing said when an
 event's figure was final.
 
@@ -40,7 +40,7 @@ status is the first of these steps that fails:
 | Status | Rule | What the manager does |
 |---|---|---|
 | **Check-out open** | `now()` is before the last section's end + 4 h (RULE-02) | Nothing yet: a worker can still check out |
-| **Missing check-out** | a line is pending: an unresolved No check-out leaves the hours unknown | Resolve it on /checkin with the actual finish time |
+| **Missing check-out** | a line is pending (its hours are unknown), or any No check-out is unresolved, including one raised on a stale fix that recorded a finish (D15, ADR-0035), which is never invoiced on that default (RULE-02) | Resolve it on /checkin with the actual finish time |
 | **Needs review** | no sign-off, or the sign-off is stale | Review every violation and the lines, then **Mark reviewed for invoicing** with a note |
 | **Ready to invoice** | signed off and nothing has changed | Export the CSV; invoice from THC's own tool |
 
@@ -60,11 +60,12 @@ status is the first of these steps that fails:
   fingerprint it was drawn from, and the database refuses the sign-off if it no longer matches
   (`changed_since_viewed`). Nobody signs off figures they did not see.
 - **No-shows do not block.** They stay in the review list unresolved, are counted, and are never
-  charged. Only a No check-out must be resolved, because only it leaves hours unknown.
+  charged. Only a No check-out must be resolved, because only it leaves the finish unknown.
 - **The CSV** (`invoice_export_rows`, `invoiceCsv`) has one row per billable shift (worked, or
   cancelled on the day) of every READY event: date, client, event, PO Number, Employee ID, staff,
   role, scheduled window, check-in/out, break, payable hours, charge rate and amount. A total row
-  closes each event. It carries no pay rate. Events that are not ready contribute nothing.
+  closes each event, with its figure in a separate Event total column so that summing the Amount
+  column never double-counts. It carries no pay rate. Events that are not ready contribute nothing.
 - **Where it lives:** a fourth tab on /reports, opening on last week (exported Monday, invoiced
   by Tuesday evening, §9.9), and `/reports/invoicing/:eventId` for one event. Both are
   finance-only, like the rest of /reports.

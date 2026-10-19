@@ -320,13 +320,22 @@ describe('Invoicing CSV (ADR-0168)', () => {
     const rows = lines(csv);
     expect(rows[0]).toBe(INVOICE_CSV_COLUMNS.join(','));
     expect(rows[1]).toBe(
-      '12/11/2024,Leonardo Hotel St Pauls,Gala a,PO-4471,THC-89901,Ina Able,Waiting Staff,12:00–16:00,12:00,16:00,0:00,4.00,22.97,91.88',
+      '12/11/2024,Leonardo Hotel St Pauls,Gala a,PO-4471,THC-89901,Ina Able,Waiting Staff,12:00–16:00,12:00,16:00,0:00,4.00,22.97,91.88,',
     );
     expect(rows[3]).toBe(
-      '12/11/2024,Leonardo Hotel St Pauls,Gala a — total,PO-4471,,,,,,,,8.00,,183.76',
+      '12/11/2024,Leonardo Hotel St Pauls,Gala a — total,PO-4471,,,,,,,,8.00,,,183.76',
     );
-    expect(rows[5]).toBe('12/11/2024,Leonardo Hotel St Pauls,Lunch — total,,,,,,,,,5.00,,114.85');
+    expect(rows[5]).toBe('12/11/2024,Leonardo Hotel St Pauls,Lunch — total,,,,,,,,,5.00,,,114.85');
     expect(rows).toHaveLength(6);
+  });
+
+  it('keeps the total out of the Amount column, so a column sum is right', () => {
+    const rows = lines(invoiceCsv([line('a', 'Ina Able'), line('a', 'Ivo Baker')])).map((r) =>
+      r.split(','),
+    );
+    const amount = INVOICE_CSV_COLUMNS.indexOf('Amount');
+    const sum = rows.slice(1).reduce((total, r) => total + Number(r[amount] || 0), 0);
+    expect(sum.toFixed(2)).toBe('183.76');
   });
 
   it('adds the total in pence, so it never drifts', () => {

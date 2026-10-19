@@ -274,6 +274,8 @@ export interface InvoiceEvent {
   invoicing: number | string;
   violations: number;
   unresolved: number;
+  /** Unresolved No check-outs, including a stale-fix one with a recorded finish (D15). */
+  no_checkouts: number;
   status: string;
   fingerprint: string;
   signed_off_at: string | null;
@@ -299,6 +301,7 @@ export interface InvoiceLine {
   status: 'settled' | 'pending';
   late_check_in: boolean;
   early_check_out: boolean;
+  no_check_out_unresolved: boolean;
   unpaid_break_min: number;
   payable_min: number | null;
   floor_applied: boolean;
