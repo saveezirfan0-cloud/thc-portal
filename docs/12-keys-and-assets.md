@@ -15,8 +15,8 @@ Only **four** values are read by the code today. Everything else below is for la
 | Value | Where to get it | Where it goes |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase dashboard → your project → Settings → API → Project URL | `.env.local` in each app, and each Vercel project |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page. Labelled **anon / public**, or **publishable** in the newer dashboard | Same |
-| `SUPABASE_SERVICE_ROLE_KEY` | Same page. Labelled **service_role**, or **secret** | Same, but **server-side only**. Never in a `NEXT_PUBLIC_` name |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page (**API Keys**). The legacy **anon** JWT (`eyJ…`) or the **publishable** key (`sb_publishable_…`); both work (ADR-0165). `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is read as an alternative name and wins when both are set | Same |
+| `SUPABASE_SERVICE_ROLE_KEY` | Same page. The legacy **service_role** JWT or a **secret** key (`sb_secret_…`); both work, the name stays | Same, but **server-side only**. Never in a `NEXT_PUBLIC_` name |
 | `APP_TZ` | Not obtained. It is always `Europe/London` | Same |
 
 Links:
@@ -185,7 +185,9 @@ supabase secrets set \
   VAPID_SUBJECT=mailto:admin@thehospitalitycompany.co.uk
 ```
 
-(`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase itself.)
+(`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_SECRET_KEYS` are injected by Supabase
+itself. `THC_SECRET_KEY_NAME` is set only when moving the functions to a new secret key,
+docs/16 §10.3.)
 
 | Secret | What it is | If it is missing |
 |---|---|---|
