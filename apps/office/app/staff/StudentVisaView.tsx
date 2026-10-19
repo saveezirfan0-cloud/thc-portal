@@ -14,7 +14,7 @@ import {
   useColumns,
 } from '@thc/ui';
 import type { ColumnDef } from '@thc/ui';
-import { capReason, employeeId, formatUkDate, matchesCapFilter } from './staff';
+import { capReason, employeeId, formatUkDate, matchesCapFilter, statusLabel } from './staff';
 import type { CapFilter } from './staff';
 import type { StudentRow } from './types';
 
@@ -177,11 +177,7 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
                       ),
                       status: (
                         <td data-label="Status">
-                          {row.status === 'blocked' ? (
-                            <Pill tone="coral">Blocked</Pill>
-                          ) : (
-                            <Pill tone="green">Compliant</Pill>
-                          )}
+                          <StatusPill status={row.status} />
                         </td>
                       ),
                     };
@@ -319,4 +315,13 @@ function CompletionLetterStatus({ row }: { row: StudentRow }) {
     );
   }
   return null;
+}
+
+/**
+ * The directory's own pill words (`statusLabel`), so a leaver reads
+ * "Inactive" here as on the profile, never "Compliant".
+ */
+function StatusPill({ status }: { status: StudentRow['status'] }) {
+  const { label, tone } = statusLabel({ status, removed: false });
+  return <Pill tone={tone}>{label}</Pill>;
 }

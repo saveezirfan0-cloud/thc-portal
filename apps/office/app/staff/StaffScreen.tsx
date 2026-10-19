@@ -174,6 +174,14 @@ export function StaffScreen({
   // same view but belong to /onboarding, so they are neither counted nor
   // listed here (`isWorker`).
   const staff = useMemo(() => everyone.filter(isWorker), [everyone]);
+  // The Student visa view is the same population on one branch (§4.5
+  // "every worker on the International student branch"): student_visa_v
+  // drops removed profiles, and a candidate still being onboarded is not a
+  // worker yet, so it is not counted or listed there either.
+  const studentWorkers = useMemo(
+    () => students.filter((row) => isWorker({ status: row.status, removed: false })),
+    [students],
+  );
 
   const counts = useMemo(() => directoryCounts(staff), [staff]);
 
@@ -267,7 +275,7 @@ export function StaffScreen({
         <SegToggle
           options={[
             { value: 'directory', label: 'Directory' },
-            { value: 'student', label: 'Student visa', count: students.length },
+            { value: 'student', label: 'Student visa', count: studentWorkers.length },
           ]}
           value={view}
           onChange={(next) => setUrl({ view: next })}
@@ -349,7 +357,7 @@ export function StaffScreen({
       </div>
 
       {view === 'student' ? (
-        <StudentVisaView students={students} query={query} capFilter={capFilter} />
+        <StudentVisaView students={studentWorkers} query={query} capFilter={capFilter} />
       ) : (
         <>
           {filter === 'inactive' ? (
