@@ -80,7 +80,7 @@ const MESSAGES: Record<string, string> = {
   unknown_staff: 'This person no longer exists — refresh the page.',
   // Mark interview complete without Willo (ADR-0077)
   not_permitted: 'Only an owner or a manager can do this.',
-  // Allow 3 more attempts (ADR-0167)
+  // Allow 3 more attempts (ADR-0168)
   read_only: 'A read-only login cannot change anything.',
 };
 
@@ -276,7 +276,7 @@ export async function markInterviewComplete(
 }
 
 /**
- * Allow 3 more attempts (ADR-0167): a candidate the H&S quiz rejected goes
+ * Allow 3 more attempts (ADR-0168): a candidate the H&S quiz rejected goes
  * back to Quiz with three fresh attempts. The failed ones are kept as
  * history; documents, declaration and induction stand. Any office login
  * that may write; the reason is kept in audit_log. Nothing is sent to the

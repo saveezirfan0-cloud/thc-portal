@@ -7,7 +7,7 @@ import { STAFF_TRANSITIONS, type StaffStatus } from '../state.ts';
  * The §2.12 staff machine exists twice: as `STAFF_TRANSITIONS` here, and as
  * the `staff_transitions` table, built in
  * supabase/migrations/20260921180312_leaving_and_conviction.sql and added to
- * by later migrations (20261021100000: rejected → quiz, ADR-0167).
+ * by later migrations (20261021100000: rejected → quiz, ADR-0168).
  *
  * CLAUDE.md asks for both — "one function in packages/domain/state.ts + a DB
  * function; illegal transitions are rejected in the DB too" — and two copies

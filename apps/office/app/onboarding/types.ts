@@ -282,7 +282,7 @@ export interface QuizAttempt {
   score: number;
   passed: boolean;
   taken_at: string;
-  /** Set aside by Reset to candidate, or by Allow 3 more attempts (ADR-0167). */
+  /** Set aside by Reset to candidate, or by Allow 3 more attempts (ADR-0168). */
   superseded?: boolean;
 }
 
@@ -341,9 +341,9 @@ export interface CandidateData {
   references: Reference[];
   /** This period's quiz attempts that count towards the current three. */
   attempts: QuizAttempt[];
-  /** This period's attempts set aside when the office allowed three more (ADR-0167). */
+  /** This period's attempts set aside when the office allowed three more (ADR-0168). */
   attemptsSetAside?: QuizAttempt[];
-  /** The latest Allow 3 more attempts this period (ADR-0167). */
+  /** The latest Allow 3 more attempts this period (ADR-0168). */
   quizGrant?: QuizGrant | null;
   hmrc: HmrcChecklist | null;
   application: Application | null;
@@ -395,7 +395,7 @@ export interface InterviewOverride {
   reason: string;
 }
 
-/** The audit row `grant_quiz_attempts()` leaves (ADR-0167). */
+/** The audit row `grant_quiz_attempts()` leaves (ADR-0168). */
 export type QuizGrant = InterviewOverride;
 
 /** The audit row the SpudBros skip sweep leaves when it fails (ADR-0118). */

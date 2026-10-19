@@ -1,6 +1,6 @@
 -- =====================================================================
 -- The office can give a candidate rejected by the H&S quiz three more
--- attempts (ADR-0167; a deliberate change to §2.9 / RULE-09)
+-- attempts (ADR-0168; a deliberate change to §2.9 / RULE-09)
 --
 -- §2.9: "Pass mark 80%, multiple choice, 3 attempts in total, and failing
 -- the third → automatic rejection." Rejection was final on the record;
@@ -109,7 +109,7 @@ begin
 end $$;
 
 comment on function public.grant_quiz_attempts(uuid, text, uuid) is
-  'ADR-0167: a candidate rejected by the H&S quiz (rejection_cause quiz_failed) goes back to Quiz with three attempts — the attempts so far superseded (kept), quiz_attempts 0, the rejection cleared, audit_log quiz_attempts_granted with the reason, p_actor and the scores set aside. Service role; the office calls onboarding_grant_quiz_attempts().';
+  'ADR-0168: a candidate rejected by the H&S quiz (rejection_cause quiz_failed) goes back to Quiz with three attempts — the attempts so far superseded (kept), quiz_attempts 0, the rejection cleared, audit_log quiz_attempts_granted with the reason, p_actor and the scores set aside. Service role; the office calls onboarding_grant_quiz_attempts().';
 
 revoke execute on function public.grant_quiz_attempts(uuid, text, uuid) from public, anon, authenticated;
 grant  execute on function public.grant_quiz_attempts(uuid, text, uuid) to service_role;
@@ -130,7 +130,7 @@ begin
 end $$;
 
 comment on function public.onboarding_grant_quiz_attempts(uuid, text) is
-  'ADR-0167: the Back Office''s "Allow 3 more attempts" on a candidate the H&S quiz rejected. Office only (not_authorised otherwise; a viewer is refused by office_read_only); the reason is mandatory. See grant_quiz_attempts().';
+  'ADR-0168: the Back Office''s "Allow 3 more attempts" on a candidate the H&S quiz rejected. Office only (not_authorised otherwise; a viewer is refused by office_read_only); the reason is mandatory. See grant_quiz_attempts().';
 
 revoke execute on function public.onboarding_grant_quiz_attempts(uuid, text) from public, anon;
 grant  execute on function public.onboarding_grant_quiz_attempts(uuid, text) to authenticated;

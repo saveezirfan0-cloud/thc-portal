@@ -161,7 +161,7 @@ export function CandidateScreen({
   canCorrectDob?: boolean;
   /** ADR-0077: `canMarkInterviewComplete(role)` — owners and managers may skip Willo. */
   canMarkInterview?: boolean;
-  /** ADR-0167: `officeCan(role, 'write')` — a viewer does not see Allow 3 more attempts. */
+  /** ADR-0168: `officeCan(role, 'write')` — a viewer does not see Allow 3 more attempts. */
   canGrantQuizAttempts?: boolean;
   /**
    * ADR-0161: the page has drawn the `OfficeShell` itself, around the

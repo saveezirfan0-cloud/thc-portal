@@ -561,7 +561,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .order('at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    // ADR-0167: the latest time the office gave three more quiz attempts.
+    // ADR-0168: the latest time the office gave three more quiz attempts.
     // Best-effort, like the two above.
     (supabase as unknown as OverrideRead)
       .from('audit_log')
@@ -592,7 +592,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     (attempt) =>
       raw !== null && Date.parse(attempt.taken_at) >= Date.parse(raw.onboarding_started_at),
   );
-  // ADR-0167: attempts set aside when the office allowed three more are this
+  // ADR-0168: attempts set aside when the office allowed three more are this
   // period's history, shown beside the current three.
   const live = period.filter((attempt) => !attempt.superseded);
   const setAside = period.filter((attempt) => attempt.superseded);
@@ -677,7 +677,7 @@ function toOverride(row: {
   };
 }
 
-/** The latest `quiz_attempts_granted` row of this onboarding period (ADR-0167). */
+/** The latest `quiz_attempts_granted` row of this onboarding period (ADR-0168). */
 function toQuizGrant(
   row: { at: string; data: { reason?: unknown; byName?: unknown } | null },
   periodStart: string,

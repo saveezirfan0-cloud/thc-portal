@@ -1,4 +1,4 @@
-# ADR-0167 · Allow 3 more attempts at the Health & Safety quiz
+# ADR-0168 · Allow 3 more attempts at the Health & Safety quiz
 
 **Status:** Accepted (office request, 19.10.2026). A deliberate change to scope v1.6 §2.9 / RULE-09 ("3 attempts in total, and failing the third → automatic rejection").
 

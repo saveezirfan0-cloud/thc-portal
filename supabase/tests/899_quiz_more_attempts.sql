@@ -1,5 +1,5 @@
 -- =====================================================================
--- 899 · Allow 3 more attempts at the H&S quiz (ADR-0167)
+-- 899 · Allow 3 more attempts at the H&S quiz (ADR-0168)
 --   20261021100000_quiz_more_attempts.sql
 --
 --   1. Grants: the office RPC is closed to anon and PUBLIC; the worker

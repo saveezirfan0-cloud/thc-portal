@@ -347,7 +347,7 @@ describe('the candidate profile · date of birth (ADR-0070)', () => {
   });
 });
 
-describe('the candidate profile · allow 3 more quiz attempts (ADR-0167)', () => {
+describe('the candidate profile · allow 3 more quiz attempts (ADR-0168)', () => {
   const quizRejected = data({
     candidate: {
       ...ROW,
