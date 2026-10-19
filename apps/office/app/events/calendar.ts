@@ -29,6 +29,14 @@ export function todayInUk(now: Date = new Date()): string {
   return parts; // en-CA formats as YYYY-MM-DD
 }
 
+/**
+ * The id the toolbar's Today lands on (`TodayLink`): today's month cell,
+ * today's week column, or the first list row from today on. Here rather
+ * than beside the link, which is a client module — a constant exported
+ * from one reaches a server component as a reference, not a string.
+ */
+export const TODAY_ANCHOR = 'today';
+
 function toUtc(iso: string): Date {
   const [year, month, day] = iso.split('-').map(Number);
   return new Date(Date.UTC(year!, month! - 1, day!));
