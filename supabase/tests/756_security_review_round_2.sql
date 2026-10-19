@@ -25,7 +25,9 @@ reset role;
 -- 2 · session_id in the token must still exist for a Back Office login.
 insert into auth.sessions (id, user_id, created_at, updated_at) values (:'sess', :'admin_uid', now(), now());
 select set_config('request.jwt.claims',
-  json_build_object('sub', :'admin_uid', 'role', 'authenticated', 'session_id', :'sess')::text, true);
+  -- aal2: since 20261020130000 (ADR-0164) an office session below aal2 has
+  -- no role while two-step is required, which is the default (895).
+  json_build_object('sub', :'admin_uid', 'role', 'authenticated', 'session_id', :'sess', 'aal', 'aal2')::text, true);
 select is(current_app_role()::text, 'admin', 'a live sign-in session keeps the admin role');
 
 delete from auth.sessions where id = :'sess';
