@@ -217,6 +217,27 @@ describe('Export CSV', () => {
     expect(await response.text()).toMatch(/^Only 500 of 2,345 payroll lines came back\./);
   });
 
+  it('a login without the finance permission gets 403, not a server error (ADR-0056)', async () => {
+    const refusing = fakePostgrest({ payroll_report: LINES });
+    state.db = {
+      ...refusing,
+      rpc: () => {
+        const reply = Promise.resolve({
+          data: null,
+          error: { code: '42501', message: 'not_permitted', details: 'finance' },
+        });
+        const query = Object.assign(reply, {
+          order: () => query,
+          range: () => query,
+        });
+        return query;
+      },
+    };
+    const response = await GET(exportUrl('payroll'));
+    expect(response.status).toBe(403);
+    expect(await response.text()).toMatch(/^Reports need the finance permission\./);
+  });
+
   it('the financial CSV reads past 1,000 too', async () => {
     const response = await GET(exportUrl('financial'));
     expect(response.status).toBe(200);

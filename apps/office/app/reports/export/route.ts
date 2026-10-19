@@ -70,13 +70,20 @@ export async function GET(request: Request) {
   }
 
   if (error) {
-    const forbidden = error.message.includes('admins_only');
-    return new Response(
-      forbidden ? 'Reports are for the office only.' : explainDbError(error, { log: '[reports]' }),
-      {
-        status: forbidden ? 403 : 500,
-      },
-    );
+    // admins_only: not the office at all. not_permitted (42501): an office
+    // login without the finance permission — a scheduler (ADR-0056,
+    // assert_finance_caller). Both are a refusal, not a server fault.
+    const notOffice = error.message.includes('admins_only');
+    const noFinance = error.message.includes('not_permitted') || error.code === '42501';
+    if (notOffice || noFinance) {
+      return new Response(
+        notOffice
+          ? 'Reports are for the office only.'
+          : 'Reports need the finance permission. Ask an owner to check your access on Users & access.',
+        { status: 403 },
+      );
+    }
+    return new Response(explainDbError(error, { log: '[reports]' }), { status: 500 });
   }
 
   return new Response(csv, {
