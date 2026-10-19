@@ -2214,8 +2214,8 @@ function DocumentsPhase({
             title="Profile selfie"
             meta={
               row.photo_path
-                ? 'Taken in the app at wizard step 4 · becomes the avatar across the whole system · locked after onboarding'
-                : 'Not taken yet — the candidate takes it in the app at wizard step 4'
+                ? 'Taken in the app at wizard step 3 · becomes the avatar across the whole system · locked after onboarding'
+                : 'Not taken yet — the candidate takes it in the app at wizard step 3'
             }
             state={row.photo_path ? 'verified' : 'pending'}
             actions={
