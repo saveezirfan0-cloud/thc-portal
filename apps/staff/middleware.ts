@@ -177,10 +177,7 @@ async function gate(request: NextRequest): Promise<NextResponse> {
 
   if (!claims?.sub) {
     if (isPublic(pathname)) return response;
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(loginUrl(request));
   }
 
   // app_metadata ONLY. user_metadata is writable by the user from the
@@ -222,14 +219,26 @@ async function gate(request: NextRequest): Promise<NextResponse> {
       sessionChecks.set(key, check);
     }
     if (!check.valid) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('next', pathname);
-      return withCookies(NextResponse.redirect(url), response);
+      return withCookies(NextResponse.redirect(loginUrl(request)), response);
     }
   }
 
   return response;
+}
+
+/**
+ * /login, remembering where the worker was going — the query string too
+ * (as the Client Portal, ADR-0120): `/profile/details/request?kind=dob`
+ * must come back to the date-of-birth form, not the name form. The query
+ * used to stay on /login itself beside `next` and be dropped after sign-in.
+ * Only ever followed as a path on this app (safeNextPath, login action).
+ */
+function loginUrl(request: NextRequest): URL {
+  const url = request.nextUrl.clone();
+  url.pathname = '/login';
+  url.search = '';
+  url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
+  return url;
 }
 
 /**
