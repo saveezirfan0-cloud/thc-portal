@@ -451,7 +451,13 @@ export type ApplyRefusal =
   | 'language_not_spoken'
   | 'languages_not_recorded'
   | 'not_available_all_days'
-  | 'quiz_required';
+  | 'quiz_required'
+  /**
+   * RULE-17 (20261021010000): the worker is not qualified at this client
+   * for this role, and someone who is has not been invited yet — the card
+   * Radar was hiding from them. A stale screen or a direct call meets it.
+   */
+  | 'not_open_yet';
 
 export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: string }> = {
   full: {
@@ -511,6 +517,10 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
   quiz_required: {
     title: 'Pass the quiz first',
     body: 'This client asks everyone on this role to pass a short quiz before they can apply for or take one of its shifts. Take the quiz, then come back.',
+  },
+  not_open_yet: {
+    title: 'This shift isn’t open to you yet',
+    body: 'It’s offered first to people who have worked this role for this client. If it’s still open once they’ve all been asked, it will be on Radar for you.',
   },
 };
 

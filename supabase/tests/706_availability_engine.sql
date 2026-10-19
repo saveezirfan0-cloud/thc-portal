@@ -201,6 +201,12 @@ reset role;
 select is((select source::text from bookings where shift_id = :'s' and staff_id = :'w_un'), 'manual',
   'B: the invitation is recorded as the office''s, not the machine''s');
 
+-- RULE-17 (20261021010000): Friday's section is at client A, where staff A
+-- is qualified; she has been invited, so the first wave is exhausted and
+-- the section is on Radar for everyone (the apply below is about the
+-- calendar, not the wave).
+insert into bookings (shift_id, staff_id, status, source) values (:'s_apply', :'staffa', 'invited', 'auto');
+
 select set_config('request.jwt.claims', json_build_object('sub', :'un_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is(accept_invite((select id from bookings where shift_id = :'s' and staff_id = :'w_un')) ->> 'ok', 'true',

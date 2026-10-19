@@ -66,6 +66,16 @@ describe('a press with something to say leaves the screen alone', () => {
   });
 });
 
+describe('RULE-17 on Apply (20261021010000)', () => {
+  it('a wave-2 worker applying ahead of wave 1 is told the shift is not open to them yet', async () => {
+    answer({ ok: false, reason: 'not_open_yet' });
+    const result = await actions.applyForShift('s1');
+    expect('refusal' in result && result.refusal.title).toBe('This shift isn’t open to you yet');
+    expect('refusal' in result && result.refusal.body).toMatch(/offered first to people who/);
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
 describe('a clean success refreshes every list at once', () => {
   it.each([
     ['accept', () => actions.acceptInvite('b1'), { ok: true, withdrawn: 0 }],
