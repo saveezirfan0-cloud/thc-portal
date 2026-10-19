@@ -197,15 +197,22 @@ interface OfferRow {
   taken_by_booking_id: string | null;
 }
 
+/** One `auto_assign_unavailable` row: an entry overlapping the section's window. */
+interface AwayRow {
+  staff_id: string;
+  starts_at: string;
+  ends_at: string;
+}
+
+/** A paged read the board can order and range — table, view or RPC alike. */
+interface PagedQuery<T> extends PromiseLike<PageReply<T>> {
+  order(column: string): PagedQuery<T>;
+  range(from: number, to: number): PagedQuery<T>;
+}
+
 /** `auto_assign_unavailable` (20260930201000), not yet in the generated types. */
 interface UnavailableRpc {
-  rpc(
-    fn: 'auto_assign_unavailable',
-    args: { p_shift: string },
-  ): PromiseLike<{
-    data: { staff_id: string; starts_at: string; ends_at: string }[] | null;
-    error: { message: string } | null;
-  }>;
+  rpc(fn: 'auto_assign_unavailable', args: { p_shift: string }): PagedQuery<AwayRow>;
 }
 
 async function selectIn<T>(
@@ -376,24 +383,42 @@ export async function loadBoard(
       ),
     ),
     // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
-    // A new RPC, typed locally until the Phase 2 type regeneration.
+    // A new RPC, typed locally until the Phase 2 type regeneration. One row
+    // per entry, and a holiday week takes in most of the roster: paged in a
+    // total order, so the 1,001st entry is not silently "available".
     Promise.all(
       sectionIds.map((id) =>
-        (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
+        readAllPages<AwayRow>(
+          (range) =>
+            (supabase as unknown as UnavailableRpc)
+              .rpc('auto_assign_unavailable', { p_shift: id })
+              .order('staff_id')
+              .order('starts_at')
+              .order('ends_at')
+              .range(range.from, range.to),
+          { what: 'availability entries', ceiling: POOL_CEILING },
+        ),
       ),
     ),
     // ADR-0046: open offers (the Confirmed-row chips) and completed
     // hand-overs (the section's history line). The office reads
-    // shift_offers through its admin_read policy.
+    // shift_offers through its admin_read policy. Paged by id: a long-lived
+    // section collects taken hand-overs, and a cut list would drop a chip.
     sectionIds.length
-      ? supabase
-          .from('shift_offers')
-          .select(
-            'id, booking_id, shift_id, mode, status, note, expires_at, closed_at, taken_by_booking_id',
-          )
-          .in('shift_id', sectionIds)
-          .in('status', ['open', 'taken'])
-      : Promise.resolve({ data: [], error: null }),
+      ? readAllPages<OfferRow>(
+          (range) =>
+            supabase
+              .from('shift_offers')
+              .select(
+                'id, booking_id, shift_id, mode, status, note, expires_at, closed_at, taken_by_booking_id',
+              )
+              .in('shift_id', sectionIds)
+              .in('status', ['open', 'taken'])
+              .order('id')
+              .range(range.from, range.to) as unknown as PromiseLike<PageReply<OfferRow>>,
+          { what: 'shift offers', key: (row) => row.id },
+        )
+      : Promise.resolve({ data: [] as OfferRow[], error: null }),
     clientRead,
     seriesRead,
   ]);
@@ -429,7 +454,7 @@ export async function loadBoard(
     };
   }
   const bookings = (bookingRes.data ?? []) as Record<string, string | boolean | null>[];
-  const offerRows = (offerRes.data ?? []) as OfferRow[];
+  const offerRows = offerRes.data ?? [];
   const openOffers = new Map<string, BoardOffer>(
     offerRows
       .filter((o) => o.status === 'open')

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
 import { supabaseConfigured } from '../data';
 import { dressCodeLibrary } from './card';
 import { withPhotoUrls } from '../../_lib/photos';
@@ -164,18 +165,34 @@ export async function loadClientCard(
     // Dress codes only, from every client: what the add-a-code box offers so a
     // code already stored is picked, not retyped. No rate or worker data.
     supabase.from('client_rate_cards').select('dress_codes'),
-    supabase
-      .from('clients_qualified_staff_v')
-      .select('*')
-      .eq('client_id', id)
-      .order('display_name')
-      .returns<QualifiedStaffRow[]>(),
-    supabase
-      .from('clients_event_list_v')
-      .select('*')
-      .eq('client_id', id)
-      .order('event_date', { ascending: false })
-      .returns<ClientEventRow[]>(),
+    // Block 3 and block 6 grow with the client: one row per cleared worker,
+    // one per event ever run. PostgREST stops at 1000 rows without an error,
+    // so both are paged in a total order (go-live audit M2) — a cut list
+    // would understate the Wave 1 pool, or lose the oldest events.
+    readAllPages<QualifiedStaffRow>(
+      (range) =>
+        supabase
+          .from('clients_qualified_staff_v')
+          .select('*')
+          .eq('client_id', id)
+          .order('display_name')
+          .order('staff_id')
+          .range(range.from, range.to)
+          .returns<QualifiedStaffRow[]>(),
+      { what: 'qualified staff', key: (row) => row.staff_id },
+    ),
+    readAllPages<ClientEventRow>(
+      (range) =>
+        supabase
+          .from('clients_event_list_v')
+          .select('*')
+          .eq('client_id', id)
+          .order('event_date', { ascending: false })
+          .order('id')
+          .range(range.from, range.to)
+          .returns<ClientEventRow[]>(),
+      { what: 'events', key: (row) => row.id },
+    ),
     supabase
       .from('roles')
       .select('id, name')

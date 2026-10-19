@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { type SeriesMember, UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
 import { readAllPages } from '@thc/db/paged';
+import type { PageReply } from '@thc/db/paged';
 import { eventsDb, supabaseConfigured } from './db';
 import { readProblem } from '../_lib/dbError';
 
@@ -198,14 +199,25 @@ export type ClientName = Pick<ClientOption, 'id' | 'name'>;
 export async function loadClientNames(): Promise<{ clients: ClientName[]; unavailable?: string }> {
   if (!supabaseConfigured()) return { clients: [], unavailable: NO_SUPABASE };
   const supabase = eventsDb(await cookies());
-  const { data, error } = await supabase.from('clients').select('id, name').order('name');
+  // The toolbar's client filter: paged by (name, id), so a client past row
+  // 1,000 is not missing from it (go-live audit 17.10.2026).
+  const { data, error } = await readAllPages<ClientName>(
+    (range) =>
+      supabase
+        .from('clients')
+        .select('id, name')
+        .order('name')
+        .order('id')
+        .range(range.from, range.to) as unknown as PromiseLike<PageReply<ClientName>>,
+    { what: 'clients', key: (row) => row.id },
+  );
   if (error) {
     return {
       clients: [],
       unavailable: readProblem(error, 'Clients could not be loaded'),
     };
   }
-  return { clients: (data ?? []) as ClientName[] };
+  return { clients: data };
 }
 
 export interface SavedRoleSection {

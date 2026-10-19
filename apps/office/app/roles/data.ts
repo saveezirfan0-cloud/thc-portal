@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readAllPages } from '@thc/db/paged';
 import { loadPayFloorPence } from '../_lib/payFloor';
 import { DEFAULT_PAY_FLOOR_PENCE } from './money';
 import type { Role } from './types';
@@ -34,14 +35,22 @@ export async function loadRoles(): Promise<RolesPageData> {
   }
 
   const supabase = createClient(await cookies());
+  // Paged by (name, id): PostgREST stops at 1000 rows without an error, and a
+  // catalogue is never worth a silent cut (go-live audit 17.10.2026).
   const [{ data, error }, payFloorPence] = await Promise.all([
-    supabase
-      .from('role_directory_v')
-      .select(
-        'id, name, description, pay_rate, holiday_rate, final_rate, rate_card_count, section_count',
-      )
-      .order('name')
-      .returns<Role[]>(),
+    readAllPages<Role>(
+      (range) =>
+        supabase
+          .from('role_directory_v')
+          .select(
+            'id, name, description, pay_rate, holiday_rate, final_rate, rate_card_count, section_count',
+          )
+          .order('name')
+          .order('id')
+          .range(range.from, range.to)
+          .returns<Role[]>(),
+      { what: 'roles', key: (row) => row.id },
+    ),
     loadPayFloorPence(supabase),
   ]);
 

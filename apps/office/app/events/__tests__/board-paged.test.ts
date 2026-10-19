@@ -95,7 +95,12 @@ let fake: ReturnType<typeof fakePostgrest>;
 beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
-  fake = fakePostgrest({
+  fake = fakePostgrest(SOURCES());
+  state.db = fake;
+});
+
+function SOURCES() {
+  return {
     events: [EVENT],
     shift_requirements: [SECTION],
     roles: [{ id: 'r-1', name: 'Waiter' }],
@@ -111,9 +116,8 @@ beforeEach(() => {
     client_qualifications: filtered(QUALS),
     violations: [],
     check_logs: [],
-  });
-  state.db = fake;
-});
+  };
+}
 
 describe('loadBoard at full roster', () => {
   it('the pool names all 1,500 eligible workers, not the first 1,000', async () => {
@@ -147,6 +151,50 @@ describe('loadBoard at full roster', () => {
     const pool = event!.sections[0]!.pool!;
     expect(pool[0]!.wave).toBe(1);
     expect(pool.filter((entry) => entry.wave === 1)).toHaveLength(100);
+  });
+
+  it('pages the availability calendar and the shift offers, in a total order', async () => {
+    const away = Array.from({ length: 1200 }, (_, n) => ({
+      staff_id: `w-${pad(n)}`,
+      starts_at: '2099-07-03T00:00:00Z',
+      ends_at: '2099-07-04T00:00:00Z',
+    }));
+    const offers = Array.from({ length: 1100 }, (_, n) => ({
+      id: `o-${pad(n)}`,
+      booking_id: `b-${pad(n)}`,
+      shift_id: 'sec-1',
+      mode: 'pool',
+      status: 'taken',
+      note: null,
+      expires_at: '2099-07-03T10:00:00Z',
+      closed_at: '2099-07-02T10:00:00Z',
+      taken_by_booking_id: null,
+    }));
+    fake = fakePostgrest({
+      ...SOURCES(),
+      auto_assign_unavailable: away,
+      shift_offers: offers,
+    });
+    state.db = fake;
+    const { event, problem } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    expect(problem).toBeNull();
+    const calendar = callsTo(fake.calls, 'auto_assign_unavailable');
+    expect(calendar.map((c) => c.range)).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+    expect(calendar[0]!.orders.map(([column]) => column)).toEqual([
+      'staff_id',
+      'starts_at',
+      'ends_at',
+    ]);
+    // All 1,200 marked unavailable: none of them is offered in the pool.
+    const pool = event!.sections[0]!.pool!;
+    expect(pool).toHaveLength(300);
+    expect(pool.every((entry) => entry.staffId >= 'w-1200')).toBe(true);
+    const offerPages = callsTo(fake.calls, 'shift_offers');
+    expect(offerPages).toHaveLength(2);
+    expect(event!.sections[0]!.handovers).toHaveLength(1100);
   });
 
   it('starts the section, role, settings and rate reads with the event read', async () => {
