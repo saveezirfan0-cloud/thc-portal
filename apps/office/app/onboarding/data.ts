@@ -517,11 +517,16 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .eq('staff_id', id)
       .eq('superseded', false)
       .maybeSingle<HmrcChecklist>(),
+    // The application that started THIS pass through the pipeline: the
+    // latest one that created the record or was reset onto it (§2.12). The
+    // oldest is the first pass, so after a returning applicant's reset the
+    // panel said "no match → new record" with the old consent date.
     supabase
       .from('applications')
       .select('created_at, consented_at, outcome, matched_on')
       .eq('staff_id', id)
-      .order('created_at')
+      .or('outcome.eq.candidate_created,resolution.eq.reset')
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
