@@ -159,3 +159,28 @@ describe('#today, where Today lands', () => {
     expect(week).toMatch(/class="col today" id="today"/);
   });
 });
+
+function listHref(query: { view: 'list' | 'month' | 'week' | 'day'; date: string }) {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(NOW);
+  const html = renderToStaticMarkup(
+    <EventToolbar query={{ q: '', clientId: '', status: '', ...query }} clients={[]} />,
+  );
+  return /<a (?:class="on" )?href="([^"]+)"[^>]*>List<\/a>/
+    .exec(html)?.[1]
+    ?.replaceAll('&amp;', '&');
+}
+
+describe('List from the calendar (ADR-0167)', () => {
+  it('starts at today when the calendar period holds today', () => {
+    expect(listHref({ view: 'month', date: '2026-10-25' })).toBe(`/events?view=list&date=${TODAY}`);
+    expect(listHref({ view: 'week', date: '2026-10-22' })).toBe(`/events?view=list&date=${TODAY}`);
+  });
+
+  it("starts at the period's own date when it does not", () => {
+    expect(listHref({ view: 'month', date: '2026-12-05' })).toBe(
+      '/events?view=list&date=2026-12-05',
+    );
+    expect(listHref({ view: 'day', date: '2026-10-25' })).toBe('/events?view=list&date=2026-10-25');
+  });
+});

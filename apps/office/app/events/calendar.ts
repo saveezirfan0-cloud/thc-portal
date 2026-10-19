@@ -127,18 +127,30 @@ export function periodRange(view: CalendarView, iso: string): { from: string; to
     const days = weekDays(iso);
     return { from: days[0]!, to: days[6]! };
   }
-  // List shares the month's range, so its arrows step a month like the
-  // calendar's and past events are browsable in both (§3.1).
+  if (view === 'list') return listRange(iso);
   const cells = monthGrid(iso);
-  return view === 'month'
-    ? { from: cells[0]!.iso, to: cells[cells.length - 1]!.iso }
-    : { from: startOfMonth(iso), to: endOfMonth(iso) };
+  return { from: cells[0]!.iso, to: cells[cells.length - 1]!.iso };
+}
+
+/**
+ * List reads four weeks FROM its date, not the calendar month (ADR-0167):
+ * opened today it starts at today, not on the 1st with the month's past
+ * above it. The arrows step the same four weeks, so one step back ends the
+ * day before and past events are still browsable with no gap (§3.1). A
+ * month from the date could not do that: back from 31 March is 28
+ * February, whose month ends on 27 March.
+ */
+const LIST_DAYS = 28;
+
+function listRange(iso: string): { from: string; to: string } {
+  return { from: iso, to: addDays(iso, LIST_DAYS - 1) };
 }
 
 /** Which way the back and forward arrows step, per view (§3.1). */
 export function shiftPeriod(view: CalendarView, iso: string, direction: -1 | 1): string {
   if (view === 'day') return addDays(iso, direction);
   if (view === 'week') return addDays(iso, 7 * direction);
+  if (view === 'list') return addDays(iso, LIST_DAYS * direction);
   return addMonths(iso, direction);
 }
 
@@ -195,6 +207,10 @@ export function periodLabel(view: CalendarView, iso: string): string {
   if (view === 'week') {
     const days = weekDays(iso);
     return `${formatDayShort(days[0]!)} – ${formatDayLong(days[6]!)}`;
+  }
+  if (view === 'list') {
+    const { from, to } = listRange(iso);
+    return `${formatDayShort(from)} – ${formatDayLong(to)}`;
   }
   return `${MONTHS_LONG[toUtc(iso).getUTCMonth()]} ${iso.slice(0, 4)}`;
 }

@@ -27,13 +27,17 @@ export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients:
   // The same period iff the same label: a month's grid shows its
   // neighbours' edge days, but Today on 28 Oct still means October.
   const onToday = periodLabel(view, date) === periodLabel(view, today);
+  // List reads four weeks from its date (ADR-0167). From a calendar period
+  // that holds today it starts at today, not at the day the calendar is
+  // anchored on; from any other period, at that period's date.
+  const listDate = isCalendar && onToday ? today : date;
 
   return (
     <div className="toolbar filters">
       <div className="seg">
         <Link
           className={view === 'list' ? 'on' : undefined}
-          href={hrefFor({ ...query, view: 'list' })}
+          href={hrefFor({ ...query, view: 'list', date: listDate })}
         >
           List
         </Link>
