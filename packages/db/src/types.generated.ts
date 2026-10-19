@@ -4260,6 +4260,7 @@ export type Database = {
           left_at: string | null;
           ni_number: string | null;
           onboarding_started_at: string;
+          passport_country: string | null;
           payroll_id: string | null;
           phone: string;
           photo_path: string | null;
@@ -4324,6 +4325,7 @@ export type Database = {
           left_at?: string | null;
           ni_number?: string | null;
           onboarding_started_at?: string;
+          passport_country?: string | null;
           payroll_id?: string | null;
           phone: string;
           photo_path?: string | null;
@@ -4388,6 +4390,7 @@ export type Database = {
           left_at?: string | null;
           ni_number?: string | null;
           onboarding_started_at?: string;
+          passport_country?: string | null;
           payroll_id?: string | null;
           phone?: string;
           photo_path?: string | null;
@@ -9543,6 +9546,7 @@ export type Database = {
         Returns: undefined;
       };
       job_run_start: { Args: { p_job: string }; Returns: number };
+      known_countries: { Args: never; Returns: string[] };
       known_languages: { Args: never; Returns: string[] };
       lapse_shift_offers: { Args: { p_now?: string }; Returns: number };
       link_event_series: {
@@ -9622,10 +9626,22 @@ export type Database = {
         Args: { p_status: Database['public']['Enums']['staff_status'] };
         Returns: string;
       };
+      new_starter_address_parts: {
+        Args: { p_address: string };
+        Returns: {
+          address_line_1: string;
+          address_line_2: string;
+          address_line_3: string;
+          town: string;
+        }[];
+      };
       new_starter_postcode: { Args: { p_address: string }; Returns: string };
       new_starter_report: {
         Args: { p_date: string };
         Returns: {
+          address_line_1: string;
+          address_line_2: string;
+          address_line_3: string;
           bank_account_holder: string;
           bank_account_number: string;
           bank_sort_code: string;
@@ -9637,6 +9653,7 @@ export type Database = {
           hmrc_statement: string;
           home_address: string;
           ni_number: string;
+          passport_country: string;
           period_end: string;
           period_start: string;
           photo_path: string;
@@ -9645,11 +9662,15 @@ export type Database = {
           staff_id: string;
           staff_name: string;
           student_loan: string;
+          town: string;
         }[];
       };
       new_starter_rows: {
         Args: { p_staff: string[] };
         Returns: {
+          address_line_1: string;
+          address_line_2: string;
+          address_line_3: string;
           bank_account_holder: string;
           bank_account_number: string;
           bank_sort_code: string;
@@ -9661,12 +9682,14 @@ export type Database = {
           hmrc_statement: string;
           home_address: string;
           ni_number: string;
+          passport_country: string;
           photo_path: string;
           postcode: string;
           removed: boolean;
           staff_id: string;
           staff_name: string;
           student_loan: string;
+          town: string;
         }[];
       };
       normalise_languages: {
@@ -10358,6 +10381,10 @@ export type Database = {
         };
         Returns: string;
       };
+      record_passport_country: {
+        Args: { p_country: string; p_doc: string };
+        Returns: Json;
+      };
       record_password_check_failure: { Args: never; Returns: undefined };
       record_ping: {
         Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
@@ -10397,6 +10424,10 @@ export type Database = {
       };
       remove_my_unavailability: {
         Args: { p_id: string; p_whole_series?: boolean };
+        Returns: Json;
+      };
+      remove_shift_sections: {
+        Args: { p_event: string; p_shifts: string[] };
         Returns: Json;
       };
       remove_staff_role: {
@@ -10626,6 +10657,10 @@ export type Database = {
       };
       set_staff_languages: {
         Args: { p_languages: string[]; p_staff: string };
+        Returns: Json;
+      };
+      set_staff_passport_country: {
+        Args: { p_country: string; p_staff: string };
         Returns: Json;
       };
       set_staff_pay_rate: {

@@ -5,7 +5,8 @@ including N6b, N9b, N10b, N10c) and every email (E1–E9) has one entry, and the
 test holds the set of codes to the two §8 tables (`SCOPE_CODES`). Three sends §8
 does not list are carried as extensions (`EXTENSION_CODES`), each saying why in
 its own `trigger`: E2b (below, and 20260923170000), E10, the §9.12
-self-cancel email (see "Missing from §8"), N10d / N11b (below, ADR-0037), and
+self-cancel email (see "Missing from §8"), N10d / N11b (below, ADR-0037), N10e
+(below, ADR-0160), and
 E11, the Back Office / Client Portal account invitation (ADR-0058).
 The completion letter requirement's codes are `REQUIREMENT_CODES` (CL1–CL6), and
 the Staff App additions of docs/19 are `ADDITION_CODES` (RC1–RC5, OF1–OF6; see
@@ -30,6 +31,7 @@ judgement call is listed below, for THC to confirm before anything sends.
 | N7 | Timing "on the day of the shift" — no hour | queued from **09:00 UK on the day**, or two hours before the start if that is earlier (never before the UK day begins), until 30 minutes before the start (`n7_due_at()`, `n7_closes_at()`) — but never less than 30 minutes, and never past the start, so a 00:01–00:59 start is still reached; 00:00 exactly gets none (ADR-0034) | 09:00 is the N7 gallery's time (`wireframes/staff/shifts.html`). A fixed 09:00 would reach a 07:00 breakfast shift two hours after it started, hence the earlier bound; the reminder stops where N9 "Time to check in" starts. **Confirm both numbers.** |
 | N11 | `"Shift time changed — now […]"` | `Shift time changed — now {window}` | §8 leaves the substituted text as an ellipsis. The Invites wireframe renders it much fuller — new window, the old window in brackets, event, role and "Tap to confirm the new time." **Confirm** which of the two is the copy; the register uses the §8 line with a single `{window}` placeholder rather than inventing the longer one. |
 | N10d | — (N10b's trigger, "manager presses Withdraw", covers an open invitation; its copy "You've been removed from [event] · [date/time]" does not fit one) | extension `Your invitation to {event} · {dateTime} has been withdrawn.` | An invitee never had the shift, so "removed" is untrue. Queued by `withdraw_booking()` (20260930110300) with N10b's values, deep link `/invites`. **Confirm the wording.** |
+| N10e | — (§10.4 ends an application by N10, N10c, the worker withdrawing it, or N12; none covers one role removed from an event that goes on) | extension `The {event} shift on {dateTime} is no longer needed, so your application has been closed. Keep an eye on Radar — new shifts are added regularly.` | N10c would say the role filled and N12 that the event was cancelled; neither is true. Queued by `remove_shift_sections()` (20261019170500) with N10d's values, deep link `/radar`. **Confirm the wording.** |
 | N11b | — (§3.5 re-confirms on a venue address or dress-code change "+ push"; §8 lists only N11, "Shift time changed — now […]") | extension `Shift details changed — {change}. Please confirm in the app.` | N11's copy says the time moved. `{change}` is the same sentence the card shows, e.g. "Dress code changed by the office (was Black & whites)". Sent instead of N11 only when the time did not move. **Confirm the wording.** |
 | N14 | `[20 / 48]` and `[term time / university holiday]` | `{limit}` and `{band}` | The scope's brackets are a choice of two values, not free text. §4.5 adds a third band the table does not list — a verified completion letter ("graduated, completion letter verified [date]" in the Documents wireframe). **Confirm** the completion-letter wording. |
 | All | no push titles at all | short worker-facing `title` per push | §8 has a Trigger column, not a title, and its galleries render a push as the app name plus the body — so a push title exists in the product but nowhere in the scope. The titles here are ours and worker-safe; the §8 Trigger text stays in `trigger`, because some of it is office language ("manager presses Withdraw", N10b) or client commercial detail ("unpaid-break clients only", N13) that must never reach a worker. A test asserts neither phrase can appear in a title or body. **Confirm the titles**, or say a push should carry only "The Hospitality Company" as its title, as the galleries show. |
@@ -263,6 +265,27 @@ OC chasers.
   clicking the link below, actually taking the online interview and fully
   onboarding, we will be unable to offer you any more shifts going forwards."
   (`INVITE_REMINDER_COPY.warning`, in the text and the HTML).
+
+## The AXLR8 countdown (owner, 15.10.2026)
+
+AXLR8 stops working on **Sunday 25 October 2026** (`AXLR8_SWITCH_OFF`,
+`invite-reminder-copy.ts`). IR1 and OC1's existing-staff wordings count down
+to it, in UK days, worked out by `messageFor` as each email goes (so a row
+queued one day and sent the next counts the day it goes; a payload cannot
+set it):
+
+- **IR1** (the owner's design of 14.10, restored): a tile with the number and
+  "Days left" ("Day left" on the 24th, "Today / Last day" on the 25th), the
+  heading "AXLR8 stops working in N days", "Please complete your registration
+  on the new Staff App before then", and the bold sentence "The AXLR8 Staff
+  App will stop working in N days, on Sunday 25 October." (`{axlr8Stops}` in
+  the text).
+- **OC1 existing_first / second / repeat / notice:** the line "AXLR8 stops
+  working in N days, on Sunday 25 October. Please do this before then."
+  (`{axlr8Line}`), after the no-more-shifts warning. New applicants' wording
+  never mentions AXLR8.
+- After the date: no tile; "AXLR8 has stopped working" and "AXLR8 stopped
+  working on Sunday 25 October, …".
 
 ## Where the office reads these emails (ADR-0141)
 

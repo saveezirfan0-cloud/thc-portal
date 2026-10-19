@@ -1,5 +1,6 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
+import { passportCountryFromCode } from '@thc/domain';
 import type { DocType } from '@thc/domain';
 import type { DocumentExtractor, ExtractionInput, ExtractionResult } from '../extractor';
 import { detectMedia } from '../../_lib/media';
@@ -180,7 +181,8 @@ Rules:
 - notes: at most one short sentence for the reviewer about anything doubtful; no names, numbers or other personal details. Empty string if nothing to add.`;
 
 const DOC_INSTRUCTIONS: Record<DocType, string> = {
-  passport: "This should be a passport's photo page. expiryDate: the passport's date of expiry.",
+  passport:
+    'This should be a passport\'s photo page. expiryDate: the passport\'s date of expiry. issuingState: the issuing state\'s code exactly as printed — the letters after "P" and the filler on the first line of the machine-readable zone (for example GBR, POL, or D for Germany), or the "Code of issuing state" field; null if it is not clearly printed.',
   national_id: "This should be a national identity card. expiryDate: the card's date of expiry.",
   visa_document:
     'This should be a UK visa, biometric residence permit or eVisa record. expiryDate: the date the permission to stay or work ends (for example "valid until", "expiry date", "leave to remain until").',
@@ -219,6 +221,7 @@ export const ANSWER_SCHEMA = {
     'completionDate',
     'completionDateKind',
     'awardingInstitution',
+    'issuingState',
     'confidence',
     'notes',
   ],
@@ -251,6 +254,7 @@ export const ANSWER_SCHEMA = {
       anyOf: [{ type: 'string', enum: ['completion', 'award'] }, { type: 'null' }],
     },
     awardingInstitution: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    issuingState: { anyOf: [{ type: 'string' }, { type: 'null' }] },
     confidence: { type: 'number' },
     notes: { type: 'string' },
   },
@@ -383,11 +387,20 @@ export function normaliseAnswer(
   const doubtful = issues.some((i) => i !== 'not_this_document_type' && i !== 'not_legible');
   if (doubtful) confidence = Math.min(confidence, DOUBTFUL_CONFIDENCE);
 
+  // ADR-0159: the passport's issuing country, mapped to a name on the
+  // fixed list. Only from a page the model says IS a legible passport;
+  // never part of the confidence, which is about the dates.
+  const passportCountry =
+    docType === 'passport' && answer['matchesDocType'] === true && answer['legible'] === true
+      ? passportCountryFromCode(answer['issuingState'])
+      : null;
+
   return {
     expiryDate,
     holidays,
     completionDate,
     awardingInstitution,
+    passportCountry,
     confidence,
     raw: {
       model: meta.model,
@@ -424,6 +437,7 @@ function failed(model: string, docType: DocType, error: string): ExtractionResul
     holidays: null,
     completionDate: null,
     awardingInstitution: null,
+    passportCountry: null,
     confidence: 0,
     raw: { model, docType, error },
   };

@@ -90,4 +90,49 @@ describe('extractDocument', () => {
       expect.objectContaining({ p_term_dates: ['[2026-12-19,2027-01-11)'], p_confidence: 0.93 }),
     );
   });
+
+  it('puts a read passport country on the worker through record_passport_country (ADR-0159)', async () => {
+    state.extractor = {
+      provider: 'anthropic',
+      extract: async () => ({
+        expiryDate: '2031-03-12',
+        holidays: null,
+        completionDate: null,
+        awardingInstitution: null,
+        passportCountry: 'Poland',
+        confidence: 0.95,
+        raw: {},
+      }),
+    };
+    const { admin, rpc } = fakeAdmin();
+    await extractDocument(admin, 'doc-3', 'passport', 'staff/s1/p.jpg', 'image/jpeg');
+    expect(rpc).toHaveBeenCalledWith('record_passport_country', {
+      p_doc: 'doc-3',
+      p_country: 'Poland',
+    });
+  });
+
+  it('calls nothing more when no passport country was read, or the document is not a passport', async () => {
+    for (const [docType, passportCountry] of [
+      ['passport', null],
+      ['national_id', 'Poland'],
+    ] as const) {
+      state.extractor = {
+        provider: 'anthropic',
+        extract: async () => ({
+          expiryDate: '2031-03-12',
+          holidays: null,
+          completionDate: null,
+          awardingInstitution: null,
+          passportCountry,
+          confidence: 0.95,
+          raw: {},
+        }),
+      };
+      const { admin, rpc } = fakeAdmin();
+      await extractDocument(admin, 'doc-4', docType, 'staff/s1/p.jpg', 'image/jpeg');
+      expect(rpc).toHaveBeenCalledTimes(1);
+      expect(rpc).toHaveBeenCalledWith('record_document_extraction', expect.anything());
+    }
+  });
 });

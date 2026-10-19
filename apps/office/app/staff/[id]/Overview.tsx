@@ -9,6 +9,7 @@ import { RtwBranchChange } from './RtwBranchChange';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
 import { GenderField } from './GenderField';
+import { PassportCountryField } from './PassportCountryField';
 import { PayrollIdField } from './PayrollIdField';
 import { SchedulingField } from './SchedulingField';
 import { LanguagesField } from './LanguagesField';
@@ -54,6 +55,8 @@ export function Overview({
   locationStale = false,
   gender,
   canEditGender = false,
+  passportCountry,
+  canEditPassportCountry = false,
   languages,
   canEditLanguages = false,
   spudbros,
@@ -82,6 +85,10 @@ export function Overview({
   gender?: 'M' | 'F' | null;
   /** Any office login that may write (ADR-0079). */
   canEditGender?: boolean;
+  /** ADR-0159: `staff.passport_country`; undefined when it could not be read. */
+  passportCountry?: string | null;
+  /** Any office login that may write (ADR-0159). */
+  canEditPassportCountry?: boolean;
   /** ADR-0080: `staff.languages`; null = never asked, undefined = not read. */
   languages?: string[] | null;
   /** Any office login that may write (ADR-0080). */
@@ -140,6 +147,13 @@ export function Overview({
             staffId={profile.id}
             gender={gender}
             editable={canEditGender && !profile.removed}
+            removed={profile.removed}
+          />
+          <span className="k">Passport country</span>
+          <PassportCountryField
+            staffId={profile.id}
+            country={passportCountry}
+            editable={canEditPassportCountry && !profile.removed}
             removed={profile.removed}
           />
           <span className="k">Languages</span>

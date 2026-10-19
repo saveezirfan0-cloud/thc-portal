@@ -28,7 +28,7 @@ const role: RoleDraft = {
   allocationTouched: false,
 };
 
-function render(booked: number, boardHref?: string) {
+function render(booked: number, boardHref?: string, held: number = booked) {
   return renderToStaticMarkup(
     <TimeFormatProvider format="24h">
       <RoleSection
@@ -41,6 +41,7 @@ function render(booked: number, boardHref?: string) {
         client={undefined}
         confirmed={0}
         booked={booked}
+        held={held}
         changed={new Set()}
         original={role}
         locked={false}
@@ -64,5 +65,14 @@ describe('Remove on a booked role section', () => {
 
   it('says nothing when nobody is booked', () => {
     expect(render(0, '/events/evt-1')).not.toContain('Remove is off');
+  });
+
+  // Client report 19.10: two Radar applications, nobody confirmed, and Remove
+  // stayed off with no way to clear them — the office has no Decline
+  // (ADR-0023). Pending offers no longer hold the section (ADR-0160).
+  it('stays on when the only people on the role are pending applications or invitations', () => {
+    const html = render(2, '/events/evt-1', 0);
+    expect(html).not.toContain('Remove is off');
+    expect(html).not.toMatch(/<button[^>]*disabled[^>]*>Remove<\/button>/);
   });
 });

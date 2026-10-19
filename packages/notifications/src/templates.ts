@@ -301,6 +301,19 @@ export const TEMPLATES = {
     timing: 'on change, in the same transaction as the withdrawal',
     deepLink: '/invites',
   },
+  // A role section removed in the Shift Builder while applications are still
+  // pending on it (ADR-0160). Not the role filling (N10c's copy says it was
+  // filled) and not the event being cancelled (N12 — the event goes on).
+  N10e: {
+    code: 'N10e',
+    channel: 'push',
+    title: 'Shift no longer needed',
+    body: 'The {event} shift on {dateTime} is no longer needed, so your application has been closed. Keep an eye on Radar — new shifts are added regularly.',
+    trigger:
+      'The office removes a role section that still has pending Radar applications on it (Shift Builder → Remove → Save). Not in §8: §10.4 ends an application by N10, N10c, the worker withdrawing it or N12, and none of those copies is true for one role taken off an event that goes on (ADR-0160)',
+    timing: 'on save, in the same transaction as the removal',
+    deepLink: '/radar',
+  },
   N10c: {
     code: 'N10c',
     channel: 'push',
@@ -904,18 +917,20 @@ export const TEMPLATES = {
       // three rungs, telling them the interview is part of the move and
       // that everyone does it, even people who already work with us. Firmer
       // since 14.10.2026 (owner): every rung says that without the interview
-      // and full onboarding we cannot offer them any more shifts.
+      // and full onboarding we cannot offer them any more shifts. And from
+      // 15.10.2026 each counts down to AXLR8 being switched off ({axlr8Line},
+      // filled as the email goes: invite-reminder-copy.ts).
       existing_first: {
         title: 'Action required: your Willo interview for our new Staff App',
-        body: `Hi {name},\n\nEveryone who works with The Hospitality Company is being moved onto our new Staff App. A short video interview with Willo is part of that, and everyone must do one, even if you already work with us. Yours is ready and waiting for you.\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone, whenever suits you.\n\n${OC1_NO_MORE_SHIFTS}\n\nOnce you've finished, we'll be in touch to get you set up in the app.`,
+        body: `Hi {name},\n\nEveryone who works with The Hospitality Company is being moved onto our new Staff App. A short video interview with Willo is part of that, and everyone must do one, even if you already work with us. Yours is ready and waiting for you.\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone, whenever suits you.\n\n${OC1_NO_MORE_SHIFTS}\n\n{axlr8Line}\n\nOnce you've finished, we'll be in touch to get you set up in the app.`,
       },
       existing_second: {
         title: 'Action required: your Willo interview is still not done',
-        body: `Hi {name},\n\nYour Willo video interview has still not been done. It's part of moving onto our new Staff App, and everyone must do it, even if you already work with us. Find the invitation from Willo in your inbox, or in your spam folder, and record your answers on your phone today.\n\n${OC1_NO_MORE_SHIFTS}\n\nCan't find it? Reply to this email and we'll help.`,
+        body: `Hi {name},\n\nYour Willo video interview has still not been done. It's part of moving onto our new Staff App, and everyone must do it, even if you already work with us. Find the invitation from Willo in your inbox, or in your spam folder, and record your answers on your phone today.\n\n${OC1_NO_MORE_SHIFTS}\n\n{axlr8Line}\n\nCan't find it? Reply to this email and we'll help.`,
       },
       existing_repeat: {
         title: 'Reminder: your Willo interview for the new app is overdue',
-        body: `Hi {name},\n\nYou still haven't completed your Willo video interview. Everyone being moved onto The Hospitality Company's new Staff App must complete it, including people who already work with us.\n\n${OC1_NO_MORE_SHIFTS}\n\nFind the invitation from Willo in your inbox or spam folder and record your answers today. Can't find it? Reply to this email and we'll help.`,
+        body: `Hi {name},\n\nYou still haven't completed your Willo video interview. Everyone being moved onto The Hospitality Company's new Staff App must complete it, including people who already work with us.\n\n${OC1_NO_MORE_SHIFTS}\n\n{axlr8Line}\n\nFind the invitation from Willo in your inbox or spam folder and record your answers today. Can't find it? Reply to this email and we'll help.`,
       },
       // The one-off notice of 14.10.2026 (owner request; 20261014190000):
       // sent once to every existing member of staff who has applied and been
@@ -924,7 +939,7 @@ export const TEMPLATES = {
       // neither counts as a rung nor moves the daily run.
       existing_notice: {
         title: 'Important: complete your Willo interview to keep getting shifts',
-        body: `Hi {name},\n\nYou've registered on our new Staff App, but you haven't taken your Willo video interview yet.\n\nEveryone who works with The Hospitality Company is being moved onto the new Staff App, and everyone must take the interview and fully onboard, even if you already work with us.\n\n${OC1_NO_MORE_SHIFTS}\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone in a few minutes. Please do it today.\n\nCan't find it? Reply to this email and we'll help.`,
+        body: `Hi {name},\n\nYou've registered on our new Staff App, but you haven't taken your Willo video interview yet.\n\nEveryone who works with The Hospitality Company is being moved onto the new Staff App, and everyone must take the interview and fully onboard, even if you already work with us.\n\n${OC1_NO_MORE_SHIFTS}\n\n{axlr8Line}\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone in a few minutes. Please do it today.\n\nCan't find it? Reply to this email and we'll help.`,
       },
     },
     trigger:
@@ -1132,6 +1147,7 @@ export const EXTENSION_CODES = [
   'E5b',
   'E10',
   'N10d',
+  'N10e',
   'N11b',
   'E11',
   'E12',

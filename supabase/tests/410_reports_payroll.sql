@@ -22,7 +22,7 @@
 -- dashboard.
 -- =====================================================================
 begin;
-select plan(105);
+select plan(108);
 \ir _shared/fixtures.psql
 
 \set r_wait '41000000-0000-4000-8000-000000000001'
@@ -52,6 +52,8 @@ insert into staff (id, employee_id, first_name, last_name, email, phone, dob, st
   (:'w6', 91006, 'Absent', 'Worker',  'r-w6@rls.test', '+447700941006', date '1992-10-06', 'compliant', null, null),
   (:'w7', 91007, 'Grace',  'Lindqvist','r-w7@rls.test', '+447700941007', date '1991-11-07', 'compliant', null, 'F'),
   (:'w8', 91008, 'Same',   'Day',     'r-w8@rls.test', '+447700941008', date '1990-12-08', 'compliant', null, null);
+-- ADR-0159.
+update staff set passport_country = 'Poland' where id = :'w1';
 
 insert into hmrc_checklists (staff_id, q1_other_job, q2_pension, q3_since_6_april, statement, student_loan, postgraduate_loan, declared) values
   (:'w1', false, false, false, 'B', 'plan2', false, true),
@@ -164,6 +166,8 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at)
 -- W7 · one shift, then removed (§1.7): the row stays, anonymised.
 insert into b values
   ('w7s1', pg_temp.worked(pg_temp.section('Breakfast', :'r_wait', '2025-03-04 09:00+00', 4), :'w7', '2025-03-04 09:00+00', '2025-03-04 13:00+00'));
+-- ADR-0159: a passport country on file before the removal, which wipes it.
+update staff set passport_country = 'Sweden' where id = :'w7';
 update staff set first_name = 'Deleted', last_name = 'account', removed_at = now() where id = :'w7';
 
 -- W8 · §3.3. Cancelled ON the day at 08:00 → full scheduled 5 h:
@@ -343,6 +347,16 @@ select is((select row(bank_account_holder, bank_sort_code, bank_account_number):
 select is((select row(bank_account_holder, bank_sort_code, bank_account_number)::text from ns where staff_id = :'w7'),
   row(null::text, null::text, null::text)::text,
   'W7: the removed worker carries no bank details');
+select is((select row(home_address, address_line_1, address_line_2, address_line_3, town, postcode)::text from ns where staff_id = :'w1'),
+  row('Flat 4, 12 Exhibition Rd, London SW7 2HE', 'Flat 4', '12 Exhibition Rd', null::text, 'London', 'SW7 2HE')::text,
+  'W1: the full home address, and the same address in separate lines with its town (ADR-0159)');
+select is((select coalesce(a.passport_country, '-') || ' / ' || coalesce(b.passport_country, '-')
+             from ns a, ns b where a.staff_id = :'w1' and b.staff_id = :'w2'),
+  'Poland / -',
+  'W1: the passport country on file; W2: none on file reads blank, and W2 is still on the report (ADR-0159)');
+select is((select row(home_address, address_line_1, town, passport_country)::text from ns where staff_id = :'w7'),
+  row(null::text, null::text, null::text, null::text)::text,
+  'W7: the removed worker carries no address lines and no passport country');
 select is((select count(*)::int from ns where staff_id = :'w6'), 0,
   'W6: a no-show never "actually worked" and is not a new starter');
 

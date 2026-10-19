@@ -192,12 +192,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     (supabase as unknown as ActivatedRpc).rpc('staff_account_activated', { p_staff: id }),
     // The address changed but the pin could not follow (20260926110000),
     // the gender a male- or female-only section reads (ADR-0079) and the
-    // languages an event can need (ADR-0080). Read off `staff` through
+    // languages an event can need (ADR-0080) and the passport country the
+    // New Starter report carries (ADR-0159). Read off `staff` through
     // admin_all; a failed read shows nothing.
     supabase
       .from('staff')
       .select(
-        'home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled, payroll_id',
+        'home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled, payroll_id, passport_country',
       )
       .eq('id', id)
       .maybeSingle<{
@@ -207,6 +208,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
         spudbros_express: boolean;
         thc_shifts_enabled: boolean;
         payroll_id: string | null;
+        passport_country: string | null;
       }>(),
     // ADR-0098: the Willo interview link stays on the profile after
     // onboarding. The same column the candidate screen reads, built from
@@ -292,6 +294,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       : {
           gender: location.data?.gender ?? null,
           languages: location.data?.languages ?? null,
+          passportCountry: location.data?.passport_country ?? null,
           ...(location.data
             ? {
                 spudbros: location.data.spudbros_express,

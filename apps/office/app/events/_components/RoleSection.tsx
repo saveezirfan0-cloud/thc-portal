@@ -65,6 +65,11 @@ export interface RoleSectionProps {
   confirmed: number;
   /** Every booking still standing on this section, invited ones included. */
   booked: number;
+  /**
+   * Of `booked`, the confirmed (or worked) ones — only these keep Remove off.
+   * Pending invitations and applications are closed on save (ADR-0160).
+   */
+  held: number;
   /** The fields that differ from the saved version, for the amber hints. */
   changed: Set<string>;
   original: RoleDraft | undefined;
@@ -89,6 +94,7 @@ export function RoleSection({
   client,
   confirmed,
   booked,
+  held,
   changed,
   original,
   locked,
@@ -179,25 +185,26 @@ export function RoleSection({
             size="sm"
             tone="ghost"
             onClick={onRemove}
-            disabled={booked > 0}
-            aria-describedby={booked > 0 ? `${fieldId}-remove-why` : undefined}
+            disabled={held > 0}
+            aria-describedby={held > 0 ? `${fieldId}-remove-why` : undefined}
           >
             Remove
           </Button>
         </div>
         {/* Why Remove is greyed out, in words on the screen — a tooltip is
             invisible to a keyboard and a touch screen (release audit). */}
-        {booked > 0 ? (
+        {held > 0 ? (
           <span className="rh-why muted xs" id={`${fieldId}-remove-why`}>
-            Remove is off: this section has people on it. To take the whole event off the schedule,
-            use <b>Cancel event</b> on the event board
+            Remove is off: this section has people confirmed on it. To take the whole event off the
+            schedule, use <b>Cancel event</b> on the event board
             {boardHref ? (
               <>
                 {' '}
                 (<Link href={boardHref}>open the board</Link>)
               </>
             ) : null}
-            ; to drop only this role, withdraw its people there first.
+            ; to drop only this role, withdraw its confirmed people there first. Pending invitations
+            and applications do not stop Remove.
           </span>
         ) : null}
       </div>

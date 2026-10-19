@@ -29,6 +29,7 @@ import {
   ukToday,
 } from '@thc/domain';
 import { LanguagePicker } from '../../_components/LanguagePicker';
+import { useConfirm } from '../../_components/useConfirm';
 import { formatDayLong } from '../calendar';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
@@ -63,6 +64,8 @@ export interface ShiftBuilderProps {
   /** Confirmed and still-standing booking counts, per saved section id. */
   confirmed: Record<string, number>;
   booked: Record<string, number>;
+  /** Of `booked`, confirmed or worked — what keeps Remove off (ADR-0160). */
+  held: Record<string, number>;
   /** §3.2: the event has started, so nothing can be changed. */
   locked: boolean;
   /**
@@ -121,6 +124,7 @@ export function ShiftBuilder({
   saved,
   confirmed,
   booked,
+  held,
   locked,
   ratesVisible,
   save,
@@ -254,14 +258,37 @@ export function ShiftBuilder({
   }
 
   /**
-   * Removing a section deletes the `shift_requirements` row, and bookings
-   * cascade off it. A section with people on it is therefore never removed
-   * here: the manager withdraws them on the event board first (§3.3, §3.6).
+   * Removing a section deletes the `shift_requirements` row on save, and
+   * bookings cascade off it. A section with anyone confirmed on it is never
+   * removed here: the manager withdraws them on the event board first
+   * (§3.3, §3.6). Pending invitations and applications do not hold it — the
+   * save closes them and tells each worker (ADR-0160), so the manager is
+   * asked first.
    */
+  const removeConfirm = useConfirm();
   function removeRole(key: string) {
     const role = draft.roles.find((r) => r.key === key);
-    if (!role || !canRemoveRole(role, booked)) return;
-    setDraft((current) => ({ ...current, roles: current.roles.filter((r) => r.key !== key) }));
+    if (!role || !canRemoveRole(role, held)) return;
+    const drop = () =>
+      setDraft((current) => ({ ...current, roles: current.roles.filter((r) => r.key !== key) }));
+    const waiting = role.id ? (booked[role.id] ?? 0) - (held[role.id] ?? 0) : 0;
+    if (waiting <= 0) {
+      drop();
+      return;
+    }
+    const roleName = reference.roles.find((r) => r.id === role.roleId)?.name ?? 'this role';
+    removeConfirm.ask({
+      title: `Remove ${roleName}?`,
+      body: (
+        <>
+          Nobody is confirmed on it, but {waiting} {waiting === 1 ? 'worker has' : 'workers have'} a
+          pending invitation or application. When you save, {waiting === 1 ? 'it is' : 'they are'}{' '}
+          closed and each worker is told by push that the shift is no longer needed.
+        </>
+      ),
+      confirm: 'Remove role',
+      onConfirm: drop,
+    });
   }
 
   function onSave() {
@@ -539,6 +566,7 @@ export function ShiftBuilder({
                 mode={mode}
                 ratesVisible={ratesVisible}
                 booked={role.id ? (booked[role.id] ?? 0) : 0}
+                held={role.id ? (held[role.id] ?? 0) : 0}
                 locked={readOnly}
                 series={seriesContext}
                 {...(saved?.id ? { boardHref: `/events/${saved.id}` } : {})}
@@ -735,6 +763,7 @@ export function ShiftBuilder({
         </SaveBar>
       )}
       {guard.dialog}
+      {removeConfirm.dialog}
     </div>
   );
 }

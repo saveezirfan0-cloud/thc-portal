@@ -197,6 +197,7 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'event.role_added': 'Added role section',
   'event.role_changed': 'Changed role section',
   'event.role_removed': 'Removed role section',
+  'event.role_offers_closed': 'Closed offers on a removed role',
 };
 
 export function actionLabel(action: string): string {
