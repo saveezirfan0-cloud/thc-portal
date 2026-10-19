@@ -104,6 +104,7 @@ export function NewStarterTab({
         <div className="right">
           <SendStatus
             send={latest}
+            format={format}
             detail={latest?.status === 'sent' ? `${latest.row_count ?? 0} new starters` : undefined}
           />
           <a className="btn sm primary" href={exportHref(view)}>
@@ -262,9 +263,11 @@ export function NewStarterTab({
                 <span className={`sent ${status.tone}`}>{status.text}</span>
                 <span className="sm muted">
                   {periodLabel(send.period_start, send.period_end)} ·{' '}
+                  {/* ADR-0091: the New Starter report is its own Monday
+                      email (NS1), not an attachment to the payroll one. */}
                   {send.status === 'no_new'
-                    ? 'a week with no new starters — nothing was due; only the payroll CSV went out'
-                    : `${send.row_count ?? 0} new starter${send.row_count === 1 ? '' : 's'} · one email with the payroll CSV`}
+                    ? 'a week with no new starters — nothing was due, so no email went out'
+                    : `${send.row_count ?? 0} new starter${send.row_count === 1 ? '' : 's'} · emailed on its own`}
                   {send.status === 'failed' && send.error ? ` · ${send.error}` : ''}
                 </span>
                 {send.status === 'failed' ? <RetrySend sendId={send.id} /> : null}
