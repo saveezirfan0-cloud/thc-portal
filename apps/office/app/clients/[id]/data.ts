@@ -13,7 +13,6 @@ import type {
   RateCardRow,
   RoleOption,
   ShiftRequirementRow,
-  StaffOption,
   WorkerRequestRow,
 } from './types';
 import { readProblem } from '../../_lib/dbError';
@@ -21,10 +20,12 @@ import { readProblem } from '../../_lib/dbError';
 /**
  * Reads for /clients/:id (§9.7).
  *
- * `roles` and `staff` are the two "+ Add" pickers. The role list is the
+ * `roles` is the rate card's "+ Add role" picker. The role list is the
  * whole §9.8 catalogue, not the client's own rate card: §9.7 says a role
  * missing from the dropdown "must first be created in the Roles section",
- * which only makes sense if the dropdown shows the catalogue.
+ * which only makes sense if the dropdown shows the catalogue. The "+ Add
+ * staff" picker reads nothing here: it searches the server a page at a time
+ * as the manager types (`searchQualifyPicker` in ./actions.ts).
  *
  * ADR-0061: `ratesVisible` is the viewer's `office_can('finance')`. With
  * it, the rate card is `clients_rate_card_v` and the picker's base pay is
@@ -47,7 +48,6 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
   workerRequests: [],
   events: [],
   roles: [],
-  staff: [],
 };
 
 /**
@@ -137,7 +137,6 @@ export async function loadClientCard(
     events,
     roles,
     payRates,
-    staff,
     requirements,
     quizResults,
     workerRequests,
@@ -202,12 +201,6 @@ export async function loadClientCard(
     ratesVisible
       ? supabase.from('role_rates_v').select('role_id, pay_rate')
       : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from('staff_directory_v')
-      .select('id, display_name, employee_id, role_names')
-      .eq('status', 'compliant')
-      .order('display_name')
-      .returns<StaffOption[]>(),
     // ADR-0110: what each role asks, and who has sat the quiz.
     requirementsDb
       .from('clients_shift_requirements_v')
@@ -238,7 +231,6 @@ export async function loadClientCard(
     events.error ??
     roles.error ??
     payRates.error ??
-    staff.error ??
     requirements.error ??
     quizResults.error ??
     workerRequests.error;
@@ -274,7 +266,6 @@ export async function loadClientCard(
     workerRequests: workerRequests.data ?? [],
     events: events.data ?? [],
     roles: roleOptions,
-    staff: staff.data ?? [],
     problem: null,
   };
 }

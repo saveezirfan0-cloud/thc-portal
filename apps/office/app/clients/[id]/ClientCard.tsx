@@ -171,12 +171,7 @@ export function ClientCard({
           ratesVisible={ratesVisible}
         />
 
-        <QualifiedStaff
-          clientId={client.id}
-          rows={data.qualified}
-          rateCard={data.rateCard}
-          staff={data.staff}
-        />
+        <QualifiedStaff clientId={client.id} rows={data.qualified} rateCard={data.rateCard} />
 
         {/* ADR-0110: the client's own asks of a worker, per role, and who has met them.
             Every block carries its number in page order (release audit m7):
