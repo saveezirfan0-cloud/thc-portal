@@ -371,6 +371,7 @@ export function ShiftScreen({
     <HeadRow
       phase={phase}
       today={today}
+      started={started}
       venueName={shift.venueName}
       startsAt={shift.startsAt}
       endsAt={shift.endsAt}
@@ -673,6 +674,7 @@ export function ShiftScreen({
 function HeadRow({
   phase,
   today,
+  started,
   venueName,
   startsAt,
   endsAt,
@@ -682,6 +684,8 @@ function HeadRow({
 }: {
   phase: ShiftPhase;
   today: boolean;
+  /** The role window has begun: no longer "Upcoming" (a past or overnight shift). */
+  started: boolean;
   venueName: string;
   startsAt: string;
   endsAt: string;
@@ -709,7 +713,11 @@ function HeadRow({
   return (
     <>
       <div className="row" style={{ gap: 'var(--sp-8)' }}>
-        <Pill tone="cyan">{today ? 'Today' : 'Upcoming'}</Pill>
+        {today ? (
+          <Pill tone="cyan">Today</Pill>
+        ) : started ? null : (
+          <Pill tone="cyan">Upcoming</Pill>
+        )}
         {state}
         {today ? null : <Pill>{venueName}</Pill>}
         <span className="ml-auto mono sm">

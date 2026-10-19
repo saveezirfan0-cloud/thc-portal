@@ -87,3 +87,19 @@ describe('ShiftScreen server paint', () => {
     }
   });
 });
+
+describe('ShiftScreen head pill', () => {
+  it('says Upcoming before the shift and nothing of the sort after it', () => {
+    expect(renderToString(<ShiftScreen shift={shift} />)).toContain('Upcoming');
+    const past = new Date(Date.now() - 10 * 24 * 3600_000);
+    const worked: ShiftDetail = {
+      ...shift,
+      status: 'worked',
+      startsAt: past.toISOString(),
+      endsAt: new Date(past.getTime() + 5 * 3600_000).toISOString(),
+      checkInAt: past.toISOString(),
+      checkOutAt: new Date(past.getTime() + 5 * 3600_000).toISOString(),
+    };
+    expect(renderToString(<ShiftScreen shift={worked} />)).not.toContain('Upcoming');
+  });
+});
