@@ -19,10 +19,10 @@
     "@thc/domain": "workspace:*",
     "@thc/notifications": "workspace:*",
     "@thc/ui": "workspace:*",
-    "next": "^15.5.27",
+    "next": "^15.5.28",
     "qrcode": "^1.5.4",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "server-only": "0.0.1",
     "serwist": "^9.5.12"
   },

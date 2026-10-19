@@ -20,10 +20,10 @@
     "@thc/notifications": "workspace:*",
     "@thc/pdf": "workspace:*",
     "@thc/ui": "workspace:*",
-    "next": "^15.5.27",
+    "next": "^15.5.28",
     "playwright-core": "^1.63.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
