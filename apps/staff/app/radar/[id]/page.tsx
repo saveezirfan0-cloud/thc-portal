@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import {
   UK_ZONE,
@@ -56,7 +56,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </StaffShell>
     );
   }
-  if (!shift) notFound();
+  // No longer open to this worker — filled, started, or the wave moved
+  // (RULE-17). Back to Radar rather than a 404: this is also the page that
+  // re-renders when "Sorry, this shift is now full" is dismissed.
+  if (!shift) redirect('/radar');
 
   const hours = sectionHours({ startsAt: shift.startsAt, endsAt: shift.endsAt });
   const open = openSlots({

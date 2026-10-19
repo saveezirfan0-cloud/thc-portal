@@ -589,6 +589,12 @@ describe('/radar (§10.4, radar.html)', () => {
 });
 
 describe('/radar/:id', () => {
+  it('a shift no longer open to the worker goes back to Radar, not a 404', async () => {
+    await expect(RadarDetailPage({ params: Promise.resolve({ id: 's-gone' }) })).rejects.toThrow(
+      'NEXT_REDIRECT /radar',
+    );
+  });
+
   it('an allowed shift gets the map and the week meter with the shift added, in green', async () => {
     const html = await render(RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) }));
     expect(html).toContain('class="map radar-map"');
