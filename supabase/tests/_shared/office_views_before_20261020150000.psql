@@ -1,5 +1,5 @@
 -- =====================================================================
--- The definitions 20261020110000 .. 20261020110300 replace, as they were
+-- The definitions 20261020150000 .. 20261020150300 replace, as they were
 -- (ADR-0160), recreated as public._old_* inside the caller's transaction
 -- for the equivalence tests (pgTAP 885, 886, 887) and the same-run "before"
 -- column of scripts/bench/office_views_at_scale.sql.
@@ -18,7 +18,7 @@
 -- authenticated may read them as it may read the originals.
 -- =====================================================================
 
--- ---- functions (20261020110000: cap_band_until; 20261020110200: the
+-- ---- functions (20261020150000: cap_band_until; 20261020150200: the
 --      compliance_blockers chain, as LANGUAGE sql) -------------------------
 CREATE FUNCTION public._old_cap_band_until(p_holidays daterange[], p_date date)
  RETURNS date
@@ -208,7 +208,7 @@ grant execute on function public._old_cap_band_until(daterange[], date),
   public._old_onboarding_quiz_blockers(uuid)
   to authenticated, service_role;
 
--- ---- staff_block_reason_v before 20261020110300 (the gate per row) --------
+-- ---- staff_block_reason_v before 20261020150300 (the gate per row) --------
 create view public._old_staff_block_reason_v with (security_barrier = true) as
  SELECT id AS staff_id,
         CASE
@@ -220,7 +220,7 @@ create view public._old_staff_block_reason_v with (security_barrier = true) as
 revoke all on public._old_staff_block_reason_v from anon, authenticated;
 grant select on public._old_staff_block_reason_v to authenticated;
 
--- ---- staff_directory_v before 20261020110000 -------------------------------
+-- ---- staff_directory_v before 20261020150000 -------------------------------
 create view public._old_staff_directory_v with (security_invoker = true) as
  SELECT s.id,
     s.employee_id,
@@ -290,7 +290,8 @@ create view public._old_staff_directory_v with (security_invoker = true) as
            FROM weekly_cap_for(s.id, (now() AT TIME ZONE 'Europe/London'::text)::date) c(cap_hours, band)) cap ON true;
 grant select on public._old_staff_directory_v to authenticated, service_role;
 
--- ---- onboarding_candidates_v before 20261020110100 -------------------------
+-- ---- onboarding_candidates_v before 20261020150100 (as 20261020120000,
+--      ADR-0163, left it: identity columns through staff_identity_v) ----------
 create view public._old_onboarding_candidates_v with (security_invoker = true) as
  SELECT s.id,
     s.first_name,
@@ -298,9 +299,9 @@ create view public._old_onboarding_candidates_v with (security_invoker = true) a
     (s.first_name || ' '::text) || s.last_name AS display_name,
     s.email,
     s.phone,
-    s.dob,
+    si.dob,
         CASE
-            WHEN s.dob IS NOT NULL THEN EXTRACT(year FROM age((now() AT TIME ZONE 'Europe/London'::text)::date::timestamp with time zone, s.dob::timestamp with time zone))::integer
+            WHEN si.dob IS NOT NULL THEN EXTRACT(year FROM age((now() AT TIME ZONE 'Europe/London'::text)::date::timestamp with time zone, si.dob::timestamp with time zone))::integer
             ELSE NULL::integer
         END AS age,
     s.applied_age_band,
@@ -313,7 +314,7 @@ create view public._old_onboarding_candidates_v with (security_invoker = true) a
     s.employee_id,
     s.rtw_branch,
     s.right_to_work_until,
-    s.share_code,
+    si.share_code,
     COALESCE(staff_account_activated(s.id), false) AS activated,
     COALESCE(( SELECT array_agg(r.name ORDER BY r.name) AS array_agg
            FROM staff_roles sr
@@ -369,7 +370,7 @@ create view public._old_onboarding_candidates_v with (security_invoker = true) a
     (EXISTS ( SELECT 1
            FROM bank_details b
           WHERE b.staff_id = s.id)) AS bank_saved,
-    s.ni_number IS NOT NULL AS ni_entered,
+    si.ni_number IS NOT NULL AS ni_entered,
     s.contract_signed_at,
     s.contract_version,
     s.rejected_at,
@@ -393,6 +394,7 @@ create view public._old_onboarding_candidates_v with (security_invoker = true) a
     s.payroll_id
    FROM staff s
      LEFT JOIN profiles p ON p.id = s.rejected_by
+     LEFT JOIN staff_identity_v si ON si.staff_id = s.id
      LEFT JOIN LATERAL ( SELECT count(*)::integer AS docs_total,
             count(*) FILTER (WHERE d.status = 'verified'::review_status)::integer AS docs_verified,
             count(*) FILTER (WHERE d.status = 'pending'::review_status)::integer AS docs_pending,
@@ -405,6 +407,7 @@ create view public._old_onboarding_candidates_v with (security_invoker = true) a
            FROM quiz_attempts q
           WHERE q.staff_id = s.id AND q.taken_at >= s.onboarding_started_at) quiz ON true
   WHERE s.removed_at IS NULL;
+
 grant select on public._old_onboarding_candidates_v to authenticated, service_role;
 
 -- ---- the unchanged readers, pointed at the old views they read --------------

@@ -2,13 +2,13 @@
 -- 886 · onboarding_candidates_v asks about the login once per statement,
 --       and the compliance_blockers chain is planned once per session —
 --       and both show exactly what they showed
---   20261020110100_onboarding_candidates_activation_once.sql
---   20261020110200_compliance_blockers_plan_once.sql · ADR-0160
+--   20261020150100_onboarding_candidates_activation_once.sql
+--   20261020150200_compliance_blockers_plan_once.sql · ADR-0160
 --
 -- The old view and the old SQL bodies of compliance_blockers(),
 -- onboarding_quiz_blockers(), current_verified_docs(), term_letter_applies(),
 -- doc_expires_on() and term_letter_last_day() are recreated as public._old_*
--- (_shared/office_views_before_20261020110000.psql, each old function
+-- (_shared/office_views_before_20261020150000.psql, each old function
 -- calling the old ones below it), and compared over the onboarding
 -- pipeline and the workers of _shared/cap_dataset + office_views_dataset,
 -- with expired, undated and term-dated documents, graduates and every
@@ -36,7 +36,7 @@ select plan(25);
 \set cap_ahead 14
 \ir _shared/cap_dataset.psql
 \ir _shared/office_views_dataset.psql
-\ir _shared/office_views_before_20261020110000.psql
+\ir _shared/office_views_before_20261020150000.psql
 
 -- What the generated sets lack: documents that have expired, term letters
 -- with and without readable dates, a graduate, an open completion letter.

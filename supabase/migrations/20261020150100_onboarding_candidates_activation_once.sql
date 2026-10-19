@@ -31,7 +31,7 @@
 -- (apps/office/app/staff/[id]) still calls the first by RPC.
 --
 -- 001_rls_guard pins the owner-rights views by name; this file adds the
--- twentieth (seventeenth selectable) and that test and docs/14 move with
+-- twenty-third (twentieth selectable, after ADR-0163's three) and that test and docs/14 move with
 -- it. pgTAP 886 holds the predicate and compares onboarding_candidates_v
 -- with its old definition as the office, a candidate and a client.
 --
@@ -53,7 +53,7 @@ select s.id                                                  as staff_id,
     or s.user_id = (select auth.uid());
 
 comment on view public.staff_account_activation_v is
-  'Whether a worker''s Staff App login has a password, and since when (email_confirmed_at) — staff_account_activated() / staff_account_activated_at() for many rows at once. Owner rights + security_barrier: the gate is the functions'' own (the office, service_role, or the worker whose login it is), its two role reads evaluated once per statement. No row = not activated (20261020110100, ADR-0160).';
+  'Whether a worker''s Staff App login has a password, and since when (email_confirmed_at) — staff_account_activated() / staff_account_activated_at() for many rows at once. Owner rights + security_barrier: the gate is the functions'' own (the office, service_role, or the worker whose login it is), its two role reads evaluated once per statement. No row = not activated (20261020150100, ADR-0160).';
 
 revoke all on public.staff_account_activation_v from public, anon, authenticated, service_role;
 grant select on public.staff_account_activation_v to authenticated, service_role;
@@ -75,13 +75,13 @@ begin
       ('staff_account_activated_at\(s\.id\) AS activated_at',
        'act.activated_at'),
       ('(\n\s+LEFT JOIN profiles p ON p\.id = s\.rejected_by\n)',
-       E'\\1     -- 20261020110100: the login, read once per statement (ADR-0160).\n'
+       E'\\1     -- 20261020150100: the login, read once per statement (ADR-0160).\n'
        || E'     LEFT JOIN staff_account_activation_v act ON act.staff_id = s.id\n')
     ) as x(pattern, replacement)
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261020110100: onboarding_candidates_v - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261020150100: onboarding_candidates_v - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;

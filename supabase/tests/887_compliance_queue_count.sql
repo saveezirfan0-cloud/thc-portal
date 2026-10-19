@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 887 · The "Needs review" counter is one exact count, and the block
 --       reason's admin gate runs once per statement
---   20261020110300_compliance_queue_count.sql · ADR-0160
+--   20261020150300_compliance_queue_count.sql · ADR-0160
 --
 --   * compliance_review_queue_count() is exactly the number of rows of
 --     compliance_review_queue_v as each caller sees it — the office, a
@@ -9,7 +9,7 @@
 --   * it is a pinned, invoker, stable SQL function returning integer;
 --   * staff_block_reason_v, and the two views that read it per row
 --     (compliance_review_queue_v, onboarding_returning_v), are identical
---     to their old definitions (_shared/office_views_before_20261020110000:
+--     to their old definitions (_shared/office_views_before_20261020150000:
 --     public._old_*) as the office, a worker and a client; the view keeps
 --     owner rights and security_barrier, and its gate is an InitPlan.
 --
@@ -24,7 +24,7 @@ select plan(19);
 \set cap_ahead 7
 \ir _shared/cap_dataset.psql
 \ir _shared/office_views_dataset.psql
-\ir _shared/office_views_before_20261020110000.psql
+\ir _shared/office_views_before_20261020150000.psql
 
 -- ---- the shape -----------------------------------------------------------
 select is(

@@ -103,14 +103,14 @@ begin
   if v_code is distinct from
      'with sample as ( select b.id, exists (select 1 from violations v where v.booking_id = b.id and not v.resolved and v.type in (''no_show'', ''no_checkout'') and not v.stale_fix_review) as against from bookings b where b.staff_id = p_staff and (b.status in (''worked'', ''turned_away'') or exists (select 1 from violations v where v.booking_id = b.id and v.type = ''no_show'' and not v.resolved)) ) select case when count(*) = 0 then null else round(100.0 * count(*) filter (where not against) / count(*), 2) end from sample'
   then
-    raise exception '20261020110000: staff_show_rate() is not the code this migration restates; re-derive the shows subquery from it';
+    raise exception '20261020150000: staff_show_rate() is not the code this migration restates; re-derive the shows subquery from it';
   end if;
   select btrim(regexp_replace(regexp_replace(prosrc, '--[^\n]*', '', 'g'), '\s+', ' ', 'g')) into v_code
     from pg_proc where oid = 'public.weekly_booked_hours(uuid,date)'::regprocedure;
   if v_code is distinct from
      'begin return ( select coalesce(sum(extract(epoch from (w.ends_at - w.starts_at)) / 3600.0), 0)::numeric from ( select sr.starts_at, sr.ends_at, b.status, b.cancelled_at, b.cancel_cause from bookings b join shift_requirements sr on sr.id = b.shift_id where b.staff_id = p_staff and (sr.starts_at at time zone ''Europe/London'')::date between (select cap_week_start(p_date)) and (select cap_week_start(p_date)) + 6 and sr.starts_at >= ((select cap_week_start(p_date))::timestamp - interval ''1 day'') at time zone ''UTC'' and sr.starts_at < ((select cap_week_start(p_date))::timestamp + interval ''8 days'') at time zone ''UTC'' offset 0 ) w where booking_counts_toward_cap(w.status, w.cancelled_at, w.cancel_cause) ); end'
   then
-    raise exception '20261020110000: weekly_booked_hours() is not the code this migration restates; re-derive the wk subquery from it';
+    raise exception '20261020150000: weekly_booked_hours() is not the code this migration restates; re-derive the wk subquery from it';
   end if;
 
   -- ---- 2. cap_band_until: one multirange, one operator per day ----------
@@ -118,10 +118,10 @@ begin
   v_pat := 'exists \(select 1\s+from unnest\(coalesce\(p_holidays, ''\{\}''::daterange\[\]\)\) r\s+where days\.d <@ r\) as in_holiday';
   select count(*) into v_n from regexp_matches(v_def, v_pat, 'g');
   if v_n <> 1 then
-    raise exception '20261020110000: cap_band_until - expected one match of %, found %', v_pat, v_n;
+    raise exception '20261020150000: cap_band_until - expected one match of %, found %', v_pat, v_n;
   end if;
   v_def := regexp_replace(v_def, v_pat,
-    E'-- 20261020110000: one operator against the holidays as a single\n'
+    E'-- 20261020150000: one operator against the holidays as a single\n'
     || E'                -- multirange (built once a call), not an EXISTS per day.\n'
     || E'                coalesce(days.d <@ (select range_agg(r) from unnest(p_holidays) r), false) as in_holiday');
   execute v_def;
@@ -136,7 +136,7 @@ begin
   select count(*) into v_n from regexp_matches(v_def,
     '\(\s*SELECT COALESCE\((sum\(EXTRACT\(epoch FROM sr\.ends_at - sr\.starts_at\) / 3600\.0\)), 0::numeric\) AS "coalesce"\s+FROM bookings b\s+JOIN shift_requirements sr ON sr\.id = b\.shift_id\s+WHERE b\.staff_id = s\.id AND b\.status = ''worked''::booking_status AND (\(sr\.starts_at AT TIME ZONE ''Europe/London''::text\)::date >= cap_week_start\(\(now\(\) AT TIME ZONE ''Europe/London''::text\)::date\) AND \(sr\.starts_at AT TIME ZONE ''Europe/London''::text\)::date <= \(cap_week_start\(\(now\(\) AT TIME ZONE ''Europe/London''::text\)::date\) \+ 6\))\) AS weekly_worked_hours', 'g');
   if v_n <> 1 then
-    raise exception '20261020110000: staff_directory_v - expected one weekly_worked_hours subquery, found %', v_n;
+    raise exception '20261020150000: staff_directory_v - expected one weekly_worked_hours subquery, found %', v_n;
   end if;
   select m[1], m[2] into v_hours, v_week from regexp_match(v_def,
     '\(\s*SELECT COALESCE\((sum\(EXTRACT\(epoch FROM sr\.ends_at - sr\.starts_at\) / 3600\.0\)), 0::numeric\) AS "coalesce"\s+FROM bookings b\s+JOIN shift_requirements sr ON sr\.id = b\.shift_id\s+WHERE b\.staff_id = s\.id AND b\.status = ''worked''::booking_status AND (\(sr\.starts_at AT TIME ZONE ''Europe/London''::text\)::date >= cap_week_start\(\(now\(\) AT TIME ZONE ''Europe/London''::text\)::date\) AND \(sr\.starts_at AT TIME ZONE ''Europe/London''::text\)::date <= \(cap_week_start\(\(now\(\) AT TIME ZONE ''Europe/London''::text\)::date\) \+ 6\))\) AS weekly_worked_hours') m;
@@ -198,7 +198,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261020110000: staff_directory_v - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261020150000: staff_directory_v - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;

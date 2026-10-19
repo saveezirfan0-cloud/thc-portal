@@ -125,7 +125,7 @@ insert into bench_sql values
    $q$select count(*) from public.compliance_review_queue_v$q$),
   (43, '/compliance  compliance_review_queue_v select * order by submitted_at',
    $q$select count(*), sum(length(row_to_json(d)::text)) from (select * from public.compliance_review_queue_v order by submitted_at) d$q$);
--- The sidebar's read since 20261020110300 (absent before it).
+-- The sidebar's read since 20261020150300 (absent before it).
 insert into bench_sql
 select 44, 'layout  rpc compliance_review_queue_count()', $q$select public.compliance_review_queue_count()$q$
  where to_regprocedure('public.compliance_review_queue_count()') is not null;
@@ -133,7 +133,7 @@ select 44, 'layout  rpc compliance_review_queue_count()', $q$select public.compl
 -- The same reads against the definitions ADR-0160 replaced, recreated as
 -- public._old_* (the pgTAP equivalence tests use the same file), so every
 -- "after" has its "before" timed in the same run, under the same load.
-\ir ../../supabase/tests/_shared/office_views_before_20261020110000.psql
+\ir ../../supabase/tests/_shared/office_views_before_20261020150000.psql
 insert into bench_sql
 select b.seq + 0.5, b.what || '   [before]',
        replace(replace(replace(replace(replace(replace(b.sql,

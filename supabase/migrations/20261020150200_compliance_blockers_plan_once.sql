@@ -48,7 +48,7 @@ declare v_n int;
 begin
   select count(*) into v_n from regexp_matches(p_def, p_pattern, 'g');
   if v_n <> p_expect then
-    raise exception '20261020110200: % - expected % match(es) of %, found %', p_label, p_expect, p_pattern, v_n;
+    raise exception '20261020150200: % - expected % match(es) of %, found %', p_label, p_expect, p_pattern, v_n;
   end if;
   return regexp_replace(p_def, p_pattern, p_replacement, 'g');
 end $f$;
@@ -59,7 +59,7 @@ returns text language plpgsql as $f$
 declare v_at int := position('AS $function$' in p_def);
 begin
   if v_at = 0 or right(rtrim(p_def, E' \n'), 10) <> '$function$' then
-    raise exception '20261020110200: % - unexpected definition shape', p_label;
+    raise exception '20261020150200: % - unexpected definition shape', p_label;
   end if;
   return left(p_def, v_at - 1) || 'AS $function$' || p_body || '$function$';
 end $f$;
@@ -81,10 +81,10 @@ begin
     v_def := pg_get_functiondef(f::regprocedure);
     select p.prosrc into v_src from pg_proc p where p.oid = f::regprocedure;
     if v_def !~ E'\n SET search_path TO ' then
-      raise exception '20261020110200: % has lost its pinned search_path', f;
+      raise exception '20261020150200: % has lost its pinned search_path', f;
     end if;
     if v_src ~ ';\s*\S' then
-      raise exception '20261020110200: % has more than one statement', f;
+      raise exception '20261020150200: % has more than one statement', f;
     end if;
     v_def := pg_temp.r160_sub(v_def, E'\n LANGUAGE sql\n', E'\n LANGUAGE plpgsql\n', 1, f || ' language');
     if (select p.proretset from pg_proc p where p.oid = f::regprocedure) then
@@ -93,22 +93,22 @@ begin
       if exists (select 1 from pg_proc p, unnest(p.proargnames, p.proargmodes) a(n, m)
                   where p.oid = f::regprocedure and a.m = 't'
                     and regexp_replace(v_src, '--[^\n]*', '', 'g') ~ ('(?<![.\w:])' || a.n || '(?!\w)')) then
-        raise exception '20261020110200: % - a result column is named in the body', f;
+        raise exception '20261020150200: % - a result column is named in the body', f;
       end if;
       v_def := pg_temp.r160_body(v_def,
-        E'\nbegin\n  -- 20261020110200: the SQL body as it was, in plpgsql so its plan is\n'
+        E'\nbegin\n  -- 20261020150200: the SQL body as it was, in plpgsql so its plan is\n'
         || E'  -- kept for the session instead of rebuilt on every call (ADR-0160).\n'
         || E'  return query\n' || rtrim(v_src, E' \n;') || E';\nend\n', f);
     else
       v_def := pg_temp.r160_body(v_def,
-        E'\nbegin\n  -- 20261020110200: the SQL body as it was, in plpgsql so its plan is\n'
+        E'\nbegin\n  -- 20261020150200: the SQL body as it was, in plpgsql so its plan is\n'
         || E'  -- kept for the session instead of rebuilt on every call (ADR-0160).\n'
         || E'  return (\n' || rtrim(v_src, E' \n;') || E'\n  );\nend\n', f);
     end if;
     execute v_def;
     execute format('comment on function %s is %L', f,
       coalesce(obj_description(f::regprocedure::oid, 'pg_proc') || ' ', '')
-      || 'Since 20261020110200 plpgsql around the same SQL body, so the plan is kept for the session (ADR-0160).');
+      || 'Since 20261020150200 plpgsql around the same SQL body, so the plan is kept for the session (ADR-0160).');
   end loop;
 end;
 $$;

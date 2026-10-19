@@ -1,11 +1,11 @@
 # ADR-0160 · The Back Office's heaviest views compute each fact once
 
-**Status:** Accepted · 19.10.2026 · **Refines:** ADR-0147 (the directory inside the statement limit), ADR-0155 (RULE-20 helpers planned once; the onboarding view in one pass), ADR-0004 (owner-rights views) · **Reported:** go-live speed work, second wave
+**Status:** Accepted · 19.10.2026 · **Refines:** ADR-0147 (the directory inside the statement limit), ADR-0155 (RULE-20 helpers planned once; the onboarding view in one pass), ADR-0004 (owner-rights views), ADR-0163 (identity columns leave the API roles: these run after it, on its bodies) · **Reported:** go-live speed work, second wave
 
-`supabase/migrations/20261020110000_staff_directory_history_once.sql` ·
-`20261020110100_onboarding_candidates_activation_once.sql` ·
-`20261020110200_compliance_blockers_plan_once.sql` ·
-`20261020110300_compliance_queue_count.sql` · pgTAP `885`, `886`, `887` (and `001`, `504`
+`supabase/migrations/20261020150000_staff_directory_history_once.sql` ·
+`20261020150100_onboarding_candidates_activation_once.sql` ·
+`20261020150200_compliance_blockers_plan_once.sql` ·
+`20261020150300_compliance_queue_count.sql` · pgTAP `885`, `886`, `887` (and `001`, `504`
 follow) · `scripts/bench/office_views_at_scale.sql` · `apps/office/app/_components/navCounts.ts`
 
 ## Context
@@ -95,7 +95,7 @@ SELECT for `authenticated` and `service_role`, nothing for anon). Its gate is th
 own: the office, service_role, or the worker whose login it is. The two role reads are
 InitPlans. No row means "not activated", which the view already read as `false` / null.
 `staff_account_activated()` / `_at()` are untouched; /staff/[id] still calls the first. It is
-the twentieth owner-rights view (seventeenth selectable): `001_rls_guard` and docs/14 move with
+the twenty-third owner-rights view (twentieth selectable, after ADR-0163's three): `001_rls_guard` and docs/14 move with
 it.
 
 ### 3. The `compliance_blockers` chain keeps its plans for the session
@@ -121,9 +121,16 @@ Every definition is re-created from the **live** one (docs/10 §3b): `pg_get_vie
 `pg_get_functiondef()` changed by named patterns on code. Each pattern must match exactly once
 or the migration stops. View options are read back and restated.
 
+They run **after** 20261020120000–120200 (ADR-0163) and are built on the bodies those leave.
+`onboarding_candidates_v` keeps reading `dob`, `share_code` and `ni_number` through
+`staff_identity_v`. None of the four reads a column ADR-0163 took from the API roles directly:
+the directory's maps read `bookings`, `shift_requirements` and `violations`, and
+`staff_account_activation_v` reads `staff.id`, `staff.user_id` and `auth.users` with its owner's
+rights, as `staff_account_activated()` does.
+
 ## Equivalence
 
-`supabase/tests/_shared/office_views_before_20261020110000.psql` recreates every replaced object
+`supabase/tests/_shared/office_views_before_20261020150000.psql` recreates every replaced object
 verbatim as `public._old_*`, each old object calling the old objects below it, and points the
 unchanged readers (`student_visa_v`, `staff_profile_v`, `clients_qualified_staff_v`,
 `compliance_review_queue_v`, `onboarding_returning_v`) at them. The comparisons run over
@@ -151,12 +158,36 @@ Timings: `scripts/bench/office_views_at_scale.sql` times each read and its `[bef
 of 3, in the shape PostgREST sends. Same-run pairs are used because the local machine was shared
 (load 18–24 on 4 cores) and absolute numbers drifted ~1.5× between runs:
 
-TIMINGS
+| Read (1,342 staff rows, 114k bookings) | before | after | |
+|---|---|---|---|
+| /staff · `staff_directory_v`, page 1 (1,000 rows) | 4,181 ms | **882 ms** | 4.7× |
+| /staff · `staff_directory_v`, page 2 | 5,975 ms | **928 ms** | 6.4× |
+| `staff_directory_v`, the page's columns, every row | 6,905 ms | **1,017 ms** | 6.8× |
+| /staff · `student_visa_v` | 348 ms | **180 ms** | 1.9× |
+| `staff_directory_v`, four columns (pickers, typeahead) | 8.2 ms | 8.4 ms | unchanged |
+| /clients/[id] · `clients_qualified_staff_v`, one client | 277 ms | **62 ms** | 4.5× |
+| /staff/[id] · `staff_profile_v`, one worker by id | 11.8 ms | 116 ms | **slower**, see §1 |
+| /onboarding · `onboarding_candidates_v`, the board's columns | 272 ms | **194 ms** | 1.4× |
+| `onboarding_candidates_v` `select *`, every row | 5,407 ms | **4,137 ms** | 1.3× |
+| /compliance · `compliance_review_queue_v` `select *` | 51 ms | **39 ms** | 1.3× |
+| layout · "Needs review" count: HEAD `select=*` → `compliance_review_queue_count()` | 48 ms | **13 ms** | 3.7× |
+
+Run on the branch after ADR-0163 (load average ~20 on 4 cores). On a quieter run before the
+rebase the directory's page 1 was 3,317 → 564 ms, and `select *` on the onboarding view was
+4,040 → 1,708 ms. ADR-0163 since made two helpers this work leaves alone dearer per row (below).
+By column, after: the cap (`weekly_cap_for()` per worker) is 481 ms of the directory and the
+history maps together ~210 ms; the four history columns cost 2.9 s, 1.2 s, 0.4 s and 0.2 s
+before.
 
 - Read the absolute numbers as relative: hosted Micro compute is slower (audit F0).
-- **Not done here:** the cap columns still ask `weekly_cap_for()` once per worker (~0.15 ms;
-  most of it `cap_term_state()` and the staff RLS gate inside it), now the largest piece of the
-  directory. The remaining `quiz_blockers` cost is `current_app_role()` re-read by the RLS gate
+- **Not done here:** the cap columns still ask `weekly_cap_for()` once per worker. Since
+  ADR-0163 an API caller's call also asks `staff_identity_facts()` (a definer, with its role and
+  caller InitPlans) for the date of birth, about 0.35 ms a worker. That is now half the directory.
+  Making that helper plpgsql was measured and changes nothing, because the cost is the calls
+  themselves. The next step is for the directory to take the under-18 fact for everyone in one
+  owner-rights read, with the same admin-or-self gate, and pass it to `weekly_cap()`. That
+  restates `weekly_cap_for()`, so it belongs with whoever owns ADR-0163.
+  `onboarding_documents_missing()` (`docs_missing`) has the same new per-row call. The remaining `quiz_blockers` cost is `current_app_role()` re-read by the RLS gate
   of every query inside the invoker chain, about 15–20 reads per person. It is only in `select
   *`, which no screen reads over the whole pipeline (the candidate screen reads one row).
 - A single-worker read of the directory now costs the agency-wide maps. If /staff/[id] ever

@@ -1,10 +1,10 @@
 -- =====================================================================
 -- 885 · staff_directory_v reads the booking history once — and shows
 --       exactly what it showed
---   20261020110000_staff_directory_history_once.sql · ADR-0160
+--   20261020150000_staff_directory_history_once.sql · ADR-0160
 --
 -- The old directory (and the old cap_band_until() it read) are recreated
--- as public._old_* (_shared/office_views_before_20261020110000.psql), and
+-- as public._old_* (_shared/office_views_before_20261020150000.psql), and
 -- so are the three views that read the directory, pointed at the old one.
 -- Over a generated agency (_shared/cap_dataset: every RULE-20 branch, ten
 -- weeks of history and six ahead in every booking status; and
@@ -37,7 +37,7 @@ select plan(23);
 \set cap_ahead 42
 \ir _shared/cap_dataset.psql
 \ir _shared/office_views_dataset.psql
-\ir _shared/office_views_before_20261020110000.psql
+\ir _shared/office_views_before_20261020150000.psql
 
 -- How many times each plan node over shift_requirements ran, at most.
 create function pg_temp.section_loops(p_sql text) returns int language plpgsql as $$

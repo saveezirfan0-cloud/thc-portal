@@ -42,7 +42,7 @@ as $$
 $$;
 
 comment on function public.compliance_review_queue_count() is
-  'The number of items in compliance_review_queue_v as the caller sees it — the Back Office sidebar''s "Needs review" counter (§4.1). SECURITY INVOKER: the view''s own RLS decides, so it is exactly the count of what /compliance lists. A count computes none of the per-item columns (20261020110300, ADR-0160).';
+  'The number of items in compliance_review_queue_v as the caller sees it — the Back Office sidebar''s "Needs review" counter (§4.1). SECURITY INVOKER: the view''s own RLS decides, so it is exactly the count of what /compliance lists. A count computes none of the per-item columns (20261020150300, ADR-0160).';
 
 revoke all on function public.compliance_review_queue_count() from public, anon;
 grant execute on function public.compliance_review_queue_count() to authenticated, service_role;
@@ -58,7 +58,7 @@ begin
     from pg_class c where c.oid = 'public.staff_block_reason_v'::regclass;
   select count(*) into v_n from regexp_matches(v_def, '(?<![.\w(])current_app_role\(\)', 'g');
   if v_n <> 1 then
-    raise exception '20261020110300: staff_block_reason_v - expected one current_app_role(), found %', v_n;
+    raise exception '20261020150300: staff_block_reason_v - expected one current_app_role(), found %', v_n;
   end if;
   v_def := regexp_replace(v_def, '(?<![.\w(])current_app_role\(\)', '( SELECT current_app_role() AS current_app_role)');
   execute 'create or replace view public.staff_block_reason_v'
