@@ -94,6 +94,11 @@ function explain(message: string): string {
   if (code === 'not_quiz_rejected') {
     return 'More attempts can only be given to a candidate the Health & Safety quiz rejected — refresh the page.';
   }
+  if (code === 'quiz_locked') {
+    // §2.3: the same gate as the automatic unlock (ADR-0168).
+    const outstanding = message.split(':').slice(1).join(':').trim();
+    return `The quiz stays locked until every document is in and verified${outstanding ? ` (outstanding: ${outstanding})` : ''}. Sort the documents first, then allow more attempts.`;
+  }
   if (code === 'not_resettable') {
     return 'Reset to candidate is only possible on a blocked, rejected or inactive record.';
   }

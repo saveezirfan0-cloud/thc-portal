@@ -230,7 +230,7 @@ select bag_eq(
             ('withdraw_booking(uuid)'),
             ('withdraw_profile_change(uuid)'),
             ('withdraw_shift_offer(uuid)') $$,
-  'the security definer functions a signed-in caller can execute are exactly these 193 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
+  'the security definer functions a signed-in caller can execute are exactly these 194 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
 );
 
 select is_empty(

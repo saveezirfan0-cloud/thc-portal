@@ -120,6 +120,8 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   onboarding_resend_activation: 'Resent activation link',
   link_staff_account: 'Linked Staff App login',
   quiz_unlocked: 'Unlocked the H&S quiz',
+  // ADR-0168.
+  quiz_attempts_granted: 'Allowed 3 more H&S quiz attempts',
   contract_signed: 'Signed contract',
   block_manual: 'Blocked worker',
   unblock: 'Unblocked worker',

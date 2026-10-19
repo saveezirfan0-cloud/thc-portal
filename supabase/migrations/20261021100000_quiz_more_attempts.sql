@@ -19,7 +19,10 @@
 --      are the same code: the attempts so far are marked superseded (kept,
 --      read-only, as Reset to candidate keeps them), staff.quiz_attempts
 --      goes back to 0, the rejection columns are cleared, and the
---      candidate is back in Quiz with three attempts.
+--      candidate is back in Quiz with three attempts. The §2.3 gate is
+--      asked again first (onboarding_quiz_blockers, as staff_status_guard
+--      asks it on documents → quiz): a document that has expired or been
+--      rejected since keeps the quiz locked (quiz_locked: …).
 --      submit_quiz_attempt() and onboarding_state() already count only
 --      attempts that are not superseded, so the Staff App shows the quiz
 --      with three attempts left and a third failure rejects again (a new
@@ -32,9 +35,11 @@
 --      set aside.
 --   4. onboarding_candidates_v counts attempts used against the current
 --      three (not superseded). Best score, passed-at and the scores line
---      still read the whole period, so the board keeps the history.
---      Re-created from its LIVE definition (docs/10 §3b): one named
---      pattern that must match exactly once, options read back.
+--      still read the whole period, so the board keeps the history; the
+--      scores are ordered by when they were taken, since attempt_no now
+--      repeats within a period. Re-created from its LIVE definition
+--      (docs/10 §3b): named patterns that must each match exactly once,
+--      options read back.
 --
 -- Nothing is sent to the candidate: the office tells them. The Staff App
 -- leaves the terminal screen the next time it reads their status.
@@ -60,9 +65,10 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  s        staff;
-  v_scores int[];
-  v_name   text;
+  s          staff;
+  v_scores   int[];
+  v_name     text;
+  v_blockers text[];
 begin
   if coalesce(btrim(p_reason), '') = '' then
     raise exception 'reason_required' using errcode = '22023';
@@ -76,6 +82,13 @@ begin
     raise exception 'not_quiz_rejected: %', s.status using errcode = 'P0001';
   end if;
   perform assert_staff_transition(s.status, 'quiz'::staff_status);
+  -- §2.3: the quiz is open only while nothing is outstanding — the same
+  -- question staff_status_guard asks on documents → quiz.
+  v_blockers := onboarding_quiz_blockers(p_staff);
+  if cardinality(v_blockers) > 0 then
+    raise exception 'quiz_locked: %', array_to_string(v_blockers, ', ')
+      using errcode = 'P0001';
+  end if;
 
   with set_aside as (
     update quiz_attempts set superseded = true
@@ -101,8 +114,7 @@ begin
           jsonb_build_object('reason',     btrim(p_reason),
                              'byName',     v_name,
                              'attempts',   3,
-                             'setAside',   to_jsonb(v_scores),
-                             'rejectedAt', s.rejected_at));
+                             'setAside',   to_jsonb(v_scores)));
 
   return jsonb_build_object('staffId', p_staff::text, 'status', 'quiz',
                             'attemptsLeft', 3, 'setAside', to_jsonb(v_scores));
@@ -140,20 +152,28 @@ grant  execute on function public.onboarding_grant_quiz_attempts(uuid, text) to 
 -- ---------------------------------------------------------------------
 do $$
 declare
+  p      record;
   v_def  text;
   v_opts text;
   v_n    int;
-  c_pattern constant text := 'count\(\*\)::integer AS quiz_attempts_used';
 begin
   v_def := pg_get_viewdef('public.onboarding_candidates_v'::regclass, true);
   select array_to_string(c.reloptions, ', ') into v_opts
     from pg_class c where c.oid = 'public.onboarding_candidates_v'::regclass;
-  select count(*) into v_n from regexp_matches(v_def, c_pattern, 'g');
-  if v_n <> 1 then
-    raise exception '20261021100000: onboarding_candidates_v - expected one match of %, found %', c_pattern, v_n;
-  end if;
-  v_def := regexp_replace(v_def, c_pattern,
-    'count(*) FILTER (WHERE NOT q.superseded)::integer AS quiz_attempts_used');
+  for p in
+    select * from (values
+      ('count\(\*\)::integer AS quiz_attempts_used',
+       'count(*) FILTER (WHERE NOT q.superseded)::integer AS quiz_attempts_used'),
+      ('array_agg\(round\(q\.score\)::integer ORDER BY q\.attempt_no\) AS quiz_scores',
+       'array_agg(round(q.score)::integer ORDER BY q.taken_at) AS quiz_scores')
+    ) as x(pattern, replacement)
+  loop
+    select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
+    if v_n <> 1 then
+      raise exception '20261021100000: onboarding_candidates_v - expected one match of %, found %', p.pattern, v_n;
+    end if;
+    v_def := regexp_replace(v_def, p.pattern, p.replacement);
+  end loop;
   execute 'create or replace view public.onboarding_candidates_v'
           || case when v_opts is not null then ' with (' || v_opts || ')' else '' end
           || ' as ' || v_def;
