@@ -31,12 +31,79 @@ import { createClient } from '@thc/db/server';
  *
  * `@thc/db/server` imports `server-only`, so this module cannot end up in a
  * client bundle unnoticed.
+ *
+ * Links are reused (`photoUrls`, ADR-0161 — the Client Portal's ADR-0133
+ * cache, here). The directory, the board and the pipeline re-render every
+ * 60 s (AutoRefresh), and a fresh token each time gave every face a new URL:
+ * ~1,000 photos re-signed through Storage per refresh per tab, and every
+ * visible avatar downloaded again. A link is signed for an hour and handed
+ * out again for the first half of it, so whatever a page shows has at least
+ * 30 minutes left to run. The bucket stays private: the cache holds signed
+ * URLs, never opens a path.
+ *
+ * The cache is per server instance and shared by every office login it
+ * serves. That adds no reach: a path is looked up only after a view read
+ * through the caller's OWN session returned it (RLS decided the row — every
+ * one of those views is admin-only), and every office session is an admin
+ * one (the middleware's role gate, then `photos_admin_read`), so the link is
+ * the one this caller's own signing would have been given. A path Storage
+ * refused is never cached, so the next render asks again.
  */
 
 const BUCKET = 'photos';
 
-/** Long enough to read a page, short enough not to be worth forwarding. */
-export const PHOTO_URL_TTL_SECONDS = 60 * 10;
+/** How long a signed link lives. Reused for the first half (PHOTO_URL_REUSE_MS). */
+export const PHOTO_URL_TTL_SECONDS = 60 * 60;
+
+/** Half the link's life: whatever a page draws has at least this long left. */
+export const PHOTO_URL_REUSE_MS = (PHOTO_URL_TTL_SECONDS * 1000) / 2;
+
+/** How many links one instance keeps; least recently used goes first. */
+export const PHOTO_CACHE_ENTRIES = 5000;
+
+/**
+ * A bounded, least-recently-used store of signed links keyed by Storage
+ * path, each reused until `reuseMs` after it was signed — the same shape as
+ * `apps/client/app/client/photos.ts` (ADR-0133).
+ */
+export function signedUrlCache(options: { max: number; reuseMs: number; now?: () => number }) {
+  const now = options.now ?? (() => Date.now());
+  // A Map iterates in insertion order: re-inserting on use makes the first
+  // key the least recently used.
+  const entries = new Map<string, { url: string; signedAt: number }>();
+
+  return {
+    get(path: string): string | undefined {
+      const hit = entries.get(path);
+      if (!hit) return undefined;
+      entries.delete(path);
+      if (now() - hit.signedAt >= options.reuseMs) return undefined;
+      entries.set(path, hit);
+      return hit.url;
+    },
+    set(path: string, url: string, signedAt: number = now()): void {
+      entries.delete(path);
+      entries.set(path, { url, signedAt });
+      while (entries.size > options.max) {
+        const oldest = entries.keys().next().value;
+        if (oldest === undefined) break;
+        entries.delete(oldest);
+      }
+    },
+    clear(): void {
+      entries.clear();
+    },
+    get size(): number {
+      return entries.size;
+    },
+  };
+}
+
+/** This instance's links. */
+export const photoUrls = signedUrlCache({
+  max: PHOTO_CACHE_ENTRIES,
+  reuseMs: PHOTO_URL_REUSE_MS,
+});
 
 function configured(): boolean {
   return Boolean(
@@ -45,8 +112,10 @@ function configured(): boolean {
 }
 
 /**
- * Path → short-lived URL for every distinct, non-empty path. Paths that
- * could not be signed are simply absent from the map.
+ * Path → signed URL for every distinct, non-empty path. Paths that could
+ * not be signed are simply absent from the map. A link still in its first
+ * half-life is handed out again, unchanged; only the rest are signed, in one
+ * batch.
  */
 export async function signStaffPhotos(
   paths: readonly (string | null | undefined)[],
@@ -55,16 +124,28 @@ export async function signStaffPhotos(
   const wanted = [...new Set(paths.filter((p): p is string => Boolean(p)))];
   if (wanted.length === 0 || !configured()) return signed;
 
+  const fresh: string[] = [];
+  for (const path of wanted) {
+    const url = photoUrls.get(path);
+    if (url) signed.set(path, url);
+    else fresh.push(path);
+  }
+  if (fresh.length === 0) return signed;
+
   try {
+    const signedAt = Date.now();
     const { data, error } = await createClient(await cookies())
       .storage.from(BUCKET)
-      .createSignedUrls(wanted, PHOTO_URL_TTL_SECONDS);
+      .createSignedUrls(fresh, PHOTO_URL_TTL_SECONDS);
     if (error || !data) return signed;
     for (const entry of data) {
       // Per-path failures come back in the row, not as a throw: one missing
       // object (or one Storage refusal) costs that worker their photo and
-      // nobody else theirs.
-      if (entry.path && entry.signedUrl && !entry.error) signed.set(entry.path, entry.signedUrl);
+      // nobody else theirs — and is not cached, so the next render asks again.
+      if (entry.path && entry.signedUrl && !entry.error) {
+        signed.set(entry.path, entry.signedUrl);
+        photoUrls.set(entry.path, entry.signedUrl, signedAt);
+      }
     }
   } catch {
     return signed;
