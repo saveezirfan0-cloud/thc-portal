@@ -140,8 +140,9 @@ select throws_ok($$ select run_housekeeping_job('drop-everything') $$, '22023', 
 -- ---------------------------------------------------------------------
 -- 5 · install_housekeeping_schedules()
 -- ---------------------------------------------------------------------
-select is(install_housekeeping_schedules(), 2, 'two housekeeping jobs are scheduled');
-select is(install_housekeeping_schedules(), 2, 'and installing again is harmless');
+-- 20261020130300 (ADR-0164) added location-pings-purge and outbox-purge (898).
+select is(install_housekeeping_schedules(), 4, 'four housekeeping jobs are scheduled');
+select is(install_housekeeping_schedules(), 4, 'and installing again is harmless');
 select results_eq(
   $$ select jobname::text, schedule::text, command::text from cron.job
       where jobname in ('cron-history-purge', 'job-runs-purge') order by jobname $$,
