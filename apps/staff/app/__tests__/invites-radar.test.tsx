@@ -514,6 +514,16 @@ describe('/invites/:id', () => {
     }
   });
 
+  it('the head names the UK day as the wireframes do, never an ISO date', async () => {
+    const day = /class="right mono sm muted">(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2}</;
+    const invite = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(invite).toMatch(day);
+    expect(invite).not.toContain('>2026-09-19<');
+    const radar = await render(RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) }));
+    expect(radar).toMatch(day);
+    expect(radar).not.toMatch(/>\d{4}-\d{2}-\d{2}</);
+  });
+
   it('a booking the worker does not have is a 404', async () => {
     await expect(InvitePage({ params: Promise.resolve({ id: 'nobody' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',

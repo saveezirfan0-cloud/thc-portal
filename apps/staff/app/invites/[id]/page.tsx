@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
-import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
+import {
+  UK_ZONE,
+  explainLimit,
+  formatDateIn,
+  formatDistance,
+  formatHours,
+  sectionHours,
+} from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
 import { preloadShell } from '../../_components/preloadShell';
 import { ShiftTime } from '../../_components/ShiftTime';
@@ -82,7 +89,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <Pill tone="cyan">Invited</Pill>
         {invite.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
         <Pill>{invite.venueName}</Pill>
-        <span className="right mono sm muted">{invite.eventDate}</span>
+        {/* "Fri 23 Oct" (wireframes/staff/*.html), the UK day the role starts
+            (RULE-18) — not the ISO date. */}
+        <span className="right mono sm muted">
+          {formatDateIn(invite.startsAt, UK_ZONE, { weekday: 'short' })}
+        </span>
       </div>
 
       <div className="card-head">
