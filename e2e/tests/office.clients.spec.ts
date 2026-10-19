@@ -281,3 +281,74 @@ test('the card adds a role as a draft and Cancel drops it; Edit opens the full c
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toBeHidden();
 });
+
+test('a new client’s rate card feeds the Shift Builder: its dress codes are the role’s list (§9.7, §3.2)', async ({
+  page,
+}) => {
+  const unreachable = databaseUnreachable();
+  test.skip(unreachable !== null, unreachable ?? '');
+
+  const stamp = Date.now();
+  const name = `E2E rate card ${stamp}`;
+  const code = `E2E white shirt ${stamp}`;
+  try {
+    // 1 · Create the client through the modal.
+    await openAsAdmin(page, '/clients');
+    await page.locator('.topbar').getByRole('button', { name: '+ New client' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New client' });
+    await dialog.getByLabel('Client name').fill(name);
+    await dialog.getByLabel('Contact full name').fill('Robin Test');
+    await dialog.getByLabel('Contact phone').fill('+44 20 7946 0000');
+    await dialog.getByLabel('Staff contact point').fill('Front desk, main entrance');
+    await dialog.getByLabel('Contact emails').fill(`e2e.ratecard.${stamp}@example.test`);
+    await dialog.getByLabel('Contact emails').press('Enter');
+    await dialog.getByRole('button', { name: 'Create client' }).click();
+    await expect(dialog).toBeHidden();
+
+    // 2 · Open its card; put Waiting Staff on the rate card with a dress code.
+    await page.getByLabel('Search client, contact, email').fill(name);
+    await clientRow(page, name).getByRole('link', { name, exact: true }).click();
+    await expect(page).toHaveURL(/\/clients\/[0-9a-f-]{36}$/);
+    const clientId = new URL(page.url()).pathname.split('/').pop()!;
+
+    const rates = block(page, /Rate card$/);
+    await rates
+      .getByLabel('Add a role from the Roles catalogue')
+      .selectOption({ label: 'Waiting Staff · base £14.00' });
+    await rates.getByLabel('Charge rate for Waiting Staff').fill('23.00');
+    await rates.getByLabel('Add a dress code').fill(code);
+    await rates.getByRole('button', { name: '+ Add', exact: true }).click();
+    const draft = rates
+      .locator('tbody tr')
+      .filter({ has: page.getByLabel('Charge rate for Waiting Staff') });
+    await draft.getByRole('button', { name: 'Save', exact: true }).click();
+    const saved = rates.locator('tbody tr').filter({ hasText: 'Waiting Staff' });
+    await expect(saved.locator('.chip')).toHaveText([code]);
+
+    // 3 · "+ New event for this client" builds for that client, and the role
+    //     section's Dress code offers the card's list plus "Other…" (§3.2).
+    await page
+      .locator('.topbar')
+      .getByRole('link', { name: '+ New event for this client' })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/events/new\\?client=${clientId}$`));
+    await page.getByRole('button', { name: '+ Add role' }).click();
+    const section = page.locator('.rolesec').first();
+    await section.getByLabel('Role', { exact: true }).selectOption({ label: 'Waiting Staff' });
+    await expect(section.getByLabel('Dress code').locator('option')).toHaveText([
+      'Choose…',
+      code,
+      'Other…',
+    ]);
+  } finally {
+    // No delete through the UI exists (§9.7); the rate card row goes first.
+    try {
+      sql(
+        `delete from client_rate_cards where client_id in (select id from clients where name = ${lit(name)});
+         delete from clients where name = ${lit(name)}`,
+      );
+    } catch (cause) {
+      console.warn(`[e2e] could not remove client ${name}: ${String(cause)}`);
+    }
+  }
+});
