@@ -274,6 +274,8 @@ export const APPLICATION_ACCEPT_REFUSALS = [
   'hours_limit',
   // ADR-0117: a "Same staff on all days" role and another day the worker cannot do.
   'not_available_all_days',
+  // ADR-0150: the client's quiz for this role is not passed yet.
+  'quiz_required',
 ] as const;
 
 export type ApplicationAcceptRefusal = (typeof APPLICATION_ACCEPT_REFUSALS)[number];
@@ -286,6 +288,11 @@ export interface ApplicationAcceptInput {
   confirmed: number;
   headcount: number;
   gate: string | null | undefined;
+  /**
+   * ADR-0150: the (client, role) names a quiz the worker has not passed
+   * (`client_quiz_gate()`). Read after the hard gates, as the database does.
+   */
+  quizPending?: boolean;
 }
 
 export type ApplicationAcceptOutcome =
@@ -312,6 +319,7 @@ export function acceptApplication(
         : 'not_bookable',
     };
   }
+  if (input.quizPending) return { ok: false, reason: 'quiz_required' };
   assertBookingTransition('applied', 'confirmed');
   return {
     ok: true,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal } from '@thc/ui';
 import type { ButtonTone } from '@thc/ui';
@@ -130,7 +131,16 @@ export function ActionButton({
         open={refusal !== null}
         title={refusal?.title ?? ''}
         onClose={() => setRefusal(null)}
-        footer={<Button onClick={() => setRefusal(null)}>OK</Button>}
+        footer={
+          <>
+            <Button onClick={() => setRefusal(null)}>OK</Button>
+            {refusal?.action ? (
+              <Link className="btn primary solid" href={refusal.action.href}>
+                {refusal.action.label}
+              </Link>
+            ) : null}
+          </>
+        }
       >
         <p className="muted">{refusal?.body}</p>
       </Modal>

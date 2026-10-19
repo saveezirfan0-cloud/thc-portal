@@ -8,7 +8,16 @@ import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { LoadProblem } from '../_components/LoadProblem';
 import { acceptInvite, declineInvite } from '../actions';
-import { loadBookings, openInvites, overlapWarning, shiftsBadge } from '../data';
+import {
+  loadBookings,
+  loadShiftRequirements,
+  openInvites,
+  overlapWarning,
+  quizBeforeAccept,
+  requirementsByBooking,
+  shiftsBadge,
+} from '../data';
+import { AcceptNeedsQuiz, QuizBeforeAcceptNote } from '../_components/ShiftRequirements';
 import { getTimeFormat } from '../_lib/timeFormat';
 import { invitedAgo } from './ago';
 import '../staff-app.css';
@@ -43,6 +52,8 @@ export default async function Page() {
   // The shell's staff_me() and clock, in the same wave as this page's reads.
   preloadShell();
   const { rows: bookings, problem } = await loadBookings();
+  const { rows: requirementRows } = await loadShiftRequirements();
+  const requirements = requirementsByBooking(requirementRows);
   const format = await getTimeFormat();
   const invites = openInvites(bookings);
   const now = new Date();
@@ -73,6 +84,8 @@ export default async function Page() {
               })
             : null;
           const overlap = overlapWarning(invite, bookings, format);
+          // ADR-0150: the client's quiz comes before Accept.
+          const quiz = quizBeforeAccept(requirements.get(invite.bookingId));
           return (
             <div className={`mcard${invite.hoursLimit ? ' muted' : ''}`} key={invite.bookingId}>
               <div className="card-head">
@@ -100,6 +113,11 @@ export default async function Page() {
               </div>
               {overlap ? <div className="m amber">{overlap}</div> : null}
               {limit ? <div className="m">{limit}</div> : null}
+              {quiz ? (
+                <div className="m amber" data-testid="quiz-before-accept">
+                  <QuizBeforeAcceptNote requirement={quiz} />
+                </div>
+              ) : null}
               <div className="card-actions">
                 <ActionButton
                   label="Decline"
@@ -113,20 +131,24 @@ export default async function Page() {
                   }}
                   tone="danger"
                 />
-                <ActionButton
-                  label="Accept"
-                  tone="primary"
-                  block
-                  disabled={invite.hoursLimit}
-                  disabledLabel="Limit Reached"
-                  action={acceptInvite.bind(null, invite.bookingId)}
-                  confirm={{
-                    title: 'Accept this shift?',
-                    body: `You’ll be booked for ${invite.eventTitle} · ${invite.role}. Any other invitation that overlaps this time will be withdrawn automatically. You’ll need to press “I’m ready” by 12:00 the day before.`,
-                    confirmLabel: 'Accept shift',
-                    keepLabel: 'Not now',
-                  }}
-                />
+                {quiz && !invite.hoursLimit ? (
+                  <AcceptNeedsQuiz requirement={quiz} />
+                ) : (
+                  <ActionButton
+                    label="Accept"
+                    tone="primary"
+                    block
+                    disabled={invite.hoursLimit}
+                    disabledLabel="Limit Reached"
+                    action={acceptInvite.bind(null, invite.bookingId)}
+                    confirm={{
+                      title: 'Accept this shift?',
+                      body: `You’ll be booked for ${invite.eventTitle} · ${invite.role}. Any other invitation that overlaps this time will be withdrawn automatically. You’ll need to press “I’m ready” by 12:00 the day before.`,
+                      confirmLabel: 'Accept shift',
+                      keepLabel: 'Not now',
+                    }}
+                  />
+                )}
               </div>
             </div>
           );

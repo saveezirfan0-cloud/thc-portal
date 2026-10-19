@@ -236,6 +236,17 @@ export function requirementsByBooking(
 }
 
 /**
+ * ADR-0150: an invitation whose (client, role) names a quiz the worker has
+ * not passed cannot be accepted yet. The requirement, or null when Accept is
+ * free.
+ */
+export function quizBeforeAccept(
+  requirement: ShiftRequirementRow | undefined,
+): ShiftRequirementRow | null {
+  return requirement && requirement.quizId && !requirement.quizPassed ? requirement : null;
+}
+
+/**
  * The quizzes the worker still has to pass, one card each on /shifts: a
  * quiz named by more than one booking is asked once. A quiz with no attempt
  * left is listed too — the worker is told the office has been asked.

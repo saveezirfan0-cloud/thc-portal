@@ -58,6 +58,49 @@ beforeEach(() => {
   state.appRole = 'admin';
   state.officeRole = 'manager';
   process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://staff.test';
+  delete process.env['NEXT_PUBLIC_OFFICE_URL'];
+});
+
+describe('the activation link is never built on the Back Office itself', () => {
+  const LINK_MISSING =
+    'The activation link could not be built — NEXT_PUBLIC_STAFF_URL on the Back Office is missing, or points at the Back Office itself instead of the Staff App.';
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    process.env['NEXT_PUBLIC_OFFICE_URL'] = 'https://office.test';
+  });
+
+  it('Accept refuses before any login is minted when the staff origin is the office', async () => {
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://office.test/';
+    expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: false, message: LINK_MISSING });
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(acceptWithAccount).not.toHaveBeenCalled();
+  });
+
+  it('Resend refuses the same way, whatever the case or slash', async () => {
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'HTTPS://Office.test///';
+    expect(await resendActivationLink('s1')).toEqual({ ok: false, message: LINK_MISSING });
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(resendActivation).not.toHaveBeenCalled();
+  });
+
+  it('a Staff App origin different from the office goes through', async () => {
+    expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: true });
+    expect(acceptWithAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it('the same host on another port or scheme is another origin, and goes through', async () => {
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://office.test:8443';
+    expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: true });
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'http://office.test';
+    expect(await resendActivationLink('s1')).toEqual({ ok: true });
+  });
+
+  it('with no office address configured there is nothing to compare, so the guard is inert', async () => {
+    delete process.env['NEXT_PUBLIC_OFFICE_URL'];
+    process.env['NEXT_PUBLIC_STAFF_URL'] = 'https://office.test';
+    expect(await acceptCandidate('s1', ['r1'], '')).toEqual({ ok: true });
+  });
 });
 
 describe('Accept and Resend ask office_can("write") before the service key (ADR-0060)', () => {

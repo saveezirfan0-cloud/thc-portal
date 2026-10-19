@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RADAR_GROUP_LABEL, ukInstant } from '@thc/domain';
 import type * as Data from '../data';
-import type { BookingRow, OpenShift, WeekMeter } from '../data';
+import type { BookingRow, OpenShift, ShiftRequirementRow, WeekMeter } from '../data';
 import type { StaffProfile } from '../profile/types';
 
 /**
@@ -71,6 +71,8 @@ vi.mock('../profile/data', () => ({
   }),
 }));
 
+// ADR-0150: what each booking asks of the worker; none unless a test says so.
+const requirementReads = vi.hoisted(() => ({ rows: [] as ShiftRequirementRow[] }));
 const bookings = vi.fn<() => Promise<BookingRow[]>>();
 const openShifts = vi.fn<() => Promise<OpenShift[]>>();
 const meter = vi.fn<() => Promise<WeekMeter | null>>();
@@ -81,6 +83,7 @@ vi.mock('../data', async (importOriginal) => ({
   loadBookings: async () => ({ rows: await bookings(), problem: null }),
   loadOpenShifts: async () => ({ rows: await openShifts(), problem: null }),
   loadWeekMeter: async () => ({ row: await meter(), problem: null }),
+  loadShiftRequirements: async () => ({ rows: requirementReads.rows, problem: null }),
   findBooking: async (id: string) => ({
     row: (await bookings()).find((b) => b.bookingId === id) ?? null,
     problem: null,
@@ -403,6 +406,65 @@ describe('/invites (§10.4, invites.html)', () => {
     const html = await render(InvitesPage());
     expect(html).toContain('Dress code: Black shirt, black trousers, black shoes');
     expect(html).not.toContain('On-site contact');
+  });
+});
+
+describe('ADR-0150 · the client’s quiz comes before Accept', () => {
+  const pending = (over: Partial<ShiftRequirementRow> = {}): ShiftRequirementRow => ({
+    bookingId: 'inv-launch',
+    clientId: 'c1',
+    clientName: 'Leonardo Hotel St Pauls',
+    roleName: 'Bar Staff',
+    quizId: 'q1',
+    quizTitle: 'Bar menu — Leonardo Royal Hotel London',
+    quizPassed: false,
+    quizAttemptsUsed: 0,
+    quizAttemptsMax: 3,
+    kitMessage: null,
+    kitDueAt: null,
+    kitAcknowledgedAt: null,
+    ...over,
+  });
+  afterEach(() => {
+    requirementReads.rows = [];
+  });
+
+  it('the invitation shows the quiz note and a Take the quiz button in place of Accept', async () => {
+    requirementReads.rows = [pending()];
+    const html = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(html).toContain('<b>Quiz needed.</b>');
+    expect(html).toContain('before they can be confirmed');
+    expect(html).toContain('<a href="/quiz/q1" class="btn primary block lg"');
+    expect(html).toContain('Take the quiz to accept');
+    expect(html).not.toContain('>Accept<');
+  });
+
+  it('the list does the same on that card only', async () => {
+    requirementReads.rows = [pending()];
+    const html = await render(InvitesPage());
+    expect(html.split('data-testid="accept-needs-quiz"').length - 1).toBe(1);
+    expect(html.split('data-testid="quiz-before-accept"').length - 1).toBe(1);
+    // The other invitations still have their Accept.
+    expect(html).toContain('>Accept<');
+  });
+
+  it('after a pass, or with no quiz named, Accept is exactly as it was', async () => {
+    requirementReads.rows = [pending({ quizPassed: true })];
+    let html = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(html).not.toContain('Quiz needed');
+    expect(html).toContain('>Accept<');
+    requirementReads.rows = [pending({ quizId: null, quizTitle: null, kitMessage: 'Bring a pen' })];
+    html = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(html).not.toContain('Quiz needed');
+    expect(html).toContain('>Accept<');
+  });
+
+  it('with every attempt used the button is disabled and says so, and the office is named', async () => {
+    requirementReads.rows = [pending({ quizAttemptsUsed: 3 })];
+    const html = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(disabledButton(html, 'Quiz not passed')).toBe(true);
+    expect(html).toContain('The office has been told');
+    expect(html).not.toContain('href="/quiz/q1"');
   });
 });
 

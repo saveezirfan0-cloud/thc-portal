@@ -336,7 +336,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     if ((held ?? []).length > 0) {
       return {
         error:
-          'A role section with people booked on it cannot be removed. Withdraw them on the event board first.',
+          'A role section with people booked on it cannot be removed. To take the whole event off the schedule use Cancel event on the event board; to drop only this role, withdraw its people there first.',
       };
     }
     await supabase.from('shift_requirements').delete().in('id', removed);

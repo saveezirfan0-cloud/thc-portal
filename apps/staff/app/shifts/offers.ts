@@ -204,6 +204,8 @@ const TAKE_REFUSAL_COPY: Readonly<Record<string, Refusal>> = {
   hours_limit: APPLY_REFUSAL_COPY.hours_limit,
   // ADR-0117.
   not_available_all_days: APPLY_REFUSAL_COPY.not_available_all_days,
+  // ADR-0150: a take is a confirmation, so the client's quiz comes first.
+  quiz_required: APPLY_REFUSAL_COPY.quiz_required,
 };
 
 export function takeRefusalCopy(reason: string): Refusal | undefined {
