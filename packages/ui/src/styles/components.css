@@ -2646,10 +2646,18 @@ textarea.input {
   z-index: 1;
 }
 /* The real Staff App uses this on <body>'s wrapper; .phone is the gallery
-   mock of the same thing. */
+   mock of the same thing.
+   `clip`, not `hidden`: the glows overhang the frame by 120px, and
+   `overflow-x: hidden` turns the frame into a scroll container (its y axis
+   computes to `auto`). The sticky header then sticks to a frame that never
+   scrolls, so it scrolled away with the page, and a focused field could
+   shift the whole frame sideways by the overhang. `clip` cuts the glows
+   without making a scroll container. `hidden` stays first for a browser
+   without `clip` (iOS before 16), which keeps the old behaviour. */
 .app-frame {
   position: relative;
   overflow-x: hidden;
+  overflow-x: clip;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
