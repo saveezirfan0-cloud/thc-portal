@@ -9897,6 +9897,7 @@ export type Database = {
         Returns: {
           due_rung: number;
           epoch: number;
+          last_channel: string;
           last_failed: boolean;
           last_sent_at: string;
           next_due_at: string;
@@ -9913,6 +9914,7 @@ export type Database = {
       onboarding_chaser_state: {
         Args: { p_now?: string };
         Returns: {
+          last_channel: string;
           last_failed: boolean;
           last_sent_at: string;
           next_due_at: string;
@@ -9925,7 +9927,10 @@ export type Database = {
         }[];
       };
       onboarding_chaser_variant: { Args: { p_rung: number }; Returns: string };
-      onboarding_chasers: { Args: { p_now?: string }; Returns: Json };
+      onboarding_chasers: {
+        Args: { p_app_link?: string; p_now?: string };
+        Returns: Json;
+      };
       onboarding_complete_induction: { Args: never; Returns: Json };
       onboarding_confirm_selfie: { Args: never; Returns: Json };
       onboarding_do_accept: {

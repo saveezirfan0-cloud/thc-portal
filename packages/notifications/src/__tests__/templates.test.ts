@@ -68,7 +68,8 @@ const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
 const MESSAGE_PUSH_CODES = ['OM1', 'OM2'];
 
 /** Onboarding chasers (ADR-0071): email before sign-up, push after. */
-const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
+// OC4 is OC3 by email, for a candidate with notifications off (ADR-0169).
+const CHASER_EMAIL_CODES = ['OC1', 'OC2', 'OC4'];
 const CHASER_PUSH_CODES = ['OC3'];
 
 /** The invite-list reminder (ADR-0122): daily to THC staff who have not applied yet. */
@@ -165,7 +166,7 @@ describe('notification register (§8)', () => {
       'OF6',
     ]);
     expect([...MESSAGE_CODES]).toEqual(MESSAGE_PUSH_CODES);
-    expect([...CHASER_CODES]).toEqual([...CHASER_EMAIL_CODES, ...CHASER_PUSH_CODES]);
+    expect([...CHASER_CODES].sort()).toEqual([...CHASER_EMAIL_CODES, ...CHASER_PUSH_CODES].sort());
     expect([...INVITE_CODES]).toEqual(INVITE_EMAIL_CODES);
     expect([...CLIENT_REQUIREMENT_CODES]).toEqual([
       ...CLIENT_REQUIREMENT_PUSH_CODES,
@@ -494,7 +495,7 @@ describe('a variant-only code has nothing to send by accident', () => {
 
   it('are the only codes without a body, with CL2 for the same reason, the OC chasers, one body per rung, and IR1, one per greeting', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
-    expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3', 'IR1']);
+    expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3', 'OC4', 'IR1']);
   });
 
   // The bug these halves exist for. `render` leaves an unmatched

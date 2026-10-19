@@ -150,7 +150,7 @@ export interface BoardData {
 /** One row of `onboarding_chaser_state()` (20261001212000, ADR-0071). */
 export interface ChaserState {
   staff_id: string;
-  /** interview → OC1 email, activation → OC2 email, app → OC3 push. */
+  /** interview → OC1 email, activation → OC2 email, app → OC3 push (or OC4 email, ADR-0169). */
   track: 'interview' | 'activation' | 'app';
   /** The wizard step waiting on them, in the push's words (app track only). */
   step: string | null;
@@ -163,6 +163,12 @@ export interface ChaserState {
   stalled: boolean;
   /** The latest reminder could not be delivered (notifications off, a bounce). */
   last_failed: boolean;
+  /**
+   * How the latest reminder went (20261021120000). An app reminder is
+   * emailed (OC4) when no device has notifications on (ADR-0169). Absent
+   * before that migration, or before the first reminder.
+   */
+  last_channel?: 'email' | 'push' | null;
 }
 
 /**
