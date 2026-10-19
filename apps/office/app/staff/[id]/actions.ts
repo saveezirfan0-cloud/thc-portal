@@ -12,6 +12,7 @@ import { supabaseConfigured } from '../data';
 import { parseRate } from '../../roles/money';
 import { payRateMessage } from './payRate';
 import type { ActionResult } from './types';
+import { blockerLabel } from '../../onboarding/view-model';
 
 /**
  * Writes for /staff/:id (§9.6).
@@ -44,7 +45,10 @@ const NOT_CONFIGURED =
 type RpcArguments = Record<string, string | number | boolean | string[] | null>;
 
 interface RpcClient {
-  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
+  rpc(
+    fn: string,
+    args: RpcArguments,
+  ): PromiseLike<{ data?: unknown; error: { message: string } | null }>;
 }
 
 /**
@@ -166,9 +170,30 @@ async function callPrivilegedRpc(
   if (!gate.ok) return gate;
 
   const admin = createAdminClient() as unknown as RpcClient;
-  const { error } = await admin.rpc(fn, { ...args, p_actor: gate.userId });
+  const { data, error } = await admin.rpc(fn, { ...args, p_actor: gate.userId });
   if (error) return { ok: false, message: staffErrorMessage(error.message) };
+  const refused = unblockRefusal(fn, data);
+  if (refused) return { ok: false, message: refused };
   return done(staffId);
+}
+
+/**
+ * `unblock_worker()` does not raise when the §4.3 full compliance check
+ * fails: it answers `{ unblocked: false, blockers: [...] }` and leaves the
+ * block in place. Treated as success, the button did nothing and said
+ * nothing (sweep 19.10.2026), so the reasons are put into words here.
+ */
+function unblockRefusal(fn: string, data: unknown): string | null {
+  if (fn !== 'unblock_worker' || !data || typeof data !== 'object') return null;
+  const reply = data as { unblocked?: unknown; blockers?: unknown };
+  if (reply.unblocked !== false) return null;
+  const blockers = Array.isArray(reply.blockers)
+    ? reply.blockers.filter((b): b is string => typeof b === 'string')
+    : [];
+  const what = blockers.map(blockerLabel);
+  return what.length > 0
+    ? `Still blocked — the full compliance check did not pass: ${what.join('; ')}.`
+    : 'Still blocked — the full compliance check did not pass.';
 }
 
 // ---------------------------------------------------------------------
