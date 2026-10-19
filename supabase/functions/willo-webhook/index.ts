@@ -25,7 +25,8 @@
  * Secrets (supabase secrets set …; never in code): WILLO_WEBHOOK_SECRET,
  * WILLO_API_KEY, WILLO_INTERVIEW_KEY, STAFF_APP_URL, and optionally
  * WILLO_SIGNATURE_HEADER, WILLO_TIMESTAMP_HEADER,
- * WILLO_TIMESTAMP_TOLERANCE_SECONDS, WILLO_API_BASE, WILLO_INVITE_PATH,
+ * WILLO_TIMESTAMP_TOLERANCE_SECONDS, WILLO_MAX_EVENT_AGE_HOURS (ADR-0164),
+ * WILLO_API_BASE, WILLO_INVITE_PATH,
  * WILLO_LOOKUP_PATH (ADR-0024; `off` disables the lookup),
  * WILLO_API_AUTH_HEADER, WILLO_API_AUTH_PREFIX. docs/12 lists them.
  */
@@ -36,13 +37,16 @@ import {
   describeShape,
   eventTime,
   isPermanentRefusal,
+  isStaleEvent,
   parseWilloEvent,
   readBodyCapped,
   refusalCode,
   runInviteSweep,
   verifyWilloSignature,
   willoApiConfig,
+  willoDeliveryKey,
   willoLookupPath,
+  willoMaxEventAgeHours,
   willoSignatureConfig,
 } from '../../../packages/db/src/willo.ts';
 import type { InviteDue, WilloEvent } from '../../../packages/db/src/willo.ts';
@@ -148,16 +152,54 @@ async function webhook(request: Request): Promise<Response> {
   }
   console.log('[willo-webhook] delivery', { eventHint, shape });
   const event = parsed.event;
-  const at = eventTime(event.occurredAt, Date.now());
+  const now = Date.now();
+  const at = eventTime(event.occurredAt, now);
+
+  // Replays (ADR-0164). A delivery whose own time is older than the window
+  // is answered 200 — a retry cannot make it younger — and applies nothing.
+  if (isStaleEvent(event.occurredAt, now, willoMaxEventAgeHours(env))) {
+    console.warn('[willo-webhook] stale delivery refused', {
+      delivery: event.deliveryId,
+      event: event.eventKey,
+      occurredAt: event.occurredAt,
+    });
+    return json(200, { outcome: 'stale' });
+  }
+  // The key the database applies it once under: the raw body's SHA-256.
+  const deliveryKey = await willoDeliveryKey(raw);
 
   // One job_runs row per verified delivery, as every §7 job writes, so a
   // webhook that failed (or stopped arriving) is visible in the same place.
   // Unverified deliveries above write nothing: anyone can send those.
   const db = serviceClient();
-  return recordRun(db, 'willo-webhook', () => applyDelivery(db, event, at));
+  return recordRun(db, 'willo-webhook', () => applyDelivery(db, event, at, deliveryKey));
 }
 
-async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string): Promise<Response> {
+async function applyDelivery(
+  db: SupabaseClient,
+  event: WilloEvent,
+  at: string,
+  deliveryKey: string,
+): Promise<Response> {
+  // Already applied: answered before anything is planned, and above all
+  // before an Accept mints a login or a token — a replay must never kill
+  // the candidate's live activation link (ADR-0164). The database checks
+  // the key again in the same transaction as the change.
+  const { data: seen, error: seenError } = await db.rpc('willo_delivery_seen', {
+    p_key: deliveryKey,
+  });
+  if (seenError) {
+    console.error('[willo-webhook] replay check failed', { error: seenError.message });
+    return json(500, { error: 'replay check failed' });
+  }
+  if (seen === true) {
+    console.log('[willo-webhook] duplicate delivery', {
+      delivery: event.deliveryId,
+      event: event.eventKey,
+    });
+    return json(200, { outcome: 'duplicate' });
+  }
+
   // Which of the delivery's keys is one of our candidates: the named path
   // first, then any 32-hex value (the interview's own key matches nobody).
   const interviewKey = env('WILLO_INTERVIEW_KEY')?.trim();
@@ -239,6 +281,7 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
       p_event: event.eventKey,
       p_at: at,
       p_details: event.details,
+      p_delivery_key: deliveryKey,
     });
     if (error) {
       if (isPermanentRefusal(error.message)) {
@@ -283,6 +326,7 @@ async function applyDelivery(db: SupabaseClient, event: WilloEvent, at: string):
     p_at: at,
     p_details: { ...event.details, activationLink: issued.link, installLink: issued.installLink },
     p_user: issued.userId,
+    p_delivery_key: deliveryKey,
   });
   if (error) {
     if (isPermanentRefusal(error.message)) {
