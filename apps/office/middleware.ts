@@ -10,8 +10,21 @@ import {
   isTransientAuthFailure,
   withSessionPersistence,
 } from '@thc/db';
+import {
+  CSP_HEADER,
+  CSP_REPORT_PATH,
+  NONCE_HEADER,
+  contentSecurityPolicy,
+  createNonce,
+} from '@thc/db/csp';
+import { readOfficePolicy, sessionExpired } from './app/login/office-policy';
 import { createSessionCheckCache, sessionKey } from './app/login/session-check';
-import { nextLevelFor, twoStepDecision, verifyStepPath } from './app/login/two-step';
+import {
+  enrolStepPath,
+  nextLevelFor,
+  twoStepDecision,
+  verifyStepPath,
+} from './app/login/two-step';
 
 /**
  * Role routing for the admin app (§1.4).
@@ -73,7 +86,30 @@ const JOB_PATHS = [
  */
 const sessionChecks = createSessionCheckCache();
 
+/**
+ * Every response carries the per-request script policy (ADR-0164, audit
+ * M2): a fresh nonce, on the REQUEST headers too, which is where Next.js
+ * reads it to put it on the inline scripts it renders. Report-only for now
+ * (`CSP_HEADER`, packages/db/src/csp.ts); the static headers in
+ * next.config.ts (security-headers.ts) still enforce framing, base-uri,
+ * form-action and object-src.
+ */
 export async function middleware(request: NextRequest) {
+  const nonce = createNonce();
+  const csp = contentSecurityPolicy({
+    app: 'office',
+    nonce,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    dev: process.env.NODE_ENV === 'development',
+  });
+  request.headers.set(CSP_HEADER, csp);
+  request.headers.set(NONCE_HEADER, nonce);
+  const response = await gate(request);
+  response.headers.set(CSP_HEADER, csp);
+  return response;
+}
+
+async function gate(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -107,6 +143,12 @@ export async function middleware(request: NextRequest) {
     return response;
   }
   if (JOB_PATHS.includes(request.nextUrl.pathname) && request.method === 'POST') {
+    return response;
+  }
+  // Browsers post violation reports with no session (from /login too) and
+  // never follow a redirect for them. The route reads and logs; it grants
+  // nothing (ADR-0164).
+  if (request.nextUrl.pathname === CSP_REPORT_PATH && request.method === 'POST') {
     return response;
   }
 
@@ -194,11 +236,18 @@ export async function middleware(request: NextRequest) {
   if (!isPublic(pathname)) {
     const key = sessionKey(claims);
     let check = sessionChecks.get(key);
+    // The database could not say what the sign-in policy is (ADR-0164).
+    let policyUnknown = false;
     if (!check) {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+      // Both questions at once: GoTrue about the session, the database
+      // about the policy and when this session signed in.
+      const [
+        {
+          data: { user },
+          error,
+        },
+        read,
+      ] = await Promise.all([supabase.auth.getUser(), readOfficePolicy(supabase)]);
       if (!user && isTransientAuthFailure(error)) {
         // GoTrue slow, down or rate-limiting is no answer about the session,
         // so it is not cached as "signed out" (ADR-0154). A token already
@@ -208,8 +257,14 @@ export async function middleware(request: NextRequest) {
         if (claims.aal === 'aal2') return response;
         return tryAgain(response);
       }
-      check = { valid: !!user, secondStep: nextLevelFor(user?.factors) === 'aal2' };
-      sessionChecks.set(key, check);
+      check = {
+        valid: !!user,
+        secondStep: nextLevelFor(user?.factors) === 'aal2',
+        ...(read.ok ? { policy: read.policy } : {}),
+      };
+      // Remembered only when both answered, so a missed policy is asked again.
+      if (read.ok || !user) sessionChecks.set(key, check);
+      else policyUnknown = true;
     }
     if (!check.valid) {
       const url = request.nextUrl.clone();
@@ -217,14 +272,31 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set('next', pathname);
       return withCookies(NextResponse.redirect(url), response);
     }
+    // ADR-0164 (audit M4): an office sign-in lasts office_session_max_hours
+    // (12) from the moment of the password, however often its token is
+    // refreshed. The database refuses the data past it (current_app_role);
+    // here the manager is signed out on this device and asked to sign in.
+    if (check.policy && sessionExpired(check.policy, Date.now())) {
+      return sessionTooOld(request, response, check.policy.sessionMaxHours);
+    }
+    // Anything but a literal aal2 is not aal2 (fail closed).
+    const currentLevel = claims.aal === 'aal2' ? 'aal2' : claims.aal === 'aal1' ? 'aal1' : null;
+    if (policyUnknown && currentLevel !== 'aal2' && !check.secondStep) {
+      // No authenticator, below aal2, and nobody can say whether one is
+      // compulsory: neither the page nor the enrol step can be chosen.
+      return tryAgain(response);
+    }
     const decision = twoStepDecision({
-      // Anything but a literal aal2 is not aal2 (fail closed).
-      currentLevel: claims.aal === 'aal2' ? 'aal2' : claims.aal === 'aal1' ? 'aal1' : null,
+      currentLevel,
       nextLevel: check.secondStep ? 'aal2' : 'aal1',
+      // ADR-0164 (audit H1): with two-step compulsory, an office login with
+      // no authenticator reaches the enrol step and sign-out, nothing else.
+      required: check.policy?.twoStepRequired === true,
     });
-    if (decision === 'verify') {
+    if (decision === 'verify' || decision === 'enrol') {
       const target = request.nextUrl.clone();
-      const [path, query = ''] = verifyStepPath(pathname + request.nextUrl.search).split('?');
+      const step = decision === 'verify' ? verifyStepPath : enrolStepPath;
+      const [path, query = ''] = step(pathname + request.nextUrl.search).split('?');
       target.pathname = path ?? '/login/verify';
       target.search = query ? `?${query}` : '';
       return withCookies(NextResponse.redirect(target), response);
@@ -232,6 +304,39 @@ export async function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+/** The Supabase auth cookies (`sb-<ref>-auth-token`, and its `.0`, `.1` chunks). */
+const AUTH_COOKIE = /^sb-.+-auth-token(?:\.\d+)?$/;
+
+/**
+ * A session past its maximum age: the auth cookies go from this device and
+ * the manager meets the sign-in form, with `next` kept and the reason
+ * shown. The refresh token is refused by the database from now on, so
+ * there is nothing left that it could reach.
+ */
+function sessionTooOld(
+  request: NextRequest,
+  from: NextResponse,
+  maxHours: number | null,
+): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = '/login';
+  url.search = '';
+  url.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+  url.searchParams.set('expired', String(maxHours ?? ''));
+  const redirect = withCookies(NextResponse.redirect(url), from);
+  for (const cookie of request.cookies.getAll()) {
+    if (AUTH_COOKIE.test(cookie.name)) {
+      redirect.cookies.set(cookie.name, '', { path: '/', maxAge: 0 });
+    }
+  }
+  for (const cookie of from.cookies.getAll()) {
+    if (AUTH_COOKIE.test(cookie.name)) {
+      redirect.cookies.set(cookie.name, '', { path: '/', maxAge: 0 });
+    }
+  }
+  return redirect;
 }
 
 /**

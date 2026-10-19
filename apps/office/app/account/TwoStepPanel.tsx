@@ -34,6 +34,11 @@ export function TwoStepPanel({ twoStep }: { twoStep: MyTwoStep }) {
   );
 }
 
+function OffState() {
+  const router = useRouter();
+  return <TwoStepSetup onTurnedOn={() => router.refresh()} />;
+}
+
 function Feedback({ result }: { result: TwoStepResult | null }) {
   if (!result) return null;
   if (!result.ok) return <Alert tone="coral">{result.message}</Alert>;
@@ -46,8 +51,24 @@ interface Setup {
   secret: string;
 }
 
-function OffState() {
-  const router = useRouter();
+/**
+ * Setting two-step up: the phone's name, then the QR code and the first
+ * code. The /account panel's off state, and the whole of the enrol step
+ * that a compulsory two-step sends an office login to (ADR-0164,
+ * /login/enrol) — the same component, so the two can never word or order
+ * the steps differently.
+ */
+export function TwoStepSetup({
+  onTurnedOn,
+  intro,
+  className = 'account-form',
+}: {
+  /** After the first correct code: refresh the panel, or carry on to the page. */
+  onTurnedOn: () => void;
+  /** Replaces the first paragraph (the enrol step says why it is asking). */
+  intro?: string;
+  className?: string;
+}) {
   const [deviceName, setDeviceName] = useState('My phone');
   const [setup, setSetup] = useState<Setup | null>(null);
   const [code, setCode] = useState('');
@@ -74,7 +95,7 @@ function OffState() {
       setResult(outcome);
       if (outcome.ok) {
         setSetup(null);
-        router.refresh();
+        onTurnedOn();
       }
     });
   };
@@ -91,7 +112,7 @@ function OffState() {
   if (!setup) {
     return (
       <form
-        className="account-form"
+        className={className}
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -99,9 +120,8 @@ function OffState() {
         }}
       >
         <p className="sm muted">
-          Adds a second check when you sign in: after your password, you type a 6-digit code from an
-          app on your phone. Someone who learns your password still cannot get in without your
-          phone.
+          {intro ??
+            'Adds a second check when you sign in: after your password, you type a 6-digit code from an app on your phone. Someone who learns your password still cannot get in without your phone.'}
         </p>
         <p className="sm muted">
           You need a free authenticator app on your phone — Google Authenticator or Microsoft
@@ -124,7 +144,7 @@ function OffState() {
 
   return (
     <form
-      className="account-form"
+      className={className}
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -219,6 +239,12 @@ function OnState({ twoStep }: { twoStep: MyTwoStep }) {
         Changing phone? Remove it here while you still have the old one, then set it up again on the
         new one.
       </p>
+      {twoStep.required ? (
+        <p className="sm muted">
+          Two-step sign-in is required for every Back Office login, so if you remove it you are
+          asked to set it up again the next time you sign in.
+        </p>
+      ) : null}
       {removing ? (
         <>
           <Input
@@ -231,7 +257,11 @@ function OnState({ twoStep }: { twoStep: MyTwoStep }) {
             maxLength={9}
             placeholder="123 456"
             className="twostep-code"
-            hint="Removing it means your password alone lets you in again."
+            hint={
+              twoStep.required
+                ? 'Set it up again straight away on your new phone: your next sign-in asks for it.'
+                : 'Removing it means your password alone lets you in again.'
+            }
             onChange={(event) => setCode(event.target.value)}
           />
           <Feedback result={result} />

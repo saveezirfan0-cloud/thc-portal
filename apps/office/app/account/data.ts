@@ -6,6 +6,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { verifiedTotp } from '../login/two-step';
 import { readProblem } from '../_lib/dbError';
+import { readOfficePolicy } from '../login/office-policy';
 
 /** Two-step sign-in on this login (ADR-0057): the authenticator, if one is set up. */
 export interface MyTwoStep {
@@ -14,6 +15,8 @@ export interface MyTwoStep {
   deviceName: string | null;
   /** When it was set up. An audit-style stamp: UK time only (§1.8). */
   since: string | null;
+  /** Two-step is compulsory for Back Office logins (ADR-0164, /settings). */
+  required?: boolean;
 }
 
 /** The signed-in user's own account, as /account shows it. */
@@ -74,7 +77,10 @@ export async function loadMyAccount(): Promise<AccountPageData> {
 
   // ADR-0085: the profile is the record; the device cookie is only its cache,
   // so it is the fallback when the profile cannot be read.
-  const { data: stored } = await supabase.rpc('my_time_format');
+  const [{ data: stored }, policy] = await Promise.all([
+    supabase.rpc('my_time_format'),
+    readOfficePolicy(supabase),
+  ]);
   const timeFormat = parseTimeFormat(stored ?? store.get(TIME_FORMAT_COOKIE)?.value);
 
   return {
@@ -87,7 +93,11 @@ export async function loadMyAccount(): Promise<AccountPageData> {
       role: data?.role ?? String(user.app_metadata?.['role'] ?? ''),
       createdAt: data?.created_at ?? user.created_at ?? null,
       lastSignInAt: user.last_sign_in_at ?? null,
-      twoStep: twoStepOf(user.factors),
+      twoStep: {
+        ...twoStepOf(user.factors),
+        // Unknown counts as required: it only changes a hint.
+        required: !policy.ok || policy.policy.twoStepRequired,
+      },
       timeFormat,
     },
     problem: data ? null : 'This login has no profile yet, so the details below cannot be saved.',

@@ -13,6 +13,14 @@ let gotrueUser: {
   factors: { id: string; factor_type: string; status: string }[];
 } | null = null;
 const getUser = vi.fn(async () => ({ data: { user: gotrueUser } }));
+/**
+ * office_session_policy() (ADR-0164). The tests above the "compulsory"
+ * block are ADR-0057's opt-in world, so the default here is "optional";
+ * each new block sets what it needs.
+ */
+let policy: Record<string, unknown> | null = null;
+let policyError: { code: string; message: string } | null = null;
+const rpc = vi.fn(async (_name: string) => ({ data: policy, error: policyError }));
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
@@ -20,6 +28,7 @@ vi.mock('@supabase/ssr', () => ({
       getClaims: async () => ({ data: claims ? { claims } : null, error: null }),
       getUser,
     },
+    rpc,
   }),
 }));
 
@@ -56,6 +65,9 @@ beforeEach(() => {
   claims = null;
   gotrueUser = { id: 'admin-1', factors: [] };
   getUser.mockClear();
+  policy = { twoStepRequired: false, sessionMaxHours: 12, sessionStartedAt: null };
+  policyError = null;
+  rpc.mockClear();
 });
 
 describe('middleware · session gate', () => {

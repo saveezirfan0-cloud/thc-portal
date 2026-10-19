@@ -32,6 +32,9 @@ const state = vi.hoisted(() => ({
   user: true,
   challengeAndVerify: vi.fn(),
   getSession: vi.fn(),
+  // office_session_policy() (ADR-0164): this file is ADR-0057's opt-in world;
+  // the compulsory case is held by app/__tests__/middleware-session.test.ts.
+  policy: { twoStepRequired: false, sessionMaxHours: 12, sessionStartedAt: null as string | null },
 }));
 
 vi.mock('next/headers', () => ({
@@ -92,6 +95,7 @@ vi.mock('@supabase/ssr', () => ({
       getUser: async () => ({ data: { user: currentUser() } }),
       getSession: state.getSession,
     },
+    rpc: async () => ({ data: state.policy, error: null }),
   }),
 }));
 

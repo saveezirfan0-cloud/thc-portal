@@ -1,3 +1,5 @@
+import type { OfficePolicy } from './office-policy';
+
 /**
  * How often the middleware asks GoTrue about a session it can already read
  * (ADR-0108).
@@ -22,6 +24,12 @@ export interface SessionCheck {
   valid: boolean;
   /** The login has a verified factor, so it can reach aal2 (`nextLevelFor`). */
   secondStep: boolean;
+  /**
+   * The sign-in policy as the database last stated it, with this session's
+   * sign-in time (ADR-0164, `office_session_policy()`). Remembered only
+   * when the database answered; a check without it is asked again.
+   */
+  policy?: OfficePolicy;
 }
 
 interface Entry extends SessionCheck {
@@ -57,7 +65,8 @@ export function createSessionCheckCache(now: () => number = Date.now) {
         entries.delete(key);
         return null;
       }
-      return { valid: entry.valid, secondStep: entry.secondStep };
+      const { at: _at, ...check } = entry;
+      return check;
     },
     set(key: string, check: SessionCheck): void {
       // Bounded: drop the oldest entries rather than grow with every login.

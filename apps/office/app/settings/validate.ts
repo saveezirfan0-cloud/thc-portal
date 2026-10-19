@@ -231,6 +231,21 @@ export function validateGap(minutes: number): string | null {
   return null;
 }
 
+/**
+ * ADR-0164: how long one Back Office sign-in lasts. The database refuses
+ * anything else (settings_office_security_guard), so the screen says why
+ * first.
+ */
+export const SESSION_HOURS_MIN = 1;
+export const SESSION_HOURS_MAX = 24;
+
+export function validateSessionHours(hours: number): string | null {
+  if (!Number.isInteger(hours) || hours < SESSION_HOURS_MIN || hours > SESSION_HOURS_MAX) {
+    return `A sign-in lasts a whole number of hours, from ${SESSION_HOURS_MIN} to ${SESSION_HOURS_MAX}.`;
+  }
+  return null;
+}
+
 export function validateEscalationRadius(miles: number): string | null {
   if (!Number.isFinite(miles) || miles <= 0) return 'The escalation radius must be more than zero.';
   if (miles > 100) return 'An escalation radius over 100 miles is not a local escalation.';
