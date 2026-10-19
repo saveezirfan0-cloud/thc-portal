@@ -62,3 +62,8 @@ The go-live audits (17.10.2026, read-only against the live project) found:
 - Watchdog alerting on a job with no `job_runs` row in its window.
 - The apps' middleware call sites: they build their own `createServerClient`; the one-line
   change is for the app owners (go-live report).
+
+
+## Update — retention built (ADR-0164, 20261020130300)
+
+The two proposals under "Not done" are built: `location-pings-purge` (90 days after the section ended, unless a violation is open) and `outbox-purge` (finished rows after 180 days: deleted, tombstoned or kept by key family) run through `run_housekeeping_job()`; `install_housekeeping_schedules()` now schedules four jobs.

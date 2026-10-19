@@ -233,11 +233,13 @@ export async function tokenMatches(token: string, secret: string): Promise<boole
  * text, BEFORE any JSON parsing — a re-serialised body is a different
  * message and would never verify.
  *
- * Replays: when Willo sends a timestamp (configured), a delivery outside
- * the window is refused. When it does not, a replayed body re-applies an
- * event the database has already applied, and every path through
- * `willo_record_event` is idempotent on a repeat — which is the reason
- * that property is held by pgTAP (380, 480).
+ * Replays: when Willo sends a timestamp header (configured), a delivery
+ * outside the window is refused — on the token path too (ADR-0164). Either
+ * way the receiver keys each delivery (`willoDeliveryKey`) and the database
+ * applies a key once (`willo_deliveries`, pgTAP 897), and a delivery whose
+ * own time is older than WILLO_MAX_EVENT_AGE_HOURS is refused
+ * (`isStaleEvent`). Every path through `willo_record_event` is also
+ * idempotent on a repeat of the same step (pgTAP 380, 480).
  */
 export async function verifyWilloSignature(
   rawBody: string,
@@ -255,23 +257,27 @@ export async function verifyWilloSignature(
   // Willo does not sign (ADR-0066): the secret is in the address we gave
   // it. A signature header, when present, still wins — a delivery is
   // never accepted on the weaker check when the stronger one was offered.
-  if (urlToken !== null && !headers.get(config.signatureHeader)) {
-    return (await tokenMatches(urlToken, config.secret))
-      ? { ok: true }
-      : { ok: false, reason: 'token_mismatch' };
-  }
-
-  let message = rawBody;
+  // The delivery's own clock, when Willo is configured to send one. Checked
+  // on the token path as well (ADR-0164): a captured delivery replayed
+  // outside the window is refused there too, not only when signed.
+  let stamp: string | null = null;
   if (config.timestampHeader) {
-    const stamp = headers.get(config.timestampHeader);
+    stamp = headers.get(config.timestampHeader);
     if (!stamp) return { ok: false, reason: 'timestamp_missing' };
     const seconds = parseTimestamp(stamp);
     if (seconds === null) return { ok: false, reason: 'timestamp_malformed' };
     if (Math.abs(nowSeconds - seconds) > config.toleranceSeconds) {
       return { ok: false, reason: 'timestamp_out_of_window' };
     }
-    message = `${stamp.trim()}.${rawBody}`;
   }
+
+  if (urlToken !== null && !headers.get(config.signatureHeader)) {
+    return (await tokenMatches(urlToken, config.secret))
+      ? { ok: true }
+      : { ok: false, reason: 'token_mismatch' };
+  }
+
+  const message = stamp !== null ? `${stamp.trim()}.${rawBody}` : rawBody;
 
   const header = headers.get(config.signatureHeader);
   if (!header) return { ok: false, reason: 'signature_missing' };
@@ -627,6 +633,44 @@ export function eventTime(occurredAt: string | null, nowMs: number): string {
   const ms = Date.parse(occurredAt);
   if (!Number.isFinite(ms) || ms > nowMs + 60_000) return new Date(nowMs).toISOString();
   return new Date(ms).toISOString();
+}
+
+// ---------------------------------------------------------------------
+// Replays (ADR-0164)
+// ---------------------------------------------------------------------
+
+/**
+ * The key a delivery is applied once under (`willo_deliveries`): the
+ * SHA-256 of the exact bytes received. Not Willo's own id: where Willo puts
+ * one in the body is unconfirmed (ADR-0021, ADR-0066), and the body's `id`
+ * may well be the participant's — keyed on that, every event of one
+ * candidate would be "the same delivery". A byte-identical body is.
+ */
+export async function willoDeliveryKey(rawBody: string): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(rawBody)));
+  return `sha256:${Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** A week: longer than any retry schedule, short enough to bound a replay. */
+export const DEFAULT_MAX_EVENT_AGE_HOURS = 168;
+
+/** WILLO_MAX_EVENT_AGE_HOURS, or the default for anything that is not a positive number. */
+export function willoMaxEventAgeHours(env: EnvReader): number {
+  const value = Number(envText(env, 'WILLO_MAX_EVENT_AGE_HOURS'));
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_MAX_EVENT_AGE_HOURS;
+}
+
+/**
+ * A delivery whose own time (occurred_at / created_at / timestamp in the
+ * body) is older than the window. A delivery that names no time, or one the
+ * receiver cannot read, is not stale: there is nothing to judge, and the
+ * database's key still stops an exact replay.
+ */
+export function isStaleEvent(occurredAt: string | null, nowMs: number, maxAgeHours: number): boolean {
+  if (!occurredAt) return false;
+  const ms = Date.parse(occurredAt);
+  if (!Number.isFinite(ms)) return false;
+  return nowMs - ms > maxAgeHours * 3_600_000;
 }
 
 // ---------------------------------------------------------------------

@@ -5395,6 +5395,38 @@ export type Database = {
           },
         ];
       };
+      willo_deliveries: {
+        Row: {
+          applied_at: string;
+          delivery_key: string;
+          event: string;
+          staff_id: string | null;
+          willo_candidate_id: string;
+        };
+        Insert: {
+          applied_at?: string;
+          delivery_key: string;
+          event: string;
+          staff_id?: string | null;
+          willo_candidate_id: string;
+        };
+        Update: {
+          applied_at?: string;
+          delivery_key?: string;
+          event?: string;
+          staff_id?: string | null;
+          willo_candidate_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       checkin_monitor_v: {
@@ -9337,6 +9369,10 @@ export type Database = {
       };
       finance_reports_due: { Args: { p_now?: string }; Returns: boolean };
       finish_break: { Args: { p_booking: string }; Returns: Json };
+      forget_other_push_subscriptions: {
+        Args: { p_keep_endpoint?: string };
+        Returns: number;
+      };
       forget_push_subscription: {
         Args: { p_endpoint: string };
         Returns: undefined;
@@ -9746,6 +9782,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      office_session_policy: { Args: never; Returns: Json };
       office_saved_view_query_ok: {
         Args: { p_query: Json; p_scope: string };
         Returns: boolean;
@@ -11763,6 +11800,7 @@ export type Database = {
       willo_accept_with_account: {
         Args: {
           p_at: string;
+          p_delivery_key?: string;
           p_details: Json;
           p_event: string;
           p_user: string;
@@ -11770,6 +11808,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      willo_delivery_seen: { Args: { p_key: string }; Returns: boolean };
       willo_event_plan: {
         Args: { p_event: string; p_willo_candidate_id: string };
         Returns: Json;
@@ -11807,6 +11846,7 @@ export type Database = {
       willo_record_event: {
         Args: {
           p_at?: string;
+          p_delivery_key?: string;
           p_details?: Json;
           p_event: string;
           p_willo_candidate_id: string;

@@ -83,6 +83,12 @@ vi.mock('@supabase/ssr', () => ({
       },
       getUser: async () => ({ data: { user: { app_metadata: { role: 'admin' }, factors: [] } } }),
     },
+    // office_session_policy() (ADR-0164): two-step optional here; this file
+    // is about the cookies' lifetime, not the enrol step.
+    rpc: async () => ({
+      data: { twoStepRequired: false, sessionMaxHours: 12, sessionStartedAt: null },
+      error: null,
+    }),
   }),
 }));
 

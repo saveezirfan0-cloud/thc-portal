@@ -91,6 +91,13 @@ export interface SettingsData {
    * hides it.
    */
   clientPortalPhone: string;
+  /**
+   * ADR-0164: two-step sign-in compulsory for every Back Office login
+   * (`office_two_step_required`), and how long one sign-in lasts
+   * (`office_session_max_hours`). The database enforces both.
+   */
+  officeTwoStepRequired: boolean;
+  officeSessionMaxHours: number;
   problem: string | null;
 }
 
