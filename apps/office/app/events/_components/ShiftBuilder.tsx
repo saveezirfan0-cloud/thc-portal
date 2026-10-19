@@ -541,6 +541,7 @@ export function ShiftBuilder({
                 booked={role.id ? (booked[role.id] ?? 0) : 0}
                 locked={readOnly}
                 series={seriesContext}
+                {...(saved?.id ? { boardHref: `/events/${saved.id}` } : {})}
                 onChange={(patch) =>
                   patch.roleId !== undefined
                     ? pickRole(role.key, patch.roleId)

@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import Link from 'next/link';
 import { Alert, Button, Input, Pill, Select, TimeField, useTimeFormat } from '@thc/ui';
 import {
   type EditableField,
@@ -70,6 +71,8 @@ export interface RoleSectionProps {
   locked: boolean;
   /** ADR-0117: is this event one day of a multi-day job (or a Duplicate of one)? */
   series: SeriesContext;
+  /** The saved event's board, where Withdraw and Cancel event live (edit mode only). */
+  boardHref?: string;
   /** ADR-0061: false for an office role without finance — no rate fields, no margin. */
   ratesVisible: boolean;
   onChange: (patch: Partial<RoleDraft>) => void;
@@ -90,6 +93,7 @@ export function RoleSection({
   original,
   locked,
   series,
+  boardHref,
   ratesVisible,
   onChange,
   onRemove,
@@ -185,7 +189,15 @@ export function RoleSection({
             invisible to a keyboard and a touch screen (release audit). */}
         {booked > 0 ? (
           <span className="rh-why muted xs" id={`${fieldId}-remove-why`}>
-            Remove is off: this section has people on it. Withdraw them on the event board first.
+            Remove is off: this section has people on it. To take the whole event off the schedule,
+            use <b>Cancel event</b> on the event board
+            {boardHref ? (
+              <>
+                {' '}
+                (<Link href={boardHref}>open the board</Link>)
+              </>
+            ) : null}
+            ; to drop only this role, withdraw its people there first.
           </span>
         ) : null}
       </div>
