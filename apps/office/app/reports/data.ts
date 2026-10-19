@@ -401,12 +401,17 @@ export async function loadInvoiceEvent(eventId: string): Promise<InvoiceEventDet
   if (!dated.data) return empty;
 
   const day = dated.data.event_date;
-  const [list, lines, violations] = await Promise.all([
-    readInvoiceEvents(db, day, day),
+  // The verdict and its fingerprint FIRST, then what the page shows: the
+  // lines and violations are then the same as, or newer than, the state
+  // the fingerprint vouches for, and a change in between makes the
+  // sign-off refuse (changed_since_viewed) rather than pass unseen.
+  const list = await readInvoiceEvents(db, day, day);
+  if (list.error) return { ...empty, problem: explain(list.error) };
+  const [lines, violations] = await Promise.all([
     db.rpc('invoice_event_lines', { p_event: eventId }),
     db.rpc('invoice_event_violations', { p_event: eventId }),
   ]);
-  const error = list.error ?? lines.error ?? violations.error;
+  const error = lines.error ?? violations.error;
   if (error) return { ...empty, problem: explain(error) };
   return {
     problem: null,

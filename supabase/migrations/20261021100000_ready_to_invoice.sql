@@ -57,7 +57,8 @@
 -- ---------------------------------------------------------------------
 create table public.event_invoice_signoffs (
   event_id      uuid primary key references public.events(id) on delete cascade,
-  signed_off_by uuid not null references public.profiles(id),
+  -- Null once that office account is deleted; audit_log keeps who it was.
+  signed_off_by uuid references public.profiles(id) on delete set null,
   signed_off_at timestamptz not null default now(),
   note          text not null check (btrim(note) <> ''),
   -- invoice_event_fingerprint() at the moment of the sign-off.
@@ -98,23 +99,27 @@ language sql
 stable
 set search_path = public, extensions
 as $$
+  -- row(...)::text keeps every field positional, NULLs included, so a
+  -- pending line can never encode the same as a settled one.
   select md5(
     coalesce((
-      select string_agg(concat_ws(':', v.id, v.type, v.resolved, v.actual_finish_at), ',' order by v.id)
+      select string_agg(row(v.id, v.type, v.resolved, v.minutes_late, v.actual_finish_at,
+                            v.resolved_by, v.resolution_note)::text, ',' order by v.id)
         from violations v
         join bookings b            on b.id = v.booking_id
         join shift_requirements sr on sr.id = b.shift_id
        where sr.event_id = p_event), '')
     || '|' ||
     coalesce((
-      select string_agg(concat_ws(':', l.booking_id, l.kind, l.status, l.payable_min, l.invoicing),
+      select string_agg(row(l.booking_id, l.kind, l.status, l.check_in_at, l.check_out_at,
+                            l.unpaid_break_min, l.payable_min, l.charge_rate, l.invoicing)::text,
                         ',' order by l.booking_id)
         from report_payroll_lines_v l
        where l.event_id = p_event), ''))
 $$;
 
 comment on function public.invoice_event_fingerprint(uuid) is
-  'ADR-0168: md5 over every violation (id, type, resolved, finish) and every shift line (booking, kind, status, payable minutes, amount) of an event. A sign-off stores it; a different value later means something changed. Internal: called from the definer functions below, which run it as the owner.';
+  'ADR-0168: md5 over every violation (id, type, resolved, minutes late, finish, resolver, note) and every shift line (booking, kind, status, check-in, check-out, break, payable minutes, charge rate, amount) of an event. A sign-off stores it; a different value later means something changed. Internal: called from the definer functions below, which run it as the owner.';
 
 revoke execute on function public.invoice_event_fingerprint(uuid) from public, anon, authenticated;
 

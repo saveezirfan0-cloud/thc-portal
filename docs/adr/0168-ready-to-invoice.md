@@ -48,8 +48,13 @@ status is the first of these steps that fails:
   managers. It needs finance (`assert_finance_caller`) and write (`office_can('write')`), and the
   viewer guard on the table refuses a viewer regardless. The note is mandatory, as for every
   violation resolution (§9.5). Each sign-off is written to `audit_log` as `invoice.signed_off`.
+  The page reads the event's verdict and fingerprint before its lines and violations, so what
+  the manager sees is never older than the fingerprint they sign. The fingerprint is a
+  concurrency check, not proof that anyone looked: an owner or manager is trusted to.
 - **Stale by fingerprint.** The sign-off stores an md5 over every violation on the event (id,
-  type, resolved, finish time) and every line (booking, kind, status, payable minutes, amount).
+  type, resolved, minutes late, finish time, resolver, note) and every line (booking, kind,
+  status, check-in, check-out, break, payable minutes, charge rate, amount). The PO Number,
+  client and title are not in it: the event edit lock fixes them once the event has started.
   Anything that changes after the sign-off sends the event back to Needs review: a violation
   raised, resolved or voided (ADR-0151), or a check-in/out corrected. The screen sends the
   fingerprint it was drawn from, and the database refuses the sign-off if it no longer matches

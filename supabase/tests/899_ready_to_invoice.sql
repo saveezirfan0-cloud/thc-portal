@@ -15,7 +15,7 @@
 -- Charge: Waiting £22.97/h, so 4 h = 91.88.
 -- =====================================================================
 begin;
-select plan(49);
+select plan(51);
 \ir _shared/fixtures.psql
 
 \set r_wait '89900000-0000-4000-8000-000000000001'
@@ -237,7 +237,7 @@ select throws_ok(
 reset role;
 
 -- =====================================================================
--- 39-49 · Signed off, exported, then stale
+-- 39-51 · Signed off, exported, then stale
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -279,6 +279,22 @@ select is((select status from invoice_events('2024-11-12', '2024-11-12') i
   'a violation raised after the sign-off sends the event back to review');
 select is((select count(*)::int from invoice_export_rows('2024-11-12', '2024-11-12')), 0,
   'and its lines leave the export until it is signed off again');
+
+-- Signed off again, then a check-in corrected inside the window: the hours
+-- do not move (paid from the start, RULE-01), the record does.
+select is(
+  (sign_off_event_invoice((select event_id from ev where name = 'Clean'), 'Late agreed with the client',
+     (select fingerprint from invoice_events('2024-11-12', '2024-11-12') i
+       where i.event_id = (select event_id from ev where name = 'Clean'))) ->> 'decision'),
+  'signed_off', 'signed off again after the review');
+reset role;
+update check_logs set check_in_at = '2024-11-12 11:55+00'
+ where booking_id = (select id from bk where name = 'e1w2');
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select signoff_stale from invoice_events('2024-11-12', '2024-11-12') i
+            where i.event_id = (select event_id from ev where name = 'Clean')), true,
+  'a corrected check-in makes the sign-off stale even when the amount is unchanged');
 select is((select signoff_stale from invoice_events('2024-11-12', '2024-11-12') i
             where i.event_id = (select event_id from ev where name = 'Clean')), true, 'and says the sign-off is stale');
 reset role;
