@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockBanner,
+  blockStamp,
+  weeklyLimitFact,
   canBlock,
   canReset,
   complianceSummary,
@@ -329,6 +331,49 @@ describe('the blocked banner says how THIS block lifts (§9.6, §4.3, §10.7)', 
       const banner = blockBanner({ block_kind: kind, block_reason: null });
       expect(`${banner.title} ${banner.detail}`).not.toMatch(/§|RULE-/);
     }
+  });
+});
+
+describe('the manual block line: who, when, what was released (§9.6, wireframe)', () => {
+  const audit = {
+    action: 'block_manual',
+    at: '2026-09-17T15:20:00Z',
+    actor_name: 'Gisela M.',
+    released: 2,
+    withdrawn: 1,
+  };
+
+  it('names the manager, the UK time and the cascade', () => {
+    expect(blockStamp(audit)).toBe(
+      'Manual block by Gisela M. · 17.09.2026 16:20 UK time · 2 future bookings released · 1 invitation withdrawn',
+    );
+  });
+
+  it('says when there was nothing to release', () => {
+    expect(blockStamp({ ...audit, released: 0, withdrawn: 0 })).toBe(
+      'Manual block by Gisela M. · 17.09.2026 16:20 UK time · no future bookings to release',
+    );
+  });
+
+  it('draws nothing for an Unblock row or a failed read', () => {
+    expect(blockStamp({ ...audit, action: 'unblock' })).toBeNull();
+    expect(blockStamp(null)).toBeNull();
+  });
+});
+
+describe('the weekly limit fact (§9.6, §4.4, wireframe)', () => {
+  it('a blocked worker cannot be booked, so no limit is stated', () => {
+    expect(weeklyLimitFact('blocked', '20 h — term time until 13.12.2026')).toEqual({
+      text: '— (blocked, cannot be booked)',
+      muted: true,
+    });
+  });
+
+  it('everyone else reads the calculated band', () => {
+    expect(weeklyLimitFact('compliant', '20 h — term time until 13.12.2026')).toEqual({
+      text: '20 h — term time until 13.12.2026',
+      muted: false,
+    });
   });
 });
 

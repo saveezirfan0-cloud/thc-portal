@@ -151,6 +151,55 @@ export function blockBanner(profile: {
 }
 
 /**
+ * The header's "Weekly limit" fact (§9.6). A blocked worker cannot be
+ * booked at all, so there is no limit to state — the wireframe's blocked
+ * profile reads "— (blocked, cannot be booked)" (§4.4: "there is no cap to
+ * calculate because the worker is already blocked"). Everyone else gets
+ * the calculated band in words (`capReason`).
+ */
+export function weeklyLimitFact(status: string, capWhy: string): { text: string; muted: boolean } {
+  return status === 'blocked'
+    ? { text: '— (blocked, cannot be booked)', muted: true }
+    : { text: capWhy, muted: false };
+}
+
+/** The latest manual Block / Unblock on this worker (`staff_block_audit_v`). */
+export interface BlockAudit {
+  action: string;
+  at: string;
+  actor_name: string | null;
+  released: number | null;
+  withdrawn: number | null;
+}
+
+/**
+ * The line under a manual block's reason (§9.6, wireframe): who pressed
+ * Block, when (UK time, an audit stamp — §1.8), and what the cascade
+ * released — "Manual block by Gisela M. · 17.09.2026 16:20 UK time · 2
+ * future bookings released · 1 invitation withdrawn". Null when there is
+ * no Block row to read (the read failed, or the latest row is an Unblock).
+ */
+export function blockStamp(
+  audit: BlockAudit | null | undefined,
+  format?: TimeFormat,
+): string | null {
+  if (!audit || audit.action !== 'block_manual') return null;
+  const by = audit.actor_name ? ` by ${audit.actor_name}` : '';
+  const parts = [`Manual block${by} · ${formatUkStamp(audit.at, format)}`];
+  const released = audit.released ?? 0;
+  parts.push(
+    released === 0
+      ? 'no future bookings to release'
+      : `${released} future ${released === 1 ? 'booking' : 'bookings'} released`,
+  );
+  const withdrawn = audit.withdrawn ?? 0;
+  if (withdrawn > 0) {
+    parts.push(`${withdrawn} ${withdrawn === 1 ? 'invitation' : 'invitations'} withdrawn`);
+  }
+  return parts.join(' · ');
+}
+
+/**
  * A declaration's review state in words (§9.6). The enum is never printed:
  * nobody reads "superseded" as a decision.
  */
