@@ -177,9 +177,14 @@ describe('New Starter CSV (§9.9 Tab 3)', () => {
     staff_name: 'Chen Wei',
     employee_id: 960,
     ni_number: 'QQ123456A',
-    home_address: 'Flat 4, 12 Exhibition Rd, London',
+    home_address: 'Flat 4, 12 Exhibition Rd, London SW7 2HE',
+    address_line_1: 'Flat 4',
+    address_line_2: '12 Exhibition Rd',
+    address_line_3: null,
+    town: 'London',
     postcode: 'SW7 2HE',
     country: 'United Kingdom',
+    passport_country: 'China',
     date_of_birth: '2003-11-21',
     gender: 'M',
     first_shift_date: '2026-09-10',
@@ -192,15 +197,38 @@ describe('New Starter CSV (§9.9 Tab 3)', () => {
 
   it('has exactly the confirmed columns, bank details last — no role, no salutation', () => {
     expect(lines(newStarterCsv([]))[0]).toBe(
-      'Staff,Employee ID,NI Number,Home address,Postcode,Country,Date of birth,Gender,First shift date,HMRC Statement,Student Loan,Account holder,Sort code,Account number',
+      'Staff,Employee ID,NI Number,Home address,Address line 1,Address line 2,Address line 3,Town / City,Postcode,Country,Passport country,Date of birth,Gender,First shift date,HMRC Statement,Student Loan,Account holder,Sort code,Account number',
     );
     expect(NEW_STARTER_CSV_COLUMNS).not.toContain('Role');
   });
 
   it('writes the full NI number and bank details, quotes the comma-bearing address and uses DD/MM/YYYY', () => {
     expect(lines(newStarterCsv([chen]))[1]).toBe(
-      'Chen Wei,THC-00960,QQ123456A,"Flat 4, 12 Exhibition Rd, London",SW7 2HE,United Kingdom,21/11/2003,M,10/09/2026,B,Plan 2,Chen Wei,40-47-84,07313310',
+      'Chen Wei,THC-00960,QQ123456A,"Flat 4, 12 Exhibition Rd, London SW7 2HE",Flat 4,12 Exhibition Rd,,London,SW7 2HE,United Kingdom,China,21/11/2003,M,10/09/2026,B,Plan 2,Chen Wei,40-47-84,07313310',
     );
+  });
+
+  it('carries the address in its own fields beside the full line, and the passport country (ADR-0159)', () => {
+    const cells = lines(newStarterCsv([chen]))[1]!;
+    const head = lines(newStarterCsv([]))[0]!.split(',');
+    expect(head.indexOf('Home address')).toBeLessThan(head.indexOf('Address line 1'));
+    expect(head.indexOf('Country') + 1).toBe(head.indexOf('Passport country'));
+    expect(cells).toContain(',Flat 4,12 Exhibition Rd,,London,SW7 2HE,');
+  });
+
+  it('leaves the passport country and the address lines blank when none is on file', () => {
+    const row = {
+      ...chen,
+      home_address: null,
+      address_line_1: null,
+      address_line_2: null,
+      address_line_3: null,
+      town: null,
+      postcode: null,
+      country: null,
+      passport_country: null,
+    };
+    expect(lines(newStarterCsv([row]))[1]).toContain('QQ123456A,,,,,,,,,21/11/2003');
   });
 
   it('leaves bank details blank for a starter who has not given them yet', () => {

@@ -415,6 +415,36 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
 }
 
 // ---------------------------------------------------------------------
+// Passport country (ADR-0159) — set_staff_passport_country. The country
+// that issued the passport, a name off the fixed list, for the New Starter
+// (HMRC) report; the AI read of a passport fills it only when blank.
+// ---------------------------------------------------------------------
+const PASSPORT_COUNTRY_MESSAGES: Readonly<Record<string, string>> = {
+  unknown_country: 'Choose a country from the list.',
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  not_authorised: NOT_ALLOWED,
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function savePassportCountry(
+  staffId: string,
+  country: string | null,
+): Promise<ActionResult> {
+  const result = await callRpc(
+    'set_staff_passport_country',
+    { p_staff: staffId, p_country: country },
+    staffId,
+  );
+  return result.ok
+    ? result
+    : {
+        ok: false,
+        message: PASSPORT_COUNTRY_MESSAGES[result.message] ?? staffErrorMessage(result.message),
+      };
+}
+
+// ---------------------------------------------------------------------
 // Right-to-work branch — record_right_to_work_change (completion letter
 // requirement §7). The branch a worker picked in the wizard is only their
 // own reading of §2.5; when gov.uk's answer shows it was the wrong one

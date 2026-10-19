@@ -147,14 +147,22 @@ export function payrollCsv(rows: readonly PayrollCsvRow[]): string {
  * HMRC Statement (A/B/C) · Student Loan. No role, no salutation.
  * 13.10.2026 (ADR-0130): the worker's bank details follow — Account holder ·
  * Sort code · Account number — so payroll sets a starter up from one file.
+ * 19.10.2026 (ADR-0159): the home address also in separate fields —
+ * Address line 1 · 2 · 3 · Town / City, beside the full line, which stays —
+ * and Passport country after Country.
  */
 export const NEW_STARTER_CSV_COLUMNS = [
   'Staff',
   'Employee ID',
   'NI Number',
   'Home address',
+  'Address line 1',
+  'Address line 2',
+  'Address line 3',
+  'Town / City',
   'Postcode',
   'Country',
+  'Passport country',
   'Date of birth',
   'Gender',
   'First shift date',
@@ -170,8 +178,15 @@ export interface NewStarterCsvRow {
   employee_id: number | null;
   ni_number: string | null;
   home_address: string | null;
+  /** The same address in its parts — new_starter_address_parts() (ADR-0159). */
+  address_line_1: string | null;
+  address_line_2: string | null;
+  address_line_3: string | null;
+  town: string | null;
   postcode: string | null;
   country: string | null;
+  /** The country that issued the passport, by name (ADR-0159). */
+  passport_country: string | null;
   date_of_birth: string | null;
   gender: string | null;
   first_shift_date: string | null;
@@ -190,8 +205,13 @@ export function newStarterCsvRows(rows: readonly NewStarterCsvRow[]): string[][]
     // The full number, unmasked: this file goes to payroll, not a screen.
     textCell(row.ni_number),
     textCell(row.home_address),
+    textCell(row.address_line_1),
+    textCell(row.address_line_2),
+    textCell(row.address_line_3),
+    textCell(row.town),
     textCell(row.postcode),
     textCell(row.country),
+    textCell(row.passport_country),
     ukDateFromIsoDate(row.date_of_birth),
     textCell(row.gender),
     ukDateFromIsoDate(row.first_shift_date),

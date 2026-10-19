@@ -53,6 +53,13 @@ export interface ExtractionResult {
   /** Completion letter: the course completion / award date (§4.5). */
   completionDate: string | null;
   awardingInstitution: string | null;
+  /**
+   * Passport: the country that issued it, by name, from the issuing-state
+   * code in the machine-readable zone (ADR-0159). Null when unread or off
+   * the list. Not part of the confidence: lib/extract.ts hands it to
+   * `record_passport_country()`, which only ever fills a blank.
+   */
+  passportCountry?: string | null;
   /** 0–1. Below the threshold in settings, the office sees "needs manual review". */
   confidence: number;
   /** The provider's raw answer, kept on the row for the reviewer (ai_extracted). */

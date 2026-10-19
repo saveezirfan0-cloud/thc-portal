@@ -313,6 +313,12 @@ export interface ProfileData {
    */
   gender?: 'M' | 'F' | null;
   /**
+   * `staff.passport_country` — the country that issued the passport, for the
+   * New Starter (HMRC) report (ADR-0159). Null = not on file; undefined =
+   * not read.
+   */
+  passportCountry?: string | null;
+  /**
    * `staff.spudbros_express` / `staff.thc_shifts_enabled` (ADR-0106):
    * SpudBros Express staff, and whether THC scheduling is switched on for
    * them. Undefined = not read.
