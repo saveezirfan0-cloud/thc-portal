@@ -32,7 +32,6 @@ vi.mock('@thc/db/admin', () => ({
     storage: { from: () => ({ remove: (paths: string[]) => remove(paths) }) },
   }),
 }));
-vi.mock('@thc/db/browser', () => ({ createClient: vi.fn() }));
 
 const { finishShareCode } = await import('../actions');
 const { UploadForm } = await import('../_components/UploadForm');

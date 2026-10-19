@@ -181,7 +181,7 @@ function OfferCard({ offer, format }: { offer: OpenOffer; format: TimeFormat }) 
         <Pill tone="cyan">{UP_FOR_GRABS}</Pill>
         <span className="right km">{formatDistance(offer.distanceKm)}</span>
       </div>
-      <Link className="t" href={`/radar/offers/${offer.offerId}`}>
+      <Link className="t" href={`/radar/offers/${offer.offerId}`} prefetch={false}>
         {offer.eventTitle} · {offer.role}
       </Link>
       <div className="m">
@@ -194,7 +194,7 @@ function OfferCard({ offer, format }: { offer: OpenOffer; format: TimeFormat }) 
         {/* §1.8: a scheduled close — the viewer's own clock too, when it differs. */}
         <YourTimeAt at={offer.expiresAt} />
       </div>
-      <Link className="btn outline block" href={`/radar/offers/${offer.offerId}`}>
+      <Link className="btn outline block" href={`/radar/offers/${offer.offerId}`} prefetch={false}>
         View &amp; take
       </Link>
     </div>
@@ -219,7 +219,7 @@ function RadarCard({
         {shift.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
         <span className="right km">{formatDistance(shift.distanceKm)}</span>
       </div>
-      <Link className="t" href={`/radar/${shift.shiftId}`}>
+      <Link className="t" href={`/radar/${shift.shiftId}`} prefetch={false}>
         {shift.eventTitle} · {shift.role}
       </Link>
       <div className="m">
@@ -275,7 +275,7 @@ function RadarCard({
           Limit Reached
         </button>
       ) : (
-        <Link className="btn outline block" href={`/radar/${shift.shiftId}`}>
+        <Link className="btn outline block" href={`/radar/${shift.shiftId}`} prefetch={false}>
           View &amp; apply
         </Link>
       )}

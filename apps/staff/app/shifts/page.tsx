@@ -163,7 +163,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                       <ShiftTime startsAt={shift.startsAt} endsAt={shift.endsAt} withDate />
                     </span>
                   </div>
-                  <Link className="t" href={`/radar/${shift.shiftId}`}>
+                  <Link className="t" href={`/radar/${shift.shiftId}`} prefetch={false}>
                     {shift.eventTitle} · {shift.role}
                   </Link>
                   <div className="m">
@@ -331,7 +331,15 @@ function ShiftCardView({
         </span>
       </div>
 
-      <Link className="t" href={`/shifts/${booking.bookingId}`}>
+      {/* Only today's card prefetches (the check-in is behind it). A card
+          link on every row prefetched each one as it scrolled into view, and
+          again on every return to the tab once a refresh had cleared the
+          router's cache. Each is a request through the middleware. */}
+      <Link
+        className="t"
+        href={`/shifts/${booking.bookingId}`}
+        prefetch={card === 'today' ? undefined : false}
+      >
         {booking.eventTitle} · {booking.role}
       </Link>
       {/* §10.4: "the venue address sits under the name". The name is what a
@@ -469,7 +477,7 @@ function CardChips({ card, booking }: { card: MyShiftCard; booking: BookingRow }
  */
 function PastShiftRow({ booking }: { booking: BookingRow }) {
   return (
-    <Link className="past-row" href={`/shifts/${booking.bookingId}`}>
+    <Link className="past-row" href={`/shifts/${booking.bookingId}`} prefetch={false}>
       <span className="past-date mono">
         {formatDateIn(booking.startsAt, UK_ZONE, { weekday: 'short' })}
       </span>

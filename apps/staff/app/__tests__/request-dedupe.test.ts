@@ -29,12 +29,20 @@ vi.mock('react', async (importOriginal) => {
 });
 
 const rpc = vi.fn(async (fn: string) => ({
-  data: fn === 'staff_me' ? { staff_id: 's1', first_name: 'Amara' } : [],
+  data:
+    fn === 'staff_me' ? { staff_id: 's1', first_name: 'Amara', photoPath: 's1/selfie-1.jpg' } : [],
+  error: null,
+}));
+const createSignedUrl = vi.fn(async (path: string) => ({
+  data: { signedUrl: `https://abc.supabase.co/sign/photos/${path}?token=t` },
   error: null,
 }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('@thc/db/server', () => ({
-  createClient: () => ({ rpc: (fn: string) => rpc(fn) }),
+  createClient: () => ({
+    rpc: (fn: string) => rpc(fn),
+    storage: { from: () => ({ createSignedUrl: (path: string) => createSignedUrl(path) }) },
+  }),
 }));
 
 beforeEach(() => {
@@ -53,6 +61,28 @@ describe('the shell and the page share their reads', () => {
     expect(calls('staff_me')).toBe(1);
   });
 
+  // Go-live audit M5: the header avatar is signed while the page's own
+  // second wave runs, not after it. Documents was staff_me → (documents,
+  // right-to-work) → sign; it is now staff_me → (documents, right-to-work,
+  // sign).
+  it('starts signing the header avatar as soon as staff_me() names it, once', async () => {
+    const { readProfile } = await import('../profile/data');
+    const { signOwnPhoto } = await import('../profile/photos');
+    const { preloadShell } = await import('../_components/preloadShell');
+    preloadShell();
+    await readProfile();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Signed before the shell (or the page) has asked for it.
+    expect(createSignedUrl).toHaveBeenCalledTimes(1);
+    expect(createSignedUrl).toHaveBeenCalledWith('s1/selfie-1.jpg');
+    // The shell's own call is handed the same signature.
+    expect(await signOwnPhoto('s1/selfie-1.jpg')).toContain('/sign/photos/s1/selfie-1.jpg');
+    expect(createSignedUrl).toHaveBeenCalledTimes(1);
+  });
+
+  // `findOpenShift` is not in this list: since ADR-0154 /radar/[id] asks
+  // `staff_open_shifts(p_shift)` for its one row rather than reading the
+  // whole list, so it is a call of its own by design.
   it('each list loader is one call however often it is asked', async () => {
     const data = await import('../data');
     const offers = await import('../shifts/offers-data');
@@ -63,7 +93,7 @@ describe('the shell and the page share their reads', () => {
       data.loadShiftRequirements(),
       data.loadShiftRequirements(),
       data.loadOpenShifts(),
-      data.findOpenShift('s1'),
+      data.loadOpenShifts(),
       data.loadWeekMeter(),
       data.loadWeekMeter(),
       offers.loadBookingOffers(),

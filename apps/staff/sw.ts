@@ -23,9 +23,15 @@
  */
 import { defaultCache } from '@serwist/next/worker';
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
-import { NetworkOnly, Serwist } from 'serwist';
+import { CacheFirst, ExpirationPlugin, NetworkOnly, Serwist } from 'serwist';
 import { type BadgeNavigator, bumpAppBadge } from './lib/app-badge';
-import { deletePersonalCaches, isStaticAsset } from './lib/sw-cache';
+import {
+  BUILD_ASSET_CACHE,
+  deletePersonalCaches,
+  deleteSupersededCaches,
+  isBuildAsset,
+  isStaticAsset,
+} from './lib/sw-cache';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -106,10 +112,44 @@ const CROSS_ORIGIN_IS_NEVER_CACHED = {
   handler: new NetworkOnly(),
 };
 
+/**
+ * The build's own files, `_next/static/…`: scripts, stylesheets, fonts.
+ * Only a few are precached (lib/sw-precache.ts, go-live audit M4); the
+ * rest load the first time a screen needs them and are kept here.
+ *
+ * Cache first, because every one of them is content-hashed: a URL never
+ * names two different files, so a hit can never be stale. A new build is
+ * new URLs, which miss and go to the network. `defaultCache` split these
+ * three ways and kept them for 24 hours, then fetched them again
+ * (`next-static-js-assets`, `static-style-assets`, and
+ * `static-font-assets`, which held only 4 of the app's 12 font files).
+ * Now it is one cache, kept for 30 days from last use. Old builds' chunks
+ * age out, least recently used first.
+ *
+ * None of it is personal: these are the same bytes for every worker, and
+ * `isBuildAsset` matches nothing outside `/_next/static/`.
+ */
+const BUILD_ASSETS_ARE_CACHE_FIRST = {
+  matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+    sameOrigin && isBuildAsset(url),
+  handler: new CacheFirst({
+    cacheName: BUILD_ASSET_CACHE,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 256,
+        maxAgeSeconds: 30 * 24 * 60 * 60,
+        maxAgeFrom: 'last-used',
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+};
+
 const RUNTIME_CACHING = [
   PAGES_ARE_NEVER_CACHED,
   ONLY_STATIC_ASSETS_ARE_CACHED,
   CROSS_ORIGIN_IS_NEVER_CACHED,
+  BUILD_ASSETS_ARE_CACHE_FIRST,
   ...defaultCache,
 ];
 
@@ -143,11 +183,19 @@ serwist.addEventListeners();
 
 /**
  * Runtime caches an earlier build could have filled with personal data
- * (lib/sw-cache.ts `PERSONAL_CACHES`) are deleted on every activate; the
- * precache, the static-asset caches and the badge count are kept.
+ * (lib/sw-cache.ts `PERSONAL_CACHES`) are deleted on every activate, and so
+ * are the three `defaultCache` kept build files in before they had a cache
+ * of their own (`SUPERSEDED_CACHES`). Nothing writes to those three any
+ * more, so their entries would never expire. The precache, the build-file
+ * and image caches and the badge count are kept.
  */
 self.addEventListener('activate', (event) => {
-  event.waitUntil(deletePersonalCaches(self.caches).catch(() => undefined));
+  event.waitUntil(
+    Promise.all([
+      deletePersonalCaches(self.caches).catch(() => undefined),
+      deleteSupersededCaches(self.caches).catch(() => undefined),
+    ]),
+  );
 });
 
 /**

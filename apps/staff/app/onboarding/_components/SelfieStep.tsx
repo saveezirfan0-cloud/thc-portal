@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Avatar, Button } from '@thc/ui';
-import { createClient } from '@thc/db/browser';
+import { putSignedUpload } from '../../_lib/signed-upload';
 import { confirmSelfie, saveSelfie, startSelfieUpload } from '../actions';
 import { WizardFoot, WizardTop } from './Wizard';
 
@@ -18,8 +18,9 @@ import { WizardFoot, WizardTop } from './Wizard';
  *
  * `capture="user"` opens the front camera on a phone. The image is cropped
  * square and downscaled on the device, as the profile screen does, and
- * uploaded by the worker's OWN session into `photos/<staff_id>/…`
- * (photos_worker_insert_own) — no service key.
+ * uploaded into `photos/<staff_id>/…` through a URL the worker's OWN
+ * session signed (photos_worker_insert_own) — no service key, and no
+ * Supabase client in the browser (app/_lib/signed-upload.ts).
  */
 const MAX_EDGE = 512;
 
@@ -63,12 +64,8 @@ export function SelfieStep({
     start(async () => {
       const slot = await startSelfieUpload();
       if (!slot.ok) return setError(slot.message);
-      const supabase = createClient();
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(slot.path, blob, { contentType: 'image/jpeg', upsert: false });
-      if (uploadError)
-        return setError('That upload didn’t finish. Check your connection and try again.');
+      const sent = await putSignedUpload(slot.url, blob, 'image/jpeg');
+      if (!sent) return setError('That upload didn’t finish. Check your connection and try again.');
       const saved = await saveSelfie(slot.path);
       if (!saved.ok) return setError(saved.message);
       router.push('/onboarding/4');

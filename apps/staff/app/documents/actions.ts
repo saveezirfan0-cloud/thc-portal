@@ -44,8 +44,10 @@ import type { ActionResult } from './types';
  *      `evidenceObjectPath()` — `<staff_id>/<folder>/<uuid>.<ext>`, a fresh
  *      id, never the worker's file name — and has the SERVICE KEY issue a
  *      one-object signed upload for exactly that name.
- *   2. The browser sends the file straight to Storage with that token, and
- *      then a `finish…()` action calls the RPC AS THE WORKER'S SESSION.
+ *   2. The browser sends the file straight to Storage with one PUT to that
+ *      signed URL (app/_lib/signed-upload.ts, no Supabase client in the
+ *      browser), and then a `finish…()` action calls the RPC AS THE
+ *      WORKER'S SESSION.
  *      The RPC judges what Storage actually recorded — real content type
  *      and size, under the caller's own folder — not what the browser said
  *      in step 1 (`evidence_upload_problem()`).
@@ -117,7 +119,11 @@ function reasonText(table: Record<string, string>, raw: string | undefined): str
 export type UploadPurpose =
   { kind: 'document'; docType: string } | { kind: 'completion-letter' } | { kind: 'wtr-optout' };
 
-export type UploadSlot = { ok: true; path: string; token: string } | { ok: false; message: string };
+/**
+ * `url` is Storage's signed upload URL for `path` alone, the token in its
+ * query string. The browser PUTs the file to it and nothing else.
+ */
+export type UploadSlot = { ok: true; path: string; url: string } | { ok: false; message: string };
 
 export async function startUpload(
   purpose: UploadPurpose,
@@ -166,8 +172,8 @@ export async function startUpload(
     const { data, error } = await createAdminClient()
       .storage.from(BUCKET)
       .createSignedUploadUrl(path);
-    if (error || !data?.token) return { ok: false, message: TRY_AGAIN };
-    return { ok: true, path, token: data.token };
+    if (error || !data?.token || !data.signedUrl) return { ok: false, message: TRY_AGAIN };
+    return { ok: true, path, url: data.signedUrl };
   } catch {
     // SUPABASE_SERVICE_ROLE_KEY missing from this deployment: the one
     // server-side secret the upload needs (docs/12). Say "try again"
