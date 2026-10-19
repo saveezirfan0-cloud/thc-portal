@@ -56,3 +56,8 @@ A dashboard reset writes no `audit_log` row, so note it by hand. The `/users` re
 ## Update — the database half (20261001200500)
 
 Decision 1's gap is closed: `current_app_role()` now answers NULL for a Back Office login that has a verified factor while its session is below `aal2`, so a stolen password plus the public anon key reads nothing through the API either. Client Portal and Staff App logins are unaffected. pgTAP 745 pins it.
+
+
+## Update — compulsory (ADR-0164, 20261020130000)
+
+Follow-up 1 is built. `settings.office_two_step_required` (default on, /settings) makes two-step compulsory: the database refuses an office session below aal2 whether or not it has an authenticator, and the middleware sends an aal1 login with none to `/login/enrol`, which reuses the /account set-up. An office sign-in also lasts `settings.office_session_max_hours` (12) from the password.
