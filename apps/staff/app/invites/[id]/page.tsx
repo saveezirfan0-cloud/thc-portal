@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
@@ -46,7 +46,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </StaffShell>
     );
   }
-  if (!invite || invite.status !== 'invited') notFound();
+  if (!invite) notFound();
+  // Answered, taken or gone stale (RULE-16): not a dead end. This is also
+  // the page Accept and Decline re-render the moment they succeed — a 404
+  // was the answer to "Accept shift" until 19.10.2026. An accepted one is a
+  // shift now; anything else goes back to the list.
+  if (invite.status === 'confirmed' || invite.status === 'worked') {
+    redirect(`/shifts/${invite.bookingId}`);
+  }
+  if (!openInvites([invite]).length) redirect('/invites');
 
   const hours = sectionHours({ startsAt: invite.startsAt, endsAt: invite.endsAt });
   const limit = invite.hoursLimit

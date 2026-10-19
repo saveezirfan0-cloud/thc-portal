@@ -27,6 +27,9 @@ vi.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');
   },
+  redirect: (to: string) => {
+    throw new Error(`NEXT_REDIRECT ${to}`);
+  },
 }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('../actions', () => ({
@@ -494,8 +497,25 @@ describe('/invites/:id', () => {
     expect(disabledButton(html, 'Limit Reached')).toBe(true);
   });
 
-  it('a booking that is not an invitation is a 404 here', async () => {
+  // Accept and Decline re-render this very page when they succeed: an
+  // accepted invitation goes to its shift, an answered or stale one back to
+  // the list. A 404 is for a booking the worker does not have at all.
+  it('an accepted invitation goes to its shift, not a 404', async () => {
     await expect(InvitePage({ params: Promise.resolve({ id: 'held-awards' }) })).rejects.toThrow(
+      'NEXT_REDIRECT /shifts/held-awards',
+    );
+  });
+
+  it('a declined, ended or cancelled-event invitation goes back to the list', async () => {
+    for (const id of ['applied-1', 'inv-ended', 'inv-cancelled']) {
+      await expect(InvitePage({ params: Promise.resolve({ id }) })).rejects.toThrow(
+        'NEXT_REDIRECT /invites',
+      );
+    }
+  });
+
+  it('a booking the worker does not have is a 404', async () => {
+    await expect(InvitePage({ params: Promise.resolve({ id: 'nobody' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',
     );
   });
