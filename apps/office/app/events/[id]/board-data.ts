@@ -12,6 +12,7 @@ import {
   seriesPositionLabel,
   showsUnderUnavailable,
 } from '@thc/domain';
+import { mapLimit } from '../../_lib/mapLimit';
 import { signStaffPhotos } from '../../_lib/photos';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
@@ -181,6 +182,9 @@ interface StaffRow {
  */
 const IN_CHUNK = 150;
 
+/** Sections whose candidate pool and calendar are read at the same time (two RPCs each). */
+const SECTION_CALLS = 2;
+
 /** One `shift_offers` row as the board reads it (ADR-0046). */
 interface OfferRow {
   id: string;
@@ -323,8 +327,12 @@ export async function loadBoard(
   );
 
   // Bookings, the candidate pool and the availability calendar per
-  // section — each computed now.
-  const [bookingRes, candidateRes, awayRes, offerRes] = await Promise.all([
+  // section — each computed now. The two per-section RPCs go
+  // SECTION_CALLS sections at a time, not all at once (mapLimit): together
+  // they are the heaviest reads in the office, and a board that fired
+  // 2 × sections of them at once filled the database's connection pool and
+  // timed out every other page with it (19.10.2026).
+  const [bookingRes, perSection, offerRes] = await Promise.all([
     sectionIds.length
       ? supabase
           .from('bookings')
@@ -339,19 +347,15 @@ export async function loadBoard(
     // who does not speak a language the event needs (ADR-0080). Filtered in the
     // database, so the response stays far inside PostgREST's row cap and
     // only the workers the board can show cross the wire.
-    Promise.all(
-      sectionIds.map((id) =>
+    mapLimit(sectionIds, SECTION_CALLS, (id) =>
+      Promise.all([
         supabase
           .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
           .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only,language_not_spoken)'),
-      ),
-    ),
-    // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
-    // A new RPC, typed locally until the Phase 2 type regeneration.
-    Promise.all(
-      sectionIds.map((id) =>
+        // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
+        // A new RPC, typed locally until the Phase 2 type regeneration.
         (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
-      ),
+      ]),
     ),
     // ADR-0046: open offers (the Confirmed-row chips) and completed
     // hand-overs (the section's history line). The office reads
@@ -379,6 +383,8 @@ export async function loadBoard(
       problem: `The shift offers on this event could not be read: ${offerRes.error.message}`,
     };
   }
+  const candidateRes = perSection.map(([candidate]) => candidate);
+  const awayRes = perSection.map(([, unavailable]) => unavailable);
   const bookings = (bookingRes.data ?? []) as Record<string, string | boolean | null>[];
   const offerRows = (offerRes.data ?? []) as OfferRow[];
   const openOffers = new Map<string, BoardOffer>(
