@@ -100,7 +100,7 @@ begin
   for p in
     select * from (values
       ('select \* into sr from shift_requirements where id = b\.shift_id for update;',
-       '-- ADR-0157 (20261019150000): the worker first, then the section, so a
+       '-- ADR-0157 (20261019194000): the worker first, then the section, so a
   -- second confirmation for this worker on another section waits and its
   -- cap and overlap reads below see this one.
   perform lock_worker(b.staff_id);
@@ -110,7 +110,7 @@ begin
   select * into b from bookings where id = p_booking for update;'),
 
       ('if b\.status <> ''invited'' then',
-       '-- A second tap finds the first one''s answer (20261019150000).
+       '-- A second tap finds the first one''s answer (20261019194000).
   if b.status = ''confirmed'' then
     return jsonb_build_object(''ok'', true, ''already'', true, ''withdrawn'', 0, ''closedApplications'', 0);
   end if;
@@ -119,7 +119,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261019150000: accept_invite - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019194000: accept_invite - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -147,14 +147,14 @@ begin
   select shift_id, staff_id into v_shift, v_staff from bookings where id = p_booking;'),
 
       ('select \* into sr from shift_requirements where id = v_shift for update;',
-       '-- ADR-0157 (20261019150000): the worker first, then the section.
+       '-- ADR-0157 (20261019194000): the worker first, then the section.
   perform lock_worker(v_staff);
   \&')
     ) as x(pattern, replacement)
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261019150000: accept_application - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019194000: accept_application - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -174,7 +174,7 @@ begin
   for p in
     select * from (values
       ('select \* into sr from shift_requirements where id = o\.shift_id for update;',
-       '-- ADR-0157 (20261019150000): the taker first — the one worker whose
+       '-- ADR-0157 (20261019194000): the taker first — the one worker whose
   -- hours and overlaps change — then the section, booking, offer below.
   perform lock_worker(v_me);
   \&')
@@ -182,7 +182,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261019150000: take_offered_shift - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019194000: take_offered_shift - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;

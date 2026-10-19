@@ -479,7 +479,7 @@ select bag_eq(
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
             ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v'),
             ('staff_account_activation_v') $$,
-  'the owner-rights views in public are exactly these twenty-three (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135; the identity, bank-mask and document-review views ADR-0163, pinned by 890; staff_account_activation_v ADR-0160, pinned by 886); a new one is a reviewed addition'
+  'the owner-rights views in public are exactly these twenty-three (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135; the identity, bank-mask and document-review views ADR-0163, pinned by 890; staff_account_activation_v ADR-0166, pinned by 886); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text

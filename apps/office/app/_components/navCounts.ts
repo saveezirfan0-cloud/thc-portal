@@ -32,7 +32,7 @@ export async function countComplianceQueue(supabase: QueueCountClient): Promise<
  * the wire and the menu and the screen cannot disagree. Both read
  * admin-only data, so a session that is not the office's counts nothing.
  *
- * The queue is counted by `compliance_review_queue_count()` (ADR-0160),
+ * The queue is counted by `compliance_review_queue_count()` (ADR-0166),
  * `count(*)` over compliance_review_queue_v under the caller's rights. A
  * HEAD `select=*&count=exact` on the view made PostgREST build every column
  * of every item (block reasons, previous rejections, the gov.uk checks) just

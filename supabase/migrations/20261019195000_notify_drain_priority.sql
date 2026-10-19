@@ -136,7 +136,7 @@ alter table notification_outbox
     constraint notification_outbox_priority_class check (priority between 0 and 2);
 
 comment on column notification_outbox.priority is
-  'ADR-0158: claim order, 0 urgent · 1 normal · 2 bulk. Set from notification_priority(template) by notification_outbox_set_priority on insert and on a change of template; never by a caller. Rows settled before 20261019160000 carry the default.';
+  'ADR-0158: claim order, 0 urgent · 1 normal · 2 bulk. Set from notification_priority(template) by notification_outbox_set_priority on insert and on a change of template; never by a caller. Rows settled before 20261019195000 carry the default.';
 
 -- security definer: the trigger fires for whoever inserts, and the mapping
 -- is the service role's. Without it a signed-in caller's insert would fail

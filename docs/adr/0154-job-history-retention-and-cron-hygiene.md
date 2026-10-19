@@ -2,8 +2,8 @@
 
 Status: accepted · 18.10.2026 · **Amends** ADR-0025 (`job_runs_purge`)
 
-Scope v1.6 §7 · `supabase/migrations/20261019120000_job_history_retention.sql` ·
-`20261019120100_cron_http_timeout_and_stagger.sql` · `20261019120200_go_live_read_indexes.sql` ·
+Scope v1.6 §7 · `supabase/migrations/20261019191000_job_history_retention.sql` ·
+`20261019191100_cron_http_timeout_and_stagger.sql` · `20261019191200_go_live_read_indexes.sql` ·
 `packages/db/src/request-timeout.ts`
 
 ## Context

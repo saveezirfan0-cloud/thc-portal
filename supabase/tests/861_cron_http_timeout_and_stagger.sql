@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 861 · pg_cron's HTTP calls: 30 s timeout, staggered minutes
---   20261019120100_cron_http_timeout_and_stagger.sql · ADR-0154
+--   20261019191100_cron_http_timeout_and_stagger.sql · ADR-0154
 --
 -- Pins the registry's minutes — the three the scope fixes (§3.5 12:05
 -- cutoff, §7 05:00 compliance, §9.9 Monday 09:00 finance) are still on

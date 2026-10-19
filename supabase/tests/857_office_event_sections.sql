@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 857 · /events Month and List read their sections and fill counts in
 --       one call (go-live audit 17.10.2026, B2)
---   20261019110000_office_event_sections.sql
+--   20261019190000_office_event_sections.sql
 --
 --   1. Every section of every event DATED in the period, none outside it.
 --   2. The count is the screen's old count exactly: status 'confirmed'

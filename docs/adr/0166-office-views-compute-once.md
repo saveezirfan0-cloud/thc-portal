@@ -1,4 +1,4 @@
-# ADR-0160 · The Back Office's heaviest views compute each fact once
+# ADR-0166 · The Back Office's heaviest views compute each fact once
 
 **Status:** Accepted · 19.10.2026 · **Refines:** ADR-0147 (the directory inside the statement limit), ADR-0155 (RULE-20 helpers planned once; the onboarding view in one pass), ADR-0004 (owner-rights views), ADR-0163 (identity columns leave the API roles: these run after it, on its bodies) · **Reported:** go-live speed work, second wave
 
@@ -102,7 +102,7 @@ it.
 
 `onboarding_quiz_blockers`, `compliance_blockers`, `current_verified_docs`,
 `term_letter_applies`, `doc_expires_on` (6 arguments) and `term_letter_last_day` are plpgsql
-around the **same** SQL body: `return ( … );` or `return query …;`. This is exactly 20261019130000's
+around the **same** SQL body: `return ( … );` or `return query …;`. This is exactly 20261019192000's
 transformation. Pins, security, volatility, defaults, grants and comments are unchanged. The same
 chain runs on every check-in, Staff App start, unblock and document verification, which gain too.
 
@@ -113,7 +113,7 @@ is SECURITY INVOKER, so it is exactly what /compliance lists, and still exact. E
 `authenticated` and `service_role`. `navCounts.ts` calls it by RPC (Vitest `nav-counts.test.ts`).
 `staff_block_reason_v`'s gate becomes `(select current_app_role())`, which the queue reads once
 per item in five branches and `onboarding_returning_v` once per applicant. This is the same
-change `staff_rejection_reason_v` had in 20261019130200.
+change `staff_rejection_reason_v` had in 20261019192200.
 
 ### How the changes are applied
 

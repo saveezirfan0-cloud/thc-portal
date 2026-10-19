@@ -49,7 +49,7 @@
 --       DST pair: neither is a UK wall-clock rule — 03:41 UTC is 03:41 GMT
 --       in winter and 04:41 BST in summer, both before the 05:00 UK
 --       compliance sweep and outside any shift the agency books.
---       install_job_schedules() calls it too (20261019120100), so the
+--       install_job_schedules() calls it too (20261019191100), so the
 --       post-upgrade reinstall (pg_cron is dropped and recreated by an
 --       in-place upgrade) brings them back with everything else.
 --

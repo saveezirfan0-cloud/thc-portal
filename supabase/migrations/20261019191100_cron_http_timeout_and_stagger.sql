@@ -16,7 +16,7 @@
 --     rows) with two changes:
 --       · every command passes timeout_milliseconds := 30000;
 --       · it ends by calling install_housekeeping_schedules()
---         (20261019120000), so the reinstall after a Postgres upgrade —
+--         (20261019191000), so the reinstall after a Postgres upgrade —
 --         which drops and recreates pg_cron — brings back the SQL
 --         housekeeping jobs too. Its return value still counts the
 --         job_schedules rows only, as docs/16 §4.7 says.
@@ -114,7 +114,7 @@ begin
     n := n + 1;
   end loop;
 
-  -- The SQL housekeeping jobs (20261019120000) are not registry rows, but a
+  -- The SQL housekeeping jobs (20261019191000) are not registry rows, but a
   -- reinstall after pg_cron is recreated must bring them back as well. Not
   -- counted: the return value is the registry's, as docs/16 §4.7 reads it.
   perform install_housekeeping_schedules();

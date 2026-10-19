@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 871 · One open No-show / No check-out / Late / Left-early per booking
---       (20261019150100, ADR-0157; go-live concurrency audit M1)
+--       (20261019194100, ADR-0157; go-live concurrency audit M1)
 --
 --   A · the partial unique index refuses a second open row of a once-only
 --       kind, and leaves alone what is not a duplicate: a resolved row

@@ -15,7 +15,7 @@ import {
  */
 const MIGRATION = join(
   import.meta.dirname,
-  '../../../../supabase/migrations/20261019120000_new_starter_passport_country_and_address_lines.sql',
+  '../../../../supabase/migrations/20261019180000_new_starter_passport_country_and_address_lines.sql',
 );
 const sql = readFileSync(MIGRATION, 'utf8');
 

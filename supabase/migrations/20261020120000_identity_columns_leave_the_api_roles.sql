@@ -64,7 +64,7 @@
 -- older migration file (docs/10 §3b): pg_get_viewdef / pg_get_functiondef
 -- on dgxtqvalfiisfpbwodew, md5-checked against a local build on 19.10.2026
 -- — except onboarding_candidates_v and weekly_cap_for, which the go-live
--- branch's 20261019130200 and 20261019130000 rewrite first; those two are
+-- branch's 20261019192200 and 20261019192000 rewrite first; those two are
 -- built on that branch's bodies, so this migration does not undo them.
 -- Only the expressions named above change.
 -- =====================================================================
@@ -847,7 +847,7 @@ declare
   v_dob date;
 begin
   -- 20261020120000 (ADR-0163): an API caller no longer holds staff.dob.
-  -- The owner, a job and the service role run 20261019130000's body
+  -- The owner, a job and the service role run 20261019192000's body
   -- unchanged — every definer chain that judges ANOTHER worker
   -- (accept_invite, apply_to_shift, the rounds) runs here, so no gate can
   -- drop the under-18 cap. An API caller (the office's invoker views, a
@@ -857,7 +857,7 @@ begin
   -- each. The branch not taken is never executed, so its column
   -- reference is never permission-checked.
   if has_column_privilege('public.staff', 'dob', 'select') then
-    -- 20261019130000: the SQL body as it was, in plpgsql so its plan is
+    -- 20261019192000: the SQL body as it was, in plpgsql so its plan is
     -- kept for the session instead of rebuilt on every call (ADR-0155).
     return (
 

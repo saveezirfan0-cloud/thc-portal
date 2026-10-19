@@ -1,7 +1,7 @@
 -- =====================================================================
 -- The RULE-20 helpers, staff_bookings(), current_compliance_docs() and
--- the two onboarding views AS THEY WERE before 20261019130000 ..
--- 20261019130200 (ADR-0155), recreated in a schema `_old` inside the
+-- the two onboarding views AS THEY WERE before 20261019192000 ..
+-- 20261019192200 (ADR-0155), recreated in a schema `_old` inside the
 -- calling test's transaction, for the equivalence tests 853-855.
 --
 -- Verbatim: pg_get_functiondef() / pg_get_viewdef() of a cluster built

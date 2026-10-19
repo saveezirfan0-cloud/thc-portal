@@ -1,6 +1,6 @@
 -- =====================================================================
 -- compliance_blockers() and the helpers under it are planned once per
--- session, not on every call (ADR-0160, after ADR-0155)
+-- session, not on every call (ADR-0166, after ADR-0155)
 --
 -- onboarding_candidates_v `select *` (the candidate screen, any export)
 -- spent 2.5 s of 3.6 s locally (300 candidates) in quiz_blockers:
@@ -24,7 +24,7 @@
 -- four that return one value (every body is a single-row select: an
 -- aggregate, NOT EXISTS, a CASE with no FROM, or a concatenation of
 -- coalesced subqueries), `return query …;` for the two that return a set —
--- exactly as 20261019130000 did for the RULE-20 chain. A plpgsql function
+-- exactly as 20261019192000 did for the RULE-20 chain. A plpgsql function
 -- keeps its plans for the session however it is called. Pins, security,
 -- volatility, defaults, grants and comments are untouched; the comment gains
 -- a line saying so. A set-returning body must not name a result column as
@@ -97,18 +97,18 @@ begin
       end if;
       v_def := pg_temp.r160_body(v_def,
         E'\nbegin\n  -- 20261020150200: the SQL body as it was, in plpgsql so its plan is\n'
-        || E'  -- kept for the session instead of rebuilt on every call (ADR-0160).\n'
+        || E'  -- kept for the session instead of rebuilt on every call (ADR-0166).\n'
         || E'  return query\n' || rtrim(v_src, E' \n;') || E';\nend\n', f);
     else
       v_def := pg_temp.r160_body(v_def,
         E'\nbegin\n  -- 20261020150200: the SQL body as it was, in plpgsql so its plan is\n'
-        || E'  -- kept for the session instead of rebuilt on every call (ADR-0160).\n'
+        || E'  -- kept for the session instead of rebuilt on every call (ADR-0166).\n'
         || E'  return (\n' || rtrim(v_src, E' \n;') || E'\n  );\nend\n', f);
     end if;
     execute v_def;
     execute format('comment on function %s is %L', f,
       coalesce(obj_description(f::regprocedure::oid, 'pg_proc') || ' ', '')
-      || 'Since 20261020150200 plpgsql around the same SQL body, so the plan is kept for the session (ADR-0160).');
+      || 'Since 20261020150200 plpgsql around the same SQL body, so the plan is kept for the session (ADR-0166).');
   end loop;
 end;
 $$;

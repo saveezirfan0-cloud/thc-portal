@@ -1,6 +1,6 @@
 -- =====================================================================
 -- The definitions 20261020150000 .. 20261020150300 replace, as they were
--- (ADR-0160), recreated as public._old_* inside the caller's transaction
+-- (ADR-0166), recreated as public._old_* inside the caller's transaction
 -- for the equivalence tests (pgTAP 885, 886, 887) and the same-run "before"
 -- column of scripts/bench/office_views_at_scale.sql.
 --

@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 856 · The drain claims urgent sends first, and hands back what it did
 --       not start (ADR-0158)
---   20261019160000_notify_drain_priority.sql
+--   20261019195000_notify_drain_priority.sql
 --
 -- The register's send classes live in packages/notifications/src/priority.ts.
 -- The code list below is the register (TEMPLATES + the document emails);

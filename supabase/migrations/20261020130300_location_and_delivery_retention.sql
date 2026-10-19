@@ -55,7 +55,7 @@
 --     so a backlog drains over a few nights instead of in one long
 --     transaction. run_housekeeping_job() and
 --     install_housekeeping_schedules() are restated from their only
---     definition (20261019120000; not yet on the live project, which still
+--     definition (20261019191000; not yet on the live project, which still
 --     runs the pre-ADR-0154 set) with the two jobs added.
 --
 -- pgTAP 898; 860 now counts four housekeeping jobs.
@@ -213,7 +213,7 @@ comment on function public.notification_outbox_purge(int, int) is
 revoke execute on function public.notification_outbox_purge(int, int) from public, anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------
--- 3 · The cron entry point (20261019120000, restated with two more jobs)
+-- 3 · The cron entry point (20261019191000, restated with two more jobs)
 -- ---------------------------------------------------------------------
 create or replace function public.run_housekeeping_job(p_job text)
 returns jsonb

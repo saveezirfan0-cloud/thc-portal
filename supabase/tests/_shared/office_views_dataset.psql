@@ -1,6 +1,6 @@
 -- =====================================================================
 -- The office-views population (scripts/bench/office_views_at_scale.sql, pgTAP 885-887,
--- ADR-0160): _shared/cap_dataset's workers, candidates and booking
+-- ADR-0166): _shared/cap_dataset's workers, candidates and booking
 -- history, and on top of them what the office screens read per worker.
 --
 -- Included with \ir after _shared/fixtures.psql and _shared/cap_dataset.psql

@@ -18,7 +18,7 @@
  * A fixed list, not free text, so a misread page (or a page written to
  * talk the model into something) can only ever name a real country.
  *
- * SQL twin: `known_countries()` in migration 20261019120000;
+ * SQL twin: `known_countries()` in migration 20261019180000;
  * `countries.test.ts` holds the two lists to each other.
  */
 

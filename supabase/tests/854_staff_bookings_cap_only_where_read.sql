@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 854 · staff_bookings(): the weekly cap only on the rows that show it
---   20261019130100_staff_bookings_cap_only_where_read.sql · ADR-0155
+--   20261019192100_staff_bookings_cap_only_where_read.sql · ADR-0155
 --
 -- The old staff_bookings() (and the old RULE-20 chain under it) is
 -- recreated in `_old` and compared, row for row, with the new one for
@@ -27,7 +27,7 @@ select plan(13);
 \set cap_back 70
 \set cap_ahead 42
 \ir _shared/cap_dataset.psql
-\ir _shared/rule20_before_20261019130000.psql
+\ir _shared/rule20_before_20261019192000.psql
 
 -- A fill count worth checking: some sections with several confirmed, and
 -- invitations to sections that have already ended (the stale-push case,

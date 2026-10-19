@@ -1,5 +1,5 @@
 -- =====================================================================
--- 873 · booking_tick's bounded working set (20261019150300, ADR-0157;
+-- 873 · booking_tick's bounded working set (20261019194300, ADR-0157;
 --       go-live database audit F6, concurrency audit M1/M5)
 --
 --   A · no temporary table, the window on every working-set read, one run

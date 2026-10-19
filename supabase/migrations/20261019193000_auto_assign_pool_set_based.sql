@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261019140000 · the auto-assign pool works out each fact
+-- Migration 20261019193000 · the auto-assign pool works out each fact
 --                            once per call, not once per worker (ADR-0156)
 --
 -- auto_assign_candidates_pool() is the one place the hard gates, the wave
@@ -80,7 +80,7 @@ begin
         from pg_proc p
        where p.oid = 'public.auto_assign_candidates_pool(uuid, boolean, uuid[])'::regprocedure)
      is distinct from 'c1bee8baa26e519b64f7555a62473722' then
-    raise exception '20261019140000: auto_assign_candidates_pool() is not the body this migration replaces (20261012140000). Something changed it since; merge that change into this migration''s body first.';
+    raise exception '20261019193000: auto_assign_candidates_pool() is not the body this migration replaces (20261012140000). Something changed it since; merge that change into this migration''s body first.';
   end if;
 end;
 $$;
@@ -135,7 +135,7 @@ begin
   -- One statute mile is 1,609.344 m; geography distances are metres.
   rad  as materialized (select case when p_escalation then escalation_radius_miles() * 1609.344 end as metres),
   mode as materialized (select rota_guard_mode() as m),
-  -- 20261019140000: what each row needs from the booking history, worked
+  -- 20261019193000: what each row needs from the booking history, worked
   -- out ONCE per call as grouped joins instead of once per worker. Each
   -- source below has two branches and exactly one of them runs (a one-time
   -- filter on p_only): a list call reads the agency's rows; a call for named
@@ -369,6 +369,6 @@ do $$
 begin
   execute format('comment on function public.auto_assign_candidates_pool(uuid, boolean, uuid[]) is %L',
     coalesce(obj_description('public.auto_assign_candidates_pool(uuid, boolean, uuid[])'::regprocedure::oid, 'pg_proc'), '')
-    || ' Since 20261019140000 (ADR-0156) every fact from the booking history is worked out once per call as a grouped join, booked elsewhere reads only the sections within the gap of this one, and rows come back in staff_id order: the same gates, wave and score inputs, at a cost that no longer grows with each worker''s history.');
+    || ' Since 20261019193000 (ADR-0156) every fact from the booking history is worked out once per call as a grouped join, booked elsewhere reads only the sections within the gap of this one, and rows come back in staff_id order: the same gates, wave and score inputs, at a cost that no longer grows with each worker''s history.');
 end;
 $$;

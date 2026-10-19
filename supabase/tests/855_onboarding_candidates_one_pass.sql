@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 855 · onboarding_candidates_v reads each candidate's documents and quiz
 --       once — and shows exactly what it showed
---   20261019130200_onboarding_candidates_one_pass.sql · ADR-0155
+--   20261019192200_onboarding_candidates_one_pass.sql · ADR-0155
 --
 -- The old view, the old staff_rejection_reason_v and the old
 -- current_compliance_docs() are recreated in `_old` and compared with the
@@ -29,7 +29,7 @@ select plan(15);
 \set cap_back 7
 \set cap_ahead 7
 \ir _shared/cap_dataset.psql
-\ir _shared/rule20_before_20261019130000.psql
+\ir _shared/rule20_before_20261019192000.psql
 
 -- ---- the shape -----------------------------------------------------------
 select is(

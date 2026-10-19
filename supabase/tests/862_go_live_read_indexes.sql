@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 862 · The go-live read indexes exist, on the columns they were made for
---   20261019120200_go_live_read_indexes.sql · ADR-0154
+--   20261019191200_go_live_read_indexes.sql · ADR-0154
 --
 -- An index dropped or rebuilt on the wrong columns fails nothing else:
 -- the queries still answer, just by reading every row. So the shapes are

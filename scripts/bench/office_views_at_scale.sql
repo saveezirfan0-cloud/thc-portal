@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Benchmark: the Back Office's heaviest views at go-live scale
 -- (staff_directory_v, student_visa_v, onboarding_candidates_v,
--- compliance_review_queue_v; ADR-0160).
+-- compliance_review_queue_v; ADR-0166).
 --
 -- LOCAL ONLY. Seeds ~1,000 workers with a booking history (the
 -- _shared/cap_dataset population: ~114k bookings, every RULE-20 branch),
@@ -130,7 +130,7 @@ insert into bench_sql
 select 44, 'layout  rpc compliance_review_queue_count()', $q$select public.compliance_review_queue_count()$q$
  where to_regprocedure('public.compliance_review_queue_count()') is not null;
 
--- The same reads against the definitions ADR-0160 replaced, recreated as
+-- The same reads against the definitions ADR-0166 replaced, recreated as
 -- public._old_* (the pgTAP equivalence tests use the same file), so every
 -- "after" has its "before" timed in the same run, under the same load.
 \ir ../../supabase/tests/_shared/office_views_before_20261020150000.psql

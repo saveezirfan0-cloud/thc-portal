@@ -337,7 +337,7 @@ export async function findBooking(bookingId: string): Promise<Found<BookingRow>>
 
 /**
  * One Radar card for `/radar/[id]`. `staff_open_shifts(p_shift)` is the same
- * list narrowed to one section in SQL (20261019140100, ADR-0156), so the
+ * list narrowed to one section in SQL (20261019193100, ADR-0156), so the
  * detail page no longer reads every open section to show one. A section the
  * worker cannot see comes back as no row — "not found", not a failure.
  */

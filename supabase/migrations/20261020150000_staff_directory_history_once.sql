@@ -1,6 +1,6 @@
 -- =====================================================================
 -- staff_directory_v reads the booking history once, not once per worker
--- (ADR-0160)
+-- (ADR-0166)
 --
 -- /staff reads the directory whole, in pages of 1,000, every 60 s per
 -- open tab (it and student_visa_v, which reads it). With 1,342 staff rows

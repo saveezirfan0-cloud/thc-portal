@@ -28,7 +28,7 @@
 --      onboarding_documents_missing() and onboarding_quiz_blockers()
 --      (docs_missing / quiz_blockers keep calling the same rule
 --      functions), and in onboarding_chaser_candidates(). SECURITY
---      INVOKER and STABLE, as it was (see 20261019130000 for why that is
+--      INVOKER and STABLE, as it was (see 20261019192000 for why that is
 --      safe and how pgTAP 002 holds it).
 --   4. quiz_attempts gets the (staff_id, taken_at) index those reads use.
 --
@@ -59,12 +59,12 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> p.expect then
-      raise exception '20261019130200: current_compliance_docs - expected % match(es) of %, found %', p.expect, p.pattern, v_n;
+      raise exception '20261019192200: current_compliance_docs - expected % match(es) of %, found %', p.expect, p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement, 'g');
   end loop;
   if v_def !~ E'\n LANGUAGE sql\n' or v_def ~ 'SECURITY DEFINER' or v_def ~ E'\n VOLATILE' then
-    raise exception '20261019130200: current_compliance_docs is not a plain invoker SQL helper';
+    raise exception '20261019192200: current_compliance_docs is not a plain invoker SQL helper';
   end if;
   execute v_def;
 
@@ -74,7 +74,7 @@ begin
     from pg_class c where c.oid = 'public.staff_rejection_reason_v'::regclass;
   select count(*) into v_n from regexp_matches(v_def, '(?<![.\w(])current_app_role\(\)', 'g');
   if v_n <> 1 then
-    raise exception '20261019130200: staff_rejection_reason_v - expected one current_app_role(), found %', v_n;
+    raise exception '20261019192200: staff_rejection_reason_v - expected one current_app_role(), found %', v_n;
   end if;
   v_def := regexp_replace(v_def, '(?<![.\w(])current_app_role\(\)', '( SELECT current_app_role() AS current_app_role)');
   execute 'create or replace view public.staff_rejection_reason_v'
@@ -107,7 +107,7 @@ begin
        'COALESCE(quiz.quiz_scores, ''{}''::integer[]) AS quiz_scores'),
       -- and the two laterals they read, after the join the view already has
       ('(\n\s+FROM staff s\n\s+LEFT JOIN profiles p ON p\.id = s\.rejected_by\n)',
-       E'\\1     -- 20261019130200: one read of the current documents and one of the\n'
+       E'\\1     -- 20261019192200: one read of the current documents and one of the\n'
        || E'     -- quiz attempts per candidate, not four of each (ADR-0155).\n'
        || E'     LEFT JOIN LATERAL ( SELECT count(*)::integer AS docs_total,\n'
        || E'            count(*) FILTER (WHERE d.status = ''verified''::review_status)::integer AS docs_verified,\n'
@@ -124,7 +124,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261019130200: onboarding_candidates_v - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019192200: onboarding_candidates_v - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;

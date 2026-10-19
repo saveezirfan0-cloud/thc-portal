@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 859 · The auto-assign pool and Radar, old bodies against new (ADR-0156)
---   20261019140000_auto_assign_pool_set_based.sql
---   20261019140100_radar_prefilter_and_one_section.sql
+--   20261019193000_auto_assign_pool_set_based.sql
+--   20261019193100_radar_prefilter_and_one_section.sql
 --
 -- Both migrations change how the answers are computed and nothing about
 -- what they are. This file holds them to it: the bodies as they stood

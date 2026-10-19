@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 885 · staff_directory_v reads the booking history once — and shows
 --       exactly what it showed
---   20261020150000_staff_directory_history_once.sql · ADR-0160
+--   20261020150000_staff_directory_history_once.sql · ADR-0166
 --
 -- The old directory (and the old cap_band_until() it read) are recreated
 -- as public._old_* (_shared/office_views_before_20261020150000.psql), and

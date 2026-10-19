@@ -5,7 +5,7 @@ import type { QueueCountClient } from '../navCounts';
 /**
  * The sidebar's "Needs review" counter (§4.1) is one exact count, read by
  * compliance_review_queue_count() — never a HEAD of the queue view, which
- * made PostgREST build every item to count them (ADR-0160).
+ * made PostgREST build every item to count them (ADR-0166).
  */
 function client(reply: { data: number | null; error: { message: string } | null } | Error) {
   const rpc = vi.fn((_fn: string) =>

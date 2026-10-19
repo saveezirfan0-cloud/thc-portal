@@ -1,9 +1,9 @@
 -- =====================================================================
 -- 853 · RULE-20's helpers are planned once — and answer exactly as before
---   20261019130000_rule20_helpers_plan_once.sql · ADR-0155
+--   20261019192000_rule20_helpers_plan_once.sql · ADR-0155
 --
 -- The old definitions are recreated in `_old` (_shared/rule20_before_
--- 20261019130000.psql, verbatim, each calling the old helpers below it)
+-- 20261019192000.psql, verbatim, each calling the old helpers below it)
 -- and every changed function is compared with its old self:
 --
 --   A · the pure helpers, over every combination of their inputs that
@@ -31,7 +31,7 @@ select plan(33);
 \set cap_back 70
 \set cap_ahead 42
 \ir _shared/cap_dataset.psql
-\ir _shared/rule20_before_20261019130000.psql
+\ir _shared/rule20_before_20261019192000.psql
 
 -- =====================================================================
 -- A · the pure helpers

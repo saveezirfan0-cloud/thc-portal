@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261019140100 · Radar asks the pool about the sections it
+-- Migration 20261019193100 · Radar asks the pool about the sections it
 --                            could show, and /radar/[id] reads one section
 --                            (ADR-0156)
 --
@@ -38,7 +38,7 @@
 --      Radar to show one card. The function is dropped and re-created for
 --      the new argument; staff_open_shifts() and staff_open_shifts(p_staff)
 --      read exactly as before;
---   4. jit off for the body, as for the pool (20261019140000);
+--   4. jit off for the body, as for the pool (20261019193000);
 --   5. the ORDER BY ends on the section id, so two sections at the same
 --      distance starting at the same moment no longer swap between loads;
 --   6. the week meter on each card (booked hours and cap for the section's
@@ -77,7 +77,7 @@ begin
       -- 1 · the prefilter
       ('  with me as \(select staff_caller\(p_staff\) as id\)\n',
        $r$  with me as (select staff_caller(p_staff) as id),
-  -- 20261019140100: the sections Radar could show this worker at all,
+  -- 20261019193100: the sections Radar could show this worker at all,
   -- found without the pool, so the pool is asked about those alone (it
   -- was asked about every open section in the agency). Nothing is decided
   -- here: each test is one the query below makes again. The worker's own
@@ -100,7 +100,7 @@ begin
                 and (select count(*) from bookings b
                       where b.shift_id = sr.id and b.status in ('confirmed', 'worked')) < sr.headcount))
   ),
-  -- 20261019140100: the Limit-reached figures (§10.4) for each UK day a
+  -- 20261019193100: the Limit-reached figures (§10.4) for each UK day a
   -- candidate section starts on, asked once per day rather than once per
   -- card: the same two functions with the same arguments.
   meter as materialized (
@@ -120,7 +120,7 @@ $r$),
       -- 2 · RULE-17 stops at the first reachable qualified worker
       ('            else not coalesce\(\(\n.*?\)\) w\), false\)\n',
        $r$            -- 20261017180000 judged every qualified worker to answer it;
-            -- since 20261019140100 the answer stops at the first one
+            -- since 20261019193100 the answer stops at the first one
             -- reachable. A worker who already holds a booking here, does
             -- not hold the role or is not compliant cannot be reachable
             -- (the pool's booking_status, wrong_role and blocked), so the
@@ -154,7 +154,7 @@ $r$),
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261019140100: staff_open_shifts - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019193100: staff_open_shifts - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -168,7 +168,7 @@ $r$),
 
   execute format('comment on function public.staff_open_shifts(uuid, uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261019140100 (ADR-0156) the pool is asked only about the sections the worker could be shown (their own application, or not started, not full and in a role they hold), RULE-17''s wave check stops at the first reachable qualified worker, the week meter is asked once per day, and p_shift narrows the list to one section for /radar/[id].');
+    || ' Since 20261019193100 (ADR-0156) the pool is asked only about the sections the worker could be shown (their own application, or not started, not full and in a role they hold), RULE-17''s wave check stops at the first reachable qualified worker, the week meter is asked once per day, and p_shift narrows the list to one section for /radar/[id].');
 end;
 $$;
 
@@ -183,10 +183,10 @@ declare
 begin
   select count(*) into v_n from regexp_matches(v_def, v_pat, 'g');
   if v_n <> 1 then
-    raise exception '20261019140100: auto_assign_candidates - expected one match of %, found %', v_pat, v_n;
+    raise exception '20261019193100: auto_assign_candidates - expected one match of %, found %', v_pat, v_n;
   end if;
   v_def := regexp_replace(v_def, v_pat,
-    E'    from own p\n   cross join has_sib h\n   -- 20261019140100: a stable order for a reader that pages.\n   order by p.staff_id\n');
+    E'    from own p\n   cross join has_sib h\n   -- 20261019193100: a stable order for a reader that pages.\n   order by p.staff_id\n');
   execute v_def;
   alter function public.auto_assign_candidates(uuid, boolean) set jit = off;
 end;

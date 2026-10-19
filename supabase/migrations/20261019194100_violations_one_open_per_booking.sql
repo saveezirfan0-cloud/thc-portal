@@ -63,11 +63,11 @@ begin
   ), logged as (
     insert into audit_log (at, actor, action, entity, entity_id, data)
     select now(), null, 'violation.duplicate_removed', 'violation', g.id,
-           to_jsonb(g) || jsonb_build_object('staffId', g.staff_id, 'migration', '20261019150100')
+           to_jsonb(g) || jsonb_build_object('staffId', g.staff_id, 'migration', '20261019194100')
       from gone g
     returning 1
   ) select count(*)::int into v_n from logged;
-  raise notice '20261019150100: % duplicate open violation(s) removed', v_n;
+  raise notice '20261019194100: % duplicate open violation(s) removed', v_n;
 end;
 $$;
 
@@ -117,7 +117,7 @@ begin
   on conflict do nothing
   returning id into v_id;
   if v_id is null then
-    -- 20261019150100: BG-03 or another press recorded it a moment earlier.
+    -- 20261019194100: BG-03 or another press recorded it a moment earlier.
     select id into v_id from violations
      where booking_id = b.id and type = ''no_show'' and not resolved
      limit 1;
@@ -129,7 +129,7 @@ begin
     v_def := pg_get_functiondef(p.fn);
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> p.expected then
-      raise exception '20261019150100: % - expected % match(es) of %, found %', p.fn, p.expected, p.pattern, v_n;
+      raise exception '20261019194100: % - expected % match(es) of %, found %', p.fn, p.expected, p.pattern, v_n;
     end if;
     execute regexp_replace(v_def, p.pattern, p.replacement, 'g');
   end loop;

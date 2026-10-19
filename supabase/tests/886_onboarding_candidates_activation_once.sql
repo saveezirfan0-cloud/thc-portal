@@ -3,7 +3,7 @@
 --       and the compliance_blockers chain is planned once per session —
 --       and both show exactly what they showed
 --   20261020150100_onboarding_candidates_activation_once.sql
---   20261020150200_compliance_blockers_plan_once.sql · ADR-0160
+--   20261020150200_compliance_blockers_plan_once.sql · ADR-0166
 --
 -- The old view and the old SQL bodies of compliance_blockers(),
 -- onboarding_quiz_blockers(), current_verified_docs(), term_letter_applies(),

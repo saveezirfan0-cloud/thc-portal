@@ -21,7 +21,7 @@
 -- History is NOT bounded. My shifts' collapsed "Past shifts" section
 -- (ADR-0048) lists every past booking, and a stale push must still find
 -- its row (apps/staff/app/shifts/model.ts), so every row still comes back.
--- With 20261019130000 the per-row work left on a past row is a handful
+-- With 20261019192000 the per-row work left on a past row is a handful
 -- of index lookups; the fill count now reads the section's confirmed
 -- bookings through (shift_id, status) instead of all of them.
 --
@@ -43,7 +43,7 @@ begin
       ('\(select count\(\*\) filter \(where o\.status = ''confirmed''\)::int\s+from bookings o where o\.shift_id = sr\.id\)',
        '(select count(*)::int from bookings o where o.shift_id = sr.id and o.status = ''confirmed'')'),
       ('(\n)(\s+)weekly_cap_would_breach\(b\.staff_id, b\.shift_id\),\n',
-       E'\\1\\2-- 20261019130100: only where a screen reads it — an invitation, or a\n'
+       E'\\1\\2-- 20261019192100: only where a screen reads it — an invitation, or a\n'
        || E'\\2-- booking whose section has not ended (ADR-0155). Null on history.\n'
        || E'\\2case when b.status = ''invited'' or sr.ends_at > now()\n'
        || E'\\2     then weekly_cap_would_breach(b.staff_id, b.shift_id) end,\n'),
@@ -57,7 +57,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261019130100: staff_bookings - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019192100: staff_bookings - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -65,6 +65,6 @@ begin
 
   execute format('comment on function public.staff_bookings(uuid) is %L',
     coalesce(obj_description('public.staff_bookings(uuid)'::regprocedure::oid, 'pg_proc'), '')
-    || ' Since 20261019130100 hours_limit, booked_hours and cap_hours are computed for an invitation or a booking whose section has not ended, and are null on the history behind them (ADR-0155); every row is still returned.');
+    || ' Since 20261019192100 hours_limit, booked_hours and cap_hours are computed for an invitation or a booking whose section has not ended, and are null on the history behind them (ADR-0155); every row is still returned.');
 end;
 $$;

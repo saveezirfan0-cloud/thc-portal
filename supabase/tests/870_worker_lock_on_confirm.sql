@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 870 · Every path to `confirmed` serialises on the worker first
---       (20261019150000, ADR-0157; go-live concurrency audit H2, M2)
+--       (20261019194000, ADR-0157; go-live concurrency audit H2, M2)
 --
 --   A · the paths that write `confirmed` are exactly the ones that take
 --       lock_worker(), and each takes it before any row lock or write —

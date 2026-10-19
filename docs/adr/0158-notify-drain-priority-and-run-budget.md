@@ -2,7 +2,7 @@
 
 Status: accepted · 17.10.2026 · **Amends** the P2 drain (`20260924100000`, ADR-0083's claim)
 
-Scope v1.6 §8, §10.5 · `supabase/migrations/20261019160000_notify_drain_priority.sql` ·
+Scope v1.6 §8, §10.5 · `supabase/migrations/20261019195000_notify_drain_priority.sql` ·
 `packages/notifications/src/{drain,priority}.ts` · `supabase/functions/notify-drain/index.ts` ·
 `supabase/tests/856_notify_drain_priority.sql`
 

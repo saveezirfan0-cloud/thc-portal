@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 887 · The "Needs review" counter is one exact count, and the block
 --       reason's admin gate runs once per statement
---   20261020150300_compliance_queue_count.sql · ADR-0160
+--   20261020150300_compliance_queue_count.sql · ADR-0166
 --
 --   * compliance_review_queue_count() is exactly the number of rows of
 --     compliance_review_queue_v as each caller sees it — the office, a

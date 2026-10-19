@@ -1,6 +1,6 @@
 -- =====================================================================
 -- The Back Office's "Needs review" counter is one count, not the queue
--- (ADR-0160)
+-- (ADR-0166)
 --
 -- Every Back Office request renders the sidebar, and the sidebar counted
 -- compliance_review_queue_v exactly: a PostgREST HEAD with
@@ -24,7 +24,7 @@
 --      onboarding_returning_v once per applicant, so the gate — a four-table
 --      auth read — ran once per row. Still admin-only (20260923090000),
 --      still an owner-rights security_barrier view; the same change
---      staff_rejection_reason_v had in 20261019130200.
+--      staff_rejection_reason_v had in 20261019192200.
 --
 -- staff_block_reason_v is re-created from its LIVE definition (docs/10 §3b)
 -- by a named pattern that must match exactly once, its options read back
@@ -42,7 +42,7 @@ as $$
 $$;
 
 comment on function public.compliance_review_queue_count() is
-  'The number of items in compliance_review_queue_v as the caller sees it — the Back Office sidebar''s "Needs review" counter (§4.1). SECURITY INVOKER: the view''s own RLS decides, so it is exactly the count of what /compliance lists. A count computes none of the per-item columns (20261020150300, ADR-0160).';
+  'The number of items in compliance_review_queue_v as the caller sees it — the Back Office sidebar''s "Needs review" counter (§4.1). SECURITY INVOKER: the view''s own RLS decides, so it is exactly the count of what /compliance lists. A count computes none of the per-item columns (20261020150300, ADR-0166).';
 
 revoke all on function public.compliance_review_queue_count() from public, anon;
 grant execute on function public.compliance_review_queue_count() to authenticated, service_role;

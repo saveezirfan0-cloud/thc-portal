@@ -45,7 +45,7 @@ select plan(14);
 --    public, extensions` line in a new migration, next to the fourteen
 --    in 20260922183014. It is not to add a name to an exclusion list.
 --
---    ADR-0155 (20261019130000) made one deliberate class of exception,
+--    ADR-0155 (20261019192000) made one deliberate class of exception,
 --    and it is a SHAPE, not a list: a SECURITY INVOKER, non-volatile SQL
 --    function whose every name is schema-qualified. A SET clause stops
 --    the planner inlining a SQL function, and RULE-20's pure helpers were
