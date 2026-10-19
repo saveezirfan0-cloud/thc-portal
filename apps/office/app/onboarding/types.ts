@@ -282,6 +282,8 @@ export interface QuizAttempt {
   score: number;
   passed: boolean;
   taken_at: string;
+  /** Set aside by Reset to candidate, or by Allow 3 more attempts (ADR-0167). */
+  superseded?: boolean;
 }
 
 export interface HmrcChecklist {
@@ -337,7 +339,12 @@ export interface CandidateData {
   documents: CandidateDocument[];
   declarations: Declaration[];
   references: Reference[];
+  /** This period's quiz attempts that count towards the current three. */
   attempts: QuizAttempt[];
+  /** This period's attempts set aside when the office allowed three more (ADR-0167). */
+  attemptsSetAside?: QuizAttempt[];
+  /** The latest Allow 3 more attempts this period (ADR-0167). */
+  quizGrant?: QuizGrant | null;
   hmrc: HmrcChecklist | null;
   application: Application | null;
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
@@ -387,6 +394,9 @@ export interface InterviewOverride {
   byName: string | null;
   reason: string;
 }
+
+/** The audit row `grant_quiz_attempts()` leaves (ADR-0167). */
+export type QuizGrant = InterviewOverride;
 
 /** The audit row the SpudBros skip sweep leaves when it fails (ADR-0118). */
 export interface SpudbrosSkipFailure {

@@ -347,6 +347,73 @@ describe('the candidate profile · date of birth (ADR-0070)', () => {
   });
 });
 
+describe('the candidate profile · allow 3 more quiz attempts (ADR-0167)', () => {
+  const quizRejected = data({
+    candidate: {
+      ...ROW,
+      status: 'rejected',
+      rejected_from: 'quiz',
+      rejection_cause: 'quiz_failed',
+      rejected_at: '2026-10-19T16:54:29Z',
+      quiz_attempts_used: 3,
+    },
+  });
+
+  it('offers it to an office login that may write, on a candidate the quiz rejected', () => {
+    const html = renderToStaticMarkup(
+      <CandidateScreen data={quizRejected} now="2026-10-19T18:00:00Z" canGrantQuizAttempts />,
+    );
+    expect(html).toContain('>Allow 3 more attempts<');
+    expect(html).not.toContain('Final on this record');
+  });
+
+  it('not to a viewer', () => {
+    expect(render(quizRejected)).not.toContain('>Allow 3 more attempts<');
+  });
+
+  it('nor on a candidate the office rejected', () => {
+    const byOffice = data({
+      candidate: {
+        ...ROW,
+        status: 'rejected',
+        rejected_from: 'documents',
+        rejection_cause: 'manager',
+      },
+    });
+    const html = renderToStaticMarkup(
+      <CandidateScreen data={byOffice} now="2026-10-19T18:00:00Z" canGrantQuizAttempts />,
+    );
+    expect(html).not.toContain('>Allow 3 more attempts<');
+    expect(html).toContain('Final on this record');
+  });
+
+  it('says on the quiz panel who allowed them, why, and the scores set aside', () => {
+    const html = render(
+      data({
+        candidate: { ...ROW, status: 'quiz', quiz_attempts_used: 0 },
+        attempts: [],
+        attemptsSetAside: [70, 70, 70].map((score, i) => ({
+          id: `a${i}`,
+          attempt_no: i + 1,
+          score,
+          passed: false,
+          taken_at: '2026-10-19T16:30:00Z',
+          superseded: true,
+        })),
+        quizGrant: {
+          at: '2026-10-19T18:05:00Z',
+          byName: 'Sam Office',
+          reason: 'close to the mark',
+        },
+      }),
+    );
+    expect(html).toContain('3 more attempts allowed');
+    expect(html).toContain('by Sam Office: “close to the mark”');
+    expect(html).toContain('Earlier attempts, set aside: 70% · 70% · 70%.');
+    expect(html).toContain('0 / 3');
+  });
+});
+
 describe('the candidate profile · mark interview complete (ADR-0077)', () => {
   const requested = data({ candidate: { ...ROW, status: 'interview_requested' } });
 
