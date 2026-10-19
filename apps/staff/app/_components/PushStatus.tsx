@@ -49,6 +49,8 @@ export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolea
   const [input, setInput] = useState<BannerInput | null>(null);
   const [record, setRecord] = useState<{ value: string | null; now: number } | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [enabling, setEnabling] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,23 +141,75 @@ export function PushStatus({ onboardingOnly = false }: { onboardingOnly?: boolea
     setHidden(true);
   };
 
-  return <PushBannerView banner={banner} onDismiss={banner.dismissible ? dismiss : null} />;
+  // The banner's own button: ask for permission and subscribe inside the tap
+  // (Safari drops a request that is not in a gesture), then record it. The
+  // /notifications screen does the same and stays for the longer explanation.
+  const turnOn = async () => {
+    setEnabling(true);
+    setFailed(false);
+    try {
+      const result = await enablePush();
+      if (!result.ok) {
+        // Said no at the prompt, or the device cannot: the banner becomes the
+        // state's own message (denied, install…) rather than asking again.
+        if (result.state === 'default') setFailed(true);
+        else setInput({ ...input, state: result.state, lapsed: false });
+        return;
+      }
+      const saved = await savePushSubscription(result.subscription);
+      if (!saved.ok) {
+        setFailed(true);
+        return;
+      }
+      writeStored(WAS_ON_KEY, '1');
+      setInput({ ...input, state: 'granted', lapsed: false });
+    } catch (cause) {
+      console.error('[push] turning notifications on failed', cause);
+      setFailed(true);
+    } finally {
+      setEnabling(false);
+    }
+  };
+
+  return (
+    <PushBannerView
+      banner={banner}
+      onDismiss={banner.dismissible ? dismiss : null}
+      onEnable={banner.action === 'enable' ? turnOn : null}
+      enabling={enabling}
+      failed={failed}
+    />
+  );
 }
 
 /** The compact banner: one line, an action pill, and — for advice — an ×. Exported for the markup tests. */
 export function PushBannerView({
   banner,
   onDismiss,
+  onEnable = null,
+  enabling = false,
+  failed = false,
 }: {
   banner: PushBanner;
   onDismiss: (() => void) | null;
+  /** Present when the button can turn notifications on itself (`banner.action`). */
+  onEnable?: (() => void) | null;
+  enabling?: boolean;
+  /** The last try did not take: say so and send them to the screen that explains. */
+  failed?: boolean;
 }) {
   return (
     <div className={`alert ${banner.tone} push-banner`} role="status">
-      <p className="push-banner-text">{banner.text}</p>
-      {banner.link ? (
-        <Link className="push-banner-cta" href={banner.link.href}>
-          {banner.link.label}
+      <p className="push-banner-text">
+        {failed ? 'That didn’t work — open Notifications for help.' : banner.text}
+      </p>
+      {onEnable && !failed ? (
+        <button type="button" className="push-banner-cta" onClick={onEnable} disabled={enabling}>
+          {enabling ? 'Turning on…' : banner.link?.label === 'Fix' ? 'Fix' : 'Turn on'}
+        </button>
+      ) : banner.link ? (
+        <Link className="push-banner-cta" href={failed ? '/notifications' : banner.link.href}>
+          {failed ? 'Open' : banner.link.label}
         </Link>
       ) : null}
       {onDismiss ? (

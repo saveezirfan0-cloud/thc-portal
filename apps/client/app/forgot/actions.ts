@@ -6,13 +6,15 @@ import { appOrigin, recoveryRedirect } from '@thc/db';
 import { recoveryRequestAllowed } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
 import { OFFICE_EMAIL } from '../client/account/copy';
+import { RESET_LIMIT_REACHED } from './copy';
 
 /**
  * A1 Forgot password — §10.2, `wireframes/client/login.html` (forgot).
  *
  * The outcome is IDENTICAL whether or not the address is registered: a "no
  * account with that email" message would let anyone test which venue
- * contacts have a portal login (§1.7).
+ * contacts have a portal login (§1.7). The wait-an-hour answer is the same
+ * for every address too (ADR-0157).
  *
  * The email is Supabase Auth's recovery mail, which lands on this app's
  * /auth/confirm and hands off to A3 (/reset). The sender, admin@ (§9.12),
@@ -39,20 +41,21 @@ export async function requestReset(
   }
 
   // Three links an hour per address (packages/db/src/auth-throttle.ts), so
-  // this form cannot be used to flood an inbox. Over the limit nothing is
-  // sent and the answer below is the same, word for word.
-  if (await recoveryRequestAllowed(email)) {
-    const supabase = createClient(await cookies());
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      // /auth/confirm takes the token_hash link (any browser, any device) and
-      // the PKCE code alike (supabase/templates/recovery.html, ADR-0039).
-      redirectTo: recoveryRedirect(origin),
-    });
+  // this form cannot be used to flood an inbox. The count is kept for every
+  // address typed, registered or not, so saying "wait an hour" is the same
+  // answer for both and reveals nothing about the account (ADR-0157).
+  if (!(await recoveryRequestAllowed(email))) return RESET_LIMIT_REACHED;
 
-    if (error) {
-      // Logged, not shown: a rate limit and an unknown address look the same.
-      console.error('[reset] request failed', { status: error.status, message: error.message });
-    }
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // /auth/confirm takes the token_hash link (any browser, any device) and
+    // the PKCE code alike (supabase/templates/recovery.html, ADR-0039).
+    redirectTo: recoveryRedirect(origin),
+  });
+
+  if (error) {
+    // Logged, not shown: a rate limit and an unknown address look the same.
+    console.error('[reset] request failed', { status: error.status, message: error.message });
   }
 
   redirect(`/forgot/sent?to=${encodeURIComponent(email)}`);

@@ -4,8 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 /**
  * The per-account throttle at the Client Portal's doors
  * (packages/db/src/auth-throttle.ts): checked BEFORE GoTrue is asked,
- * refused with the same answer a wrong password / a sent link gets (§1.7),
- * and only real guesses counted afterwards.
+ * refused with the answer a wrong password gets (§1.7; forgot password says
+ * to wait an hour instead, ADR-0157), and only real guesses counted afterwards.
  */
 const auth = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
@@ -37,6 +37,7 @@ vi.mock('@thc/db/auth-throttle', async (importOriginal) => ({
 
 const { signIn } = await import('../actions');
 const { requestReset } = await import('../../forgot/actions');
+const { RESET_LIMIT_REACHED } = await import('../../forgot/copy');
 const { WRONG_CREDENTIALS: REFUSED } = await import('../copy');
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -123,11 +124,22 @@ describe('requestReset: three links an hour per address', () => {
     expect(auth.resetPasswordForEmail).toHaveBeenCalled();
   });
 
-  it('over the limit: the SAME "sent" answer, and no email', async () => {
+  it('over the limit: told to wait an hour, and no email (ADR-0157)', async () => {
     throttle.recovery.mockResolvedValue(false);
     expect(await outcome(() => requestReset(null, form({ email: creds.email })))).toBe(
-      'REDIRECT:/forgot/sent?to=amara.k%40example.com',
+      `RETURNED:${RESET_LIMIT_REACHED}`,
     );
     expect(auth.resetPasswordForEmail).not.toHaveBeenCalled();
+  });
+
+  it('the wait-an-hour answer is the same for any address and names no account', async () => {
+    throttle.recovery.mockResolvedValue(false);
+    const known = await outcome(() => requestReset(null, form({ email: creds.email })));
+    const unknown = await outcome(() =>
+      requestReset(null, form({ email: 'nobody.at.all@example.com' })),
+    );
+    expect(unknown).toBe(known);
+    expect(RESET_LIMIT_REACHED).toMatch(/wait an hour/i);
+    expect(RESET_LIMIT_REACHED).not.toMatch(/sent|registered|account|exist/i);
   });
 });

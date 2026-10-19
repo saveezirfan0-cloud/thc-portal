@@ -119,16 +119,28 @@ describe('other browsers get copy that is true for them', () => {
 });
 
 describe('advice can be put away; a fault cannot', () => {
-  it('every never-worked state is dismissible', () => {
-    for (const state of [
-      'needs-install',
-      'unsupported',
-      'unconfigured',
-      'default',
-      'denied',
-    ] as const) {
+  it('every never-worked state the worker has answered or cannot act on is dismissible', () => {
+    for (const state of ['needs-install', 'unsupported', 'unconfigured', 'denied'] as const) {
       expect(pushBanner(input({ state }))?.dismissible).toBe(true);
     }
+  });
+
+  it('a worker who has never been asked cannot put it away, and its button turns them on (ADR-0158)', () => {
+    const banner = pushBanner(input({ state: 'default' }));
+    expect(banner).toMatchObject({ variant: 'default', dismissible: false, action: 'enable' });
+    // Nothing a stored seven-day dismissal says can hide it.
+    const now = Date.UTC(2026, 9, 18);
+    expect(
+      visibleBanner(input({ state: 'default' }), dismissalRecord('default', now), now),
+    ).not.toBeNull();
+  });
+
+  it('only the not-yet-asked and stopped banners turn notifications on themselves', () => {
+    for (const state of ['needs-install', 'unsupported', 'unconfigured', 'denied'] as const) {
+      expect(pushBanner(input({ state }))?.action).toBeNull();
+    }
+    expect(pushBanner(input({ state: 'granted', lapsed: true }))?.action).toBe('enable');
+    expect(pushBanner(input({ state: 'default', wasOn: true }))?.action).toBe('enable');
   });
 
   it('a subscription iOS revoked (granted, none behind it) says it stopped, undismissible', () => {
@@ -235,6 +247,34 @@ describe('the banner markup', () => {
     expect(html).toContain('href="/install"');
     expect(html).toContain('>Show me</a>');
     expect(html).toContain('aria-label="Hide this for 7 days"');
+  });
+
+  it('for a worker not yet asked: a Turn on button, no link and no dismiss', () => {
+    const banner = pushBanner(input({ state: 'default' }));
+    const html = renderToStaticMarkup(
+      <PushBannerView banner={banner!} onDismiss={null} onEnable={() => {}} />,
+    );
+    expect(html).toContain('<button type="button" class="push-banner-cta">Turn on</button>');
+    expect(html).not.toContain('href=');
+    expect(html).not.toContain('aria-label="Hide this for 7 days"');
+  });
+
+  it('while asking the button is disabled and says so', () => {
+    const banner = pushBanner(input({ state: 'default' }));
+    const html = renderToStaticMarkup(
+      <PushBannerView banner={banner!} onDismiss={null} onEnable={() => {}} enabling />,
+    );
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>Turning on…<\/button>/);
+  });
+
+  it('when it did not take: says so and links to the screen that explains', () => {
+    const banner = pushBanner(input({ state: 'default' }));
+    const html = renderToStaticMarkup(
+      <PushBannerView banner={banner!} onDismiss={null} onEnable={() => {}} failed />,
+    );
+    expect(html).toContain('That didn’t work — open Notifications for help.');
+    expect(html).toContain('href="/notifications"');
+    expect(html).not.toContain('<button');
   });
 
   it('has no dismiss button for a fault', () => {

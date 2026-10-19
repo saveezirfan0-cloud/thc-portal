@@ -17,9 +17,11 @@ import type { PushState } from '../../lib/push';
  *   dismissed.
  *
  *   ADVICE — push has never worked here: an iPhone in a Safari tab, a
- *   browser with no Push API, a build without VAPID keys, a worker not yet
- *   asked, or one who said no. Accurate for their browser, and dismissible
- *   for seven days on this device.
+ *   browser with no Push API, a build without VAPID keys, or one who said no.
+ *   Accurate for their browser, and dismissible for seven days on this device.
+ *
+ *   NOT YET ASKED — the worker has neither said yes nor no. The banner stays
+ *   until they answer, and its button asks in the same tap (ADR-0158).
  */
 
 export type Browser = 'ios-safari' | 'ios-other' | 'android' | 'other';
@@ -67,10 +69,16 @@ export interface PushBanner {
   /** One short sentence. */
   text: string;
   link: { href: '/install' | '/notifications'; label: string } | null;
+  /**
+   * 'enable': the button turns notifications on right here, inside the tap
+   * (the permission prompt needs the gesture), instead of sending the worker
+   * to /notifications to press a second button (ADR-0158).
+   */
+  action: 'enable' | null;
   dismissible: boolean;
 }
 
-type Message = Omit<PushBanner, 'dismissible'>;
+type Message = Omit<PushBanner, 'dismissible' | 'action'> & { action?: 'enable' };
 
 const HOW_TO_INSTALL = { href: '/install', label: 'Show me' } as const;
 
@@ -80,6 +88,7 @@ const STOPPED: Message = {
   tone: 'cyan',
   text: 'Notifications have stopped.',
   link: { href: '/notifications', label: 'Turn on' },
+  action: 'enable',
 };
 
 /** The same banners for a worker whose shifts are elsewhere (ADR-0106). */
@@ -106,9 +115,13 @@ export function pushBanner(input: BannerInput): PushBanner | null {
   const text = (input.onboardingOnly && ONBOARDING_ONLY_TEXT[message.variant]) || message.text;
   return {
     ...message,
+    action: message.action ?? null,
     text,
     variant: fault ? `fault:${message.variant}` : message.variant,
-    dismissible: !fault,
+    // A worker who has never been asked has not said no, so there is nothing
+    // to put away: hiding it for a week is a week of missed invitations
+    // (ADR-0158). One who said no, or whose browser cannot, still can.
+    dismissible: !fault && message.variant !== 'default',
   };
 }
 
@@ -181,6 +194,7 @@ function messageFor(state: PushState, browser: Browser, standalone: boolean): Me
         tone: 'cyan',
         text: 'Turn on notifications so you don’t miss shifts.',
         link: { href: '/notifications', label: 'Turn on' },
+        action: 'enable',
       };
 
     default:

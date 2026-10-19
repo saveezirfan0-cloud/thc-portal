@@ -30,9 +30,11 @@ import { createAdminClient } from './admin';
  * service key unset), with a console.error: a database hiccup must not lock
  * every user out of every app. A definite `false` is always honoured.
  *
- * The caller decides what a refusal looks like, and on sign-in and forgot
- * it is the SAME answer as a wrong password / a sent link (§1.7): a
- * different message would say the account exists.
+ * The caller decides what a refusal looks like. Sign-in and the two-step
+ * code are answered like a wrong password / a wrong code (§1.7): a
+ * different message would say the account exists. Forgot password says to
+ * wait an hour (ADR-0157): its count is kept for every address typed,
+ * registered or not, so that answer names no account.
  */
 
 export type AuthAttemptKind = 'sign_in' | 'sign_in_ip' | 'recover' | 'verify';
@@ -189,7 +191,8 @@ export async function signInKeys(email: string, ip: string | null): Promise<Thro
 /**
  * Forgot password: may a link be sent to this address? Every request that
  * is let through is counted (`p_failed` true: a request IS the spend), so
- * the fourth in an hour is answered exactly like the first, with no email.
+ * the fourth in an hour is refused with no email, and the form says to wait
+ * an hour (ADR-0157).
  */
 export async function recoveryRequestAllowed(email: string): Promise<boolean> {
   const keys = [await emailKey(email)];

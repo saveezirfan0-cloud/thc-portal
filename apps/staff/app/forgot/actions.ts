@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { appOrigin, recoveryRedirect } from '@thc/db';
 import { recoveryRequestAllowed } from '@thc/db/auth-throttle';
 import { createClient } from '@thc/db/server';
-import { SENT_TO_COOKIE, SENT_TO_MAX_AGE } from './copy';
+import { RESET_LIMIT_REACHED, SENT_TO_COOKIE, SENT_TO_MAX_AGE } from './copy';
 
 /**
  * A1 Forgot password — §10.2, wireframes/staff/auth.html. Also the action
@@ -14,7 +14,8 @@ import { SENT_TO_COOKIE, SENT_TO_MAX_AGE } from './copy';
  * The outcome is IDENTICAL whether or not the address is registered, and
  * that is the whole design: a "no account with that email" message turns
  * this screen into a tool for testing which of 1,000 workers exists (§1.7,
- * the same reason A0's error never says which field was wrong).
+ * the same reason A0's error never says which field was wrong). That holds
+ * for the wait-an-hour answer too: it is the same for every address (ADR-0157).
  *
  * The email itself is Supabase Auth's recovery mail, which lands on
  * /auth/confirm and hands off to A3. §9.12's sender (admin@) is therefore
@@ -49,22 +50,24 @@ export async function requestReset(
 
   const jar = await cookies();
   // Three links an hour per address (packages/db/src/auth-throttle.ts), so
-  // this button cannot be used to flood a worker's inbox. Over the limit
-  // nothing is sent and the answer below is the same, word for word.
-  if (await recoveryRequestAllowed(email)) {
-    const supabase = createClient(jar);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      // /auth/confirm takes the token_hash link (any browser, any device —
-      // the PWA's mail opens in another browser on iOS) and the PKCE code
-      // alike (supabase/templates/recovery.html, ADR-0039).
-      redirectTo: recoveryRedirect(origin),
-    });
+  // this button cannot be used to flood a worker's inbox. The count is kept
+  // for every address typed, registered or not, so saying "wait an hour" is
+  // the same answer for both and reveals nothing about the account
+  // (ADR-0157). It is shown on the form, or under Resend on A2.
+  if (!(await recoveryRequestAllowed(email))) return RESET_LIMIT_REACHED;
 
-    if (error) {
-      // Logged, not shown. A rate limit and an unknown address must look the
-      // same to whoever is typing.
-      console.error('[reset] request failed', { status: error.status, message: error.message });
-    }
+  const supabase = createClient(jar);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // /auth/confirm takes the token_hash link (any browser, any device —
+    // the PWA's mail opens in another browser on iOS) and the PKCE code
+    // alike (supabase/templates/recovery.html, ADR-0039).
+    redirectTo: recoveryRedirect(origin),
+  });
+
+  if (error) {
+    // Logged, not shown. A rate limit and an unknown address must look the
+    // same to whoever is typing.
+    console.error('[reset] request failed', { status: error.status, message: error.message });
   }
 
   // The address is shown back on A2 and reused by its Resend button. It goes
