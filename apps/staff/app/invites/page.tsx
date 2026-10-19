@@ -101,7 +101,7 @@ export default async function Page() {
                   <ShiftTime startsAt={invite.startsAt} endsAt={invite.endsAt} withDate />
                 </span>
               </div>
-              <Link className="t" href={`/invites/${invite.bookingId}`}>
+              <Link className="t" href={`/invites/${invite.bookingId}`} prefetch={false}>
                 {invite.eventTitle} · {invite.role}
               </Link>
               <div className="m">
