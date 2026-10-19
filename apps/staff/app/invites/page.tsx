@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { EmptyState, Pill } from '@thc/ui';
-import { explainLimit, formatDistance, sectionHours } from '@thc/domain';
+import { explainLimit, formatDistance, readyDeadlinePassed, sectionHours } from '@thc/domain';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { StaffShell } from '../_components/StaffShell';
 import { preloadShell } from '../_components/preloadShell';
@@ -143,7 +143,7 @@ export default async function Page() {
                     action={acceptInvite.bind(null, invite.bookingId)}
                     confirm={{
                       title: 'Accept this shift?',
-                      body: `You’ll be booked for ${invite.eventTitle} · ${invite.role}. Any other invitation that overlaps this time will be withdrawn automatically. You’ll need to press “I’m ready” by 12:00 the day before.`,
+                      body: `You’ll be booked for ${invite.eventTitle} · ${invite.role}. Any other invitation that overlaps this time will be withdrawn automatically.${readyDeadlinePassed(invite.startsAt, now) ? '' : ' You’ll need to press “I’m ready” by 12:00 the day before.'}`,
                       confirmLabel: 'Accept shift',
                       keepLabel: 'Not now',
                     }}

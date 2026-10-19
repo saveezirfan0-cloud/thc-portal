@@ -7,6 +7,7 @@ import {
   formatDateIn,
   formatDistance,
   formatHours,
+  readyDeadlinePassed,
   sectionHours,
 } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
@@ -154,8 +155,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </Alert>
       ) : (
         <Alert tone="cyan">
-          Invitations don’t expire — but the slot goes to the first person who confirms. If you
-          accept, you’ll be asked to press “I’m ready” by 12:00 the day before.
+          Invitations don’t expire — but the slot goes to the first person who confirms.
+          {/* §3.5: only a booking made before the 12:00 deadline is asked
+              (readyCutoffApplies); a same-day or late accept never is. */}
+          {readyDeadlinePassed(invite.startsAt)
+            ? null
+            : ' If you accept, you’ll be asked to press “I’m ready” by 12:00 the day before.'}
         </Alert>
       )}
 

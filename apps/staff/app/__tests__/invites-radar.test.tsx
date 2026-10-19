@@ -524,6 +524,17 @@ describe('/invites/:id', () => {
     expect(radar).not.toMatch(/>\d{4}-\d{2}-\d{2}</);
   });
 
+  it('mentions "I’m ready" only where the 12:00 deadline is still ahead (§3.5)', async () => {
+    const ahead = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(ahead).toContain('press “I’m ready” by 12:00 the day before');
+    bookings.mockResolvedValue([
+      booking({ bookingId: 'tonight', startsAt: hours(2), endsAt: hours(6) }),
+    ]);
+    const tonight = await render(InvitePage({ params: Promise.resolve({ id: 'tonight' }) }));
+    expect(tonight).toContain('the slot goes to the first person who confirms.');
+    expect(tonight).not.toContain('I’m ready');
+  });
+
   it('a booking the worker does not have is a 404', async () => {
     await expect(InvitePage({ params: Promise.resolve({ id: 'nobody' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',
