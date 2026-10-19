@@ -17,7 +17,7 @@ create temporary table t_register (code text primary key);
 insert into t_register (code) select unnest(array[
   -- register-codes:begin
   'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N6b', 'N7', 'N8', 'N9', 'N9b', 'N13',
-  'N10', 'N10b', 'N10d', 'N10c', 'N11', 'N11b', 'N12', 'N14', 'N15',
+  'N10', 'N10b', 'N10d', 'N10e', 'N10c', 'N11', 'N11b', 'N12', 'N14', 'N15',
   'E1', 'E2', 'E2b', 'E3', 'E4', 'E5', 'E5b', 'E6', 'E7', 'E8', 'E9', 'E10',
   'E11', 'E12',
   'CL1', 'CL2', 'CL3', 'CL4', 'CL5', 'CL6',

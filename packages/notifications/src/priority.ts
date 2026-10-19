@@ -62,6 +62,7 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   N10: urgent,
   N10b: urgent,
   N10d: urgent,
+  N10e: urgent,
   N10c: urgent,
   N11: urgent,
   N11b: urgent,

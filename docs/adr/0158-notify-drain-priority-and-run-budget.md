@@ -58,7 +58,7 @@ The concurrency audit before go-live (finding H3, with M4) found two faults in `
   and pgTAP 856 fails while the database's mapping misses any code on that list. A code
   that is still unknown at run time is *normal*, so it is never held back.
 
-  - Urgent: N5, N6, N6b, N7, N9, N9b, N10, N10b, N10c, N10d, N11, N11b, N12, N13, E10,
+  - Urgent: N5, N6, N6b, N7, N9, N9b, N10, N10b, N10c, N10d, N10e, N11, N11b, N12, N13, E10,
     OF1–OF6, CR2, OM1, OM2.
   - Bulk: OC1–OC3, IR1, N1–N3, CL4.
   - Normal: everything else.

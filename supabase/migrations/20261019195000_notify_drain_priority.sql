@@ -74,6 +74,7 @@ language sql immutable set search_path = public, extensions as $$
     ('N10b', 0),
     ('N10c', 0),
     ('N10d', 0),
+    ('N10e', 0),
     ('N11', 0),
     ('N11b', 0),
     ('N12', 0),
