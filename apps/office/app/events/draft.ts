@@ -260,16 +260,18 @@ export function canSave(draft: EventDraft): boolean {
 /**
  * Whether a role section can be removed from the builder at all.
  *
- * `bookings.shift_id` cascades on delete, so removing a section with people
- * on it would destroy their invitations and confirmations outright — no
- * cancelled transition, no cause, no history. §3.6 makes Withdraw the only
- * way a manager takes someone off a shift, and §3.2 is explicit that cutting
- * headcount never auto-removes anyone. A section that was never saved has
- * nobody on it and is always removable.
+ * `bookings.shift_id` cascades on delete, so removing a section with anyone
+ * confirmed on it would destroy their bookings outright — no cancelled
+ * transition, no cause, no history. §3.6 makes Withdraw the only way a
+ * manager takes someone off a shift, and §3.2 is explicit that cutting
+ * headcount never auto-removes anyone. Pending invitations and applications
+ * do not hold a section: the save closes them through
+ * remove_shift_sections(), which tells each worker (ADR-0160). A section
+ * that was never saved has nobody on it and is always removable.
  */
-export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string, number>): boolean {
+export function canRemoveRole(role: RoleDraft, heldBySectionId: Record<string, number>): boolean {
   if (!role.id) return true;
-  return (bookedBySectionId[role.id] ?? 0) === 0;
+  return (heldBySectionId[role.id] ?? 0) === 0;
 }
 
 /**

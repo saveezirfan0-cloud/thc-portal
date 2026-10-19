@@ -232,6 +232,12 @@ export interface SavedRoleSection {
    * board, through Withdraw (§3.3, §3.6).
    */
   booked: number;
+  /**
+   * Of `booked`, the ones confirmed or past it — what keeps Remove off
+   * (ADR-0160). The rest are pending invitations and applications, which
+   * a save that removes the section closes, telling each worker.
+   */
+  held: number;
 }
 
 export interface SavedEvent {
@@ -296,6 +302,13 @@ export interface SectionRateRow {
 export const LIVE_BOOKING_STATUSES = ['invited', 'confirmed', 'applied', 'worked'] as const;
 
 /**
+ * The bookings that keep a role section in the builder (ADR-0160): someone
+ * confirmed, or past it. A pending invitation or application does not —
+ * remove_shift_sections() tells those workers and the section goes.
+ */
+export const HELD_BOOKING_STATUSES = ['confirmed', 'worked', 'turned_away'] as const;
+
+/**
  * Reads a Europe/London wall-clock "HH:MM" back out of a stored timestamptz.
  * A VALUE for the draft and `ukRoleWindow`, not a label: always the 24-hour
  * form whatever clock the operator reads (ADR-0085); `TimeField` and the
@@ -344,6 +357,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
   const ids = sections.map((s) => s.id);
   const confirmed = new Map<string, number>();
   const booked = new Map<string, number>();
+  const held = new Map<string, number>();
   if (ids.length > 0) {
     const { data: bookings, error: bookingError } = await supabase
       .from('bookings')
@@ -355,6 +369,9 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       booked.set(row.shift_id, (booked.get(row.shift_id) ?? 0) + 1);
       if (row.status === 'confirmed') {
         confirmed.set(row.shift_id, (confirmed.get(row.shift_id) ?? 0) + 1);
+      }
+      if ((HELD_BOOKING_STATUSES as readonly string[]).includes(row.status)) {
+        held.set(row.shift_id, (held.get(row.shift_id) ?? 0) + 1);
       }
     }
   }
@@ -409,6 +426,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       allocationPerHour: s.allocation_per_hour,
       confirmed: confirmed.get(s.id) ?? 0,
       booked: booked.get(s.id) ?? 0,
+      held: held.get(s.id) ?? 0,
     })),
   };
 }

@@ -221,6 +221,11 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       { code: 'N10c', label: 'Shift filled', when: 'A worker accepts after the role is full' },
       { code: 'N10d', label: 'Invitation withdrawn', when: 'The office withdraws an invitation' },
       {
+        code: 'N10e',
+        label: 'Shift no longer needed',
+        when: 'The office removes a role a worker applied for',
+      },
+      {
         code: 'N6',
         label: 'Confirm tomorrow’s shift',
         when: 'The day before — “I’m ready” by 12:00',

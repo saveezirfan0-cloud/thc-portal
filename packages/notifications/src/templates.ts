@@ -301,6 +301,19 @@ export const TEMPLATES = {
     timing: 'on change, in the same transaction as the withdrawal',
     deepLink: '/invites',
   },
+  // A role section removed in the Shift Builder while applications are still
+  // pending on it (ADR-0160). Not the role filling (N10c's copy says it was
+  // filled) and not the event being cancelled (N12 — the event goes on).
+  N10e: {
+    code: 'N10e',
+    channel: 'push',
+    title: 'Shift no longer needed',
+    body: 'The {event} shift on {dateTime} is no longer needed, so your application has been closed. Keep an eye on Radar — new shifts are added regularly.',
+    trigger:
+      'The office removes a role section that still has pending Radar applications on it (Shift Builder → Remove → Save). Not in §8: §10.4 ends an application by N10, N10c, the worker withdrawing it or N12, and none of those copies is true for one role taken off an event that goes on (ADR-0160)',
+    timing: 'on save, in the same transaction as the removal',
+    deepLink: '/radar',
+  },
   N10c: {
     code: 'N10c',
     channel: 'push',
@@ -1134,6 +1147,7 @@ export const EXTENSION_CODES = [
   'E5b',
   'E10',
   'N10d',
+  'N10e',
   'N11b',
   'E11',
   'E12',

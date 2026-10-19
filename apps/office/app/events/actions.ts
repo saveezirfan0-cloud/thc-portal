@@ -14,7 +14,7 @@ import {
   validateRoleSection,
 } from '@thc/domain';
 import { pastDateIssue } from './draft';
-import { LIVE_BOOKING_STATUSES } from './data';
+import { HELD_BOOKING_STATUSES } from './data';
 import { planReconfirmations, reconfirmOutboxRows } from './reconfirm';
 import { explainDbError } from '../_lib/dbError';
 
@@ -259,6 +259,9 @@ async function firstAutoAssignRound(supabase: SupabaseClient, eventId: string): 
   }
 }
 
+const HAS_PEOPLE =
+  'A role section with people confirmed on it cannot be removed. To take the whole event off the schedule use Cancel event on the event board; to drop only this role, withdraw its confirmed people there first.';
+
 export async function updateEvent(input: EventInput): Promise<SaveResult> {
   if (!input.id) return { error: 'This event has not been created yet.' };
   const invalid = validate(input);
@@ -300,6 +303,23 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     .single();
   if (!venue) return { error: 'That venue no longer exists.' };
 
+  const keep = new Set(input.roles.map((role) => role.id).filter(Boolean) as string[]);
+  const removed = before.map((s) => s.id).filter((id) => !keep.has(id));
+  if (removed.length > 0) {
+    // `bookings.shift_id` cascades on delete, so a section is never removed
+    // with anyone confirmed on it: §3.6 makes Withdraw the only way a manager
+    // takes someone off a shift (§3.2, §3.3). Pending invitations and
+    // applications do not hold it — remove_shift_sections() tells those
+    // workers (ADR-0160). Checked before anything is written, so a refusal
+    // leaves the event as it was; the RPC checks again under the lock.
+    const { data: held } = await supabase
+      .from('bookings')
+      .select('shift_id')
+      .in('shift_id', removed)
+      .in('status', HELD_BOOKING_STATUSES);
+    if ((held ?? []).length > 0) return { error: HAS_PEOPLE };
+  }
+
   const { error } = await supabase
     .from('events')
     .update({
@@ -321,25 +341,16 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     .eq('id', input.id);
   if (error) return { error: refusal(error) };
 
-  const keep = new Set(input.roles.map((role) => role.id).filter(Boolean) as string[]);
-  const removed = before.map((s) => s.id).filter((id) => !keep.has(id));
   if (removed.length > 0) {
-    // `bookings.shift_id` cascades on delete, so dropping a section here would
-    // destroy its invitations and confirmations outright — no cancelled
-    // transition, no cause, no history. §3.6 makes Withdraw the only way a
-    // manager takes someone off a shift, so refuse instead (§3.2, §3.3).
-    const { data: held } = await supabase
-      .from('bookings')
-      .select('shift_id')
-      .in('shift_id', removed)
-      .in('status', LIVE_BOOKING_STATUSES);
-    if ((held ?? []).length > 0) {
-      return {
-        error:
-          'A role section with people booked on it cannot be removed. To take the whole event off the schedule use Cancel event on the event board; to drop only this role, withdraw its people there first.',
-      };
-    }
-    await supabase.from('shift_requirements').delete().in('id', removed);
+    // One transaction (ADR-0160): re-checks nobody is confirmed under the
+    // section lock, tells each pending invitee (N10d) and applicant (N10e),
+    // and deletes the sections.
+    const { data: removal, error: removeError } = await supabase.rpc('remove_shift_sections', {
+      p_event: input.id,
+      p_shifts: removed,
+    });
+    if (removeError) return { error: refusal(removeError) };
+    if ((removal as { ok?: boolean } | null)?.ok === false) return { error: HAS_PEOPLE };
   }
 
   // Existing sections are UPDATEd and new ones INSERTed, not upserted: an

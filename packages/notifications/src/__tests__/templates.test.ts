@@ -1082,6 +1082,30 @@ describe('N10d / N11b — the extensions for a withdrawn invitation and a detail
 });
 
 /**
+ * N10e — a role section removed while applications are pending on it
+ * (ADR-0160). remove_shift_sections() queues it with N10d's values.
+ */
+describe('N10e — the application on a removed role', () => {
+  const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+
+  it('is an extension, never a §8 code', () => {
+    expect(EXTENSION_CODES as readonly string[]).toContain('N10e');
+    expect(SCOPE_CODES as readonly string[]).not.toContain('N10e');
+    expect(template('N10e').trigger).toMatch(/Not in §8/);
+    expect(template('N10e').channel).toBe('push');
+  });
+
+  it('reads the values N10d does, and claims neither a fill nor a cancelled event', () => {
+    expect(placeholders(body('N10e')).sort()).toEqual(placeholders(body('N10d')).sort());
+    expect(body('N10e')).not.toMatch(/filled|cancelled/i);
+    expect(render(body('N10e'), { event: 'Gala Dinner', dateTime: 'Thu 22 Oct 07:00' })).toBe(
+      'The Gala Dinner shift on Thu 22 Oct 07:00 is no longer needed, so your application has been closed. Keep an eye on Radar — new shifts are added regularly.',
+    );
+    expect(template('N10e').deepLink).toBe('/radar');
+  });
+});
+
+/**
  * Office messages (ADR-0069). The manager writes the body; the register
  * still fixes the title, the deep link and the tag, and the payload carries
  * exactly the keys `send_event_message` writes (pgTAP 758).
