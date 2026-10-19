@@ -601,17 +601,25 @@ export function ShiftScreen({
       {phase === 'on_shift' || phase === 'on_break' ? (
         <>
           <KeepOpenBar wake={wake} />
+          {/* RULE-01: the chargeable clock runs from the later of the
+              scheduled start and the check-in (ADR-0095) — a worker who
+              arrived 20 minutes early has not been on the clock for them.
+              Every break pauses it (§5.2b, ADR-0035 §7). */}
           <Timer>
             {formatDuration(
               Math.max(
                 0,
-                Math.round((now.getTime() - new Date(shift.checkInAt!).getTime()) / 60_000) -
+                Math.round((now.getTime() - new Date(paidFromIso(shift)).getTime()) / 60_000) -
                   (shift.breaksLogged ? totalBreakMinutes(shift, now) : 0),
               ),
             )}
           </Timer>
           <p className="xs muted">
             Chargeable time{phase === 'on_break' ? ' · paused while you’re on a break' : ''}
+            {/* shift-detail.html (d): "Checked in 16:52 · paid from 17:00 · scheduled end 23:30". */}
+            {' · '}checked in {local(shift.checkInAt!)} · paid from{' '}
+            <UkTime at={new Date(paidFromIso(shift))} /> · scheduled end{' '}
+            <UkTime at={new Date(shift.endsAt)} />
           </p>
 
           {shift.breaksLogged ? (

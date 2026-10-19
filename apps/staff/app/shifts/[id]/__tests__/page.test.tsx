@@ -398,6 +398,17 @@ describe('§5.1 / §5.2b the live screen, phase by phase', () => {
     expect(html).not.toContain('A break will be applied');
   });
 
+  it('checked in early: the chargeable timer runs from the scheduled start, not the press (RULE-01)', async () => {
+    profile.mockResolvedValue(worker());
+    // Checked in 20 minutes before a start that was an hour ago.
+    shift.mockResolvedValue(detail({ checkInAt: ago(80), startsAt: ago(60), endsAt: ahead(240) }));
+    const html = await render();
+    expect(html).toMatch(/>1 h</);
+    expect(html).not.toContain('1 h 20 m');
+    expect(html).toContain('paid from');
+    expect(html).toContain('scheduled end');
+  });
+
   it('on a break: the button reads Finish break and the chargeable timer is paused', async () => {
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(
