@@ -136,7 +136,8 @@ export const ACTION_TARGET: Record<CandidateAction | 'reset', MachineStatus> = {
  * What the candidate profile may offer (§2.3): "no other top area
  * buttons — only Reject candidate", plus the phase-2 Accept that mirrors
  * the Willo stage change (§2.4, BO4). Rejection is final on the record, so
- * a rejected profile offers nothing. `additional_info` is outside the
+ * a rejected profile offers none of these (a quiz rejection may instead be
+ * given 3 more attempts, ADR-0168 — CandidateScreen offers that itself). `additional_info` is outside the
  * machine and gets nothing either, which is also what the database does.
  */
 export function candidateActions(status: StaffStatus): CandidateAction[] {
@@ -470,7 +471,19 @@ export function cardLines(
     }
     case 'quiz': {
       const used = row.quiz_attempts_used;
-      if (used === 0) {
+      // ADR-0168: attempts the office set aside are still in the scores line.
+      const setAside = row.quiz_scores.length - used;
+      if (setAside > 0) {
+        lines.push({
+          text: `3 more attempts allowed ${shortDay(row.stage_entered_at)} · earlier ${attemptsLabel(row.quiz_scores.slice(0, setAside))}`,
+        });
+        lines.push({
+          text:
+            used === 0
+              ? `Attempts 0 / ${QUIZ_MAX_ATTEMPTS} · not started`
+              : `Attempts ${used} / ${QUIZ_MAX_ATTEMPTS} · best ${scoreLabel(Math.max(...row.quiz_scores.slice(setAside)))} (pass mark ${QUIZ_PASS_MARK}%)`,
+        });
+      } else if (used === 0) {
         // Entry to `quiz` IS the automatic unlock (20260923110000), so the
         // stage stamp is the date the last document was verified.
         lines.push({
@@ -545,9 +558,12 @@ export function rejectedLines(row: BoardCandidateRow): Line[] {
     case 'quiz_failed': {
       // "Attempts 65% · 75% · 70%" as the approved board writes it; the
       // best-over-N line only for a row from before quiz_scores existed.
+      // ADR-0168: after 3 more attempts were allowed, the current three
+      // lead and the ones set aside follow (scores run oldest first).
+      const setAside = Math.max(row.quiz_scores.length - row.quiz_attempts_used, 0);
       const attempts =
         row.quiz_scores.length > 0
-          ? `Attempts ${attemptsLabel(row.quiz_scores)}`
+          ? `Attempts ${attemptsLabel(row.quiz_scores.slice(setAside))}${setAside > 0 ? ` (earlier ${attemptsLabel(row.quiz_scores.slice(0, setAside))})` : ''}`
           : `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts`;
       return [
         {
