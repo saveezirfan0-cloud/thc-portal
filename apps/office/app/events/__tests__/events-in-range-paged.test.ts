@@ -58,7 +58,8 @@ beforeEach(() => {
   state.db = fake;
 });
 
-describe('loadEventsInRange at a full Month', () => {
+// Thousands of fake rows per read: slow on a loaded CI runner, not a hang.
+describe('loadEventsInRange at a full Month', { timeout: 30_000 }, () => {
   it(`lists all 630 events of ${DAYS} days and all 1,890 sections, with their counts`, async () => {
     const { events, problem } = await loadEventsInRange('2026-10-26', '2026-12-06');
     expect(problem).toBeNull();

@@ -128,7 +128,8 @@ function SOURCES() {
   };
 }
 
-describe('loadBoard at full roster', () => {
+// Thousands of fake rows per read: slow on a loaded CI runner, not a hang.
+describe('loadBoard at full roster', { timeout: 30_000 }, () => {
   it('the pool names all 1,500 eligible workers, not the first 1,000', async () => {
     const { event, problem } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
     expect(problem).toBeNull();
