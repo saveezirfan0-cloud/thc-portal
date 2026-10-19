@@ -200,13 +200,13 @@ select is(accept_application(:'a1'),
   'the office accepts Ada''s application: 1 confirmed of 1 (+1) takes the last seat and closes the other two applications');
 select is((select status::text from bookings where id = :'a1'), 'confirmed', 'applied → confirmed');
 select isnt((select confirmed_at from bookings where id = :'a1'), null, 'confirmed_at is stamped');
-select is((select template from notification_outbox where key = 'N10:booking:' || :'a1'), 'N10',
-  'N10 is queued, keyed per booking');
-select is((select recipient_staff_id from notification_outbox where key = 'N10:booking:' || :'a1'), :'w1'::uuid,
+select is((select template from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')), 'N10',
+  'N10 is queued, keyed per application (booking + applied_at, 20261021040100)');
+select is((select recipient_staff_id from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')), :'w1'::uuid,
   'to the applicant');
-select is((select payload ->> 'event' from notification_outbox where key = 'N10:booking:' || :'a1'), 'Radar Gala',
+select is((select payload ->> 'event' from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')), 'Radar Gala',
   'N10 carries {event}');
-select is((select payload ->> 'date' from notification_outbox where key = 'N10:booking:' || :'a1'),
+select is((select payload ->> 'date' from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')),
   to_char(:'w'::date + 3, 'DD Mon YYYY'), 'and {date}, the role''s own UK day');
 select is((select count(*)::int from notification_outbox
             where template = 'N10c' and recipient_staff_id in (:'w2', :'w3')), 2,

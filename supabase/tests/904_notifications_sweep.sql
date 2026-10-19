@@ -14,9 +14,12 @@
 --      the 12:05 and 05:00 job gates; N6, the 12:05 release with N6b and
 --      N9 driven through booking_tick() / release_unready_bookings() at
 --      fixed instants either side of the change.
+--   3. N10 keyed per application (20261021040100): an application accepted,
+--      withdrawn by the office, applied for again on the same booking row
+--      and accepted again is told "You're booked!" again.
 -- =====================================================================
 begin;
-select plan(30);
+select plan(36);
 \ir _shared/fixtures.psql
 
 \set ev    '90400000-0000-4000-8000-000000000001'
@@ -33,13 +36,16 @@ select plan(30);
 \set b_app '90430000-0000-4000-8000-000000000003'
 \set b_sun '90430000-0000-4000-8000-000000000004'
 \set b_mon '90430000-0000-4000-8000-000000000005'
+\set s_r   '90410000-0000-4000-8000-000000000004'
+\set r1    '90420000-0000-4000-8000-000000000006'
 
 insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch) values
   (:'h1', 'Hana', 'One',   'h1@sweep904.test', '+447700990401', date '1995-01-01', 'compliant', 'uk_irish'),
   (:'h2', 'Hugo', 'Two',   'h2@sweep904.test', '+447700990402', date '1995-01-01', 'compliant', 'uk_irish'),
   (:'h3', 'Hal',  'Three', 'h3@sweep904.test', '+447700990403', date '1995-01-01', 'compliant', 'uk_irish'),
   (:'d1', 'Dora', 'Sun',   'd1@sweep904.test', '+447700990404', date '1995-01-01', 'compliant', 'uk_irish'),
-  (:'d2', 'Dan',  'Mon',   'd2@sweep904.test', '+447700990405', date '1995-01-01', 'compliant', 'uk_irish');
+  (:'d2', 'Dan',  'Mon',   'd2@sweep904.test', '+447700990405', date '1995-01-01', 'compliant', 'uk_irish'),
+  (:'r1', 'Rae',  'Again', 'r1@sweep904.test', '+447700990406', date '1995-01-01', 'compliant', 'uk_irish');
 insert into staff_roles (staff_id, role_id)
 select id, :'role_id' from staff where email like '%@sweep904.test';
 
@@ -54,7 +60,8 @@ insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headc
                                 charge_rate, pay_rate, allocation_per_hour) values
   (:'s_hc',  :'ev', :'role_id', '2026-10-25 17:00+00', '2026-10-25 23:00+00', 3, 1, 30, 15, 1),
   (:'s_sun', :'ev', :'role_id', '2026-10-25 10:00+00', '2026-10-25 16:00+00', 5, 0, 30, 15, 1),
-  (:'s_mon', :'ev', :'role_id', '2026-10-26 09:00+00', '2026-10-26 15:00+00', 5, 0, 30, 15, 1);
+  (:'s_mon', :'ev', :'role_id', '2026-10-26 09:00+00', '2026-10-26 15:00+00', 5, 0, 30, 15, 1),
+  (:'s_r',   :'ev', :'role_id', now() + interval '14 days', now() + interval '14 days 6 hours', 3, 0, 30, 15, 1);
 
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, applied_at) values
   (:'b_h1',  :'s_hc',  :'h1', 'confirmed', 'auto', '2026-10-01 10:00+00', null),
@@ -150,6 +157,30 @@ select is((select count(*)::int from notification_outbox where key = 'N9:booking
 select booking_tick('2026-10-26 08:30+00');
 select is((select count(*)::int from notification_outbox where key = 'N9:booking:' || :'b_mon' || ':check-in'), 1,
   '… one at start − 30 (08:30 UK, GMT)');
+
+-- ---------------------------------------------------------------------
+-- 3 · N10 per application: accepted, withdrawn, applied again, accepted
+-- ---------------------------------------------------------------------
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select (apply_to_shift(:'s_r', :'r1') ->> 'bookingId') as b_r \gset
+select is(accept_application(:'b_r') ->> 'ok', 'true', 'the office accepts the application');
+select is(withdraw_booking(:'b_r') ->> 'notified', 'N10b', 'then withdraws it (N10b)');
+reset role;
+-- A later application: in real life another transaction, so another now().
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(apply_to_shift(:'s_r', :'r1') ->> 'bookingId', :'b_r', 'the worker applies again: the same booking row reopens');
+reset role;
+update bookings set applied_at = applied_at + interval '1 minute' where id = :'b_r';
+set local role authenticated;
+select is(accept_application(:'b_r') ->> 'ok', 'true', 'the office accepts it again');
+reset role;
+select is((select count(*)::int from notification_outbox where template = 'N10' and recipient_staff_id = :'r1'), 2,
+  'two applications accepted: two N10, the second no longer swallowed by the first one''s key');
+select is((select count(distinct key)::int from notification_outbox where template = 'N10' and recipient_staff_id = :'r1'
+            and key like 'N10:booking:' || :'b_r' || ':%'), 2,
+  'each keyed N10:booking:<id>:<applied_at>');
 
 select * from finish();
 rollback;
