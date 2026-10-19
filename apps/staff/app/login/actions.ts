@@ -26,7 +26,11 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
   // Only ever a path on this app (§1.4): see packages/db/src/redirect.ts.
-  const next = safeNextPath(formData.get('next'), '/shifts');
+  // With no `next`, the root decides where this worker lands (app/page.tsx):
+  // a candidate still in the wizard goes to /onboarding, everyone else to
+  // /shifts. Sending everyone to /shifts showed a candidate on step 1 a
+  // locked Shifts tab saying their documents were with the office.
+  const next = safeNextPath(formData.get('next'), '/');
 
   if (!email || !password) return 'Enter your email and password.';
 

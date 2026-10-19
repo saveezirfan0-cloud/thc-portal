@@ -84,7 +84,7 @@ const KEYS = [sha('amara.k@example.com'), { kind: 'sign_in_ip', key: sha('ip:203
 
 describe('signIn: five wrong passwords per account, and per address', () => {
   it('asks under the account and the caller address before GoTrue', async () => {
-    expect(await outcome(() => signIn(null, form(creds)))).toBe('REDIRECT:/shifts');
+    expect(await outcome(() => signIn(null, form(creds)))).toBe('REDIRECT:/');
     expect(throttle.allowed).toHaveBeenCalledWith('sign_in', KEYS);
     expect(throttle.record).not.toHaveBeenCalled();
   });

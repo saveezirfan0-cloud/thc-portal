@@ -63,7 +63,8 @@ describe('sign-in next', () => {
   });
 
   it.each(ESCAPES)('refuses %j', async (next) => {
-    expect(await outcome(next)).toBe('REDIRECT:/shifts');
+    // The root, which sends each worker to their own home (app/page.tsx).
+    expect(await outcome(next)).toBe('REDIRECT:/');
   });
 });
 
