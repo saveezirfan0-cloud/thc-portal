@@ -50,9 +50,11 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
         .order('created_at', { ascending: false })
         .limit(LIMIT),
       // A share code filed and waiting: no check started for it (yet).
+      // Through the owner-rights compliance_doc_review_v: since ADR-0163 no
+      // API role may read (or filter on) compliance_docs.share_code itself.
       supabase
-        .from('compliance_docs')
-        .select('id, staff_id, uploaded_at')
+        .from('compliance_doc_review_v')
+        .select('id:document_id, staff_id, uploaded_at')
         .eq('doc_type', 'share_code_report')
         .eq('review_status', 'pending')
         // rtw_check_enqueue() starts nothing for a document without a code.

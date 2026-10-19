@@ -307,8 +307,8 @@ select is_empty(
       where n.nspname = 'public'
         and c.relname in ('roles', 'shift_requirements', 'bookings', 'staff')
         and (coalesce(pg_get_expr(p.polqual, p.polrelid), '')
-          || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ '''admin''|auth\.uid\(\)' $$,
-  'ADR-0004: every policy on those four tables restricts to admin or to the caller''s own row, so none of them is open to "any signed-in role"'
+          || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ '''admin''|auth\.uid\(\)|staff_caller\(\)' $$,
+  'ADR-0004: every policy on those four tables restricts to admin or to the caller''s own row (auth.uid(), or since ADR-0163 staff_caller(), which also asks for a live session and an unbanned login), so none of them is open to "any signed-in role"'
 );
 
 -- ---------------------------------------------------------------------
@@ -472,8 +472,9 @@ select bag_eq(
             ('client_role_sections_v'), ('event_windows'), ('feedback_authors_v'),
             ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
-            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'the owner-rights views in public are exactly these nineteen (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135); a new one is a reviewed addition'
+            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
+            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v') $$,
+  'the owner-rights views in public are exactly these twenty-two (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135; the identity, bank-mask and document-review views ADR-0163, pinned by 890); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text
@@ -491,8 +492,9 @@ select bag_eq(
             ('client_portal_contact_v'), ('client_worker_requests_v'),
             ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
-            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
-  'sixteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
+            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
+            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v') $$,
+  'nineteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();

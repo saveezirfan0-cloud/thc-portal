@@ -31,7 +31,6 @@ export interface UploadedDoc {
   rightToWorkUntil: string | null;
   rejectionReason: string | null;
   reviewedAt: string | null;
-  needsManualReview: boolean;
   termDates: { from: string; to: string }[] | null;
   shareCode: string | null;
 }
@@ -147,7 +146,6 @@ export function mapOnboardingState(raw: unknown): OnboardingState | null {
       rightToWorkUntil: str(d['rightToWorkUntil']),
       rejectionReason: str(d['rejectionReason']),
       reviewedAt: str(d['reviewedAt']),
-      needsManualReview: bool(d['needsManualReview']),
       termDates: (d['termDates'] as { from: string; to: string }[] | null) ?? null,
       shareCode: str(d['shareCode']),
     })),

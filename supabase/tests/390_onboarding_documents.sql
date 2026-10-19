@@ -455,9 +455,12 @@ reset role;
 -- Anon: nothing.
 set local "request.jwt.claims" = '{"role":"anon"}';
 set local role anon;
-select is((select count(*)::int from onboarding_progress), 0, 'anon: no onboarding data');
-select is((select count(*)::int from contract_versions), 0, 'anon: not even the contract text');
-select is((select count(*)::int from quiz_questions), 0, 'anon: not the answer key, from the public /apply origin or anywhere else (§2.9)');
+select throws_ok($$ select count(*) from onboarding_progress $$, '42501', null,
+  'anon: no onboarding data — and since ADR-0163 the privilege itself is gone, so the read fails rather than returning nothing');
+select throws_ok($$ select count(*) from contract_versions $$, '42501', null,
+  'anon: not even the contract text — and since ADR-0163 the privilege itself is gone, so the read fails rather than returning nothing');
+select throws_ok($$ select count(*) from quiz_questions $$, '42501', null,
+  'anon: not the answer key, from the public /apply origin or anywhere else (§2.9) — and since ADR-0163 the privilege itself is gone, so the read fails rather than returning nothing');
 reset role;
 
 select ok(

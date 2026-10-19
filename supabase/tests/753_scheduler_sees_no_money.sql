@@ -83,9 +83,8 @@ select is(
     where a.attrelid in ('public.roles'::regclass, 'public.shift_requirements'::regclass, 'public.client_rate_cards'::regclass)
       and a.attnum > 0 and not a.attisdropped
       and a.attname not in ('pay_rate', 'charge_rate')
-      and not (has_column_privilege('authenticated', a.attrelid, a.attname, 'select')
-               and has_column_privilege('anon', a.attrelid, a.attname, 'select'))),
-  0, 'every other column of the three tables is still selectable (a new column needs its grant — this fails until it has one)');
+      and not has_column_privilege('authenticated', a.attrelid, a.attname, 'select')),
+  0, 'every other column of the three tables is still selectable by a signed-in caller (a new column needs its grant — this fails until it has one); anon holds none of them since ADR-0163');
 select ok(has_table_privilege('authenticated', 'public.shift_requirements', 'insert')
       and has_table_privilege('authenticated', 'public.shift_requirements', 'update')
       and has_column_privilege('authenticated', 'public.roles', 'pay_rate', 'update')

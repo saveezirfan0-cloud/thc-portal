@@ -281,16 +281,27 @@ select is_empty($$ select 1 from public.rota_guard_verdict(null, null) x where x
 -- Under a worker's own rights (the functions are invoker): the same answer.
 update staff set user_id = null where id = :'staffa';
 update staff set user_id = :'staffa_uid' where id = 'ca9d0000-0000-4000-8000-000000000011';
+-- Since 20261020120000 (ADR-0163) the worker holds no staff.dob, which the
+-- `_old` reference copy reads directly: the new answers are taken first,
+-- under the worker's real rights (weekly_cap_for's API branch), and only
+-- then is dob granted back, inside this transaction, for the reference.
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
+create temp table d853_self as
+  select x.d,
+         public.weekly_cap_for('ca9d0000-0000-4000-8000-000000000011', x.d) as cap,
+         public.weekly_booked_hours('ca9d0000-0000-4000-8000-000000000011', x.d) as hrs
+    from (select (now() at time zone 'Europe/London')::date + k as d from generate_series(-21, 21) k) x;
+reset role;
+grant select (dob) on public.staff to authenticated;
+set local role authenticated;
 select is_empty($$
-  select 1 from (select (now() at time zone 'Europe/London')::date + k as d from generate_series(-21, 21) k) x
-   where public.weekly_cap_for('ca9d0000-0000-4000-8000-000000000011', x.d)
-         is distinct from _old.weekly_cap_for('ca9d0000-0000-4000-8000-000000000011', x.d)
-      or public.weekly_booked_hours('ca9d0000-0000-4000-8000-000000000011', x.d)
-         is distinct from _old.weekly_booked_hours('ca9d0000-0000-4000-8000-000000000011', x.d) $$,
+  select 1 from d853_self n
+   where n.cap is distinct from _old.weekly_cap_for('ca9d0000-0000-4000-8000-000000000011', n.d)
+      or n.hrs is distinct from _old.weekly_booked_hours('ca9d0000-0000-4000-8000-000000000011', n.d) $$,
   'B: a worker reading their own cap and hours through their own RLS gets the same answers');
 reset role;
+revoke select (dob) on public.staff from authenticated;
 
 -- =====================================================================
 -- C · the shape

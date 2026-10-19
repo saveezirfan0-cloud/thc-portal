@@ -247,8 +247,8 @@ select ok(not has_table_privilege('authenticated', 'client_event_documents_v', '
   '§11.1 read-only: nobody writes through client_event_documents_v — the privilege itself is absent, not merely the view non-updatable');
 
 set local role anon;
-select is((select count(*)::int from event_documents where event_id in (:'ev', :'ev_b')), 0,
-  'anon reads no event_documents row from the table: a timesheet path carries names and pay lines (§11.3)');
+select throws_ok(format($$ select count(*) from event_documents where event_id in (%L, %L) $$, :'ev', :'ev_b'), '42501', null,
+  'anon reads no event_documents row from the table: a timesheet path carries names and pay lines (§11.3) — and since ADR-0163 the privilege itself is gone, so the read fails rather than returning nothing');
 select throws_ok(
   format($$ insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count)
             values (%L, 'timesheet', 'forged/t.pdf', 'Forged.pdf', 1, 1) $$, :'ev'),

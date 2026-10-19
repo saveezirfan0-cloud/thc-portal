@@ -28,12 +28,15 @@ select is(
 -- rejected candidate could read it off their own row. The list is spelled
 -- out rather than widened to "any column somebody excluded", so a third
 -- exclusion has to be added here deliberately and cannot arrive silently.
+-- Six since 20261020120000 (ADR-0163): the four identity columns went the
+-- same way, so a stolen signed-in phone no longer reads them off the row.
 select is_empty(
   $$ select a.attname from pg_attribute a
       where a.attrelid = 'public.staff'::regclass and a.attnum > 0 and not a.attisdropped
-        and a.attname not in ('block_reason', 'rejection_reason')
+        and a.attname not in ('block_reason', 'rejection_reason',
+                              'dob', 'home_address', 'ni_number', 'share_code')
         and not has_column_privilege('authenticated', 'public.staff', a.attname, 'select') $$,
-  'every staff column but block_reason and rejection_reason is granted, the 23.09 additions included');
+  'every staff column but block_reason, rejection_reason and the four identity columns (ADR-0163) is granted, the 23.09 additions included');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;

@@ -48,8 +48,8 @@ select throws_ok(
 
 select lives_ok($$ select staff_save_bank('Staff Alpha', '20-00-00', '55779911') $$,
   'staff_save_bank() still saves: it is security definer and needs no policy of the caller''s');
-select is((select sort_code from bank_details where staff_id = :'staffa'), '20-00-00',
-  'the RPC''s write landed, formatted the way payroll reads it');
+select is((select (staff_me() -> 'bank' ->> 'sortCode')), '20-00-00',
+  'the RPC''s write landed, formatted the way payroll reads it — read back through staff_me(), since the worker no longer holds the column itself (ADR-0163)');
 select throws_ok($$ select staff_save_bank('Staff Alpha', '20-00', '55779911') $$,
   'P0001', 'bad_sort_code', 'and it is the path that validates');
 
@@ -77,7 +77,8 @@ with u as (update bank_details set account_holder = 'Staff Bravo (corrected)' wh
 reset role;
 select set_config('request.jwt.claims', '', true);
 set local role anon;
-select is((select count(*)::int from bank_details), 0, 'anon reads no bank details');
+select throws_ok($$ select count(*) from bank_details $$, '42501', null,
+  'anon holds no privilege on bank_details at all, so RLS is no longer the only wall (ADR-0163)');
 
 reset role;
 select * from finish();
