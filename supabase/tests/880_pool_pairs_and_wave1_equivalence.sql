@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 880 · The pool over pairs, Radar in one pass, wave 1 stopping at the
---       first reachable worker - old bodies against new (ADR-0159)
+--       first reachable worker - old bodies against new (ADR-0167)
 --   20261020100000_auto_assign_pool_pairs.sql
 --   20261020100100_radar_one_pool_pass.sql
 --   20261020100200_wave1_exhausted_stops_at_first.sql

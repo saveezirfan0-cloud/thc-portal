@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20261020100000 · the pool judges many (section, worker) pairs
 --                            in one pass, and one worker against many
---                            sections reads it once (ADR-0159)
+--                            sections reads it once (ADR-0167)
 --
 -- Radar (staff_open_shifts) asks the pool about every section it could
 -- show the worker, one call per section: ~190 calls for a two-role worker
@@ -29,7 +29,7 @@
 -- What changes in the body is only how each fact is joined to the row it
 -- belongs to: a fact that belonged to "the" section now belongs to the
 -- row's section, and a fact read once per worker is still read once per
--- worker. 20261019140000's shape is otherwise kept: each history source has
+-- worker. 20261019193000's shape is otherwise kept: each history source has
 -- one branch for the agency (driven from the sections) and one for named
 -- workers (driven from their bookings through the staff_id indexes), and
 -- exactly one runs; the RULE-20 verdict is rota_guard_verdict()'s pieces,
@@ -39,13 +39,13 @@
 -- — become left joins on (section, worker) to sets unique on that key, so
 -- with one section they say exactly what the IN said.
 --
--- pgTAP 880 re-creates 20261019140000's pool under an _old_ name and
+-- pgTAP 880 re-creates 20261019193000's pool under an _old_ name and
 -- compares it with every reader here, row for row, over 859's fixture
 -- (every gate code), and checks auto_assign_worker_pool() against
 -- auto_assign_candidates_pool() for every (worker, section) pair, so the
 -- two cannot drift apart.
 --
--- Built against 20261019140000's body. The code (comments dropped,
+-- Built against 20261019193000's body. The code (comments dropped,
 -- whitespace collapsed) is fingerprinted first; if anything has changed it
 -- since, this stops rather than dropping a rule it has not seen (docs/10
 -- §3b).
@@ -57,7 +57,7 @@ begin
         from pg_proc p
        where p.oid = 'public.auto_assign_candidates_pool(uuid, boolean, uuid[])'::regprocedure)
      is distinct from 'edea5181c44b4bf63a78aa35d18b2514' then
-    raise exception '20261020100000: auto_assign_candidates_pool() is not the body this migration replaces (20261019140000). Something changed it since; merge that change into auto_assign_candidates_pool_pairs() first.';
+    raise exception '20261020100000: auto_assign_candidates_pool() is not the body this migration replaces (20261019193000). Something changed it since; merge that change into auto_assign_candidates_pool_pairs() first.';
   end if;
 end;
 $$;
@@ -137,7 +137,7 @@ begin
      where b.staff_id = any (p_staff)
   ),
   -- What each row needs from the booking history, worked out ONCE per call
-  -- as grouped joins (20261019140000). Each source below has two branches
+  -- as grouped joins (20261019193000). Each source below has two branches
   -- and exactly one of them runs (a one-time filter on p_staff): a call for
   -- the agency reads the agency's rows from the sections; a call for named
   -- workers reads only theirs, through the staff_id indexes. What is done
@@ -442,7 +442,7 @@ revoke execute on function public.auto_assign_candidates_pool_pairs(uuid[], uuid
 grant  execute on function public.auto_assign_candidates_pool_pairs(uuid[], uuid[], boolean) to authenticated, service_role;
 
 comment on function public.auto_assign_candidates_pool_pairs(uuid[], uuid[], boolean) is
-  'The auto-assign pool (ADR-0117, ADR-0156, ADR-0159): the one place the hard gates, their order and codes, RULE-17''s wave and the five score inputs are decided. Returns the row for each (p_shifts[i], p_staff[i]); with p_staff null, for every section in p_shifts against the whole agency. auto_assign_candidates_pool() (one section) and auto_assign_worker_pool() (one worker, many sections) read it; a new pool gate goes here. SECURITY INVOKER: a worker or client calling it directly reads nothing.';
+  'The auto-assign pool (ADR-0117, ADR-0156, ADR-0167): the one place the hard gates, their order and codes, RULE-17''s wave and the five score inputs are decided. Returns the row for each (p_shifts[i], p_staff[i]); with p_staff null, for every section in p_shifts against the whole agency. auto_assign_candidates_pool() (one section) and auto_assign_worker_pool() (one worker, many sections) read it; a new pool gate goes here. SECURITY INVOKER: a worker or client calling it directly reads nothing.';
 
 -- ---------------------------------------------------------------------
 -- 2 · auto_assign_candidates_pool(): one section, a reader of the pool
@@ -492,7 +492,7 @@ do $$
 begin
   execute format('comment on function public.auto_assign_candidates_pool(uuid, boolean, uuid[]) is %L',
     coalesce(obj_description('public.auto_assign_candidates_pool(uuid, boolean, uuid[])'::regprocedure::oid, 'pg_proc'), '')
-    || ' Since 20261020100000 (ADR-0159) the body is auto_assign_candidates_pool_pairs(), where every gate is decided; this is that pool for one section, with the same columns and order.');
+    || ' Since 20261020100000 (ADR-0167) the body is auto_assign_candidates_pool_pairs(), where every gate is decided; this is that pool for one section, with the same columns and order.');
 end;
 $$;
 
@@ -544,4 +544,4 @@ revoke execute on function public.auto_assign_worker_pool(uuid, uuid[]) from pub
 grant  execute on function public.auto_assign_worker_pool(uuid, uuid[]) to authenticated, service_role;
 
 comment on function public.auto_assign_worker_pool(uuid, uuid[]) is
-  'One worker against many sections (ADR-0159): for each section in p_shifts, the row auto_assign_candidates_pool(section, false, array[p_staff]) returns, plus the section id, in section order, computed in one pass. Decides nothing itself: the gates are auto_assign_candidates_pool_pairs()''s. Radar reads it; pgTAP 880 holds it equal to the one-section pool for every (worker, section) pair.';
+  'One worker against many sections (ADR-0167): for each section in p_shifts, the row auto_assign_candidates_pool(section, false, array[p_staff]) returns, plus the section id, in section order, computed in one pass. Decides nothing itself: the gates are auto_assign_candidates_pool_pairs()''s. Radar reads it; pgTAP 880 holds it equal to the one-section pool for every (worker, section) pair.';

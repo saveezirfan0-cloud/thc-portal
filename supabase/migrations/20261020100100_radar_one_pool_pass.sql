@@ -1,15 +1,15 @@
 -- =====================================================================
 -- Migration 20261020100100 · Radar asks the pool once for the worker's own
---                            rows, and once a round for RULE-17 (ADR-0159)
+--                            rows, and once a round for RULE-17 (ADR-0167)
 --
--- After 20261019140100 Radar still made one pool call per candidate
+-- After 20261019193100 Radar still made one pool call per candidate
 -- section for the worker's own row (~190 for a two-role worker at go-live
 -- size) and, for each section the worker is not qualified at, at least one
 -- more for RULE-17's "is a qualified worker still reachable?" (~170): 1.5 s
 -- for that worker on the 1,000-worker bench, ~4 ms a call.
 --
 -- Now, with every gate, the wave and the cards exactly as before (pgTAP
--- 880 compares this body with 20261019140100's over 859's fixture, as
+-- 880 compares this body with 20261019193100's over 859's fixture, as
 -- nine workers, and section by section):
 --
 --   1. the worker's own rows come from auto_assign_worker_pool(me, the
@@ -109,7 +109,7 @@ revoke execute on function public.auto_assign_wave1_reachable(uuid[], boolean) f
 grant  execute on function public.auto_assign_wave1_reachable(uuid[], boolean) to authenticated, service_role;
 
 comment on function public.auto_assign_wave1_reachable(uuid[], boolean) is
-  'RULE-17 for many sections at once (ADR-0159): the sections of p_shifts on which a worker qualified at the client and role is still reachable - no gate, qualified and holding no booking there, in auto_assign_candidates_pool_pairs()''s words (with p_series, series_gate_for() too, as auto_assign_worker_gate() says). Stops asking about a section at its first reachable worker. SECURITY INVOKER; Radar reads it.';
+  'RULE-17 for many sections at once (ADR-0167): the sections of p_shifts on which a worker qualified at the client and role is still reachable - no gate, qualified and holding no booking there, in auto_assign_candidates_pool_pairs()''s words (with p_series, series_gate_for() too, as auto_assign_worker_gate() says). Stops asking about a section at its first reachable worker. SECURITY INVOKER; Radar reads it.';
 
 -- ---------------------------------------------------------------------
 -- 2 · staff_open_shifts(p_staff, p_shift)
@@ -175,6 +175,6 @@ $r$),
 
   execute format('comment on function public.staff_open_shifts(uuid, uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100100 (ADR-0159) the worker''s own rows come from auto_assign_worker_pool() in one pass and RULE-17''s wave check from auto_assign_wave1_reachable(), once per load, instead of a pool call per section.');
+    || ' Since 20261020100100 (ADR-0167) the worker''s own rows come from auto_assign_worker_pool() in one pass and RULE-17''s wave check from auto_assign_wave1_reachable(), once per load, instead of a pool call per section.');
 end;
 $$;

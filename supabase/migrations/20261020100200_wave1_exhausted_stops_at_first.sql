@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20261020100200 · "is wave 1 exhausted?" stops at the first
 --                            reachable qualified worker, once per call
---                            (ADR-0159)
+--                            (ADR-0167)
 --
 -- staff_open_offers() asked auto_assign_worker_gate() for the viewer once
 -- per open offer, and offer_wave1_exhausted() for every pool offer the
@@ -35,7 +35,7 @@
 --     pool offer the viewer is not qualified for from one
 --     offers_wave1_exhausted() call; its ORDER BY ends on the offer id, so
 --     two offers on one section no longer swap between loads (as Radar's
---     did on the section id, 20261019140100).
+--     did on the section id, 20261019193100).
 --
 -- offer_wave1_exhausted()'s code is fingerprinted (comments dropped,
 -- whitespace collapsed) and replaced whole: every test it made is in
@@ -156,7 +156,7 @@ revoke execute on function public.offers_wave1_exhausted(uuid[]) from public, an
 grant  execute on function public.offers_wave1_exhausted(uuid[]) to service_role;
 
 comment on function public.offers_wave1_exhausted(uuid[]) is
-  'RULE-17 for shift offers, many at once (ADR-0159): the offers of p_offers whose wave 1 is exhausted - auto-assign off on the event or role, or no worker qualified at the client and role left who is ungated (auto_assign_worker_gate()''s sense), not the offerer, not holding a booking that rules them out, not away and not yet told. Stops asking about an offer at its first such worker. offer_wave1_exhausted() and staff_open_offers() read it.';
+  'RULE-17 for shift offers, many at once (ADR-0167): the offers of p_offers whose wave 1 is exhausted - auto-assign off on the event or role, or no worker qualified at the client and role left who is ungated (auto_assign_worker_gate()''s sense), not the offerer, not holding a booking that rules them out, not away and not yet told. Stops asking about an offer at its first such worker. offer_wave1_exhausted() and staff_open_offers() read it.';
 
 -- ---------------------------------------------------------------------
 -- 2 · offer_wave1_exhausted(p_offer): the same, for one offer
@@ -179,7 +179,7 @@ begin
 
   execute format('comment on function public.offer_wave1_exhausted(uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100200 (ADR-0159) it is offers_wave1_exhausted() for one offer: the same tests, stopping at the first reachable qualified worker instead of reading the whole candidate list.');
+    || ' Since 20261020100200 (ADR-0167) it is offers_wave1_exhausted() for one offer: the same tests, stopping at the first reachable qualified worker instead of reading the whole candidate list.');
 end;
 $$;
 
@@ -206,7 +206,7 @@ begin
 
   execute format('comment on function public.radar_wave1_exhausted(uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100200 (ADR-0159) it is auto_assign_wave1_reachable() with the series days, stopping at the first reachable qualified worker.');
+    || ' Since 20261020100200 (ADR-0167) it is auto_assign_wave1_reachable() with the series days, stopping at the first reachable qualified worker.');
 end;
 $$;
 
@@ -288,6 +288,6 @@ begin
 
   execute format('comment on function public.staff_open_offers(uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100200 (ADR-0159) the viewer''s gate on every open offer comes from one auto_assign_worker_pool() read and the wave-1 answers from one offers_wave1_exhausted() call.');
+    || ' Since 20261020100200 (ADR-0167) the viewer''s gate on every open offer comes from one auto_assign_worker_pool() read and the wave-1 answers from one offers_wave1_exhausted() call.');
 end;
 $$;

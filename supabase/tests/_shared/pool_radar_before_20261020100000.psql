@@ -1,11 +1,11 @@
 -- =====================================================================
 -- The pool, its readers and the wave-1 checks as they stood before
--- 20261020100000 (ADR-0159), for pgTAP 880 to compare the new bodies with.
+-- 20261020100000 (ADR-0167), for pgTAP 880 to compare the new bodies with.
 --
---   _old_auto_assign_candidates_pool   (20261019140000's set-based pool)
+--   _old_auto_assign_candidates_pool   (20261019193000's set-based pool)
 --   _old_series_gate_for, _old_auto_assign_worker_gate,
 --   _old_auto_assign_candidates        (the series readers over it)
---   _old_staff_open_shifts             (20261019140100's Radar)
+--   _old_staff_open_shifts             (20261019193100's Radar)
 --   _old_offer_wave1_exhausted, _old_radar_wave1_exhausted,
 --   _old_staff_open_offers             (the offer and wave-1 readers)
 --
@@ -47,7 +47,7 @@ begin
   -- One statute mile is 1,609.344 m; geography distances are metres.
   rad  as materialized (select case when p_escalation then escalation_radius_miles() * 1609.344 end as metres),
   mode as materialized (select rota_guard_mode() as m),
-  -- 20261019140000: what each row needs from the booking history, worked
+  -- 20261019193000: what each row needs from the booking history, worked
   -- out ONCE per call as grouped joins instead of once per worker. Each
   -- source below has two branches and exactly one of them runs (a one-time
   -- filter on p_only): a list call reads the agency's rows; a call for named
@@ -377,7 +377,7 @@ AS $function$
          p.future_shifts, p.venue_times, p.booking_cause
     from own p
    cross join has_sib h
-   -- 20261019140100: a stable order for a reader that pages.
+   -- 20261019193100: a stable order for a reader that pages.
    order by p.staff_id
 $function$
 ;
@@ -390,7 +390,7 @@ CREATE FUNCTION public._old_staff_open_shifts(p_staff uuid DEFAULT NULL::uuid, p
  SET jit TO 'off'
 AS $function$
   with me as (select staff_caller(p_staff) as id),
-  -- 20261019140100: the sections Radar could show this worker at all,
+  -- 20261019193100: the sections Radar could show this worker at all,
   -- found without the pool, so the pool is asked about those alone (it
   -- was asked about every open section in the agency). Nothing is decided
   -- here: each test is one the query below makes again. The worker's own
@@ -413,7 +413,7 @@ AS $function$
                 and (select count(*) from bookings b
                       where b.shift_id = sr.id and b.status in ('confirmed', 'worked')) < sr.headcount))
   ),
-  -- 20261019140100: the Limit-reached figures (§10.4) for each UK day a
+  -- 20261019193100: the Limit-reached figures (§10.4) for each UK day a
   -- candidate section starts on, asked once per day rather than once per
   -- card: the same two functions with the same arguments.
   meter as materialized (
@@ -496,7 +496,7 @@ AS $function$
             -- Only the qualified workers can make it true, so the pool is
             -- read for them alone (20261017180000).
             -- 20261017180000 judged every qualified worker to answer it;
-            -- since 20261019140100 the answer stops at the first one
+            -- since 20261019193100 the answer stops at the first one
             -- reachable. A worker who already holds a booking here, does
             -- not hold the role or is not compliant cannot be reachable
             -- (the pool's booking_status, wrong_role and blocked), so the
