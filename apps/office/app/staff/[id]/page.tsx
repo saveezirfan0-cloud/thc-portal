@@ -21,6 +21,8 @@ import './profile.css';
 
 export const metadata = { title: 'Staff profile · THC Back Office' };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** The whole profile, once per request: started by the page, read by the body. */
 const profileView = cache(loadProfile);
 
@@ -46,6 +48,9 @@ const profileView = cache(loadProfile);
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // A malformed id names nobody: a 404, as an unknown one is — not the
+  // database's "invalid input syntax for type uuid" in a coral panel.
+  if (!UUID.test(id)) notFound();
   // Started now, so the profile's reads run while the head is read below.
   // The body awaits the same promise; a failure is its to show.
   profileView(id).catch(() => undefined);

@@ -12,6 +12,8 @@ import './card.css';
 
 export const metadata = { title: 'Client · THC Back Office' };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * /clients/:id — §9.7, `wireframes/backoffice/client-card.html`.
  *
@@ -31,6 +33,9 @@ export const metadata = { title: 'Client · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // A malformed id names nobody: a 404, as an unknown one is — not the
+  // database's "invalid input syntax for type uuid" in a coral panel.
+  if (!UUID.test(id)) notFound();
   const roleRead = currentOfficeRole();
   // The card's reads start as soon as the role says whether rates are
   // visible, alongside the head below. The body awaits this promise.
