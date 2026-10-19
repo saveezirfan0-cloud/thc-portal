@@ -58,7 +58,9 @@ describe('documents lock copy', () => {
   it('an onboarding worker is waiting, not blocked, and is told so', () => {
     const notice = documentsNotice([], null, true);
     expect(notice.tone).toBe('cyan');
-    expect(notice.headline).toBe('Your documents are with the office.');
+    expect(notice.headline).toBe('You’re still setting up your account.');
     expect(notice.detail).not.toMatch(/blocked/i);
+    // Any stage, step 1 included: never claims the documents are in.
+    expect(`${notice.headline} ${notice.detail}`).not.toMatch(/with the office/);
   });
 });

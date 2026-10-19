@@ -33,11 +33,14 @@ export function documentsNotice(
   onboarding: boolean,
 ): { tone: 'coral' | 'amber' | 'cyan'; headline: string; detail: string } {
   if (onboarding) {
+    // Any wizard stage, step 1 included — the installed app opens on
+    // /shifts (manifest start_url) — so nothing here may assume the
+    // documents are already in.
     return {
       tone: 'cyan',
-      headline: 'Your documents are with the office.',
+      headline: 'You’re still setting up your account.',
       detail:
-        'Shifts, Invites and Radar open as soon as everything is verified and in date. You’ll get a notification the moment that happens.',
+        'Shifts, Invites and Radar open once you’ve finished onboarding and the office has verified your documents. You’ll get a notification the moment that happens.',
     };
   }
 
@@ -114,11 +117,16 @@ export function TabLockedScreen({
       <DocumentsOnlyNotice blockers={blockers} blockKind={blockKind} onboarding={onboarding} />
       <div className="static-screen">
         <h2>{onboarding ? 'Not open to you yet' : 'Locked until your documents are in order'}</h2>
-        <p>
-          Shifts, Invites and Radar are closed while your compliance is outstanding. Your Documents,
-          under Profile, stay open to you — everything reopens automatically once the office has
-          verified what is missing and nothing else has expired.
-        </p>
+        {onboarding ? (
+          // A candidate's documents are a wizard step, not a Profile row.
+          <p>Finish the steps in your onboarding and these open up for you.</p>
+        ) : (
+          <p>
+            Shifts, Invites and Radar are closed while your compliance is outstanding. Your
+            Documents, under Profile, stay open to you — everything reopens automatically once the
+            office has verified what is missing and nothing else has expired.
+          </p>
+        )}
         {onboarding ? (
           // §10.3: for a candidate the wizard is the way forward.
           <Link className="btn primary block" href="/onboarding">
