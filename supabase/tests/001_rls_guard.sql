@@ -477,8 +477,9 @@ select bag_eq(
             ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
-            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v') $$,
-  'the owner-rights views in public are exactly these twenty-two (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135; the identity, bank-mask and document-review views ADR-0163, pinned by 890); a new one is a reviewed addition'
+            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v'),
+            ('staff_account_activation_v') $$,
+  'the owner-rights views in public are exactly these twenty-three (ADR-0004; the three rate views ADR-0061; client_portal_contact_v ADR-0134; client_worker_requests_v ADR-0135; the identity, bank-mask and document-review views ADR-0163, pinned by 890; staff_account_activation_v ADR-0160, pinned by 886); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text
@@ -497,8 +498,9 @@ select bag_eq(
             ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
             ('staff_block_reason_v'), ('staff_rejection_reason_v'),
             ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v'),
-            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v') $$,
-  'nineteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
+            ('staff_identity_v'), ('staff_bank_masked_v'), ('compliance_doc_review_v'),
+            ('staff_account_activation_v') $$,
+  'twenty of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();
