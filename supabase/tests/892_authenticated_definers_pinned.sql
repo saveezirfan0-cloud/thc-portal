@@ -236,6 +236,10 @@ select is_empty(
   $$ select n.nspname || '.' || p.oid::regprocedure::text
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where p.prosecdef
+        -- This project's own schemas (private, …): the migrations create them
+        -- as postgres. Supabase's (auth, storage, supabase_functions, …)
+        -- belong to its service roles and are the platform's to answer for.
+        and n.nspowner = 'postgres'::regrole
         and n.nspname not in ('public', 'pg_catalog', 'information_schema')
         and n.nspname !~ '^pg_'
         and not exists (select 1 from pg_depend d

@@ -307,13 +307,13 @@ revoke select (dob) on public.staff from authenticated;
 -- C · the shape
 -- =====================================================================
 select is(
-  (select string_agg(f, ' · ' order by f) from (select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as f
+  (select string_agg(f, ' · ' order by f collate "C") from (select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as f
      from pg_proc p
     where p.pronamespace = 'public'::regnamespace and p.proconfig is null
       and p.proname in ('cap_week_start','can_roster','booking_counts_toward_cap','cap_under_18',
                         'booked_elsewhere_conflict','booking_reopenable_by','weekly_cap','current_compliance_docs')
       and p.prolang = (select oid from pg_language where lanname = 'sql') and not p.prosecdef) u),
-  (select string_agg(x, ' · ' order by x) from unnest(array[
+  (select string_agg(x, ' · ' order by x collate "C") from unnest(array[
      'booked_elsewhere_conflict(p_cand_starts_at timestamp with time zone, p_cand_ends_at timestamp with time zone, p_cand_venue uuid, p_held_starts_at timestamp with time zone, p_held_ends_at timestamp with time zone, p_held_venue uuid, p_gap_minutes integer)',
      'booking_counts_toward_cap(p_status booking_status, p_cancelled_at timestamp with time zone, p_cancel_cause text)',
      'booking_reopenable_by(p_status booking_status, p_cause text)',

@@ -112,13 +112,15 @@ begin
   end if;
 end $$;
 delete from cron.job_run_details;
-insert into cron.job_run_details (jobid, command, status, start_time, end_time)
-select 0, 'select 849', 'succeeded', now() - interval '8 days', now() - interval '8 days'
-  from generate_series(1, 5)
+-- Explicit runids: on a real Supabase stack the test role may insert into
+-- cron.job_run_details but not draw from pg_cron's runid_seq.
+insert into cron.job_run_details (runid, jobid, command, status, start_time, end_time)
+select 860000000 + g, 0, 'select 849', 'succeeded', now() - interval '8 days', now() - interval '8 days'
+  from generate_series(1, 5) g
 union all
-select 0, 'select 849', 'succeeded', now() - interval '6 days', now() - interval '6 days'
+select 860000006, 0, 'select 849', 'succeeded', now() - interval '6 days', now() - interval '6 days'
 union all
-select 0, 'select 849', 'running',   now() - interval '1 minute', null;
+select 860000007, 0, 'select 849', 'running',   now() - interval '1 minute', null;
 
 select is(cron_history_purge(7, 3), 3, 'p_max_rows bounds one call');
 select is(cron_history_purge(), 2, 'the default call takes the remaining week-old rows');
