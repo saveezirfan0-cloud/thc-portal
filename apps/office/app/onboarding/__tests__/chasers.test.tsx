@@ -66,7 +66,7 @@ describe('chaserLine()', () => {
 
   it('turns amber when the latest could not be delivered: they have not been reminded at all', () => {
     expect(chaserLine(state({ last_failed: true }))).toEqual({
-      text: 'App reminder 1 not delivered 22 Sep — notifications are off on their phone. Phone them.',
+      text: "App reminder 1 not delivered 22 Sep — notifications aren't turned on in the app. Phone them.",
       tone: 'amber',
     });
     expect(chaserLine(state({ track: 'interview', last_failed: true }))?.text).toContain(
@@ -79,7 +79,42 @@ describe('chaserLine()', () => {
       chaserLine(state({ rungs_sent: 3, stalled: true, next_due_at: null, last_failed: true }))
         ?.text,
     ).toBe(
-      'Stalled — 3 reminders, no progress (last 22 Sep, the last undelivered — notifications are off on their phone). Phone them.',
+      "Stalled — 3 reminders, no progress (last 22 Sep, the last undelivered — notifications aren't turned on in the app). Phone them.",
+    );
+  });
+
+  it('says when an app reminder was emailed because notifications are off (ADR-0169)', () => {
+    expect(chaserLine(state({ last_channel: 'email' }))).toEqual({
+      text: "App reminder 1 emailed (notifications aren't on) 22 Sep · next 25 Sep",
+      tone: 'muted',
+    });
+    expect(chaserLine(state({ last_channel: 'email', last_failed: true }))?.text).toBe(
+      'App reminder 1 not delivered 22 Sep — the email bounced. Phone them.',
+    );
+    expect(
+      chaserLine(
+        state({
+          last_channel: 'email',
+          rungs_sent: 3,
+          stalled: true,
+          next_due_at: null,
+          last_failed: true,
+        }),
+      )?.text,
+    ).toBe(
+      'Stalled — 3 reminders, no progress (last 22 Sep, the last undelivered — the email bounced). Phone them.',
+    );
+    // Switched off on /settings is said as that, not as a bounce.
+    expect(
+      chaserLine(state({ last_channel: 'email', last_failed: true, last_switched_off: true }))
+        ?.text,
+    ).toBe('App reminder 1 not delivered 22 Sep — switched off in Settings. Phone them.');
+    // A push is still "pushed", and the email tracks are unchanged.
+    expect(chaserLine(state({ last_channel: 'push' }))?.text).toBe(
+      'App reminder 1 pushed 22 Sep · next 25 Sep',
+    );
+    expect(chaserLine(state({ track: 'interview', last_channel: 'email' }))?.text).toBe(
+      'Interview reminder 1 emailed 22 Sep · next 25 Sep',
     );
   });
 

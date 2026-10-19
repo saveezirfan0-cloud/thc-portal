@@ -366,8 +366,29 @@ const CHASER_CHANNEL: Record<ChaserState['track'], string> = {
 const CHASER_UNDELIVERED: Record<ChaserState['track'], string> = {
   interview: 'the email bounced',
   activation: 'the email bounced',
-  app: 'notifications are off on their phone',
+  // A push fails when no device has notifications on: most often they were
+  // never turned on (opt-in; an iPhone needs the app on the home screen).
+  app: "notifications aren't turned on in the app",
 };
+
+/**
+ * ADR-0169: an app reminder goes by email (OC4) when no device has
+ * notifications on, so how it went, and why it failed, follow the channel.
+ */
+function chaserChannel(state: ChaserState): string {
+  return state.track === 'app' && state.last_channel === 'email'
+    ? "emailed (notifications aren't on)"
+    : CHASER_CHANNEL[state.track];
+}
+
+function chaserUndelivered(state: ChaserState): string {
+  // The drain fails a row whose code is off on /settings: that is not a
+  // bad address or a phone, and the office should not chase either.
+  if (state.last_switched_off) return 'switched off in Settings';
+  return state.track === 'app' && state.last_channel === 'email'
+    ? 'the email bounced'
+    : CHASER_UNDELIVERED[state.track];
+}
 
 /**
  * The onboarding chaser line (ADR-0071), under the stage lines. Nothing
@@ -382,7 +403,7 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
   const last = shortDate(state.last_sent_at);
   if (state.stalled) {
     const undelivered = state.last_failed
-      ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
+      ? `, the last undelivered — ${chaserUndelivered(state)}`
       : '';
     return {
       text: `Stalled — ${state.rungs_sent} reminders, no progress (last ${last}${undelivered}). Phone them.`,
@@ -391,13 +412,13 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
   }
   if (state.last_failed) {
     return {
-      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} not delivered ${last} — ${CHASER_UNDELIVERED[state.track]}. Phone them.`,
+      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} not delivered ${last} — ${chaserUndelivered(state)}. Phone them.`,
       tone: 'amber',
     };
   }
   const next = state.next_due_at ? ` · next ${shortDate(state.next_due_at)}` : '';
   return {
-    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} ${CHASER_CHANNEL[state.track]} ${last}${next}`,
+    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} ${chaserChannel(state)} ${last}${next}`,
     tone: 'muted',
   };
 }
