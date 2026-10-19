@@ -58,6 +58,12 @@ test('the toggle swaps the six columns to the rejected view, with its own filter
 
 test('a card opens the candidate profile from the keyboard (Enter)', async ({ page }) => {
   const card = page.locator('.kcard[role="button"]').first();
+  // The pipeline streams in behind its shell (ADR-0161): the cards are in the
+  // HTML a moment before React has hydrated them, and a key press on inert
+  // server HTML does nothing. Wait for the page to settle, as the check-in
+  // board spec does.
+  await expect(card).toBeVisible();
+  await page.waitForLoadState('networkidle');
   await card.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/onboarding\/[0-9a-f-]{36}$/);
