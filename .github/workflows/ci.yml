@@ -102,6 +102,14 @@ jobs:
       # supabase/tests/_shared/fixtures.psql is included by the tests and is
       # never picked up as a test of its own.
       - run: supabase test db
+      # Two-step is compulsory for the Back Office by default (ADR-0164), and
+      # the seeded office logins have no authenticator, so every office spec
+      # would stop at /login/enrol. The browser suite tests the screens with
+      # it optional, as office.two-step.spec.ts always has; pgTAP 895 (above)
+      # pins the default and the database's enforcement. Production's value
+      # comes from the migration, never from here.
+      - name: browser suite runs with office two-step optional
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -q -c "update settings set value = 'false' where key = 'office_two_step_required'"
       # The pinned Playwright, not `pnpm dlx playwright`: dlx fetches the newest release,
       # whose browser build is not the one the tests launch ("Executable doesn't exist").
       - run: pnpm --filter @thc/e2e exec playwright install --with-deps chromium
