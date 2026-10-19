@@ -4,8 +4,8 @@ import { useRef, useState, useTransition } from 'react';
 import type { RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, SegToggle, Sheet } from '@thc/ui';
-import { createClient } from '@thc/db/browser';
 import { UPLOAD_ACCEPT_ATTR, uploadError } from '@thc/domain';
+import { putSignedUpload } from '../../_lib/signed-upload';
 import type { DocRequirement, DocType } from '@thc/domain';
 import { finishDocumentUpload, startDocumentUpload } from '../actions';
 import { docLabel } from '../state';
@@ -16,7 +16,8 @@ import { docLabel } from '../state';
  *
  * Three steps, each the right side's: the server mints a signed upload URL
  * for a path it builds from the session; the browser sends the file
- * straight to the private `documents` bucket with it; the server then
+ * straight to the private `documents` bucket with it, in one PUT and with
+ * no Supabase client (app/_lib/signed-upload.ts); the server then
  * records the upload as the worker (`onboarding_attach_document()`), with
  * the size and type Storage measured. See actions.ts.
  */
@@ -53,11 +54,8 @@ export function UploadSheet({
         fileType: file.type,
       });
       if (!slot.ok) return setError(slot.message);
-      const supabase = createClient();
-      const { error: sent } = await supabase.storage
-        .from('documents')
-        .uploadToSignedUrl(slot.path, slot.token, file, { contentType: slot.contentType });
-      if (sent) return setError('That upload didn’t finish. Check your connection and try again.');
+      const sent = await putSignedUpload(slot.url, file, slot.contentType);
+      if (!sent) return setError('That upload didn’t finish. Check your connection and try again.');
       const done = await finishDocumentUpload({ docType, path: slot.path, fileName: file.name });
       if (!done.ok) return setError(done.message);
       onClose();

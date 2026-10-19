@@ -42,6 +42,7 @@ const { finishCompletionLetter, finishDocumentUpload, startUpload } = await impo
 
 const STAFF = 'd0000000-0000-4000-8000-000000000001';
 const PDF = { name: 'My Passport (scan).PDF', type: 'application/pdf', size: 480_000 };
+const SIGNED = 'https://abc.supabase.co/storage/v1/object/upload/sign/documents/p?token=tok';
 
 function worker(status: string, blockKind: string | null = null) {
   rpc.mockImplementation(async (fn: string) =>
@@ -60,7 +61,7 @@ beforeEach(() => {
   storedMedia.mockReset();
   storedMedia.mockResolvedValue('match');
   createSignedUploadUrl.mockResolvedValue({
-    data: { token: 'tok', signedUrl: 'x', path: 'p' },
+    data: { token: 'tok', signedUrl: SIGNED, path: 'p' },
     error: null,
   });
 });
@@ -74,6 +75,20 @@ describe('startUpload()', () => {
     expect(path).toMatch(new RegExp(`^${STAFF}/passport/[0-9a-f-]{36}\\.pdf$`));
     expect(path).not.toContain('Passport (scan)');
     expect(createSignedUploadUrl).toHaveBeenCalledWith('documents', path);
+  });
+
+  // Go-live audit L1: the browser PUTs to this URL with no Supabase client.
+  it('hands back Storage’s signed URL for that one object, for a plain PUT', async () => {
+    worker('compliant');
+    const slot = await startUpload({ kind: 'document', docType: 'passport' }, PDF);
+    expect(slot).toEqual({ ok: true, path: expect.any(String), url: SIGNED });
+  });
+
+  it('says try again when Storage signs no URL', async () => {
+    worker('compliant');
+    createSignedUploadUrl.mockResolvedValueOnce({ data: { token: 'tok', path: 'p' }, error: null });
+    const slot = await startUpload({ kind: 'document', docType: 'passport' }, PDF);
+    expect(slot).toEqual({ ok: false, message: 'The upload did not complete. Please try again.' });
   });
 
   it('puts a document type in its own folder, the one submit_document_upload() checks', async () => {
