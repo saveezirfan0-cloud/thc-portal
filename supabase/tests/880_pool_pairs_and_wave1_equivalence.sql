@@ -28,11 +28,12 @@
 --   F · offers: offer_wave1_exhausted() and offers_wave1_exhausted() for
 --       every offer (switch off, everyone told, the offerer, the calendar,
 --       the series days, an expired offer, an unknown id), and
---       staff_open_offers() as each worker, every column, same order;
+--       staff_open_offers() as each worker, every column, same order (now
+--       total: ties end on the offer id);
 --   G · who may call what.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(44);
 -- The old bodies' plans cost far above jit_above_cost; compiling them on
 -- every call is most of this file's run time and none of its meaning.
 set local jit = off;
@@ -297,10 +298,18 @@ select is((select array_agg(o.id order by o.id) from t880_offers o where _old_of
 select is((select count(*)::int from offers_wave1_exhausted(array[:'o1', :'o1', :'o2', null]::uuid[])), 1,
   'F: an offer named twice is one answer; a null is none');
 select is((select count(*)::int from (
-             (select to_jsonb(n) from t880_offers_new n except all select to_jsonb(o) from t880_offers_old o)
+             (select to_jsonb(n) - 'rn' from t880_offers_new n except all select to_jsonb(o) - 'rn' from t880_offers_old o)
              union all
-             (select to_jsonb(o) from t880_offers_old o except all select to_jsonb(n) from t880_offers_new n)) d),
-  0, 'F: every worker''s open offers - the same offers, every column, in the same order');
+             (select to_jsonb(o) - 'rn' from t880_offers_old o except all select to_jsonb(n) - 'rn' from t880_offers_new n)) d),
+  0, 'F: every worker''s open offers - the same offers, every column');
+select is((select count(*)::int from t880_offers_new n join t880_offers_old o using (uid, rn)
+            where (n.qualified, n.distance_km, n.starts_at) is distinct from (o.qualified, o.distance_km, o.starts_at)),
+  0, 'F: in the same order (qualified first, then distance, then start)');
+select ok((select bool_and((not a.qualified, a.distance_km, a.starts_at, a.offer_id) < (not b.qualified, b.distance_km, b.starts_at, b.offer_id))
+             from t880_offers_new a join t880_offers_new b on b.uid = a.uid and b.rn = a.rn + 1)
+      and exists (select 1 from t880_offers_new a join t880_offers_new b on b.uid = a.uid and b.rn = a.rn + 1
+                   where (a.qualified, a.distance_km, a.starts_at) = (b.qualified, b.distance_km, b.starts_at)),
+  'F: and the order is total now: ties (two offers on one section) end on the offer id');
 select ok((select count(distinct uid) >= 3 from t880_offers_new)
       and exists (select 1 from t880_offers_new where uid = :'u_n' and offer_id = :'o5'),
   'F: coverage - several workers see offers, Nia her direct one');

@@ -33,7 +33,9 @@
 --   * staff_open_offers() reads the viewer's gate for every open offer from
 --     one auto_assign_worker_pool() pass, and the wave-1 answer for every
 --     pool offer the viewer is not qualified for from one
---     offers_wave1_exhausted() call.
+--     offers_wave1_exhausted() call; its ORDER BY ends on the offer id, so
+--     two offers on one section no longer swap between loads (as Radar's
+--     did on the section id, 20261019140100).
 --
 -- offer_wave1_exhausted()'s code is fingerprinted (comments dropped,
 -- whitespace collapsed) and replaced whole: every test it made is in
@@ -268,7 +270,11 @@ begin
        where a.shift_id = sr.id
     ) c$r$),
       ('or offer_wave1_exhausted\(o\.id\)\)',
-       'or o.id in (select w1x.offer_id from w1x))')
+       'or o.id in (select w1x.offer_id from w1x))'),
+      -- a total order: two offers on one section (same distance, same
+      -- start) came back in whichever order the plan met them
+      ('(\s+sr\.starts_at)(\s+\$function\$)',
+       E'\\1,\n           o.id\\2')
     ) as x(pattern, replacement)
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
