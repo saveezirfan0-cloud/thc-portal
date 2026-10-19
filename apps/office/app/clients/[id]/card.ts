@@ -106,11 +106,18 @@ export function marginTone(pct: number | null): 'green' | 'coral' | 'none' {
  *
  * A worker marked Do not return is NOT counted. They are excluded from
  * the client outright, so counting them would overstate the first-choice
- * pool by exactly the people who cannot be sent.
+ * pool by exactly the people who cannot be sent. Nor is a worker removed
+ * under GDPR: §1.7 keeps their entries as history ("Deleted account #id"),
+ * but nobody removed is ever sent anywhere again. `barred` and `removed`
+ * say how many of `workers` the count leaves out, and why.
  */
-export function groupByRole(
-  rows: QualifiedStaffRow[],
-): { role: string; workers: QualifiedStaffRow[]; count: number }[] {
+export function groupByRole(rows: QualifiedStaffRow[]): {
+  role: string;
+  workers: QualifiedStaffRow[];
+  count: number;
+  barred: number;
+  removed: number;
+}[] {
   const groups = new Map<string, QualifiedStaffRow[]>();
   const barred: QualifiedStaffRow[] = [];
   for (const row of rows) {
@@ -127,13 +134,25 @@ export function groupByRole(
     }
   }
   return [...groups.entries()]
-    .map(([role, workers]) => ({
-      role,
-      workers,
-      count: workers.filter((worker) => !worker.do_not_return).length,
-    }))
+    .map(([role, workers]) => {
+      const removed = workers.filter((worker) => worker.status === 'removed').length;
+      const barredHere = workers.filter(
+        (worker) => worker.do_not_return && worker.status !== 'removed',
+      ).length;
+      return {
+        role,
+        workers,
+        count: workers.length - removed - barredHere,
+        barred: barredHere,
+        removed,
+      };
+    })
     .sort((a, b) => a.role.localeCompare(b.role))
-    .concat(barred.length > 0 ? [{ role: BARRED_GROUP, workers: barred, count: 0 }] : []);
+    .concat(
+      barred.length > 0
+        ? [{ role: BARRED_GROUP, workers: barred, count: 0, barred: barred.length, removed: 0 }]
+        : [],
+    );
 }
 
 /** The group for workers barred at a client they are not cleared at (ADR-0146). */

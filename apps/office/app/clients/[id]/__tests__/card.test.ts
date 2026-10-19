@@ -103,6 +103,19 @@ describe('the per-role pool counter (§9.7, §3.4)', () => {
     ]);
     expect(groups[0]?.count).toBe(1);
     expect(groups[0]?.workers).toHaveLength(2);
+    expect(groups[0]).toMatchObject({ barred: 1, removed: 0 });
+  });
+
+  it('lists but does not count somebody removed under GDPR (§1.7)', () => {
+    // Their entries stay as history ("Deleted account #id"); nobody removed
+    // is ever sent again, so they are no part of the Wave 1 pool.
+    const groups = groupByRole([
+      worker({ staff_id: 'a' }),
+      worker({ staff_id: 'b', status: 'removed', display_name: 'Deleted account #1042' }),
+      worker({ staff_id: 'c', status: 'removed', do_not_return: true }),
+    ]);
+    expect(groups[0]).toMatchObject({ count: 1, barred: 0, removed: 2 });
+    expect(groups[0]?.workers).toHaveLength(3);
   });
 
   it('puts somebody barred but never cleared here in no role group (ADR-0146)', () => {
