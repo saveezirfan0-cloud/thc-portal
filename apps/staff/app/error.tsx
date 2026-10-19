@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { AppBody, AppFrame, AppHeader, Logo, StaticScreen } from '@thc/ui';
 import { SUPPORT_EMAIL } from '@thc/domain';
 import { RetryButton } from './_components/RetryButton';
+import { reloadForStaleChunk } from './_lib/stale-deploy';
 import './chrome.css';
 
 /**
@@ -20,6 +21,12 @@ import './chrome.css';
  * exception's text (in production Next.js replaces it anyway; in
  * development it can carry SQL); the digest is what the office quotes to
  * whoever reads the server log.
+ *
+ * One error is not the screen's fault: a tab still running the previous
+ * build asking for a chunk the new deploy removed (go-live audit M4). That
+ * one reloads the page onto the new build, at most once a minute
+ * (app/_lib/stale-deploy.ts). If it has already reloaded, this screen shows
+ * as usual.
  */
 export default function RouteError({
   error,
@@ -29,6 +36,7 @@ export default function RouteError({
   reset: () => void;
 }) {
   useEffect(() => {
+    if (reloadForStaleChunk(error)) return;
     console.error('[staff] unhandled error', { digest: error.digest });
   }, [error]);
 
