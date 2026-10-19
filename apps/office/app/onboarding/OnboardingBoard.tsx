@@ -21,6 +21,7 @@ import {
   useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { ApplyFormLink, OnboardingCrumbs } from './chrome';
 import { useAutoRefresh } from '../_components/useAutoRefresh';
 import { oneOf, useListQuery } from '../_lib/listQuery';
 import { employeeId, formatRating, formatShowRate } from '../staff/staff';
@@ -152,11 +153,18 @@ export function OnboardingBoard({
   data,
   now,
   applyUrl,
+  bare = false,
 }: {
   data: BoardData;
   now: string;
   /** Null when the Staff App's origin is not configured in production. */
   applyUrl: string | null;
+  /**
+   * ADR-0161: the page has drawn the `OfficeShell` itself, around the
+   * Suspense this screen streams in behind, so the screen draws only its
+   * body. Rendered whole (the default) it draws the shell too.
+   */
+  bare?: boolean;
 }) {
   const router = useRouter();
   // Cards move on their own (Willo webhook, documents verified, quiz passed),
@@ -232,23 +240,8 @@ export function OnboardingBoard({
     });
   };
 
-  return (
-    <OfficeShell
-      activeHref="/onboarding"
-      title="Onboarding"
-      crumbs={
-        <>
-          candidate pipeline · <b>{counts.active} active</b> · {counts.rejected} rejected
-        </>
-      }
-      actions={
-        applyUrl ? (
-          <a className="btn sm" href={applyUrl} target="_blank" rel="noreferrer">
-            Open /apply form ↗
-          </a>
-        ) : null
-      }
-    >
+  const body = (
+    <>
       <div className="stack">
         {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
         {data.referredProblem ? (
@@ -450,6 +443,17 @@ export function OnboardingBoard({
           </div>
         ) : null}
       </Modal>
+    </>
+  );
+  if (bare) return body;
+  return (
+    <OfficeShell
+      activeHref="/onboarding"
+      title="Onboarding"
+      crumbs={<OnboardingCrumbs active={counts.active} rejected={counts.rejected} />}
+      actions={<ApplyFormLink url={applyUrl} />}
+    >
+      {body}
     </OfficeShell>
   );
 }
