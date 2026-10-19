@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   blockBanner,
   blockStamp,
+  inEmploymentDeclarationAccepted,
   weeklyLimitFact,
   canBlock,
   canReset,
@@ -318,6 +319,33 @@ describe('the blocked banner says how THIS block lifts (§9.6, §4.3, §10.7)', 
     expect(banner.detail).not.toMatch(/document is verified/);
     expect(banner.detail).toMatch(/Verify it on the Documents tab/);
     expect(banner.detail).toMatch(/reject it and it becomes a manual block/);
+  });
+
+  it('once the declaration is verified, the banner no longer says "under review"', () => {
+    const declarations = [
+      { source: 'onboarding', review_status: 'verified', declared_at: '2026-01-01T10:00:00Z' },
+      { source: 'in_employment', review_status: 'verified', declared_at: '2026-10-19T20:13:00Z' },
+    ];
+    expect(inEmploymentDeclarationAccepted(declarations)).toBe(true);
+    const banner = blockBanner(
+      {
+        block_kind: 'conviction_review',
+        block_reason: 'Criminal conviction declared — under review',
+      },
+      inEmploymentDeclarationAccepted(declarations),
+    );
+    expect(banner.title).not.toMatch(/under review/);
+    expect(banner.title).toMatch(/accepted; a document is still outstanding/);
+    expect(banner.detail).toMatch(/lifts by itself once the outstanding document is verified/);
+  });
+
+  it('a pending declaration keeps the review banner', () => {
+    expect(
+      inEmploymentDeclarationAccepted([
+        { source: 'in_employment', review_status: 'pending', declared_at: '2026-10-19T20:13:00Z' },
+      ]),
+    ).toBe(false);
+    expect(inEmploymentDeclarationAccepted([])).toBe(false);
   });
 
   it('a manual block is lifted by a manager only, and says so', () => {

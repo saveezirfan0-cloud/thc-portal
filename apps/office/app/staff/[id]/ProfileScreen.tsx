@@ -44,6 +44,7 @@ import {
   blockBanner,
   blockStamp,
   canBlock,
+  inEmploymentDeclarationAccepted,
   canReset,
   hoursThisWeek,
   isActionable,
@@ -163,7 +164,7 @@ export function ProfileScreen({
     !profile.removed && !canReset(profile.status)
       ? 'Reset to candidate is only for a blocked, rejected or inactive profile.'
       : null;
-  const banner = blockBanner(profile);
+  const banner = blockBanner(profile, inEmploymentDeclarationAccepted(data.declarations));
   const timeFormat = useTimeFormat();
   const stamp = profile.block_kind === 'manual' ? blockStamp(data.blockAudit, timeFormat) : null;
   const hours = hoursThisWeek(profile);

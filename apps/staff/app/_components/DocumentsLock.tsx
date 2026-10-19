@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Alert } from '@thc/ui';
-import { describeBlockers } from '../profile/lock';
+import { convictionUnderReview, describeBlockers } from '../profile/lock';
 import { HELP_EMAIL } from '../profile/types';
 
 /**
@@ -43,7 +43,7 @@ export function documentsNotice(
 
   const described = describeBlockers(blockers);
 
-  if (blockKind === 'conviction_review' || blockers.includes('conviction_unreviewed')) {
+  if (convictionUnderReview(blockers, blockKind)) {
     return {
       // The wireframe's post-submit alert is cyan: this is information, not
       // a warning (§10.7 "factual rather than punitive").

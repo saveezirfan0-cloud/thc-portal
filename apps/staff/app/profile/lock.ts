@@ -238,3 +238,21 @@ export function describeBlockers(blockers: readonly string[]): string | null {
   if (parts.length === 0) return 'Your documents need attention.';
   return `${parts.join(' and ')}. Upload a valid document; once the office verifies it — and everything else is in date — you’re unblocked automatically.`;
 }
+
+/**
+ * Whether the office is still reviewing a declaration (§10.7). The pending
+ * declaration is `compliance_blockers()`'s `conviction_unreviewed`. The
+ * block it caused keeps `block_kind = conviction_review` after Verify when
+ * the full re-check fails on a document (20260927161100, so N15 is still
+ * owed when that document is verified) — but the review is over then, and
+ * "while the office reviews your declaration" is no longer true: the
+ * document is what is holding them. Only with nothing readable at all does
+ * the conviction block alone keep the §10.7 copy.
+ */
+export function convictionUnderReview(
+  blockers: readonly string[],
+  blockKind: StaffProfile['blockKind'],
+): boolean {
+  if (blockers.includes('conviction_unreviewed')) return true;
+  return blockKind === 'conviction_review' && blockers.length === 0;
+}

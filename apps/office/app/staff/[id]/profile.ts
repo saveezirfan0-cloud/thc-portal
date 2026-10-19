@@ -122,10 +122,26 @@ export function complianceSummary(
  *                      into a manual block;
  *   manual             only a manager's Unblock lifts it.
  */
-export function blockBanner(profile: {
-  block_kind: 'auto_document' | 'manual' | 'conviction_review' | null;
-  block_reason: string | null;
-}): { title: string; detail: string } {
+export function blockBanner(
+  profile: {
+    block_kind: 'auto_document' | 'manual' | 'conviction_review' | null;
+    block_reason: string | null;
+  },
+  /**
+   * The latest in-employment declaration has been VERIFIED. Its block keeps
+   * `conviction_review` when the full re-check failed on a document (so N15
+   * is still owed when that document is verified, 20260927161100), but the
+   * review is over: the banner must not still say "under review".
+   */
+  declarationAccepted = false,
+): { title: string; detail: string } {
+  if (profile.block_kind === 'conviction_review' && declarationAccepted) {
+    return {
+      title: 'Blocked — conviction declaration accepted; a document is still outstanding',
+      detail:
+        'The declaration was verified, but the full compliance re-check did not pass. The block lifts by itself once the outstanding document is verified, and the worker is then told their shifts are open again.',
+    };
+  }
   switch (profile.block_kind) {
     case 'manual':
       return {
@@ -161,6 +177,19 @@ export function weeklyLimitFact(status: string, capWhy: string): { text: string;
   return status === 'blocked'
     ? { text: '— (blocked, cannot be booked)', muted: true }
     : { text: capWhy, muted: false };
+}
+
+/**
+ * Whether the latest live in-employment declaration (§10.7) has been
+ * verified — the office's half of "the review is over" for `blockBanner`.
+ */
+export function inEmploymentDeclarationAccepted(
+  declarations: readonly { source: string; review_status: string; declared_at: string }[],
+): boolean {
+  const latest = declarations
+    .filter((d) => d.source === 'in_employment' && d.review_status !== 'superseded')
+    .sort((a, b) => b.declared_at.localeCompare(a.declared_at))[0];
+  return latest?.review_status === 'verified';
 }
 
 /** The latest manual Block / Unblock on this worker (`staff_block_audit_v`). */
