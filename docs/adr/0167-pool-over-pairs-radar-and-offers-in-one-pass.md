@@ -19,22 +19,24 @@ Every gate, its order and code, the wave and the five score inputs are unchanged
 5. **How it is applied.** The pool's code (comments dropped, whitespace collapsed) is fingerprinted against 20261019193000 and `offer_wave1_exhausted()`'s against 20260930205000; `staff_open_shifts`, `staff_open_offers` and `radar_wave1_exhausted` are re-created from their live bodies with patterns on code only, each required to match once (docs/10 §3b). Security, search_path, jit, grants and comments are carried over; the new functions are SECURITY INVOKER like the pool (`offers_wave1_exhausted` is DEFINER and service_role-only, like `offer_wave1_exhausted`), none executable by anon.
 
 ## Measured
-`scripts/bench/radar_and_pool_at_scale.sql`, same seed, local PostgreSQL 16, p50. The sandbox was shared with other sessions (load average ~20 on 4 cores during both runs), so absolute times are inflated; old and new were also timed alternately in one session (below the table), which removes the load difference.
+`scripts/bench/radar_and_pool_at_scale.sql`, same seed, local PostgreSQL 16, p50, on the go-live tip 381e5be6 with and without the three migrations. The sandbox was shared with other sessions (load average 10–15 on 4 cores during both runs), so absolute times are inflated; old and new were also timed alternately in one session (below the table), which removes the load difference.
 
 | | before | after |
 |---|---|---|
-| Radar, worker holding all six roles, qualified everywhere (512 cards) | 2,883 ms | 257 ms |
-| Radar, two roles, qualified at one client (13 cards) | 1,632 ms | 123 ms |
-| Radar, new starter, one role, qualified nowhere (0 cards) | 790 ms | 46 ms |
-| Open offers (60 open), the three workers | 391 / 1,521 / 777 ms | 64 / 117 / 109 ms |
-| `offer_wave1_exhausted`, per offer | 60 ms | 4.1 ms |
-| `radar_wave1_exhausted`, per section | 62 ms | 6.2 ms |
-| One worker, all 600 open sections (`auto_assign_worker_pool`) | — | 23 ms |
-| Board, per section (admin) | 278 ms | 188 ms |
-| Rounds, `auto_assign_candidates` per section (service_role) | 63 ms | 59 ms |
-| One worker's gate (`auto_assign_worker_gate`) | 6.4 ms | 3.0 ms |
+| Radar, worker holding all six roles, qualified everywhere (512 cards) | 2,187 ms | 164 ms |
+| Radar, two roles, qualified at one client (13 cards) | 1,655 ms | 90 ms |
+| Radar, new starter, one role, qualified nowhere (0 cards) | 706 ms | 47 ms |
+| Open offers (60 open), the three workers | 330 / 1,396 / 702 ms | 51 / 104 / 107 ms |
+| `offer_wave1_exhausted`, per offer | 67 ms | 4.5 ms |
+| `radar_wave1_exhausted`, per section | 47 ms | 3.9 ms |
+| One worker, all 600 open sections (`auto_assign_worker_pool`) | — | 16 ms |
+| Board, per section (admin) | 252 ms | 220 ms |
+| Board, a multi-day job's section (admin) | 307 ms | 313 ms |
+| Rounds, `auto_assign_candidates` per section (service_role) | 59 ms | 56 ms |
+| Escalation round, per section | 61 ms | 62 ms |
+| One worker's gate (`auto_assign_worker_gate`) | 4.2 ms | 4.6 ms |
 
-Alternating in one session: admin board 272 → 258 ms, admin pool 278 → 234 ms, service-role list 46–51 → 48–49 ms, one-worker read 2.4–2.8 → 2.0–2.1 ms.
+Alternating in one session: admin board 272 → 258 ms, admin pool 278 → 234 ms, service-role list 46–51 → 48–49 ms, one-worker read 2.4–2.8 → 2.0–2.1 ms — the list and one-worker paths are level, within noise.
 
 ## Consequences
 - **Equivalence.** pgTAP 880 re-creates the bodies from before 20261020100000 under `_old_` names (`_shared/pool_radar_before_20261020100000.psql`, each old reader calling the old pool) and compares, over 859's fixture plus eight open offers (switch off, everyone told, the offerer, the calendar, the series days, a direct offer, an expired one, an unknown id): list reads both modes; every section × worker one at a time; named lists with duplicates; **`auto_assign_worker_pool()` against `auto_assign_candidates_pool(section, false, array[worker])` for every (worker, section) pair, every column** — the assertion that fails if the two ever disagree — and against the old pool; every pair in one shuffled pairs call; every section against the agency in one call; `auto_assign_candidates()` and `auto_assign_worker_gate()`; RULE-17 with and without the series days; nine workers' Radar and open offers (every column, same order). Mutations caught: worker-pool drift (5 assertions fail), the 2 h gap dropped (9), RULE-17 giving up after one round (5), notices ignored (4). On the bench data: 38 list reads, 28 workers × 1,400 sections, 4,399 shuffled pairs, 40 workers' Radar (2,188 cards, every column and order), 60 offers, 131 sections' `radar_wave1_exhausted` and three workers' open offers matched the old bodies.
