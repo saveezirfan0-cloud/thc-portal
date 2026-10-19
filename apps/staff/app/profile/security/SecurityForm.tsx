@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { Alert, Button, Input, MobileList, MobileRow, Pill } from '@thc/ui';
+import { currentSubscription } from '../../../lib/push';
 import { changePassword, signOutOtherDevices } from '../actions';
 import { CurrentPasswordField } from '../_components/CurrentPasswordField';
 
@@ -87,6 +88,27 @@ export function SecurityForm({ email }: { email: string }) {
   );
 }
 
+/**
+ * This device's push endpoint, or null when it has none or the browser
+ * takes longer than a second and a half to say. Null removes every one of
+ * the worker's subscriptions, this device's included; the next launch's
+ * reconciliation (PushStatus) puts this device's back.
+ */
+async function thisDeviceEndpoint(timeoutMs = 1_500): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const giveUp = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  try {
+    const found = currentSubscription()
+      .then((s) => s?.endpoint ?? null)
+      .catch(() => null);
+    return await Promise.race([found, giveUp]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function SignedInDevices() {
   const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -99,7 +121,10 @@ function SignedInDevices() {
           disabled={pending}
           onClick={() =>
             start(async () => {
-              const result = await signOutOtherDevices();
+              // This device's push subscription stays; the others go with
+              // their sessions (ADR-0164). Bounded: a slow service worker
+              // must not hold up the sign-out.
+              const result = await signOutOtherDevices(await thisDeviceEndpoint());
               setNote(result.ok ? (result.note ?? 'Done.') : result.message);
             })
           }

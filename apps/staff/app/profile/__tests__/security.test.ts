@@ -13,6 +13,7 @@ const auth = vi.hoisted(() => ({
   getUser: vi.fn(),
   signInWithPassword: vi.fn(),
   updateUser: vi.fn(),
+  signOut: vi.fn(),
 }));
 const rpc = vi.hoisted(() => vi.fn());
 const storedMedia = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => 'match'));
@@ -27,14 +28,21 @@ vi.mock('../../db', () => ({
   supabaseConfigured: () => true,
 }));
 
-const { changePassword, finishPhotoUpload, requestEmailChange, requestP45, saveBankDetails } =
-  await import('../actions');
+const {
+  changePassword,
+  finishPhotoUpload,
+  requestEmailChange,
+  requestP45,
+  saveBankDetails,
+  signOutOtherDevices,
+} = await import('../actions');
 
 beforeEach(() => {
   vi.clearAllMocks();
   auth.getUser.mockResolvedValue({ data: { user: { id: 'u1', email: 'tom.reid@example.com' } } });
   auth.signInWithPassword.mockResolvedValue({ error: null });
   auth.updateUser.mockResolvedValue({ error: null });
+  auth.signOut.mockResolvedValue({ error: null });
   rpc.mockResolvedValue({ data: { ok: true }, error: null });
 });
 
@@ -201,5 +209,41 @@ describe('finishPhotoUpload', () => {
     storedMedia.mockResolvedValue('unreadable');
     expect((await finishPhotoUpload('s1/selfie-1.jpg')).ok).toBe(false);
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('signOutOtherDevices (§10.1, ADR-0164)', () => {
+  it('ends the other sessions, then forgets their push subscriptions but this device’s', async () => {
+    rpc.mockResolvedValue({ data: 2, error: null });
+    const out = await signOutOtherDevices('https://push.example/this-phone');
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'others' });
+    expect(rpc).toHaveBeenCalledWith('forget_other_push_subscriptions', {
+      p_keep_endpoint: 'https://push.example/this-phone',
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it('a device with no subscription of its own keeps none', async () => {
+    await signOutOtherDevices(null);
+    expect(rpc).toHaveBeenCalledWith('forget_other_push_subscriptions', { p_keep_endpoint: null });
+    await signOutOtherDevices('   ');
+    expect(rpc).toHaveBeenLastCalledWith('forget_other_push_subscriptions', { p_keep_endpoint: null });
+  });
+
+  it('a refused sign-out forgets nothing', async () => {
+    auth.signOut.mockResolvedValue({ error: { code: 'x', message: 'nope' } });
+    const out = await signOutOtherDevices('https://push.example/this-phone');
+    expect(out.ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('says so when the notifications could not be stopped', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'not_a_worker' } });
+    const out = await signOutOtherDevices(null);
+    expect(out).toEqual({
+      ok: false,
+      message:
+        'Signed out everywhere else, but the other devices may still get notifications. Try again.',
+    });
   });
 });
