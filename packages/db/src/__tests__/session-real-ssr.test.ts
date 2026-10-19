@@ -245,6 +245,34 @@ describe('server client, real @supabase/ssr: sign-out', () => {
   });
 });
 
+describe("the library's no-store headers reach the cookie writer (ssr >= 0.10)", () => {
+  it('withSessionPersistence forwards them beside the adjusted cookies', async () => {
+    const { createServerClient } = await import('@supabase/ssr');
+    const { withSessionPersistence } = await import('../session');
+    const { store } = jar();
+    const seen: Record<string, string>[] = [];
+    const client = createServerClient(URL_, 'anon-key-for-tests', {
+      cookies: withSessionPersistence(
+        {
+          getAll: () => store.getAll(),
+          setAll: (toSet, headers) => {
+            seen.push(headers ?? {});
+            for (const { name, value, options } of toSet) store.set(name, value, options);
+          },
+        },
+        { persistence: 'session' },
+      ),
+    });
+    const { error } = await client.auth.signInWithPassword({
+      email: USER.email,
+      password: 'not-the-seed-password',
+    });
+    expect(error).toBeNull();
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen[0]?.['Cache-Control']).toMatch(/no-store/);
+  });
+});
+
 describe('browser client, real @supabase/ssr', () => {
   /** `document.cookie` as a browser keeps it: one Set-Cookie string per write. */
   function documentJar(initial: Record<string, string> = {}) {
