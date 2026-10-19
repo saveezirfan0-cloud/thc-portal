@@ -68,7 +68,7 @@ function mayRequest(worker: { status: string; blockKind: string | null }): boole
   return worker.status === 'blocked' && worker.blockKind !== 'manual';
 }
 
-export type UploadSlot = { ok: true; path: string; token: string } | { ok: false; message: string };
+export type UploadSlot = { ok: true; path: string; url: string } | { ok: false; message: string };
 
 /** A one-object signed upload for name-change evidence (Q13). */
 export async function startEvidenceUpload(file: {
@@ -91,8 +91,8 @@ export async function startEvidenceUpload(file: {
     const { data, error } = await createAdminClient()
       .storage.from('documents')
       .createSignedUploadUrl(path);
-    if (error || !data?.token) return { ok: false, message: TRY_AGAIN };
-    return { ok: true, path, token: data.token };
+    if (error || !data?.signedUrl) return { ok: false, message: TRY_AGAIN };
+    return { ok: true, path, url: data.signedUrl };
   } catch {
     // SUPABASE_SERVICE_ROLE_KEY missing (docs/12). Never fall back to the
     // worker's own session: it holds no Storage privilege on this bucket.
@@ -100,7 +100,7 @@ export async function startEvidenceUpload(file: {
   }
 }
 
-export type PhotoSlot = { ok: true; path: string } | { ok: false; message: string };
+export type PhotoSlot = { ok: true; path: string; url: string } | { ok: false; message: string };
 
 /**
  * Where a requested photo goes: a fresh `<staff_id>/selfie-<epoch>.jpg`.
@@ -112,7 +112,12 @@ export async function startChangePhotoUpload(): Promise<PhotoSlot> {
   const worker = await me();
   if (!worker.ok) return { ok: false, message: worker.message };
   if (!mayRequest(worker)) return { ok: false, message: changeReason('not_editable') };
-  return { ok: true, path: photoPathFor(worker.staffId) };
+  // Signed by the worker's own session: Storage checks
+  // photos_worker_insert_own before it signs, as the upload itself did.
+  const path = photoPathFor(worker.staffId);
+  const { data, error } = await (await db()).storage.from('photos').createSignedUploadUrl(path);
+  if (error || !data?.signedUrl) return { ok: false, message: TRY_AGAIN };
+  return { ok: true, path, url: data.signedUrl };
 }
 
 /**
