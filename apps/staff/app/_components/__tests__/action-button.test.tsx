@@ -64,3 +64,33 @@ describe('ActionButton with no answer from the server', () => {
     expect(document.body.textContent).not.toContain(NO_ANSWER.title);
   });
 });
+
+describe('ActionButton after an answer with something to say', () => {
+  const buttonNamed = (name: string) =>
+    [...document.body.querySelectorAll('button')].find((b) => b.textContent === name);
+
+  it('a refusal stays up, and the screen refreshes only once it is dismissed', async () => {
+    await press(
+      () =>
+        Promise.resolve({
+          refusal: { title: 'Sorry, this shift has been taken', body: 'x' },
+        }) as never,
+    );
+    expect(document.body.textContent).toContain('Sorry, this shift has been taken');
+    expect(router.refresh).not.toHaveBeenCalled();
+    await act(async () => {
+      buttonNamed('OK')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('a note does the same', async () => {
+    await press(() => Promise.resolve({ ok: true, note: '1 overlapping invitation' }) as never);
+    expect(document.body.textContent).toContain('1 overlapping invitation');
+    expect(router.refresh).not.toHaveBeenCalled();
+    await act(async () => {
+      buttonNamed('OK')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
+});
