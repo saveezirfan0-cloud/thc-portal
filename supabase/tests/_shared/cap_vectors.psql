@@ -74,7 +74,19 @@ insert into cap_vectors values
   ('Work visa hours limit: the opt-out cannot lift it', false, 'none', false, true, '2026-09-21'::date, false, null, null, null, false, null, 20, 20, 'visa_limit'),
   ('Dependant visa limit of 48: still a visa condition the opt-out cannot lift', false, 'none', false, true, '2026-09-21'::date, false, null, null, null, false, null, 48, 48, 'visa_limit'),
   ('Visa hours limit: an expired right to work still outranks it', false, 'none', false, false, '2026-09-21'::date, false, null, '2026-09-20'::date, null, false, null, 20, 0, 'visa_expired_0'),
-  ('Work visa with no hours limit recorded: the opt-out removes the ceiling', false, 'none', false, true, '2026-09-21'::date, false, null, null, null, false, null, null, null, 'uncapped');
+  ('Work visa with no hours limit recorded: the opt-out removes the ceiling', false, 'none', false, true, '2026-09-21'::date, false, null, null, null, false, null, null, null, 'uncapped'),
+  ('Below degree level in a week straddling term and holiday: the lower cap is 10', true, 'straddle', false, false, '2026-12-07'::date, true, null, null, null, false, null, null, 10, 'student_term_10'),
+  ('Below degree level, opt-out signed: the visa''s 10 h still stands', true, 'term', false, true, '2026-10-05'::date, true, null, null, null, false, null, null, 10, 'student_term_10'),
+  ('Graduated below degree level: 48, the 10 h term condition no longer applies', true, 'term', true, false, '2026-07-06'::date, true, '2026-06-30'::date, null, null, false, '2026-07-01'::date, null, 48, 'graduated_48'),
+  ('Course completes on a Monday: released from that Monday', true, 'term', true, false, '2026-07-06'::date, false, '2026-07-06'::date, null, null, false, '2026-07-01'::date, null, 48, 'graduated_48'),
+  ('Letter verified on a Sunday: that week stays at the term cap', true, 'term', true, false, '2026-09-21'::date, false, '2026-06-30'::date, null, null, false, '2026-09-27'::date, null, 20, 'student_term_20'),
+  ('Letter verified on a Sunday: released from the next day, a Monday', true, 'term', true, false, '2026-09-28'::date, false, '2026-06-30'::date, null, null, false, '2026-09-27'::date, null, 48, 'graduated_48'),
+  ('An under-18 student in a university holiday: 48, the opt-out tick does not count', true, 'holiday', false, true, '2026-12-21'::date, false, null, null, null, true, null, null, 48, 'student_holiday_48'),
+  ('Student in a holiday week whose opt-out notice ends mid-week: the lower cap, 48', true, 'holiday', false, true, '2026-12-21'::date, false, null, null, '2026-12-23'::date, false, null, null, 48, 'student_holiday_48'),
+  ('Opt-out notice ended weeks ago: the 48 h ceiling stands', false, 'none', false, true, '2026-08-10'::date, false, null, null, '2026-07-01'::date, false, null, null, 48, 'standard_48'),
+  ('Notice period ends on the Sunday: that week already takes the 48 h', false, 'none', false, true, '2026-08-10'::date, false, null, null, '2026-08-16'::date, false, null, null, 48, 'standard_48'),
+  ('Student visa expires on the Sunday: the week keeps its cap and canRoster stops nothing in it', true, 'term', false, false, '2026-09-28'::date, false, null, '2026-10-04'::date, null, false, null, null, 20, 'student_term_20'),
+  ('Student visa expired the Sunday before: nothing rosters this week', true, 'term', false, false, '2026-09-28'::date, false, null, '2026-09-27'::date, null, false, null, null, 0, 'visa_expired_0');
 
 -- The count is generated too, so an empty or half-loaded table cannot pass.
-\set cap_vector_count 39
+\set cap_vector_count 51
