@@ -16,6 +16,7 @@ export type Database = {
           recorded_at: string;
           referrer_staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           application_id: string;
           candidate_staff_id: string;
@@ -84,6 +85,13 @@ export type Database = {
             foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
             columns: ['candidate_staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -93,6 +101,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
@@ -154,6 +169,13 @@ export type Database = {
             foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
             columns: ['referrer_staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -163,6 +185,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
@@ -206,6 +235,7 @@ export type Database = {
           resolved_by: string | null;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           age_band: string;
           consented_at: string;
@@ -289,6 +319,13 @@ export type Database = {
             foreignKeyName: 'applications_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'applications_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -298,6 +335,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'applications_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'applications_staff_id_fkey';
@@ -332,6 +376,7 @@ export type Database = {
           entity_id: string | null;
           id: number;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor?: string | null;
@@ -360,6 +405,7 @@ export type Database = {
           staff_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           account_holder: string;
           account_number: string;
@@ -414,6 +460,13 @@ export type Database = {
             foreignKeyName: 'bank_details_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -423,6 +476,13 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'bank_details_staff_id_fkey';
@@ -447,6 +507,145 @@ export type Database = {
           },
         ];
       };
+      booking_kit_acknowledgements: {
+        Row: {
+          acknowledged_at: string;
+          booking_id: string;
+          staff_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          acknowledged_at?: string;
+          booking_id: string;
+          staff_id: string;
+        };
+        Update: {
+          acknowledged_at?: string;
+          booking_id?: string;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'checkin_monitor_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'payable_shifts_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'booking_kit_acknowledgements_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       bookings: {
         Row: {
           applied_at: string | null;
@@ -465,6 +664,7 @@ export type Database = {
           staff_id: string;
           status: Database['public']['Enums']['booking_status'];
         };
+        ComputedFields: never;
         Insert: {
           applied_at?: string | null;
           cancel_cause?: string | null;
@@ -616,6 +816,13 @@ export type Database = {
             foreignKeyName: 'bookings_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -625,6 +832,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -656,6 +870,7 @@ export type Database = {
           id: string;
           started_at: string;
         };
+        ComputedFields: never;
         Insert: {
           booking_id: string;
           ended_at?: string | null;
@@ -713,6 +928,7 @@ export type Database = {
           notified_on: string;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           band: Database['public']['Enums']['cap_band'];
           cap_hours?: number | null;
@@ -765,6 +981,13 @@ export type Database = {
             foreignKeyName: 'cap_band_notices_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'cap_band_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -774,6 +997,13 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'cap_band_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'cap_band_notices_staff_id_fkey';
@@ -817,6 +1047,7 @@ export type Database = {
           on_site_verified: boolean;
           outcome: Database['public']['Enums']['checklog_outcome'];
         };
+        ComputedFields: never;
         Insert: {
           accuracy_m?: number | null;
           attempted_at?: string;
@@ -893,6 +1124,7 @@ export type Database = {
       };
       client_qualifications: {
         Row: {
+          bar_only: boolean;
           client_id: string;
           do_not_return: boolean;
           granted_at: string;
@@ -903,7 +1135,9 @@ export type Database = {
           role_id: string;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
+          bar_only?: boolean;
           client_id: string;
           do_not_return?: boolean;
           granted_at?: string;
@@ -915,6 +1149,7 @@ export type Database = {
           staff_id: string;
         };
         Update: {
+          bar_only?: boolean;
           client_id?: string;
           do_not_return?: boolean;
           granted_at?: string;
@@ -1028,6 +1263,13 @@ export type Database = {
             foreignKeyName: 'client_qualifications_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_qualifications_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -1037,6 +1279,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_qualifications_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'client_qualifications_staff_id_fkey';
@@ -1061,6 +1310,415 @@ export type Database = {
           },
         ];
       };
+      client_quiz_attempts: {
+        Row: {
+          answers: NonNullable<Json>;
+          attempt_no: number;
+          correct: number;
+          id: string;
+          passed: boolean;
+          quiz_id: string;
+          score: number;
+          staff_id: string;
+          superseded: boolean;
+          taken_at: string;
+          total: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          answers: NonNullable<Json>;
+          attempt_no: number;
+          correct: number;
+          id?: string;
+          passed: boolean;
+          quiz_id: string;
+          score: number;
+          staff_id: string;
+          superseded?: boolean;
+          taken_at?: string;
+          total: number;
+        };
+        Update: {
+          answers?: NonNullable<Json>;
+          attempt_no?: number;
+          correct?: number;
+          id?: string;
+          passed?: boolean;
+          quiz_id?: string;
+          score?: number;
+          staff_id?: string;
+          superseded?: boolean;
+          taken_at?: string;
+          total?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_quiz_attempts_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      client_quiz_draws: {
+        Row: {
+          attempt_id: string | null;
+          drawn_at: string;
+          id: string;
+          question_ids: string[];
+          quiz_id: string;
+          staff_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          attempt_id?: string | null;
+          drawn_at?: string;
+          id?: string;
+          question_ids: string[];
+          quiz_id: string;
+          staff_id: string;
+        };
+        Update: {
+          attempt_id?: string | null;
+          drawn_at?: string;
+          id?: string;
+          question_ids?: string[];
+          quiz_id?: string;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_quiz_draws_attempt_id_fkey';
+            columns: ['attempt_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quiz_attempts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_draws_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      client_quiz_questions: {
+        Row: {
+          active: boolean;
+          correct_index: number;
+          created_at: string;
+          id: string;
+          options: string[];
+          position: number;
+          prompt: string;
+          quiz_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          correct_index: number;
+          created_at?: string;
+          id?: string;
+          options: string[];
+          position: number;
+          prompt: string;
+          quiz_id: string;
+        };
+        Update: {
+          active?: boolean;
+          correct_index?: number;
+          created_at?: string;
+          id?: string;
+          options?: string[];
+          position?: number;
+          prompt?: string;
+          quiz_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_quiz_questions_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      client_quiz_slides: {
+        Row: {
+          columns: string[];
+          heading: string;
+          id: string;
+          note: string | null;
+          position: number;
+          quiz_id: string;
+          rows: NonNullable<Json>;
+        };
+        ComputedFields: never;
+        Insert: {
+          columns?: string[];
+          heading: string;
+          id?: string;
+          note?: string | null;
+          position: number;
+          quiz_id: string;
+          rows?: NonNullable<Json>;
+        };
+        Update: {
+          columns?: string[];
+          heading?: string;
+          id?: string;
+          note?: string | null;
+          position?: number;
+          quiz_id?: string;
+          rows?: NonNullable<Json>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_quiz_slides_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      client_quizzes: {
+        Row: {
+          active: boolean;
+          client_id: string;
+          created_at: string;
+          id: string;
+          intro: string | null;
+          max_attempts: number;
+          pass_mark_percent: number;
+          questions_per_attempt: number | null;
+          title: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          client_id: string;
+          created_at?: string;
+          id?: string;
+          intro?: string | null;
+          max_attempts?: number;
+          pass_mark_percent?: number;
+          questions_per_attempt?: number | null;
+          title: string;
+        };
+        Update: {
+          active?: boolean;
+          client_id?: string;
+          created_at?: string;
+          id?: string;
+          intro?: string | null;
+          max_attempts?: number;
+          pass_mark_percent?: number;
+          questions_per_attempt?: number | null;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_company_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_entries_v';
+            referencedColumns: ['client_id'];
+          },
+        ];
+      };
       client_rate_cards: {
         Row: {
           charge_rate: number;
@@ -1069,6 +1727,7 @@ export type Database = {
           id: string;
           role_id: string;
         };
+        ComputedFields: never;
         Insert: {
           charge_rate: number;
           client_id: string;
@@ -1142,6 +1801,352 @@ export type Database = {
           },
         ];
       };
+      client_role_requirements: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          id: string;
+          kit_message: string | null;
+          quiz_id: string | null;
+          role_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          id?: string;
+          kit_message?: string | null;
+          quiz_id?: string | null;
+          role_id: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          id?: string;
+          kit_message?: string | null;
+          quiz_id?: string | null;
+          role_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_company_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_entries_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'role_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'role_rates_v';
+            referencedColumns: ['role_id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'roles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['role_id'];
+          },
+        ];
+      };
+      client_worker_requests: {
+        Row: {
+          booking_id: string | null;
+          client_id: string;
+          created_at: string;
+          event_id: string | null;
+          handled_at: string | null;
+          handled_by: string | null;
+          id: string;
+          note: string | null;
+          requested_by: string | null;
+          requested_by_name: string | null;
+          staff_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          booking_id?: string | null;
+          client_id: string;
+          created_at?: string;
+          event_id?: string | null;
+          handled_at?: string | null;
+          handled_by?: string | null;
+          id?: string;
+          note?: string | null;
+          requested_by?: string | null;
+          requested_by_name?: string | null;
+          staff_id: string;
+        };
+        Update: {
+          booking_id?: string | null;
+          client_id?: string;
+          created_at?: string;
+          event_id?: string | null;
+          handled_at?: string | null;
+          handled_by?: string | null;
+          id?: string;
+          note?: string | null;
+          requested_by?: string | null;
+          requested_by_name?: string | null;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'checkin_monitor_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'payable_shifts_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_company_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_entries_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_events_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_event_list_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_feedback_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_violations_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'venue_upcoming_events_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_handled_by_fkey';
+            columns: ['handled_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_requested_by_fkey';
+            columns: ['requested_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       clients: {
         Row: {
           contact_emails: string[];
@@ -1149,6 +2154,8 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           id: string;
+          lineup_changed_emails: boolean;
+          lineup_confirmed_emails: boolean;
           name: string;
           name_badges: boolean;
           pays_breaks: boolean;
@@ -1156,12 +2163,15 @@ export type Database = {
           phone: string;
           staff_contact_point: string;
         };
+        ComputedFields: never;
         Insert: {
           contact_emails: string[];
           contact_name: string;
           created_at?: string;
           created_by?: string | null;
           id?: string;
+          lineup_changed_emails?: boolean;
+          lineup_confirmed_emails?: boolean;
           name: string;
           name_badges?: boolean;
           pays_breaks?: boolean;
@@ -1175,6 +2185,8 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           id?: string;
+          lineup_changed_emails?: boolean;
+          lineup_confirmed_emails?: boolean;
           name?: string;
           name_badges?: boolean;
           pays_breaks?: boolean;
@@ -1228,6 +2240,7 @@ export type Database = {
           term_dates: unknown[] | null;
           uploaded_at: string;
         };
+        ComputedFields: never;
         Insert: {
           ai_confidence?: number | null;
           ai_extracted?: Json | null;
@@ -1352,6 +2365,13 @@ export type Database = {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -1361,6 +2381,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
@@ -1394,6 +2421,7 @@ export type Database = {
           title: string;
           version: string;
         };
+        ComputedFields: never;
         Insert: {
           body: string;
           created_at?: string;
@@ -1427,6 +2455,7 @@ export type Database = {
           staff_id: string;
           superseded: boolean;
         };
+        ComputedFields: never;
         Insert: {
           answer: boolean;
           conviction_date?: string | null;
@@ -1502,6 +2531,13 @@ export type Database = {
             foreignKeyName: 'criminal_declarations_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -1511,6 +2547,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'criminal_declarations_staff_id_fkey';
@@ -1546,7 +2589,9 @@ export type Database = {
           lease_until: string | null;
           outbox_key: string | null;
           queued_at: string | null;
+          sends: number;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           claimed_at?: string;
@@ -1557,6 +2602,7 @@ export type Database = {
           lease_until?: string | null;
           outbox_key?: string | null;
           queued_at?: string | null;
+          sends?: number;
         };
         Update: {
           attempts?: number;
@@ -1568,6 +2614,7 @@ export type Database = {
           lease_until?: string | null;
           outbox_key?: string | null;
           queued_at?: string | null;
+          sends?: number;
         };
         Relationships: [
           {
@@ -1647,6 +2694,7 @@ export type Database = {
           generated_by: string | null;
           id: string;
           kind: string;
+          line_up_fp: string | null;
           outbox_key: string | null;
           page_count: number;
           queued_at: string | null;
@@ -1657,6 +2705,7 @@ export type Database = {
           sent_at: string | null;
           storage_path: string;
         };
+        ComputedFields: never;
         Insert: {
           automatic?: boolean;
           badges_count?: number | null;
@@ -1668,6 +2717,7 @@ export type Database = {
           generated_by?: string | null;
           id?: string;
           kind: string;
+          line_up_fp?: string | null;
           outbox_key?: string | null;
           page_count: number;
           queued_at?: string | null;
@@ -1689,6 +2739,7 @@ export type Database = {
           generated_by?: string | null;
           id?: string;
           kind?: string;
+          line_up_fp?: string | null;
           outbox_key?: string | null;
           page_count?: number;
           queued_at?: string | null;
@@ -1785,7 +2836,9 @@ export type Database = {
           venue_id: string | null;
           venue_location: unknown;
           venue_name: string;
+          audit_event_fields: Json | null;
         };
+        ComputedFields: 'audit_event_fields';
         Insert: {
           auto_assign?: boolean;
           cancel_reason?: string | null;
@@ -1887,8 +2940,50 @@ export type Database = {
             foreignKeyName: 'events_duplicated_from_fkey';
             columns: ['duplicated_from'];
             isOneToOne: false;
+            referencedRelation: 'client_events_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
+            referencedRelation: 'clients_event_list_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
             referencedRelation: 'events';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
+            referencedRelation: 'staff_feedback_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
+            referencedRelation: 'staff_violations_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'events_duplicated_from_fkey';
+            columns: ['duplicated_from'];
+            isOneToOne: false;
+            referencedRelation: 'venue_upcoming_events_v';
+            referencedColumns: ['event_id'];
           },
           {
             foreignKeyName: 'events_venue_id_fkey';
@@ -1920,6 +3015,7 @@ export type Database = {
           text: string | null;
           updated_at: string | null;
         };
+        ComputedFields: never;
         Insert: {
           author_id?: string | null;
           author_kind: Database['public']['Enums']['feedback_author'];
@@ -2049,6 +3145,13 @@ export type Database = {
             foreignKeyName: 'feedback_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'feedback_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -2058,6 +3161,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'feedback_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'feedback_staff_id_fkey';
@@ -2096,6 +3206,7 @@ export type Database = {
           submitted_at: string;
           superseded: boolean;
         };
+        ComputedFields: never;
         Insert: {
           declared: boolean;
           id?: string;
@@ -2162,6 +3273,13 @@ export type Database = {
             foreignKeyName: 'hmrc_checklists_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'hmrc_checklists_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -2171,6 +3289,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'hmrc_checklists_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'hmrc_checklists_staff_id_fkey';
@@ -2195,66 +3320,6 @@ export type Database = {
           },
         ];
       };
-      job_runs: {
-        Row: {
-          counts: Json;
-          error: string | null;
-          finished_at: string | null;
-          id: number;
-          job: string;
-          ok: boolean | null;
-          started_at: string;
-        };
-        Insert: {
-          counts?: Json;
-          error?: string | null;
-          finished_at?: string | null;
-          id?: never;
-          job: string;
-          ok?: boolean | null;
-          started_at?: string;
-        };
-        Update: {
-          counts?: Json;
-          error?: string | null;
-          finished_at?: string | null;
-          id?: never;
-          job?: string;
-          ok?: boolean | null;
-          started_at?: string;
-        };
-        Relationships: [];
-      };
-      job_schedules: {
-        Row: {
-          base_url_source: string;
-          cron_expression: string;
-          edge_path: string;
-          enabled: boolean;
-          job: string;
-          note: string | null;
-          secret_name: string;
-        };
-        Insert: {
-          base_url_source?: string;
-          cron_expression: string;
-          edge_path: string;
-          enabled?: boolean;
-          job: string;
-          note?: string | null;
-          secret_name?: string;
-        };
-        Update: {
-          base_url_source?: string;
-          cron_expression?: string;
-          edge_path?: string;
-          enabled?: boolean;
-          job?: string;
-          note?: string | null;
-          secret_name?: string;
-        };
-        Relationships: [];
-      };
       invite_roster: {
         Row: {
           email: string;
@@ -2266,6 +3331,7 @@ export type Database = {
           loaded_by: string | null;
           payroll_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           email: string;
           first_name?: string | null;
@@ -2288,6 +3354,68 @@ export type Database = {
         };
         Relationships: [];
       };
+      job_runs: {
+        Row: {
+          counts: NonNullable<Json>;
+          error: string | null;
+          finished_at: string | null;
+          id: number;
+          job: string;
+          ok: boolean | null;
+          started_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          counts?: NonNullable<Json>;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: never;
+          job: string;
+          ok?: boolean | null;
+          started_at?: string;
+        };
+        Update: {
+          counts?: NonNullable<Json>;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: never;
+          job?: string;
+          ok?: boolean | null;
+          started_at?: string;
+        };
+        Relationships: [];
+      };
+      job_schedules: {
+        Row: {
+          base_url_source: string;
+          cron_expression: string;
+          edge_path: string;
+          enabled: boolean;
+          job: string;
+          note: string | null;
+          secret_name: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          base_url_source?: string;
+          cron_expression: string;
+          edge_path: string;
+          enabled?: boolean;
+          job: string;
+          note?: string | null;
+          secret_name?: string;
+        };
+        Update: {
+          base_url_source?: string;
+          cron_expression?: string;
+          edge_path?: string;
+          enabled?: boolean;
+          job?: string;
+          note?: string | null;
+          secret_name?: string;
+        };
+        Relationships: [];
+      };
       location_pings: {
         Row: {
           accuracy_m: number | null;
@@ -2297,6 +3425,7 @@ export type Database = {
           inside_geofence: boolean;
           location: unknown;
         };
+        ComputedFields: never;
         Insert: {
           accuracy_m?: number | null;
           at?: string;
@@ -2351,6 +3480,117 @@ export type Database = {
           },
         ];
       };
+      new_starter_reported: {
+        Row: {
+          report_send_id: number;
+          reported_at: string;
+          staff_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          report_send_id: number;
+          reported_at?: string;
+          staff_id: string;
+        };
+        Update: {
+          report_send_id?: number;
+          reported_at?: string;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'new_starter_reported_report_send_id_fkey';
+            columns: ['report_send_id'];
+            isOneToOne: false;
+            referencedRelation: 'report_sends';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'new_starter_reported_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       notification_outbox: {
         Row: {
           attempts: number;
@@ -2360,7 +3600,7 @@ export type Database = {
           id: number;
           key: string;
           last_attempt_at: string | null;
-          payload: Json;
+          payload: NonNullable<Json>;
           priority: number;
           queued_at: string;
           recipient_emails: string[] | null;
@@ -2369,6 +3609,7 @@ export type Database = {
           sent_at: string | null;
           template: string;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           channel: Database['public']['Enums']['notification_channel'];
@@ -2377,7 +3618,7 @@ export type Database = {
           id?: never;
           key: string;
           last_attempt_at?: string | null;
-          payload?: Json;
+          payload?: NonNullable<Json>;
           priority?: number;
           queued_at?: string;
           recipient_emails?: string[] | null;
@@ -2394,7 +3635,7 @@ export type Database = {
           id?: never;
           key?: string;
           last_attempt_at?: string | null;
-          payload?: Json;
+          payload?: NonNullable<Json>;
           priority?: number;
           queued_at?: string;
           recipient_emails?: string[] | null;
@@ -2443,6 +3684,13 @@ export type Database = {
             foreignKeyName: 'notification_outbox_recipient_staff_id_fkey';
             columns: ['recipient_staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'notification_outbox_recipient_staff_id_fkey';
+            columns: ['recipient_staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -2452,6 +3700,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notification_outbox_recipient_staff_id_fkey';
+            columns: ['recipient_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'notification_outbox_recipient_staff_id_fkey';
@@ -2482,16 +3737,17 @@ export type Database = {
           id: string;
           name: string;
           owner: string;
-          query: Json;
+          query: NonNullable<Json>;
           scope: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           id?: string;
           name: string;
           owner?: string;
-          query: Json;
+          query: NonNullable<Json>;
           scope?: string;
           updated_at?: string;
         };
@@ -2500,7 +3756,7 @@ export type Database = {
           id?: string;
           name?: string;
           owner?: string;
-          query?: Json;
+          query?: NonNullable<Json>;
           scope?: string;
           updated_at?: string;
         };
@@ -2524,6 +3780,7 @@ export type Database = {
           visa_expiry: string | null;
           visa_type: string | null;
         };
+        ComputedFields: never;
         Insert: {
           address_at?: string | null;
           bank_at?: string | null;
@@ -2598,6 +3855,13 @@ export type Database = {
             foreignKeyName: 'onboarding_progress_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'onboarding_progress_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -2607,6 +3871,13 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'onboarding_progress_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'onboarding_progress_staff_id_fkey';
@@ -2639,19 +3910,20 @@ export type Database = {
           loaded_at: string;
           name_key: string | null;
         };
+        ComputedFields: never;
         Insert: {
           code: number;
           first_name: string;
           last_name: string;
           loaded_at?: string;
-          name_key?: string | null;
+          name_key?: never;
         };
         Update: {
           code?: number;
           first_name?: string;
           last_name?: string;
           loaded_at?: string;
-          name_key?: string | null;
+          name_key?: never;
         };
         Relationships: [];
       };
@@ -2670,6 +3942,7 @@ export type Database = {
           staff_id: string;
           state: string;
         };
+        ComputedFields: never;
         Insert: {
           base?: number | null;
           booking_id: string;
@@ -2829,6 +4102,13 @@ export type Database = {
             foreignKeyName: 'payroll_export_lines_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'payroll_export_lines_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -2838,6 +4118,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payroll_export_lines_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'payroll_export_lines_staff_id_fkey';
@@ -2881,6 +4168,7 @@ export type Database = {
           status: string;
           worker_note: string | null;
         };
+        ComputedFields: never;
         Insert: {
           applied_at?: string | null;
           created_at?: string;
@@ -2964,6 +4252,13 @@ export type Database = {
             foreignKeyName: 'profile_change_requests_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -2973,6 +4268,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'profile_change_requests_staff_id_fkey';
@@ -3004,20 +4306,21 @@ export type Database = {
           full_name: string;
           id: string;
           job_title: string | null;
-          list_columns: Json;
+          list_columns: NonNullable<Json>;
           office_role: Database['public']['Enums']['office_role'] | null;
           phone: string | null;
           role: Database['public']['Enums']['app_role'];
           time_format: string;
           updated_at: string | null;
         };
+        ComputedFields: never;
         Insert: {
           client_id?: string | null;
           created_at?: string;
           full_name: string;
           id: string;
           job_title?: string | null;
-          list_columns?: Json;
+          list_columns?: NonNullable<Json>;
           office_role?: Database['public']['Enums']['office_role'] | null;
           phone?: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -3030,7 +4333,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           job_title?: string | null;
-          list_columns?: Json;
+          list_columns?: NonNullable<Json>;
           office_role?: Database['public']['Enums']['office_role'] | null;
           phone?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -3050,6 +4353,7 @@ export type Database = {
           staff_id: string;
           user_agent: string | null;
         };
+        ComputedFields: never;
         Insert: {
           auth: string;
           created_at?: string;
@@ -3110,6 +4414,13 @@ export type Database = {
             foreignKeyName: 'push_subscriptions_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'push_subscriptions_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -3119,6 +4430,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_subscriptions_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'push_subscriptions_staff_id_fkey';
@@ -3145,7 +4463,7 @@ export type Database = {
       };
       quiz_attempts: {
         Row: {
-          answers: Json;
+          answers: NonNullable<Json>;
           attempt_no: number;
           id: string;
           passed: boolean;
@@ -3154,8 +4472,9 @@ export type Database = {
           superseded: boolean;
           taken_at: string;
         };
+        ComputedFields: never;
         Insert: {
-          answers: Json;
+          answers: NonNullable<Json>;
           attempt_no: number;
           id?: string;
           passed: boolean;
@@ -3165,7 +4484,7 @@ export type Database = {
           taken_at?: string;
         };
         Update: {
-          answers?: Json;
+          answers?: NonNullable<Json>;
           attempt_no?: number;
           id?: string;
           passed?: boolean;
@@ -3214,6 +4533,13 @@ export type Database = {
             foreignKeyName: 'quiz_attempts_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -3223,6 +4549,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'quiz_attempts_staff_id_fkey';
@@ -3259,6 +4592,7 @@ export type Database = {
           position: number;
           prompt: string;
         };
+        ComputedFields: never;
         Insert: {
           active?: boolean;
           correct_index: number;
@@ -3298,6 +4632,7 @@ export type Database = {
           status: string;
           storage_path: string | null;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           error?: string | null;
@@ -3336,6 +4671,7 @@ export type Database = {
           name: string;
           pay_rate: number;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           description?: string | null;
@@ -3380,6 +4716,7 @@ export type Database = {
           updated_at: string;
           worker_reason: string | null;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           compliance_doc_id: string;
@@ -3435,6 +4772,13 @@ export type Database = {
           worker_reason?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
+            columns: ['compliance_doc_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_doc_review_v';
+            referencedColumns: ['document_id'];
+          },
           {
             foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
             columns: ['compliance_doc_id'];
@@ -3509,6 +4853,13 @@ export type Database = {
             foreignKeyName: 'rtw_checks_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -3518,6 +4869,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'rtw_checks_staff_id_fkey';
@@ -3546,17 +4904,18 @@ export type Database = {
         Row: {
           key: string;
           updated_at: string;
-          value: Json;
+          value: NonNullable<Json>;
         };
+        ComputedFields: never;
         Insert: {
           key: string;
           updated_at?: string;
-          value: Json;
+          value: NonNullable<Json>;
         };
         Update: {
           key?: string;
           updated_at?: string;
-          value?: Json;
+          value?: NonNullable<Json>;
         };
         Relationships: [];
       };
@@ -3566,6 +4925,7 @@ export type Database = {
           offer_id: string;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           notified_at?: string;
           offer_id: string;
@@ -3623,6 +4983,13 @@ export type Database = {
             foreignKeyName: 'shift_offer_notices_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -3632,6 +4999,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'shift_offer_notices_staff_id_fkey';
@@ -3675,6 +5049,7 @@ export type Database = {
           taken_by_staff_id: string | null;
           target_staff_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           booking_id: string;
           closed_at?: string | null;
@@ -3793,6 +5168,13 @@ export type Database = {
             foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
             columns: ['offered_by_staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -3802,6 +5184,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
@@ -3975,6 +5364,13 @@ export type Database = {
             foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
             columns: ['taken_by_staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -3984,6 +5380,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
@@ -4045,6 +5448,13 @@ export type Database = {
             foreignKeyName: 'shift_offers_target_staff_id_fkey';
             columns: ['target_staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -4054,6 +5464,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'shift_offers_target_staff_id_fkey';
@@ -4094,7 +5511,9 @@ export type Database = {
           role_id: string;
           same_staff_all_days: boolean;
           starts_at: string;
+          audit_section_fields: Json | null;
         };
+        ComputedFields: 'audit_section_fields';
         Insert: {
           allocation_per_hour: number;
           auto_assign?: boolean;
@@ -4296,7 +5715,9 @@ export type Database = {
           wtr_optout_copy_path: string | null;
           wtr_optout_notice_days: number | null;
           wtr_optout_signed_at: string | null;
+          onboarding_assert_contract_stage: undefined | null;
         };
+        ComputedFields: 'onboarding_assert_contract_stage';
         Insert: {
           applied_age_band?: string | null;
           below_degree_level?: boolean;
@@ -4446,6 +5867,7 @@ export type Database = {
           updated_at: string;
           updated_by: string | null;
         };
+        ComputedFields: never;
         Insert: {
           name: string;
           phone: string;
@@ -4502,6 +5924,13 @@ export type Database = {
             foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -4511,6 +5940,13 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
@@ -4549,6 +5985,7 @@ export type Database = {
           set_by: string | null;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           pay_rate: number;
           set_at?: string;
@@ -4608,6 +6045,13 @@ export type Database = {
             foreignKeyName: 'staff_pay_rates_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_pay_rates_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -4617,6 +6061,13 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_pay_rates_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'staff_pay_rates_staff_id_fkey';
@@ -4651,6 +6102,7 @@ export type Database = {
           seq: number;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           email: string;
           id?: string;
@@ -4709,6 +6161,13 @@ export type Database = {
             foreignKeyName: 'staff_references_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_references_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -4718,6 +6177,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_references_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'staff_references_staff_id_fkey';
@@ -4749,6 +6215,7 @@ export type Database = {
           revoked_at: string | null;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           code: string;
           created_at?: string;
@@ -4801,6 +6268,13 @@ export type Database = {
             foreignKeyName: 'staff_referral_codes_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -4810,6 +6284,13 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'staff_referral_codes_staff_id_fkey';
@@ -4839,6 +6320,7 @@ export type Database = {
           role_id: string;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           role_id: string;
           staff_id: string;
@@ -4915,6 +6397,13 @@ export type Database = {
             foreignKeyName: 'staff_roles_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_roles_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -4924,6 +6413,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_roles_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'staff_roles_staff_id_fkey';
@@ -4953,6 +6449,7 @@ export type Database = {
           from_status: Database['public']['Enums']['staff_status'];
           to_status: Database['public']['Enums']['staff_status'];
         };
+        ComputedFields: never;
         Insert: {
           from_status: Database['public']['Enums']['staff_status'];
           to_status: Database['public']['Enums']['staff_status'];
@@ -4972,6 +6469,7 @@ export type Database = {
           series_id: string | null;
           staff_id: string;
         };
+        ComputedFields: never;
         Insert: {
           all_day?: boolean;
           created_at?: string;
@@ -5028,6 +6526,13 @@ export type Database = {
             foreignKeyName: 'staff_unavailability_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -5037,6 +6542,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'staff_unavailability_staff_id_fkey';
@@ -5073,6 +6585,7 @@ export type Database = {
           queued_at: string;
           staff_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           bucket: string;
@@ -5135,6 +6648,13 @@ export type Database = {
             foreignKeyName: 'storage_deletions_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'storage_deletions_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -5144,6 +6664,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'storage_deletions_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'storage_deletions_staff_id_fkey';
@@ -5175,6 +6702,7 @@ export type Database = {
           label: string;
           sort_order: number;
         };
+        ComputedFields: never;
         Insert: {
           default_radius_m: number;
           key: string;
@@ -5201,6 +6729,7 @@ export type Database = {
           name: string;
           venue_type: string;
         };
+        ComputedFields: never;
         Insert: {
           address: string;
           created_at?: string;
@@ -5255,6 +6784,7 @@ export type Database = {
           stale_fix_review: boolean;
           type: Database['public']['Enums']['violation_type'];
         };
+        ComputedFields: never;
         Insert: {
           actual_finish_at?: string | null;
           booking_id: string;
@@ -5365,6 +6895,13 @@ export type Database = {
             foreignKeyName: 'violations_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'violations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -5374,6 +6911,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'violations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'violations_staff_id_fkey';
@@ -5406,6 +6950,7 @@ export type Database = {
           staff_id: string | null;
           willo_candidate_id: string;
         };
+        ComputedFields: never;
         Insert: {
           applied_at?: string;
           delivery_key: string;
@@ -5425,7 +6970,84 @@ export type Database = {
             foreignKeyName: 'willo_deliveries_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'willo_deliveries_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
             referencedColumns: ['id'];
           },
         ];
@@ -5455,6 +7077,7 @@ export type Database = {
           starts_at: string | null;
           status: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -5495,6 +7118,13 @@ export type Database = {
             foreignKeyName: 'bookings_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -5504,6 +7134,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -5580,14 +7217,21 @@ export type Database = {
       client_account_v: {
         Row: {
           contact_emails: string[] | null;
+          lineup_changed_emails: boolean | null;
+          lineup_confirmed_emails: boolean | null;
           name: string | null;
         };
+        ComputedFields: never;
         Insert: {
           contact_emails?: string[] | null;
+          lineup_changed_emails?: boolean | null;
+          lineup_confirmed_emails?: boolean | null;
           name?: string | null;
         };
         Update: {
           contact_emails?: string[] | null;
+          lineup_changed_emails?: boolean | null;
+          lineup_confirmed_emails?: boolean | null;
           name?: string | null;
         };
         Relationships: [];
@@ -5599,6 +7243,7 @@ export type Database = {
           event_id: string | null;
           shift_id: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
@@ -5656,6 +7301,7 @@ export type Database = {
           client_id: string | null;
           name: string | null;
         };
+        ComputedFields: never;
         Insert: {
           client_id?: string | null;
           name?: string | null;
@@ -5675,6 +7321,7 @@ export type Database = {
           kind: string | null;
           storage_path: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'event_documents_event_id_fkey';
@@ -5738,10 +7385,12 @@ export type Database = {
           po_number: string | null;
           starts_at: string | null;
           status: Database['public']['Enums']['event_status'] | null;
+          timesheet_recipients: string[] | null;
           title: string | null;
           venue_address: string | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'events_client_id_fkey';
@@ -5775,19 +7424,24 @@ export type Database = {
       };
       client_lineup_v: {
         Row: {
+          arrival_status: string | null;
+          arrived_at: string | null;
           booking_id: string | null;
           ends_at: string | null;
           event_id: string | null;
           feedback_given: boolean | null;
           feedback_rating: number | null;
           feedback_sent_at: string | null;
+          feedback_text: string | null;
           name: string | null;
           photo_path: string | null;
           role: string | null;
           shift_id: string | null;
           sort_key: string | null;
           starts_at: string | null;
+          worker_requested: boolean | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
@@ -5840,9 +7494,17 @@ export type Database = {
           },
         ];
       };
+      client_portal_contact_v: {
+        Row: {
+          phone: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [];
+      };
       client_role_sections_v: {
         Row: {
           confirmed: number | null;
+          dress_code: string | null;
           ends_at: string | null;
           event_id: string | null;
           headcount: number | null;
@@ -5850,6 +7512,7 @@ export type Database = {
           shift_id: string | null;
           starts_at: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
@@ -5895,6 +7558,104 @@ export type Database = {
           },
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'venue_upcoming_events_v';
+            referencedColumns: ['event_id'];
+          },
+        ];
+      };
+      client_worker_requests_v: {
+        Row: {
+          booking_id: string | null;
+          event_id: string | null;
+          id: string | null;
+          name: string | null;
+          note: string | null;
+          requested_at: string | null;
+          role: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'checkin_monitor_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'payable_shifts_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_events_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_event_list_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_feedback_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_violations_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
             columns: ['event_id'];
             isOneToOne: false;
             referencedRelation: 'venue_upcoming_events_v';
@@ -5920,6 +7681,7 @@ export type Database = {
           rate_card_roles: string[] | null;
           staff_contact_point: string | null;
         };
+        ComputedFields: never;
         Insert: {
           avg_margin_pct?: never;
           contact_emails?: string[] | null;
@@ -5981,6 +7743,7 @@ export type Database = {
           title: string | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'events_client_id_fkey';
@@ -6019,6 +7782,7 @@ export type Database = {
           completed_events: number | null;
           pay_total: number | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'events_client_id_fkey';
@@ -6052,6 +7816,7 @@ export type Database = {
       };
       clients_qualified_staff_v: {
         Row: {
+          bar_only: boolean | null;
           client_id: string | null;
           display_name: string | null;
           do_not_return: boolean | null;
@@ -6072,6 +7837,7 @@ export type Database = {
           staff_id: string | null;
           status: Database['public']['Enums']['staff_status'] | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'client_qualifications_client_id_fkey';
@@ -6103,6 +7869,146 @@ export type Database = {
           },
         ];
       };
+      clients_quiz_results_v: {
+        Row: {
+          attempts_max: number | null;
+          attempts_used: number | null;
+          best_correct: number | null;
+          client_id: string | null;
+          display_name: string | null;
+          employee_id: number | null;
+          failed: boolean | null;
+          last_attempt_at: string | null;
+          passed: boolean | null;
+          passed_at: string | null;
+          quiz_id: string | null;
+          quiz_title: string | null;
+          staff_id: string | null;
+          total: number | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: 'client_quiz_attempts_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_quiz_attempts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_company_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_quizzes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_entries_v';
+            referencedColumns: ['client_id'];
+          },
+        ];
+      };
       clients_rate_card_v: {
         Row: {
           base_pay_rate: number | null;
@@ -6118,6 +8024,7 @@ export type Database = {
           role_name: string | null;
           section_count: number | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'client_rate_cards_client_id_fkey';
@@ -6177,6 +8084,396 @@ export type Database = {
           },
         ];
       };
+      clients_shift_requirements_v: {
+        Row: {
+          client_id: string | null;
+          id: string | null;
+          kit_message: string | null;
+          quiz_attempts_max: number | null;
+          quiz_id: string | null;
+          quiz_question_pool: number | null;
+          quiz_questions_per_attempt: number | null;
+          quiz_title: string | null;
+          role_id: string | null;
+          role_name: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_company_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_entries_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_quiz_id_fkey';
+            columns: ['quiz_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_quizzes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'role_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'role_rates_v';
+            referencedColumns: ['role_id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'roles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_role_requirements_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['role_id'];
+          },
+        ];
+      };
+      clients_worker_requests_v: {
+        Row: {
+          client_id: string | null;
+          created_at: string | null;
+          employee_id: number | null;
+          event_date: string | null;
+          event_id: string | null;
+          event_title: string | null;
+          handled_at: string | null;
+          id: string | null;
+          note: string | null;
+          requested_by_name: string | null;
+          role: string | null;
+          staff_id: string | null;
+          worker_name: string | null;
+          worker_removed: boolean | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_company_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'feedback_entries_v';
+            referencedColumns: ['client_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_events_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_event_list_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_feedback_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_violations_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'venue_upcoming_events_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_worker_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      compliance_doc_review_v: {
+        Row: {
+          ai_confidence: number | null;
+          ai_term_letter: Json | null;
+          claimed_dob: string | null;
+          doc_type: Database['public']['Enums']['doc_type'] | null;
+          document_id: string | null;
+          manual_review_reason: string | null;
+          needs_manual_review: boolean | null;
+          review_status: Database['public']['Enums']['review_status'] | null;
+          share_code: string | null;
+          staff_id: string | null;
+          uploaded_at: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          ai_confidence?: number | null;
+          ai_term_letter?: never;
+          claimed_dob?: string | null;
+          doc_type?: Database['public']['Enums']['doc_type'] | null;
+          document_id?: string | null;
+          manual_review_reason?: string | null;
+          needs_manual_review?: boolean | null;
+          review_status?: Database['public']['Enums']['review_status'] | null;
+          share_code?: string | null;
+          staff_id?: string | null;
+          uploaded_at?: string | null;
+        };
+        Update: {
+          ai_confidence?: number | null;
+          ai_term_letter?: never;
+          claimed_dob?: string | null;
+          doc_type?: Database['public']['Enums']['doc_type'] | null;
+          document_id?: string | null;
+          manual_review_reason?: string | null;
+          needs_manual_review?: boolean | null;
+          review_status?: Database['public']['Enums']['review_status'] | null;
+          share_code?: string | null;
+          staff_id?: string | null;
+          uploaded_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       compliance_evidence_audit_v: {
         Row: {
           actor: string | null;
@@ -6211,6 +8508,7 @@ export type Database = {
           visa_hour_limit: number | null;
           worker: string | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       compliance_radar_v: {
@@ -6236,6 +8534,7 @@ export type Database = {
           state: string | null;
           status: Database['public']['Enums']['staff_status'] | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       compliance_review_queue_v: {
@@ -6292,6 +8591,7 @@ export type Database = {
           term_dates: unknown[] | null;
           visa_weekly_hour_limit: number | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       dashboard_kpis_v: {
@@ -6302,6 +8602,7 @@ export type Database = {
           open_positions: number | null;
           staff_available: number | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       dashboard_sections_v: {
@@ -6329,6 +8630,7 @@ export type Database = {
           starts_at: string | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'events_client_id_fkey';
@@ -6424,6 +8726,7 @@ export type Database = {
           starts_at: string | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
@@ -6504,6 +8807,7 @@ export type Database = {
           starts_at: string | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'events_client_id_fkey';
@@ -6597,6 +8901,7 @@ export type Database = {
           week_end: string | null;
           week_start: string | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       event_windows: {
@@ -6605,6 +8910,7 @@ export type Database = {
           event_id: string | null;
           starts_at: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
@@ -6662,6 +8968,7 @@ export type Database = {
           author_id: string | null;
           author_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'feedback_author_id_fkey';
@@ -6701,6 +9008,7 @@ export type Database = {
           updated_at: string | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'feedback_author_id_fkey';
@@ -6797,6 +9105,13 @@ export type Database = {
             foreignKeyName: 'feedback_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'feedback_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -6806,6 +9121,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'feedback_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'feedback_staff_id_fkey';
@@ -6935,6 +9257,7 @@ export type Database = {
           willo_linked: boolean | null;
           willo_review_url: string | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       onboarding_returning_v: {
@@ -6953,6 +9276,7 @@ export type Database = {
           staff_id: string | null;
           status: Database['public']['Enums']['staff_status'] | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       payable_shifts_v: {
@@ -6972,6 +9296,7 @@ export type Database = {
           starts_at: string | null;
           unpaid_break_min: number | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -7012,6 +9337,13 @@ export type Database = {
             foreignKeyName: 'bookings_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -7021,6 +9353,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -7101,6 +9440,7 @@ export type Database = {
           id: string | null;
           role_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           charge_rate?: number | null;
           client_id?: string | null;
@@ -7179,6 +9519,7 @@ export type Database = {
           staff_id: string | null;
           starts_at: string | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       report_payroll_lines_v: {
@@ -7217,6 +9558,7 @@ export type Database = {
           unpaid_break_min: number | null;
           worked_min: number | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       role_directory_v: {
@@ -7231,6 +9573,7 @@ export type Database = {
           rate_card_count: number | null;
           section_count: number | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       role_rates_v: {
@@ -7238,6 +9581,7 @@ export type Database = {
           pay_rate: number | null;
           role_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           pay_rate?: number | null;
           role_id?: string | null;
@@ -7264,6 +9608,7 @@ export type Database = {
           starts_at: string | null;
           worker: string | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       rtw_checks_latest_v: {
@@ -7297,7 +9642,15 @@ export type Database = {
           term_time_limit_hours: number | null;
           worker_reason: string | null;
         };
+        ComputedFields: never;
         Relationships: [
+          {
+            foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
+            columns: ['document_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_doc_review_v';
+            referencedColumns: ['document_id'];
+          },
           {
             foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
             columns: ['document_id'];
@@ -7365,6 +9718,13 @@ export type Database = {
             foreignKeyName: 'rtw_checks_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -7374,6 +9734,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'rtw_checks_staff_id_fkey';
@@ -7406,6 +9773,7 @@ export type Database = {
           profile_dob: string | null;
           staff_id: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
@@ -7446,6 +9814,13 @@ export type Database = {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -7455,6 +9830,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
@@ -7486,6 +9868,7 @@ export type Database = {
           pay_rate: number | null;
           shift_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           charge_rate?: number | null;
           event_id?: string | null;
@@ -7550,6 +9933,119 @@ export type Database = {
           },
         ];
       };
+      staff_account_activation_v: {
+        Row: {
+          activated: boolean | null;
+          activated_at: string | null;
+          staff_id: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [];
+      };
+      staff_bank_masked_v: {
+        Row: {
+          account_masked: string | null;
+          sort_code_masked: string | null;
+          staff_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          account_masked?: never;
+          sort_code_masked?: never;
+          staff_id?: string | null;
+        };
+        Update: {
+          account_masked?: never;
+          sort_code_masked?: never;
+          staff_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bank_details_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       staff_block_audit_v: {
         Row: {
           action: string | null;
@@ -7561,6 +10057,7 @@ export type Database = {
           staff_id: string | null;
           withdrawn: number | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       staff_block_reason_v: {
@@ -7568,6 +10065,7 @@ export type Database = {
           block_reason: string | null;
           staff_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           block_reason?: never;
           staff_id?: string | null;
@@ -7580,6 +10078,7 @@ export type Database = {
       };
       staff_client_qualifications_v: {
         Row: {
+          bar_only: boolean | null;
           client_id: string | null;
           client_name: string | null;
           do_not_return: boolean | null;
@@ -7596,6 +10095,7 @@ export type Database = {
           role_name: string | null;
           staff_id: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'client_qualifications_client_id_fkey';
@@ -7699,6 +10199,13 @@ export type Database = {
             foreignKeyName: 'client_qualifications_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'client_qualifications_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -7708,6 +10215,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_qualifications_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'client_qualifications_staff_id_fkey';
@@ -7747,7 +10261,121 @@ export type Database = {
           staff_id: string | null;
           superseded: boolean | null;
         };
-        Relationships: [];
+        ComputedFields: never;
+        Insert: {
+          answer?: boolean | null;
+          conviction_date?: string | null;
+          declared_at?: string | null;
+          details?: string | null;
+          id?: string | null;
+          review_note?: string | null;
+          review_status?: Database['public']['Enums']['review_status'] | null;
+          reviewed_at?: string | null;
+          reviewed_by_name?: never;
+          source?: Database['public']['Enums']['declaration_source'] | null;
+          staff_id?: string | null;
+          superseded?: boolean | null;
+        };
+        Update: {
+          answer?: boolean | null;
+          conviction_date?: string | null;
+          declared_at?: string | null;
+          details?: string | null;
+          id?: string | null;
+          review_note?: string | null;
+          review_status?: Database['public']['Enums']['review_status'] | null;
+          reviewed_at?: string | null;
+          reviewed_by_name?: never;
+          source?: Database['public']['Enums']['declaration_source'] | null;
+          staff_id?: string | null;
+          superseded?: boolean | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'criminal_declarations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       staff_directory_v: {
         Row: {
@@ -7782,6 +10410,7 @@ export type Database = {
           weekly_worked_hours: number | null;
           wtr_optout: boolean | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       staff_documents_v: {
@@ -7811,6 +10440,7 @@ export type Database = {
           term_dates: unknown[] | null;
           uploaded_at: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
@@ -7851,6 +10481,13 @@ export type Database = {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -7860,6 +10497,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_docs_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'compliance_docs_staff_id_fkey';
@@ -7900,6 +10544,7 @@ export type Database = {
           text: string | null;
           updated_at: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'feedback_staff_id_fkey';
@@ -7940,6 +10585,13 @@ export type Database = {
             foreignKeyName: 'feedback_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'feedback_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -7949,6 +10601,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'feedback_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'feedback_staff_id_fkey';
@@ -7972,6 +10631,31 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      staff_identity_v: {
+        Row: {
+          dob: string | null;
+          home_address: string | null;
+          ni_number: string | null;
+          share_code: string | null;
+          staff_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          dob?: never;
+          home_address?: never;
+          ni_number?: never;
+          share_code?: never;
+          staff_id?: string | null;
+        };
+        Update: {
+          dob?: never;
+          home_address?: never;
+          ni_number?: never;
+          share_code?: never;
+          staff_id?: string | null;
+        };
+        Relationships: [];
       };
       staff_profile_v: {
         Row: {
@@ -8028,6 +10712,7 @@ export type Database = {
           weekly_worked_hours: number | null;
           wtr_optout: boolean | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       staff_rejection_reason_v: {
@@ -8035,6 +10720,7 @@ export type Database = {
           rejection_reason: string | null;
           staff_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           rejection_reason?: never;
           staff_id?: string | null;
@@ -8070,6 +10756,7 @@ export type Database = {
           venue_name: string | null;
           violation_count: number | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -8110,6 +10797,13 @@ export type Database = {
             foreignKeyName: 'bookings_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -8119,6 +10813,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bookings_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'bookings_staff_id_fkey';
@@ -8193,6 +10894,7 @@ export type Database = {
           type: Database['public']['Enums']['violation_type'] | null;
           venue_name: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'violations_booking_id_fkey';
@@ -8268,6 +10970,13 @@ export type Database = {
             foreignKeyName: 'violations_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'staff_account_activation_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'violations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
             referencedRelation: 'staff_block_reason_v';
             referencedColumns: ['staff_id'];
           },
@@ -8277,6 +10986,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_directory_v';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'violations_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_identity_v';
+            referencedColumns: ['staff_id'];
           },
           {
             foreignKeyName: 'violations_staff_id_fkey';
@@ -8328,6 +11044,7 @@ export type Database = {
           wtr_optout: boolean | null;
           wtr_optout_cancelled_from: string | null;
         };
+        ComputedFields: never;
         Relationships: [];
       };
       venue_directory_v: {
@@ -8347,6 +11064,7 @@ export type Database = {
           venue_type: string | null;
           venue_type_label: string | null;
         };
+        ComputedFields: never;
         Relationships: [
           {
             foreignKeyName: 'venues_created_by_fkey';
@@ -8371,6 +11089,7 @@ export type Database = {
           title: string | null;
           venue_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           event_date?: string | null;
           event_id?: string | null;
@@ -8491,9 +11210,33 @@ export type Database = {
         Returns: unknown;
       };
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean };
+      _void_violation: {
+        Args: { p_actor: string; p_reason: string; p_violation: string };
+        Returns: {
+          actual_finish_at: string | null;
+          booking_id: string;
+          detected_at: string;
+          id: string;
+          minutes_late: number | null;
+          resolution_note: string | null;
+          resolved: boolean;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          staff_id: string;
+          stale_fix_review: boolean;
+          type: Database['public']['Enums']['violation_type'];
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'violations';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       accept_application: { Args: { p_booking: string }; Returns: Json };
       accept_invite: { Args: { p_booking: string }; Returns: Json };
       account_invite_link_ok: { Args: { p_link: string }; Returns: boolean };
+      acknowledge_shift_kit: { Args: { p_booking: string }; Returns: Json };
       activation_link_ok: { Args: { p_link: string }; Returns: boolean };
       activation_link_refresh: {
         Args: { p_link: string; p_staff: string; p_user: string };
@@ -8614,7 +11357,7 @@ export type Database = {
           id: number;
         }[];
       };
-      admin_activity_facets: { Args: never; Returns: Json };
+      admin_activity_facets: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_login_lookup: { Args: { p_email: string }; Returns: Json };
       admin_record_history: {
         Args: {
@@ -8674,7 +11417,7 @@ export type Database = {
       };
       app_origin_allowed: { Args: { p_link: string }; Returns: boolean };
       apply_payroll_codes: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           from_employee_id: number;
           staff_id: string;
@@ -8711,13 +11454,30 @@ export type Database = {
         };
         Returns: undefined;
       };
-      assert_finance_caller: { Args: never; Returns: undefined };
-      assert_not_read_only: { Args: never; Returns: undefined };
-      assert_office_caller: { Args: never; Returns: undefined };
-      assert_reports_caller: { Args: never; Returns: undefined };
-      assert_reviewer: { Args: never; Returns: string };
+      assert_finance_caller: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      assert_not_read_only: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      assert_office_caller: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      assert_pay_floor: { Args: { p_pay_rate: number }; Returns: undefined };
+      assert_reports_caller: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      assert_reviewer: { Args: Record<PropertyKey, never>; Returns: string };
       assert_role_input: {
         Args: { p_name: string; p_pay_rate: number };
+        Returns: undefined;
+      };
+      assert_role_rate_floor: {
+        Args: { p_id: string; p_pay_rate: number };
         Returns: undefined;
       };
       assert_staff_transition: {
@@ -8755,11 +11515,21 @@ export type Database = {
         Returns: Json;
       };
       audit_event_fields: {
-        Args: { e: Database['public']['Tables']['events']['Row'] };
+        Args: {
+          e: Omit<
+            Database['public']['Tables']['events']['Row'],
+            Database['public']['Tables']['events']['ComputedFields']
+          >;
+        };
         Returns: Json;
       };
       audit_section_fields: {
-        Args: { s: Database['public']['Tables']['shift_requirements']['Row'] };
+        Args: {
+          s: Omit<
+            Database['public']['Tables']['shift_requirements']['Row'],
+            Database['public']['Tables']['shift_requirements']['ComputedFields']
+          >;
+        };
         Returns: Json;
       };
       audit_uk_stamp: { Args: { p_at: string }; Returns: string };
@@ -8772,7 +11542,7 @@ export type Database = {
         Args: { p_kind: string };
         Returns: Record<string, unknown>;
       };
-      auth_session_live: { Args: never; Returns: boolean };
+      auth_session_live: { Args: Record<PropertyKey, never>; Returns: boolean };
       auto_assign_candidates: {
         Args: { p_escalation?: boolean; p_shift: string };
         Returns: {
@@ -8789,7 +11559,7 @@ export type Database = {
         }[];
       };
       auto_assign_candidates_pool: {
-        Args: { p_escalation?: boolean; p_shift: string };
+        Args: { p_escalation?: boolean; p_only?: string[]; p_shift: string };
         Returns: {
           booking_cause: string;
           booking_status: string;
@@ -8820,6 +11590,27 @@ export type Database = {
           ends_at: string;
           staff_id: string;
           starts_at: string;
+        }[];
+      };
+      auto_assign_worker_gate: {
+        Args: { p_escalation?: boolean; p_shift: string; p_staff: string };
+        Returns: {
+          booking_status: string;
+          gate: string;
+          qualified: boolean;
+        }[];
+      };
+      bar_from_client: {
+        Args: { p_client: string; p_reason: string; p_staff: string };
+        Returns: Json;
+      };
+      bar_menu_quiz_questions: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          correct_index: number;
+          options: string[];
+          prompt: string;
+          question_no: number;
         }[];
       };
       block_worker: {
@@ -8854,7 +11645,10 @@ export type Database = {
         };
         Returns: string;
       };
-      booked_elsewhere_gap_minutes: { Args: never; Returns: number };
+      booked_elsewhere_gap_minutes: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       booking_counts_toward_cap: {
         Args: {
           p_cancel_cause: string;
@@ -8888,7 +11682,7 @@ export type Database = {
         Returns: boolean;
       };
       booking_transitions: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           from_status: Database['public']['Enums']['booking_status'];
           to_status: Database['public']['Enums']['booking_status'];
@@ -8919,6 +11713,7 @@ export type Database = {
         Returns: Json;
       };
       cancel_wtr_optout: { Args: { p_staff?: string }; Returns: Json };
+      canonical_payroll_id: { Args: { p: string }; Returns: string };
       cap_band_label: {
         Args: { p_band: Database['public']['Enums']['cap_band'] };
         Returns: string;
@@ -8974,7 +11769,7 @@ export type Database = {
           id: number;
           key: string;
           last_attempt_at: string | null;
-          payload: Json;
+          payload: NonNullable<Json>;
           priority: number;
           queued_at: string;
           recipient_emails: string[] | null;
@@ -9000,9 +11795,42 @@ export type Database = {
           staff_id: string;
         }[];
       };
-      clear_my_emergency_contact: { Args: never; Returns: Json };
+      clear_my_emergency_contact: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       clear_sign_in_failures: { Args: { p_key_hash: string }; Returns: undefined };
+      client_email_send_time: { Args: { p_at: string }; Returns: string };
+      client_kit_reminder_tick: { Args: { p_now?: string }; Returns: Json };
+      client_lineup_notices: {
+        Args: { p_change?: boolean; p_event: string; p_now?: string };
+        Returns: undefined;
+      };
       client_portal_visible: { Args: { p_client_id: string }; Returns: boolean };
+      client_quiz_attempts_used: {
+        Args: { p_quiz: string; p_staff: string };
+        Returns: number;
+      };
+      client_quiz_draw: {
+        Args: { p_create: boolean; p_quiz: string; p_staff: string };
+        Returns: string[];
+      };
+      client_quiz_gate: {
+        Args: { p_shift: string; p_staff: string };
+        Returns: string;
+      };
+      client_quiz_passed: {
+        Args: { p_quiz: string; p_staff: string };
+        Returns: boolean;
+      };
+      client_quiz_required_for: {
+        Args: { p_quiz: string; p_staff: string };
+        Returns: boolean;
+      };
+      client_request_worker: {
+        Args: { p_booking_id: string; p_note?: string };
+        Returns: Json;
+      };
       close_filled_role_applications: {
         Args: { p_shift: string };
         Returns: number;
@@ -9055,6 +11883,10 @@ export type Database = {
       compliance_resolve_ni_check: {
         Args: { p_doc: string; p_matches: boolean; p_reason?: string };
         Returns: Json;
+      };
+      compliance_review_queue_count: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
       };
       compliance_set_below_degree_level: {
         Args: { p_below: boolean; p_staff: string };
@@ -9115,11 +11947,15 @@ export type Database = {
         };
         Returns: string;
       };
+      cron_history_purge: {
+        Args: { p_keep_days?: number; p_max_rows?: number };
+        Returns: number;
+      };
       current_app_role: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
       };
-      current_client_id: { Args: never; Returns: string };
+      current_client_id: { Args: Record<PropertyKey, never>; Returns: string };
       current_compliance_docs: {
         Args: { p_staff: string };
         Returns: {
@@ -9189,12 +12025,16 @@ export type Database = {
         Args: { p_doc_type: Database['public']['Enums']['doc_type'] };
         Returns: string;
       };
-      document_autosend_config: { Args: never; Returns: Json };
+      document_autosend_config: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       document_autosend_verdict: {
         Args: {
           p_attempts?: number;
           p_auto_queued_at: string;
           p_cancelled: boolean;
+          p_changed?: boolean;
           p_config: Json;
           p_confirmed: number;
           p_contacts: number;
@@ -9206,10 +12046,12 @@ export type Database = {
           p_now: string;
           p_signout_queued_at: string;
           p_undetermined: number;
+          p_unfilled?: number;
         };
         Returns: string;
       };
       document_hours_label: { Args: { p_min: number }; Returns: string };
+      dress_codes_fit: { Args: { p_codes: string[] }; Returns: boolean };
       dropgeometrycolumn:
         | {
             Args: {
@@ -9240,15 +12082,19 @@ export type Database = {
           }
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string };
-      edge_base_url: { Args: never; Returns: string };
+      edge_base_url: { Args: Record<PropertyKey, never>; Returns: string };
       edge_base_url_pinned: { Args: { p_url: string }; Returns: boolean };
+      edge_call_headers: { Args: { p_key: string }; Returns: Json };
       effective_pay_rate: {
         Args: { p_section_rate: number; p_staff: string };
         Returns: number;
       };
       enablelongtransactions: { Args: never; Returns: string };
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean };
-      escalation_radius_miles: { Args: never; Returns: number };
+      escalation_radius_miles: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       event_document_autosend_claim: {
         Args: {
           p_event: string;
@@ -9262,11 +12108,16 @@ export type Database = {
         Args: { p_error?: string; p_event: string; p_kind: string };
         Returns: undefined;
       };
+      event_document_buffer_count: {
+        Args: { p_event: string };
+        Returns: number;
+      };
       event_document_data: { Args: { p_event: string }; Returns: Json };
       event_document_email_payload: {
         Args: { p_document: string };
         Returns: Json;
       };
+      event_document_line_up_fp: { Args: { p_event: string }; Returns: string };
       event_document_recipients: {
         Args: { p_event: string };
         Returns: string[];
@@ -9280,12 +12131,14 @@ export type Database = {
           worked_min: number;
         }[];
       };
+      event_document_unfilled: { Args: { p_event: string }; Returns: number };
       event_documents_due: {
         Args: { p_event?: string; p_now?: string };
         Returns: {
           attempts: number;
           auto_queued_at: string;
           cancelled: boolean;
+          changed: boolean;
           confirmed: number;
           contacts: number;
           event_date: string;
@@ -9296,12 +12149,16 @@ export type Database = {
           manual_allocation_at: string;
           signout_queued_at: string;
           undetermined: number;
+          unfilled: number;
           verdict: string;
         }[];
       };
       event_status: {
         Args: {
-          e: Database['public']['Tables']['events']['Row'];
+          e: Omit<
+            Database['public']['Tables']['events']['Row'],
+            Database['public']['Tables']['events']['ComputedFields']
+          >;
           window_end: string;
           window_start: string;
         };
@@ -9497,13 +12354,35 @@ export type Database = {
         Args: { p_q1: boolean; p_q2: boolean; p_q3: boolean };
         Returns: Database['public']['Enums']['hmrc_statement'];
       };
-      install_job_schedules: { Args: never; Returns: number };
+      install_bar_menu_quiz: { Args: { p_client: string }; Returns: string };
+      install_housekeeping_schedules: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      install_job_schedules: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       invite_roster_group: {
         Args: { p_group: string };
         Returns: string;
       };
+      invite_roster_kept: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          entry_id: string;
+          holder_id: string;
+          holder_name: string;
+          reason: string;
+          staff_email: string;
+          staff_id: string;
+          staff_name: string;
+          staff_payroll_id: string;
+          staff_status: string;
+        }[];
+      };
       invite_roster_possible_matches: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           applied_at: string;
           entry_email: string;
@@ -9514,7 +12393,10 @@ export type Database = {
           staff_status: string;
         }[];
       };
-      invite_roster_reminder_config: { Args: never; Returns: Json };
+      invite_roster_reminder_config: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       invite_roster_reminders: {
         Args: { p_apply_link?: string; p_now?: string };
         Returns: Json;
@@ -9541,13 +12423,19 @@ export type Database = {
         Args: { p_first: string; p_last: string; p_staff: string };
         Returns: number;
       };
+      job_run_counts_idle: { Args: { p_counts: Json }; Returns: boolean };
       job_run_finish: {
         Args: { p_counts?: Json; p_error?: string; p_id: number; p_ok: boolean };
         Returns: undefined;
       };
       job_run_start: { Args: { p_job: string }; Returns: number };
-      known_countries: { Args: never; Returns: string[] };
-      known_languages: { Args: never; Returns: string[] };
+      job_runs_purge: {
+        Args: { p_idle_days?: number; p_keep_days?: number };
+        Returns: number;
+      };
+      kit_reminder_due_at: { Args: { p_starts_at: string }; Returns: string };
+      known_countries: { Args: Record<PropertyKey, never>; Returns: string[] };
+      known_languages: { Args: Record<PropertyKey, never>; Returns: string[] };
       lapse_shift_offers: { Args: { p_now?: string }; Returns: number };
       link_event_series: {
         Args: { p_clone: string; p_source: string };
@@ -9561,23 +12449,34 @@ export type Database = {
         Args: { p_staff: string; p_user: string };
         Returns: Json;
       };
+      load_invite_roster: {
+        Args: { p_rows: Json };
+        Returns: Json;
+      };
       load_payroll_codes: { Args: { p_rows: Json }; Returns: Json };
       location_accuracy_m: { Args: { p_accuracy: number }; Returns: number };
       location_fix_suspect: {
         Args: { p_accuracy_m: number; p_distance_m: number; p_radius_m: number };
         Returns: boolean;
       };
+      location_pings_purge: {
+        Args: { p_keep_days?: number; p_max_rows?: number };
+        Returns: number;
+      };
+      lock_worker: { Args: { p_staff: string }; Returns: undefined };
       longtransactionsenabled: { Args: never; Returns: boolean };
       looks_like_relative: { Args: { p: string }; Returns: boolean };
+      mark_client_worker_request_handled: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
       mark_feedback_read: { Args: { p_id: string }; Returns: Json };
       mark_ready: { Args: { p_booking: string }; Returns: Json };
-      my_emergency_contact: { Args: never; Returns: Json };
-      load_invite_roster: {
-        Args: { p_rows: Json };
-        Returns: Json;
-      };
+      minimum_pay_rate: { Args: Record<PropertyKey, never>; Returns: number };
+      my_emergency_contact: { Args: Record<PropertyKey, never>; Returns: Json };
+      my_list_columns: { Args: Record<PropertyKey, never>; Returns: Json };
       my_profile_change_requests: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           created_at: string;
           decided_at: string;
@@ -9592,10 +12491,10 @@ export type Database = {
           worker_note: string;
         }[];
       };
-      my_referral_code: { Args: never; Returns: string };
-      my_referral_summary: { Args: never; Returns: Json };
+      my_referral_code: { Args: Record<PropertyKey, never>; Returns: string };
+      my_referral_summary: { Args: Record<PropertyKey, never>; Returns: Json };
       my_rtw_checks: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           checked_at: string;
           created_at: string;
@@ -9605,8 +12504,7 @@ export type Database = {
           worker_reason: string;
         }[];
       };
-      my_list_columns: { Args: never; Returns: Json };
-      my_time_format: { Args: never; Returns: string };
+      my_time_format: { Args: Record<PropertyKey, never>; Returns: string };
       my_unavailability: {
         Args: { p_from?: string; p_to?: string };
         Returns: {
@@ -9665,6 +12563,34 @@ export type Database = {
           town: string;
         }[];
       };
+      new_starter_report_due: { Args: { p_now?: string }; Returns: boolean };
+      new_starter_report_rows: {
+        Args: { p_send: number };
+        Returns: {
+          address_line_1: string;
+          address_line_2: string;
+          address_line_3: string;
+          bank_account_holder: string;
+          bank_account_number: string;
+          bank_sort_code: string;
+          country: string;
+          date_of_birth: string;
+          employee_id: number;
+          first_shift_date: string;
+          gender: string;
+          hmrc_statement: string;
+          home_address: string;
+          ni_number: string;
+          passport_country: string;
+          photo_path: string;
+          postcode: string;
+          removed: boolean;
+          staff_id: string;
+          staff_name: string;
+          student_loan: string;
+          town: string;
+        }[];
+      };
       new_starter_rows: {
         Args: { p_staff: string[] };
         Returns: {
@@ -9698,8 +12624,16 @@ export type Database = {
       };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
+      notification_outbox_deletable_templates: {
+        Args: Record<PropertyKey, never>;
+        Returns: string[];
+      };
+      notification_outbox_purge: {
+        Args: { p_keep_days?: number; p_max_rows?: number };
+        Returns: Json;
+      };
       notification_priorities: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           code: string;
           priority: number;
@@ -9740,7 +12674,7 @@ export type Database = {
         }[];
       };
       offer_wave1_exhausted: { Args: { p_offer: string }; Returns: boolean };
-      office_base_url: { Args: never; Returns: string };
+      office_base_url: { Args: Record<PropertyKey, never>; Returns: string };
       office_can: { Args: { p_perm: string }; Returns: boolean };
       office_clear_emergency_contact: {
         Args: { p_staff: string };
@@ -9759,6 +12693,19 @@ export type Database = {
         Returns: Json;
       };
       office_emergency_contact: { Args: { p_staff: string }; Returns: Json };
+      office_event_sections: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          buffer: number;
+          confirmed: number;
+          ends_at: string;
+          event_id: string;
+          headcount: number;
+          role_id: string;
+          section_id: string;
+          starts_at: string;
+        }[];
+      };
       office_invite_worker: {
         Args: { p_shift: string; p_staff: string };
         Returns: Json;
@@ -9795,7 +12742,14 @@ export type Database = {
           worker_note: string;
         }[];
       };
-      office_rates_visible: { Args: never; Returns: boolean };
+      office_rates_visible: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      office_reject_selfie: {
+        Args: { p_reason: string; p_staff: string };
+        Returns: Json;
+      };
       office_save_emergency_contact: {
         Args: {
           p_name: string;
@@ -9805,11 +12759,15 @@ export type Database = {
         };
         Returns: Json;
       };
-      office_session_policy: { Args: never; Returns: Json };
       office_saved_view_query_ok: {
         Args: { p_query: Json; p_scope: string };
         Returns: boolean;
       };
+      office_security_settings: {
+        Args: Record<PropertyKey, never>;
+        Returns: Record<string, unknown>;
+      };
+      office_session_policy: { Args: Record<PropertyKey, never>; Returns: Json };
       office_staff_referrals: { Args: { p_staff: string }; Returns: Json };
       office_staff_unavailability: {
         Args: { p_from?: string; p_staff: string; p_to?: string };
@@ -9869,7 +12827,12 @@ export type Database = {
         Returns: boolean;
       };
       onboarding_assert_contract_stage: {
-        Args: { s: Database['public']['Tables']['staff']['Row'] };
+        Args: {
+          s: Omit<
+            Database['public']['Tables']['staff']['Row'],
+            Database['public']['Tables']['staff']['ComputedFields']
+          >;
+        };
         Returns: undefined;
       };
       onboarding_attach_document: {
@@ -9909,7 +12872,14 @@ export type Database = {
           track: string;
         }[];
       };
-      onboarding_chaser_config: { Args: never; Returns: Json };
+      onboarding_chaser_config: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      onboarding_chaser_existing_staff: {
+        Args: { p_staff: string };
+        Returns: boolean;
+      };
       onboarding_chaser_state: {
         Args: { p_now?: string };
         Returns: {
@@ -9926,8 +12896,14 @@ export type Database = {
       };
       onboarding_chaser_variant: { Args: { p_rung: number }; Returns: string };
       onboarding_chasers: { Args: { p_now?: string }; Returns: Json };
-      onboarding_complete_induction: { Args: never; Returns: Json };
-      onboarding_confirm_selfie: { Args: never; Returns: Json };
+      onboarding_complete_induction: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      onboarding_confirm_selfie: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       onboarding_do_accept: {
         Args: {
           p_activation_link: string;
@@ -9952,13 +12928,16 @@ export type Database = {
         Args: { p_staff: string };
         Returns: string[];
       };
-      onboarding_finish_tutorial: { Args: never; Returns: Json };
+      onboarding_finish_tutorial: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       onboarding_mark_interview_complete: {
         Args: { p_reason: string; p_staff: string };
         Returns: Json;
       };
       onboarding_me: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           applied_age_band: string | null;
           below_degree_level: boolean;
@@ -9987,6 +12966,8 @@ export type Database = {
           left_at: string | null;
           ni_number: string | null;
           onboarding_started_at: string;
+          passport_country: string | null;
+          payroll_id: string | null;
           phone: string;
           photo_path: string | null;
           quiz_attempts: number;
@@ -10001,9 +12982,11 @@ export type Database = {
           right_to_work_until: string | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
           share_code: string | null;
+          spudbros_express: boolean;
           stage_entered_at: string;
           status: Database['public']['Enums']['staff_status'];
           term_dates: unknown[];
+          thc_shifts_enabled: boolean;
           user_id: string | null;
           visa_weekly_hour_limit: number | null;
           willo_answers_done: number | null;
@@ -10029,7 +13012,7 @@ export type Database = {
       };
       onboarding_quiz_blockers: { Args: { p_staff: string }; Returns: string[] };
       onboarding_quiz_questions: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           id: string;
           image_path: string;
@@ -10128,7 +13111,7 @@ export type Database = {
         };
         Returns: Json;
       };
-      onboarding_state: { Args: never; Returns: Json };
+      onboarding_state: { Args: Record<PropertyKey, never>; Returns: Json };
       onboarding_submit_documents: {
         Args: {
           p_conviction_date: string;
@@ -10137,11 +13120,20 @@ export type Database = {
         };
         Returns: Json;
       };
-      onboarding_supersede_legacy_rtw_docs: { Args: never; Returns: number };
-      onboarding_uk_today: { Args: never; Returns: string };
+      onboarding_supersede_legacy_rtw_docs: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      onboarding_uk_today: { Args: Record<PropertyKey, never>; Returns: string };
       outbox_backoff: { Args: { p_attempt: number }; Returns: string };
-      password_check_allowed: { Args: never; Returns: boolean };
-      password_check_begin: { Args: never; Returns: number };
+      password_check_allowed: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      password_check_begin: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       password_check_release: { Args: { p_attempt: number }; Returns: undefined };
       payable_minutes: {
         Args: {
@@ -10182,6 +13174,15 @@ export type Database = {
       payroll_name_key: {
         Args: { p_first: string; p_last: string };
         Returns: string;
+      };
+      payroll_names_compatible: {
+        Args: {
+          a_first: string;
+          a_last: string;
+          b_first: string;
+          b_last: string;
+        };
+        Returns: boolean;
       };
       payroll_report: {
         Args: { p_from: string; p_to: string };
@@ -10286,8 +13287,9 @@ export type Database = {
       postgis_version: { Args: never; Returns: string };
       postgis_wagyu_version: { Args: never; Returns: string };
       prepare_finance_reports: { Args: { p_now?: string }; Returns: Json };
+      prepare_new_starter_report: { Args: { p_now?: string }; Returns: Json };
       profile_change_transitions: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           from_status: string;
           to_status: string;
@@ -10321,6 +13323,10 @@ export type Database = {
         Args: { p_payroll_path: string; p_payroll_send: number };
         Returns: Json;
       };
+      queue_new_starter_report_email: {
+        Args: { p_path: string; p_send: number };
+        Returns: Json;
+      };
       queue_offer_notice: {
         Args: { p_code: string; p_offer: string; p_staff?: string };
         Returns: undefined;
@@ -10341,6 +13347,10 @@ export type Database = {
       reconfirm_booking: { Args: { p_booking: string }; Returns: Json };
       record_application_referral: {
         Args: { p_code: string; p_email: string };
+        Returns: undefined;
+      };
+      record_application_source: {
+        Args: { p_email: string; p_source: string };
         Returns: undefined;
       };
       record_auth_attempt: {
@@ -10385,7 +13395,10 @@ export type Database = {
         Args: { p_country: string; p_doc: string };
         Returns: Json;
       };
-      record_password_check_failure: { Args: never; Returns: undefined };
+      record_password_check_failure: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
       record_ping: {
         Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
@@ -10463,6 +13476,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      reset_client_quiz_attempts: {
+        Args: { p_quiz: string; p_staff: string };
+        Returns: Json;
+      };
       reset_to_candidate: {
         Args: {
           p_actor?: string;
@@ -10500,7 +13517,7 @@ export type Database = {
         }[];
       };
       rota_guard_hint: { Args: { p_reason: string }; Returns: string };
-      rota_guard_mode: { Args: never; Returns: string };
+      rota_guard_mode: { Args: Record<PropertyKey, never>; Returns: string };
       rota_guard_verdict: {
         Args: { p_shift: string; p_staff: string };
         Returns: Json;
@@ -10543,15 +13560,15 @@ export type Database = {
         Args: { p_result: Json; p_share_code: string };
         Returns: Json;
       };
-      rtw_check_config: { Args: never; Returns: Json };
-      rtw_check_enabled: { Args: never; Returns: boolean };
+      rtw_check_config: { Args: Record<PropertyKey, never>; Returns: Json };
+      rtw_check_enabled: { Args: Record<PropertyKey, never>; Returns: boolean };
       rtw_check_enqueue: {
         Args: { p_doc: string; p_requested_by?: string };
         Returns: string;
       };
       rtw_check_manual_allowed: { Args: { p_doc: string }; Returns: boolean };
       rtw_check_mark_reviewed: { Args: { p_check: string }; Returns: Json };
-      rtw_check_nudge: { Args: never; Returns: undefined };
+      rtw_check_nudge: { Args: Record<PropertyKey, never>; Returns: undefined };
       rtw_check_record: {
         Args: {
           p_check: string;
@@ -10563,7 +13580,10 @@ export type Database = {
         Returns: Json;
       };
       rtw_check_request: { Args: { p_doc: string }; Returns: Json };
-      rtw_check_stale_after: { Args: never; Returns: string };
+      rtw_check_stale_after: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
       rtw_check_stuck: {
         Args: {
           p_lease_until: string;
@@ -10574,14 +13594,17 @@ export type Database = {
         Returns: boolean;
       };
       rtw_check_transitions: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           from_status: string;
           to_status: string;
         }[];
       };
       rtw_daily: { Args: { p_now?: string }; Returns: Json };
-      rtw_date_clear_allowed: { Args: never; Returns: boolean };
+      rtw_date_clear_allowed: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
       rtw_doc_until: {
         Args: {
           p_doc_type: Database['public']['Enums']['doc_type'];
@@ -10591,6 +13614,7 @@ export type Database = {
         Returns: string;
       };
       rtw_evidence_until: { Args: { p_staff: string }; Returns: string };
+      run_housekeeping_job: { Args: { p_job: string }; Returns: Json };
       save_my_emergency_contact: {
         Args: { p_name: string; p_phone: string; p_relationship: string };
         Returns: Json;
@@ -10605,7 +13629,10 @@ export type Database = {
         };
         Returns: undefined;
       };
-      scheduling_shift_records: { Args: never; Returns: Json };
+      scheduling_shift_records: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       self_cancel_booking: { Args: { p_booking: string }; Returns: Json };
       send_event_message: {
         Args: {
@@ -10621,6 +13648,10 @@ export type Database = {
         Args: { p_message: string; p_staff: string[] };
         Returns: Json;
       };
+      series_gate_for: {
+        Args: { p_shift: string; p_staff: string };
+        Returns: string;
+      };
       series_hours_blocked: {
         Args: { p_shift: string; p_staff: string };
         Returns: boolean;
@@ -10635,6 +13666,10 @@ export type Database = {
           starts_at: string;
           venue_id: string;
         }[];
+      };
+      set_client_lineup_emails: {
+        Args: { p_client: string; p_kind: string; p_on: boolean };
+        Returns: undefined;
       };
       set_client_name_badges: {
         Args: { p_client: string; p_on: boolean };
@@ -10692,14 +13727,14 @@ export type Database = {
       };
       shift_holiday_pay: { Args: { p_base: number }; Returns: number };
       shift_offer_mode_transitions: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           from_mode: string;
           to_mode: string;
         }[];
       };
       shift_offer_transitions: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           from_status: string;
           to_status: string;
@@ -10714,6 +13749,41 @@ export type Database = {
           p_notice_days?: number;
           p_signed_copy_path?: string;
           p_staff?: string;
+        };
+        Returns: Json;
+      };
+      spudbros_listed_by_name: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          entry_email: string;
+          entry_id: string;
+          staff_id: string;
+        }[];
+      };
+      spudbros_mark_listed_by_name: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      spudbros_skip_blocked: { Args: { p_staff: string }; Returns: boolean };
+      spudbros_skip_due: {
+        Args: { p_limit?: number; p_now?: string };
+        Returns: {
+          attempt: number;
+          email: string;
+          staff_id: string;
+          user_id: string;
+        }[];
+      };
+      spudbros_skip_failed: {
+        Args: { p_error: string; p_staff: string };
+        Returns: undefined;
+      };
+      spudbros_skip_interview: {
+        Args: {
+          p_activation_link: string;
+          p_install_link: string;
+          p_staff: string;
+          p_user: string;
         };
         Returns: Json;
       };
@@ -10744,29 +13814,6 @@ export type Database = {
       st_3dshortestline: {
         Args: { geom1: unknown; geom2: unknown };
         Returns: unknown;
-      };
-      spudbros_skip_blocked: { Args: { p_staff: string }; Returns: boolean };
-      spudbros_skip_due: {
-        Args: { p_limit?: number; p_now?: string };
-        Returns: {
-          attempt: number;
-          email: string;
-          staff_id: string;
-          user_id: string;
-        }[];
-      };
-      spudbros_skip_failed: {
-        Args: { p_error: string; p_staff: string };
-        Returns: undefined;
-      };
-      spudbros_skip_interview: {
-        Args: {
-          p_activation_link: string;
-          p_install_link: string;
-          p_staff: string;
-          p_user: string;
-        };
-        Returns: Json;
       };
       st_addpoint: {
         Args: { geom1: unknown; geom2: unknown };
@@ -11323,7 +14370,7 @@ export type Database = {
       staff_account_activated: { Args: { p_staff: string }; Returns: boolean };
       staff_account_activated_at: { Args: { p_staff: string }; Returns: string };
       staff_booking_offers: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           auto_assign: boolean;
           booking_id: string;
@@ -11375,6 +14422,7 @@ export type Database = {
         }[];
       };
       staff_caller: { Args: { p_staff?: string }; Returns: string };
+      staff_client_quiz: { Args: { p_quiz: string }; Returns: Json };
       staff_dob_apply: {
         Args: {
           p_action: string;
@@ -11388,7 +14436,7 @@ export type Database = {
       };
       staff_documents: { Args: { p_staff?: string }; Returns: Json };
       staff_earnings: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: {
           booking_id: string;
           check_in_at: string;
@@ -11412,7 +14460,14 @@ export type Database = {
         Returns: Json;
       };
       staff_email_report: { Args: { p_now?: string }; Returns: Json };
-      staff_me: { Args: never; Returns: Json };
+      staff_identity_facts: {
+        Args: { p_staff: string };
+        Returns: {
+          dob: string;
+          has_share_code: boolean;
+        }[];
+      };
+      staff_me: { Args: Record<PropertyKey, never>; Returns: Json };
       staff_onboarding_only: {
         Args: { p_staff: string };
         Returns: boolean;
@@ -11443,7 +14498,7 @@ export type Database = {
         }[];
       };
       staff_open_shifts: {
-        Args: { p_staff?: string };
+        Args: { p_shift?: string; p_staff?: string };
         Returns: {
           applied_at: string;
           booked_hours: number;
@@ -11516,8 +14571,25 @@ export type Database = {
           venue_name: string;
         }[];
       };
+      staff_shift_requirements: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          booking_id: string;
+          client_id: string;
+          client_name: string;
+          kit_acknowledged_at: string;
+          kit_due_at: string;
+          kit_message: string;
+          quiz_attempts_max: number;
+          quiz_attempts_used: number;
+          quiz_id: string;
+          quiz_passed: boolean;
+          quiz_title: string;
+          role_name: string;
+        }[];
+      };
       staff_show_rate: { Args: { p_staff: string }; Returns: number };
-      staff_sync_email: { Args: never; Returns: Json };
+      staff_sync_email: { Args: Record<PropertyKey, never>; Returns: Json };
       staff_transition_allowed: {
         Args: {
           p_from: Database['public']['Enums']['staff_status'];
@@ -11578,6 +14650,10 @@ export type Database = {
       submit_client_feedback: {
         Args: { p_booking_id: string; p_rating: number; p_text?: string };
         Returns: string;
+      };
+      submit_client_quiz_attempt: {
+        Args: { p_answers: Json; p_quiz: string };
+        Returns: Json;
       };
       submit_completion_letter: {
         Args: {
@@ -11738,6 +14814,17 @@ export type Database = {
         };
         Returns: Json;
       };
+      violation_was_voided: {
+        Args: {
+          p_booking: string;
+          p_type: Database['public']['Enums']['violation_type'];
+        };
+        Returns: boolean;
+      };
+      void_violation: {
+        Args: { p_reason: string; p_violation: string };
+        Returns: Json;
+      };
       weekly_booked_hours: {
         Args: { p_date: string; p_staff: string };
         Returns: number;
@@ -11848,6 +14935,10 @@ export type Database = {
         Args: { p_event: string; p_willo_candidate_id: string };
         Returns: Json;
       };
+      willo_interview_public_url: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
       willo_invite_created: {
         Args: { p_at?: string; p_staff: string; p_willo_candidate_id: string };
         Returns: Json;
@@ -11865,7 +14956,6 @@ export type Database = {
           staff_id: string;
         }[];
       };
-      willo_interview_public_url: { Args: never; Returns: string };
       willo_invite_failed: {
         Args: { p_error: string; p_staff: string };
         Returns: undefined;
@@ -11896,10 +14986,16 @@ export type Database = {
         Args: { p_code: string; p_event: string; p_willo_candidate_id: string };
         Returns: undefined;
       };
+      willo_relink_by_email: {
+        Args: { p_email: string; p_willo_candidate_id: string };
+        Returns: string;
+      };
       withdraw_application: { Args: { p_booking: string }; Returns: Json };
       withdraw_booking: { Args: { p_booking: string }; Returns: Json };
       withdraw_profile_change: { Args: { p_id: string }; Returns: Json };
       withdraw_shift_offer: { Args: { p_offer: string }; Returns: Json };
+      worker_lock_held: { Args: { p_staff: string }; Returns: boolean };
+      worker_lock_key: { Args: { p_staff: string }; Returns: number };
       wtr_optout_do_cancel: { Args: { p_staff: string }; Returns: Json };
       wtr_optout_do_sign: {
         Args: {
