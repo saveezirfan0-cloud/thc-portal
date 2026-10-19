@@ -11,13 +11,22 @@ import { callsTo, fakePostgrest, type FakeCall } from '../../_lib/__tests__/fake
  *     board names and this event's roles — never the client's whole set,
  *     which is staff × roles and was cut at 1000.
  *   · The reads that need only the event id start with the event itself.
+ *   · The pool is read per section, apart from the line-up (ADR-0161): the
+ *     board's first read never waits for `auto_assign_candidates`.
  */
 
 const state = vi.hoisted(() => ({ db: null as unknown }));
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('@thc/db/server', () => ({ createClient: () => state.db }));
 
-const { loadBoard } = await import('../[id]/board-data');
+const { loadBoard, loadSectionPools } = await import('../[id]/board-data');
+type Board = NonNullable<Awaited<ReturnType<typeof loadBoard>>['event']>;
+
+/** Section `n`'s streamed pool, as `SectionPools` reads it. */
+async function poolsOf(event: Board, n = 0) {
+  const section = event.sections[n]!;
+  return loadSectionPools(section.poolInput, event.known, event.weights);
+}
 
 const pad = (n: number) => String(n).padStart(4, '0');
 const EVENT = {
@@ -123,7 +132,7 @@ describe('loadBoard at full roster', () => {
   it('the pool names all 1,500 eligible workers, not the first 1,000', async () => {
     const { event, problem } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
     expect(problem).toBeNull();
-    const pool = event!.sections[0]!.pool!;
+    const pool = (await poolsOf(event!)).pool!;
     expect(pool).toHaveLength(1500);
     const pages = callsTo(fake.calls, 'auto_assign_candidates');
     expect(pages.map((c) => c.range)).toEqual([
@@ -136,7 +145,27 @@ describe('loadBoard at full roster', () => {
   });
 
   it('Wave 1 comes from the named workers and this event’s roles, not the whole set', async () => {
-    const { event } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    // The line-up's Wave 1 chip: 300 invited workers, 100 of them qualified
+    // here (1400–1499) — past row 1,000 of the client's whole set.
+    fake = fakePostgrest({
+      ...SOURCES(),
+      bookings: Array.from({ length: 300 }, (_, n) => ({
+        id: `b-${pad(n)}`,
+        shift_id: 'sec-1',
+        staff_id: `w-${pad(1200 + n)}`,
+        status: 'invited',
+        source: 'auto',
+        created_at: '2099-06-01T09:00:00Z',
+        confirmed_at: null,
+        day_before_confirmed_at: null,
+        applied_at: null,
+        reconfirm_required: false,
+        cancel_cause: null,
+      })),
+    });
+    state.db = fake;
+    const { event: invited } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    expect(invited!.sections[0]!.invited.filter((b) => b.qualified)).toHaveLength(100);
     const quals = callsTo(fake.calls, 'client_qualifications');
     expect(quals.length).toBeGreaterThan(0);
     for (const call of quals) {
@@ -147,8 +176,10 @@ describe('loadBoard at full roster', () => {
       const ids = call.filters.find(([op, column]) => op === 'in' && column === 'staff_id')![2];
       expect((ids as string[]).length).toBeLessThanOrEqual(150);
     }
-    // Workers 1400–1499 are qualified at this client for this role: past row 1,000.
-    const pool = event!.sections[0]!.pool!;
+    // The pool's Wave 1 is the candidate function's own `qualified`.
+    state.db = fake = fakePostgrest(SOURCES());
+    const { event } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    const pool = (await poolsOf(event!)).pool!;
     expect(pool[0]!.wave).toBe(1);
     expect(pool.filter((entry) => entry.wave === 1)).toHaveLength(100);
   });
@@ -178,6 +209,7 @@ describe('loadBoard at full roster', () => {
     state.db = fake;
     const { event, problem } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
     expect(problem).toBeNull();
+    const { pool } = await poolsOf(event!);
     const calendar = callsTo(fake.calls, 'auto_assign_unavailable');
     expect(calendar.map((c) => c.range)).toEqual([
       [0, 999],
@@ -189,9 +221,8 @@ describe('loadBoard at full roster', () => {
       'ends_at',
     ]);
     // All 1,200 marked unavailable: none of them is offered in the pool.
-    const pool = event!.sections[0]!.pool!;
     expect(pool).toHaveLength(300);
-    expect(pool.every((entry) => entry.staffId >= 'w-1200')).toBe(true);
+    expect(pool!.every((entry) => entry.staffId >= 'w-1200')).toBe(true);
     const offerPages = callsTo(fake.calls, 'shift_offers');
     expect(offerPages).toHaveLength(2);
     expect(event!.sections[0]!.handovers).toHaveLength(1100);
@@ -208,5 +239,57 @@ describe('loadBoard at full roster', () => {
       'shift_rates_v',
       'shift_requirements',
     ]);
+  });
+
+  it('the first read never computes a pool: the line-up does not wait for it', async () => {
+    const { event, problem } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    expect(problem).toBeNull();
+    expect(event!.sections[0]!.confirmed).toEqual([]);
+    expect(callsTo(fake.calls, 'auto_assign_candidates')).toEqual([]);
+    expect(callsTo(fake.calls, 'auto_assign_unavailable')).toEqual([]);
+    expect(event!.sections[0]!.poolInput).toMatchObject({ shiftId: 'sec-1', escalation: false });
+  });
+
+  it('the pool names only the candidates the first read did not', async () => {
+    fake = fakePostgrest({
+      ...SOURCES(),
+      bookings: [
+        {
+          id: 'b-1',
+          shift_id: 'sec-1',
+          staff_id: 'w-0001',
+          status: 'confirmed',
+          source: 'manual',
+          created_at: '2099-06-01T09:00:00Z',
+          confirmed_at: '2099-06-01T09:00:00Z',
+          day_before_confirmed_at: null,
+          applied_at: null,
+          reconfirm_required: false,
+          cancel_cause: null,
+        },
+      ],
+    });
+    state.db = fake;
+    const { event } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    expect(event!.known.people.get('w-0001')?.name).toBe('Worker 0.');
+    const before = callsTo(fake.calls, 'staff').length;
+    await poolsOf(event!);
+    const asked = callsTo(fake.calls, 'staff')
+      .slice(before)
+      .flatMap((call) => call.filters.find(([op]) => op === 'in')![2] as string[]);
+    expect(asked).toHaveLength(1499);
+    expect(asked).not.toContain('w-0001');
+  });
+
+  it('a pool that cannot be computed is the section’s problem, not the board’s', async () => {
+    fake = fakePostgrest(SOURCES(), {
+      errors: { auto_assign_candidates: { code: '57014', message: 'timeout' } },
+    });
+    state.db = fake;
+    const { event, problem } = await loadBoard('ev-1', new Date('2099-07-01T12:00:00Z'));
+    expect(problem).toBeNull();
+    const pools = await poolsOf(event!);
+    expect(pools.pool).toBeNull();
+    expect(pools.poolProblem).toBeTruthy();
   });
 });
