@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -68,11 +69,14 @@ export function NewStarterTab({
   starters,
   sends,
   format,
+  autoSendOff = false,
 }: {
   view: ReportView;
   starters: NewStarter[];
   sends: ReportSend[];
   format?: TimeFormat;
+  /** ADR-0083: the Monday New Starter email (NS1) is switched off in Settings. */
+  autoSendOff?: boolean;
 }) {
   const period = newStarterPeriod(view.date);
   const latest = sends[0] ?? null;
@@ -112,6 +116,14 @@ export function NewStarterTab({
           </a>
         </div>
       </div>
+
+      {autoSendOff ? (
+        <Alert tone="amber">
+          <b>The Monday New Starter (HMRC) email is switched off</b> in{' '}
+          <Link href="/settings?tab=notifications">Settings → Notifications</Link>, so nobody new is
+          sent to payroll automatically. Export CSV here to send a week by hand.
+        </Alert>
+      ) : null}
 
       <Alert tone="cyan">
         Only NEW workers who actually worked a shift last week — not every new starter, only those

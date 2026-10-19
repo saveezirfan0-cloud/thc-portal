@@ -3,6 +3,7 @@ import { createClient } from '@thc/db/server';
 import { DEFAULT_ROW_CEILING, readAllPages } from '@thc/db/paged';
 import type { PageReply, ReadAllResult } from '@thc/db/paged';
 import type { FinancialCsvRow, NewStarterCsvRow, PayrollCsvRow } from '@thc/pdf';
+import { switchedOff as offCodes } from '@thc/notifications';
 import type { ReportSend, ReportView } from './view-model';
 import { readProblem } from '../_lib/dbError';
 
@@ -59,6 +60,16 @@ export interface ReportsRpc {
   ): RpcQuery;
   rpc(fn: 'new_starter_report', args: { p_date: string }, options?: RpcOptions): RpcQuery;
   rpc(fn: 'retry_finance_report', args: { p_send: number }): RpcQuery;
+  from(table: 'settings'): {
+    select(columns: 'value'): {
+      eq(
+        column: 'key',
+        value: 'notification_switches',
+      ): {
+        maybeSingle(): PromiseLike<{ data: { value: unknown } | null; error: unknown }>;
+      };
+    };
+  };
   from(table: 'report_sends'): {
     select(columns: string): {
       eq(
@@ -258,6 +269,27 @@ export interface ReportsData {
   people: PayrollPerson[];
   starters: NewStarter[];
   sends: ReportSend[];
+  /**
+   * ADR-0083: this tab's Monday email is switched off in Settings →
+   * Notifications (BG08 for Payroll, NS1 for New Starter), so nothing is
+   * prepared or sent automatically and the tab must not imply it is.
+   */
+  autoSendOff: boolean;
+}
+
+/**
+ * Whether a Monday email is switched off — `notification_switches` read the
+ * way the database reads it (only a JSON false is off). A failed read is
+ * "not known to be off": the status chip below still tells the truth.
+ */
+async function switchedOff(db: ReportsRpc, code: 'BG08' | 'NS1'): Promise<boolean> {
+  const { data, error } = await db
+    .from('settings')
+    .select('value')
+    .eq('key', 'notification_switches')
+    .maybeSingle();
+  if (error || !data) return false;
+  return offCodes(data.value).includes(code);
 }
 
 export async function loadReports(view: ReportView): Promise<ReportsData> {
@@ -268,6 +300,7 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
     people: [],
     starters: [],
     sends: [],
+    autoSendOff: false,
   };
   if (!supabaseConfigured()) return { ...empty, problem: NO_SUPABASE };
   const db = await reportsDb();
@@ -294,10 +327,11 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
   }
 
   if (view.tab === 'payroll') {
-    const [lines, people, sends] = await Promise.all([
+    const [lines, people, sends, autoSendOff] = await Promise.all([
       readPayrollLines(db, view.from, view.to),
       readPayrollPeople(db, view.from, view.to),
       sendsQuery,
+      switchedOff(db, 'BG08'),
     ]);
     const error = lines.error ?? people.error;
     if (error) return { ...empty, problem: explain(error) };
@@ -306,14 +340,20 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
       lines: lines.data ?? [],
       people: people.data ?? [],
       sends: (sends.data ?? []) as ReportSend[],
+      autoSendOff,
     };
   }
 
-  const [starters, sends] = await Promise.all([readNewStarters(db, view.date), sendsQuery]);
+  const [starters, sends, autoSendOff] = await Promise.all([
+    readNewStarters(db, view.date),
+    sendsQuery,
+    switchedOff(db, 'NS1'),
+  ]);
   if (starters.error) return { ...empty, problem: explain(starters.error) };
   return {
     ...empty,
     starters: starters.data,
     sends: (sends.data ?? []) as ReportSend[],
+    autoSendOff,
   };
 }
