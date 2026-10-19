@@ -347,25 +347,11 @@ export function ShiftScreen({
   const started = now >= new Date(shift.startsAt);
 
   // ---- whole screens first ---------------------------------------------
-  if (isStaticPhase(phase)) {
-    return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
-  }
-
-  // §3.2 strict buffer. Once the refresh has the booking as `turned_away`
-  // the row's own RULE-15 minutes win; until then, the RPC's reply.
-  if (phase === 'turned_away' || turnedAway) {
-    return (
-      <TurnedAwayScreen
-        turnAwayPayMin={
-          phase === 'turned_away' ? shift.turnedAwayPayMin : (turnedAway?.payMin ?? null)
-        }
-      />
-    );
-  }
-
   const head = (
     <HeadRow
-      phase={phase}
+      // The worker has just pressed Check out: whatever the refreshed row
+      // says now, the pill says so.
+      phase={outcome ? 'closed' : phase}
       today={today}
       venueName={shift.venueName}
       startsAt={shift.startsAt}
@@ -396,6 +382,28 @@ export function ShiftScreen({
         distanceM={outcome.distanceM}
         checkedIn={shift.checkInAt ? local(shift.checkInAt) : null}
         onOk={() => setOutcome(null)}
+      />
+    );
+  }
+
+  // After the press's own answer, not before it. A check-out that raises
+  // RULE-02 on the press — no on-site fix (§5.1), or a stale one (ADR-0035)
+  // — revalidates the page with `noCheckoutOpen` set, in the same response
+  // that carries the answer. Checked first, the §10.4 dead end ("We didn't
+  // receive your check-out") replaced (i) and (j) the moment they were
+  // due, telling a worker who HAD pressed that they had not.
+  if (isStaticPhase(phase)) {
+    return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
+  }
+
+  // §3.2 strict buffer. Once the refresh has the booking as `turned_away`
+  // the row's own RULE-15 minutes win; until then, the RPC's reply.
+  if (phase === 'turned_away' || turnedAway) {
+    return (
+      <TurnedAwayScreen
+        turnAwayPayMin={
+          phase === 'turned_away' ? shift.turnedAwayPayMin : (turnedAway?.payMin ?? null)
+        }
       />
     );
   }

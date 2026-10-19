@@ -297,3 +297,66 @@ describe('B5 · a press is never left hanging', () => {
     expect(reloadForNewBuild).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('a check-out that raises RULE-02 on the press shows its own answer (§5.1)', () => {
+  // The action revalidates the page in the same response that carries the
+  // answer, so the props arrive with `noCheckoutOpen` already set. The
+  // §10.4 dead end ("We didn't receive your check-out") is for a check-out
+  // never pressed; it must not replace (i) / (j) at the moment of the press.
+  const onShift = {
+    status: 'worked' as const,
+    startsAt: new Date(Date.now() - 60 * 60_000).toISOString(),
+    checkInAt: new Date(Date.now() - 55 * 60_000).toISOString(),
+  };
+
+  it('no on-site fix after check-in: "We couldn’t confirm when you left the venue"', async () => {
+    gps.readings.push(AWAY);
+    checkOut.mockResolvedValue({
+      ok: true,
+      result: {
+        decision: 'no_on_site_fix',
+        recordedAt: onShift.checkInAt,
+        violation: 'no_checkout',
+        messageKey: 'no_check_out_office_confirms',
+        distanceM: 1780,
+      },
+    });
+    await mount(shift(onShift));
+    await click('Check out');
+    // What the revalidated response hands down with the answer.
+    await mount(shift({ ...onShift, checkOutAt: onShift.checkInAt, noCheckoutOpen: true }));
+    expect(container.querySelector('[data-full="no_on_site_fix"]')).not.toBeNull();
+    expect(container.textContent).toContain(
+      'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
+    );
+    expect(container.textContent).not.toContain('We didn’t receive your check-out');
+    expect(container.textContent).toContain('Checked out');
+
+    // Dismissed, the booking is the §10.4 dead end until the office resolves it.
+    await click('OK, I understand');
+    expect(container.querySelector('[data-static="no_checkout"]')).not.toBeNull();
+  });
+
+  it('a stale on-site fix (ADR-0035): the normal off-site message, quoting the fix', async () => {
+    const lastOnSite = new Date(Date.now() - 50 * 60_000).toISOString();
+    gps.readings.push(AWAY);
+    checkOut.mockResolvedValue({
+      ok: true,
+      result: {
+        decision: 'recorded_last_on_site',
+        recordedAt: lastOnSite,
+        violation: 'no_checkout',
+        messageKey: 'checked_out_off_site',
+        distanceM: 1780,
+      },
+    });
+    await mount(shift(onShift));
+    await click('Check out');
+    await mount(shift({ ...onShift, checkOutAt: lastOnSite, noCheckoutOpen: true }));
+    expect(container.querySelector('[data-full="off_site"]')).not.toBeNull();
+    expect(container.textContent).toContain(
+      'You checked out away from the venue — we’ve recorded your last time on site',
+    );
+    expect(container.textContent).not.toContain('We didn’t receive your check-out');
+  });
+});
