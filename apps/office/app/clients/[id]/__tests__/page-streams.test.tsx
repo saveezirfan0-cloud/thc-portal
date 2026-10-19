@@ -27,7 +27,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../data', () => ({
-  loadClientCard: (id: string, options: unknown) => {
+  loadClientCard: (_id: string, options: unknown) => {
     state.started += 1;
     state.asked.push(options);
     return state.card!();
