@@ -21,10 +21,12 @@ const state = vi.hoisted(() => ({
   sessionCalls: [] as [string, unknown][],
 }));
 
-const rpc = vi.fn(async (..._args: unknown[]) => ({
-  data: null as unknown,
-  error: null as null | { message: string },
-}));
+const rpc = vi.fn(
+  async (..._args: unknown[]): Promise<{ data?: unknown; error: null | { message: string } }> => ({
+    data: null as unknown,
+    error: null as null | { message: string },
+  }),
+);
 const createAdminClient = vi.fn(() => ({ rpc }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
