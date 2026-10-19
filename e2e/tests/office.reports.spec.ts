@@ -12,7 +12,7 @@ import { databaseUnreachable, sql } from './_support/db';
  * (FINANCIAL_CSV_COLUMNS, PAYROLL_CSV_COLUMNS, NEW_STARTER_CSV_COLUMNS),
  * served by reports/export/route.ts with a UTF-8 BOM and CRLF.
  *
- * The structural tests run everywhere: the page renders its three tabs and
+ * The structural tests run everywhere: the page renders its four tabs and
  * their empty tables when there is no project. The figures need the seed,
  * and a period that does not depend on the day the suite runs: every seeded
  * event is dated from `seed_friday()` (the Friday after the seed ran), so
@@ -67,12 +67,15 @@ function lines(csv: string): string[] {
     .filter((line) => line !== '');
 }
 
-test('three tabs, one per report, each with its own period control (§9.9)', async ({ page }) => {
+test('four tabs, one per report, each with its own period control (§9.9, ADR-0168)', async ({
+  page,
+}) => {
   await openAsAdmin(page, '/reports');
 
   const financial = nav(page).getByRole('link', { name: 'Financial report' });
   const payroll = nav(page).getByRole('link', { name: 'Payroll report' });
   const starter = nav(page).getByRole('link', { name: 'New Starter (HMRC)' });
+  const invoicing = nav(page).getByRole('link', { name: 'Invoicing' });
   await expect(financial).toHaveAttribute('aria-current', 'page');
 
   // Financial opens on this week: "This week" is the pressed shortcut.
@@ -106,6 +109,19 @@ test('three tabs, one per report, each with its own period control (§9.9)', asy
   await expect(page.getByRole('link', { name: 'Export CSV' })).toHaveAttribute(
     'href',
     /^\/reports\/export\?report=newstarter&date=\d{4}-\d{2}-\d{2}$/,
+  );
+
+  // ADR-0168: Invoicing opens on last week, and its CSV carries ready events only.
+  await invoicing.click();
+  await expect(page).toHaveURL(/tab=invoicing/);
+  await expect(invoicing).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('link', { name: 'Last week' })).toHaveClass(/primary/);
+  for (const label of ['Ready to invoice', 'Needs review', 'Missing check-out', 'Check-out open']) {
+    await expect(page.locator('.kpi .k', { hasText: new RegExp(`^${label}$`) })).toBeVisible();
+  }
+  await expect(page.getByRole('link', { name: 'Export ready CSV' })).toHaveAttribute(
+    'href',
+    /^\/reports\/export\?report=invoicing&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/,
   );
 });
 

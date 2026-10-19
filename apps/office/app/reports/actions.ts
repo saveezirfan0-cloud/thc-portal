@@ -26,3 +26,47 @@ export async function retryFinanceSend(sendId: number): Promise<{ error: string 
   revalidatePath('/reports');
   return { ok: true };
 }
+
+/**
+ * "Mark reviewed for invoicing" (ADR-0168). Every rule is in
+ * `sign_off_event_invoice()`: the mandatory note, the closed check-out
+ * window, no unresolved No check-out, and the fingerprint — the figures
+ * the manager was looking at must still be the figures in the database.
+ */
+export async function signOffInvoice(
+  eventId: string,
+  note: string,
+  fingerprint: string,
+): Promise<{ error: string } | { ok: true }> {
+  if (!supabaseConfigured()) return { error: 'This environment has no Supabase project.' };
+  const db = await reportsDb();
+  const { error } = await db.rpc('sign_off_event_invoice', {
+    p_event: eventId,
+    p_note: note,
+    p_fingerprint: fingerprint,
+  });
+  if (error) {
+    const known = Object.keys(SIGN_OFF_REASONS).find((key) => error.message.includes(key));
+    return {
+      error: known ? SIGN_OFF_REASONS[known]! : explainDbError(error, { log: '[reports]' }),
+    };
+  }
+  revalidatePath('/reports');
+  revalidatePath(`/reports/invoicing/${eventId}`);
+  return { ok: true };
+}
+
+/** The RPC's refusals in the manager's words. */
+const SIGN_OFF_REASONS: Record<string, string> = {
+  note_required: 'A note is required. Say what you checked before marking the event reviewed.',
+  check_out_open:
+    'Workers can still check out until 4 hours after the last shift ends. Try again after that.',
+  check_out_missing:
+    'A worker never checked out. Resolve the No check-out on the Check-in screen with their actual finish time first.',
+  changed_since_viewed:
+    'Something on this event changed while you were looking at it. The page has been refreshed: check it again, then mark it reviewed.',
+  nothing_to_invoice: 'This event has no shifts to invoice.',
+  event_not_found: 'This event no longer exists.',
+  not_permitted: 'Only an owner or a manager can mark an event reviewed for invoicing.',
+  admins_only: 'Only a manager can mark an event reviewed for invoicing.',
+};

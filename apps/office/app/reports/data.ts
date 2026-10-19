@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { DEFAULT_ROW_CEILING, readAllPages } from '@thc/db/paged';
 import type { PageReply, ReadAllResult } from '@thc/db/paged';
-import type { FinancialCsvRow, NewStarterCsvRow, PayrollCsvRow } from '@thc/pdf';
+import type { FinancialCsvRow, InvoiceCsvRow, NewStarterCsvRow, PayrollCsvRow } from '@thc/pdf';
 import type { ReportSend, ReportView } from './view-model';
 import { readProblem } from '../_lib/dbError';
 
@@ -59,6 +59,17 @@ export interface ReportsRpc {
   ): RpcQuery;
   rpc(fn: 'new_starter_report', args: { p_date: string }, options?: RpcOptions): RpcQuery;
   rpc(fn: 'retry_finance_report', args: { p_send: number }): RpcQuery;
+  rpc(fn: 'invoice_events', args: { p_from: string; p_to: string }, options?: RpcOptions): RpcQuery;
+  rpc(fn: 'invoice_event_lines' | 'invoice_event_violations', args: { p_event: string }): RpcQuery;
+  rpc(
+    fn: 'invoice_export_rows',
+    args: { p_from: string; p_to: string; p_event: string | null },
+    options?: RpcOptions,
+  ): RpcQuery;
+  rpc(
+    fn: 'sign_off_event_invoice',
+    args: { p_event: string; p_note: string; p_fingerprint: string },
+  ): RpcQuery;
   from(table: 'report_sends'): {
     select(columns: string): {
       eq(
@@ -239,6 +250,172 @@ export function readNewStarters(
   );
 }
 
+// ---------------------------------------------------------------------
+// Ready to invoice (ADR-0168, 20261021100000)
+// ---------------------------------------------------------------------
+
+/** One event on the Invoicing tab, priced and judged by `invoice_events`. */
+export interface InvoiceEvent {
+  event_id: string;
+  event_date: string;
+  event_title: string;
+  client_name: string;
+  po_number: string | null;
+  venue_name: string;
+  cancelled: boolean;
+  last_end_at: string | null;
+  check_out_closes_at: string | null;
+  shifts: number;
+  billable_shifts: number;
+  pending: number;
+  no_shows: number;
+  turned_away: number;
+  payable_min: number;
+  invoicing: number | string;
+  violations: number;
+  unresolved: number;
+  status: string;
+  fingerprint: string;
+  signed_off_at: string | null;
+  signed_off_by_name: string | null;
+  signoff_note: string | null;
+  signed_invoicing: number | string | null;
+  signoff_stale: boolean;
+}
+
+/** One shift line of an event (`invoice_event_lines`). */
+export interface InvoiceLine {
+  booking_id: string;
+  staff_name: string;
+  employee_id: number | null;
+  removed: boolean;
+  role_name: string;
+  shift_date: string;
+  starts_at: string;
+  ends_at: string;
+  check_in_at: string | null;
+  check_out_at: string | null;
+  kind: 'worked' | 'turned_away' | 'no_show' | 'cancelled_on_day';
+  status: 'settled' | 'pending';
+  late_check_in: boolean;
+  early_check_out: boolean;
+  unpaid_break_min: number;
+  payable_min: number | null;
+  floor_applied: boolean;
+  charge_rate: number | string;
+  invoicing: number | string | null;
+}
+
+/** One violation on an event (`invoice_event_violations`). */
+export interface InvoiceViolation {
+  violation_id: string;
+  booking_id: string;
+  staff_name: string;
+  employee_id: number | null;
+  role_name: string;
+  type: 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
+  detected_at: string;
+  minutes_late: number | null;
+  resolved: boolean;
+  resolved_at: string | null;
+  resolved_by_name: string | null;
+  resolution_note: string | null;
+  actual_finish_at: string | null;
+}
+
+/** Every event dated in the range that has lines, in the function's order (unique by id). */
+export function readInvoiceEvents(
+  db: ReportsRpc,
+  from: string,
+  to: string,
+  ceiling: number = SCREEN_ROW_CEILING,
+): Promise<ReadAllResult<InvoiceEvent>> {
+  return readAllPages<InvoiceEvent>(
+    (range) =>
+      page(
+        db
+          .rpc('invoice_events', { p_from: from, p_to: to }, exact(range.first))
+          .range(range.from, range.to),
+      ),
+    { what: 'events to invoice', key: (row) => row.event_id, ceiling },
+  );
+}
+
+/** The CSV rows: ready events only, in the function's order (ending on booking_id). */
+export function readInvoiceExportRows(
+  db: ReportsRpc,
+  from: string,
+  to: string,
+  event: string | null,
+  ceiling: number = EXPORT_ROW_CEILING,
+): Promise<ReadAllResult<InvoiceCsvRow & { booking_id: string }>> {
+  return readAllPages<InvoiceCsvRow & { booking_id: string }>(
+    (range) =>
+      page(
+        db
+          .rpc(
+            'invoice_export_rows',
+            { p_from: from, p_to: to, p_event: event },
+            exact(range.first),
+          )
+          .range(range.from, range.to),
+      ),
+    { what: 'invoice lines', key: (row) => row.booking_id, ceiling },
+  );
+}
+
+export interface InvoiceEventDetail {
+  problem: string | null;
+  event: InvoiceEvent | null;
+  lines: InvoiceLine[];
+  violations: InvoiceViolation[];
+}
+
+/**
+ * One event for /reports/invoicing/:eventId. Its date is read first (an
+ * office session reads `events` under its own policy), then the list's own
+ * verdict for that day — the same function the tab and the sign-off ask,
+ * so the three can never disagree.
+ */
+export async function loadInvoiceEvent(eventId: string): Promise<InvoiceEventDetail> {
+  const empty: InvoiceEventDetail = { problem: null, event: null, lines: [], violations: [] };
+  if (!supabaseConfigured()) return { ...empty, problem: NO_SUPABASE };
+  const db = await reportsDb();
+  const events = db as unknown as {
+    from(table: 'events'): {
+      select(columns: 'event_date'): {
+        eq(
+          column: 'id',
+          value: string,
+        ): {
+          maybeSingle(): PromiseLike<{
+            data: { event_date: string } | null;
+            error: { code?: string | null; message: string } | null;
+          }>;
+        };
+      };
+    };
+  };
+  const dated = await events.from('events').select('event_date').eq('id', eventId).maybeSingle();
+  if (dated.error) return { ...empty, problem: explain(dated.error) };
+  if (!dated.data) return empty;
+
+  const day = dated.data.event_date;
+  const [list, lines, violations] = await Promise.all([
+    readInvoiceEvents(db, day, day),
+    db.rpc('invoice_event_lines', { p_event: eventId }),
+    db.rpc('invoice_event_violations', { p_event: eventId }),
+  ]);
+  const error = list.error ?? lines.error ?? violations.error;
+  if (error) return { ...empty, problem: explain(error) };
+  return {
+    problem: null,
+    event: (list.data ?? []).find((row) => row.event_id === eventId) ?? null,
+    lines: (lines.data ?? []) as InvoiceLine[],
+    violations: (violations.data ?? []) as InvoiceViolation[],
+  };
+}
+
 const SEND_COLUMNS =
   'id, kind, period_start, period_end, status, sent_at, created_at, row_count, held_count, error';
 
@@ -258,6 +435,7 @@ export interface ReportsData {
   people: PayrollPerson[];
   starters: NewStarter[];
   sends: ReportSend[];
+  invoices: InvoiceEvent[];
 }
 
 export async function loadReports(view: ReportView): Promise<ReportsData> {
@@ -268,9 +446,16 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
     people: [],
     starters: [],
     sends: [],
+    invoices: [],
   };
   if (!supabaseConfigured()) return { ...empty, problem: NO_SUPABASE };
   const db = await reportsDb();
+
+  if (view.tab === 'invoicing') {
+    const invoices = await readInvoiceEvents(db, view.from, view.to);
+    if (invoices.error) return { ...empty, problem: explain(invoices.error) };
+    return { ...empty, invoices: invoices.data };
+  }
 
   const kind = view.tab === 'newstarter' ? 'new_starter' : 'payroll';
   const sendsQuery = db

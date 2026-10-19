@@ -291,3 +291,109 @@ export function financialCsv(rows: readonly FinancialCsvRow[]): string {
     ]),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Invoicing — one row per billable SHIFT of a READY event (ADR-0168)
+// ---------------------------------------------------------------------------
+
+/**
+ * What THC keys into its own accounting tool: the event and its PO, the
+ * worker, the hours and the charge. No pay rate — this file is about what
+ * the client is charged. A total row per event closes each block, so the
+ * figure on an invoice can be read straight off the file.
+ */
+export const INVOICE_CSV_COLUMNS = [
+  'Event date',
+  'Client',
+  'Event',
+  'PO Number',
+  'Employee ID',
+  'Staff',
+  'Role',
+  'Scheduled start–end',
+  'Check in',
+  'Check out',
+  'Break deduction',
+  'Payable hours',
+  'Charge rate',
+  'Amount',
+] as const;
+
+export interface InvoiceCsvRow {
+  event_id: string;
+  /** ISO date. */
+  event_date: string;
+  event_title: string;
+  client_name: string;
+  po_number: string | null;
+  employee_id: number | null;
+  staff_name: string;
+  role_name: string;
+  starts_at: string;
+  ends_at: string;
+  check_in_at: string | null;
+  check_out_at: string | null;
+  /** worked · cancelled_on_day — `invoice_export_rows` sends nothing else. */
+  kind: string;
+  unpaid_break_min: number | null;
+  payable_min: number | null;
+  charge_rate: number | string;
+  invoicing: number | string | null;
+}
+
+export function invoiceCsvRows(rows: readonly InvoiceCsvRow[]): string[][] {
+  const out: string[][] = [];
+  let block: InvoiceCsvRow[] = [];
+
+  const close = () => {
+    const head = block[0];
+    if (!head) return;
+    const minutes = block.reduce((sum, row) => sum + (row.payable_min ?? 0), 0);
+    // Pence, so a block of £x.x5 lines never drifts by a float.
+    const pence = block.reduce((sum, row) => sum + Math.round(Number(row.invoicing ?? 0) * 100), 0);
+    out.push([
+      ukDateFromIsoDate(head.event_date),
+      textCell(head.client_name),
+      textCell(`${head.event_title} — total`),
+      textCell(head.po_number),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      decimalHours(minutes),
+      '',
+      money(pence / 100),
+    ]);
+    block = [];
+  };
+
+  for (const row of rows) {
+    if (block[0] && block[0].event_id !== row.event_id) close();
+    block.push(row);
+    out.push([
+      ukDateFromIsoDate(row.event_date),
+      textCell(row.client_name),
+      textCell(row.event_title),
+      textCell(row.po_number),
+      employeeIdLabel(row.employee_id),
+      textCell(row.staff_name),
+      textCell(row.role_name),
+      `${ukTime(row.starts_at)}–${ukTime(row.ends_at)}`,
+      row.kind === 'cancelled_on_day' ? 'Event cancelled on the day' : ukTime(row.check_in_at),
+      row.kind === 'worked' ? ukTime(row.check_out_at) : '',
+      clockMinutes(row.unpaid_break_min ?? 0),
+      decimalHours(row.payable_min),
+      money(row.charge_rate),
+      money(row.invoicing),
+    ]);
+  }
+  close();
+  return out;
+}
+
+export function invoiceCsv(rows: readonly InvoiceCsvRow[]): string {
+  return toCsv(INVOICE_CSV_COLUMNS, invoiceCsvRows(rows));
+}
