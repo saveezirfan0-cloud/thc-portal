@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { Alert, Button, Chip, KpiTile, Panel, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { ClientCrumbs, NewEventForClient } from './chrome';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
 import { ClientEvents } from './ClientEvents';
@@ -13,7 +13,7 @@ import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
 import { ShiftRequirements } from './ShiftRequirements';
 import { WorkerRequests } from './WorkerRequests';
-import { marginTone, newEventHref } from './card';
+import { marginTone } from './card';
 import type { Client } from '../types';
 import type { ClientCardData } from './types';
 import './card.css';
@@ -40,12 +40,19 @@ export function ClientCard({
   data,
   ratesVisible = true,
   canWrite = true,
+  bare = false,
 }: {
   data: ClientCardData;
   /** ADR-0061: the viewer's office_can('finance') — no margin, no rate controls without it. */
   ratesVisible?: boolean;
   /** ADR-0060: office_can('write') — a viewer sees the Name badges state, not the switch. */
   canWrite?: boolean;
+  /**
+   * ADR-0161: the page has drawn the `OfficeShell` itself, around the
+   * Suspense this screen streams in behind, so the screen draws only its
+   * body. Rendered whole (the default) it draws the shell too.
+   */
+  bare?: boolean;
 }) {
   const client = data.client as Client;
   const [editing, setEditing] = useState(false);
@@ -57,23 +64,8 @@ export function ClientCard({
     />
   );
 
-  return (
-    <OfficeShell
-      activeHref="/clients"
-      title="Client"
-      crumbs={
-        <>
-          <Link href="/clients">Clients</Link> / <b>{client.name}</b>
-        </>
-      }
-      actions={
-        // The Shift Builder opens with this client picked, its rate card and
-        // on-site contact loaded (§9.7, §3.2).
-        <Link className="btn primary sm" href={newEventHref(client.id)}>
-          + New event for this client
-        </Link>
-      }
-    >
+  const body = (
+    <>
       <div className="stack">
         <Panel
           title={
@@ -214,6 +206,17 @@ export function ClientCard({
           onSaved={() => setEditing(false)}
         />
       ) : null}
+    </>
+  );
+  if (bare) return body;
+  return (
+    <OfficeShell
+      activeHref="/clients"
+      title="Client"
+      crumbs={<ClientCrumbs name={client.name} />}
+      actions={<NewEventForClient clientId={client.id} />}
+    >
+      {body}
     </OfficeShell>
   );
 }
