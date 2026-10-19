@@ -1,0 +1,644 @@
+-- =====================================================================
+-- The pool, its readers and the wave-1 checks as they stood before
+-- 20261020100000 (ADR-0159), for pgTAP 880 to compare the new bodies with.
+--
+--   _old_auto_assign_candidates_pool   (20261019140000's set-based pool)
+--   _old_series_gate_for, _old_auto_assign_worker_gate,
+--   _old_auto_assign_candidates        (the series readers over it)
+--   _old_staff_open_shifts             (20261019140100's Radar)
+--   _old_offer_wave1_exhausted, _old_radar_wave1_exhausted,
+--   _old_staff_open_offers             (the offer and wave-1 readers)
+--
+-- pg_get_functiondef() of each, verbatim but for the names: every call
+-- from one of them to another reads the _old_ copy, so the old readers sit
+-- on the old pool all the way down. Included with \ir inside the test's
+-- transaction; rolled back with it. The .psql extension keeps pg_prove
+-- from running it as a test.
+-- =====================================================================
+
+CREATE FUNCTION public._old_auto_assign_candidates_pool(p_shift uuid, p_escalation boolean DEFAULT false, p_only uuid[] DEFAULT NULL::uuid[])
+ RETURNS TABLE(staff_id uuid, gate text, qualified boolean, booking_status text, reliability numeric, rating numeric, distance_km numeric, future_shifts integer, venue_times integer, booking_cause text)
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+ SET jit TO 'off'
+ SET plan_cache_mode TO 'force_generic_plan'
+AS $function$
+#variable_conflict use_column
+begin
+  return query
+  with sec as materialized (
+    select sr.id as shift_id, sr.role_id, sr.starts_at, sr.ends_at, sr.required_gender,
+           ev.id as event_id, ev.client_id, ev.venue_id, ev.venue_location,
+           -- ADR-0080: the languages the event needs besides English, which
+           -- is never gated — everyone THC books speaks it.
+           array_remove(ev.required_languages, 'English') as extra_languages,
+           -- RULE-20's inputs, derived from the section as rota_guard_verdict()
+           -- derives them: the UK day it starts and ends on, its hours, and
+           -- the Monday of its Mon-Sun week.
+           (sr.starts_at at time zone 'Europe/London')::date                              as starts_on,
+           ((sr.ends_at - interval '1 second') at time zone 'Europe/London')::date        as ends_on,
+           round((extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0)::numeric, 2)  as hours,
+           cap_week_start((sr.starts_at at time zone 'Europe/London')::date)              as week_start
+    from shift_requirements sr join events ev on ev.id = sr.event_id
+    where sr.id = p_shift
+  ),
+  gap  as materialized (select booked_elsewhere_gap_minutes() as mins),
+  -- One statute mile is 1,609.344 m; geography distances are metres.
+  rad  as materialized (select case when p_escalation then escalation_radius_miles() * 1609.344 end as metres),
+  mode as materialized (select rota_guard_mode() as m),
+  -- 20261019140000: what each row needs from the booking history, worked
+  -- out ONCE per call as grouped joins instead of once per worker. Each
+  -- source below has two branches and exactly one of them runs (a one-time
+  -- filter on p_only): a list call reads the agency's rows; a call for named
+  -- workers reads only theirs, through the staff_id indexes. What is done
+  -- with the rows is written once, after the branches.
+  --
+  -- §6 show-rate, staff_show_rate()'s sample and formula (20260928110100):
+  -- worked or turned-away shifts, and any with an open No-show; held
+  -- against the worker when an open No-show or No check-out not under
+  -- stale-fix review sits on it.
+  hist as (
+    select b.id, b.staff_id, b.status from bookings b where p_only is null
+    union all
+    select b.id, b.staff_id, b.status from bookings b where b.staff_id = any (p_only)
+  ),
+  viol as (
+    select v.booking_id, v.type, v.resolved, v.stale_fix_review from violations v where p_only is null
+    union all
+    select v.booking_id, v.type, v.resolved, v.stale_fix_review from violations v
+     where v.booking_id in (select b.id from bookings b where b.staff_id = any (p_only))
+  ),
+  shows as (
+    select h.staff_id,
+           round(100.0 * count(*) filter (where not coalesce(vb.against, false)) / count(*), 2) as rate
+      from hist h
+      left join (
+        select vv.booking_id,
+               bool_or(not vv.resolved and vv.type in ('no_show', 'no_checkout')
+                       and not vv.stale_fix_review)                  as against,
+               bool_or(vv.type = 'no_show' and not vv.resolved)      as no_show
+          from viol vv group by vv.booking_id
+      ) vb on vb.booking_id = h.id
+     where h.status in ('worked', 'turned_away') or coalesce(vb.no_show, false)
+     group by h.staff_id
+  ),
+  -- Confirmed shifts still to come (§6 fair rotation).
+  future_src as (
+    select b.staff_id
+      from shift_requirements sr3 join bookings b on b.shift_id = sr3.id
+     where p_only is null and sr3.starts_at > now() and b.status = 'confirmed'
+    union all
+    select b.staff_id
+      from bookings b join shift_requirements sr3 on sr3.id = b.shift_id
+     where b.staff_id = any (p_only) and b.status = 'confirmed' and sr3.starts_at > now()
+  ),
+  future as (
+    select f.staff_id, count(*)::int as n from future_src f group by f.staff_id
+  ),
+  -- Shifts worked at this venue (§6 venue history).
+  venue_src as (
+    select b.staff_id, b.status, ev4.venue_id
+      from sec join events ev4 on ev4.venue_id = sec.venue_id
+      join shift_requirements sr4 on sr4.event_id = ev4.id
+      join bookings b on b.shift_id = sr4.id
+     where p_only is null
+    union all
+    select b.staff_id, b.status, ev4.venue_id
+      from sec join events ev4 on ev4.venue_id = sec.venue_id
+      join shift_requirements sr4 on sr4.event_id = ev4.id
+      join bookings b on b.shift_id = sr4.id
+     where b.staff_id = any (p_only)
+  ),
+  venue as (
+    select vs.staff_id, count(*)::int as n
+      from venue_src vs cross join sec
+     where vs.status = 'worked' and vs.venue_id = sec.venue_id
+     group by vs.staff_id
+  ),
+  -- RULE-20: the hours already booked in the section's Mon-Sun week, as
+  -- weekly_booked_hours_except() counts them; booking_counts_toward_cap()
+  -- is still the one definition of what counts. The range on starts_at, a
+  -- day wider each side, only narrows the scan; the UK-date test is the rule.
+  week_src as (
+    select b.staff_id, b.shift_id, b.status, b.cancelled_at, b.cancel_cause, sr2.starts_at, sr2.ends_at
+      from sec
+      join shift_requirements sr2
+        on sr2.starts_at >= (sec.week_start - 1)::timestamp at time zone 'Europe/London'
+       and sr2.starts_at <  (sec.week_start + 8)::timestamp at time zone 'Europe/London'
+      join bookings b on b.shift_id = sr2.id
+     where p_only is null
+    union all
+    select b.staff_id, b.shift_id, b.status, b.cancelled_at, b.cancel_cause, sr2.starts_at, sr2.ends_at
+      from sec
+      join shift_requirements sr2
+        on sr2.starts_at >= (sec.week_start - 1)::timestamp at time zone 'Europe/London'
+       and sr2.starts_at <  (sec.week_start + 8)::timestamp at time zone 'Europe/London'
+      join bookings b on b.shift_id = sr2.id
+     where b.staff_id = any (p_only)
+  ),
+  week as (
+    select w.staff_id,
+           coalesce(sum(extract(epoch from (w.ends_at - w.starts_at)) / 3600.0), 0)::numeric as booked
+      from week_src w cross join sec
+     where w.shift_id is distinct from sec.shift_id
+       and booking_counts_toward_cap(w.status, w.cancelled_at, w.cancel_cause)
+       and (w.starts_at at time zone 'Europe/London')::date
+           between sec.week_start and sec.week_start + 6
+     group by w.staff_id
+  ),
+  -- (1) §3.4 "only the worker's other CONFIRMED bookings count" — and a
+  -- checked-in booking is a confirmed one (20260930110000, D2) — read from
+  -- the sections near this one only. A section that ends before this one
+  -- starts less the gap, or starts after it ends plus the gap, can neither
+  -- intersect it nor sit too close to it (min_4h keeps every section's end
+  -- after its start; a negative or missing gap only ever flags an overlap),
+  -- so the window drops nothing booked_elsewhere_conflict() would flag.
+  near_src as (
+    select b.staff_id, b.shift_id, sr2.starts_at, sr2.ends_at, ev2.venue_id
+      from sec cross join gap
+      join shift_requirements sr2
+        on sr2.starts_at < sec.ends_at + make_interval(mins => greatest(gap.mins, 0))
+       and sr2.ends_at > sec.starts_at - make_interval(mins => greatest(gap.mins, 0))
+      join events ev2 on ev2.id = sr2.event_id
+      join bookings b on b.shift_id = sr2.id
+     where p_only is null and b.status in ('confirmed', 'worked')
+    union all
+    select b.staff_id, b.shift_id, sr2.starts_at, sr2.ends_at, ev2.venue_id
+      from sec cross join gap
+      join bookings b on b.staff_id = any (p_only) and b.status in ('confirmed', 'worked')
+      join shift_requirements sr2
+        on sr2.id = b.shift_id
+       and sr2.starts_at < sec.ends_at + make_interval(mins => greatest(gap.mins, 0))
+       and sr2.ends_at > sec.starts_at - make_interval(mins => greatest(gap.mins, 0))
+      join events ev2 on ev2.id = sr2.event_id
+  ),
+  elsewhere as (
+    select n.staff_id
+      from near_src n cross join sec cross join gap
+     where n.shift_id <> sec.shift_id
+       and booked_elsewhere_conflict(sec.starts_at, sec.ends_at, sec.venue_id,
+                                     n.starts_at, n.ends_at, n.venue_id, gap.mins) <> 'clear'
+  ),
+  -- (3) This section's own bookings, read once for their status and cause.
+  -- bookings is unique on (shift_id, staff_id), so at most one per worker.
+  mine as (
+    select b.staff_id, b.status::text as status, b.cancel_cause
+      from sec join bookings b on b.shift_id = sec.shift_id
+  ),
+  -- The workers this call is about: the agency, or the named ones. The
+  -- columns are named: the office's role reads staff column by column.
+  pool as (
+    select s.id, s.status, s.gender, s.languages, s.rating, s.home_location,
+           s.removed_at, s.left_at, s.spudbros_express, s.thc_shifts_enabled
+      from staff s where p_only is null
+    union all
+    select s.id, s.status, s.gender, s.languages, s.rating, s.home_location,
+           s.removed_at, s.left_at, s.spudbros_express, s.thc_shifts_enabled
+      from staff s where s.id = any (p_only)
+  )
+  select
+    s.id,
+    case
+      when not (s.id in (select sro.staff_id from sec s2
+                           join staff_roles sro on sro.role_id = s2.role_id))   then 'wrong_role'
+      -- ADR-0079: the client asked for staff of one gender on this role.
+      -- Straight after wrong_role because, like it, it is what the SECTION
+      -- asks for rather than anything about the worker's week.
+      when sec.required_gender is not null and s.gender is null              then 'gender_not_recorded'
+      when sec.required_gender = 'M' and s.gender <> 'M'                      then 'male_only'
+      when sec.required_gender = 'F' and s.gender <> 'F'                      then 'female_only'
+      -- ADR-0080: the event needs staff who also speak another language.
+      -- Next to the gender gates for the same reason: it is what the EVENT
+      -- asks for. Nothing on file reads as "not shown to speak it", listed
+      -- so the office can record it; on file without it is no row at all.
+      when cardinality(sec.extra_languages) > 0 and s.languages is null         then 'languages_not_recorded'
+      when not (sec.extra_languages <@ s.languages)                             then 'language_not_spoken'
+      when exists (select 1 from client_qualifications cq
+                    where cq.staff_id = s.id and cq.client_id = sec.client_id
+                      and cq.do_not_return)                                     then 'do_not_return'
+      when s.status <> 'compliant'                                              then 'blocked'
+      when s.id in (select b.staff_id from sec s2
+                      join shift_requirements sr2 on sr2.event_id = s2.event_id
+                      join bookings b on b.shift_id = sr2.id
+                     where b.self_cancelled)                                    then 'self_cancelled'
+      -- (1) above.
+      when s.id in (select e.staff_id from elsewhere e)                       then 'booked_elsewhere'
+      -- RULE-20 and the right-to-work stop share one gate, but not one
+      -- label: a worker past their right to work is not "over their
+      -- hours" and the board must not say so (20260924130100). The verdict
+      -- is rota_guard_verdict()'s, from its own pieces, with the week's
+      -- booked hours from the grouped join above; asked only of a worker
+      -- every gate before it let through.
+      else coalesce(
+        (select case when g.verdict = 'block'
+                     then case when not x.can_roster then 'rtw_expired' else 'hours_limit' end end
+           from (select can_roster_staff(s.id, sec.starts_on)
+                        and can_roster_staff(s.id, sec.ends_on) as can_roster) x
+          cross join lateral weekly_cap_for(s.id, sec.starts_on) c
+          cross join lateral rota_guard_decide(x.can_roster, c.cap_hours, c.band,
+                                               coalesce(wk.booked, 0), sec.hours,
+                                               (select mode.m from mode)) g),
+        -- §3.4 same-day escalation only: "within a 3-mile radius of the
+        -- venue". No home on file cannot be shown to be inside it.
+        case when rad.metres is not null
+                  and (s.home_location is null
+                       or not st_dwithin(s.home_location, sec.venue_location, rad.metres)) then 'outside_radius' end)
+    end as gate,
+    -- RULE-17 wave 1: qualified at this client AND role.
+    s.id in (select cq.staff_id from sec s2
+               join client_qualifications cq on cq.client_id = s2.client_id and cq.role_id = s2.role_id
+              where not cq.do_not_return) as qualified,
+    mine.status as booking_status,
+    -- §6 show-rate; 90 with no history is the formula's zero point.
+    coalesce(sh.rate, 90)::numeric,
+    coalesce(s.rating, 4.0)::numeric,
+    coalesce(st_distance(s.home_location, sec.venue_location) / 1000.0, 9999)::numeric,
+    coalesce(fu.n, 0)::int,
+    coalesce(vn.n, 0)::int,
+    mine.cancel_cause as booking_cause
+  from pool s cross join sec cross join rad
+  left join mine     on mine.staff_id = s.id
+  left join shows sh on sh.staff_id = s.id
+  left join future fu on fu.staff_id = s.id
+  left join venue vn on vn.staff_id = s.id
+  left join week  wk on wk.staff_id = s.id
+  where s.removed_at is null and s.left_at is null
+    -- (2) Workers only (§2.12): compliant, or blocked (gated above). A
+    -- candidate mid-onboarding or a rejected applicant is in no pool and
+    -- produces no row — not an Unavailable "Blocked — compliance" row.
+    and s.status in ('compliant', 'blocked')
+    -- SpudBros Express staff (20261008120000): onboarding only, unless the
+    -- office has switched THC shifts on for them. No row at all — like a
+    -- candidate — so they never show on the board, never get an invitation
+    -- and never see an offer.
+    and not (s.spudbros_express and not s.thc_shifts_enabled)
+  order by s.id;
+end
+$function$
+;
+
+CREATE FUNCTION public._old_series_gate_for(p_staff uuid, p_shift uuid)
+ RETURNS text
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select case
+    when not exists (select 1 from series_siblings(p_shift)) then null
+    -- a hard gate on another day: the sibling's own pool, for this worker
+    when exists (select 1
+                   from series_siblings(p_shift) sib
+                  cross join lateral _old_auto_assign_candidates_pool(sib.shift_id, false, array[p_staff]) c
+                  where c.gate is not null)                          then 'not_available_all_days'
+    -- the availability calendar over another day
+    when exists (select 1
+                   from series_siblings(p_shift) sib
+                   join staff_unavailability u on u.staff_id = p_staff
+                    and sib.ends_at > sib.starts_at
+                    and u.period && tstzrange(sib.starts_at, sib.ends_at, '[)'))
+                                                                     then 'not_available_all_days'
+    -- all the days' hours together against the weekly cap
+    when series_hours_blocked(p_staff, p_shift)                      then 'not_available_all_days'
+    else null
+  end
+$function$
+;
+
+CREATE FUNCTION public._old_auto_assign_worker_gate(p_shift uuid, p_staff uuid, p_escalation boolean DEFAULT false)
+ RETURNS TABLE(gate text, qualified boolean, booking_status text)
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select case when c.gate is not null then c.gate
+              else _old_series_gate_for(p_staff, p_shift) end,
+         c.qualified,
+         c.booking_status
+    from _old_auto_assign_candidates_pool(p_shift, p_escalation, array[p_staff]) c
+$function$
+;
+
+CREATE FUNCTION public._old_auto_assign_candidates(p_shift uuid, p_escalation boolean DEFAULT false)
+ RETURNS TABLE(staff_id uuid, gate text, qualified boolean, booking_status text, reliability numeric, rating numeric, distance_km numeric, future_shifts integer, venue_times integer, booking_cause text)
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'extensions'
+ SET jit TO 'off'
+AS $function$
+  with own as (
+    select * from _old_auto_assign_candidates_pool(p_shift, p_escalation)
+  ),
+  sib as (
+    select * from series_siblings(p_shift)
+  ),
+  -- Only workers the section's own gates left standing need the sibling
+  -- days asked about them.
+  cand as (
+    select coalesce(array_agg(o.staff_id), array[]::uuid[]) as ids from own o where o.gate is null
+  ),
+  -- Barred by another day, computed ONCE per sibling over the candidates -
+  -- never per worker. The sibling is judged as an ordinary day (no
+  -- escalation radius: the radius is about the day the shift starts):
+  --   · the sibling's own pool gate;
+  --   · an availability-calendar entry over the sibling ([starts, ends),
+  --     half-open like the rest of ADR-0043).
+  barred as (
+    select c.staff_id
+      from sib
+     cross join cand
+     cross join lateral _old_auto_assign_candidates_pool(sib.shift_id, false, cand.ids) c
+     where c.gate is not null
+    union
+    select u.staff_id
+      from sib
+      join staff_unavailability u
+        on sib.ends_at > sib.starts_at
+       and u.period && tstzrange(sib.starts_at, sib.ends_at, '[)')
+  ),
+  has_sib as (
+    select exists (select 1 from sib) as on_
+  )
+  select p.staff_id,
+         case
+           -- The section's own gate always wins: the truer reason.
+           when p.gate is not null then p.gate
+           when h.on_ then
+             -- Nested, so the per-worker hours projection is only computed
+             -- for a worker nothing else has barred.
+             case
+               when p.staff_id in (select b.staff_id from barred b) then 'not_available_all_days'
+               when series_hours_blocked(p.staff_id, p_shift)       then 'not_available_all_days'
+               else null
+             end
+           else null
+         end,
+         p.qualified, p.booking_status, p.reliability, p.rating, p.distance_km,
+         p.future_shifts, p.venue_times, p.booking_cause
+    from own p
+   cross join has_sib h
+   -- 20261019140100: a stable order for a reader that pages.
+   order by p.staff_id
+$function$
+;
+
+CREATE FUNCTION public._old_staff_open_shifts(p_staff uuid DEFAULT NULL::uuid, p_shift uuid DEFAULT NULL::uuid)
+ RETURNS TABLE(shift_id uuid, event_id uuid, event_title text, event_date date, role text, starts_at timestamp with time zone, ends_at timestamp with time zone, pay_rate numeric, dress_code text, venue_name text, venue_address text, distance_km numeric, headcount integer, buffer integer, confirmed_count integer, qualified boolean, hours_limit boolean, applied_at timestamp with time zone, week_start date, booked_hours numeric, cap_hours numeric, venue_lat double precision, venue_lng double precision, geofence_radius_m integer, home_lat double precision, home_lng double precision)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions'
+ SET jit TO 'off'
+AS $function$
+  with me as (select staff_caller(p_staff) as id),
+  -- 20261019140100: the sections Radar could show this worker at all,
+  -- found without the pool, so the pool is asked about those alone (it
+  -- was asked about every open section in the agency). Nothing is decided
+  -- here: each test is one the query below makes again. The worker's own
+  -- pending application keeps a section, as below (RULE-16 ends it).
+  -- Otherwise it must not have started, must have a slot left (fill counts
+  -- confirmed and worked, as shift_fill() does) and the worker must hold
+  -- its role: without it the pool says wrong_role, which never shows.
+  -- p_shift narrows the list to one section for /radar/[id].
+  cand as materialized (
+    select sr.id
+      from me
+      join shift_requirements sr on sr.ends_at > now()
+      join events ev on ev.id = sr.event_id and ev.cancelled_at is null
+     where (p_shift is null or sr.id = p_shift)
+       and (exists (select 1 from bookings o
+                     where o.shift_id = sr.id and o.staff_id = me.id and o.status = 'applied')
+            or (sr.starts_at > now()
+                and exists (select 1 from staff_roles sro
+                             where sro.staff_id = me.id and sro.role_id = sr.role_id)
+                and (select count(*) from bookings b
+                      where b.shift_id = sr.id and b.status in ('confirmed', 'worked')) < sr.headcount))
+  ),
+  -- 20261019140100: the Limit-reached figures (§10.4) for each UK day a
+  -- candidate section starts on, asked once per day rather than once per
+  -- card: the same two functions with the same arguments.
+  meter as materialized (
+    select x.d, weekly_booked_hours(me.id, x.d) as booked_hours, weekly_cap_hours(me.id, x.d) as cap_hours
+      from me
+     cross join (select distinct (sr.starts_at at time zone 'Europe/London')::date as d
+                   from cand join shift_requirements sr on sr.id = cand.id) x
+  )
+  select
+    sr.id, ev.id, ev.title, ev.event_date, r.name, sr.starts_at, sr.ends_at,
+    case when (select current_app_role() is distinct from 'admin'::app_role or office_can('finance')) then effective_pay_rate(me.id, sr.pay_rate) end, sr.dress_code, ev.venue_name, ev.venue_address,
+    round((st_distance(s.home_location, ev.venue_location) / 1000.0)::numeric, 1),
+    sr.headcount, sr.buffer, f.confirmed,
+    -- A pending application can outlive the worker's candidate row (the
+    -- wave or a gate moved underneath it), so "not known" reads false.
+    coalesce(c.my_qualified, false),
+    coalesce(c.my_gate = 'hours_limit', false),
+    mine.applied_at,
+    -- The arithmetic behind "Limit reached", for the Mon-Sun week this
+    -- SECTION falls in. §10.4 shows the worker the numbers, not just the
+    -- verdict: "18 h + 4 h is over your 20 h limit". Since the cap is
+    -- calculated and never typed, those figures are the only way to tell a
+    -- term/holiday boundary from a mistake.
+    cap_week_start((sr.starts_at at time zone 'Europe/London')::date),
+    mtr.booked_hours,
+    mtr.cap_hours,
+    st_y(ev.venue_location::geometry),
+    st_x(ev.venue_location::geometry),
+    ev.geofence_radius_m,
+    st_y(s.home_location::geometry),
+    st_x(s.home_location::geometry)
+  from me
+    join staff s               on s.id = me.id
+    -- Not started — or started but not over with this worker's own
+    -- application still pending on it (RULE-16 takes it off at the end,
+    -- 20260930110200).
+    join shift_requirements sr on sr.id in (select cand.id from cand)
+                              and sr.ends_at > now()
+                              and (sr.starts_at > now()
+                                   or exists (select 1 from bookings o
+                                               where o.shift_id = sr.id and o.staff_id = me.id
+                                                 and o.status = 'applied'))
+    join events ev             on ev.id = sr.event_id and ev.cancelled_at is null
+    join roles r               on r.id = sr.role_id
+    -- This worker's own pending application on the section, if any.
+    left join lateral (
+      select o.applied_at from bookings o
+       where o.shift_id = sr.id and o.staff_id = me.id and o.status = 'applied'
+    ) mine on true
+    cross join lateral shift_fill(sr.id) f
+    left join meter mtr on mtr.d = (sr.starts_at at time zone 'Europe/London')::date
+    -- The viewing worker's own row of the section's pool. Reading the
+    -- whole pool here, for every section, judged every worker in the agency
+    -- once per section on a phone-facing screen (20261017180000).
+    cross join lateral (
+      select
+        count(*) > 0 as me_present,
+        coalesce(min(a.gate), case when sr.same_staff_all_days then _old_series_gate_for(me.id, sr.id) end) as my_gate,
+        bool_or(a.qualified)  as my_qualified,
+        min(a.booking_status) as my_status,
+        min(a.booking_cause)  as my_cause
+      -- 20261017180000: this worker's row only. RULE-17's wave check is
+      -- asked below, and only when it can change the answer.
+      from _old_auto_assign_candidates_pool(sr.id, false, array[me.id]) a ) c
+  where
+    -- §10.4: an applied card stays "until it resolves one way or the
+    -- other" — confirmed (then it is on My shifts), closed with N10c at
+    -- the fill, withdrawn, or the section ending (RULE-16).
+    mine.applied_at is not null
+    or (
+          sr.starts_at > now()
+      -- One threshold with apply_to_shift and close_filled_role_applications.
+      and f.confirmed < sr.headcount
+      and c.me_present
+      and (c.my_gate is null or c.my_gate = 'hours_limit')
+      and case
+            when c.my_qualified then true
+            -- RULE-17: is anyone qualified at this client and role still
+            -- reachable? A worker not in that set waits for it to empty.
+            -- Only the qualified workers can make it true, so the pool is
+            -- read for them alone (20261017180000).
+            -- 20261017180000 judged every qualified worker to answer it;
+            -- since 20261019140100 the answer stops at the first one
+            -- reachable. A worker who already holds a booking here, does
+            -- not hold the role or is not compliant cannot be reachable
+            -- (the pool's booking_status, wrong_role and blocked), so the
+            -- pool is not asked about them; it decides for the rest.
+            else not exists (
+              select 1
+                from (select cq.staff_id
+                        from client_qualifications cq
+                        join staff qs on qs.id = cq.staff_id
+                       where cq.client_id = ev.client_id and cq.role_id = sr.role_id
+                         and not cq.do_not_return
+                         and qs.status = 'compliant'
+                         and exists (select 1 from staff_roles qr
+                                      where qr.staff_id = cq.staff_id and qr.role_id = sr.role_id)
+                         and not exists (select 1 from bookings qb
+                                          where qb.shift_id = sr.id and qb.staff_id = cq.staff_id)
+                      -- OFFSET 0 keeps the pool out of this join: planned
+                      -- into it, it can land on a hash join's build side and
+                      -- be asked about every worker before the first answer.
+                      offset 0) q
+               where exists (select 1
+                               from _old_auto_assign_candidates_pool(sr.id, false, array[q.staff_id]) w
+                              where w.gate is null and w.qualified and w.booking_status is null))
+          end
+      -- Already invited or confirmed here: that lives on Invites or My
+      -- shifts. An ended row the worker may reopen by applying — closed
+      -- (declined, withdrawn, a slot that went to somebody else) or, since
+      -- 20260930110100, cancelled by the office or the 12:05 cutoff — is
+      -- offered again; one they may not (never: a self-cancel, an event
+      -- cancellation, a GDPR removal) is not.
+      and (c.my_status is null
+           or booking_reopenable_by(c.my_status::booking_status, c.my_cause) in ('anyone', 'person'))
+    )
+  order by coalesce(c.my_qualified, false) desc,
+           round((st_distance(s.home_location, ev.venue_location) / 1000.0)::numeric, 1),
+           sr.starts_at,
+           sr.id
+$function$
+;
+
+CREATE FUNCTION public._old_offer_wave1_exhausted(p_offer uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  -- With the event or the role's auto-assign OFF nobody is ever pushed an
+  -- offer (OF1 follows the switches), so waiting for wave 1 to be told
+  -- would wait for ever: the office opening it to the pool is the release,
+  -- and wave 2 may see and take it at once.
+  select exists (
+    select 1
+      from shift_offers o
+      join shift_requirements sr on sr.id = o.shift_id
+      join events ev             on ev.id = sr.event_id
+     where o.id = p_offer
+       and not (ev.auto_assign and sr.auto_assign)
+  )
+  -- Otherwise wave 1 is everyone qualified at this client AND role who
+  -- could take the shift: ungated, not the offerer, holding no booking
+  -- here that rules them out, and not away (the calendar keeps the pushes
+  -- from them, so waiting for them to be told would wait forever).
+  -- Exhausted once every one of them has been told (shift_offer_notices).
+  or not exists (
+    select 1
+      from shift_offers o
+      join shift_requirements sr on sr.id = o.shift_id
+      cross join lateral _old_auto_assign_candidates(o.shift_id) c
+     where o.id = p_offer
+       and c.gate is null
+       and c.qualified
+       and c.staff_id <> o.offered_by_staff_id
+       and (c.booking_status is null
+            or c.booking_status not in ('confirmed', 'worked', 'turned_away', 'cancelled'))
+       and not staff_unavailable(c.staff_id, sr.starts_at, sr.ends_at)
+       and not exists (select 1 from shift_offer_notices n
+                        where n.offer_id = o.id and n.staff_id = c.staff_id)
+  )
+$function$
+;
+
+CREATE FUNCTION public._old_radar_wave1_exhausted(p_shift uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select not exists (
+    select 1 from _old_auto_assign_candidates(p_shift) c
+     where c.gate is null and c.qualified and c.booking_status is null
+  )
+$function$
+;
+
+CREATE FUNCTION public._old_staff_open_offers(p_offer uuid DEFAULT NULL::uuid)
+ RETURNS TABLE(offer_id uuid, shift_id uuid, event_id uuid, event_title text, event_date date, role text, starts_at timestamp with time zone, ends_at timestamp with time zone, pay_rate numeric, dress_code text, venue_name text, venue_address text, distance_km numeric, expires_at timestamp with time zone, qualified boolean, venue_lat double precision, venue_lng double precision, geofence_radius_m integer, home_lat double precision, home_lng double precision)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  -- offerVisibleTo() in packages/domain: open, not expired, never the
+  -- worker's own, never an office cover request, a direct offer only to
+  -- its one colleague, and a pool offer to wave 1 at once and to everyone
+  -- else once wave 1 is exhausted. A gated worker never sees it; the
+  -- calendar is not a gate here. The offerer is never returned.
+  with me as (select staff_caller(null) as id),
+       direct as (select coalesce((select s.value = 'true'::jsonb from settings s
+                                    where s.key = 'shift_offers_direct_enabled'), false) as on_)
+  select
+    o.id, sr.id, ev.id, ev.title, ev.event_date, r.name, sr.starts_at, sr.ends_at,
+    effective_pay_rate(me.id, sr.pay_rate), sr.dress_code, ev.venue_name, ev.venue_address,
+    round((st_distance(st.home_location, ev.venue_location) / 1000.0)::numeric, 1),
+    o.expires_at, c.qualified,
+    st_y(ev.venue_location::geometry), st_x(ev.venue_location::geometry), ev.geofence_radius_m,
+    st_y(st.home_location::geometry), st_x(st.home_location::geometry)
+  from me
+    cross join direct
+    join staff st              on st.id = me.id
+    join shift_offers o        on o.status = 'open'
+                              and o.expires_at > now()
+                              and o.offered_by_staff_id <> me.id
+                              and (p_offer is null or o.id = p_offer)
+                              and (o.mode = 'pool'
+                                   or (o.mode = 'direct' and direct.on_ and o.target_staff_id = me.id))
+    join bookings ob           on ob.id = o.booking_id and ob.status = 'confirmed'
+    join shift_requirements sr on sr.id = o.shift_id and sr.starts_at > now()
+    join events ev             on ev.id = sr.event_id and ev.cancelled_at is null
+    join roles r               on r.id = sr.role_id
+    cross join lateral (
+      select a.gate, a.qualified, a.booking_status
+        from _old_auto_assign_worker_gate(sr.id, me.id) a
+    ) c
+  where c.gate is null
+    and (c.booking_status is null or c.booking_status in ('invited', 'applied', 'closed'))
+    and (c.qualified or o.mode = 'direct' or _old_offer_wave1_exhausted(o.id))
+  order by c.qualified desc,
+           round((st_distance(st.home_location, ev.venue_location) / 1000.0)::numeric, 1),
+           sr.starts_at
+$function$
+;
+
+revoke execute on function public._old_staff_open_shifts(uuid, uuid) from public, anon;
+grant  execute on function public._old_staff_open_shifts(uuid, uuid) to authenticated;
+revoke execute on function public._old_staff_open_offers(uuid) from public, anon;
+grant  execute on function public._old_staff_open_offers(uuid) to authenticated;
