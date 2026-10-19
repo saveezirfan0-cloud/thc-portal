@@ -22,11 +22,12 @@
  *                                      the Client Portal use neither.
  *   Strict-Transport-Security          production only: `next dev` is http.
  *
- * NO `script-src`. The App Router writes inline <script> tags on every page
- * (the RSC payload) and the appearance script (`packages/ui`
- * `AppearanceScript`) runs inline before paint; a script-src without
- * 'unsafe-inline' needs a per-request nonce, which makes every page dynamic.
- * Until that is decided the CSP carries the directives that cost nothing.
+ * NO `script-src` HERE. The App Router writes inline <script> tags on every
+ * page (the RSC payload) and the appearance script (`packages/ui`
+ * `AppearanceScript`) runs inline before paint, so a script policy needs a
+ * per-request nonce: the Back Office and Staff App middleware send one,
+ * report-only for now (`csp.ts`, ADR-0164). This static CSP carries the
+ * directives that cost nothing, and stays ENFORCED beside it.
  *
  * Pure: `next.config.ts` imports it at build time.
  */

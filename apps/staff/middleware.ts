@@ -10,6 +10,13 @@ import {
   isTransientAuthFailure,
   withSessionPersistence,
 } from '@thc/db';
+import {
+  CSP_HEADER,
+  CSP_REPORT_PATH,
+  NONCE_HEADER,
+  contentSecurityPolicy,
+  createNonce,
+} from '@thc/db/csp';
 import { createSessionCheckCache, sessionKey } from './app/login/session-check';
 
 /**
@@ -75,7 +82,29 @@ const SIGN_OUT_PATH = '/auth/signout';
  */
 const sessionChecks = createSessionCheckCache();
 
+/**
+ * Every response carries the per-request script policy (ADR-0164, audit
+ * M2), as the Back Office's: a fresh nonce, on the REQUEST headers too,
+ * which is where Next.js reads it for the inline scripts it renders.
+ * Report-only for now (`CSP_HEADER`, packages/db/src/csp.ts). sw.js and the
+ * static files are outside the matcher, so the service worker is unaffected.
+ */
 export async function middleware(request: NextRequest) {
+  const nonce = createNonce();
+  const csp = contentSecurityPolicy({
+    app: 'staff',
+    nonce,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    dev: process.env.NODE_ENV === 'development',
+  });
+  request.headers.set(CSP_HEADER, csp);
+  request.headers.set(NONCE_HEADER, nonce);
+  const response = await gate(request);
+  response.headers.set(CSP_HEADER, csp);
+  return response;
+}
+
+async function gate(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -106,6 +135,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (request.nextUrl.pathname === SIGN_OUT_PATH && request.method === 'POST') {
+    return response;
+  }
+  // Violation reports come with no session (from /login, /apply too) and a
+  // browser never follows a redirect for one. Logged only (ADR-0164).
+  if (request.nextUrl.pathname === CSP_REPORT_PATH && request.method === 'POST') {
     return response;
   }
 

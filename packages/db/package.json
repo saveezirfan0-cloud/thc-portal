@@ -16,6 +16,7 @@
     "./recovery": "./src/recovery.ts",
     "./auth-throttle": "./src/auth-throttle.ts",
     "./security-headers": "./src/security-headers.ts",
+    "./csp": "./src/csp.ts",
     "./paged": "./src/paged.ts"
   },
   "scripts": {
