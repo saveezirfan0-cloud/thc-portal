@@ -17,6 +17,9 @@
 --     OC4 instead: the same rung by email, to staff.email, with that link.
 --     With a device, or without a usable link, or without an email, it is
 --     the OC3 push as before (and the board's amber line still says so).
+--     The address must be the one the candidate signs in with (their
+--     login's, as OC2 and link_staff_account() require), so an office edit
+--     to staff.email never sends their onboarding to somebody else.
 --   · One ladder, one key. OC4 is queued under OC3's key,
 --     `OC3:staff:<id>:<epoch>:<n>`, so a rung is one reminder by exactly
 --     one channel (the unique key holds it), turning notifications on or
@@ -24,9 +27,12 @@
 --     it again. The cadence, window, variants and who is chased do not
 --     change.
 --   · onboarding_chaser_candidates() reads both templates on that ladder
---     and returns `last_channel`, the channel of the latest rung;
---     onboarding_chaser_state() passes it to the board, which says
---     "App reminder 2 emailed 20 Oct" for an OC4. Both are dropped and
+--     and returns `last_channel`, the channel of the latest rung, and
+--     `last_switched_off`, a latest rung the drain settled because its
+--     code is switched off in Settings; onboarding_chaser_state() passes
+--     both to the board, which says "App reminder 2 emailed (notifications
+--     aren't on) 20 Oct" for an OC4, and "switched off in Settings" rather
+--     than "the email bounced" for a switched-off one. Both are dropped and
 --     recreated (a new output column), with their grants restated.
 --   · notification_priorities(): OC4 is bulk, like OC3.
 --
@@ -60,7 +66,8 @@ returns table (
   due_rung     integer,      -- the rung to queue now, or null
   next_due_at  timestamptz,  -- when the next reminder falls due
   last_failed  boolean,      -- the latest rung could not be delivered (no push subscription, a bounce)
-  last_channel text          -- the latest rung's channel: email | push (OC4 is OC3 by email)
+  last_channel text,         -- the latest rung's channel: email | push (OC4 is OC3 by email)
+  last_switched_off boolean  -- the latest rung was not sent because its code is off in Settings
 )
 language sql
 stable
@@ -189,13 +196,16 @@ as $$
            coalesce(r.rungs_sent, 0) as rungs_sent,
            r.last_sent_at,
            coalesce(r.last_failed, false) as last_failed,
-           r.last_channel
+           r.last_channel,
+           coalesce(r.last_switched_off, false) as last_switched_off
       from tracked t
       left join lateral (
         select (o.payload ->> 'rung')::int          as rungs_sent,
                (o.payload ->> 'at')::timestamptz    as last_sent_at,
                o.failed_at is not null              as last_failed,
-               o.channel::text                      as last_channel
+               o.channel::text                      as last_channel,
+               -- claim_outbox_batch()'s own words for a switched-off code.
+               coalesce(o.error like 'Not sent: switched off%', false) as last_switched_off
           from notification_outbox o
          -- ADR-0169: OC3's ladder holds its pushes and the OC4 emails sent
          -- in their place, under the same keys.
@@ -225,12 +235,13 @@ as $$
               then t.rungs_sent + 1 end,
          t.next_due_at,
          t.last_failed,
-         t.last_channel
+         t.last_channel,
+         t.last_switched_off
     from timed t;
 $$;
 
 comment on function public.onboarding_chaser_candidates(timestamptz) is
-  'ADR-0071: one row per candidate whose next onboarding move is their own (OC1 interview, OC2 activation, OC3 wizard step), with the reminders sent since their last progress, the rung due now and the latest rung''s delivery (last_failed) and channel (last_channel; an OC4 on OC3''s ladder is its email, ADR-0169). Internal: read by onboarding_chasers() and onboarding_chaser_state().';
+  'ADR-0071: one row per candidate whose next onboarding move is their own (OC1 interview, OC2 activation, OC3 wizard step), with the reminders sent since their last progress, the rung due now and the latest rung''s delivery (last_failed) and channel (last_channel; an OC4 on OC3''s ladder is its email, ADR-0169; last_switched_off when its code is off in Settings). Internal: read by onboarding_chasers() and onboarding_chaser_state().';
 
 revoke all on function public.onboarding_chaser_candidates(timestamptz) from public, anon, authenticated;
 
@@ -245,7 +256,8 @@ returns table (
   next_due_at  timestamptz,
   stalled      boolean,
   last_failed  boolean,
-  last_channel text
+  last_channel text,
+  last_switched_off boolean
 )
 language plpgsql
 stable
@@ -261,12 +273,13 @@ begin
            c.next_due_at,
            c.rungs_sent >= (onboarding_chaser_config() ->> 'stalled_after')::int,
            c.last_failed,
-           c.last_channel
+           c.last_channel,
+           c.last_switched_off
       from onboarding_chaser_candidates(p_now) c;
 end $$;
 
 comment on function public.onboarding_chaser_state(timestamptz) is
-  'ADR-0071, the onboarding board: per candidate waiting on themselves, the reminders sent since their last progress, when the next is due, stalled (settings.onboarding_chasers.stalled_after sent, still no progress — phone them; the reminders carry on), last_failed (the latest could not be delivered — notifications off, a bounce) and last_channel (email or push; ADR-0169 emails the app reminder to a candidate with notifications off). Back Office only.';
+  'ADR-0071, the onboarding board: per candidate waiting on themselves, the reminders sent since their last progress, when the next is due, stalled (settings.onboarding_chasers.stalled_after sent, still no progress — phone them; the reminders carry on), last_failed (the latest could not be delivered — notifications off, a bounce) last_channel (email or push; ADR-0169 emails the app reminder to a candidate with notifications off) and last_switched_off (not sent because the code is off in Settings). Back Office only.';
 
 revoke all on function public.onboarding_chaser_state(timestamptz) from public, anon;
 grant execute on function public.onboarding_chaser_state(timestamptz) to authenticated;
@@ -320,9 +333,12 @@ begin
              and v_app is not null
              and coalesce(btrim(s.email), '') <> ''
              and not exists (select 1 from push_subscriptions ps where ps.staff_id = c.staff_id)
+             -- The address they sign in with, and no other.
+             and lower(btrim(coalesce(u.email, ''))) = lower(btrim(s.email))
              as by_email
       from onboarding_chaser_candidates(p_now) c
       join staff s on s.id = c.staff_id
+      left join auth.users u on u.id = s.user_id
      where c.due_rung is not null;
 
   -- Existing staff read that the interview is part of moving onto the new
@@ -395,6 +411,11 @@ comment on function public.onboarding_chasers(timestamptz, text) is
 
 revoke all on function public.onboarding_chasers(timestamptz, text) from public, anon, authenticated;
 grant execute on function public.onboarding_chasers(timestamptz, text) to service_role;
+
+-- The job's note (20261013160000) names the new half.
+update job_schedules
+   set note = 'ADR-0071 onboarding chasers: OC1/OC2 emails before sign-up, OC3 pushes after (OC4 the same reminder by email to a candidate with notifications off, ADR-0169), daily while there is no progress, never stopping; and ADR-0122 IR1, the daily reminder to THC invite-list rows not yet applied. Hourly; both queue only between their settings'' from/until (UK).'
+ where job = 'onboarding-chasers';
 
 -- ---------------------------------------------------------------------
 -- 3 · OC4 is bulk, like OC3 (ADR-0158; priorityValuesSql())

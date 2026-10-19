@@ -9899,6 +9899,7 @@ export type Database = {
           epoch: number;
           last_channel: string;
           last_failed: boolean;
+          last_switched_off: boolean;
           last_sent_at: string;
           next_due_at: string;
           progress_at: string;
@@ -9916,6 +9917,7 @@ export type Database = {
         Returns: {
           last_channel: string;
           last_failed: boolean;
+          last_switched_off: boolean;
           last_sent_at: string;
           next_due_at: string;
           progress_at: string;

@@ -381,6 +381,9 @@ function chaserChannel(state: ChaserState): string {
 }
 
 function chaserUndelivered(state: ChaserState): string {
+  // The drain fails a row whose code is off on /settings: that is not a
+  // bad address or a phone, and the office should not chase either.
+  if (state.last_switched_off) return 'switched off in Settings';
   return state.track === 'app' && state.last_channel === 'email'
     ? 'the email bounced'
     : CHASER_UNDELIVERED[state.track];

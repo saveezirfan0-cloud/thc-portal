@@ -169,6 +169,8 @@ export interface ChaserState {
    * before that migration, or before the first reminder.
    */
   last_channel?: 'email' | 'push' | null;
+  /** The latest was not sent because its code is switched off on /settings (20261021120000). */
+  last_switched_off?: boolean;
 }
 
 /**

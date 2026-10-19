@@ -13,30 +13,36 @@
 --   E. OC4 is bulk, like OC3.
 -- =====================================================================
 begin;
-select plan(19);
+select plan(24);
 \ir _shared/fixtures.psql
 
 \set c_off  '90000000-0000-4000-8000-000000000001'
 \set c_on   '90000000-0000-4000-8000-000000000002'
+\set c_mis  '90000000-0000-4000-8000-000000000003'
 \set u_off  '90000000-0000-4000-8000-0000000000a1'
 \set u_on   '90000000-0000-4000-8000-0000000000a2'
+\set u_mis  '90000000-0000-4000-8000-0000000000a3'
 \set t0     '2026-09-01 11:00+01'
 \set app    'https://staff.test/onboarding'
 
 insert into auth.users (id, email, raw_app_meta_data, encrypted_password, email_confirmed_at) values
   (:'u_off', 'olive@oc4.test', '{"role":"staff"}', '$2a$10$hash', :'t0'),
-  (:'u_on',  'owen@oc4.test',  '{"role":"staff"}', '$2a$10$hash', :'t0');
+  (:'u_on',  'owen@oc4.test',  '{"role":"staff"}', '$2a$10$hash', :'t0'),
+  -- Mia signs in as mia@; the office has since typed another address.
+  (:'u_mis', 'mia@oc4.test',   '{"role":"staff"}', '$2a$10$hash', :'t0');
 
 insert into staff (id, user_id, first_name, last_name, email, phone, dob, status) values
   (:'c_off', :'u_off', 'Olive', 'Off', 'olive@oc4.test', '+447700990001', date '2001-02-01', 'documents'),
-  (:'c_on',  :'u_on',  'Owen',  'On',  'owen@oc4.test',  '+447700990002', date '2001-02-02', 'documents');
+  (:'c_on',  :'u_on',  'Owen',  'On',  'owen@oc4.test',  '+447700990002', date '2001-02-02', 'documents'),
+  (:'c_mis', :'u_mis', 'Mia',   'Mis', 'someone.else@oc4.test', '+447700990003', date '2001-02-03', 'documents');
 update staff set stage_entered_at = :'t0', onboarding_started_at = :'t0'::timestamptz - interval '10 days'
  where id::text like '90000000-%';
 
 -- Both signed up, right to work done, the home address next.
 insert into onboarding_progress (staff_id, rtw_at, updated_at) values
   (:'c_off', :'t0', :'t0'),
-  (:'c_on',  :'t0', :'t0');
+  (:'c_on',  :'t0', :'t0'),
+  (:'c_mis', :'t0', :'t0');
 
 -- Owen turned notifications on; Olive never did.
 insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
@@ -56,6 +62,12 @@ select is((select count(*)::int from pg_proc where proname = 'onboarding_chasers
 -- =====================================================================
 -- B · day one, with a link that is not the onboarding page
 -- =====================================================================
+create temporary table r0 as select onboarding_chasers('2026-09-02 11:00+01') as r;
+select is((select array[template, channel::text] from notification_outbox
+            where key like 'OC3:staff:' || :'c_off' || ':%:1'),
+  array['OC3', 'push'],
+  'no link at all (the Edge Function without STAFF_APP_URL): the OC3 push, as before');
+delete from notification_outbox where key like 'OC3:staff:90000000-%';
 create temporary table r1 as
   select onboarding_chasers('2026-09-02 12:00+01', 'https://evil.test/phish') as r;
 select is((select array[template, channel::text] from notification_outbox
@@ -79,7 +91,11 @@ select is((select array[template, channel::text, payload ->> 'variant'] from not
             where key like 'OC3:staff:' || :'c_on' || ':%:2'),
   array['OC3', 'push', 'second'],
   'a device with notifications on: the push, as before');
-select is((select array[(r ->> 'oc3')::int, (r ->> 'oc4')::int] from r2), array[1, 1],
+select is((select array[template, channel::text] from notification_outbox
+            where key like 'OC3:staff:' || :'c_mis' || ':%:2'),
+  array['OC3', 'push'],
+  'staff.email is not the address they sign in with: never emailed, the push as before');
+select is((select array[(r ->> 'oc3')::int, (r ->> 'oc4')::int] from r2), array[2, 1],
   'the job counts the pushes and the emails apart');
 
 create temporary table r2b as select onboarding_chasers('2026-09-03 12:00+01', :'app') as r;
@@ -109,6 +125,16 @@ set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111",
 select is((select array[last_channel, last_failed::text]
              from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_off'),
   array['email', 'true'], 'an email that failed shows as undelivered');
+select is((select last_switched_off from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_off'),
+  false, 'a bounce is not a switch');
+reset role;
+
+update notification_outbox set error = 'Not sent: switched off in Settings'
+ where key like 'OC3:staff:' || :'c_off' || ':%:2';
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is((select last_switched_off from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_off'),
+  true, 'one the drain settled because OC4 is off in Settings says so');
 reset role;
 
 -- =====================================================================
@@ -147,6 +173,8 @@ select is(notification_priority('OC4'), 2::smallint, 'OC4 is bulk in the mapping
 select is((select priority from notification_outbox where key like 'OC3:staff:' || :'c_off' || ':%:1'),
   2::smallint, 'and its rows are claimed as bulk');
 select is(notification_priority('OC3'), 2::smallint, 'OC3 is unchanged');
+select ok((select note from job_schedules where job = 'onboarding-chasers') like '%OC4%',
+  'the job''s note names OC4');
 
 select * from finish();
 rollback;

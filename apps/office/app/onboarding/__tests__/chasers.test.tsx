@@ -104,6 +104,11 @@ describe('chaserLine()', () => {
     ).toBe(
       'Stalled — 3 reminders, no progress (last 22 Sep, the last undelivered — the email bounced). Phone them.',
     );
+    // Switched off on /settings is said as that, not as a bounce.
+    expect(
+      chaserLine(state({ last_channel: 'email', last_failed: true, last_switched_off: true }))
+        ?.text,
+    ).toBe('App reminder 1 not delivered 22 Sep — switched off in Settings. Phone them.');
     // A push is still "pushed", and the email tracks are unchanged.
     expect(chaserLine(state({ last_channel: 'push' }))?.text).toBe(
       'App reminder 1 pushed 22 Sep · next 25 Sep',

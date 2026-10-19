@@ -166,6 +166,7 @@ describe('notification register (§8)', () => {
       'OF6',
     ]);
     expect([...MESSAGE_CODES]).toEqual(MESSAGE_PUSH_CODES);
+    expect([...CHASER_CODES]).toEqual(['OC1', 'OC2', 'OC3', 'OC4']);
     expect([...CHASER_CODES].sort()).toEqual([...CHASER_EMAIL_CODES, ...CHASER_PUSH_CODES].sort());
     expect([...INVITE_CODES]).toEqual(INVITE_EMAIL_CODES);
     expect([...CLIENT_REQUIREMENT_CODES]).toEqual([
