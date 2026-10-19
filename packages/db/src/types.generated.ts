@@ -10349,6 +10349,10 @@ export type Database = {
         Args: { p_id: string; p_whole_series?: boolean };
         Returns: Json;
       };
+      remove_shift_sections: {
+        Args: { p_event: string; p_shifts: string[] };
+        Returns: Json;
+      };
       remove_staff_role: {
         Args: { p_role: string; p_staff: string };
         Returns: Json;

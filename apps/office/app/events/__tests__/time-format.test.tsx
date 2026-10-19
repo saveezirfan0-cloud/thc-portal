@@ -51,6 +51,7 @@ function builder(format: TimeFormat, initial: EventDraft = DRAFT): string {
         saved={null}
         confirmed={{}}
         booked={{}}
+        held={{}}
         locked={false}
         ratesVisible
         save={async () => ({ error: 'unused' })}
@@ -127,6 +128,7 @@ describe('Shift Builder times (§3.2, §1.8, ADR-0085)', () => {
           saved={null}
           confirmed={{}}
           booked={{}}
+          held={{}}
           locked
           ratesVisible
           save={async () => ({ error: 'unused' })}
@@ -159,6 +161,7 @@ describe('a role section (§3.5)', () => {
           client={undefined}
           confirmed={2}
           booked={2}
+          held={2}
           changed={new Set(['starts_at', 'ends_at'])}
           original={original}
           locked={locked}

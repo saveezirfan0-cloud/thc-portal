@@ -213,16 +213,17 @@ describe('editing is locked once the event has started (§3.2)', () => {
   });
 });
 
-describe('a section with people on it is never removed here (§3.2, §3.6)', () => {
+describe('a section with people confirmed on it is never removed here (§3.2, §3.6)', () => {
   // bookings.shift_id cascades on delete: removing the section would wipe the
-  // invitations and confirmations with it, which is not a transition §3.6 has.
-  it('refuses a saved section that still has bookings', () => {
+  // confirmations with it, which is not a transition §3.6 has. The map is
+  // confirmed-or-worked per section (`held`), never pending offers.
+  it('refuses a saved section that still has someone confirmed', () => {
     const saved = role({ id: 'sec-waiting' });
     expect(canRemoveRole(saved, { 'sec-waiting': 9 })).toBe(false);
     expect(canRemoveRole(saved, { 'sec-waiting': 1 })).toBe(false);
   });
 
-  it('allows one nobody is on', () => {
+  it('allows one nobody is confirmed on — pending applications close on save (ADR-0160)', () => {
     expect(canRemoveRole(role({ id: 'sec-waiting' }), { 'sec-waiting': 0 })).toBe(true);
     expect(canRemoveRole(role({ id: 'sec-waiting' }), {})).toBe(true);
   });
@@ -330,6 +331,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         allocationPerHour: 3,
         confirmed: 2,
         booked: 2,
+        held: 2,
       },
       {
         id: 'sec-waiting',
@@ -347,6 +349,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         allocationPerHour: 14,
         confirmed: 9,
         booked: 13,
+        held: 13,
       },
     ],
   };

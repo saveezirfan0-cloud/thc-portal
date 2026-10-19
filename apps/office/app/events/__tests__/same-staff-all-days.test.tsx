@@ -163,6 +163,7 @@ const saved = (over: Partial<SavedEvent> = {}): SavedEvent => ({
       allocationPerHour: 7,
       confirmed: 0,
       booked: 0,
+      held: 0,
     },
   ],
   ...over,
@@ -233,6 +234,7 @@ describe('the switch on a role section', () => {
           client={undefined}
           confirmed={0}
           booked={0}
+          held={0}
           changed={new Set()}
           original={role}
           locked={false}

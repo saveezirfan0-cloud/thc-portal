@@ -115,6 +115,7 @@ export default async function Page({
           saved={null}
           confirmed={{}}
           booked={{}}
+          held={{}}
           locked={false}
           ratesVisible={ratesVisible}
           save={createEvent}

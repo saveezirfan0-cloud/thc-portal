@@ -43,6 +43,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const confirmed = Object.fromEntries(event.sections.map((s) => [s.id, s.confirmed]));
   const booked = Object.fromEntries(event.sections.map((s) => [s.id, s.booked]));
+  const held = Object.fromEntries(event.sections.map((s) => [s.id, s.held]));
 
   return (
     <OfficeShell
@@ -62,6 +63,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         saved={event}
         confirmed={confirmed}
         booked={booked}
+        held={held}
         locked={locked}
         ratesVisible={ratesVisible}
         save={updateEvent}
