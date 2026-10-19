@@ -31,7 +31,8 @@ Deno.serve((request) =>
       p_now: new Date().toISOString(),
     });
     if (gateError) throw new Error(`compliance_daily_due: ${gateError.message}`);
-    if (!due) return { skipped: "not the 05:00 UK window, and today's sweep has already run" };
+    // The key is what compliance_daily_due() reads: a skipped tick is not a sweep.
+    if (!due) return { skipped: "before 05:00 UK, or today's sweep has already run" };
 
     const { data, error } = await db.rpc('compliance_daily');
     if (error) throw new Error(`compliance_daily: ${error.message}`);

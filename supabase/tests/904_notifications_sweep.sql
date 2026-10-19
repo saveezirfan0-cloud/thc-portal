@@ -17,9 +17,12 @@
 --   3. N10 keyed per application (20261021040100): an application accepted,
 --      withdrawn by the office, applied for again on the same booking row
 --      and accepted again is told "You're booked!" again.
+--   4. The daily compliance sweep (N1–N4, N14) is due at 05:00 UK, not at
+--      the first tick after midnight; a missed window is still healed after
+--      05:00, and a "skipped" tick is not a sweep (20261021040200).
 -- =====================================================================
 begin;
-select plan(36);
+select plan(41);
 \ir _shared/fixtures.psql
 
 \set ev    '90400000-0000-4000-8000-000000000001'
@@ -181,6 +184,24 @@ select is((select count(*)::int from notification_outbox where template = 'N10' 
 select is((select count(distinct key)::int from notification_outbox where template = 'N10' and recipient_staff_id = :'r1'
             and key like 'N10:booking:' || :'b_r' || ':%'), 2,
   'each keyed N10:booking:<id>:<applied_at>');
+
+-- ---------------------------------------------------------------------
+-- 4 · The compliance sweep at 05:00 UK (GMT here: 05:00 UK is 05:00Z)
+-- ---------------------------------------------------------------------
+insert into job_runs (job, started_at, finished_at, ok, counts) values
+  ('compliance-daily', '2026-11-03 05:00+00', '2026-11-03 05:01+00', true, '{"n1": 0, "n14": 0}');
+select is(compliance_daily_due('2026-11-04 00:00:30+00'), false,
+  'just after midnight UK the sweep is not due (every day used to sweep, and push N1–N4/N14, here)');
+select is(compliance_daily_due('2026-11-04 04:55+00'), false, '… nor at 04:55');
+select is(compliance_daily_due('2026-11-04 05:00+00'), true, 'it is due in the 05:00 window');
+insert into job_runs (job, started_at, finished_at, ok, counts) values
+  ('compliance-daily', '2026-11-04 01:00+00', '2026-11-04 01:00:01+00', true,
+   '{"skipped": "not the 05:00 UK window, and today''s sweep has already run"}');
+select is(compliance_daily_due('2026-11-04 09:00+00'), true,
+  'a missed window is healed after 05:00: the skipped ticks before it are not today''s sweep');
+insert into job_runs (job, started_at, finished_at, ok, counts) values
+  ('compliance-daily', '2026-11-04 09:00+00', '2026-11-04 09:01+00', true, '{"n1": 2, "n14": 0}');
+select is(compliance_daily_due('2026-11-04 09:05+00'), false, 'once it has swept, not again that day');
 
 select * from finish();
 rollback;
