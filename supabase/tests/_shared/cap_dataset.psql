@@ -1,6 +1,6 @@
 -- =====================================================================
 -- A generated population for the RULE-20 equivalence tests and the
--- scripts/bench timings (20261018130000 .. 20261018130200, ADR-0153).
+-- scripts/bench timings (20261019130000 .. 20261019130200, ADR-0155).
 --
 -- Included with \ir after _shared/fixtures.psql (it reuses its client,
 -- role, venue and admin). Every row is created inside the caller's

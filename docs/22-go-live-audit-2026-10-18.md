@@ -38,14 +38,14 @@ Full reports (not committed; scratch): `audit-db.md`, `audit-office.md`, `audit-
 
 | Area | Change | ADR |
 |---|---|---|
-| Radar + pool | `auto_assign_candidates_pool` computes history once per call; Radar prefilters sections and stops RULE-17 at the first qualified worker; `staff_open_shifts(p_staff, p_shift)` for `/radar/[id]`. Board per section 3.1 s → 0.20 s; rounds 1.3 s → 0.12 s; Radar worst case 69 s → 1.3 s (local, 1,000 workers / 600 sections) | 0154 |
-| RULE-20 helpers | Pure helpers inline; table readers keep a plan per session. `weekly_cap_would_breach` 4.8 → 0.6 ms; `staff_bookings()` 590 → 12 ms; onboarding board 294 → 104 ms | 0153 |
-| Booking races | Every path to `confirmed` locks the worker first (worker → section → booking); a double-tapped Accept answers success; one open violation of each once-only kind per booking; check-in lock is `FOR NO KEY UPDATE`; `booking_tick` reads a bounded window (570–960 ms → 60 ms at 100k bookings) | 0155 |
-| Notifications | The drain records each row as it lands, has a time budget, sends six at a time; urgent register codes are claimed first | 0156 |
-| Housekeeping | `cron.job_run_details` kept 7 days; idle per-minute `job_runs` pruned; 30 s pg_net timeout; two jobs staggered; four read indexes; server reads time out at 10 s, never writes | 0152 |
-| Back Office | Every report, export, directory, Radar and board read pages past 1,000 rows and errors instead of returning short; `/events` fill counts from `office_event_sections()`; auto-staffing catches per section; timeouts read as a sentence | 0151 |
-| Staff App | `lhr1`; `/shifts` skips Radar; pings don't re-render; live location + Refresh location; presses never hang; `cache()` dedupe; middleware `getClaims()` + once-a-minute check; ~150 s refresh; push saved on change | 0150 |
-| Middleware (both) | Bounded Supabase calls; a GoTrue outage is never cached as a sign-out (Office below aal2 answers a retryable 503) | 0152 |
+| Radar + pool | `auto_assign_candidates_pool` computes history once per call; Radar prefilters sections and stops RULE-17 at the first qualified worker; `staff_open_shifts(p_staff, p_shift)` for `/radar/[id]`. Board per section 3.1 s → 0.20 s; rounds 1.3 s → 0.12 s; Radar worst case 69 s → 1.3 s (local, 1,000 workers / 600 sections) | 0156 |
+| RULE-20 helpers | Pure helpers inline; table readers keep a plan per session. `weekly_cap_would_breach` 4.8 → 0.6 ms; `staff_bookings()` 590 → 12 ms; onboarding board 294 → 104 ms | 0155 |
+| Booking races | Every path to `confirmed` locks the worker first (worker → section → booking); a double-tapped Accept answers success; one open violation of each once-only kind per booking; check-in lock is `FOR NO KEY UPDATE`; `booking_tick` reads a bounded window (570–960 ms → 60 ms at 100k bookings) | 0157 |
+| Notifications | The drain records each row as it lands, has a time budget, sends six at a time; urgent register codes are claimed first | 0158 |
+| Housekeeping | `cron.job_run_details` kept 7 days; idle per-minute `job_runs` pruned; 30 s pg_net timeout; two jobs staggered; four read indexes; server reads time out at 10 s, never writes | 0154 |
+| Back Office | Every report, export, directory, Radar and board read pages past 1,000 rows and errors instead of returning short; `/events` fill counts from `office_event_sections()`; auto-staffing catches per section; timeouts read as a sentence | — |
+| Staff App | `lhr1`; `/shifts` skips Radar; pings don't re-render; live location + Refresh location; presses never hang; `cache()` dedupe; middleware `getClaims()` + once-a-minute check; ~150 s refresh; push saved on change | 0152 |
+| Middleware (both) | Bounded Supabase calls; a GoTrue outage is never cached as a sign-out (Office below aal2 answers a retryable 503) | 0154 |
 | Tests | Fixtures in 120, 444, 731, 753 and 859 use the UK date; they failed for an hour every night | — |
 
 Verified on the merged branch: all 301 migrations applied in order to an empty database; pgTAP
@@ -92,5 +92,5 @@ comment-only `·`/`-` difference in `auto_assign_candidates`, which no pattern t
   offer is the next hotspot (~0.13 s each).
 - Security, medium: a signed-in phone can read its own bank and NI columns straight from PostgREST;
   no script CSP; office sessions have no server-side lifetime; Willo webhook token is replayable.
-- `notification_outbox` and `location_pings` have no retention yet (proposals in ADR-0152).
+- `notification_outbox` and `location_pings` have no retention yet (proposals in ADR-0154).
 - Library bumps (`@supabase/ssr` 0.12 changes cookie handling) after go-live, with an e2e run.

@@ -46,7 +46,7 @@ export interface BookingRow extends StaffBooking {
   /**
    * RULE-20, read live for the week this SECTION falls in (§10.4, §4.4).
    * Computed for an invitation or a booking still to end; on the history
-   * behind them the three cap columns are null (ADR-0153), so `false` here.
+   * behind them the three cap columns are null (ADR-0155), so `false` here.
    */
   hoursLimit: boolean;
   weekStart: string | null;
@@ -337,7 +337,7 @@ export async function findBooking(bookingId: string): Promise<Found<BookingRow>>
 
 /**
  * One Radar card for `/radar/[id]`. `staff_open_shifts(p_shift)` is the same
- * list narrowed to one section in SQL (20261018140100, ADR-0154), so the
+ * list narrowed to one section in SQL (20261019140100, ADR-0156), so the
  * detail page no longer reads every open section to show one. A section the
  * worker cannot see comes back as no row — "not found", not a failure.
  */

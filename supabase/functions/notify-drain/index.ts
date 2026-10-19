@@ -9,7 +9,7 @@
  *      the next minute without a deploy (§9.12);
  *   2. hands drainRun() in packages/notifications an OutboxStore over three
  *      RPCs, and drainRun claims in small batches with claim_outbox_batch()
- *      — urgent codes first, oldest first within a class (ADR-0156), a
+ *      — urgent codes first, oldest first within a class (ADR-0158), a
  *      5-minute lease and `for update skip locked`, so two overlapping runs
  *      never hold the same row (supabase/tests/110, 470, 856);
  *   3. drainRun sends a few rows at a time — Web Push over VAPID, email

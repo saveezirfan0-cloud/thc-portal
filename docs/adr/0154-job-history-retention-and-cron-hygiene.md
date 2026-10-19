@@ -1,9 +1,9 @@
-# ADR-0152 · Job history retention, cron call hygiene and server request timeouts
+# ADR-0154 · Job history retention, cron call hygiene and server request timeouts
 
 Status: accepted · 18.10.2026 · **Amends** ADR-0025 (`job_runs_purge`)
 
-Scope v1.6 §7 · `supabase/migrations/20261018120000_job_history_retention.sql` ·
-`20261018120100_cron_http_timeout_and_stagger.sql` · `20261018120200_go_live_read_indexes.sql` ·
+Scope v1.6 §7 · `supabase/migrations/20261019120000_job_history_retention.sql` ·
+`20261019120100_cron_http_timeout_and_stagger.sql` · `20261019120200_go_live_read_indexes.sql` ·
 `packages/db/src/request-timeout.ts`
 
 ## Context

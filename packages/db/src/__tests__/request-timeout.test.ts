@@ -11,7 +11,7 @@ import {
 } from '../request-timeout';
 
 /**
- * ADR-0152: reads to PostgREST / GoTrue are bounded; writes and RPCs over
+ * ADR-0154: reads to PostgREST / GoTrue are bounded; writes and RPCs over
  * POST are not unless the caller names the RPC as read-only.
  */
 const BASE = 'https://abcdefghij.supabase.co';

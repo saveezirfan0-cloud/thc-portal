@@ -31,7 +31,7 @@ export const CHECK_IN_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Go-live audit B5 / ADR-0150: a press that got no answer at all (no
+ * Go-live audit B5 / ADR-0152: a press that got no answer at all (no
  * signal, a gateway timeout). Pressing again is safe — every shift-screen
  * RPC answers a repeat with "already done" and records nothing twice.
  */

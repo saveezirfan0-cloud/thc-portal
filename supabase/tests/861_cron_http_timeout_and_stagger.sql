@@ -1,13 +1,13 @@
 -- =====================================================================
--- 850 · pg_cron's HTTP calls: 30 s timeout, staggered minutes
---   20261018120100_cron_http_timeout_and_stagger.sql · ADR-0152
+-- 861 · pg_cron's HTTP calls: 30 s timeout, staggered minutes
+--   20261019120100_cron_http_timeout_and_stagger.sql · ADR-0154
 --
 -- Pins the registry's minutes — the three the scope fixes (§3.5 12:05
 -- cutoff, §7 05:00 compliance, §9.9 Monday 09:00 finance) are still on
 -- the */5 grid, and only gdpr-purge and escalation moved — and that every
 -- command install_job_schedules() writes passes timeout_milliseconds and
 -- still reads its base and bearer at run time. The reinstall also brings
--- back the SQL housekeeping jobs (849).
+-- back the SQL housekeeping jobs (860).
 -- =====================================================================
 begin;
 select plan(9);

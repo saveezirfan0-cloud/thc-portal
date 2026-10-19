@@ -17,7 +17,7 @@ import type { Database } from './types.generated';
  */
 export interface AdminClientOptions {
   /**
-   * Request timeouts (ADR-0152, packages/db/src/request-timeout.ts). Left
+   * Request timeouts (ADR-0154, packages/db/src/request-timeout.ts). Left
    * out, PostgREST and GoTrue reads (GET/HEAD) are aborted after 10 s;
    * writes, RPCs over POST, Storage and Functions are never aborted unless
    * an RPC is listed in `readOnlyRpcs`. `false` turns timeouts off.

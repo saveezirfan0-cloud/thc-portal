@@ -752,7 +752,7 @@ select public.install_job_schedules();   -- returns 10; 12 once the office vault
 It is idempotent: it unschedules every registered job and re-schedules the
 enabled ones. Re-run it after any migration that changes `job_schedules`.
 It also reinstalls the two SQL housekeeping jobs, `cron-history-purge` and
-`job-runs-purge` (ADR-0152), which are not counted in the number it returns, so
+`job-runs-purge` (ADR-0154), which are not counted in the number it returns, so
 `cron.job` lists two more rows than that number. Their migration schedules them
 on deploy; this brings them back after a Postgres upgrade recreates pg_cron.
 

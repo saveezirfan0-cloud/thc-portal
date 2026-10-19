@@ -176,7 +176,7 @@ export function readPayrollLines(
 /**
  * One row per worker and the total. Its sort keys are not all columns, so it
  * is read in the function's own order, which ends on staff_id
- * (20261018110100) and so has no ties.
+ * (20261019110100) and so has no ties.
  */
 export function readPayrollPeople(
   db: ReportsRpc,

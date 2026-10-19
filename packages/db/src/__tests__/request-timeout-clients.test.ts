@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * ADR-0152: both server-side clients this package builds carry the
+ * ADR-0154: both server-side clients this package builds carry the
  * request-timeout fetch by default, and drop it only when asked.
  * The two client factories are stubbed to capture their options.
  */

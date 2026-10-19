@@ -1,7 +1,7 @@
 -- =====================================================================
--- 859 · The auto-assign pool and Radar, old bodies against new (ADR-0154)
---   20261018140000_auto_assign_pool_set_based.sql
---   20261018140100_radar_prefilter_and_one_section.sql
+-- 859 · The auto-assign pool and Radar, old bodies against new (ADR-0156)
+--   20261019140000_auto_assign_pool_set_based.sql
+--   20261019140100_radar_prefilter_and_one_section.sql
 --
 -- Both migrations change how the answers are computed and nothing about
 -- what they are. This file holds them to it: the bodies as they stood
@@ -804,7 +804,7 @@ select is((select count(*)::int from auto_assign_candidates_pool(:'s1')), 0, 'F:
 reset role;
 select set_config('request.jwt.claims', '', true);
 select ok((select not prosecdef from pg_proc where oid = 'public.auto_assign_candidates_pool(uuid,boolean,uuid[])'::regprocedure),
-  'F: the pool is still SECURITY INVOKER (ADR-0154 weighed owner rights and kept the caller''s)');
+  'F: the pool is still SECURITY INVOKER (ADR-0156 weighed owner rights and kept the caller''s)');
 select ok(has_function_privilege('authenticated', 'public.staff_open_shifts(uuid,uuid)', 'execute')
       and has_function_privilege('service_role', 'public.staff_open_shifts(uuid,uuid)', 'execute')
       and not has_function_privilege('anon', 'public.staff_open_shifts(uuid,uuid)', 'execute')

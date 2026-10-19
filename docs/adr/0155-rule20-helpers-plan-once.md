@@ -1,12 +1,12 @@
-# ADR-0153 · RULE-20's helpers are planned once; two hot reads stop repeating work
+# ADR-0155 · RULE-20's helpers are planned once; two hot reads stop repeating work
 
 **Status:** Accepted · 18.10.2026 · **Refines:** ADR-0147 (the cap columns read once), the
 `002` search-path invariant (20260921130156, 20260922183014) · **Reported:** go-live database
 audit, 17.10.2026, findings F3, F4, F5
 
-`supabase/migrations/20261018130000_rule20_helpers_plan_once.sql` ·
-`20261018130100_staff_bookings_cap_only_where_read.sql` ·
-`20261018130200_onboarding_candidates_one_pass.sql` · pgTAP `002`, `853`, `854`, `855` ·
+`supabase/migrations/20261019130000_rule20_helpers_plan_once.sql` ·
+`20261019130100_staff_bookings_cap_only_where_read.sql` ·
+`20261019130200_onboarding_candidates_one_pass.sql` · pgTAP `002`, `853`, `854`, `855` ·
 `scripts/bench/rule20_staff_bookings_candidates.sql`
 
 ## Context
@@ -46,7 +46,7 @@ definitions (below).
 
 `cap_week_start`, `can_roster`, `booking_counts_toward_cap`, `cap_under_18`,
 `booked_elsewhere_conflict`, `booking_reopenable_by`, the three `weekly_cap` overloads, and
-(20261018130200) `current_compliance_docs` are now SQL functions **without** `SET search_path`,
+(20261019130200) `current_compliance_docs` are now SQL functions **without** `SET search_path`,
 so the planner inlines them into the query that calls them.
 
 Why that is safe:
@@ -144,7 +144,7 @@ back and restated, because `CREATE OR REPLACE VIEW` would otherwise reset them.
 ## Equivalence
 
 The old definitions are recreated verbatim in a schema `_old`
-(`supabase/tests/_shared/rule20_before_20261018130000.psql`; each old helper calls the old
+(`supabase/tests/_shared/rule20_before_20261019130000.psql`; each old helper calls the old
 helpers below it) and compared, inside the test transaction, over
 `_shared/cap_dataset.psql` — a generated agency with every RULE-20 branch (term, holiday and
 straddling weeks with holidays opening mid-week; below degree level; a completion letter dated

@@ -23,7 +23,7 @@ import { RESEND_ENDPOINT } from '../resend';
 import { b64urlEncode } from '../webpush';
 
 /**
- * drainRun (ADR-0156): settle as you go, a time budget that hands back
+ * drainRun (ADR-0158): settle as you go, a time budget that hands back
  * what it did not start, bounded concurrency, Resend's rate limit, and no
  * row sent twice by two runs that overlap.
  */

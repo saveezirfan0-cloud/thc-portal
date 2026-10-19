@@ -1,6 +1,6 @@
 -- =====================================================================
 -- The outbox drain claims time-critical sends first, and hands back what
--- it did not get to (ADR-0156).
+-- it did not get to (ADR-0158).
 --
 -- Until now claim_outbox_batch() took the oldest due rows. The live outbox
 -- has seen 1,035 rows queued in one minute (the OC1/IR1 chasers); at 40 a
@@ -111,7 +111,7 @@ language sql immutable set search_path = public, extensions as $$
 $$;
 
 comment on function public.notification_priorities() is
-  'ADR-0156: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal).';
+  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal).';
 
 create or replace function public.notification_priority(p_template text)
 returns smallint
@@ -121,7 +121,7 @@ language sql immutable set search_path = public, extensions as $$
 $$;
 
 comment on function public.notification_priority(text) is
-  'ADR-0156: claim order for an outbox row of this template, from notification_priorities(). An unknown code is 1 (normal), so it is never held back.';
+  'ADR-0158: claim order for an outbox row of this template, from notification_priorities(). An unknown code is 1 (normal), so it is never held back.';
 
 revoke execute on function public.notification_priorities() from public, anon, authenticated;
 revoke execute on function public.notification_priority(text) from public, anon, authenticated;
@@ -136,7 +136,7 @@ alter table notification_outbox
     constraint notification_outbox_priority_class check (priority between 0 and 2);
 
 comment on column notification_outbox.priority is
-  'ADR-0156: claim order, 0 urgent · 1 normal · 2 bulk. Set from notification_priority(template) by notification_outbox_set_priority on insert and on a change of template; never by a caller. Rows settled before 20261018160000 carry the default.';
+  'ADR-0158: claim order, 0 urgent · 1 normal · 2 bulk. Set from notification_priority(template) by notification_outbox_set_priority on insert and on a change of template; never by a caller. Rows settled before 20261019160000 carry the default.';
 
 -- security definer: the trigger fires for whoever inserts, and the mapping
 -- is the service role's. Without it a signed-in caller's insert would fail
@@ -233,7 +233,7 @@ end;
 $$;
 
 comment on function public.release_outbox_claims(bigint[]) is
-  'notify-drain (ADR-0156): hand back claims the run did not start before its time budget ran out — due again at once, the attempt not counted, the last error kept. Service role only.';
+  'notify-drain (ADR-0158): hand back claims the run did not start before its time budget ran out — due again at once, the attempt not counted, the last error kept. Service role only.';
 
 revoke execute on function public.release_outbox_claims(bigint[]) from public, anon, authenticated;
 grant execute on function public.release_outbox_claims(bigint[]) to service_role;

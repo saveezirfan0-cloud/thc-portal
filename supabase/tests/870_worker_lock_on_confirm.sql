@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 870 · Every path to `confirmed` serialises on the worker first
---       (20261018150000, ADR-0155; go-live concurrency audit H2, M2)
+--       (20261019150000, ADR-0157; go-live concurrency audit H2, M2)
 --
 --   A · the paths that write `confirmed` are exactly the ones that take
 --       lock_worker(), and each takes it before any row lock or write —
@@ -80,7 +80,7 @@ select set_eq(
 
 select is_empty(
   $$ select fn from t_confirmers where prosrc !~ '\mperform\s+lock_worker\(' $$,
-  'every one of them takes lock_worker() — a new path to confirmed must too (ADR-0155)');
+  'every one of them takes lock_worker() — a new path to confirmed must too (ADR-0157)');
 
 -- Worker first: before any row lock, and before any write, in every
 -- function that takes it. A worker lock taken after a section lock is the

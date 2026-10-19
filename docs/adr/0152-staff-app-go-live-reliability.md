@@ -1,4 +1,4 @@
-# ADR-0150 · Staff App go-live: live check-in location, presses that never hang
+# ADR-0152 · Staff App go-live: live check-in location, presses that never hang
 
 Status: accepted · 17.10.2026
 

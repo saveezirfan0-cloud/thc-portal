@@ -1,9 +1,9 @@
 -- =====================================================================
 -- 853 · RULE-20's helpers are planned once — and answer exactly as before
---   20261018130000_rule20_helpers_plan_once.sql · ADR-0153
+--   20261019130000_rule20_helpers_plan_once.sql · ADR-0155
 --
 -- The old definitions are recreated in `_old` (_shared/rule20_before_
--- 20261018130000.psql, verbatim, each calling the old helpers below it)
+-- 20261019130000.psql, verbatim, each calling the old helpers below it)
 -- and every changed function is compared with its old self:
 --
 --   A · the pure helpers, over every combination of their inputs that
@@ -31,7 +31,7 @@ select plan(33);
 \set cap_back 70
 \set cap_ahead 42
 \ir _shared/cap_dataset.psql
-\ir _shared/rule20_before_20261018130000.psql
+\ir _shared/rule20_before_20261019130000.psql
 
 -- =====================================================================
 -- A · the pure helpers
@@ -313,7 +313,7 @@ select is(
      'weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean, p_optout_48h boolean)',
      'weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean, p_optout_48h boolean, p_week_start date, p_below_degree_level boolean, p_completion_date date, p_visa_expiry date, p_optout_cancelled_from date, p_under18 boolean)',
      'weekly_cap(p_visa_limited boolean, p_term_state text, p_completion_letter_verified boolean, p_optout_48h boolean, p_week_start date, p_below_degree_level boolean, p_completion_date date, p_visa_expiry date, p_optout_cancelled_from date, p_under18 boolean, p_verified_on date, p_visa_hour_limit integer)']) x),
-  'C: exactly the pure helpers ADR-0153 names are unpinned invoker SQL, so the planner can inline them');
+  'C: exactly the pure helpers ADR-0155 names are unpinned invoker SQL, so the planner can inline them');
 select is_empty($$
   select p.proname from pg_proc p
    where p.pronamespace = 'public'::regnamespace

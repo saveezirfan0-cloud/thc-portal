@@ -1,5 +1,5 @@
 -- =====================================================================
--- 872 · attempt_check_in's section lock (20261018150200, ADR-0155;
+-- 872 · attempt_check_in's section lock (20261019150200, ADR-0157;
 --       go-live database audit F7, concurrency audit M1)
 --
 --   A · the section is locked FOR NO KEY UPDATE, after the read-only

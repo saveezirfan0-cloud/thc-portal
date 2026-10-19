@@ -1,5 +1,5 @@
 -- =====================================================================
--- Job history retention: cron.job_run_details and job_runs (ADR-0152)
+-- Job history retention: cron.job_run_details and job_runs (ADR-0154)
 --
 -- Measured on the live project, 17.10.2026 (go-live audit):
 --   · cron.job_run_details: 130,336 rows / 137 MB since 28.09, about
@@ -49,7 +49,7 @@
 --       DST pair: neither is a UK wall-clock rule — 03:41 UTC is 03:41 GMT
 --       in winter and 04:41 BST in summer, both before the 05:00 UK
 --       compliance sweep and outside any shift the agency books.
---       install_job_schedules() calls it too (20261018120100), so the
+--       install_job_schedules() calls it too (20261019120100), so the
 --       post-upgrade reinstall (pg_cron is dropped and recreated by an
 --       in-place upgrade) brings them back with everything else.
 --
@@ -83,7 +83,7 @@ as $$
 $$;
 
 comment on function public.job_run_counts_idle(jsonb) is
-  'True when a job run''s counts record no work: no non-zero number, no true, and no *error* key holding a message, at any depth (ADR-0152). {"claimed":0}, {"record_errors":0}, {"skipped":"not_configured"} and {} are idle; {"claimed":1} and {"spudbros_error":"…"} are not.';
+  'True when a job run''s counts record no work: no non-zero number, no true, and no *error* key holding a message, at any depth (ADR-0154). {"claimed":0}, {"record_errors":0}, {"skipped":"not_configured"} and {} are idle; {"claimed":1} and {"spudbros_error":"…"} are not.';
 
 revoke execute on function public.job_run_counts_idle(jsonb) from public, anon, authenticated;
 grant  execute on function public.job_run_counts_idle(jsonb) to service_role;
@@ -166,7 +166,7 @@ begin
 end $$;
 
 comment on function public.job_runs_purge(int, int) is
-  'Deletes the idle runs (finished ok, job_run_counts_idle) of every per-minute job — job_schedules rows on * * * * *, rtw-check, job-runs-purge, cron-history-purge — older than p_idle_days, keeping the newest row of each as its heartbeat, and any job run older than p_keep_days (floors 1 and 7). Batches of 5,000, at most 20,000 per branch per call. Returns the number of rows deleted. Service role only; the rtw-check runner calls it hourly and so does pg_cron (job-runs-purge, ADR-0152).';
+  'Deletes the idle runs (finished ok, job_run_counts_idle) of every per-minute job — job_schedules rows on * * * * *, rtw-check, job-runs-purge, cron-history-purge — older than p_idle_days, keeping the newest row of each as its heartbeat, and any job run older than p_keep_days (floors 1 and 7). Batches of 5,000, at most 20,000 per branch per call. Returns the number of rows deleted. Service role only; the rtw-check runner calls it hourly and so does pg_cron (job-runs-purge, ADR-0154).';
 
 revoke execute on function public.job_runs_purge(int, int) from public, anon, authenticated;
 grant  execute on function public.job_runs_purge(int, int) to service_role;
@@ -221,7 +221,7 @@ begin
 end $$;
 
 comment on function public.cron_history_purge(int, int) is
-  'Deletes cron.job_run_details rows older than p_keep_days (floor 1, default 7), oldest first in batches of 10,000, at most p_max_rows per call. Returns the number deleted; 0 where pg_cron keeps no history table. Run daily by pg_cron (cron-history-purge, ADR-0152).';
+  'Deletes cron.job_run_details rows older than p_keep_days (floor 1, default 7), oldest first in batches of 10,000, at most p_max_rows per call. Returns the number deleted; 0 where pg_cron keeps no history table. Run daily by pg_cron (cron-history-purge, ADR-0154).';
 
 revoke execute on function public.cron_history_purge(int, int) from public, anon, authenticated, service_role;
 
@@ -261,7 +261,7 @@ begin
 end $$;
 
 comment on function public.run_housekeeping_job(text) is
-  'pg_cron entry point for the SQL-only housekeeping jobs (job-runs-purge, cron-history-purge; ADR-0152). Writes a job_runs row with counts {deleted} and records a failure rather than raising.';
+  'pg_cron entry point for the SQL-only housekeeping jobs (job-runs-purge, cron-history-purge; ADR-0154). Writes a job_runs row with counts {deleted} and records a failure rather than raising.';
 
 revoke execute on function public.run_housekeeping_job(text) from public, anon, authenticated, service_role;
 
@@ -301,7 +301,7 @@ begin
 end $$;
 
 comment on function public.install_housekeeping_schedules() is
-  'Schedules the SQL-only housekeeping jobs in pg_cron: cron-history-purge daily at 03:41 UTC and job-runs-purge hourly at :46 (ADR-0152). Idempotent. Called by this migration and by install_job_schedules(), so a pg_cron reinstall keeps them. Returns the number scheduled (0 without pg_cron).';
+  'Schedules the SQL-only housekeeping jobs in pg_cron: cron-history-purge daily at 03:41 UTC and job-runs-purge hourly at :46 (ADR-0154). Idempotent. Called by this migration and by install_job_schedules(), so a pg_cron reinstall keeps them. Returns the number scheduled (0 without pg_cron).';
 
 revoke execute on function public.install_housekeeping_schedules() from public, anon, authenticated;
 grant  execute on function public.install_housekeeping_schedules() to service_role;

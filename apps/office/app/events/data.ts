@@ -474,7 +474,7 @@ export interface EventsInRange {
   problem: string | null;
 }
 
-/** One office_event_sections row (20261018110000). */
+/** One office_event_sections row (20261019110000). */
 interface SectionCount {
   section_id: string;
   event_id: string;
@@ -498,7 +498,7 @@ export async function loadEventsInRange(from: string, to: string): Promise<Event
   // Go-live audit B2: the sections and their confirmed counts used to be two
   // more reads after the events — `in.(…)` over every event id, then every
   // section id, past any URL limit on a Month grid, and cut at 1000 rows
-  // even when accepted. office_event_sections(from, to) (20261018110000)
+  // even when accepted. office_event_sections(from, to) (20261019110000)
   // takes the same period, so it starts with the events instead of after
   // them, and the database does the counting. Both lists are paged past
   // max_rows in a total order; the client and role names are read alongside.

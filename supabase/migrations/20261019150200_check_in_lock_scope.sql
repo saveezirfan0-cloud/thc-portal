@@ -1,6 +1,6 @@
 -- =====================================================================
 -- attempt_check_in: a lighter section lock, held for less, and no
--- No-show beside an accepted check-in (ADR-0155; go-live database audit
+-- No-show beside an accepted check-in (ADR-0157; go-live database audit
 -- F7, concurrency audit M1)
 --
 -- 1 · FOR NO KEY UPDATE, not FOR UPDATE. The section row is locked so the
@@ -24,7 +24,7 @@
 --
 -- 3 · A No-show raised while this press waited for the lock. booking_tick
 --     (BG-03) now takes the same section lock before it raises a No-show
---     and re-checks the check-in under it (20261018150300), so a check-in
+--     and re-checks the check-in under it (20261019150300), so a check-in
 --     that holds the lock first is always seen. The other order — the tick
 --     holds the lock at start + 30, this press began a moment before and
 --     waited — would accept the press beside the tick's fresh No-show. A
@@ -50,7 +50,7 @@ begin
 
       ('(-- Lock the role section: the slot count below has to be read under it\.\n\s*)select \* into sr from shift_requirements where id = b\.shift_id for update;',
        '-- D16, evaluated before the lock and raised below, where it always was
-  -- (20261018150200): it reads only this worker''s rows.
+  -- (20261019150200): it reads only this worker''s rows.
   select s.status into v_status from staff s where s.id = b.staff_id;
   v_doc_block := exists (
     select 1 from compliance_blockers(b.staff_id, (v_now at time zone ''Europe/London'')::date) x
@@ -59,7 +59,7 @@ begin
     from shift_requirements s where s.id = b.shift_id;
   v_roster_ok := can_roster_staff(b.staff_id, v_roster_day);
 
-  \1-- NO KEY UPDATE (20261018150200): serialises the presses and the
+  \1-- NO KEY UPDATE (20261019150200): serialises the presses and the
   -- Accepts on this section without blocking the foreign-key share lock
   -- of a booking being added to it.
   select * into sr from shift_requirements where id = b.shift_id for no key update;'),
@@ -75,7 +75,7 @@ begin
       ('(d := check_in_decision\([^;]*\);)',
        '\1
 
-  -- One outcome, never both (20261018150200): a No-show recorded while
+  -- One outcome, never both (20261019150200): a No-show recorded while
   -- this press waited for the section lock — BG-03 at start + 30 — makes
   -- it the locked press it would have been a moment later.
   if (d->>''accepted'')::boolean
@@ -89,7 +89,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261018150200: attempt_check_in - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019150200: attempt_check_in - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;

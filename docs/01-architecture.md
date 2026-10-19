@@ -90,9 +90,9 @@ the registry until its Edge Function exists.
 | Outbox drain | every minute | `notify-drain` | Web Push + email; retries with backoff; marks `sent_at`/`failed_at` |
 | Willo | webhook | `willo-webhook` | New Response → interview_completed; Stage Change → documents / rejected (+E2) |
 | RULE-16 stale invites | none | live filter `event_window.ends_at < now()` in queries | no job, per spec |
-| Job history housekeeping (ADR-0152) | `cron-history-purge` daily 03:41 UTC; `job-runs-purge` hourly at :46 | none — SQL `run_housekeeping_job()`, scheduled by its migration and by `install_job_schedules()` | `cron.job_run_details` kept 7 days; idle per-minute `job_runs` 2 days (newest kept as heartbeat); failures and runs that did work 90 days |
+| Job history housekeeping (ADR-0154) | `cron-history-purge` daily 03:41 UTC; `job-runs-purge` hourly at :46 | none — SQL `run_housekeeping_job()`, scheduled by its migration and by `install_job_schedules()` | `cron.job_run_details` kept 7 days; idle per-minute `job_runs` 2 days (newest kept as heartbeat); failures and runs that did work 90 days |
 
-Every HTTP command waits up to 30 s for pg_net (`timeout_milliseconds`, ADR-0152). Jobs whose
+Every HTTP command waits up to 30 s for pg_net (`timeout_milliseconds`, ADR-0154). Jobs whose
 minute no rule fixes are off the :00/:05 grid (`gdpr-purge` `3-59/5`, escalation `4-59/10`);
 the cutoff, compliance and finance entries stay on `*/5` because the scope names their minute.
 

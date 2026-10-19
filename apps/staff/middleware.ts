@@ -115,7 +115,7 @@ export async function middleware(request: NextRequest) {
   // passes the library's options through and a worker stays signed in.
   const supabase = createServerClient(url, anonKey, {
     // Reads give up after 10 s and the GoTrue session check after 4 s
-    // (ADR-0152): on 17.10 a stalled call held the middleware to Vercel's
+    // (ADR-0154): on 17.10 a stalled call held the middleware to Vercel's
     // 25 s limit and the page answered 504. Writes are never cut off.
     global: { fetch: createRequestTimeoutFetch({ getUserMs: SESSION_CHECK_TIMEOUT_MS }) },
     cookies: withSessionPersistence(
@@ -180,7 +180,7 @@ export async function middleware(request: NextRequest) {
         error,
       } = await supabase.auth.getUser();
       // GoTrue slow, down or rate-limiting is no answer about the session:
-      // not cached, and not a sign-out (ADR-0152). The token was verified
+      // not cached, and not a sign-out (ADR-0154). The token was verified
       // above and RLS decides every row, so the worker carries on; the next
       // request asks again.
       if (!user && isTransientAuthFailure(error)) return response;

@@ -1,4 +1,4 @@
-# ADR-0155 · One lock order for bookings and check-ins; once-only violations; a bounded booking tick
+# ADR-0157 · One lock order for bookings and check-ins; once-only violations; a bounded booking tick
 
 **Status:** Accepted · **Refines:** RULE-20 (§4.4), §3.4 first-to-confirm, §5.1 / BG-03, RULE-02 / BG-09 · **Reported:** go-live audits, 17.10.2026 (concurrency H2, M1, M2, M5; database F6, F7)
 

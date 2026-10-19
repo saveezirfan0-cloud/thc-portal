@@ -509,7 +509,7 @@ export function ShiftScreen({
 
       {gpsError ? <Alert tone="coral">{gpsError}</Alert> : null}
       {gps}
-      {/* ADR-0150: before check-in, a way to take a new reading without
+      {/* ADR-0152: before check-in, a way to take a new reading without
           reloading — the first one may have been on the bus, or timed out. */}
       {phase === 'before_window' || phase === 'check_in' ? (
         <div className="shift-links">

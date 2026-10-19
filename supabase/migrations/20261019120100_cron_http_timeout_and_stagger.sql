@@ -1,6 +1,6 @@
 -- =====================================================================
 -- pg_cron → pg_net: a 30 s timeout, and fewer jobs on the same second
--- (ADR-0152)
+-- (ADR-0154)
 --
 -- Measured on the live project, 17.10.2026: 161 of 1,795 cron HTTP calls
 -- in six hours (9%) were recorded as pg_net's default 5 s timeout, most of
@@ -16,7 +16,7 @@
 --     rows) with two changes:
 --       · every command passes timeout_milliseconds := 30000;
 --       · it ends by calling install_housekeeping_schedules()
---         (20261018120000), so the reinstall after a Postgres upgrade —
+--         (20261019120000), so the reinstall after a Postgres upgrade —
 --         which drops and recreates pg_cron — brings back the SQL
 --         housekeeping jobs too. Its return value still counts the
 --         job_schedules rows only, as docs/16 §4.7 says.
@@ -97,7 +97,7 @@ begin
     -- The base and the secret are read when the command RUNS, so nothing
     -- sensitive is stored in the pg_cron command string — and the base is
     -- re-checked on every firing. pg_net waits up to 30 s for the reply
-    -- (its default is 5 s, which DNS alone exceeded; ADR-0152); nothing
+    -- (its default is 5 s, which DNS alone exceeded; ADR-0154); nothing
     -- reads the reply, the job records its outcome in job_runs.
     v_command := format(
       $cmd$select net.http_post(
@@ -114,7 +114,7 @@ begin
     n := n + 1;
   end loop;
 
-  -- The SQL housekeeping jobs (20261018120000) are not registry rows, but a
+  -- The SQL housekeeping jobs (20261019120000) are not registry rows, but a
   -- reinstall after pg_cron is recreated must bring them back as well. Not
   -- counted: the return value is the registry's, as docs/16 §4.7 reads it.
   perform install_housekeeping_schedules();
@@ -124,7 +124,7 @@ end;
 $$;
 
 comment on function public.install_job_schedules() is
-  'Applies job_schedules to pg_cron, each POST with a 30 s pg_net timeout (ADR-0152), then reinstalls the SQL housekeeping jobs (install_housekeeping_schedules). Run once per deploy; needs settings.edge_base_url (a Supabase Functions base — edge_base_url() refuses anything else) and vault secret service_role_key, and for an office_base_url row (rtw-check) the vault secrets office_base_url (office_base_url() refuses anything but a Back Office origin) and rtw_job_secret — without them that row is skipped with a notice. Returns the number of job_schedules rows scheduled.';
+  'Applies job_schedules to pg_cron, each POST with a 30 s pg_net timeout (ADR-0154), then reinstalls the SQL housekeeping jobs (install_housekeeping_schedules). Run once per deploy; needs settings.edge_base_url (a Supabase Functions base — edge_base_url() refuses anything else) and vault secret service_role_key, and for an office_base_url row (rtw-check) the vault secrets office_base_url (office_base_url() refuses anything but a Back Office origin) and rtw_job_secret — without them that row is skipped with a notice. Returns the number of job_schedules rows scheduled.';
 
 revoke execute on function public.install_job_schedules() from public, anon, authenticated;
 grant  execute on function public.install_job_schedules() to service_role;

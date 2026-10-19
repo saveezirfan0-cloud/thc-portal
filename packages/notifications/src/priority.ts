@@ -1,5 +1,5 @@
 /**
- * Send priority — which outbox rows the drain claims first (ADR-0156).
+ * Send priority — which outbox rows the drain claims first (ADR-0158).
  *
  * `claim_outbox_batch()` orders by `priority, send_after`, so a burst of a
  * thousand onboarding chasers no longer holds a "Time to check in" push or

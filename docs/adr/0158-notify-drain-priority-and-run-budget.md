@@ -1,8 +1,8 @@
-# ADR-0156 · The outbox drain settles as it goes, works to a time budget and claims urgent sends first
+# ADR-0158 · The outbox drain settles as it goes, works to a time budget and claims urgent sends first
 
 Status: accepted · 17.10.2026 · **Amends** the P2 drain (`20260924100000`, ADR-0083's claim)
 
-Scope v1.6 §8, §10.5 · `supabase/migrations/20261018160000_notify_drain_priority.sql` ·
+Scope v1.6 §8, §10.5 · `supabase/migrations/20261019160000_notify_drain_priority.sql` ·
 `packages/notifications/src/{drain,priority}.ts` · `supabase/functions/notify-drain/index.ts` ·
 `supabase/tests/856_notify_drain_priority.sql`
 

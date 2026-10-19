@@ -45,7 +45,7 @@ select plan(14);
 --    public, extensions` line in a new migration, next to the fourteen
 --    in 20260922183014. It is not to add a name to an exclusion list.
 --
---    ADR-0153 (20261018130000) made one deliberate class of exception,
+--    ADR-0155 (20261019130000) made one deliberate class of exception,
 --    and it is a SHAPE, not a list: a SECURITY INVOKER, non-volatile SQL
 --    function whose every name is schema-qualified. A SET clause stops
 --    the planner inlining a SQL function, and RULE-20's pure helpers were
@@ -69,7 +69,7 @@ select is_empty(
         and (p.prosecdef
              or p.provolatile = 'v'
              or p.prolang <> (select l.oid from pg_language l where l.lanname = 'sql')) $$,
-  'every function in public that this repo owns pins its search_path, unless it is an invoker, non-volatile SQL helper (ADR-0153)'
+  'every function in public that this repo owns pins its search_path, unless it is an invoker, non-volatile SQL helper (ADR-0155)'
 );
 
 -- ---------------------------------------------------------------------
@@ -158,7 +158,7 @@ select is(
 );
 set local search_path to public, extensions;
 
--- 2b. The same decoy test for the helpers ADR-0153 unpinned. They are
+-- 2b. The same decoy test for the helpers ADR-0155 unpinned. They are
 --     inlined into the caller's query, so the caller's path is the one in
 --     force while their bodies are read, which is why every name in them
 --     is qualified: a decoy cap_week_start() and weekly_cap() sitting in

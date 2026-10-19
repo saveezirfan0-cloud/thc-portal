@@ -1,6 +1,6 @@
 -- =====================================================================
 -- One open No-show / No check-out / Late / Left-early per booking
--- (ADR-0155; go-live concurrency audit M1)
+-- (ADR-0157; go-live concurrency audit M1)
 --
 -- Every automatic writer guarded its insert with `where not exists (...)`
 -- and nothing else: booking_tick (BG-03 No-show, BG-09 No check-out),
@@ -63,11 +63,11 @@ begin
   ), logged as (
     insert into audit_log (at, actor, action, entity, entity_id, data)
     select now(), null, 'violation.duplicate_removed', 'violation', g.id,
-           to_jsonb(g) || jsonb_build_object('staffId', g.staff_id, 'migration', '20261018150100')
+           to_jsonb(g) || jsonb_build_object('staffId', g.staff_id, 'migration', '20261019150100')
       from gone g
     returning 1
   ) select count(*)::int into v_n from logged;
-  raise notice '20261018150100: % duplicate open violation(s) removed', v_n;
+  raise notice '20261019150100: % duplicate open violation(s) removed', v_n;
 end;
 $$;
 
@@ -79,7 +79,7 @@ create unique index if not exists violations_one_open_per_booking_type
   where not resolved and type in ('no_show', 'no_checkout', 'late', 'left_early');
 
 comment on index public.violations_one_open_per_booking_type is
-  'ADR-0155: at most one unresolved No-show, No check-out, Late and Left-early per booking. The writers say ON CONFLICT DO NOTHING.';
+  'ADR-0157: at most one unresolved No-show, No check-out, Late and Left-early per booking. The writers say ON CONFLICT DO NOTHING.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The writers swallow the race
@@ -117,7 +117,7 @@ begin
   on conflict do nothing
   returning id into v_id;
   if v_id is null then
-    -- 20261018150100: BG-03 or another press recorded it a moment earlier.
+    -- 20261019150100: BG-03 or another press recorded it a moment earlier.
     select id into v_id from violations
      where booking_id = b.id and type = ''no_show'' and not resolved
      limit 1;
@@ -129,7 +129,7 @@ begin
     v_def := pg_get_functiondef(p.fn);
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> p.expected then
-      raise exception '20261018150100: % - expected % match(es) of %, found %', p.fn, p.expected, p.pattern, v_n;
+      raise exception '20261019150100: % - expected % match(es) of %, found %', p.fn, p.expected, p.pattern, v_n;
     end if;
     execute regexp_replace(v_def, p.pattern, p.replacement, 'g');
   end loop;

@@ -1,5 +1,5 @@
 -- =====================================================================
--- RULE-20's helpers are planned once, not on every call (ADR-0153)
+-- RULE-20's helpers are planned once, not on every call (ADR-0155)
 --
 -- Audit 17.10.2026 F3. Every helper in the weekly-cap chain was a SQL
 -- function with `SET search_path`. Postgres never inlines a SQL function
@@ -70,7 +70,7 @@ declare v_n int;
 begin
   select count(*) into v_n from regexp_matches(p_def, p_pattern, 'g');
   if v_n <> p_expect then
-    raise exception '20261018130000: % - expected % match(es) of %, found %', p_label, p_expect, p_pattern, v_n;
+    raise exception '20261019130000: % - expected % match(es) of %, found %', p_label, p_expect, p_pattern, v_n;
   end if;
   return regexp_replace(p_def, p_pattern, p_replacement, 'g');
 end $f$;
@@ -81,7 +81,7 @@ returns text language plpgsql as $f$
 declare v_at int := position('AS $function$' in p_def);
 begin
   if v_at = 0 or right(rtrim(p_def, E' \n'), 10) <> '$function$' then
-    raise exception '20261018130000: % - unexpected definition shape', p_label;
+    raise exception '20261019130000: % - unexpected definition shape', p_label;
   end if;
   return left(p_def, v_at - 1) || 'AS $function$' || p_body || '$function$';
 end $f$;
@@ -126,7 +126,7 @@ begin
     -- The pin goes; nothing else in the header moves.
     v_def := pg_temp.r20_sub(v_def, E'\n SET search_path TO ''public'', ''extensions''\n', E'\n', 1, f.fn || ' pin');
     if v_def !~ E'\n LANGUAGE sql\n' or v_def ~ 'SECURITY DEFINER' or v_def ~ E'\n VOLATILE' then
-      raise exception '20261018130000: % is not a plain invoker SQL helper; it must keep its pin', f.fn;
+      raise exception '20261019130000: % is not a plain invoker SQL helper; it must keep its pin', f.fn;
     end if;
 
     for i in 1 .. coalesce(array_length(f.subs, 1), 0) loop
@@ -142,7 +142,7 @@ begin
       j := position('as completion,' in v_src);
       k := position('as optout' in v_src);
       if i = 0 or j = 0 or k = 0 or position('from in_force' in v_src) = 0 then
-        raise exception '20261018130000: weekly_cap(12) - in_force CTE not where it was';
+        raise exception '20261019130000: weekly_cap(12) - in_force CTE not where it was';
       end if;
       v_completion := substr(v_src, i + length('with in_force as ('), j - i - length('with in_force as ('));
       v_completion := regexp_replace(v_completion, '^\s*select\s', '');
@@ -152,12 +152,12 @@ begin
       if (length(v_main) - length(replace(v_main, 'in_force.completion', ''))) / length('in_force.completion') <> 2
          or (length(v_main) - length(replace(v_main, 'in_force.optout', ''))) / length('in_force.optout') <> 1
          or regexp_replace(v_main, 'is (not )?distinct from', '', 'gi') ~* '\mfrom\M' then
-        raise exception '20261018130000: weekly_cap(12) - in_force is not used the way it was';
+        raise exception '20261019130000: weekly_cap(12) - in_force is not used the way it was';
       end if;
       v_main := replace(v_main, 'in_force.completion', '(' || v_completion || E'\n         )');
       v_main := replace(v_main, 'in_force.optout',     '(' || v_optout     || E'\n         )');
       v_def := pg_temp.r20_body(v_def,
-        E'\n  -- 20261018130000: the in_force CTE folded in, so the planner inlines\n'
+        E'\n  -- 20261019130000: the in_force CTE folded in, so the planner inlines\n'
         || E'  -- this into its callers. completionInForce() / optOutInForce() in\n'
         || E'  -- cap.ts are the two parenthesised expressions, as they were.\n  '
         || rtrim(v_main, E' \n') || E'\n', f.fn);
@@ -185,7 +185,7 @@ begin
   v_def := pg_get_functiondef('public.weekly_booked_hours(uuid,date)'::regprocedure);
   v_def := pg_temp.r20_sub(v_def,
     E'(\n\\s+and \\(select cap_week_start\\(p_date\\)\\) \\+ 6\n)',
-    E'\\1         -- 20261018130000: the same week, a day wider each side, as instants.\n'
+    E'\\1         -- 20261019130000: the same week, a day wider each side, as instants.\n'
     || E'         and sr.starts_at >= ((select cap_week_start(p_date))::timestamp - interval ''1 day'') at time zone ''UTC''\n'
     || E'         and sr.starts_at <  ((select cap_week_start(p_date))::timestamp + interval ''8 days'') at time zone ''UTC''\n',
     1, 'weekly_booked_hours week bound');
@@ -194,7 +194,7 @@ begin
   v_def := pg_get_functiondef('public.weekly_booked_hours_except(uuid,date,uuid)'::regprocedure);
   v_def := pg_temp.r20_sub(v_def,
     E'(\n\\s+between cap_week_start\\(p_date\\) and cap_week_start\\(p_date\\) \\+ 6\n)',
-    E'\\1    -- 20261018130000: the same week, a day wider each side, as instants.\n'
+    E'\\1    -- 20261019130000: the same week, a day wider each side, as instants.\n'
     || E'    and sr.starts_at >= (cap_week_start(p_date)::timestamp - interval ''1 day'') at time zone ''UTC''\n'
     || E'    and sr.starts_at <  (cap_week_start(p_date)::timestamp + interval ''8 days'') at time zone ''UTC''\n',
     1, 'weekly_booked_hours_except week bound');
@@ -207,7 +207,7 @@ begin
   v_def := pg_get_functiondef('public.rota_guard_verdict(uuid,uuid)'::regprocedure);
   v_def := pg_temp.r20_sub(v_def,
     E'(rota_guard_mode\\(\\)\\s+as mode)(\n\\s*\\) x\n)',
-    E'\\1\n      offset 0  -- 20261018130000: x is computed once, not pasted in per reference\\2',
+    E'\\1\n      offset 0  -- 20261019130000: x is computed once, not pasted in per reference\\2',
     1, 'rota_guard_verdict x once');
   execute v_def;
 end;
@@ -234,10 +234,10 @@ begin
     v_def := pg_get_functiondef(f::regprocedure);
     select p.prosrc into v_src from pg_proc p where p.oid = f::regprocedure;
     if v_def !~ E'\n SET search_path TO ' then
-      raise exception '20261018130000: % has lost its pinned search_path', f;
+      raise exception '20261019130000: % has lost its pinned search_path', f;
     end if;
     if v_src ~ ';\s*\S' then
-      raise exception '20261018130000: % has more than one statement', f;
+      raise exception '20261019130000: % has more than one statement', f;
     end if;
     v_def := pg_temp.r20_sub(v_def, E'\n LANGUAGE sql\n', E'\n LANGUAGE plpgsql\n', 1, f || ' language');
     if (select p.proretset from pg_proc p where p.oid = f::regprocedure) then
@@ -245,22 +245,22 @@ begin
       -- body must not use them as bare identifiers.
       if exists (select 1 from pg_proc p, unnest(p.proargnames, p.proargmodes) a(n, m)
                   where p.oid = f::regprocedure and a.m = 't' and v_src ~ ('\m' || a.n || '\M')) then
-        raise exception '20261018130000: % - a result column is named in the body', f;
+        raise exception '20261019130000: % - a result column is named in the body', f;
       end if;
       v_def := pg_temp.r20_body(v_def,
-        E'\nbegin\n  -- 20261018130000: the SQL body as it was, in plpgsql so its plan is\n'
-        || E'  -- kept for the session instead of rebuilt on every call (ADR-0153).\n'
+        E'\nbegin\n  -- 20261019130000: the SQL body as it was, in plpgsql so its plan is\n'
+        || E'  -- kept for the session instead of rebuilt on every call (ADR-0155).\n'
         || E'  return query\n' || rtrim(v_src, E' \n;') || E';\nend\n', f);
     else
       v_def := pg_temp.r20_body(v_def,
-        E'\nbegin\n  -- 20261018130000: the SQL body as it was, in plpgsql so its plan is\n'
-        || E'  -- kept for the session instead of rebuilt on every call (ADR-0153).\n'
+        E'\nbegin\n  -- 20261019130000: the SQL body as it was, in plpgsql so its plan is\n'
+        || E'  -- kept for the session instead of rebuilt on every call (ADR-0155).\n'
         || E'  return (\n' || rtrim(v_src, E' \n;') || E'\n  );\nend\n', f);
     end if;
     execute v_def;
     execute format('comment on function %s is %L', f,
       coalesce(obj_description(f::regprocedure::oid, 'pg_proc') || ' ', '')
-      || 'Since 20261018130000 plpgsql around the same SQL body, so the plan is kept for the session (ADR-0153).');
+      || 'Since 20261019130000 plpgsql around the same SQL body, so the plan is kept for the session (ADR-0155).');
   end loop;
 end;
 $$;

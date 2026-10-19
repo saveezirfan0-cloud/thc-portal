@@ -1,5 +1,5 @@
 -- =====================================================================
--- Indexes for four hot reads that had none that fit (ADR-0152)
+-- Indexes for four hot reads that had none that fit (ADR-0154)
 --
 -- From the go-live database audit (17.10.2026, live plans):
 --

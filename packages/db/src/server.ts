@@ -39,7 +39,7 @@ export interface CreateClientOptions {
    */
   httpOnly?: boolean;
   /**
-   * Request timeouts (ADR-0152, packages/db/src/request-timeout.ts). Left
+   * Request timeouts (ADR-0154, packages/db/src/request-timeout.ts). Left
    * out, PostgREST and GoTrue reads (GET/HEAD) are aborted after 10 s and
    * nothing else is. Pass `readOnlyRpcs` to bound named RPCs that only
    * read, `getUserMs` for a shorter `auth.getUser()`, or `false` for no

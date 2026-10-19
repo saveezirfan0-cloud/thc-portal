@@ -118,7 +118,7 @@ export async function middleware(request: NextRequest) {
   // Back Office is capped (packages/db/src/session.ts).
   const supabase = createServerClient(url, anonKey, {
     // Reads give up after 10 s and the GoTrue session check after 4 s
-    // (ADR-0152): on 17.10 a stalled call held the middleware to Vercel's
+    // (ADR-0154): on 17.10 a stalled call held the middleware to Vercel's
     // 25 s limit and the page answered 504. Writes are never cut off.
     global: { fetch: createRequestTimeoutFetch({ getUserMs: SESSION_CHECK_TIMEOUT_MS }) },
     cookies: withSessionPersistence(
@@ -201,7 +201,7 @@ export async function middleware(request: NextRequest) {
       } = await supabase.auth.getUser();
       if (!user && isTransientAuthFailure(error)) {
         // GoTrue slow, down or rate-limiting is no answer about the session,
-        // so it is not cached as "signed out" (ADR-0152). A token already
+        // so it is not cached as "signed out" (ADR-0154). A token already
         // past the code step goes on: it was verified above, and RLS decides
         // every row. Below aal2 we cannot tell whether a code step is owed,
         // so it fails closed — a short "try again", never a skipped step.

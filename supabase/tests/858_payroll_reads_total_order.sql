@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 858 · Payroll reads page in a total order (go-live audit 17.10.2026, B1)
---   20261018110100_payroll_reads_page_in_a_total_order.sql
+--   20261019110100_payroll_reads_page_in_a_total_order.sql
 --
 --   The Monday CSV and the /reports people table are read in pages of
 --   1000 (PostgREST max_rows). A page is OFFSET/LIMIT over the function's

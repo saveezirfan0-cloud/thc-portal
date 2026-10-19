@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Benchmark: the RULE-20 helper chain, staff_bookings() and
--- onboarding_candidates_v (ADR-0153; audit 17.10.2026 F3, F4, F5).
+-- onboarding_candidates_v (ADR-0155; audit 17.10.2026 F3, F4, F5).
 --
 -- LOCAL ONLY. Seeds ~1,000 workers with a booking history and a few
 -- hundred onboarding candidates inside one transaction, times the reads

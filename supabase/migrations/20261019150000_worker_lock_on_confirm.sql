@@ -1,5 +1,5 @@
 -- =====================================================================
--- Every path to `confirmed` serialises on the WORKER first (ADR-0155)
+-- Every path to `confirmed` serialises on the WORKER first (ADR-0157)
 --
 -- Go-live concurrency audit, finding H2 (RULE-20 can be breached). The
 -- three functions that move a booking to `confirmed` — accept_invite,
@@ -50,7 +50,7 @@ set search_path = public, extensions
 as $$ select hashtextextended('staff:' || p_staff::text, 0) $$;
 
 comment on function public.worker_lock_key(uuid) is
-  'The advisory-lock key of one worker (ADR-0155). A hash: two workers sharing a key only queue behind each other, never wrongly pass.';
+  'The advisory-lock key of one worker (ADR-0157). A hash: two workers sharing a key only queue behind each other, never wrongly pass.';
 
 create or replace function public.lock_worker(p_staff uuid)
 returns void
@@ -59,13 +59,13 @@ volatile
 set search_path = public, extensions
 as $$
 begin
-  -- ADR-0155: worker, then section, then booking. Held to the end of the
+  -- ADR-0157: worker, then section, then booking. Held to the end of the
   -- transaction; never take it after a section or booking lock.
   perform pg_advisory_xact_lock(worker_lock_key(p_staff));
 end $$;
 
 comment on function public.lock_worker(uuid) is
-  'Serialises every change that can add hours or an overlap to one worker (ADR-0155). Taken FIRST — before any section or booking lock — by accept_invite, accept_application and take_offered_shift.';
+  'Serialises every change that can add hours or an overlap to one worker (ADR-0157). Taken FIRST — before any section or booking lock — by accept_invite, accept_application and take_offered_shift.';
 
 -- Diagnostics and pgTAP: is this session holding the worker's lock?
 create or replace function public.worker_lock_held(p_staff uuid)
@@ -100,7 +100,7 @@ begin
   for p in
     select * from (values
       ('select \* into sr from shift_requirements where id = b\.shift_id for update;',
-       '-- ADR-0155 (20261018150000): the worker first, then the section, so a
+       '-- ADR-0157 (20261019150000): the worker first, then the section, so a
   -- second confirmation for this worker on another section waits and its
   -- cap and overlap reads below see this one.
   perform lock_worker(b.staff_id);
@@ -110,7 +110,7 @@ begin
   select * into b from bookings where id = p_booking for update;'),
 
       ('if b\.status <> ''invited'' then',
-       '-- A second tap finds the first one''s answer (20261018150000).
+       '-- A second tap finds the first one''s answer (20261019150000).
   if b.status = ''confirmed'' then
     return jsonb_build_object(''ok'', true, ''already'', true, ''withdrawn'', 0, ''closedApplications'', 0);
   end if;
@@ -119,7 +119,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261018150000: accept_invite - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019150000: accept_invite - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -147,14 +147,14 @@ begin
   select shift_id, staff_id into v_shift, v_staff from bookings where id = p_booking;'),
 
       ('select \* into sr from shift_requirements where id = v_shift for update;',
-       '-- ADR-0155 (20261018150000): the worker first, then the section.
+       '-- ADR-0157 (20261019150000): the worker first, then the section.
   perform lock_worker(v_staff);
   \&')
     ) as x(pattern, replacement)
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261018150000: accept_application - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019150000: accept_application - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -174,7 +174,7 @@ begin
   for p in
     select * from (values
       ('select \* into sr from shift_requirements where id = o\.shift_id for update;',
-       '-- ADR-0155 (20261018150000): the taker first — the one worker whose
+       '-- ADR-0157 (20261019150000): the taker first — the one worker whose
   -- hours and overlaps change — then the section, booking, offer below.
   perform lock_worker(v_me);
   \&')
@@ -182,7 +182,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261018150000: take_offered_shift - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261019150000: take_offered_shift - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;

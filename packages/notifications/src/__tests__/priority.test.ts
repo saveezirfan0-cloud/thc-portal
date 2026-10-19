@@ -5,7 +5,7 @@ import { PRIORITY, SEND_PRIORITY, priorityValuesSql, sendPriority } from '../pri
 import { CHASER_CODES, INVITE_CODES, TEMPLATES } from '../templates';
 
 /**
- * ADR-0156. The send classes are written twice — SEND_PRIORITY here and
+ * ADR-0158. The send classes are written twice — SEND_PRIORITY here and
  * notification_priorities() in SQL — so these tests hold the two, and the
  * pgTAP file's code list, to the register.
  */
@@ -38,7 +38,7 @@ function sqlMapping(): { file: string; rows: Record<string, number> } {
   return { file, rows };
 }
 
-describe('send priority (ADR-0156)', () => {
+describe('send priority (ADR-0158)', () => {
   it('gives every register code and document email a class, and nothing else', () => {
     expect(Object.keys(SEND_PRIORITY).sort()).toEqual(registerCodes);
   });

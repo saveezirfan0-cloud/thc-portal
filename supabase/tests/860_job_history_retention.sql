@@ -1,5 +1,5 @@
 -- =====================================================================
--- 849 · Job history retention (20261018120000, ADR-0152)
+-- 860 · Job history retention (20261019120000, ADR-0154)
 --
 --   · job_run_counts_idle(): what "a run that did nothing" means.
 --   · job_runs_purge(): idle runs of every per-minute job go after two

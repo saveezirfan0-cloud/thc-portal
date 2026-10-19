@@ -1,5 +1,5 @@
 /**
- * Request timeouts for the server-side Supabase clients (ADR-0152).
+ * Request timeouts for the server-side Supabase clients (ADR-0154).
  *
  * Without one, a PostgREST or GoTrue call that stalls — the live project on
  * 17.10.2026 queued requests behind an exhausted connection pool — holds the
