@@ -14,7 +14,7 @@
     "@react-pdf/renderer": "^4.3.0",
     "@sparticuz/chromium": "^153.0.0",
     "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.58.0",
+    "@supabase/supabase-js": "^2.118.0",
     "@thc/db": "workspace:*",
     "@thc/domain": "workspace:*",
     "@thc/notifications": "workspace:*",
