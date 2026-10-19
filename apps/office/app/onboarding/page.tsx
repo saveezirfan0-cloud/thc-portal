@@ -41,7 +41,7 @@ async function Board({ applyUrl }: { applyUrl: string | null }) {
  * `OfficeShell`, outside every Suspense. The toggle, search and filters live
  * in the URL but change through the History API (`useListQuery`), never a
  * router navigation, so no boundary here sits under a query-only navigation;
- * the page reads no searchParams and has no 404.
+ * the page reads no query string and has no 404.
  */
 export default function Page() {
   const url = applyUrl();

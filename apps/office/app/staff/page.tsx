@@ -72,7 +72,7 @@ async function Directory() {
  * `OfficeShell`, outside every Suspense. The screen's tab, search, filters
  * and page live in the URL but change through the History API, never a
  * router navigation (`useListQuery`), so no boundary here sits under a
- * query-only navigation; the page reads no searchParams and has no 404.
+ * query-only navigation; the page reads no query string and has no 404.
  */
 export default function Page() {
   return (

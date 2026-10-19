@@ -92,6 +92,64 @@ describe('root boundaries', () => {
     }
   });
 
+  it('streams the heavy routes inside the page, never through loading.tsx (ADR-0161)', async () => {
+    // Each of these paints its one OfficeShell at once and streams the slow
+    // read behind an in-page <Suspense> — the /dashboard pattern. What
+    // ADR-0109 exists for must still hold on every one of them:
+    //  - no loading.tsx, and the page reads no searchParams;
+    //  - a page that 404s calls notFound() BEFORE its first boundary, from
+    //    a first read of its own, so the status is decided before any HTML;
+    //  - no fallback draws a shell (two topbars in the document);
+    //  - nothing behind the boundary navigates by query through the router
+    //    (their list state moves with the History API, `useListQuery`).
+    const { existsSync, readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const app = join(dirname(fileURLToPath(import.meta.url)), '..');
+    const STREAMED: Record<string, string[]> = {
+      'events/[id]': [
+        '_components/RoleBoard.tsx',
+        '_components/SectionPools.tsx',
+        '_components/PotentialPool.tsx',
+      ],
+      staff: ['StaffScreen.tsx', 'StudentVisaView.tsx'],
+      'staff/[id]': ['ProfileScreen.tsx'],
+      onboarding: ['OnboardingBoard.tsx'],
+      'onboarding/[id]': ['../CandidateScreen.tsx'],
+      'clients/[id]': ['ClientCard.tsx', 'QualifiedStaff.tsx', 'ClientEvents.tsx'],
+      dashboard: ['DashboardBody.tsx'],
+      compliance: ['ComplianceBody.tsx'],
+    };
+    for (const [route, screens] of Object.entries(STREAMED)) {
+      const dir = join(app, route);
+      const page = readFileSync(join(dir, 'page.tsx'), 'utf8');
+      expect(existsSync(join(dir, 'loading.tsx')), `${route}/loading.tsx`).toBe(false);
+      expect(page, `${route}/page.tsx`).not.toMatch(/searchParams/);
+      const streams = [page, ...screens.map((file) => readFileSync(join(dir, file), 'utf8'))];
+      expect(
+        streams.some((src) => /<Suspense\b/.test(src)),
+        `${route} streams`,
+      ).toBe(true);
+      const firstBoundary = page.indexOf('<Suspense');
+      const notFoundAt = page.indexOf('notFound(');
+      if (notFoundAt >= 0 && firstBoundary >= 0) {
+        expect(notFoundAt, `${route}: notFound() before the first boundary`).toBeLessThan(
+          firstBoundary,
+        );
+      }
+      expect(page, `${route}: a fallback that draws a shell`).not.toMatch(
+        /fallback=\{[^}]*<OfficeShell/,
+      );
+      for (const [index, src] of streams.entries()) {
+        const name = index === 0 ? 'page.tsx' : screens[index - 1];
+        expect(src, `${route}/${name}: a query-only router navigation`).not.toMatch(
+          /router\.(push|replace)\(\s*[`'"]\?/,
+        );
+        expect(src, `${route}/${name}: a query-only link`).not.toMatch(/href=\{?\s*[`'"]\?/);
+      }
+    }
+  });
+
   it('error shows the digest, never the exception text', () => {
     const error = Object.assign(new Error('relation "secret_table" does not exist'), {
       digest: 'abc123',
