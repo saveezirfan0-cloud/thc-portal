@@ -15,14 +15,9 @@ import { RtwStep } from '../_components/RtwStep';
 import { SelfieStep } from '../_components/SelfieStep';
 import { TutorialStep } from '../_components/TutorialStep';
 import { WizardFrame, WizardTop, workerFor } from '../_components/Wizard';
-import {
-  loadHmrcGender,
-  loadLanguages,
-  loadOnboardingOnly,
-  loadOnboarding,
-  loadQuizQuestions,
-  supabaseConfigured,
-} from '../data';
+import { loadOnboarding, loadOwnStaffFacts, loadQuizQuestions, supabaseConfigured } from '../data';
+import type { QuizQuestion } from '../data';
+import type { OwnStaffFacts } from '../own-staff-facts';
 import { completionLetterDoc, requirementRows, wizardFacts } from '../state';
 import type { OnboardingState } from '../state';
 import '../onboarding.css';
@@ -61,24 +56,34 @@ export default async function Page({ params }: { params: Promise<{ step: string 
     redirect('/onboarding');
   }
 
-  // Signed once: the header's avatar (§10.1, the selfie "across the whole
-  // system") and step 3's preview read the same URL.
-  const photoUrl = await signOwnPhoto(state.photoPath);
+  // One wave after `onboarding_state()`, which every read below needs and
+  // which decides whether the step opens at all (go-live audit M5: these
+  // were up to four serial stages). Each is `React.cache`d.
+  //   · the photo, signed once: the header's avatar (§10.1, the selfie
+  //     "across the whole system") and step 3's preview read the same URL;
+  //   · the worker's own staff row, in one select: the SpudBros Express
+  //     banner on every step and step 11 (ADR-0106), step 2's languages,
+  //     step 7's gender;
+  //   · step 6's questions, on step 6 only.
+  const [photoUrl, own, questions] = await Promise.all([
+    signOwnPhoto(state.photoPath),
+    loadOwnStaffFacts(state.staffId),
+    n === 6 ? loadQuizQuestions() : Promise.resolve(null),
+  ]);
   const worker = workerFor(state.firstName, state.lastName, photoUrl);
-  // ADR-0106: read once, for the banner at the top of every step and for step 11.
-  const onboardingOnly = await loadOnboardingOnly(state.staffId);
   return (
-    <WizardFrame worker={worker} onboardingOnly={onboardingOnly}>
-      {await render(n, state, photoUrl, onboardingOnly)}
+    <WizardFrame worker={worker} onboardingOnly={own.onboardingOnly}>
+      {render(n, state, photoUrl, own, questions)}
     </WizardFrame>
   );
 }
 
-async function render(
+function render(
   n: number,
   s: OnboardingState,
   photoUrl: string | null,
-  onboardingOnly: boolean,
+  own: OwnStaffFacts,
+  questions: QuizQuestion[] | null,
 ) {
   const today = ukToday();
   switch (n) {
@@ -97,12 +102,7 @@ async function render(
         />
       );
     case 2:
-      return (
-        <AddressStep
-          initial={splitAddress(s)}
-          languages={(await loadLanguages(s.staffId)) ?? ['English']}
-        />
-      );
+      return <AddressStep initial={splitAddress(s)} languages={own.languages ?? ['English']} />;
     case 3:
       return (
         <SelfieStep
@@ -124,7 +124,6 @@ async function render(
     case 5:
       return <InductionStep alreadyDone={Boolean(s.progress.inductionAt)} />;
     case 6: {
-      const questions = await loadQuizQuestions();
       if (!questions) {
         return (
           <>
@@ -149,7 +148,7 @@ async function render(
             postgraduateLoan: s.hmrc?.postgraduateLoan ?? false,
             niNumber: '',
             declared: false,
-            gender: await loadHmrcGender(s.staffId),
+            gender: own.gender,
           }}
         />
       );
@@ -188,7 +187,7 @@ async function render(
         />
       );
     default:
-      return <TutorialStep firstName={s.firstName} onboardingOnly={onboardingOnly} />;
+      return <TutorialStep firstName={s.firstName} onboardingOnly={own.onboardingOnly} />;
   }
 }
 

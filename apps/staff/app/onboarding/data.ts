@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
 import { mapOnboardingState } from './state';
 import type { OnboardingState } from './state';
-import type { HmrcGender } from '@thc/domain';
+import { NO_OWN_STAFF_FACTS, toOwnStaffFacts } from './own-staff-facts';
+import type { OwnStaffFacts } from './own-staff-facts';
 
 /**
  * What the eleven screens read — one RPC, `onboarding_state()`, which
@@ -24,50 +25,28 @@ export const loadOnboarding = cache(async (): Promise<OnboardingState | null> =>
 });
 
 /**
- * The gender already on the caller's row (step 7 re-opened), through the
- * worker's own-row read. Null when unanswered or unreadable — the form
- * then asks, and the database refuses a checklist without it.
+ * The caller's gender, languages and SpudBros Express pair
+ * (`OwnStaffFacts`), through the worker's own-row read.
+ *
+ * One select, `React.cache`d per request (go-live audit M5). These were
+ * three one-row selects of the same row, each behind the one before and
+ * behind the photo's signature, so step 7 waited on four serial stages
+ * after `onboarding_state()`. The step page now starts this alongside
+ * the signature. Each column has its own select grant to `authenticated`
+ * (20260923210000, 20261002108000, 20261008120000), so reading the four
+ * together needs no privilege the three reads did not. A failed read
+ * gives each field the fallback it always had (./own-staff-facts.ts).
  */
-export async function loadHmrcGender(staffId: string): Promise<HmrcGender | null> {
-  if (!supabaseConfigured() || !staffId) return null;
-  const supabase = staffDb(await cookies());
-  const { data } = await supabase.from('staff').select('gender').eq('id', staffId).maybeSingle();
-  const gender = (data as { gender?: unknown } | null)?.gender;
-  return gender === 'M' || gender === 'F' ? gender : null;
-}
-
-/**
- * The languages already on the caller's row (step 2 re-opened, ADR-0080),
- * through the worker's own-row read. Null when never answered or
- * unreadable — the step then starts from English alone.
- */
-export async function loadLanguages(staffId: string): Promise<string[] | null> {
-  if (!supabaseConfigured() || !staffId) return null;
-  const supabase = staffDb(await cookies());
-  const { data } = await supabase.from('staff').select('languages').eq('id', staffId).maybeSingle();
-  const languages = (data as { languages?: unknown } | null)?.languages;
-  return Array.isArray(languages)
-    ? languages.filter((l): l is string => typeof l === 'string')
-    : null;
-}
-
-/**
- * Whether the caller is SpudBros Express staff whose THC shifts are not
- * switched on (ADR-0106), through the worker's own-row read. False when
- * unreadable: the ordinary last step then shows, which is the wording that
- * is wrong for them but never one that withholds anything.
- */
-export async function loadOnboardingOnly(staffId: string): Promise<boolean> {
-  if (!supabaseConfigured() || !staffId) return false;
+export const loadOwnStaffFacts = cache(async (staffId: string): Promise<OwnStaffFacts> => {
+  if (!supabaseConfigured() || !staffId) return NO_OWN_STAFF_FACTS;
   const supabase = staffDb(await cookies());
   const { data } = await supabase
     .from('staff')
-    .select('spudbros_express, thc_shifts_enabled')
+    .select('gender, languages, spudbros_express, thc_shifts_enabled')
     .eq('id', staffId)
     .maybeSingle();
-  const row = data as { spudbros_express?: unknown; thc_shifts_enabled?: unknown } | null;
-  return row?.spudbros_express === true && row?.thc_shifts_enabled !== true;
-}
+  return toOwnStaffFacts(data as Record<string, unknown> | null);
+});
 
 export interface QuizQuestion {
   id: string;
