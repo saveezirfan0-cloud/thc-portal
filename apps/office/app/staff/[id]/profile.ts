@@ -1,4 +1,11 @@
-import { STAFF_STATUSES, canTransitionStaff, clockLabel, formatTimeIn } from '@thc/domain';
+import {
+  EXPIRING_WITHIN_DAYS,
+  STAFF_STATUSES,
+  canTransitionStaff,
+  clockLabel,
+  daysBetween,
+  formatTimeIn,
+} from '@thc/domain';
 import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { hoursText, ukNumericDate } from '../staff';
 import type {
@@ -177,6 +184,27 @@ export function weeklyLimitFact(status: string, capWhy: string): { text: string;
   return status === 'blocked'
     ? { text: '— (blocked, cannot be booked)', muted: true }
     : { text: capWhy, muted: false };
+}
+
+/**
+ * A VERIFIED document's pill, by its effective expiry (§4.4: verified →
+ * expiring ≤ 30 days → expired). A verified row whose day has come is what
+ * blocked the worker (§4.3) and must not read a green "Verified". A
+ * graduate's term letter no longer runs a clock (§4.5), so it keeps its pill.
+ * Other review states are the caller's.
+ */
+export function verifiedDocumentPill(
+  row: { doc_type: string; expires_on: string | null },
+  today: string,
+  graduated: boolean,
+): { tone: 'green' | 'amber' | 'coral'; label: string } {
+  const verified = { tone: 'green', label: 'Verified' } as const;
+  if (!row.expires_on) return verified;
+  if (row.doc_type === 'university_term_dates_letter' && graduated) return verified;
+  const left = daysBetween(today, row.expires_on.slice(0, 10));
+  if (left <= 0) return { tone: 'coral', label: 'Expired' };
+  if (left <= EXPIRING_WITHIN_DAYS) return { tone: 'amber', label: 'Expiring' };
+  return verified;
 }
 
 /**

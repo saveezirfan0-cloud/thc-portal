@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   blockBanner,
   blockStamp,
+  verifiedDocumentPill,
   inEmploymentDeclarationAccepted,
   weeklyLimitFact,
   canBlock,
@@ -386,6 +387,31 @@ describe('the manual block line: who, when, what was released (§9.6, wireframe)
   it('draws nothing for an Unblock row or a failed read', () => {
     expect(blockStamp({ ...audit, action: 'unblock' })).toBeNull();
     expect(blockStamp(null)).toBeNull();
+  });
+});
+
+describe('a verified document reads its expiry (§4.4 document states)', () => {
+  const today = '2026-10-19';
+  const passport = (expires_on: string | null) => ({ doc_type: 'passport', expires_on });
+
+  it('is Expired on and after its expiry day — the day it blocked the worker', () => {
+    expect(verifiedDocumentPill(passport('2026-10-19'), today, false)).toEqual({
+      tone: 'coral',
+      label: 'Expired',
+    });
+    expect(verifiedDocumentPill(passport('2026-10-18'), today, false).label).toBe('Expired');
+  });
+
+  it('is Expiring within 30 days, Verified beyond, and Verified with no expiry', () => {
+    expect(verifiedDocumentPill(passport('2026-11-18'), today, false).label).toBe('Expiring');
+    expect(verifiedDocumentPill(passport('2026-11-19'), today, false).label).toBe('Verified');
+    expect(verifiedDocumentPill(passport(null), today, false).label).toBe('Verified');
+  });
+
+  it('a graduate’s term letter runs no clock (§4.5)', () => {
+    const letter = { doc_type: 'university_term_dates_letter', expires_on: '2026-09-20' };
+    expect(verifiedDocumentPill(letter, today, true).label).toBe('Verified');
+    expect(verifiedDocumentPill(letter, today, false).label).toBe('Expired');
   });
 });
 
