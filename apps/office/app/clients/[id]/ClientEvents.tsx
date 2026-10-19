@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Panel, Pill, SegToggle, TableScroll } from '@thc/ui';
+import { Panel, Pill, SegToggle, TableScroll, useTimeFormat } from '@thc/ui';
 import { formatUkDate } from '../../staff/staff';
 import { formatUkWindow } from '../../staff/[id]/profile';
 import { gbpRound, marginTone, matchesEventFilter } from './card';
@@ -39,6 +39,8 @@ export function ClientEvents({
 }) {
   const [filter, setFilter] = useState<EventFilter>('all');
   const [page, setPage] = useState(0);
+  // ADR-0085: the window is written on this operator's clock.
+  const format = useTimeFormat();
 
   const shown = useMemo(
     () => rows.filter((row) => matchesEventFilter(row, filter)),
@@ -120,7 +122,7 @@ export function ClientEvents({
                     {row.po_number ?? <span className="muted">—</span>}
                   </td>
                   <td data-label="Date · window (UK time)" className="mono sm">
-                    {formatUkDate(row.event_date)} · {formatUkWindow(row.starts_at, row.ends_at)}
+                    {formatUkDate(row.event_date)} · {formatUkWindow(row.starts_at, row.ends_at, format)}
                     {row.section_count > 1 ? (
                       <span className="sub">derived window — role times are on the event page</span>
                     ) : null}
