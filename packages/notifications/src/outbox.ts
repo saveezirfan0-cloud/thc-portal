@@ -12,6 +12,7 @@
 
 import { isHttpUrl } from './email-html.ts';
 import { templateEmailHtml } from './email-layouts.ts';
+import { axlr8Values } from './invite-reminder-copy.ts';
 import { DEFAULT_SENDER_ADDRESSES } from './senders.ts';
 import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
 import {
@@ -76,6 +77,8 @@ export interface RenderOptions {
    * unconfigured rather than sending it.
    */
   clientPortalUrl?: string;
+  /** The moment of sending, for the AXLR8 countdown; absent, now. Tests pin it. */
+  now?: Date;
 }
 
 /** An event id, as client_lineup_notices() writes it. */
@@ -164,7 +167,13 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
     );
   }
 
-  let values: Record<string, string> = row.payload ?? {};
+  // The AXLR8 countdown (`{axlr8Stops}`, `{axlr8Line}`, `{axlr8Days}`) is
+  // worked out now, as the email goes, so a row queued yesterday counts
+  // today. It is ours, never the row's: a payload cannot set it.
+  let values: Record<string, string> = {
+    ...(row.payload ?? {}),
+    ...axlr8Values(options.now ?? new Date()),
+  };
 
   // ADR-0135 §3: the customer's link is built here, never taken from the
   // row — an event id the database wrote, under the configured origin.
