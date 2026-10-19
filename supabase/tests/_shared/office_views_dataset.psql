@@ -1,0 +1,121 @@
+-- =====================================================================
+-- The office-views population (scripts/bench/office_views_at_scale.sql, pgTAP 885-887,
+-- ADR-0160): _shared/cap_dataset's workers, candidates and booking
+-- history, and on top of them what the office screens read per worker.
+--
+-- Included with \ir after _shared/fixtures.psql and _shared/cap_dataset.psql
+-- (it reuses their client, role, admin and `capset` people), inside the
+-- caller's transaction. User triggers on the seeded tables are off while
+-- seeding and back on before the caller runs anything.
+-- =====================================================================
+alter table staff disable trigger user;
+alter table compliance_docs disable trigger user;
+alter table criminal_declarations disable trigger user;
+alter table quiz_attempts disable trigger user;
+alter table client_qualifications disable trigger user;
+alter table violations disable trigger user;
+alter table rtw_checks disable trigger user;
+
+-- A rating, a manual block with its internal reason on one in fifty, an NI
+-- number entered after the NI evidence was verified on one in fifty.
+update staff s
+   set rating = 3 + (x.g % 20) / 10.0,
+       block_kind = case when x.g % 50 = 7 then 'manual'::block_kind end,
+       block_reason = case when x.g % 50 = 7 then 'Bench block #' || x.g end,
+       status = case when x.g % 50 = 7 then 'blocked'::staff_status else s.status end,
+       ni_number = case when x.g % 50 = 3 then 'QQ' || lpad(x.g::text, 6, '0') || 'C' end
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ where s.id = x.id;
+
+-- Documents: a verified passport each (an older superseded one behind it on
+-- one in four), a pending visa document on one in ten (the review queue),
+-- a verified NI evidence awaiting the NI re-check on one in fifty, and a
+-- pending share-code report with a gov.uk check on one in twenty.
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, reviewed_at, expiry_date)
+select s.id, 'passport', 'documents/bench/' || x.g || '-p.pdf', 'verified',
+       now() - make_interval(days => 200 + x.g % 50), now() - make_interval(days => 199 + x.g % 50),
+       (now() at time zone 'Europe/London')::date + 300 + x.g % 900
+  from staff s join (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x on x.id = s.id;
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, reviewed_at)
+select x.id, 'passport', 'documents/bench/' || x.g || '-old.pdf', 'superseded',
+       now() - make_interval(days => 600), now() - make_interval(days => 599)
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ where x.g % 4 = 0;
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, ai_confidence, needs_manual_review)
+select x.id, 'visa_document', 'documents/bench/' || x.g || '-v.pdf', 'pending',
+       now() - make_interval(hours => x.g % 72), 0.5 + (x.g % 50) / 100.0, x.g % 3 = 0
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ where x.g % 10 = 1;
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, reviewed_at, ni_recheck)
+select x.id, 'ni_evidence', 'documents/bench/' || x.g || '-ni.pdf', 'verified',
+       now() - make_interval(days => 90), now() - make_interval(days => 89), true
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ where x.g % 50 = 3;
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, share_code)
+select x.id, 'share_code_report', 'documents/bench/' || x.g || '-sc.pdf', 'pending',
+       now() - make_interval(hours => 2 + x.g % 48), 'W' || lpad(x.g::text, 8, '0')
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ where x.g % 20 = 16;
+insert into rtw_checks (staff_id, compliance_doc_id, status, source, outcome, attempts, created_at, finished_at, review_reason)
+select d.staff_id, d.id,
+       case when abs(hashtext(d.id::text)) % 3 = 0 then 'needs_review' else 'passed' end, 'govuk',
+       case when abs(hashtext(d.id::text)) % 3 = 0 then 'no_right_to_work' else 'right_to_work' end,
+       1, now() - interval '1 hour', now() - interval '50 minutes',
+       case when abs(hashtext(d.id::text)) % 3 = 0 then 'Bench: no right to work found' end
+  from compliance_docs d
+ where d.doc_type = 'share_code_report' and d.file_path like 'documents/bench/%';
+
+-- Declarations: one each; a "yes" awaiting review on one in thirty.
+insert into criminal_declarations (staff_id, source, answer, review_status, declared_at, details)
+select x.id, 'onboarding', x.g % 30 = 4,
+       case when x.g % 30 = 4 then 'pending'::review_status else 'verified'::review_status end,
+       now() - make_interval(days => 100 + x.g % 30),
+       case when x.g % 30 = 4 then 'Bench declaration ' || x.g end
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x;
+
+-- The onboarding quiz: one or two attempts each, the last one passed.
+insert into quiz_attempts (staff_id, attempt_no, score, passed, answers, taken_at, superseded)
+select x.id, k, case when k = 1 + x.g % 2 then 90 else 55 end, k = 1 + x.g % 2, '{}'::jsonb,
+       now() - make_interval(days => 150 - k), false
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ cross join generate_series(1, 1 + x.g % 2) k;
+
+-- Qualified at both fixture clients; a do-not-return at one on one in 25.
+insert into client_qualifications (client_id, role_id, staff_id, do_not_return, note)
+select c.client_id, :'role_id', x.id, x.g % 25 = 5 and c.client_id = :'clienta'::uuid,
+       case when x.g % 25 = 5 and c.client_id = :'clienta'::uuid then 'Bench: do not return' end
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cap%@capset.test') x
+ cross join (values (:'clienta'::uuid), (:'clientb'::uuid)) c(client_id)
+ where x.g % 2 = 0 or c.client_id = :'clienta'::uuid;
+
+-- A No-show on some of the confirmed shifts in the past.
+insert into violations (staff_id, booking_id, type, resolved)
+select b.staff_id, b.id, 'no_show', abs(hashtext(b.id::text)) % 3 = 0
+  from bookings b
+  join shift_requirements sr on sr.id = b.shift_id
+  join staff s on s.id = b.staff_id
+ where s.email like 'cap%@capset.test' and b.status = 'confirmed' and sr.ends_at < now()
+   and abs(hashtext(b.id::text)) % 4 = 0;
+
+-- Candidates with a Staff App login: half have one, half of those activated.
+insert into auth.users (id, email, encrypted_password, email_confirmed_at)
+select ('ca9b0000-0000-4000-8000-' || lpad(x.g::text, 12, '0'))::uuid, 'u-' || x.g || '@capset.test',
+       case when x.g % 4 = 0 then 'bench-hash' end,
+       case when x.g % 4 = 0 then now() - interval '3 days' end
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cand%@capset.test') x
+ where x.g % 2 = 0;
+update staff s set user_id = ('ca9b0000-0000-4000-8000-' || lpad(x.g::text, 12, '0'))::uuid
+  from (select id, (row_number() over (order by id))::int as g from staff where email like 'cand%@capset.test') x
+ where s.id = x.id and x.g % 2 = 0;
+
+alter table staff enable trigger user;
+alter table compliance_docs enable trigger user;
+alter table criminal_declarations enable trigger user;
+alter table quiz_attempts enable trigger user;
+alter table client_qualifications enable trigger user;
+alter table violations enable trigger user;
+alter table rtw_checks enable trigger user;
+analyze staff; analyze compliance_docs; analyze criminal_declarations; analyze quiz_attempts;
+analyze client_qualifications; analyze violations; analyze rtw_checks; analyze bookings;
+analyze auth.users;
+
