@@ -15,6 +15,7 @@ export * from './completionLetter';
 export * from './shareCode';
 export * from './rtwCheck';
 export * from './hmrc';
+export * from './countries';
 export * from './quiz';
 export * from './onboarding';
 export * from './documents';

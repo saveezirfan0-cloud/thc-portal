@@ -100,6 +100,7 @@ export function ProfileScreen({
   data,
   canCorrectDob = false,
   canEditGender = false,
+  canEditPassportCountry = false,
   canEditLanguages = false,
   canEditScheduling = false,
   canEditPayrollId = false,
@@ -115,6 +116,8 @@ export function ProfileScreen({
   canCorrectDob?: boolean;
   /** ADR-0079: any office login that may write records a gender. */
   canEditGender?: boolean;
+  /** ADR-0159: any office login that may write records the passport country. */
+  canEditPassportCountry?: boolean;
   /** ADR-0080: any office login that may write records the languages. */
   canEditLanguages?: boolean;
   /** ADR-0106: any office login that may write marks SpudBros staff and switches THC shifts on. */
@@ -498,6 +501,8 @@ export function ProfileScreen({
             locationStale={data.locationStale === true}
             gender={data.gender}
             canEditGender={canEditGender}
+            passportCountry={data.passportCountry}
+            canEditPassportCountry={canEditPassportCountry}
             languages={data.languages}
             willoReviewUrl={data.willoReviewUrl}
             canEditLanguages={canEditLanguages}

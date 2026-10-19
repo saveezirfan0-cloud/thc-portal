@@ -7,8 +7,10 @@ import { documentExtractor, toDaterangeLiteral } from '../app/onboarding/extract
  * §2.6 — the AI reads EVERY uploaded document: the wizard's step 4, a
  * renewal from the Documents tab, and the completion letter (§4.5), whose
  * completion date and awarding institution `record_document_extraction()`
- * pre-fills. So the call lives here, once, and both upload paths make it
- * after their RPC has recorded the document.
+ * pre-fills, and a passport, whose issuing country `record_passport_country()`
+ * puts on the worker when none is on file (ADR-0159). So the call lives
+ * here, once, and both upload paths make it after their RPC has recorded
+ * the document.
  *
  * The read runs AFTER THE RESPONSE (`after()` from `next/server`,
  * ADR-0033). A Claude read is up to 45 s an attempt with one retry, plus
@@ -114,6 +116,15 @@ export async function extractDocument(
       p_raw: { provider: extractor.provider, ...result.raw },
     });
     if (error) logFailure('record', docId, error);
+    // ADR-0159: the passport's issuing country for the New Starter
+    // report. The RPC fills a blank only — never what the office set.
+    if (docType === 'passport' && result.passportCountry) {
+      const { error: countryError } = await admin.rpc('record_passport_country', {
+        p_doc: docId,
+        p_country: result.passportCountry,
+      });
+      if (countryError) logFailure('passport_country', docId, countryError);
+    }
   } catch (error) {
     logFailure('extract', docId, error);
   }

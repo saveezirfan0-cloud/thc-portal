@@ -40,8 +40,14 @@ const COLUMNS = [
   { id: 'employee-id', label: 'Employee ID' },
   { id: 'ni', label: 'NI Number' },
   { id: 'address', label: 'Home address' },
+  // ADR-0159: the same address in separate fields, as payroll keys it in.
+  { id: 'address-1', label: 'Address line 1' },
+  { id: 'address-2', label: 'Address line 2' },
+  { id: 'address-3', label: 'Address line 3' },
+  { id: 'town', label: 'Town / City' },
   { id: 'postcode', label: 'Postcode' },
   { id: 'country', label: 'Country' },
+  { id: 'passport-country', label: 'Passport country' },
   { id: 'dob', label: 'Date of birth' },
   { id: 'gender', label: 'Gender' },
   { id: 'first-shift', label: 'First shift date' },
@@ -134,7 +140,7 @@ export function NewStarterTab({
         flush
       >
         <div className="panel-b tight">
-          <TableScrollFor list={LIST} defs={COLUMNS} label="New starters" minWidth="56rem">
+          <TableScrollFor list={LIST} defs={COLUMNS} label="New starters" minWidth="80rem">
             <table className="tbl">
               <thead>
                 <tr>
@@ -144,7 +150,7 @@ export function NewStarterTab({
               <tbody>
                 {starters.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="muted">
+                    <td colSpan={COLUMNS.length} className="muted">
                       No new starters worked a shift in {periodLabel(period.from, period.to)}.
                     </td>
                   </tr>
@@ -180,8 +186,22 @@ export function NewStarterTab({
                         </td>
                       ),
                       address: <td className="sm">{s.home_address ?? '—'}</td>,
+                      'address-1': <td className="sm">{s.address_line_1 ?? '—'}</td>,
+                      'address-2': <td className="sm">{s.address_line_2 ?? '—'}</td>,
+                      'address-3': <td className="sm">{s.address_line_3 ?? '—'}</td>,
+                      town: <td className="sm">{s.town ?? '—'}</td>,
                       postcode: <td className="mono sm rp-nowrap">{s.postcode ?? '—'}</td>,
                       country: <td className="sm">{s.country ?? '—'}</td>,
+                      'passport-country': (
+                        <td className="sm">
+                          {s.passport_country ?? <span className="muted">—</span>}
+                          {!s.passport_country && !s.removed ? (
+                            <span className="sub">
+                              not on file — set it on the worker&apos;s profile
+                            </span>
+                          ) : null}
+                        </td>
+                      ),
                       dob: <td className="mono sm">{dottedDate(s.date_of_birth)}</td>,
                       gender: <td className="mono sm">{s.gender ?? '—'}</td>,
                       'first-shift': <td className="mono sm">{dottedDate(s.first_shift_date)}</td>,

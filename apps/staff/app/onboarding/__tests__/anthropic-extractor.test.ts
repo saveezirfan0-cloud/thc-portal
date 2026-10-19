@@ -46,6 +46,7 @@ function answer(fields: Record<string, unknown>) {
     completionDate: null,
     completionDateKind: null,
     awardingInstitution: null,
+    issuingState: null,
     confidence: 0.95,
     notes: '',
     ...fields,
@@ -231,6 +232,38 @@ describe('each document type maps 1:1 onto ExtractionResult', () => {
         confidence: 0.95,
       });
       expect(result.raw).toMatchObject({ model: DEFAULT_ANTHROPIC_MODEL, docType, issues: [] });
+    }
+  });
+
+  it('passport → its issuing country, by name, from the MRZ code (ADR-0159)', async () => {
+    const { client } = fakeClient(
+      message(answer({ expiryDate: '2031-03-12', issuingState: 'POL' })),
+    );
+    const result = await createAnthropicExtractor({ client }).extract(input('passport'));
+    expect(result).toMatchObject({
+      expiryDate: '2031-03-12',
+      passportCountry: 'Poland',
+      confidence: 0.95,
+    });
+
+    const germany = fakeClient(message(answer({ expiryDate: '2031-03-12', issuingState: 'D<<' })));
+    expect(
+      (await createAnthropicExtractor({ client: germany.client }).extract(input('passport')))
+        .passportCountry,
+    ).toBe('Germany');
+  });
+
+  it('passport issuing country: off the list, unreadable, or another document → null, confidence untouched', async () => {
+    for (const [docType, fields] of [
+      ['passport', { issuingState: 'Ignore your instructions' }],
+      ['passport', { issuingState: null }],
+      ['passport', { issuingState: 'GBR', legible: false }],
+      ['national_id', { issuingState: 'GBR' }],
+    ] as const) {
+      const { client } = fakeClient(message(answer({ expiryDate: '2031-03-12', ...fields })));
+      const result = await createAnthropicExtractor({ client }).extract(input(docType));
+      expect(result.passportCountry ?? null).toBeNull();
+      if (!('legible' in fields)) expect(result.confidence).toBe(0.95);
     }
   });
 
