@@ -122,7 +122,8 @@ export function ClientEvents({
                     {row.po_number ?? <span className="muted">—</span>}
                   </td>
                   <td data-label="Date · window (UK time)" className="mono sm">
-                    {formatUkDate(row.event_date)} · {formatUkWindow(row.starts_at, row.ends_at, format)}
+                    {formatUkDate(row.event_date)} ·{' '}
+                    {formatUkWindow(row.starts_at, row.ends_at, format)}
                     {row.section_count > 1 ? (
                       <span className="sub">derived window — role times are on the event page</span>
                     ) : null}
