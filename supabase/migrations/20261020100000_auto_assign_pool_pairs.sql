@@ -115,6 +115,12 @@ begin
       from unnest(p_shifts, p_staff) as x(shift_id, staff_id)
      where p_staff is not null and x.shift_id is not null and x.staff_id is not null
   ),
+  -- Each named pair with its section's times, so the history below is
+  -- matched to it in one join.
+  psec as materialized (
+    select pp.staff_id, sec.shift_id, sec.starts_at, sec.ends_at, sec.venue_id, sec.week_start
+      from pairs pp join sec on sec.shift_id = pp.shift_id
+  ),
   gap  as materialized (select booked_elsewhere_gap_minutes() as mins),
   -- One statute mile is 1,609.344 m; geography distances are metres.
   rad  as materialized (select case when p_escalation then escalation_radius_miles() * 1609.344 end as metres),
@@ -206,8 +212,8 @@ begin
   -- day wider each side, only narrows the scan; the UK-date test is the rule.
   -- Per section and worker; for named workers, per pair asked about.
   week_src as (
-    select sec.shift_id as for_shift, x.staff_id, x.shift_id, x.status, x.cancelled_at, x.cancel_cause,
-           x.starts_at, x.ends_at
+    select sec.shift_id as for_shift, sec.week_start, x.staff_id, x.shift_id, x.status, x.cancelled_at,
+           x.cancel_cause, x.starts_at, x.ends_at
       from sec
      cross join lateral (
        select b.staff_id, b.shift_id, b.status, b.cancelled_at, b.cancel_cause, sr2.starts_at, sr2.ends_at
@@ -218,23 +224,22 @@ begin
         offset 0) x
      where p_staff is null
     union all
-    select sec.shift_id as for_shift, wb.staff_id, wb.shift_id, wb.status, wb.cancelled_at, wb.cancel_cause,
-           wb.starts_at, wb.ends_at
-      from pairs pp
-      join sec on sec.shift_id = pp.shift_id
+    select ps.shift_id as for_shift, ps.week_start, wb.staff_id, wb.shift_id, wb.status, wb.cancelled_at,
+           wb.cancel_cause, wb.starts_at, wb.ends_at
+      from psec ps
       join wb
-        on wb.staff_id = pp.staff_id
-       and wb.starts_at >= (sec.week_start - 1)::timestamp at time zone 'Europe/London'
-       and wb.starts_at <  (sec.week_start + 8)::timestamp at time zone 'Europe/London'
+        on wb.staff_id = ps.staff_id
+       and wb.starts_at >= (ps.week_start - 1)::timestamp at time zone 'Europe/London'
+       and wb.starts_at <  (ps.week_start + 8)::timestamp at time zone 'Europe/London'
   ),
   week as (
     select w.for_shift, w.staff_id,
            coalesce(sum(extract(epoch from (w.ends_at - w.starts_at)) / 3600.0), 0)::numeric as booked
-      from week_src w join sec on sec.shift_id = w.for_shift
-     where w.shift_id is distinct from sec.shift_id
+      from week_src w
+     where w.shift_id is distinct from w.for_shift
        and booking_counts_toward_cap(w.status, w.cancelled_at, w.cancel_cause)
        and (w.starts_at at time zone 'Europe/London')::date
-           between sec.week_start and sec.week_start + 6
+           between w.week_start and w.week_start + 6
      group by w.for_shift, w.staff_id
   ),
   -- (1) §3.4 "only the worker's other CONFIRMED bookings count" — and a
@@ -246,7 +251,8 @@ begin
   -- flags an overlap), so the window drops nothing booked_elsewhere_conflict()
   -- would flag.
   near_src as (
-    select sec.shift_id as for_shift, x.staff_id, x.shift_id, x.starts_at, x.ends_at, x.venue_id
+    select sec.shift_id as for_shift, sec.starts_at as for_starts, sec.ends_at as for_ends,
+           sec.venue_id as for_venue, x.staff_id, x.shift_id, x.starts_at, x.ends_at, x.venue_id
       from sec cross join gap
      cross join lateral (
        select sr2.id, sr2.starts_at, sr2.ends_at, ev2.venue_id
@@ -262,21 +268,21 @@ begin
         offset 0) x
      where p_staff is null
     union all
-    select sec.shift_id as for_shift, wb.staff_id, wb.shift_id, wb.starts_at, wb.ends_at, wb.venue_id
-      from pairs pp
-      join sec on sec.shift_id = pp.shift_id
+    select ps.shift_id as for_shift, ps.starts_at as for_starts, ps.ends_at as for_ends,
+           ps.venue_id as for_venue, wb.staff_id, wb.shift_id, wb.starts_at, wb.ends_at, wb.venue_id
+      from psec ps
       cross join gap
       join wb
-        on wb.staff_id = pp.staff_id
+        on wb.staff_id = ps.staff_id
        and wb.status in ('confirmed', 'worked')
-       and wb.starts_at < sec.ends_at + make_interval(mins => greatest(gap.mins, 0))
-       and wb.ends_at > sec.starts_at - make_interval(mins => greatest(gap.mins, 0))
+       and wb.starts_at < ps.ends_at + make_interval(mins => greatest(gap.mins, 0))
+       and wb.ends_at > ps.starts_at - make_interval(mins => greatest(gap.mins, 0))
   ),
   elsewhere as materialized (
     select distinct n.for_shift, n.staff_id
-      from near_src n join sec on sec.shift_id = n.for_shift cross join gap
-     where n.shift_id <> sec.shift_id
-       and booked_elsewhere_conflict(sec.starts_at, sec.ends_at, sec.venue_id,
+      from near_src n cross join gap
+     where n.shift_id <> n.for_shift
+       and booked_elsewhere_conflict(n.for_starts, n.for_ends, n.for_venue,
                                      n.starts_at, n.ends_at, n.venue_id, gap.mins) <> 'clear'
   ),
   -- (3) The row's section's own booking, read once for its status and cause.
@@ -361,7 +367,7 @@ begin
     sec.shift_id,
     s.id,
     case
-      when hr.staff_id is null                                                  then 'wrong_role'
+      when not ((s.id, sec.role_id) in (select hr.staff_id, hr.role_id from held hr)) then 'wrong_role'
       -- ADR-0079: the client asked for staff of one gender on this role.
       -- Straight after wrong_role because, like it, it is what the SECTION
       -- asks for rather than anything about the worker's week.
@@ -374,11 +380,11 @@ begin
       -- so the office can record it; on file without it is no row at all.
       when cardinality(sec.extra_languages) > 0 and s.languages is null         then 'languages_not_recorded'
       when not (sec.extra_languages <@ s.languages)                             then 'language_not_spoken'
-      when dn.staff_id is not null                                              then 'do_not_return'
+      when (s.id, sec.client_id) in (select dn.staff_id, dn.client_id from dnr dn)  then 'do_not_return'
       when s.status <> 'compliant'                                              then 'blocked'
-      when sc.staff_id is not null                                              then 'self_cancelled'
+      when (s.id, sec.event_id) in (select sc.staff_id, sc.event_id from selfc sc) then 'self_cancelled'
       -- (1) above.
-      when el.staff_id is not null                                              then 'booked_elsewhere'
+      when (s.id, sec.shift_id) in (select el.staff_id, el.for_shift from elsewhere el) then 'booked_elsewhere'
       -- RULE-20 and the right-to-work stop share one gate, but not one
       -- label: a worker past their right to work is not "over their
       -- hours" and the board must not say so (20260924130100). The verdict
@@ -401,7 +407,7 @@ begin
                        or not st_dwithin(s.home_location, sec.venue_location, rad.metres)) then 'outside_radius' end)
     end as gate,
     -- RULE-17 wave 1: qualified at this client AND role.
-    qu.staff_id is not null as qualified,
+    (s.id, sec.client_id, sec.role_id) in (select qu.staff_id, qu.client_id, qu.role_id from qual qu) as qualified,
     mine.status as booking_status,
     -- §6 show-rate; 90 with no history is the formula's zero point.
     coalesce(sh.rate, 90)::numeric,
@@ -413,11 +419,6 @@ begin
   from pool s
   join sec on sec.shift_id = s.for_shift
   cross join rad
-  left join held hr      on hr.staff_id = s.id and hr.role_id = sec.role_id
-  left join dnr dn       on dn.staff_id = s.id and dn.client_id = sec.client_id
-  left join selfc sc     on sc.staff_id = s.id and sc.event_id = sec.event_id
-  left join elsewhere el on el.staff_id = s.id and el.for_shift = sec.shift_id
-  left join qual qu      on qu.staff_id = s.id and qu.client_id = sec.client_id and qu.role_id = sec.role_id
   left join mine         on mine.staff_id = s.id and mine.shift_id = sec.shift_id
   left join shows sh     on sh.staff_id = s.id
   left join future fu    on fu.staff_id = s.id
