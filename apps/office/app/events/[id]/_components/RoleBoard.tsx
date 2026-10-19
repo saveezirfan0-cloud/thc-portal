@@ -23,6 +23,7 @@ import {
   handedOverLine,
   offerChip,
   rateLine,
+  readyLine,
   roleBlockOpen,
 } from '../board-model';
 import { ScheduledWindow } from '../../_components/ScheduledWindow';
@@ -204,7 +205,10 @@ export function RoleBoard({
         ) : (
           section.confirmed.map((booking) => (
             <div className={booking.noShow ? 'prow noshow' : 'prow'} key={booking.bookingId}>
-              <Person person={booking} sub={confirmedLine(booking, section.roleName, format)} />
+              <Person
+                person={booking}
+                sub={confirmedLine(booking, section.roleName, startsAt, format)}
+              />
               <AttendanceStamp attendance={booking.attendance} />
               {booking.qualified ? (
                 <Pill tone="cyan">
@@ -309,18 +313,19 @@ export function RoleBoard({
   );
 }
 
-function confirmedLine(booking: BoardBooking, roleName: string, format?: TimeFormat): string {
+function confirmedLine(
+  booking: BoardBooking,
+  roleName: string,
+  startsAt: Date,
+  format?: TimeFormat,
+): string {
   const parts = [roleName];
   if (booking.confirmedAt) {
     parts.push(`confirmed ${formatTimeIn(new Date(booking.confirmedAt), UK_ZONE, format)}`);
   }
   // The day-before "I'm ready" is the one hard deadline (§3.5), so whether it
   // has been pressed is what the manager most needs to see here.
-  parts.push(
-    booking.dayBeforeConfirmedAt
-      ? `I'm ready ✓ ${formatTimeIn(new Date(booking.dayBeforeConfirmedAt), UK_ZONE, format)}`
-      : "I'm ready — not yet",
-  );
+  parts.push(readyLine(booking.dayBeforeConfirmedAt, booking.confirmedAt, startsAt, format));
   if (booking.source === 'self') parts.push('self-applied via Radar');
   // ADR-0046: booked by taking a cover request the office opened to the pool.
   if (booking.source === 'offer') parts.push('took an offered shift');
