@@ -272,7 +272,7 @@ export function OnboardingBoard({
           <div className="right">
             <SearchInput
               aria-label="Search candidates"
-              placeholder="Search candidates"
+              placeholder="Search name, email or phone"
               value={query}
               onChange={(event) => setUrl({ q: event.target.value }, 'replace')}
             />

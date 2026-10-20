@@ -19,6 +19,7 @@
 import { STAFF_STATUSES, canTransitionStaff, clockLabel } from '@thc/domain';
 import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { capReason, employeeId } from '../staff/staff';
+import { phoneMatches } from '../_lib/phoneSearch';
 import type {
   BoardCandidateRow,
   CandidateQualification,
@@ -715,7 +716,11 @@ export function boardColumns(
 
   const wanted = candidates.filter((row) => {
     if (active ? !ON_BOARD.has(row.status) : row.status !== 'rejected') return false;
-    if (!matchesQuery(row.display_name, [row.email, row.phone, row.payroll_id ?? ''], q.query)) {
+    // The phone through phoneMatches, so `07700 900456` finds `+447700900456`.
+    if (
+      !matchesQuery(row.display_name, [row.email, row.payroll_id ?? ''], q.query) &&
+      !phoneMatches(row.phone, q.query)
+    ) {
       return false;
     }
     if (group === 'spudbros' && !row.spudbros_express) return false;

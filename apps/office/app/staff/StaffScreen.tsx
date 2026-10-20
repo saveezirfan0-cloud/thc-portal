@@ -282,8 +282,8 @@ export function StaffScreen({
               type="search"
               value={query}
               onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
-              placeholder="Search name, Employee ID, Payroll ID, role"
-              aria-label="Search name, Employee ID, Payroll ID, role"
+              placeholder="Search name, phone, Employee ID, Payroll ID, role"
+              aria-label="Search name, phone, Employee ID, Payroll ID, role"
             />
           </div>
           {view === 'directory' ? (

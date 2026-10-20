@@ -305,6 +305,20 @@ describe('the board', () => {
   ];
   const q = { filter: 'active' as const, query: '', roleName: '', reason: 'any' as const };
 
+  it('finds a candidate by phone however the number is typed', () => {
+    const ids = (query: string) =>
+      boardColumns(rows, returning, { ...q, query })
+        .flatMap((c) => c.candidates)
+        .map((r) => r.id);
+    const all = ids('');
+    expect(all.length).toBeGreaterThan(0);
+    // Every fixture shares +44 7700 900456.
+    expect(ids('07700 900456')).toEqual(all);
+    expect(ids('+447700900456')).toEqual(all);
+    expect(ids('900456')).toEqual(all);
+    expect(ids('07700 900999')).toEqual([]);
+  });
+
   it('Active hides rejected cards and shows the returning applicant first in Interview requested', () => {
     const columns = boardColumns(rows, returning, q);
     const first = columns[0]!;

@@ -31,7 +31,7 @@ const AMARA_ID = '20000000-0000-4000-8000-000000000001';
 const rows = (page: Page) => page.locator('table.tbl tbody tr');
 const search = (page: Page) =>
   // ADR-0107: the Payroll ID is searchable too, and the box says so.
-  page.getByRole('searchbox', { name: 'Search name, Employee ID, Payroll ID, role' });
+  page.getByRole('searchbox', { name: 'Search name, phone, Employee ID, Payroll ID, role' });
 
 test.beforeEach(async ({ page }) => {
   await openAsAdmin(page, '/staff');

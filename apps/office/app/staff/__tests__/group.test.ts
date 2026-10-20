@@ -69,3 +69,25 @@ describe('payrollIdRepeatsEmployeeId — the second line under the Employee ID',
     expect(payrollIdRepeatsEmployeeId(6096, undefined)).toBe(false);
   });
 });
+
+describe('matchesQuery — the phone', () => {
+  const withPhone: StaffRow = { ...base, phone: '+447700900456' };
+
+  it('finds a worker by phone in the shapes a manager types', () => {
+    for (const q of [
+      '07700 900456',
+      '07700900456',
+      '+44 7700 900456',
+      '0044 7700 900456',
+      '900456',
+      '447700900456',
+    ]) {
+      expect(matchesQuery(withPhone, q)).toBe(true);
+    }
+  });
+
+  it('does not match a different number, or a worker with no phone', () => {
+    expect(matchesQuery(withPhone, '07700 900999')).toBe(false);
+    expect(matchesQuery(base, '07700 900456')).toBe(false);
+  });
+});

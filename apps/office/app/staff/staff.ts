@@ -1,3 +1,4 @@
+import { phoneMatches } from '../_lib/phoneSearch';
 import type { CapBand, StaffRow, StaffStatus } from './types';
 
 /**
@@ -148,13 +149,15 @@ export function matchesGroup(row: StaffRow, group: GroupFilter): boolean {
 
 /**
  * Search runs over the name, the Employee ID, the Payroll ID and the role
- * (§9.6). The phone is not on the directory row — it is personal data the
- * list does not print — so what is searchable here is the name and the IDs.
+ * (§9.6), and the phone number (owner request, 20.10.2026). The phone is
+ * not printed on the list; it is carried on the row only so it can be
+ * searched, typed in any of the shapes `phoneMatches` accepts.
  */
 export function matchesQuery(row: StaffRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
   if (row.display_name.toLowerCase().includes(needle)) return true;
+  if (phoneMatches(row.phone, needle)) return true;
   if (row.employee_id !== null && employeeId(row.employee_id).toLowerCase().includes(needle)) {
     return true;
   }

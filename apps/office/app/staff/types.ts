@@ -49,6 +49,11 @@ export interface StaffRow {
   spudbros_express?: boolean;
   thc_shifts_enabled?: boolean;
   payroll_id?: string | null;
+  /**
+   * The phone, for search only — never printed on the list. Read from
+   * `staff` beside the view (data.ts); absent for a removed worker.
+   */
+  phone?: string | null;
   display_name: string;
   photo_path: string | null;
   /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */

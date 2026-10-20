@@ -49,6 +49,14 @@ interface DirectoryQuery {
 interface DirectoryClient {
   from(view: string): { select(columns: string): DirectoryQuery };
 }
+interface PhoneQuery {
+  is(column: 'removed_at', value: null): PhoneQuery;
+  order(column: 'id'): PhoneQuery;
+  range(from: number, to: number): unknown;
+}
+interface PhoneClient {
+  from(table: 'staff'): { select(columns: 'id, phone'): PhoneQuery };
+}
 
 export async function loadStaff(): Promise<StaffPageData> {
   if (!supabaseConfigured()) {
@@ -78,13 +86,35 @@ export async function loadStaff(): Promise<StaffPageData> {
           .range(range.from, range.to) as unknown as PromiseLike<PageReply<T>>,
       { what: 'staff', key: (row) => (row as { id: string }).id, ceiling: DIRECTORY_CEILING },
     );
-  const [staff, students] = await Promise.all([
+  // The phone is searched, never printed (owner request, 20.10.2026), so it
+  // is read straight off `staff` — two plain columns, no computed history —
+  // rather than added to the view every other directory read shares. A
+  // removed worker's number is anonymised and is not read at all.
+  const phonesOf = () =>
+    readAllPages<{ id: string; phone: string | null }>(
+      (range) =>
+        (supabase as unknown as PhoneClient)
+          .from('staff')
+          .select('id, phone')
+          .is('removed_at', null)
+          .order('id')
+          .range(range.from, range.to) as unknown as PromiseLike<
+          PageReply<{ id: string; phone: string | null }>
+        >,
+      { what: 'staff phones', key: (row) => row.id, ceiling: DIRECTORY_CEILING },
+    );
+  const [staff, students, phoneRows] = await Promise.all([
     pageOf<StaffRow>('staff_directory_v', STAFF_COLUMNS),
     pageOf<StudentRow>('student_visa_v', STUDENT_COLUMNS),
+    phonesOf(),
   ]);
 
   const error = staff.error ?? students.error;
   if (error) return { staff: [], students: [], problem: readProblem(error) };
+  // A failed phone read costs the phone search only, never the directory.
+  const phones = new Map(
+    (phoneRows.error ? [] : (phoneRows.data ?? [])).map((r) => [r.id, r.phone]),
+  );
 
   // The selfie is a key in the private `photos` bucket, not a URL: both
   // lists are signed in one batch, and a path that cannot be signed leaves
@@ -98,7 +128,11 @@ export async function loadStaff(): Promise<StaffPageData> {
   const url = (path: string | null) => (path ? (urls.get(path) ?? null) : null);
 
   return {
-    staff: staffRows.map((row) => ({ ...row, photo_url: url(row.photo_path) })),
+    staff: staffRows.map((row) => ({
+      ...row,
+      phone: phones.get(row.id) ?? null,
+      photo_url: url(row.photo_path),
+    })),
     students: studentRows.map((row) => ({ ...row, photo_url: url(row.photo_path) })),
     problem: null,
   };
