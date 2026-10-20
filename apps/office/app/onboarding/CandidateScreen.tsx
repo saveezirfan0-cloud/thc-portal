@@ -1062,6 +1062,9 @@ function InterviewCompleted({
 }) {
   const [picked, setPicked] = useState<string[]>(row.role_ids);
   const [note, setNote] = useState('');
+  // A rejected candidate is read-only here too (§2.3): no Accept, no second
+  // Reject, and the decision line says what happened instead of "Awaiting".
+  const rejected = row.status === 'rejected';
   const toggle = (id: string) =>
     setPicked((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
 
@@ -1104,7 +1107,14 @@ function InterviewCompleted({
                   : '—'}
               </span>
               <span className="k">Decision</span>
-              {data.interviewOverride ? (
+              {rejected ? (
+                // §2.3: final on this record — nothing is awaited any more.
+                <span className="coral">
+                  {row.rejection_cause === 'willo'
+                    ? 'Rejected — made inside Willo; the system rejected and sent E2'
+                    : 'Rejected by the office'}
+                </span>
+              ) : data.interviewOverride ? (
                 past ? (
                   <span className="green">Accepted by the office</span>
                 ) : (
@@ -1133,7 +1143,7 @@ function InterviewCompleted({
           </div>
         </Panel>
       )}
-      {past ? (
+      {past || rejected ? (
         <Panel title="Qualified role type(s)">
           {row.role_names.length > 0 ? (
             <div className="row wrap">
@@ -2270,8 +2280,8 @@ function DocumentsPhase({
             title="Profile selfie"
             meta={
               row.photo_path
-                ? 'Taken in the app at wizard step 4 · becomes the avatar across the whole system · locked after onboarding'
-                : 'Not taken yet — the candidate takes it in the app at wizard step 4'
+                ? 'Taken in the app at wizard step 3 · becomes the avatar across the whole system · locked after onboarding'
+                : 'Not taken yet — the candidate takes it in the app at wizard step 3'
             }
             state={row.photo_path ? 'verified' : 'pending'}
             actions={
