@@ -127,7 +127,7 @@ export async function loadSettings(): Promise<SettingsData> {
     // anything but a whole number from 1 to 24 is the default 12.
     officeTwoStepRequired: byKey.get('office_two_step_required') !== false,
     officeSessionMaxHours: sessionHoursOf(byKey.get('office_session_max_hours')),
-    // ADR-0175: invoicing_config()'s reading — off when the row is missing.
+    // ADR-0176: invoicing_config()'s reading — off when the row is missing.
     invoicing: readInvoicing(byKey.get('invoicing')),
     problem: null,
   };

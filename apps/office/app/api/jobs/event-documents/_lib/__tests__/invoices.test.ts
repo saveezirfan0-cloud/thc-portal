@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { runInvoices } from '../invoices';
 import type { InvoiceRunDeps } from '../invoices';
 
-/** ADR-0175: the invoice step of the event-documents job, its I/O faked. */
+/** ADR-0176: the invoice step of the event-documents job, its I/O faked. */
 function deps(over: Partial<InvoiceRunDeps> = {}): InvoiceRunDeps & { lines: string[] } {
   const lines: string[] = [];
   return {
@@ -18,7 +18,7 @@ function deps(over: Partial<InvoiceRunDeps> = {}): InvoiceRunDeps & { lines: str
   };
 }
 
-describe('the invoice step (ADR-0175)', () => {
+describe('the invoice step (ADR-0176)', () => {
   it('issues and sends every due group, and only due ones', async () => {
     const claim = vi.fn(async (key: string) => `inv-${key}`);
     const send = vi.fn(async () => ({ number: 4000, queued: true }));

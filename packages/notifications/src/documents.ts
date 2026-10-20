@@ -22,7 +22,7 @@
  *         card (§9.7), which the outbox row carries. THC renamed both in
  *         client emails on 29.09.2026 — §11.3/§11.4 say "allocation sheet"
  *         and "sign-out timesheet" (ADR-0073).
- *   INV1  THC's invoice (ADR-0175), at 10:00 UK the morning after the last
+ *   INV1  THC's invoice (ADR-0176), at 10:00 UK the morning after the last
  *         event on a PO, with the completed timesheet of every event on it
  *         attached. From timesheets@, to the client card's accounts emails
  *         (or its contact emails), which the outbox row carries.
@@ -87,7 +87,7 @@ export interface DocumentEmailHtml {
   attachmentNote: string;
   /** Under the name badges' file name (ADR-0081, D1 only); `{nameBadges}` is the count. */
   badgesNote?: string;
-  /** Under each completed timesheet attached to an invoice (ADR-0175, INV1 only). */
+  /** Under each completed timesheet attached to an invoice (ADR-0176, INV1 only). */
   timesheetNote?: string;
   /** A `mailto:` button to the sender's reply-to, subject "Re: <subject>". */
   replyButton?: string;
@@ -180,7 +180,7 @@ export const DOCUMENT_EMAILS = {
       timesheetNote: 'Completed Allocation Timesheet · attached',
       replyButton: 'Reply to this email',
     },
-    trigger: 'ADR-0175 — the invoice job, after the event (one invoice per PO Number)',
+    trigger: 'ADR-0176 — the invoice job, after the event (one invoice per PO Number)',
     timing:
       '10:00 Europe/London the morning after the last event on the PO, once every check-out is settled and any violation signed off',
   },
@@ -200,7 +200,7 @@ export interface Attachment {
    * What the file is when it is not the email's main document: 'badges',
    * the D1 name badges (ADR-0081). Its card says the template's
    * `badgesNote` instead of `attachmentNote`. 'timesheet', a completed
-   * timesheet attached to an invoice (ADR-0175): its card says `timesheetNote`.
+   * timesheet attached to an invoice (ADR-0176): its card says `timesheetNote`.
    */
   role?: 'badges' | 'timesheet';
 }

@@ -26,7 +26,7 @@ import type { InvoiceStatus, ReportView } from '../view-model';
 import { RangeForm } from './RangeForm';
 
 /**
- * Tab 4 · Invoicing (ADR-0172, ADR-0175) — not in §9.9. Since ADR-0175 the
+ * Tab 4 · Invoicing (ADR-0172, ADR-0176) — not in §9.9. Since ADR-0176 the
  * system issues the invoices itself: one per PO, emailed at 10:00 UK the
  * morning after the last event on it, with the completed timesheets.
  *

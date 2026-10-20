@@ -355,7 +355,7 @@ const KIND_LABEL: Record<Exclude<InvoiceLine['kind'], 'worked'>, string> = {
   cancelled_on_day: 'Cancelled on the day · charged in full',
 };
 
-/** The issued invoice (ADR-0175): its PDF, where its email is, Send again. */
+/** The issued invoice (ADR-0176): its PDF, where its email is, Send again. */
 function InvoicePanel({
   invoiceId,
   eventId,

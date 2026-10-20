@@ -14,7 +14,7 @@ import {
 import type { InvoiceDetails } from './types';
 
 /**
- * Invoicing (ADR-0175, THC 20.10.2026) — the system emails each invoice
+ * Invoicing (ADR-0176, THC 20.10.2026) — the system emails each invoice
  * itself, with the completed timesheets attached, addressed to the
  * client's accounts contact:
  *

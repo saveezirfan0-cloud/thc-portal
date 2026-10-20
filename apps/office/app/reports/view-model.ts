@@ -144,7 +144,7 @@ export function showForecastLabel(from: string, to: string, today: string): bool
 
 /**
  * `invoice_events`' ladder, in its order: the first step an event fails is
- * its status (20261021150000; `invoiced` since ADR-0175, 20261022100000).
+ * its status (20261021150000; `invoiced` since ADR-0176, 20261022100000).
  */
 export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready' | 'invoiced';
 
@@ -189,7 +189,7 @@ export function invoiceStatus(value: string): InvoiceStatus {
 
 /**
  * Why a ready event's invoice has not gone yet, or when it will — from
- * `_invoice_groups`' verdict (ADR-0175). Null when there is nothing to say.
+ * `_invoice_groups`' verdict (ADR-0176). Null when there is nothing to say.
  */
 export function invoiceSendNote(
   verdict: string | null,
@@ -248,7 +248,7 @@ export interface InvoiceEmailFacts {
 export const INVOICE_MAX_ATTEMPTS = 24;
 
 /**
- * Where an issued invoice's email is (ADR-0175), from the invoice row and
+ * Where an issued invoice's email is (ADR-0176), from the invoice row and
  * its INV1 outbox row. `resendable`: the office may "Send again" — the last
  * email is settled (sent or failed) and the files exist.
  */
@@ -300,7 +300,7 @@ export function invoicedAmountChanged(
   return Math.round(Number(live ?? 0) * 100) !== Math.round(Number(invoiced) * 100);
 }
 
-/** The stored invoice PDF (ADR-0175). */
+/** The stored invoice PDF (ADR-0176). */
 export function invoicePdfHref(invoiceId: string): string {
   return `/api/invoices/${encodeURIComponent(invoiceId)}`;
 }

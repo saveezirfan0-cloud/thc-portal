@@ -99,14 +99,14 @@ export interface SettingsData {
   officeTwoStepRequired: boolean;
   officeSessionMaxHours: number;
   /**
-   * ADR-0175: the `invoicing` row, read as `invoicing_config()` reads it
+   * ADR-0176: the `invoicing` row, read as `invoicing_config()` reads it
    * (every value defaulted; off when the row is missing).
    */
   invoicing: InvoicingSettings;
   problem: string | null;
 }
 
-/** ADR-0175: THC's own details as printed on every invoice (`settings.invoicing.company`). */
+/** ADR-0176: THC's own details as printed on every invoice (`settings.invoicing.company`). */
 export interface InvoicingCompany {
   name: string;
   company_reg: string;
@@ -115,7 +115,7 @@ export interface InvoicingCompany {
   website: string;
 }
 
-/** ADR-0175: where the client pays (`settings.invoicing.bank`). */
+/** ADR-0176: where the client pays (`settings.invoicing.bank`). */
 export interface InvoicingBank {
   account_name: string;
   bank: string;
@@ -124,7 +124,7 @@ export interface InvoicingBank {
 }
 
 /**
- * ADR-0175: `settings.invoicing`, the shape `invoicing_config()` reads
+ * ADR-0176: `settings.invoicing`, the shape `invoicing_config()` reads
  * (20261022100000_invoices_sent.sql §2). Snapshotted onto each invoice as it
  * is issued, so a change here never alters an invoice already sent.
  */

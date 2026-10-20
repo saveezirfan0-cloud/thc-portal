@@ -1,5 +1,5 @@
 -- =====================================================================
--- 909 · Invoices, sent with the completed timesheet — ADR-0175,
+-- 909 · Invoices, sent with the completed timesheet — ADR-0176,
 --       20261022100000_invoices_sent.sql
 --
 -- November 2024 (GMT). invoicing_config() never lets go-live go before

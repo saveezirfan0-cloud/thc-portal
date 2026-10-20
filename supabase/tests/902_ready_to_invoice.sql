@@ -187,7 +187,7 @@ reset role;
 select is((select count(*)::int from il where name = 'Gone'), 0,
   'an event cancelled before its day has nothing to invoice and is not listed');
 select is((select status from il where name = 'Clean'), 'ready',
-  'a clean, closed event is ready with no sign-off: it has no violation to review (ADR-0175)');
+  'a clean, closed event is ready with no sign-off: it has no violation to review (ADR-0176)');
 select is((select invoicing from il where name = 'Clean'), 183.76::numeric, 'two 4 h shifts × £22.97 = 183.76');
 select is((select payable_min from il where name = 'Clean'), 480, 'payable minutes add up');
 select is((select po_number from il where name = 'Clean'), 'PO-Clean', 'the PO number carries through');

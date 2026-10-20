@@ -1,5 +1,5 @@
 /**
- * Draws THC's invoice (ADR-0175) as an A4 PDF, after THC's own invoice:
+ * Draws THC's invoice (ADR-0176) as an A4 PDF, after THC's own invoice:
  * the mark and name top left, INVOICE top right, the company block, Invoice
  * to / Invoice details, the shift lines, the totals, Payment details and
  * the late-payment wording. Every string is `invoice.ts`'s; nothing is

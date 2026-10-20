@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-/** GET /api/invoices/:invoiceId (ADR-0175): the stored PDF, finance only. */
+/** GET /api/invoices/:invoiceId (ADR-0176): the stored PDF, finance only. */
 const rpc = vi.hoisted(() => vi.fn());
 const download = vi.hoisted(() => vi.fn());
 vi.mock('../../../documents/_lib/generate', () => ({

@@ -1,5 +1,5 @@
 /**
- * THC's invoice (ADR-0175) — the words and figures, decided here and drawn
+ * THC's invoice (ADR-0176) — the words and figures, decided here and drawn
  * by `InvoiceDocument.tsx`, laid out after THC's own invoice (20.10.2026):
  * the company block, Invoice to / Invoice details, one line per shift
  * (Date · Staff name · Role · Start · End · Break · Hours · Rate · Total),

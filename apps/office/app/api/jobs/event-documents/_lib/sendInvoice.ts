@@ -4,7 +4,7 @@ import { drawSheet } from '../../../documents/_lib/generate';
 import type { DocumentRpc } from '../../../documents/_lib/generate';
 
 /**
- * Draw, store, record and queue one issued invoice (ADR-0175): the invoice
+ * Draw, store, record and queue one issued invoice (ADR-0176): the invoice
  * PDF and the completed timesheet of each event on it, side by side in the
  * private `timesheets` bucket under `invoices/<number>/<stamp>/` — a new
  * folder every attempt, nothing overwritten — then the INV1 email.
@@ -32,7 +32,7 @@ export async function sendInvoice(
   invoiceId: string,
   now: Date = new Date(),
 ): Promise<{ number: number; queued: boolean }> {
-  // Counted before any work: a run killed mid-draw still counts (ADR-0175).
+  // Counted before any work: a run killed mid-draw still counts (ADR-0176).
   const begun = await db.rpc('invoice_begin', { p_invoice: invoiceId, p_now: now.toISOString() });
   if (begun.error) throw new Error(`invoice_begin: ${begun.error.message}`);
 

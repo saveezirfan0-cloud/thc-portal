@@ -2,7 +2,7 @@ import { type DbError, explainDbError } from '../../_lib/dbError';
 import { isEmail } from '../validate';
 
 /**
- * The Invoicing panel's rules (ADR-0175). Pure, so the server action and
+ * The Invoicing panel's rules (ADR-0176). Pure, so the server action and
  * the panel share them and a test can drive them directly.
  *
  * The database is the gate — `set_client_invoice_details()` trims,

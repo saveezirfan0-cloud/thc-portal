@@ -4,7 +4,7 @@ import { NOT_ALLOWED } from '../../../_lib/dbError';
 import type { InvoiceDetails } from '../types';
 
 /**
- * ADR-0175 (THC 20.10.2026): the client card's Invoicing panel — the
+ * ADR-0176 (THC 20.10.2026): the client card's Invoicing panel — the
  * accounts contact, up to five invoice emails and the billing address —
  * saved through `set_client_invoice_details()`, whose refusals reach the
  * manager as sentences.
@@ -34,7 +34,7 @@ beforeEach(() => {
 const refuse = (error: { code?: string; message: string; details?: string | null }) =>
   rpc.mockResolvedValueOnce({ error });
 
-describe('setInvoiceDetails (ADR-0175)', () => {
+describe('setInvoiceDetails (ADR-0176)', () => {
   it('calls the RPC with the normalised details and revalidates the card', async () => {
     const result = await setInvoiceDetails('c-1', {
       accountsContactName: '  Accounts Payable ',
@@ -142,7 +142,7 @@ const details = (over: Partial<InvoiceDetails> = {}): InvoiceDetails => ({
   ...over,
 });
 
-describe('The Invoicing panel on the client card (ADR-0175)', () => {
+describe('The Invoicing panel on the client card (ADR-0176)', () => {
   it('shows the contact, the emails, the hint and the address, with Edit for a writer', () => {
     const html = renderToStaticMarkup(<Invoicing clientId="c1" details={details()} canWrite />);
     expect(html).toContain('Invoicing');

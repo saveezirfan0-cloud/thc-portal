@@ -50,7 +50,7 @@ const withBank = (over: Partial<InvoicingSettings['bank']>): InvoicingSettings =
   bank: { ...SEEDED.bank, ...over },
 });
 
-describe('invoicing settings (ADR-0175)', () => {
+describe('invoicing settings (ADR-0176)', () => {
   it('accepts the seeded row', () => {
     expect(invoicingProblems(SEEDED)).toEqual({});
     expect(validateInvoicing(SEEDED)).toBeNull();
@@ -73,7 +73,7 @@ describe('invoicing settings (ADR-0175)', () => {
     it('accepts a real day', () => {
       expect(validateFirstEventDate('2026-10-26')).toBeNull();
       expect(validateFirstEventDate('2026-11-02')).toBeNull();
-      // Never before go-live: earlier events were invoiced by hand (ADR-0175).
+      // Never before go-live: earlier events were invoiced by hand (ADR-0176).
       expect(validateFirstEventDate('2026-10-25')).toMatch(/on or after 26\/10\/2026/);
       expect(isIsoDate('2028-02-29')).toBe(true);
     });

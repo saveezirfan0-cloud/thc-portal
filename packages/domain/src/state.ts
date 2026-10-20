@@ -457,7 +457,7 @@ export function canChangeShiftOfferMode(
 }
 
 /**
- * An issued invoice (ADR-0175). The database is authoritative:
+ * An issued invoice (ADR-0176). The database is authoritative:
  * `invoice_status_transitions()` lists the same pairs and the
  * `invoices_state_guard` trigger refuses any other status change.
  *

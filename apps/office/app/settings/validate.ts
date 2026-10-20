@@ -281,7 +281,7 @@ export function validateClientPortalPhone(value: string): string | null {
 }
 
 /* ------------------------------------------------------------------ *
- * ADR-0175: invoicing. Every value here is printed on, or decides the
+ * ADR-0176: invoicing. Every value here is printed on, or decides the
  * timing of, an invoice emailed to a client — a wrong sort code is money
  * paid into the wrong account, and the database casts these values
  * (`invoicing_config()`), so a malformed one stops the job outright.

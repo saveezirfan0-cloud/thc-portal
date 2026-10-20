@@ -1,4 +1,4 @@
-# ADR-0175 · Invoices: numbered from 4000, one per PO, emailed at 10:00 the next morning with the completed timesheets
+# ADR-0176 · Invoices: numbered from 4000, one per PO, emailed at 10:00 the next morning with the completed timesheets
 
 **Status:** Accepted · 20.10.2026 · **Supersedes in part:** ADR-0172 ("The system still issues no
 invoice: no invoice number, no VAT, no email to the client"; and "every event needs a manager's

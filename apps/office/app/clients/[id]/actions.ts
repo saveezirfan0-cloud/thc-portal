@@ -196,7 +196,7 @@ export async function setLineupEmails(
 }
 
 /**
- * ADR-0175: the Invoicing panel — who the invoice is addressed to, where it
+ * ADR-0176: the Invoicing panel — who the invoice is addressed to, where it
  * is emailed (up to five; none sends it to the contact emails) and the
  * billing address printed under "Invoice to". The database normalises and
  * validates the addresses and audits the change; the same rules are said

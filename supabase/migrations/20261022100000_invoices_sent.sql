@@ -1,5 +1,5 @@
 -- =====================================================================
--- 20261022100000 · Invoices, sent with the completed timesheet — ADR-0175
+-- 20261022100000 · Invoices, sent with the completed timesheet — ADR-0176
 --                   (THC, 20.10.2026; builds on ADR-0172 Ready to invoice)
 --
 -- THC decided on 20.10.2026 that the system issues the invoice itself:
@@ -71,11 +71,11 @@ alter table public.clients
   add constraint clients_invoice_emails_max check (coalesce(array_length(invoice_emails, 1), 0) <= 5);
 
 comment on column public.clients.accounts_contact_name is
-  'ADR-0175: who the invoice is addressed to ("Invoice to"). Set by set_client_invoice_details().';
+  'ADR-0176: who the invoice is addressed to ("Invoice to"). Set by set_client_invoice_details().';
 comment on column public.clients.invoice_emails is
-  'ADR-0175: where the invoice is emailed (up to 5). Empty: the client''s contact_emails.';
+  'ADR-0176: where the invoice is emailed (up to 5). Empty: the client''s contact_emails.';
 comment on column public.clients.billing_address is
-  'ADR-0175: the postal address printed under "Invoice to".';
+  'ADR-0176: the postal address printed under "Invoice to".';
 
 create or replace function public.set_client_invoice_details(
   p_client uuid, p_contact_name text, p_emails text[], p_address text)
@@ -120,7 +120,7 @@ begin
 end $$;
 
 comment on function public.set_client_invoice_details(uuid, text, text[], text) is
-  'ADR-0175: the client card''s accounts contact, invoice emails (up to 5, validated, lower-cased) and billing address. Finance callers that may write; audited as client.invoice_details.';
+  'ADR-0176: the client card''s accounts contact, invoice emails (up to 5, validated, lower-cased) and billing address. Finance callers that may write; audited as client.invoice_details.';
 
 revoke execute on function public.set_client_invoice_details(uuid, text, text[], text) from public, anon;
 grant execute on function public.set_client_invoice_details(uuid, text, text[], text) to authenticated, service_role;
@@ -152,7 +152,7 @@ begin
 end $$;
 
 comment on function public.clients_invoice_details_guard() is
-  'ADR-0175: the client card''s invoice details change only for a finance caller (or the service role). Trigger.';
+  'ADR-0176: the client card''s invoice details change only for a finance caller (or the service role). Trigger.';
 revoke execute on function public.clients_invoice_details_guard() from public, anon, authenticated;
 
 create trigger clients_invoice_details_guard
@@ -206,7 +206,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.invoicing_config() is
-  'ADR-0175: settings.invoicing with every value defaulted (disabled when the row is missing); first_event_date is never before 2026-10-26. Internal.';
+  'ADR-0176: settings.invoicing with every value defaulted (disabled when the row is missing); first_event_date is never before 2026-10-26. Internal.';
 revoke execute on function public.invoicing_config() from public, anon, authenticated;
 grant execute on function public.invoicing_config() to service_role;
 
@@ -220,7 +220,7 @@ create table public.invoice_counter (
 insert into public.invoice_counter (id, next_number) values (true, 4000) on conflict do nothing;
 
 comment on table public.invoice_counter is
-  'ADR-0175: the next invoice number (THC: from 4000). Taken under a row lock in the transaction that creates the invoice, so numbers never skip.';
+  'ADR-0176: the next invoice number (THC: from 4000). Taken under a row lock in the transaction that creates the invoice, so numbers never skip.';
 
 create table public.invoices (
   id            uuid primary key default gen_random_uuid(),
@@ -257,7 +257,7 @@ create index invoices_client_idx on public.invoices (client_id);
 create index invoices_status_idx on public.invoices (status) where status <> 'queued';
 
 comment on table public.invoices is
-  'ADR-0175: one row per issued invoice, numbered from 4000 without gaps. Bill-to, seller, VAT and terms are snapshotted as issued; the lines are in invoice_lines. drawing → queued (the INV1 email is in the outbox), or failed and retried by the job.';
+  'ADR-0176: one row per issued invoice, numbered from 4000 without gaps. Bill-to, seller, VAT and terms are snapshotted as issued; the lines are in invoice_lines. drawing → queued (the INV1 email is in the outbox), or failed and retried by the job.';
 
 create table public.invoice_event_links (
   event_id   uuid primary key references public.events(id),
@@ -266,7 +266,7 @@ create table public.invoice_event_links (
 create index invoice_event_links_invoice_idx on public.invoice_event_links (invoice_id);
 
 comment on table public.invoice_event_links is
-  'ADR-0175: the events an invoice covers. The primary key is the event: an event is invoiced once.';
+  'ADR-0176: the events an invoice covers. The primary key is the event: an event is invoiced once.';
 
 create table public.invoice_lines (
   id          bigint generated always as identity primary key,
@@ -290,7 +290,7 @@ create index invoice_lines_invoice_idx on public.invoice_lines (invoice_id, sort
 create index invoice_lines_event_idx on public.invoice_lines (event_id);
 
 comment on table public.invoice_lines is
-  'ADR-0175: one row per charged shift as issued (report_payroll_lines_v at the moment of issue). Never updated.';
+  'ADR-0176: one row per charged shift as issued (report_payroll_lines_v at the moment of issue). Never updated.';
 
 do $$
 declare t text;
@@ -370,7 +370,7 @@ create trigger staff_removed_purge_invoices
 -- ---------------------------------------------------------------------
 -- 4 · One event's verdict, with its clock (ADR-0172 §3, made internal)
 --
--- ADR-0175 changes one rule: an event with NO violation is ready once its
+-- ADR-0176 changes one rule: an event with NO violation is ready once its
 -- check-outs are settled — the sign-off is for reviewing violations, and
 -- there is none. An event already on an invoice is `invoiced`.
 -- ---------------------------------------------------------------------
@@ -500,7 +500,7 @@ begin
 end $$;
 
 comment on function public._invoice_event_rows(uuid[], timestamptz) is
-  'ADR-0172/0175: each listed event that has shift lines, priced, with its status at p_now: invoiced → open (check-out window) → missing (a pending line or an unresolved No check-out) → ready (no violation at all, or signed off and unchanged) / review. Internal: callers check their own caller.';
+  'ADR-0172/0176: each listed event that has shift lines, priced, with its status at p_now: invoiced → open (check-out window) → missing (a pending line or an unresolved No check-out) → ready (no violation at all, or signed off and unchanged) / review. Internal: callers check their own caller.';
 revoke execute on function public._invoice_event_rows(uuid[], timestamptz) from public, anon, authenticated;
 grant execute on function public._invoice_event_rows(uuid[], timestamptz) to service_role;
 
@@ -620,7 +620,7 @@ begin
 end $$;
 
 comment on function public._invoice_groups(timestamptz) is
-  'ADR-0175: the invoices waiting to be issued at p_now — one per (client, PO, po_window_days window counted from its earliest un-invoiced event), or per event without a PO — with the events, the send time (10:00 UK the morning after the last), the net and the verdict: disabled (invoicing or INV1 switched off), waiting (an event still running or inside its check-out window), missing, review, nothing_to_invoice, scheduled, no_recipients, due. Internal.';
+  'ADR-0176: the invoices waiting to be issued at p_now — one per (client, PO, po_window_days window counted from its earliest un-invoiced event), or per event without a PO — with the events, the send time (10:00 UK the morning after the last), the net and the verdict: disabled (invoicing or INV1 switched off), waiting (an event still running or inside its check-out window), missing, review, nothing_to_invoice, scheduled, no_recipients, due. Internal.';
 revoke execute on function public._invoice_groups(timestamptz) from public, anon, authenticated;
 grant execute on function public._invoice_groups(timestamptz) to service_role;
 
@@ -697,7 +697,7 @@ begin
 end $$;
 
 comment on function public.invoice_events(date, date) is
-  'ADR-0172/0175: one row per event dated in the range that has shift lines, priced, with its status (invoiced → open → missing → ready / review), its invoice once issued (number, status, attempts, the INV1 email sent or failed, and the amount invoiced for this event, which the live figure is compared with), and — while it waits — when its PO''s invoice is due to send and why it waits. Finance callers only.';
+  'ADR-0172/0176: one row per event dated in the range that has shift lines, priced, with its status (invoiced → open → missing → ready / review), its invoice once issued (number, status, attempts, the INV1 email sent or failed, and the amount invoiced for this event, which the live figure is compared with), and — while it waits — when its PO''s invoice is due to send and why it waits. Finance callers only.';
 revoke execute on function public.invoice_events(date, date) from public, anon;
 grant execute on function public.invoice_events(date, date) to authenticated, service_role;
 
@@ -1116,7 +1116,7 @@ end $$;
 revoke execute on function public.resend_invoice_email(uuid) from public, anon;
 grant execute on function public.resend_invoice_email(uuid) to authenticated, service_role;
 comment on function public.resend_invoice_email(uuid) is
-  'ADR-0175: Send again — a new INV1 row (key INV1:<number>:<n>) with the same attachments, to the client card''s current invoice emails (else contact emails). Finance callers that may write; refused while the last email is still pending; audited as invoice.resent.';
+  'ADR-0176: Send again — a new INV1 row (key INV1:<number>:<n>) with the same attachments, to the client card''s current invoice emails (else contact emails). Finance callers that may write; refused while the last email is still pending; audited as invoice.resent.';
 
 -- The office's download (and the event page's link).
 create or replace function public.invoice_file(p_invoice uuid)
@@ -1149,11 +1149,11 @@ revoke execute on function public.invoice_file(uuid) from public, anon;
 grant execute on function public.invoice_file(uuid) to authenticated, service_role;
 
 comment on function public.invoice_claim(text, timestamptz) is
-  'ADR-0175: issues the invoice for a due group under an advisory lock — the next number from invoice_counter (gapless), the bill-to and seller snapshotted, the events linked (each once), the settled billable lines copied, net/VAT/total. Null when the group is no longer due. Service role.';
+  'ADR-0176: issues the invoice for a due group under an advisory lock — the next number from invoice_counter (gapless), the bill-to and seller snapshotted, the events linked (each once), the settled billable lines copied, net/VAT/total. Null when the group is no longer due. Service role.';
 comment on function public.queue_invoice_email(uuid) is
-  'ADR-0175: the INV1 email for an issued invoice, keyed INV1:<number>, to the snapshotted recipients, with the invoice PDF and each event''s completed timesheet attached. Service role.';
+  'ADR-0176: the INV1 email for an issued invoice, keyed INV1:<number>, to the snapshotted recipients, with the invoice PDF and each event''s completed timesheet attached. Service role.';
 comment on function public.invoice_file(uuid) is
-  'ADR-0175: the stored invoice PDF''s path and name, for the office''s download. Finance callers only.';
+  'ADR-0176: the stored invoice PDF''s path and name, for the office''s download. Finance callers only.';
 
 -- ---------------------------------------------------------------------
 -- 8 · INV1 is a normal-class document email, like D2 (ADR-0158;
@@ -1238,7 +1238,7 @@ language sql immutable set search_path = public, extensions as $$
 $$;
 
 comment on function public.notification_priorities() is
-  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0175).';
+  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176).';
 
 revoke execute on function public.notification_priorities() from public, anon, authenticated;
 grant execute on function public.notification_priorities() to service_role;

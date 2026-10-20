@@ -8,8 +8,8 @@ import {
   canTransitionInvoice,
 } from '../state.ts';
 
-/** ADR-0175: the issued invoice's states, held equal to the database's. */
-describe('invoice transitions (ADR-0175)', () => {
+/** ADR-0176: the issued invoice's states, held equal to the database's. */
+describe('invoice transitions (ADR-0176)', () => {
   it('queued is final', () => {
     expect(INVOICE_TRANSITIONS.queued).toEqual([]);
     for (const to of INVOICE_STATUSES) {

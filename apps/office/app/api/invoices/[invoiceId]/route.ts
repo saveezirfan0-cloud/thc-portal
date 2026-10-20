@@ -7,7 +7,7 @@ import {
 } from '../../documents/_lib/generate';
 
 /**
- * GET /api/invoices/:invoiceId — the issued invoice PDF (ADR-0175), exactly
+ * GET /api/invoices/:invoiceId — the issued invoice PDF (ADR-0176), exactly
  * as it was emailed: the stored file, never a fresh drawing, so the copy the
  * office downloads and the copy the client holds are the same bytes.
  *

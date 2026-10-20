@@ -153,7 +153,7 @@ export interface WorkerRequestRow {
 }
 
 /**
- * ADR-0175: who the client's invoice is addressed to and where it is
+ * ADR-0176: who the client's invoice is addressed to and where it is
  * emailed — `clients.accounts_contact_name`, `invoice_emails` (up to 5;
  * empty sends it to the contact emails) and `billing_address` (printed
  * under "Invoice to"). Set by `set_client_invoice_details()`.
@@ -170,7 +170,7 @@ export interface ClientCardData {
   nameBadges: boolean;
   /** ADR-0135 §3: CP2 / CP3 to this client's timesheet recipients (both on by default). */
   lineupEmails: { confirmed: boolean; changed: boolean };
-  /** ADR-0175: the Invoicing panel. */
+  /** ADR-0176: the Invoicing panel. */
   invoicing: InvoiceDetails;
   rateCard: RateCardRow[];
   /** Every dress code stored on any client's rate card, most-used first. */

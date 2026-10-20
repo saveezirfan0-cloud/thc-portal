@@ -284,7 +284,7 @@ export interface InvoiceEvent {
   signoff_note: string | null;
   signed_invoicing: number | string | null;
   signoff_stale: boolean;
-  /** ADR-0175: only an event with a violation waits for a sign-off. */
+  /** ADR-0176: only an event with a violation waits for a sign-off. */
   needs_signoff?: boolean;
   invoice_id?: string | null;
   invoice_number?: number | null;
@@ -292,7 +292,7 @@ export interface InvoiceEvent {
   invoice_queued_at?: string | null;
   invoice_attempts?: number | null;
   invoice_last_error?: string | null;
-  /** The INV1 outbox row's outcome (ADR-0175): sent, or failed for good. */
+  /** The INV1 outbox row's outcome (ADR-0176): sent, or failed for good. */
   email_sent_at?: string | null;
   email_failed_at?: string | null;
   email_error?: string | null;

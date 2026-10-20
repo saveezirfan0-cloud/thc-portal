@@ -6,7 +6,7 @@ import { Alert, Button } from '@thc/ui';
 import { resendInvoice } from '../../actions';
 
 /**
- * "Send again" (ADR-0175): the same invoice and timesheets, to the client
+ * "Send again" (ADR-0176): the same invoice and timesheets, to the client
  * card's invoice emails as they are now — for an email that failed, or one
  * the client says never arrived. The database refuses while the last email
  * is still on its way, so a double click never sends two.

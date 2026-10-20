@@ -100,7 +100,7 @@ export const EXAMPLE: InvoiceDocumentData = {
   lines: LINES,
 };
 
-describe('invoice words (ADR-0175)', () => {
+describe('invoice words (ADR-0176)', () => {
   it('writes each line as THC’s invoice does', () => {
     expect(invoiceRows(LINES)[0]).toEqual([
       '14/10/2026',
@@ -138,7 +138,7 @@ describe('invoice words (ADR-0175)', () => {
   });
 });
 
-describe('rendered invoice (ADR-0175)', () => {
+describe('rendered invoice (ADR-0176)', () => {
   it('is an A4 PDF', async () => {
     const pdf = await renderInvoicePdf(EXAMPLE);
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');

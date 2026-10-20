@@ -768,7 +768,7 @@ function fromInvoicingDraft(draft: InvoicingDraft): InvoicingSettings {
 }
 
 /**
- * ADR-0175: the invoices the system issues and emails. One PO's events make
+ * ADR-0176: the invoices the system issues and emails. One PO's events make
  * one invoice, sent the morning after the last of them; every value here is
  * snapshotted onto each invoice as it is issued, so a change never touches
  * an invoice already sent.

@@ -112,7 +112,7 @@ test('four tabs, one per report, each with its own period control (§9.9, ADR-01
   );
 
   // ADR-0172: Invoicing opens on last week, and its CSV carries ready events only.
-  // ADR-0175: the system issues the invoices, so the first tile is Invoiced.
+  // ADR-0176: the system issues the invoices, so the first tile is Invoiced.
   await invoicing.click();
   await expect(page).toHaveURL(/tab=invoicing/);
   await expect(invoicing).toHaveAttribute('aria-current', 'page');

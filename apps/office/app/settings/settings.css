@@ -178,7 +178,7 @@
   min-height: var(--tap-min);
 }
 
-/* ADR-0175: the Invoicing block spans the grid like the radii table, its
+/* ADR-0176: the Invoicing block spans the grid like the radii table, its
    fields in three columns (sending · company · bank) that stack on a
    narrow screen. */
 .settings-invoicing {

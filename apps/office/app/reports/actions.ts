@@ -58,7 +58,7 @@ export async function signOffInvoice(
 
 /**
  * "Send again" on an issued invoice whose email failed or never arrived
- * (ADR-0175): a fresh INV1 row with the same PDF and timesheets, to the
+ * (ADR-0176): a fresh INV1 row with the same PDF and timesheets, to the
  * client card's addresses as they are now. `resend_invoice_email()` holds
  * every rule.
  */

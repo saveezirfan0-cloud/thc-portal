@@ -145,7 +145,7 @@ export async function loadClientCard(
     supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
     // ADR-0081: one switch, read from the table rather than restating the view.
     // ADR-0135 §3: and the two line-up email switches beside it.
-    // ADR-0175: and the Invoicing panel's three columns.
+    // ADR-0176: and the Invoicing panel's three columns.
     supabase
       .from('clients')
       .select(

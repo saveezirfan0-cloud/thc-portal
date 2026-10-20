@@ -298,7 +298,7 @@
 }
 
 /*
- * ADR-0175: the Invoicing panel. The invoice-email chip field reads as one
+ * ADR-0176: the Invoicing panel. The invoice-email chip field reads as one
  * input — the border is on the wrapper, the text field inside it is bare —
  * as the client modal's contact emails do (clients.css, not loaded here).
  */

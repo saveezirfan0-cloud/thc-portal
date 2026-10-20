@@ -209,12 +209,12 @@ describe('ready to invoice (ADR-0172)', () => {
         .filter(([, tone]) => tone === 'green')
         .map(([s]) => s),
     ).toEqual(['ready', 'invoiced']);
-    // ADR-0175: an issued invoice reads back as its own status.
+    // ADR-0176: an issued invoice reads back as its own status.
     expect(invoiceStatus('invoiced')).toBe('invoiced');
   });
 });
 
-describe('the issued invoice on screen (ADR-0175)', () => {
+describe('the issued invoice on screen (ADR-0176)', () => {
   const base = { invoice_status: 'queued', invoice_attempts: 1 };
 
   it('says emailed only when the outbox row was actually sent', () => {

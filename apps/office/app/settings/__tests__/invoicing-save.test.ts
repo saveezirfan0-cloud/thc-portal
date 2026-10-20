@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InvoicingSettings } from '../types';
 
 /**
- * ADR-0175: saving the Invoicing block writes the whole `invoicing` object
+ * ADR-0176: saving the Invoicing block writes the whole `invoicing` object
  * back under its own key, laid over the stored row, and refuses an invalid
  * draft before anything is read or written.
  */

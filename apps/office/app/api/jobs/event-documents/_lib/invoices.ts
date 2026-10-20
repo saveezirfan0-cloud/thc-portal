@@ -1,5 +1,5 @@
 /**
- * The invoice step of the event-documents job (ADR-0175), run after D1/D2
+ * The invoice step of the event-documents job (ADR-0176), run after D1/D2
  * every 15 minutes, with its I/O injected so the order is testable without
  * a database, Storage or a PDF.
  *

@@ -182,7 +182,7 @@ export function ClientCard({
 
         <ClientEvents rows={data.events} ratesVisible={ratesVisible} />
 
-        {/* ADR-0175: who the emailed invoice is addressed to. Where an invoice
+        {/* ADR-0176: who the emailed invoice is addressed to. Where an invoice
             goes is a money decision: finance (ratesVisible) may edit it. */}
         <Invoicing
           clientId={client.id}

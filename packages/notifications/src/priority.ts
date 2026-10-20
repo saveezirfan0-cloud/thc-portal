@@ -127,7 +127,7 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   NS1: normal,
   D1: normal,
   D2: normal,
-  // ADR-0175: an invoice is a document email like D2.
+  // ADR-0176: an invoice is a document email like D2.
   INV1: normal,
 };
 

@@ -220,7 +220,7 @@ function stamp(now: Date): string {
 /**
  * Draw one sheet without keeping it: the data, the photos and the PDF.
  * `generateDocument` stores and records what this draws; the invoice job
- * (ADR-0175) attaches it to an invoice instead, so the client's D2 history
+ * (ADR-0176) attaches it to an invoice instead, so the client's D2 history
  * is not touched.
  */
 export async function drawSheet(
