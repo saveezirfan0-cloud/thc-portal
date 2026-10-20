@@ -253,8 +253,8 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
               <div className="stack">
                 <p className="muted">
                   Check every violation above, resolved or not, and the lines. A genuine no-show
-                  stays unresolved and is not charged. Once marked, the event is ready to invoice
-                  and its lines go into the CSV.
+                  stays unresolved and is not charged. Once marked, the event is ready and its
+                  invoice is emailed with the sign-in and sign-out log at the next 10:00 UK.
                 </p>
                 <SignOffForm
                   eventId={event.event_id}
@@ -271,8 +271,9 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
         <Note>
           The amount uses the same figures as the Financial tab: payable hours (check-in to
           check-out within the scheduled time, unpaid breaks deducted) × the role&apos;s charge
-          rate. THC invoices the client from its own accounting tool; this page does not send
-          anything.
+          rate. The system issues the invoice itself (ADR-0176) and emails it with the GPS-verified
+          sign-in and sign-out log at 10:00 UK the morning after the last event on the PO; an event
+          dated before 26/10/2026 is invoiced from the CSV instead.
         </Note>
       </div>
     </OfficeShell>
