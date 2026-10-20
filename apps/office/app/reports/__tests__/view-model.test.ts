@@ -162,5 +162,8 @@ describe('figures', () => {
     expect(periodLabel('2026-09-08', '2026-09-14')).toBe('Tue 8 – Mon 14 Sep');
     expect(periodLabel('2026-09-07', '2026-09-13')).toBe('Mon 7 – Sun 13 Sep');
     expect(periodLabel('2026-09-28', '2026-10-04')).toBe('Mon 28 Sep – Sun 4 Oct');
+    // A year-long range must not read as one day ("Mon 20 – Tue 20 Oct").
+    expect(periodLabel('2025-10-20', '2026-10-20')).toBe('Mon 20 Oct 2025 – Tue 20 Oct 2026');
+    expect(periodLabel('2025-12-29', '2026-01-04')).toBe('Mon 29 Dec 2025 – Sun 4 Jan 2026');
   });
 });

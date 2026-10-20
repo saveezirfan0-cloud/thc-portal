@@ -273,7 +273,7 @@ function ShiftTable({ person, lines }: { person: PayrollPerson; lines: PayrollLi
   );
 }
 
-function ShiftRow({ line }: { line: PayrollLine }) {
+export function ShiftRow({ line }: { line: PayrollLine }) {
   const pending = line.status === 'pending';
   return (
     <tr className={pending ? 'rp-pending' : undefined}>
@@ -295,12 +295,15 @@ function ShiftRow({ line }: { line: PayrollLine }) {
         ) : (
           <>
             {hours(line.payable_min)}
+            {/* §9.9: the deducted break shows under Payable hours, the
+                4-hour floor or not — so it is worked time + break, never
+                the floored figure + break. */}
             {line.unpaid_break_min &&
             line.unpaid_break_min > 0 &&
             line.kind === 'worked' &&
-            !line.floor_applied ? (
+            line.worked_min !== null ? (
               <span className="sub">
-                {hours((line.payable_min ?? 0) + line.unpaid_break_min)} −{' '}
+                {hours(line.worked_min + line.unpaid_break_min)} −{' '}
                 {breakLabel(line.unpaid_break_min)} break
               </span>
             ) : null}
@@ -379,7 +382,12 @@ function Actual({ line }: { line: PayrollLine }) {
         />
       )}
       {line.status === 'pending' ? (
-        <span className="sub rp-coral">No check-out — unresolved</span>
+        // Pending is also a shift still running, or one whose four hours
+        // after the end have not passed yet: only a raised, unresolved
+        // violation is a "No check-out" (RULE-02).
+        <span className="sub rp-coral">
+          {line.no_check_out_unresolved ? 'No check-out — unresolved' : 'Not checked out yet'}
+        </span>
       ) : line.late_check_in ? (
         <span className="sub rp-amber">
           late check-in — paid from{' '}

@@ -33,6 +33,7 @@ export function PayrollTab({
   sends,
   today,
   format,
+  autoSendOff = false,
 }: {
   view: ReportView;
   people: PayrollPerson[];
@@ -40,6 +41,8 @@ export function PayrollTab({
   sends: ReportSend[];
   today: string;
   format?: TimeFormat;
+  /** ADR-0083: the Monday payroll email (BG08) is switched off in Settings. */
+  autoSendOff?: boolean;
 }) {
   const total = people.find((p) => p.is_total) ?? null;
   const persons = people.filter((p) => !p.is_total);
@@ -76,6 +79,14 @@ export function PayrollTab({
           </a>
         </div>
       </div>
+
+      {autoSendOff ? (
+        <Alert tone="amber">
+          <b>The Monday payroll email is switched off</b> in{' '}
+          <Link href="/settings?tab=notifications">Settings → Notifications</Link>, so no week is
+          exported or sent to finance automatically. Export CSV here to send a week by hand.
+        </Alert>
+      ) : null}
 
       <TileGrid columns={4}>
         <KpiTile

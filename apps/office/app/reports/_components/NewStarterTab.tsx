@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -68,11 +69,14 @@ export function NewStarterTab({
   starters,
   sends,
   format,
+  autoSendOff = false,
 }: {
   view: ReportView;
   starters: NewStarter[];
   sends: ReportSend[];
   format?: TimeFormat;
+  /** ADR-0083: the Monday New Starter email (NS1) is switched off in Settings. */
+  autoSendOff?: boolean;
 }) {
   const period = newStarterPeriod(view.date);
   const latest = sends[0] ?? null;
@@ -104,6 +108,7 @@ export function NewStarterTab({
         <div className="right">
           <SendStatus
             send={latest}
+            format={format}
             detail={latest?.status === 'sent' ? `${latest.row_count ?? 0} new starters` : undefined}
           />
           <a className="btn sm primary" href={exportHref(view)}>
@@ -111,6 +116,14 @@ export function NewStarterTab({
           </a>
         </div>
       </div>
+
+      {autoSendOff ? (
+        <Alert tone="amber">
+          <b>The Monday New Starter (HMRC) email is switched off</b> in{' '}
+          <Link href="/settings?tab=notifications">Settings → Notifications</Link>, so nobody new is
+          sent to payroll automatically. Export CSV here to send a week by hand.
+        </Alert>
+      ) : null}
 
       <Alert tone="cyan">
         Only NEW workers who actually worked a shift last week — not every new starter, only those
@@ -262,9 +275,11 @@ export function NewStarterTab({
                 <span className={`sent ${status.tone}`}>{status.text}</span>
                 <span className="sm muted">
                   {periodLabel(send.period_start, send.period_end)} ·{' '}
+                  {/* ADR-0091: the New Starter report is its own Monday
+                      email (NS1), not an attachment to the payroll one. */}
                   {send.status === 'no_new'
-                    ? 'a week with no new starters — nothing was due; only the payroll CSV went out'
-                    : `${send.row_count ?? 0} new starter${send.row_count === 1 ? '' : 's'} · one email with the payroll CSV`}
+                    ? 'a week with no new starters — nothing was due, so no email went out'
+                    : `${send.row_count ?? 0} new starter${send.row_count === 1 ? '' : 's'} · emailed on its own`}
                   {send.status === 'failed' && send.error ? ` · ${send.error}` : ''}
                 </span>
                 {send.status === 'failed' ? <RetrySend sendId={send.id} /> : null}

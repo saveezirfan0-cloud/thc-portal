@@ -176,6 +176,20 @@ describe('/reports Payroll tab', () => {
     expect(data.problem).toMatch(/^Only 400 of 2,345 payroll lines came back\./);
   });
 
+  it('says when the Monday email is switched off in Settings (ADR-0083), per tab', async () => {
+    expect((await loadReports(view as never)).autoSendOff).toBe(false);
+    state.db = fakePostgrest({
+      payroll_report: LINES,
+      payroll_report_people: PEOPLE,
+      new_starter_report: [],
+      report_sends: [],
+      settings: [{ value: { BG08: false } }],
+    });
+    expect((await loadReports(view as never)).autoSendOff).toBe(true);
+    // NS1 is its own switch: the New Starter tab is unaffected by BG08.
+    expect((await loadReports({ ...view, tab: 'newstarter' } as never)).autoSendOff).toBe(false);
+  });
+
   it('refuses past the ceiling rather than truncating', async () => {
     const result = await readPayrollLines(fake as never, '2026-01-01', '2026-12-31', 1500);
     expect(result.data).toBeNull();
@@ -215,6 +229,27 @@ describe('Export CSV', () => {
     const response = await GET(exportUrl('payroll'));
     expect(response.status).toBe(500);
     expect(await response.text()).toMatch(/^Only 500 of 2,345 payroll lines came back\./);
+  });
+
+  it('a login without the finance permission gets 403, not a server error (ADR-0056)', async () => {
+    const refusing = fakePostgrest({ payroll_report: LINES });
+    state.db = {
+      ...refusing,
+      rpc: () => {
+        const reply = Promise.resolve({
+          data: null,
+          error: { code: '42501', message: 'not_permitted', details: 'finance' },
+        });
+        const query = Object.assign(reply, {
+          order: () => query,
+          range: () => query,
+        });
+        return query;
+      },
+    };
+    const response = await GET(exportUrl('payroll'));
+    expect(response.status).toBe(403);
+    expect(await response.text()).toMatch(/^Reports need the finance permission\./);
   });
 
   it('the financial CSV reads past 1,000 too', async () => {

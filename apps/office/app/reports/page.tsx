@@ -94,10 +94,17 @@ export default async function Page({
             sends={data.sends}
             today={today}
             format={format}
+            autoSendOff={data.autoSendOff}
           />
         ) : null}
         {view.tab === 'newstarter' ? (
-          <NewStarterTab view={view} starters={data.starters} sends={data.sends} format={format} />
+          <NewStarterTab
+            view={view}
+            starters={data.starters}
+            sends={data.sends}
+            format={format}
+            autoSendOff={data.autoSendOff}
+          />
         ) : null}
       </div>
     </OfficeShell>
