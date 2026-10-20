@@ -41,12 +41,18 @@ pg_up() {
 
 case "${1:-}" in
 setup)
+  apt-get update -q >/dev/null # a fresh container has no package index
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql-16-postgis-3 postgresql-16-pgtap \
     libtap-parser-sourcehandler-pgtap-perl skopeo >/dev/null
   # PostgREST: a static binary inside the Docker Hub image (Docker Hub blobs are reachable; GitHub releases are not).
   if [ ! -x "$STACK/bin/postgrest" ]; then
     skopeo copy --override-os linux --override-arch amd64 docker://docker.io/postgrest/postgrest:v12.2.3 "dir:$STACK/postgrest-img"
-    for l in "$STACK"/postgrest-img/*; do tar -tzf "$l" 2>/dev/null | grep -q 'bin/postgrest' && tar -xzf "$l" -C "$STACK"; done
+    # grep without -q reads the whole listing: with -q it exits early, tar dies of SIGPIPE and
+    # pipefail fails the test, so nothing was ever extracted. Take only the binary from the layer.
+    for l in "$STACK"/postgrest-img/*; do
+      tar -tzf "$l" 2>/dev/null | grep 'bin/postgrest$' >/dev/null &&
+        tar -xzf "$l" -C "$STACK" --wildcards '*bin/postgrest'
+    done
   fi
   # GoTrue: Supabase's own blob CDNs are refused, the Go module proxy is not — build it.
   if [ ! -x "$STACK/gotrue-bin" ]; then
