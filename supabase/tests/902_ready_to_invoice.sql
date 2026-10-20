@@ -207,7 +207,8 @@ select is((select turned_away from il where name = 'NoShow'), 1, 'the turned-awa
 
 select is((select status from il where name = 'Stale'), 'missing',
   'a No check-out on a stale fix blocks the event, though a finish is recorded (D15, RULE-02)');
-select is((select pending from il where name = 'Stale'), 0, 'its line is not pending');
+select is((select pending from il where name = 'Stale'), 1,
+  'its line is pending: no amount until it is resolved (ADR-0174)');
 select is((select no_checkouts from il where name = 'Stale'), 1, 'and the unresolved No check-out is counted');
 
 select is((select status from il where name = 'SameDay'), 'review', 'an event cancelled on the day is invoiced');
