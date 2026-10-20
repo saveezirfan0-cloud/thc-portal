@@ -80,6 +80,8 @@ const MESSAGES: Record<string, string> = {
   unknown_staff: 'This person no longer exists — refresh the page.',
   // Mark interview complete without Willo (ADR-0077)
   not_permitted: 'Only an owner or a manager can do this.',
+  // Allow 3 more attempts (ADR-0168)
+  read_only: 'A read-only login cannot change anything.',
 };
 
 function explain(message: string): string {
@@ -88,6 +90,14 @@ function explain(message: string): string {
   if (code === 'resend_too_soon') {
     const at = message.split(':').slice(1).join(':').trim();
     return `A new link was sent less than 10 minutes ago. You can send another${at ? ` after ${at} (UK time)` : ' shortly'}.`;
+  }
+  if (code === 'not_quiz_rejected') {
+    return 'More attempts can only be given to a candidate the Health & Safety quiz rejected — refresh the page.';
+  }
+  if (code === 'quiz_locked') {
+    // §2.3: the same gate as the automatic unlock (ADR-0168).
+    const outstanding = message.split(':').slice(1).join(':').trim();
+    return `The quiz stays locked until every document is in and verified${outstanding ? ` (outstanding: ${outstanding})` : ''}. Sort the documents first, then allow more attempts.`;
   }
   if (code === 'not_resettable') {
     return 'Reset to candidate is only possible on a blocked, rejected or inactive record.';
@@ -265,6 +275,22 @@ export async function markInterviewComplete(
   if (reason.trim() === '') return { ok: false, message: MESSAGES.reason_required! };
   return call(
     'onboarding_mark_interview_complete',
+    { p_staff: staffId, p_reason: reason.trim() },
+    paths(staffId),
+  );
+}
+
+/**
+ * Allow 3 more attempts (ADR-0168): a candidate the H&S quiz rejected goes
+ * back to Quiz with three fresh attempts. The failed ones are kept as
+ * history; documents, declaration and induction stand. Any office login
+ * that may write; the reason is kept in audit_log. Nothing is sent to the
+ * candidate — the office tells them.
+ */
+export async function grantQuizAttempts(staffId: string, reason: string): Promise<ActionResult> {
+  if (reason.trim() === '') return { ok: false, message: MESSAGES.reason_required! };
+  return call(
+    'onboarding_grant_quiz_attempts',
     { p_staff: staffId, p_reason: reason.trim() },
     paths(staffId),
   );

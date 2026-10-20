@@ -197,6 +197,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         label: 'Account set-up reminder',
         when: 'An accepted candidate has not set a password',
       },
+      {
+        code: 'OC4',
+        label: 'Onboarding reminder by email',
+        when: 'Daily, in place of the app reminder, while a signed-up candidate has notifications off',
+        warning:
+          'Candidates with notifications off are not reminded at all; the board says so in amber.',
+      },
       { code: 'E12', label: 'Documents approved', when: 'A candidate’s last document is verified' },
       { code: 'E4', label: 'Health & Safety quiz failed', when: 'On the third failed attempt' },
       {

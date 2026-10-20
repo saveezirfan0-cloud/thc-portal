@@ -39,6 +39,7 @@ import {
   addQualifiedRole,
   grantClientQualifications,
   documentLink,
+  grantQuizAttempts,
   markInterviewComplete,
   rejectCandidate,
   rejectDeclaration,
@@ -151,6 +152,7 @@ export function CandidateScreen({
   now,
   canCorrectDob = false,
   canMarkInterview = false,
+  canGrantQuizAttempts = false,
   bare = false,
 }: {
   data: CandidateData;
@@ -159,6 +161,8 @@ export function CandidateScreen({
   canCorrectDob?: boolean;
   /** ADR-0077: `canMarkInterviewComplete(role)` — owners and managers may skip Willo. */
   canMarkInterview?: boolean;
+  /** ADR-0168: `officeCan(role, 'write')` — a viewer does not see Allow 3 more attempts. */
+  canGrantQuizAttempts?: boolean;
   /**
    * ADR-0161: the page has drawn the `OfficeShell` itself, around the
    * Suspense this screen streams in behind, so the screen draws only its
@@ -176,6 +180,9 @@ export function CandidateScreen({
   const [resent, setResent] = useState(false);
   const [marking, setMarking] = useState(false);
   const [markReason, setMarkReason] = useState('');
+  const [granting, setGranting] = useState(false);
+  const [grantReason, setGrantReason] = useState('');
+  const quizRejected = row.status === 'rejected' && row.rejection_cause === 'quiz_failed';
 
   const actions = candidateActions(row.status);
   const readOnly = row.status === 'rejected' || row.status === 'compliant';
@@ -268,7 +275,9 @@ export function CandidateScreen({
               : row.rejection_cause === 'quiz_failed'
                 ? ' — Health & Safety quiz failed three times; E4 and the terminal screen in the app.'
                 : ` — by ${row.rejected_by_name ?? 'the office'}${row.rejection_reason ? `: “${row.rejection_reason}”` : ''}.`}{' '}
-            Final on this record: a new application routes here as a returning applicant.
+            {quizRejected
+              ? 'Allow 3 more attempts to send them back to the quiz; otherwise a new application routes here as a returning applicant.'
+              : 'Final on this record: a new application routes here as a returning applicant.'}
           </Alert>
         ) : null}
 
@@ -320,6 +329,18 @@ export function CandidateScreen({
                 }
               >
                 {resent ? 'Activation link sent ✓' : 'Resend activation link'}
+              </Button>
+            ) : null}
+            {quizRejected && canGrantQuizAttempts ? (
+              <Button
+                tone="primary"
+                disabled={busy}
+                onClick={() => {
+                  setGrantReason('');
+                  setGranting(true);
+                }}
+              >
+                Allow 3 more attempts
               </Button>
             ) : null}
             {actions.includes('reject') ? (
@@ -415,6 +436,51 @@ export function CandidateScreen({
         {shown === 'additional_info' ? <AdditionalInfo row={row} data={data} /> : null}
         {shown === 'contract' ? <ContractPhase row={row} contract={data.contract} /> : null}
       </div>
+
+      <Modal
+        open={granting}
+        title="Allow 3 more attempts"
+        onClose={() => setGranting(false)}
+        footer={
+          <>
+            <Button tone="ghost" onClick={() => setGranting(false)}>
+              Cancel
+            </Button>
+            <Button
+              tone="primary"
+              disabled={busy || grantReason.trim() === ''}
+              onClick={() =>
+                run(
+                  () => grantQuizAttempts(row.id, grantReason),
+                  () => setGranting(false),
+                )
+              }
+            >
+              {busy ? 'Saving…' : 'Allow 3 more attempts'}
+            </Button>
+          </>
+        }
+      >
+        <div className="stack">
+          <div className="sm muted">
+            {row.display_name} goes back to <b>Quiz</b> with three new attempts at the Health &amp;
+            Safety quiz. Their documents, declaration and induction stand.
+          </div>
+          <Textarea
+            label="Reason *"
+            placeholder="e.g. spoke to them by phone · scored 70% three times, close to the pass mark"
+            value={grantReason}
+            onChange={(event) => setGrantReason(event.target.value)}
+            hint="Kept for the office with your name, and shown on the quiz panel."
+          />
+          <Note>
+            The attempts so far are kept as history and stop counting. Pass mark stays{' '}
+            {QUIZ_PASS_MARK}%; a third failure rejects again and sends E4 again. Nothing is sent to
+            the candidate now — let them know they can open the app and take the quiz.
+          </Note>
+          {problem ? <Alert tone="coral">{problem}</Alert> : null}
+        </div>
+      </Modal>
 
       <Modal
         open={marking}
@@ -2394,6 +2460,17 @@ function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData
                 description={bestAttempt ? `attempt ${bestAttempt.attempt_no}` : 'no attempt yet'}
               />
             </div>
+            {data.quizGrant || (data.attemptsSetAside ?? []).length > 0 ? (
+              <Alert tone="cyan">
+                <b>3 more attempts allowed</b>
+                {data.quizGrant
+                  ? ` ${formatUkStamp(data.quizGrant.at)} by ${data.quizGrant.byName ?? 'the office'}${data.quizGrant.reason ? `: “${data.quizGrant.reason}”` : ''}.`
+                  : '.'}
+                {(data.attemptsSetAside ?? []).length > 0
+                  ? ` Earlier attempts, set aside: ${(data.attemptsSetAside ?? []).map((a) => `${Math.round(a.score)}%`).join(' · ')}.`
+                  : ''}
+              </Alert>
+            ) : null}
             <div>
               <div className="attempt head">
                 <span className="label">Attempt</span>
