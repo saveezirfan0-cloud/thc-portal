@@ -11573,6 +11573,22 @@ export type Database = {
           venue_times: number;
         }[];
       };
+      auto_assign_candidates_pool_pairs: {
+        Args: { p_escalation?: boolean; p_shifts: string[]; p_staff: string[] };
+        Returns: {
+          booking_cause: string;
+          booking_status: string;
+          distance_km: number;
+          future_shifts: number;
+          gate: string;
+          qualified: boolean;
+          rating: number;
+          reliability: number;
+          shift_id: string;
+          staff_id: string;
+          venue_times: number;
+        }[];
+      };
       auto_assign_due_shifts: {
         Args: { p_mode: string; p_now?: string };
         Returns: {
@@ -11592,12 +11608,34 @@ export type Database = {
           starts_at: string;
         }[];
       };
+      auto_assign_wave1_reachable: {
+        Args: { p_series?: boolean; p_shifts: string[] };
+        Returns: {
+          shift_id: string;
+        }[];
+      };
       auto_assign_worker_gate: {
         Args: { p_escalation?: boolean; p_shift: string; p_staff: string };
         Returns: {
           booking_status: string;
           gate: string;
           qualified: boolean;
+        }[];
+      };
+      auto_assign_worker_pool: {
+        Args: { p_shifts: string[]; p_staff: string };
+        Returns: {
+          booking_cause: string;
+          booking_status: string;
+          distance_km: number;
+          future_shifts: number;
+          gate: string;
+          qualified: boolean;
+          rating: number;
+          reliability: number;
+          shift_id: string;
+          staff_id: string;
+          venue_times: number;
         }[];
       };
       bar_from_client: {
@@ -12350,6 +12388,10 @@ export type Database = {
         Args: { p_booking: string };
         Returns: string;
       };
+      grant_quiz_attempts: {
+        Args: { p_actor?: string; p_reason: string; p_staff: string };
+        Returns: Json;
+      };
       hmrc_statement_for: {
         Args: { p_q1: boolean; p_q2: boolean; p_q3: boolean };
         Returns: Database['public']['Enums']['hmrc_statement'];
@@ -12674,6 +12716,12 @@ export type Database = {
         }[];
       };
       offer_wave1_exhausted: { Args: { p_offer: string }; Returns: boolean };
+      offers_wave1_exhausted: {
+        Args: { p_offers: string[] };
+        Returns: {
+          offer_id: string;
+        }[];
+      };
       office_base_url: { Args: Record<PropertyKey, never>; Returns: string };
       office_can: { Args: { p_perm: string }; Returns: boolean };
       office_clear_emergency_contact: {
@@ -12860,8 +12908,10 @@ export type Database = {
         Returns: {
           due_rung: number;
           epoch: number;
+          last_channel: string;
           last_failed: boolean;
           last_sent_at: string;
+          last_switched_off: boolean;
           next_due_at: string;
           progress_at: string;
           rungs_sent: number;
@@ -12883,8 +12933,10 @@ export type Database = {
       onboarding_chaser_state: {
         Args: { p_now?: string };
         Returns: {
+          last_channel: string;
           last_failed: boolean;
           last_sent_at: string;
+          last_switched_off: boolean;
           next_due_at: string;
           progress_at: string;
           rungs_sent: number;
@@ -12895,7 +12947,10 @@ export type Database = {
         }[];
       };
       onboarding_chaser_variant: { Args: { p_rung: number }; Returns: string };
-      onboarding_chasers: { Args: { p_now?: string }; Returns: Json };
+      onboarding_chasers: {
+        Args: { p_app_link?: string; p_now?: string };
+        Returns: Json;
+      };
       onboarding_complete_induction: {
         Args: Record<PropertyKey, never>;
         Returns: Json;
@@ -12930,6 +12985,10 @@ export type Database = {
       };
       onboarding_finish_tutorial: {
         Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      onboarding_grant_quiz_attempts: {
+        Args: { p_reason: string; p_staff: string };
         Returns: Json;
       };
       onboarding_mark_interview_complete: {
