@@ -253,8 +253,8 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
               <div className="stack">
                 <p className="muted">
                   Check every violation above, resolved or not, and the lines. A genuine no-show
-                  stays unresolved and is not charged. Once marked, the event is ready to invoice
-                  and its lines go into the CSV.
+                  stays unresolved and is not charged. Once marked, the event is ready and its
+                  invoice is emailed with the sign-in and sign-out log at the next 10:00 UK.
                 </p>
                 <SignOffForm
                   eventId={event.event_id}
