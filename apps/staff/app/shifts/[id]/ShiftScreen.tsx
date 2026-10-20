@@ -347,25 +347,14 @@ export function ShiftScreen({
   const started = now >= new Date(shift.startsAt);
 
   // ---- whole screens first ---------------------------------------------
-  if (isStaticPhase(phase)) {
-    return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
-  }
-
-  // §3.2 strict buffer. Once the refresh has the booking as `turned_away`
-  // the row's own RULE-15 minutes win; until then, the RPC's reply.
-  if (phase === 'turned_away' || turnedAway) {
-    return (
-      <TurnedAwayScreen
-        turnAwayPayMin={
-          phase === 'turned_away' ? shift.turnedAwayPayMin : (turnedAway?.payMin ?? null)
-        }
-      />
-    );
-  }
-
   const head = (
     <HeadRow
-      phase={phase}
+      // The worker has just pressed Check out: whatever the refreshed row
+      // says now, the pill says so — except with no on-site fix (j), where
+      // nothing is confirmed until the office resolves it (§5.2), so no
+      // green "Checked out" sits beside "We couldn't confirm when you left".
+      phase={outcome ? 'closed' : phase}
+      hideState={outcome?.key === 'no_check_out_office_confirms'}
       today={today}
       venueName={shift.venueName}
       startsAt={shift.startsAt}
@@ -396,6 +385,28 @@ export function ShiftScreen({
         distanceM={outcome.distanceM}
         checkedIn={shift.checkInAt ? local(shift.checkInAt) : null}
         onOk={() => setOutcome(null)}
+      />
+    );
+  }
+
+  // After the press's own answer, not before it. A check-out that raises
+  // RULE-02 on the press — no on-site fix (§5.1), or a stale one (ADR-0035)
+  // — revalidates the page with `noCheckoutOpen` set, in the same response
+  // that carries the answer. Checked first, the §10.4 dead end ("We didn't
+  // receive your check-out") replaced (i) and (j) the moment they were
+  // due, telling a worker who HAD pressed that they had not.
+  if (isStaticPhase(phase)) {
+    return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
+  }
+
+  // §3.2 strict buffer. Once the refresh has the booking as `turned_away`
+  // the row's own RULE-15 minutes win; until then, the RPC's reply.
+  if (phase === 'turned_away' || turnedAway) {
+    return (
+      <TurnedAwayScreen
+        turnAwayPayMin={
+          phase === 'turned_away' ? shift.turnedAwayPayMin : (turnedAway?.payMin ?? null)
+        }
       />
     );
   }
@@ -593,17 +604,33 @@ export function ShiftScreen({
       {phase === 'on_shift' || phase === 'on_break' ? (
         <>
           <KeepOpenBar wake={wake} />
+          {/* RULE-01: the chargeable clock runs from the later of the
+              scheduled start and the check-in (ADR-0095) — a worker who
+              arrived 20 minutes early has not been on the clock for them.
+              Every break pauses it (§5.2b, ADR-0035 §7). */}
           <Timer>
             {formatDuration(
               Math.max(
                 0,
-                Math.round((now.getTime() - new Date(shift.checkInAt!).getTime()) / 60_000) -
+                Math.round((now.getTime() - new Date(paidFromIso(shift)).getTime()) / 60_000) -
                   (shift.breaksLogged ? totalBreakMinutes(shift, now) : 0),
               ),
             )}
           </Timer>
           <p className="xs muted">
             Chargeable time{phase === 'on_break' ? ' · paused while you’re on a break' : ''}
+          </p>
+          {/* shift-detail.html (d): "Checked in 16:52 · paid from 17:00 · scheduled end 23:30".
+              Paid from is the scheduled start (UK, §1.8) unless the worker
+              arrived after it — then it is their check-in stamp, viewer-local. */}
+          <p className="xs muted">
+            Checked in {local(shift.checkInAt!)} · paid from{' '}
+            {new Date(paidFromIso(shift)).getTime() === new Date(shift.startsAt).getTime() ? (
+              <UkTime at={new Date(shift.startsAt)} />
+            ) : (
+              local(shift.checkInAt!)
+            )}{' '}
+            · scheduled end <UkTime at={new Date(shift.endsAt)} />
           </p>
 
           {shift.breaksLogged ? (
@@ -675,8 +702,10 @@ function HeadRow({
   uk,
   local,
   dual,
+  hideState = false,
 }: {
   phase: ShiftPhase;
+  hideState?: boolean;
   today: boolean;
   venueName: string;
   startsAt: string;
@@ -706,7 +735,7 @@ function HeadRow({
     <>
       <div className="row" style={{ gap: 'var(--sp-8)' }}>
         <Pill tone="cyan">{today ? 'Today' : 'Upcoming'}</Pill>
-        {state}
+        {hideState ? null : state}
         {today ? null : <Pill>{venueName}</Pill>}
         <span className="ml-auto mono sm">
           {today ? '' : `${ukDay(new Date(startsAt))} · `}
