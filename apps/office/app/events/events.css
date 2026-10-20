@@ -400,6 +400,20 @@
 .tbl.ev-list tr.day-alt.clickable:hover > td {
   background: linear-gradient(var(--row-hover), var(--row-hover)), var(--panel-2);
 }
+/* On a phone each event is a card (card-rows): the whole card takes the
+   shade, not each of its cells as separate strips. */
+@media (max-width: 760px) {
+  .tbl.card-rows.ev-list tr.day-alt {
+    background: var(--panel-2);
+  }
+  .tbl.card-rows.ev-list tr.day-alt > td,
+  .tbl.card-rows.ev-list tr.day-alt.clickable:hover > td {
+    background: none;
+  }
+  .tbl.card-rows.ev-list tr.day-alt.clickable:hover {
+    background: linear-gradient(var(--row-hover), var(--row-hover)), var(--panel-2);
+  }
+}
 
 /* A cancelled event's fill note is a sentence, not a count. */
 .tbl.ev-list td.ev-fill .muted {
