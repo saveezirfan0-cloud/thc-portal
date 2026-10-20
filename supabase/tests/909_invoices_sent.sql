@@ -17,7 +17,7 @@
 --   (none)  Wed 5 Jun 2024, clean (BST)                    → 10:00 BST = 09:00 UTC
 -- =====================================================================
 begin;
-select plan(83);
+select plan(85);
 \ir _shared/fixtures.psql
 
 \set r_wait '90900000-0000-4000-8000-000000000001'
@@ -218,6 +218,13 @@ select is((select recipients from invoices where id = (select id from inv where 
   array['accounts@client.test', 'pjordan@client.test'], 'sent to the invoice emails');
 select is((select seller -> 'bank' ->> 'sort_code' from invoices where id = (select id from inv where name = 'po77')),
   '30-15-99', 'THC''s bank details are on it as issued');
+select is((select count(*)::int from invoice_lines
+            where invoice_id = (select id from inv where name = 'po77')
+              and check_in_at = line_date + time '12:00' and check_out_at = line_date + time '16:00'),
+  4, 'each line keeps the actual sign-in and sign-out, for the log attached to the invoice');
+select is((select (l ->> 'checkInAt') is not null and (l ->> 'eventId') is not null
+             from jsonb_array_elements(invoice_document_data((select id from inv where name = 'po77')) -> 'lines') l
+            limit 1), true, 'and the invoice document carries them to the log');
 
 set local role service_role;
 select is(invoice_claim(pg_temp.gkey('Tue', '2024-11-15 10:05+00'), '2024-11-15 10:10+00'), null::uuid,

@@ -1,14 +1,15 @@
-# ADR-0176 · Invoices: numbered from 4000, one per PO, emailed at 10:00 the next morning with the completed timesheets
+# ADR-0176 · Invoices: numbered from 4000, one per PO, emailed at 10:00 the next morning with a sign-in / sign-out log
 
 **Status:** Accepted · 20.10.2026 · **Supersedes in part:** ADR-0172 ("The system still issues no
 invoice: no invoice number, no VAT, no email to the client"; and "every event needs a manager's
 sign-off", which now applies only to an event with a violation) · **Departs from:** §9.9 ("THC
 has its own invoicing process") · **Builds on:** ADR-0056 (finance-only money), ADR-0060 (the
 viewer writes nothing), ADR-0074 (the event-documents job, D2), ADR-0163 (definers pinned by
-name) · **Asked by:** THC, 20.10.2026, with its own invoice as the example
+name) · **Asked by:** THC, 20.10.2026, with its own invoice as the example · **Amended:**
+20.10.2026 (the attachment is a sign-in / sign-out log, not the allocation timesheet; below)
 
-`supabase/migrations/20261022100000_invoices_sent.sql` · pgTAP `909` (and `001`, `892`, `856`,
-`902` follow) · `packages/pdf/src/invoice.ts`, `InvoiceDocument.tsx` ·
+`supabase/migrations/20261022100000_invoices_sent.sql`, `20261022110000_invoice_lines_sign_in_log.sql` · pgTAP `909` (and `001`, `892`, `856`,
+`902` follow) · `packages/pdf/src/invoice.ts`, `InvoiceDocument.tsx`, `signInLog.ts`, `SignInLogDocument.tsx` ·
 `packages/notifications/src/documents.ts` (INV1) ·
 `apps/office/app/api/jobs/event-documents/_lib/invoices.ts`, `sendInvoice.ts` ·
 `apps/office/app/api/invoices/[invoiceId]/route.ts` · the client card's **Invoicing** panel ·
@@ -82,8 +83,8 @@ three things in order:
    between the verdict and the copy, the whole issue is undone, number included; the job
    skips that group and carries on, and the next run looks again. It is
    audited as `invoice.issued`.
-3. It draws the invoice PDF and, for each event, a fresh Completed Allocation Timesheet. A
-   cancelled event has no timesheet (§3.3) and is invoiced without one. The files are stored
+3. It draws the invoice PDF and the **sign-in / sign-out log** that supports it (see the
+   amendment below). The files are stored
    in the private `timesheets` bucket under `invoices/<number>/<stamp>/`, with a new folder
    on each attempt. The job records them and queues **INV1** (`notification_outbox` key
    `INV1:<number>`, sent from timesheets@). On any failure the invoice is released for the
@@ -139,8 +140,9 @@ else.
   client card before 27.10.2026. Until then invoices go to the contact emails, with no billing
   address under "Invoice to".
 - Invoice numbers are gapless and in issue order, not event order.
-- The client receives two emails for an event: D2's timesheet and the invoice, which attaches
-  the same timesheet.
+- The client receives the D1 Allocation Timesheet at 16:00 the day before (who will work), and
+  at 10:00 the morning after both D2's Completed Allocation Timesheet and the invoice with its
+  sign-in / sign-out log.
 - The four new tables (`invoice_counter`, `invoices`, `invoice_event_links`, `invoice_lines`)
   are readable only by admins with finance, and the viewer writes none of them (the
   `office_read_only` trigger). Three definers are added for `authenticated`:
@@ -150,3 +152,31 @@ else.
   (they also receive D1/D2). A client with invoice emails set never falls back.
 - CLAUDE.md says the client sees no money. The invoice email is a deliberate exception (§9.9
   departure above); the product owner should add it to CLAUDE.md's list of deliberate changes.
+
+## Amendment, 20.10.2026: the invoice attaches a sign-in / sign-out log
+
+THC, on seeing the first sample: "The timesheet is sent every day at 16:00 to the clients ahead
+of the event letting them know who will be working. At 10:00 the day after the event, the
+invoice is sent attached by a log of the staff that signed in and signed out and showing any
+breaks taken. This supports the invoice so clients can cross check the sign in and sign out log
+against the invoice."
+
+The Completed Allocation Timesheet first attached here is the D1 sheet's layout: signature
+boxes, a manager's signature line, and the booked start rather than the time a worker signed
+in. It is not a log, and it does not line up with the invoice. So:
+
+- `invoice_lines` keeps, as issued, each charged shift's actual **sign-in** and **sign-out**
+  (`check_in_at`, `check_out_at`), and whether the worker was **late**, **left early**, had
+  their finish **entered by the office** (a resolved No check-out, §9.5), or was paid the
+  **4-hour minimum** (`20261022110000`; `invoice_claim()` and `invoice_document_data()` are
+  restated by text replacement).
+- The invoice email attaches one **Sign-in and sign-out log** (`SignInLogDocument.tsx`, A4
+  landscape) in place of the timesheets. It has one table per event, one row per invoice line:
+  staff name, employee ID, role, booked window, signed in, signed out, break, hours and notes.
+  Each event has its own hours, and the total hours equal the invoice's.
+  Times are UK, 24-hour, and a time after midnight reads `02:00 (+1)`.
+- It is drawn from the invoice's own lines, so it can never disagree with the invoice; a later
+  correction shows on the office's event page, not on a document already sent.
+- INV1's wording says what is attached and why: "so you can check each line of the invoice
+  against it".
+- D1 (16:00 the day before) and D2 are unchanged.
