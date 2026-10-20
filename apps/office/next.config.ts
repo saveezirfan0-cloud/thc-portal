@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { supabaseKeyBuildEnv } from '@thc/db/public-env';
 import { securityHeaderRules } from '@thc/db/security-headers';
 
 const PDFKIT_FILES = [
@@ -40,7 +41,12 @@ const nextConfig: NextConfig = {
     '/api/jobs/new-starter-report': PDFKIT_FILES,
     '/api/documents/**': PDFKIT_FILES,
   },
-  env: { APP_TZ: process.env.APP_TZ ?? 'Europe/London' },
+  env: {
+    APP_TZ: process.env.APP_TZ ?? 'Europe/London',
+    // ADR-0165: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, when set, is what every
+    // literal process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY reads (packages/db/src/public-env.ts).
+    ...supabaseKeyBuildEnv(),
+  },
 };
 
 export default nextConfig;

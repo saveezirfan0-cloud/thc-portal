@@ -116,6 +116,7 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   OC1: bulk,
   OC2: bulk,
   OC3: bulk,
+  OC4: bulk,
   IR1: bulk,
   // Client Portal (ADR-0135).
   CP1: normal,

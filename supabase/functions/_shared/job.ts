@@ -14,8 +14,13 @@
  *      where pgTAP can reach them and this layer cannot get them wrong.
  */
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { isServiceCaller, projectRef } from '../../../packages/db/src/service-caller.ts';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.118.0';
+import {
+  isServiceCaller,
+  projectRef,
+  secretKeysFromEnv,
+  serviceKeyFromEnv,
+} from '../../../packages/db/src/service-caller.ts';
 
 export interface JobResult {
   ok: boolean;
@@ -23,11 +28,20 @@ export interface JobResult {
   error?: string;
 }
 
-function serviceClient(): SupabaseClient {
-  const url = Deno.env.get('SUPABASE_URL');
-  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
-  return createClient(url, key, { auth: { persistSession: false } });
+const env = (name: string): string | undefined => Deno.env.get(name);
+
+/**
+ * The job's own database client. The legacy SUPABASE_SERVICE_ROLE_KEY until
+ * the owner sets the function secret THC_SECRET_KEY_NAME, then that new
+ * secret key (packages/db/src/service-caller.ts, ADR-0165). Either form
+ * works with supabase-js 2.118.
+ */
+export function serviceClient(): SupabaseClient {
+  const url = env('SUPABASE_URL');
+  if (!url) throw new Error('SUPABASE_URL must be set');
+  const choice = serviceKeyFromEnv(env);
+  if (!choice.ok) throw new Error(choice.error);
+  return createClient(url, choice.key, { auth: { persistSession: false } });
 }
 
 /** Service keys Auth has confirmed in this isolate, and until when (ms). */
@@ -36,15 +50,17 @@ const CONFIRMED_FOR_MS = 10 * 60_000;
 
 /**
  * Supabase Auth's admin API answers 200 only to a genuine service-role key
- * for this project, so it is the arbiter when the caller's key is not the
- * byte-for-byte copy this function holds (packages/db/src/service-caller.ts).
+ * for this project, so it is the arbiter when the caller's legacy JWT is not
+ * the byte-for-byte copy this function holds (packages/db/src/service-caller.ts).
+ * A new sb_secret_ key never comes here: it is matched against the
+ * SUPABASE_SECRET_KEYS the runtime injects, or refused.
  * A positive answer is remembered for ten minutes, so a job firing every
  * minute costs one Auth call per isolate, not one per run.
  */
 async function confirmWithAuth(token: string): Promise<boolean> {
   const until = confirmed.get(token);
   if (until !== undefined && until > Date.now()) return true;
-  const url = Deno.env.get('SUPABASE_URL');
+  const url = env('SUPABASE_URL');
   if (!url) return false;
   const response = await fetch(`${url}/auth/v1/admin/users?page=1&per_page=1`, {
     headers: { apikey: token, Authorization: `Bearer ${token}` },
@@ -55,11 +71,16 @@ async function confirmWithAuth(token: string): Promise<boolean> {
   return true;
 }
 
-/** The caller must hold a service key. pg_net sends it as a bearer token. */
+/**
+ * The caller must hold a service key: the legacy service_role JWT or a new
+ * sb_secret_ key, on `apikey` or as a bearer. pg_net sends it through
+ * edge_call_headers() (20261021140000, ADR-0165).
+ */
 function authorised(request: Request): Promise<boolean> {
-  return isServiceCaller(request.headers.get('Authorization'), {
-    expected: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-    ref: projectRef(Deno.env.get('SUPABASE_URL')),
+  return isServiceCaller(request.headers, {
+    expected: env('SUPABASE_SERVICE_ROLE_KEY'),
+    secretKeys: secretKeysFromEnv(env),
+    ref: projectRef(env('SUPABASE_URL')),
     confirm: confirmWithAuth,
   });
 }

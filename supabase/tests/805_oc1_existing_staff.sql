@@ -61,8 +61,8 @@ update staff set payroll_id = '1641A' where id = :'c_pay';
 select ok(not has_function_privilege('authenticated', 'onboarding_chaser_existing_staff(uuid)', 'execute')
       and not has_function_privilege('anon', 'onboarding_chaser_existing_staff(uuid)', 'execute'),
   'no session can ask whether somebody is existing staff');
-select ok(not has_function_privilege('authenticated', 'onboarding_chasers(timestamptz)', 'execute')
-      and has_function_privilege('service_role', 'onboarding_chasers(timestamptz)', 'execute'),
+select ok(not has_function_privilege('authenticated', 'onboarding_chasers(timestamptz,text)', 'execute')
+      and has_function_privilege('service_role', 'onboarding_chasers(timestamptz,text)', 'execute'),
   'the job is still the service role''s alone');
 
 -- =====================================================================

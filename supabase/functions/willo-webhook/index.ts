@@ -31,7 +31,7 @@
  * WILLO_API_AUTH_HEADER, WILLO_API_AUTH_PREFIX. docs/12 lists them.
  */
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.118.0';
 import { recordRun, runJob } from '../_shared/job.ts';
 import {
   describeShape,
@@ -55,6 +55,7 @@ import type { AdminAuth } from '../../../packages/db/src/provision.ts';
 import { staffAppOrigin } from '../../../packages/db/src/origin.ts';
 import { runSpudbrosSkipSweep } from '../../../packages/db/src/spudbros.ts';
 import type { SkipDue } from '../../../packages/db/src/spudbros.ts';
+import { serviceKeyFromEnv } from '../../../packages/db/src/service-caller.ts';
 
 /** Willo's bodies are small; anything this size is not a webhook. */
 const MAX_BODY_BYTES = 256 * 1024;
@@ -68,11 +69,15 @@ function json(status: number, body: Record<string, unknown>): Response {
   });
 }
 
+/** The legacy service key, or the new one THC_SECRET_KEY_NAME names (ADR-0165). */
 function serviceClient(): SupabaseClient {
   const url = env('SUPABASE_URL');
-  const key = env('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!url) throw new Error('SUPABASE_URL must be set');
+  const choice = serviceKeyFromEnv(env);
+  if (!choice.ok) throw new Error(choice.error);
+  return createClient(url, choice.key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 // ---------------------------------------------------------------------
