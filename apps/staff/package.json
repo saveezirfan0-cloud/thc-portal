@@ -13,21 +13,21 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.58.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "@thc/db": "workspace:*",
     "@thc/domain": "workspace:*",
     "@thc/notifications": "workspace:*",
     "@thc/ui": "workspace:*",
-    "next": "^15.5.27",
+    "next": "^15.5.28",
     "qrcode": "^1.5.4",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "server-only": "0.0.1",
-    "serwist": "^9.5.12"
+    "serwist": "^9.5.13"
   },
   "devDependencies": {
-    "@serwist/next": "^9.5.12",
+    "@serwist/next": "^9.5.13",
     "@types/node": "^26.6.2",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",

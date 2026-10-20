@@ -35,7 +35,7 @@
  * NOTIFY_DRAIN_CONCURRENCY, RESEND_REQUESTS_PER_SECOND.
  */
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.118.0';
 import { runJob } from '../_shared/job.ts';
 import {
   UNCONFIGURED_RETRY_SECONDS,
