@@ -155,7 +155,7 @@ test('with the documents submitted, everything waits for the office to verify th
   // And the working app is closed: Shifts says why and points back here.
   await page.goto('/shifts');
   await expect(page.getByRole('heading', { name: 'Not open to you yet' })).toBeVisible();
-  await expect(page.getByText('Your documents are with the office.')).toBeVisible();
+  await expect(page.getByText('You’re still setting up your account.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Continue onboarding' })).toHaveAttribute(
     'href',
     '/onboarding',

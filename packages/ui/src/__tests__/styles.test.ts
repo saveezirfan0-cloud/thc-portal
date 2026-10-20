@@ -595,4 +595,15 @@ describe('the shell (release audit L13, L14, L12)', () => {
     expect(css).toMatch(/animation-timeline: scroll\(self inline\)/);
     expect(css).toMatch(/@keyframes edge-fade/);
   });
+
+  it('clips the Staff App frame without making it a scroll container', () => {
+    // `overflow-x: hidden` alone computes overflow-y to `auto`, so the
+    // frame captured the sticky header and the header scrolled away with
+    // the page (§10.1). `clip` must be the last word; `hidden` may precede
+    // it as the fallback for a browser without `clip`.
+    const frame = css.match(/\.app-frame \{([^}]*)\}/)?.[1] ?? '';
+    const overflow = [...frame.matchAll(/overflow(?:-x)?:\s*([a-z]+)/g)].map((m) => m[1]);
+    expect(overflow.at(-1)).toBe('clip');
+    expect(css).toMatch(/\.app-header \{[^}]*position: sticky;/);
+  });
 });

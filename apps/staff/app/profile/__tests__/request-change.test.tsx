@@ -24,7 +24,9 @@ vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: 
 // (app/_lib/__tests__/stored-media.test.ts); here the upload is a real one.
 vi.mock('../../_lib/stored-media', () => ({ checkStoredMedia: async () => 'match' }));
 vi.mock('next/cache', () => ({ revalidatePath }));
-vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
+vi.mock('@thc/db/server', () => ({
+  createClient: () => ({ rpc, storage: { from: () => ({ createSignedUploadUrl }) } }),
+}));
 vi.mock('@thc/db/admin', () => ({
   createAdminClient: () => ({ rpc, storage: { from: () => ({ createSignedUploadUrl }) } }),
 }));
@@ -58,7 +60,13 @@ beforeEach(() => {
       ? { data: { staffId: 'staff-1', status: 'compliant', photoLocked: true }, error: null }
       : { data: { ok: true, id: 'r1' }, error: null },
   );
-  createSignedUploadUrl.mockResolvedValue({ data: { token: 'tok' }, error: null });
+  createSignedUploadUrl.mockResolvedValue({
+    data: {
+      token: 'tok',
+      signedUrl: 'http://127.0.0.1:54321/storage/v1/object/upload/sign/x?token=tok',
+    },
+    error: null,
+  });
 });
 
 const request = (over: Partial<ChangeRequest> = {}): ChangeRequest => ({
@@ -201,6 +209,7 @@ describe('the upload slots', () => {
     const path = slot.ok ? slot.path : '';
     expect(path).toMatch(/^staff-1\/change-requests\/[0-9a-f-]{36}\.pdf$/);
     expect(createSignedUploadUrl).toHaveBeenCalledWith(path);
+    expect(slot.ok && slot.url).toContain('token=tok');
   });
 
   it('refuses a file type before issuing anything', async () => {
@@ -212,6 +221,18 @@ describe('the upload slots', () => {
   it('gives a locked worker a fresh photo path in their own folder', async () => {
     const slot = await actions.startChangePhotoUpload();
     expect(slot.ok && slot.path).toMatch(/^staff-1\/selfie-\d+\.jpg$/);
+    // A one-object URL signed for exactly that path; the browser PUTs to it
+    // and loads no Supabase client (ADR-0162).
+    expect(createSignedUploadUrl).toHaveBeenCalledWith(slot.ok ? slot.path : '');
+    expect(slot.ok && slot.url).toContain('token=tok');
+  });
+
+  it('says the upload could not start when Storage will not sign', async () => {
+    createSignedUploadUrl.mockResolvedValue({ data: null, error: { message: 'denied' } });
+    expect((await actions.startChangePhotoUpload()).ok).toBe(false);
+    expect(
+      (await actions.startEvidenceUpload({ name: 'a.pdf', type: 'application/pdf', size: 10 })).ok,
+    ).toBe(false);
   });
 
   it('refuses a leaver either slot', async () => {

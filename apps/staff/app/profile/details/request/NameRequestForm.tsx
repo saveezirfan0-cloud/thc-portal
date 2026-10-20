@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Input, Textarea } from '@thc/ui';
-import { createClient } from '@thc/db/browser';
+import { putSignedUpload } from '../../../_lib/signed-upload';
 import {
   CHANGE_NOTE_MAX,
   DOCUMENT_UPLOAD_REASONS,
@@ -52,10 +52,9 @@ export function NameRequestForm({ firstName, lastName }: { firstName: string; la
         setError(slot.message);
         return;
       }
-      const { error: uploadError } = await createClient()
-        .storage.from('documents')
-        .uploadToSignedUrl(slot.path, slot.token, file, { contentType: file.type, upsert: false });
-      if (uploadError) {
+      // One PUT to the signed URL; no Supabase client in the browser (ADR-0162).
+      const sent = await putSignedUpload(slot.url, file, file.type);
+      if (!sent) {
         setError('The upload did not complete. Please try again.');
         return;
       }

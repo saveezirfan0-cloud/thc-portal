@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Avatar, Button } from '@thc/ui';
-import { createClient } from '@thc/db/browser';
+import { putSignedUpload } from '../../_lib/signed-upload';
 import { finishPhotoUpload, startPhotoUpload } from '../actions';
 import { SELFIE_MIME as MIME, squareJpeg } from './selfie';
 import { requestHref } from '../change-requests';
@@ -96,15 +96,13 @@ export function PhotoField({
         return;
       }
 
-      // Uploaded through the worker's OWN session, not a service key:
+      // The URL was signed by the worker's OWN session, not a service key:
       // `photos_worker_insert_own` (20260922183015) allows exactly
       // `<staff_id>/…`, and the path came from the server, so Storage RLS
-      // is what admits this rather than a check written in the app.
-      const supabase = createClient();
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(slot.path, blob, { contentType: MIME, upsert: false });
-      if (uploadError) {
+      // is what admits this rather than a check written in the app. One
+      // PUT, no Supabase client in the browser (ADR-0162).
+      const sent = await putSignedUpload(slot.url, blob, MIME);
+      if (!sent) {
         setError('That upload didn’t finish. Check your connection and try again.');
         return;
       }

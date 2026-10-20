@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Avatar, Button, Input } from '@thc/ui';
-import { createClient } from '@thc/db/browser';
+import { putSignedUpload } from '../../../_lib/signed-upload';
 import { CHANGE_NOTE_MAX } from '@thc/domain';
 import { SELFIE_MIME, squareJpeg } from '../selfie';
 import { requestPhotoChange, startChangePhotoUpload } from './actions';
@@ -54,10 +54,9 @@ export function PhotoRequestForm({
         setError(slot.message);
         return;
       }
-      const { error: uploadError } = await createClient()
-        .storage.from('photos')
-        .upload(slot.path, blob, { contentType: SELFIE_MIME, upsert: false });
-      if (uploadError) {
+      // One PUT to a URL the worker's own session signed (ADR-0162).
+      const sent = await putSignedUpload(slot.url, blob, SELFIE_MIME);
+      if (!sent) {
         setError('That upload didn’t finish. Check your connection and try again.');
         return;
       }

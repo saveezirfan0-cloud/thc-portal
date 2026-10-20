@@ -30,6 +30,8 @@ const NOT_CONFIGURED =
 const TRY_AGAIN = 'That didn’t go through. Please try again.';
 /** A read that failed is not "we couldn't find your record" (audit D18). */
 const COULD_NOT_READ = 'We couldn’t reach your profile just now. Please try again.';
+/** A selfie slot Storage would not sign — onboarding's words (startSelfieUpload). */
+const UPLOAD_NOT_STARTED = 'That upload couldn’t start. Please try again.';
 
 const PHOTO_NOT_IMAGE = 'That photo didn’t come through as a picture. Please take it again.';
 
@@ -348,7 +350,9 @@ export async function changePassword(
  * value the browser sends can keep one of their own and nothing more. The
  * endpoint is a bearer capability: never logged.
  */
-export async function signOutOtherDevices(keepEndpoint: string | null = null): Promise<ActionResult> {
+export async function signOutOtherDevices(
+  keepEndpoint: string | null = null,
+): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
   const { error } = await supabase.auth.signOut({ scope: 'others' });
@@ -373,7 +377,7 @@ export async function signOutOtherDevices(keepEndpoint: string | null = null): P
   return { ok: true, note: 'Signed out everywhere else. Those devices get no more notifications.' };
 }
 
-export type PhotoSlot = { ok: true; path: string } | { ok: false; message: string };
+export type PhotoSlot = { ok: true; path: string; url: string } | { ok: false; message: string };
 
 /**
  * Where to put a selfie (§1.6).
@@ -397,7 +401,14 @@ export async function startPhotoUpload(): Promise<PhotoSlot> {
   if (!me) return { ok: false, message: REASONS['unknown_staff'] as string };
   if (me['photoLocked']) return { ok: false, message: REASONS['photo_locked'] as string };
 
-  return { ok: true, path: photoPathFor(me['staffId'] as string) };
+  // Signed by the worker's own session, so Storage checks
+  // photos_worker_insert_own before it signs (as onboarding's selfie).
+  const path = photoPathFor(me['staffId'] as string);
+  const { data: slot, error: signError } = await supabase.storage
+    .from('photos')
+    .createSignedUploadUrl(path);
+  if (signError || !slot?.signedUrl) return { ok: false, message: UPLOAD_NOT_STARTED };
+  return { ok: true, path, url: slot.signedUrl };
 }
 
 /**

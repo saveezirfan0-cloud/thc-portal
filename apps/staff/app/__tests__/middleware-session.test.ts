@@ -62,6 +62,14 @@ describe('middleware · session gate', () => {
     expect(getUser).not.toHaveBeenCalled();
   });
 
+  it('no token: next keeps the query string, and /login carries nothing else', async () => {
+    const res = await get('/profile/details/request?kind=dob');
+    const to = location(res);
+    expect(to?.pathname).toBe('/login');
+    expect(to?.searchParams.get('next')).toBe('/profile/details/request?kind=dob');
+    expect([...(to?.searchParams.keys() ?? [])]).toEqual(['next']);
+  });
+
   it('no token: the public screens still render', async () => {
     for (const path of ['/login', '/install', '/offline', '/privacy', '/apply', '/auth/confirm']) {
       const res = await get(path);

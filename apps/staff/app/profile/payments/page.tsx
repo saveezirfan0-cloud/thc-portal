@@ -56,7 +56,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   if (!canReachPayments(lock)) redirect('/profile');
 
   const name = `${profile.firstName} ${profile.lastName}`.trim();
-  const rows = bankTab ? [] : await loadEarnings();
+  // Side by side: the photo's signature does not wait for the earnings.
+  const [rows, photoUrl] = await Promise.all([
+    bankTab ? Promise.resolve([]) : loadEarnings(),
+    signOwnPhoto(profile.photoPath),
+  ]);
   const paid = paidShifts(rows);
   const month = paidThisMonth(rows);
 
@@ -66,7 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       back={{ href: '/profile', label: 'Profile' }}
       lock={lock}
       name={name}
-      photoUrl={await signOwnPhoto(profile.photoPath)}
+      photoUrl={photoUrl}
     >
       <div className="mtabs">
         <Link href="/profile/payments" className={bankTab ? undefined : 'active'}>
