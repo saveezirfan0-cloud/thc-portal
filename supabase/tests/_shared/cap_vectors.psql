@@ -85,7 +85,7 @@ insert into cap_vectors values
   ('Student in a holiday week whose opt-out notice ends mid-week: the lower cap, 48', true, 'holiday', false, true, '2026-12-21'::date, false, null, null, '2026-12-23'::date, false, null, null, 48, 'student_holiday_48'),
   ('Opt-out notice ended weeks ago: the 48 h ceiling stands', false, 'none', false, true, '2026-08-10'::date, false, null, null, '2026-07-01'::date, false, null, null, 48, 'standard_48'),
   ('Notice period ends on the Sunday: that week already takes the 48 h', false, 'none', false, true, '2026-08-10'::date, false, null, null, '2026-08-16'::date, false, null, null, 48, 'standard_48'),
-  ('Student visa expires on the Sunday: the week keeps its cap and canRoster stops nothing in it', true, 'term', false, false, '2026-09-28'::date, false, null, '2026-10-04'::date, null, false, null, null, 20, 'student_term_20'),
+  ('Student visa expires on the Sunday: the week keeps its 20 h cap', true, 'term', false, false, '2026-09-28'::date, false, null, '2026-10-04'::date, null, false, null, null, 20, 'student_term_20'),
   ('Student visa expired the Sunday before: nothing rosters this week', true, 'term', false, false, '2026-09-28'::date, false, null, '2026-09-27'::date, null, false, null, null, 0, 'visa_expired_0');
 
 -- The count is generated too, so an empty or half-loaded table cannot pass.

@@ -777,7 +777,7 @@
       }
     },
     {
-      "name": "Student visa expires on the Sunday: the week keeps its cap and canRoster stops nothing in it",
+      "name": "Student visa expires on the Sunday: the week keeps its 20 h cap",
       "input": {
         "visaLimited": true,
         "termState": "term",
