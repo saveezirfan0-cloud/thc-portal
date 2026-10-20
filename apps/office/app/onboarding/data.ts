@@ -152,6 +152,24 @@ export async function loadCandidateReferral(
   }
 }
 
+/**
+ * The application that started THIS pass through the pipeline: the latest one
+ * that created the record or was reset onto it (§2.12). The oldest is the
+ * first pass, so after a returning applicant's reset the panel said "no match
+ * → new record" with the old consent date. An unresolved or rejected
+ * returning entry, and a duplicate_candidate, never count.
+ */
+export function currentApplication(supabase: ReturnType<typeof createClient>, id: string) {
+  return supabase
+    .from('applications')
+    .select('created_at, consented_at, outcome, matched_on')
+    .eq('staff_id', id)
+    .or('outcome.eq.candidate_created,resolution.eq.reset')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<Application>();
+}
+
 function messageOf(error: unknown): string {
   return error instanceof Error && error.message ? readProblem(error.message) : 'the read failed';
 }
@@ -518,18 +536,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .eq('staff_id', id)
       .eq('superseded', false)
       .maybeSingle<HmrcChecklist>(),
-    // The application that started THIS pass through the pipeline: the
-    // latest one that created the record or was reset onto it (§2.12). The
-    // oldest is the first pass, so after a returning applicant's reset the
-    // panel said "no match → new record" with the old consent date.
-    supabase
-      .from('applications')
-      .select('created_at, consented_at, outcome, matched_on')
-      .eq('staff_id', id)
-      .or('outcome.eq.candidate_created,resolution.eq.reset')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle<Application>(),
+    currentApplication(supabase, id),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     // §9.6: the clients to qualify the candidate at, and what they already hold.
     supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
