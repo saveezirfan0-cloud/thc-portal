@@ -271,8 +271,9 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
         <Note>
           The amount uses the same figures as the Financial tab: payable hours (check-in to
           check-out within the scheduled time, unpaid breaks deducted) × the role&apos;s charge
-          rate. THC invoices the client from its own accounting tool; this page does not send
-          anything.
+          rate. The system issues the invoice itself (ADR-0176) and emails it with the GPS-verified
+          sign-in and sign-out log at 10:00 UK the morning after the last event on the PO; an event
+          dated before 26/10/2026 is invoiced from the CSV instead.
         </Note>
       </div>
     </OfficeShell>
