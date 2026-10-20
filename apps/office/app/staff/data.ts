@@ -45,6 +45,7 @@ export const DIRECTORY_CEILING = 20_000;
 interface DirectoryQuery {
   order(column: string): DirectoryQuery;
   range(from: number, to: number): unknown;
+  is(column: string, value: null): DirectoryQuery;
 }
 interface DirectoryClient {
   from(view: string): { select(columns: string): DirectoryQuery };
@@ -78,9 +79,30 @@ export async function loadStaff(): Promise<StaffPageData> {
           .range(range.from, range.to) as unknown as PromiseLike<PageReply<T>>,
       { what: 'staff', key: (row) => (row as { id: string }).id, ceiling: DIRECTORY_CEILING },
     );
-  const [staff, students] = await Promise.all([
+  // The phone, so the office can ring a worker straight from the list. It
+  // is not a directory column — staff_directory_v feeds the profile, the
+  // student view and the clients' qualified staff, and all four are pinned
+  // column for column (pgTAP 885) — so it is read off `staff` through
+  // admin_all, as the profile reads its extra columns. Only rows not
+  // removed: §1.7 retires a removed worker's number, and the list never
+  // asks for it. A failed read leaves the column empty, never the list.
+  const phonesOf = () =>
+    readAllPages<{ id: string; phone: string | null }>(
+      (range) =>
+        supabase
+          .from('staff')
+          .select('id, phone')
+          .is('removed_at', null)
+          .order('id')
+          .range(range.from, range.to) as unknown as PromiseLike<
+          PageReply<{ id: string; phone: string | null }>
+        >,
+      { what: 'staff', key: (row) => row.id, ceiling: DIRECTORY_CEILING },
+    );
+  const [staff, students, phones] = await Promise.all([
     pageOf<StaffRow>('staff_directory_v', STAFF_COLUMNS),
     pageOf<StudentRow>('student_visa_v', STUDENT_COLUMNS),
+    phonesOf(),
   ]);
 
   const error = staff.error ?? students.error;
@@ -96,9 +118,12 @@ export async function loadStaff(): Promise<StaffPageData> {
     ...studentRows.map((row) => row.photo_path),
   ]);
   const url = (path: string | null) => (path ? (urls.get(path) ?? null) : null);
+  const phoneOf = phones.data ? new Map(phones.data.map((row) => [row.id, row.phone])) : null;
+  const phone = (row: StaffRow) =>
+    row.removed ? null : phoneOf ? (phoneOf.get(row.id) ?? null) : undefined;
 
   return {
-    staff: staffRows.map((row) => ({ ...row, photo_url: url(row.photo_path) })),
+    staff: staffRows.map((row) => ({ ...row, photo_url: url(row.photo_path), phone: phone(row) })),
     students: studentRows.map((row) => ({ ...row, photo_url: url(row.photo_path) })),
     problem: null,
   };

@@ -21,13 +21,14 @@ const STAFF = Array.from({ length: 2150 }, (_, n) => ({
   photo_path: n % 2 ? `w-${pad(n)}/selfie.jpg` : null,
 }));
 const STUDENTS = STAFF.slice(0, 1010).map((row) => ({ ...row }));
+const PHONES = STAFF.map((row, n) => ({ id: row.id, phone: `+4477009${pad(n)}0` }));
 
 let fake: ReturnType<typeof fakePostgrest>;
 
 beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
-  fake = fakePostgrest({ staff_directory_v: STAFF, student_visa_v: STUDENTS });
+  fake = fakePostgrest({ staff_directory_v: STAFF, student_visa_v: STUDENTS, staff: PHONES });
   state.db = fake;
 });
 
@@ -55,6 +56,33 @@ describe('loadStaff', () => {
     const data = await loadStaff();
     expect(data.staff[2149]?.photo_url).toBe('https://signed/w-2149/selfie.jpg');
     expect(data.staff[2148]?.photo_url).toBeNull();
+  });
+
+  it('carries every phone, read off staff past the 1,000-row cap, never a removed one', async () => {
+    state.db = fakePostgrest({
+      staff_directory_v: STAFF.map((row, n) => ({ ...row, removed: n === 5 })),
+      student_visa_v: STUDENTS,
+      staff: PHONES,
+    });
+    const data = await loadStaff();
+    expect(data.staff[2149]?.phone).toBe('+447700921490');
+    expect(data.staff[0]?.phone).toBe('+447700900000');
+    expect(data.staff[5]?.phone).toBeNull();
+    const pages = callsTo((state.db as typeof fake).calls, 'staff');
+    expect(pages).toHaveLength(3);
+    expect(pages[0]!.select).toBe('id, phone');
+    expect(pages[0]!.filters).toEqual([['is', 'removed_at', null]]);
+  });
+
+  it('a failed phone read leaves the column empty, not the directory', async () => {
+    state.db = fakePostgrest(
+      { staff_directory_v: STAFF, student_visa_v: STUDENTS },
+      { errors: { staff: { message: 'no phones' } } },
+    );
+    const data = await loadStaff();
+    expect(data.problem).toBeNull();
+    expect(data.staff).toHaveLength(2150);
+    expect(data.staff[0]?.phone).toBeUndefined();
   });
 
   it('a page that fails is a problem, not a short directory', async () => {
