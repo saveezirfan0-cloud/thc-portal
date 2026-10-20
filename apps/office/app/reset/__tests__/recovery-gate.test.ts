@@ -10,8 +10,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 const auth = vi.hoisted(() => ({
   getUser: vi.fn(),
   getClaims: vi.fn(),
+  getSession: vi.fn(),
   updateUser: vi.fn(),
   signOut: vi.fn(async () => ({ error: null })),
+  mfa: { challengeAndVerify: vi.fn() },
 }));
 
 vi.mock('next/headers', () => ({
@@ -24,11 +26,17 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@thc/db/server', () => ({ createClient: () => ({ auth }) }));
 const clearSignInFailures = vi.hoisted(() => vi.fn());
-vi.mock('@thc/db/auth-throttle', () => ({ clearSignInFailures }));
+const throttle = vi.hoisted(() => ({
+  authAttemptAllowed: vi.fn(async () => true),
+  recordAuthAttempt: vi.fn(async () => {}),
+  userKey: vi.fn(async (id: string) => `user:${id}`),
+}));
+vi.mock('@thc/db/auth-throttle', () => ({ clearSignInFailures, ...throttle }));
 
 const { setPassword } = await import('../actions');
 const { default: ResetPage } = await import('../page');
-const { USE_ACCOUNT_SCREEN, SAME_PASSWORD, otherApp } = await import('../copy');
+const { USE_ACCOUNT_SCREEN, SAME_PASSWORD, RESET_CODE_HINT, otherApp } = await import('../copy');
+const { TOO_MANY_CODES } = await import('../../login/verify/copy');
 
 const NOW_S = () => Math.floor(Date.now() / 1000);
 const amr = (method: string, secondsAgo: number) => ({
@@ -36,10 +44,25 @@ const amr = (method: string, secondsAgo: number) => ({
   error: null,
 });
 
-async function submit(): Promise<string> {
+/** A token GoTrue has accepted, as far as `aalFromAccessToken` reads it. */
+const tokenAt = (aal: 'aal1' | 'aal2') =>
+  `h.${Buffer.from(JSON.stringify({ aal })).toString('base64url')}.s`;
+const TOTP = { id: 'f1', factor_type: 'totp', status: 'verified' };
+/** An admin with a verified authenticator, on the aal1 session a reset link makes. */
+const withTwoStep = () => {
+  auth.getUser.mockResolvedValue({
+    data: {
+      user: { id: 'u1', email: 'a@b.example', app_metadata: { role: 'admin' }, factors: [TOTP] },
+    },
+  });
+  auth.getSession.mockResolvedValue({ data: { session: { access_token: tokenAt('aal1') } } });
+};
+
+async function submit(code?: string): Promise<string> {
   const fd = new FormData();
   fd.set('password', 'Gala-Dinner-2026');
   fd.set('confirm', 'Gala-Dinner-2026');
+  if (code !== undefined) fd.set('code', code);
   try {
     return `RETURNED:${await setPassword(null, fd)}`;
   } catch (error) {
@@ -61,6 +84,8 @@ beforeEach(() => {
     data: { user: { id: 'u1', email: 'a@b.example', app_metadata: { role: 'admin' } } },
   });
   auth.updateUser.mockResolvedValue({ error: null });
+  auth.mfa.challengeAndVerify.mockResolvedValue({ error: null });
+  throttle.authAttemptAllowed.mockResolvedValue(true);
 });
 
 describe('setPassword: only a fresh reset-link session', () => {
@@ -214,6 +239,58 @@ describe('setPassword: only a fresh reset-link session', () => {
   });
 });
 
+describe('setPassword: a login with two-step gives its code too (insufficient_aal)', () => {
+  beforeEach(() => {
+    auth.getClaims.mockResolvedValue(amr('otp', 10));
+    withTwoStep();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  it('the code is checked first, then the password is set', async () => {
+    expect(await submit('123 456')).toBe('REDIRECT:/dashboard');
+    expect(auth.mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: 'f1', code: '123456' });
+    expect(auth.mfa.challengeAndVerify.mock.invocationCallOrder[0]!).toBeLessThan(
+      auth.updateUser.mock.invocationCallOrder[0]!,
+    );
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Gala-Dinner-2026' });
+  });
+
+  it('no code: asked for, nothing sent to GoTrue', async () => {
+    expect(await submit()).toBe('RETURNED:Enter the 6-digit code from your authenticator app.');
+    expect(auth.mfa.challengeAndVerify).not.toHaveBeenCalled();
+    expect(auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('a wrong code is counted, said plainly, and the password is not changed', async () => {
+    auth.mfa.challengeAndVerify.mockResolvedValue({
+      error: { status: 422, code: 'mfa_verification_failed' },
+    });
+    expect(await submit('000000')).toMatch(/^RETURNED:That code did not match/);
+    expect(throttle.recordAuthAttempt).toHaveBeenCalledWith('verify', ['user:u1'], true);
+    expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(clearSignInFailures).not.toHaveBeenCalled();
+  });
+
+  it('too many wrong codes: refused before GoTrue is asked', async () => {
+    throttle.authAttemptAllowed.mockResolvedValue(false);
+    expect(await submit('123456')).toBe(`RETURNED:${TOO_MANY_CODES}`);
+    expect(auth.mfa.challengeAndVerify).not.toHaveBeenCalled();
+    expect(auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('a stale link is refused before any code is tried', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 16 * 60));
+    expect(await submit('123456')).toBe(`RETURNED:${USE_ACCOUNT_SCREEN}`);
+    expect(auth.mfa.challengeAndVerify).not.toHaveBeenCalled();
+  });
+
+  it('a session already at aal2 is not asked again', async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { access_token: tokenAt('aal2') } } });
+    expect(await submit()).toBe('REDIRECT:/dashboard');
+    expect(auth.mfa.challengeAndVerify).not.toHaveBeenCalled();
+  });
+});
+
 describe('/reset renders the form only for that session', () => {
   const render = async () =>
     renderToStaticMarkup(await ResetPage({ searchParams: Promise.resolve({}) }));
@@ -232,6 +309,20 @@ describe('/reset renders the form only for that session', () => {
     expect(html).toContain('Request a new link');
     expect(html).toContain(USE_ACCOUNT_SCREEN);
     expect(html).not.toContain('Save new password');
+  });
+
+  it('a login with two-step: the code field and why it is there', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 30));
+    withTwoStep();
+    const html = await render();
+    expect(html).toContain('name="code"');
+    expect(html).toContain('6-digit code');
+    expect(html).toContain(RESET_CODE_HINT.replace(/’/g, '&#x27;').slice(0, 40));
+  });
+
+  it('a login without two-step: no code field', async () => {
+    auth.getClaims.mockResolvedValue(amr('otp', 30));
+    expect(await render()).not.toContain('name="code"');
   });
 
   it('a stale reset link: the expired card', async () => {

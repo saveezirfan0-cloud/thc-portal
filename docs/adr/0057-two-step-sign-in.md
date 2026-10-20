@@ -61,3 +61,7 @@ Decision 1's gap is closed: `current_app_role()` now answers NULL for a Back Off
 ## Update — compulsory (ADR-0164, 20261020130000)
 
 Follow-up 1 is built. `settings.office_two_step_required` (default on, /settings) makes two-step compulsory: the database refuses an office session below aal2 whether or not it has an authenticator, and the middleware sends an aal1 login with none to `/login/enrol`, which reuses the /account set-up. An office sign-in also lasts `settings.office_session_max_hours` (12) from the password.
+
+## Update — a forgotten password with two-step on (20.10.2026)
+
+A3 (`/reset`) could not save a new password for a login with two-step: the reset link opens an aal1 session and GoTrue refuses a password change below aal2 once a factor is verified (`insufficient_aal`, seen live on 20.10.2026). The form now asks such a login for its 6-digit code with the new password (`apps/office/app/reset`). The code is checked only after the link's freshness and the role have passed, with `/login/verify`'s throttle and words, and before `updateUser`. A login without two-step sees the form as before. A forgotten password AND a lost phone still need **Reset two-step** on `/users` (ADR-0060) first; the hint under the field says so.
