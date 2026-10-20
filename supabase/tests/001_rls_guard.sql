@@ -61,6 +61,9 @@
 -- admin_read only, written by willo_record_event() alone (897).
 -- 20261021150000 (ADR-0172) added event_invoice_signoffs to assertions 1
 -- and 3: admin_finance_read only, written by sign_off_event_invoice() (902).
+-- 20261022100000 (ADR-0175) added invoice_counter, invoices,
+-- invoice_event_links and invoice_lines to assertions 1 and 3:
+-- admin_finance_read only, written by the service role's invoice job (909).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -104,8 +107,9 @@ select bag_eq(
             ('client_quiz_draws'),
             ('client_worker_requests'),
             ('willo_deliveries'),
-            ('event_invoice_signoffs') $$,
-  'RLS is enabled on all 63 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100) and willo_deliveries (ADR-0164, 20261020130200) and event_invoice_signoffs (ADR-0172, 20261021150000)'
+            ('event_invoice_signoffs'),
+            ('invoice_counter'),('invoices'),('invoice_event_links'),('invoice_lines') $$,
+  'RLS is enabled on all 67 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100) and willo_deliveries (ADR-0164, 20261020130200) and event_invoice_signoffs (ADR-0172, 20261021150000) and the four invoice tables (ADR-0175, 20261022100000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -196,7 +200,8 @@ select bag_eq(
             ('client_quiz_draws'),
             ('client_worker_requests'),
             ('willo_deliveries'),
-            ('event_invoice_signoffs') $$,
+            ('event_invoice_signoffs'),
+            ('invoice_counter'),('invoices'),('invoice_event_links'),('invoice_lines') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
