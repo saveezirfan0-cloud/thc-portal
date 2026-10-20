@@ -39,6 +39,8 @@ export interface InvoiceRunCounts {
   sent: number;
   failed: number;
   deferred: number;
+  /** Groups whose claim raised (changed mid-claim); retried next run. */
+  skipped: number;
 }
 
 export async function runInvoices(deps: InvoiceRunDeps): Promise<InvoiceRunCounts> {
@@ -50,6 +52,7 @@ export async function runInvoices(deps: InvoiceRunDeps): Promise<InvoiceRunCount
     sent: 0,
     failed: 0,
     deferred: 0,
+    skipped: 0,
   };
 
   const work: string[] = [];
@@ -65,7 +68,18 @@ export async function runInvoices(deps: InvoiceRunDeps): Promise<InvoiceRunCount
       counts.deferred += 1;
       continue;
     }
-    const id = await deps.claim(g.group_key);
+    let id: string | null;
+    try {
+      id = await deps.claim(g.group_key);
+    } catch (cause) {
+      // changed_while_issuing (a check-out corrected mid-claim) or a race
+      // with an overlapping run: the claim rolled back, number included.
+      // Skip this group; the next run looks again. Never stop the step.
+      const message = (cause instanceof Error ? cause.message : String(cause)).slice(0, 300);
+      counts.skipped += 1;
+      deps.log(`event-documents: invoice group skipped: ${message}`);
+      continue;
+    }
     if (!id) continue;
     counts.issued += 1;
     work.push(id);

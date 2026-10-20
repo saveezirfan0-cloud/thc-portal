@@ -79,7 +79,8 @@ three things in order:
    advisory lock. In the same transaction it takes the next number from `invoice_counter`
    (starting at 4000, gapless), snapshots the settled lines, the bill-to and the seller, and
    works out VAT as round(net × rate / 100, 2). If a line went pending, or the money moved
-   between the verdict and the copy, the whole issue is undone, number included. It is
+   between the verdict and the copy, the whole issue is undone, number included; the job
+   skips that group and carries on, and the next run looks again. It is
    audited as `invoice.issued`.
 3. It draws the invoice PDF and, for each event, a fresh Completed Allocation Timesheet. A
    cancelled event has no timesheet (§3.3) and is invoiced without one. The files are stored
@@ -94,14 +95,19 @@ An issued invoice is final. Its states are `drawing → queued`, `drawing → fa
 and any change to a queued invoice's number, money, bill-to or seller.
 `sign_off_event_invoice` refuses an invoiced event (`already_invoiced`). A correction is a
 credit note in THC's own tool: when an invoiced event's live lines no longer match what was
-invoiced, the event page says so and does not re-price the invoice. The ready CSV leaves
-invoiced events out, so they are never keyed in a second time.
+invoiced, the event page says so and does not re-price the invoice, and the Invoiced tile sums
+what was invoiced. The ready CSV carries only ready events the system will not invoice itself
+(no PO group: before go-live). An event the system invoices, already or at its next 10:00, is
+never in it, so it can never be keyed into the accounting tool as well.
 
 **The email's outcome.** "Invoiced" says nothing about delivery. The office reads the INV1
 outbox row: emailed (`sent_at`), failed with the provider's reason (`failed_at`, e.g. a bounce),
 or still queued. **Send again** (`resend_invoice_email`, finance with write, audited as
 `invoice.resent`) queues a new row, `INV1:<number>:<n>`, with the same files to the client
-card's addresses as they are now. It is refused while the last email is still on its way.
+card's addresses as they are now, its payload rebuilt from the invoice (the first row is retired
+after 180 days). It is refused while the last email is still on its way. On an invoice the job
+gave up on after 24 attempts the same button is **Try again**: its attempts go back to 0
+(audited as `invoice.retried`) and the next run draws and sends it.
 
 **GDPR.** `invoice_lines` is the first table to keep a worker's name as text. On removal
 (§1.7) it becomes "Deleted account #id" (`staff_removed_purge_invoices`). A PDF already stored

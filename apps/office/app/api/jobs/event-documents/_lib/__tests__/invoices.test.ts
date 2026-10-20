@@ -62,6 +62,25 @@ describe('the invoice step (ADR-0176)', () => {
     expect(counts).toMatchObject({ issued: 0, sent: 0 });
   });
 
+  it('a claim that raises (changed mid-claim) skips that group and carries on', async () => {
+    const send = vi.fn(async () => ({ number: 4001, queued: true }));
+    const d = deps({
+      groups: async () => [
+        { group_key: 'a', verdict: 'due' },
+        { group_key: 'b', verdict: 'due' },
+      ],
+      claim: async (key) => {
+        if (key === 'a') throw new Error('invoice_claim: changed_while_issuing');
+        return `inv-${key}`;
+      },
+      send,
+    });
+    const counts = await runInvoices(d);
+    expect(counts).toMatchObject({ skipped: 1, issued: 1, sent: 1 });
+    expect(send).toHaveBeenCalledWith('inv-b');
+    expect(d.lines.join('\n')).toMatch(/group skipped: invoice_claim: changed_while_issuing/);
+  });
+
   it('releases an invoice whose send failed, and carries on', async () => {
     const release = vi.fn(async () => undefined);
     const d = deps({

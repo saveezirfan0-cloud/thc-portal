@@ -108,7 +108,13 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
         ) : null}
         {status === 'ready' ? (
           <Alert tone="cyan">
-            {readyEventNote(event.send_verdict ?? null, event.sends_at ?? null, format)}.
+            {readyEventNote(
+              event.send_verdict ?? null,
+              event.sends_at ?? null,
+              format,
+              event.invoicing,
+            )}
+            .
           </Alert>
         ) : null}
 
@@ -390,7 +396,7 @@ function InvoicePanel({
           </Alert>
         ) : null}
         {canResend && email.resendable ? (
-          <ResendInvoice invoiceId={invoiceId} eventId={eventId} />
+          <ResendInvoice invoiceId={invoiceId} eventId={eventId} retry={email.retry === true} />
         ) : null}
       </div>
     </Panel>

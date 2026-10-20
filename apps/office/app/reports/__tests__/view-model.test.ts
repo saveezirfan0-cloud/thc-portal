@@ -245,13 +245,15 @@ describe('the issued invoice on screen (ADR-0176)', () => {
       invoice_attempts: INVOICE_MAX_ATTEMPTS,
       invoice_last_error: 'Storage refused',
     });
-    expect(stuck).toMatchObject({ tone: 'coral', resendable: false });
+    // The office can start it again: Try again sets its attempts back to 0.
+    expect(stuck).toMatchObject({ tone: 'coral', resendable: true, retry: true });
     expect(stuck.text).toMatch(/Could not be prepared after 24 attempts: Storage refused/);
   });
 
   it('a ready event with no PO group is not invoiced by the system', () => {
     expect(readyEventNote(null, null)).toBe(NOT_SYSTEM_INVOICED_NOTE);
     expect(readyEventNote('no_recipients', null)).toMatch(/client card/);
+    expect(readyEventNote(null, null, undefined, '0.00')).toBe('Nothing to charge');
   });
 
   it('flags an invoiced event whose lines have moved since', () => {

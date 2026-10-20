@@ -701,9 +701,10 @@ comment on function public.invoice_events(date, date) is
 revoke execute on function public.invoice_events(date, date) from public, anon;
 grant execute on function public.invoice_events(date, date) to authenticated, service_role;
 
--- invoice_export_rows: ready events only. An invoiced event was billed by
--- the system; keying its lines into the accounting tool again would bill
--- it twice.
+-- invoice_export_rows: ready events the system will NOT invoice (no PO
+-- group: before go-live). An event the system invoices — already, or at
+-- its next 10:00, or once switched back on — is never in the CSV, so it
+-- can never be keyed into the accounting tool as well.
 create or replace function public.invoice_export_rows(p_from date, p_to date, p_event uuid default null)
 returns table (
   event_id         uuid,
@@ -734,6 +735,7 @@ begin
   with ready as (
     select i.* from invoice_events(p_from, p_to) i
      where i.status = 'ready'
+       and i.send_verdict is null
        and (p_event is null or i.event_id = p_event)
   )
   select i.event_id, i.event_date, i.event_title, i.client_name, i.po_number,
@@ -949,6 +951,42 @@ begin
   if not found then raise exception 'invoice_not_open' using errcode = 'P0001'; end if;
 end $$;
 
+-- The INV1 payload, built from the invoice row every time — never copied
+-- from an earlier outbox row, which the retention job retires after 180
+-- days (20261020130300) and Send again must still work after that.
+create or replace function public._invoice_email_payload(p_invoice uuid)
+returns jsonb
+language plpgsql stable set search_path = public, extensions as $$
+declare
+  i invoices;
+  v_events jsonb;
+  v_n int;
+begin
+  select * into i from invoices where id = p_invoice;
+  select count(*), jsonb_agg(jsonb_build_object('title', e.title, 'date', e.event_date)
+                             order by e.event_date, e.title)
+    into v_n, v_events
+    from invoice_event_links k join events e on e.id = k.event_id where k.invoice_id = i.id;
+
+  return jsonb_build_object(
+    'invoiceNumber', i.number::text,
+    'client', i.bill_to ->> 'name',
+    'contact', coalesce(i.bill_to ->> 'contact', ''),
+    'poNumber', coalesce(i.po_number, ''),
+    'poSuffix', case when coalesce(i.po_number, '') = '' then '' else ' (PO ' || i.po_number || ')' end,
+    'eventsLine', case when v_n = 1
+                       then (v_events -> 0 ->> 'title') || ' on '
+                            || trim(to_char((v_events -> 0 ->> 'date')::date, 'FMDay FMDD FMMonth YYYY'))
+                       else v_n::text || ' events, ' || to_char(i.period_from, 'FMDD FMMonth')
+                            || ' to ' || to_char(i.period_to, 'FMDD FMMonth YYYY') end,
+    'total', to_char(i.total, 'FM999,999,990.00'),
+    'dueDate', to_char(i.due_date, 'DD/MM/YYYY'),
+    'termsDays', i.terms_days::text,
+    'attachments', i.attachments::text);
+end $$;
+revoke execute on function public._invoice_email_payload(uuid) from public, anon, authenticated;
+grant execute on function public._invoice_email_payload(uuid) to service_role;
+
 -- The INV1 email, once per invoice (key INV1:<number>).
 create or replace function public.queue_invoice_email(p_invoice uuid)
 returns jsonb
@@ -956,8 +994,6 @@ language plpgsql security definer set search_path = public, extensions as $$
 declare
   i invoices;
   v_key text;
-  v_events jsonb;
-  v_n int;
   v_inserted int;
 begin
   select * into i from invoices where id = p_invoice for update;
@@ -972,28 +1008,9 @@ begin
     raise exception 'invoice_has_no_recipients' using errcode = 'P0001';
   end if;
 
-  select count(*), jsonb_agg(jsonb_build_object('title', e.title, 'date', e.event_date)
-                             order by e.event_date, e.title)
-    into v_n, v_events
-    from invoice_event_links k join events e on e.id = k.event_id where k.invoice_id = i.id;
-
   v_key := 'INV1:' || i.number::text;
   insert into notification_outbox (key, channel, template, recipient_emails, payload)
-  values (v_key, 'email', 'INV1', i.recipients, jsonb_build_object(
-    'invoiceNumber', i.number::text,
-    'client', i.bill_to ->> 'name',
-    'contact', coalesce(i.bill_to ->> 'contact', ''),
-    'poNumber', coalesce(i.po_number, ''),
-    'poSuffix', case when coalesce(i.po_number, '') = '' then '' else ' (PO ' || i.po_number || ')' end,
-    'eventsLine', case when v_n = 1
-                       then (v_events -> 0 ->> 'title') || ' on '
-                            || trim(to_char((v_events -> 0 ->> 'date')::date, 'FMDay FMDD FMMonth YYYY'))
-                       else v_n::text || ' events, ' || to_char(i.period_from, 'FMDD FMMonth')
-                            || ' to ' || to_char(i.period_to, 'FMDD FMMonth YYYY') end,
-    'total', to_char(i.total, 'FM999,999,990.00'),
-    'dueDate', to_char(i.due_date, 'DD/MM/YYYY'),
-    'termsDays', i.terms_days::text,
-    'attachments', i.attachments::text))
+  values (v_key, 'email', 'INV1', i.recipients, _invoice_email_payload(i.id))
   on conflict (key) do nothing;
   get diagnostics v_inserted = row_count;
 
@@ -1063,6 +1080,10 @@ end $$;
 -- as they are NOW, so a corrected address is used. Same files, same
 -- number; a new key INV1:<number>:<n>. Refused while the last email is
 -- still on its way, so one click never sends two.
+--
+-- On an invoice the job gave up on (24 attempts, never queued) the same
+-- button is "Try again": its attempts go back to 0 and the next run draws
+-- and sends it as usual.
 create or replace function public.resend_invoice_email(p_invoice uuid)
 returns jsonb
 language plpgsql security definer set search_path = public, extensions as $$
@@ -1081,6 +1102,13 @@ begin
 
   select * into i from invoices where id = p_invoice for update;
   if i.id is null then raise exception 'invoice_not_found' using errcode = 'P0002'; end if;
+  if i.status = 'failed' and i.attempts >= 24 then
+    update invoices set attempts = 0, lease_until = null where id = i.id;
+    insert into audit_log (at, actor, action, entity, entity_id, data)
+    values (now(), auth.uid(), 'invoice.retried', 'invoice', i.id,
+            jsonb_build_object('number', i.number, 'lastError', i.last_error));
+    return jsonb_build_object('retried', true);
+  end if;
   if i.status <> 'queued' then raise exception 'invoice_not_sent_yet' using errcode = 'P0001'; end if;
   select * into o from notification_outbox where key = i.outbox_key;
   if o.id is not null and o.sent_at is null and o.failed_at is null then
@@ -1100,9 +1128,7 @@ begin
   select count(*) + 1 into v_n from notification_outbox where key like 'INV1:' || i.number::text || ':%';
   v_key := 'INV1:' || i.number::text || ':' || (v_n + 1)::text;
   insert into notification_outbox (key, channel, template, recipient_emails, payload)
-  select v_key, 'email', 'INV1', v_to, prev.payload
-    from notification_outbox prev where prev.key = 'INV1:' || i.number::text;
-  if not found then raise exception 'invoice_email_missing' using errcode = 'P0001'; end if;
+  values (v_key, 'email', 'INV1', v_to, _invoice_email_payload(i.id));
 
   update invoices set outbox_key = v_key, recipients = v_to, queued_at = clock_timestamp()
    where id = i.id;
@@ -1116,7 +1142,7 @@ end $$;
 revoke execute on function public.resend_invoice_email(uuid) from public, anon;
 grant execute on function public.resend_invoice_email(uuid) to authenticated, service_role;
 comment on function public.resend_invoice_email(uuid) is
-  'ADR-0176: Send again — a new INV1 row (key INV1:<number>:<n>) with the same attachments, to the client card''s current invoice emails (else contact emails). Finance callers that may write; refused while the last email is still pending; audited as invoice.resent.';
+  'ADR-0176: Send again — a new INV1 row (key INV1:<number>:<n>), its payload rebuilt from the invoice, to the client card''s current invoice emails (else contact emails); refused while the last email is still pending; audited as invoice.resent. On an invoice the job gave up on (24 attempts) it is Try again: attempts back to 0, audited as invoice.retried. Finance callers that may write.';
 
 -- The office's download (and the event page's link).
 create or replace function public.invoice_file(p_invoice uuid)

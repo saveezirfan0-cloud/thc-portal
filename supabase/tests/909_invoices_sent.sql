@@ -17,7 +17,7 @@
 --   (none)  Wed 5 Jun 2024, clean (BST)                    → 10:00 BST = 09:00 UTC
 -- =====================================================================
 begin;
-select plan(78);
+select plan(83);
 \ir _shared/fixtures.psql
 
 \set r_wait '90900000-0000-4000-8000-000000000001'
@@ -327,6 +327,9 @@ select is((select row(email_failed_at is not null, email_error, invoiced_amount)
 select is((select count(*)::int from invoice_export_rows('2024-11-01', '2024-11-30', null) x
             where x.event_id = (select event_id from ev where name = 'Tue')), 0,
   'an invoiced event is not in the ready CSV: it would be billed twice');
+select is((select count(*)::int from invoice_export_rows('2024-11-01', '2024-11-30', null) x
+            where x.event_id = (select event_id from ev where name = 'Nxt')), 0,
+  'nor is a ready event the system is about to invoice (Nxt is due)');
 select is(resend_invoice_email((select id from inv where name = 'po77')) ->> 'key', 'INV1:4000:2',
   'Send again queues a new email for the same invoice');
 reset role;
@@ -335,6 +338,25 @@ select is((select row(o.payload ->> 'invoiceNumber', i.outbox_key)::text
             where i.id = (select id from inv where name = 'po77')),
   row('4000', 'INV1:4000:2')::text, 'same number and attachments, and the invoice follows the new email');
 select is((select count(*)::int from audit_log where action = 'invoice.resent'), 1, 'Send again is audited');
+update notification_outbox set payload = '{"retired": true}'::jsonb where key = 'INV1:4000';
+update notification_outbox set failed_at = now() where key = 'INV1:4000:2';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(resend_invoice_email((select id from inv where name = 'po77')) ->> 'key', 'INV1:4000:3',
+  'Send again works after the first email''s row is retired (180 days)');
+reset role;
+select is((select payload ->> 'total' from notification_outbox where key = 'INV1:4000:3'), '441.02',
+  'its payload is rebuilt from the invoice, not copied from the retired row');
+
+-- Try again: an invoice the job gave up on starts again.
+update invoices set status = 'failed', attempts = 24 where id = (select id from inv where name = 'po88');
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((resend_invoice_email((select id from inv where name = 'po88')) ->> 'retried')::boolean, true,
+  'Try again on an invoice the job gave up on');
+reset role;
+select is((select attempts from invoices where id = (select id from inv where name = 'po88')), 0,
+  'its attempts go back to 0 and the next run draws it');
 select set_config('request.jwt.claims', json_build_object('sub', :'sched_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select throws_ok(format($$ select resend_invoice_email(%L) $$, (select id from inv where name = 'po77')),

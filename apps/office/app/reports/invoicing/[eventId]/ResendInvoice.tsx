@@ -11,7 +11,16 @@ import { resendInvoice } from '../../actions';
  * the client says never arrived. The database refuses while the last email
  * is still on its way, so a double click never sends two.
  */
-export function ResendInvoice({ invoiceId, eventId }: { invoiceId: string; eventId: string }) {
+export function ResendInvoice({
+  invoiceId,
+  eventId,
+  retry = false,
+}: {
+  invoiceId: string;
+  eventId: string;
+  /** The job gave up on drawing it: the same action starts it again. */
+  retry?: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +38,13 @@ export function ResendInvoice({ invoiceId, eventId }: { invoiceId: string; event
     <div className="stack" style={{ gap: 8 }}>
       <div>
         <Button size="sm" disabled={busy} onClick={send}>
-          {busy ? 'Sending…' : 'Send again'}
+          {busy ? 'Sending…' : retry ? 'Try again' : 'Send again'}
         </Button>{' '}
-        <span className="muted sm">to the invoice emails on the client card now</span>
+        <span className="muted sm">
+          {retry
+            ? 'the next run prepares and emails it'
+            : 'to the invoice emails on the client card now'}
+        </span>
       </div>
       {error ? <Alert tone="coral">{error}</Alert> : null}
     </div>

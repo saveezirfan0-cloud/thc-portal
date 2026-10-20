@@ -56,6 +56,9 @@ export function InvoicingTab({
   const review = by('review');
   const missing = by('missing');
   const sum = (list: InvoiceEvent[]) => list.reduce((total, e) => total + num(e.invoicing), 0);
+  // What was invoiced, not today's live lines (ADR-0176: an issued invoice is never re-priced).
+  const sumInvoiced = (list: InvoiceEvent[]) =>
+    list.reduce((total, e) => total + num(e.invoiced_amount ?? e.invoicing), 0);
 
   return (
     <div className="stack">
@@ -78,7 +81,7 @@ export function InvoicingTab({
         <KpiTile
           label="Invoiced"
           tone="ok"
-          value={poundsWhole(sum(invoiced))}
+          value={poundsWhole(sumInvoiced(invoiced))}
           description={`${invoiced.length} ${invoiced.length === 1 ? 'event' : 'events'} · final; emailed with the timesheet`}
         />
         <KpiTile
@@ -151,9 +154,10 @@ export function InvoicingTab({
           charged; an event cancelled on the day is charged in full.
         </Note>
         <Note>
-          <b>Export ready CSV</b> has one row per shift of every Ready event in the period, with the
-          PO Number and a total row per event, for your accounting tool. Invoiced events are left
-          out: the system has already billed them.
+          <b>Export ready CSV</b> has one row per shift of every Ready event the system does not
+          invoice itself (events before 26/10/2026), with the PO Number and a total row per event,
+          for your accounting tool. Every other event is invoiced by the system, so it is never in
+          the CSV: keying it in as well would bill it twice.
         </Note>
       </div>
     </div>
@@ -164,7 +168,7 @@ function EventRow({ event, format }: { event: InvoiceEvent; format?: TimeFormat 
   const status = invoiceStatus(event.status);
   const note =
     status === 'ready'
-      ? readyEventNote(event.send_verdict ?? null, event.sends_at ?? null, format)
+      ? readyEventNote(event.send_verdict ?? null, event.sends_at ?? null, format, event.invoicing)
       : status === 'invoiced'
         ? null
         : invoiceSendNote(event.send_verdict ?? null, event.sends_at ?? null, format);

@@ -230,8 +230,12 @@ export function readyEventNote(
   verdict: string | null,
   sendsAt: string | null,
   format?: TimeFormat,
+  amount?: number | string | null,
 ): string | null {
-  return verdict ? invoiceSendNote(verdict, sendsAt, format) : NOT_SYSTEM_INVOICED_NOTE;
+  if (verdict) return invoiceSendNote(verdict, sendsAt, format);
+  // Nobody worked, or nothing is charged: no invoice from anyone.
+  if (amount !== undefined && amount !== null && Number(amount) === 0) return 'Nothing to charge';
+  return NOT_SYSTEM_INVOICED_NOTE;
 }
 
 export interface InvoiceEmailFacts {
@@ -255,14 +259,21 @@ export const INVOICE_MAX_ATTEMPTS = 24;
 export function invoiceEmailState(
   f: InvoiceEmailFacts,
   format?: TimeFormat,
-): { tone: 'green' | 'amber' | 'coral' | 'neutral'; text: string; resendable: boolean } {
+): {
+  tone: 'green' | 'amber' | 'coral' | 'neutral';
+  text: string;
+  resendable: boolean;
+  /** The job gave up: the button is "Try again" (attempts back to 0). */
+  retry?: boolean;
+} {
   if (f.invoice_status !== 'queued') {
     const attempts = f.invoice_attempts ?? 0;
     if (attempts >= INVOICE_MAX_ATTEMPTS) {
       return {
         tone: 'coral',
-        text: `Could not be prepared after ${attempts} attempts${f.invoice_last_error ? `: ${f.invoice_last_error}` : ''}. Ask for it to be looked at.`,
-        resendable: false,
+        text: `Could not be prepared after ${attempts} attempts${f.invoice_last_error ? `: ${f.invoice_last_error}` : ''}. Try again; if it fails again, ask for it to be looked at.`,
+        resendable: true,
+        retry: true,
       };
     }
     return {
