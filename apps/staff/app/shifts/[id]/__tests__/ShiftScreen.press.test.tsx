@@ -330,7 +330,8 @@ describe('a check-out that raises RULE-02 on the press shows its own answer (§5
       'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
     );
     expect(container.textContent).not.toContain('We didn’t receive your check-out');
-    expect(container.textContent).toContain('Checked out');
+    // Wireframe (j): nothing is confirmed yet, so no green "Checked out" pill.
+    expect(container.textContent).not.toContain('Checked out');
 
     // Dismissed, the booking is the §10.4 dead end until the office resolves it.
     await click('OK, I understand');

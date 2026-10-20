@@ -350,8 +350,11 @@ export function ShiftScreen({
   const head = (
     <HeadRow
       // The worker has just pressed Check out: whatever the refreshed row
-      // says now, the pill says so.
+      // says now, the pill says so — except with no on-site fix (j), where
+      // nothing is confirmed until the office resolves it (§5.2), so no
+      // green "Checked out" sits beside "We couldn't confirm when you left".
       phase={outcome ? 'closed' : phase}
+      hideState={outcome?.key === 'no_check_out_office_confirms'}
       today={today}
       venueName={shift.venueName}
       startsAt={shift.startsAt}
@@ -616,10 +619,18 @@ export function ShiftScreen({
           </Timer>
           <p className="xs muted">
             Chargeable time{phase === 'on_break' ? ' · paused while you’re on a break' : ''}
-            {/* shift-detail.html (d): "Checked in 16:52 · paid from 17:00 · scheduled end 23:30". */}
-            {' · '}checked in {local(shift.checkInAt!)} · paid from{' '}
-            <UkTime at={new Date(paidFromIso(shift))} /> · scheduled end{' '}
-            <UkTime at={new Date(shift.endsAt)} />
+          </p>
+          {/* shift-detail.html (d): "Checked in 16:52 · paid from 17:00 · scheduled end 23:30".
+              Paid from is the scheduled start (UK, §1.8) unless the worker
+              arrived after it — then it is their check-in stamp, viewer-local. */}
+          <p className="xs muted">
+            Checked in {local(shift.checkInAt!)} · paid from{' '}
+            {new Date(paidFromIso(shift)).getTime() === new Date(shift.startsAt).getTime() ? (
+              <UkTime at={new Date(shift.startsAt)} />
+            ) : (
+              local(shift.checkInAt!)
+            )}{' '}
+            · scheduled end <UkTime at={new Date(shift.endsAt)} />
           </p>
 
           {shift.breaksLogged ? (
@@ -691,8 +702,10 @@ function HeadRow({
   uk,
   local,
   dual,
+  hideState = false,
 }: {
   phase: ShiftPhase;
+  hideState?: boolean;
   today: boolean;
   venueName: string;
   startsAt: string;
@@ -722,7 +735,7 @@ function HeadRow({
     <>
       <div className="row" style={{ gap: 'var(--sp-8)' }}>
         <Pill tone="cyan">{today ? 'Today' : 'Upcoming'}</Pill>
-        {state}
+        {hideState ? null : state}
         {today ? null : <Pill>{venueName}</Pill>}
         <span className="ml-auto mono sm">
           {today ? '' : `${ukDay(new Date(startsAt))} · `}
