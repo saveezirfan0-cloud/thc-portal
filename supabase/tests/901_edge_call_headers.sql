@@ -1,7 +1,7 @@
 -- =====================================================================
--- 900 · Database → Edge Function calls carry the key on apikey, and as a
+-- 901 · Database → Edge Function calls carry the key on apikey, and as a
 --       bearer only while it is a JWT
---   20261020140000_edge_calls_send_apikey.sql · ADR-0165
+--   20261021140000_edge_calls_send_apikey.sql · ADR-0165
 --
 -- Supabase disables the legacy service_role JWT at the end of 2026; its
 -- replacement, sb_secret_…, is not a JWT. The Vault secret

@@ -5,8 +5,8 @@ Status: accepted · 19.10.2026
 Upgrade-readiness audit 17.10 (H1, M5, M6) · docs/22 §3 "Before 31.12.2026" ·
 `packages/db/src/{service-caller,env}.ts` · `supabase/functions/_shared/job.ts` ·
 `supabase/functions/{notify-drain,willo-webhook}/index.ts` · `apps/*/next.config.ts` ·
-`supabase/migrations/20261020140000_edge_calls_send_apikey.sql` ·
-`supabase/tests/900_edge_call_headers.sql` · docs/16 §10
+`supabase/migrations/20261021140000_edge_calls_send_apikey.sql` ·
+`supabase/tests/901_edge_call_headers.sql` · docs/16 §10
 
 ## Context
 
@@ -134,6 +134,6 @@ Docker for `supabase start`). Run it once on the PR's CI.
   `THC_SECRET_KEY_NAME`, update the Vault, update the Vercel values, watch for a week,
   then deactivate the legacy keys. Every step can be undone until the last one.
 - `edge_call_headers()` is the single place where the database decides how a key is
-  sent. A new caller that posts to an Edge Function must use it (pgTAP 900).
+  sent. A new caller that posts to an Edge Function must use it (pgTAP 901).
 - The legacy code paths stay until the legacy keys are revoked. Removing them is a later
   change.

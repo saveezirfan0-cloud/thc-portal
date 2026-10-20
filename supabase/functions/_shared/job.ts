@@ -74,7 +74,7 @@ async function confirmWithAuth(token: string): Promise<boolean> {
 /**
  * The caller must hold a service key: the legacy service_role JWT or a new
  * sb_secret_ key, on `apikey` or as a bearer. pg_net sends it through
- * edge_call_headers() (20261020140000, ADR-0165).
+ * edge_call_headers() (20261021140000, ADR-0165).
  */
 function authorised(request: Request): Promise<boolean> {
   return isServiceCaller(request.headers, {

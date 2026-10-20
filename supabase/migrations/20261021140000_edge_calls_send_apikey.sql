@@ -133,7 +133,7 @@ begin$r$),
     v_def := pg_get_functiondef(p.fn::regprocedure);
     v_n := (length(v_def) - length(replace(v_def, p.pattern, ''))) / length(p.pattern);
     if v_n <> 1 then
-      raise exception '20261020140000: % - expected one match of %, found %', p.fn, p.pattern, v_n;
+      raise exception '20261021140000: % - expected one match of %, found %', p.fn, p.pattern, v_n;
     end if;
     execute replace(v_def, p.pattern, p.replacement);
   end loop;

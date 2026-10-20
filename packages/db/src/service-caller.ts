@@ -9,7 +9,7 @@
  * without a code change (docs/16 §10):
  *
  *   legacy  `service_role`, a JWT (`eyJ…`). pg_cron sent it as
- *           `Authorization: Bearer`, and since 20261020140000 sends it on
+ *           `Authorization: Bearer`, and since 20261021140000 sends it on
  *           `apikey` as well.
  *   new     `sb_secret_…`, NOT a JWT. pg_cron sends it on `apikey` only
  *           (`edge_call_headers()`); a caller that puts it in a bearer is

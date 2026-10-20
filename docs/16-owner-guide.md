@@ -1344,7 +1344,7 @@ watch the next 12:05 cutoff: do it on a quiet weekday morning with this page ope
 ### 10.1 Before you start (once)
 
 1. This code is deployed: `deploy-database` has applied
-   `20261020140000_edge_calls_send_apikey` and redeployed the functions.
+   `20261021140000_edge_calls_send_apikey` and redeployed the functions.
 2. Re-install the schedules **once**, so the cron commands send the key on the
    `apikey` header through `edge_call_headers()`:
 
