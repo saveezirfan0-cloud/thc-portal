@@ -292,15 +292,24 @@ export function maskBank(sortCode: string | null, account: string | null): strin
   return parts.filter(Boolean).join(' · ');
 }
 
-/** "Mon 8 – Sun 14 Sep" for a period. */
+/**
+ * "Mon 8 – Sun 14 Sep" for a period. A range that crosses a year names both
+ * years — "Mon 20 Oct 2025 – Tue 20 Oct 2026" — or a year-long range would
+ * read as a single day.
+ */
 export function periodLabel(from: string, to: string): string {
   const a = new Date(`${from}T00:00:00Z`);
   const b = new Date(`${to}T00:00:00Z`);
+  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
+  const tail = `${WEEKDAYS[weekdayIndex(to)]} ${b.getUTCDate()} ${MONTHS[b.getUTCMonth()]}`;
+  if (!sameYear) {
+    return `${WEEKDAYS[weekdayIndex(from)]} ${a.getUTCDate()} ${MONTHS[a.getUTCMonth()]} ${a.getUTCFullYear()} – ${tail} ${b.getUTCFullYear()}`;
+  }
   const head =
     a.getUTCMonth() === b.getUTCMonth()
       ? `${WEEKDAYS[weekdayIndex(from)]} ${a.getUTCDate()}`
       : `${WEEKDAYS[weekdayIndex(from)]} ${a.getUTCDate()} ${MONTHS[a.getUTCMonth()]}`;
-  return `${head} – ${WEEKDAYS[weekdayIndex(to)]} ${b.getUTCDate()} ${MONTHS[b.getUTCMonth()]}`;
+  return `${head} – ${tail}`;
 }
 
 /** "Mon 08 Sep" for a shift date. */
