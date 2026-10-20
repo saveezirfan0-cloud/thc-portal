@@ -1,5 +1,5 @@
 -- =====================================================================
--- 20261021010000 · Radar self-apply holds RULE-17's qualified wave
+-- 20261022010000 · Radar self-apply holds RULE-17's qualified wave
 --
 -- staff_open_shifts() shows a worker a section at a client they are not
 -- qualified at only once every reachable worker qualified there for that
@@ -7,11 +7,19 @@
 -- ask: an unqualified worker who called it directly -- or pressed Apply on
 -- a screen loaded before a qualified worker became reachable -- was put
 -- forward ahead of the first wave. Found by the 19.10.2026 scheduling
--- sweep (tom.reid applied to a section Radar was hiding from him).
+-- sweep (tom.reid applied, ok: true, to a section Radar hid from him).
 --
--- apply_to_shift() now answers 'not_open_yet' in that case, with the same
--- test staff_open_shifts() makes (20261019193100). Started from the live
--- body (20261018120000_quiz_before_confirm); nothing else changes.
+-- apply_to_shift() now answers 'not_open_yet' in that case, asking
+-- auto_assign_wave1_reachable() (20261021130100, ADR-0170) -- the helper
+-- Radar's own wave check reads -- about this one section, so the two cannot
+-- disagree. Worst case on the go-live bench (1,000 workers, 600 sections;
+-- every one of 979 qualified workers booked elsewhere) it costs tens of
+-- milliseconds, not one pool call per qualified worker.
+--
+-- Re-created from the LIVE body (20261018120000_quiz_before_confirm; no
+-- later migration redefines it): one variable, the gate read also takes
+-- `qualified`, the RULE-17 block after the hard gates, and jit = off.
+-- Security, search_path, grants and the comment's earlier text are kept.
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION public.apply_to_shift(p_shift uuid, p_staff uuid DEFAULT NULL::uuid)
@@ -19,6 +27,7 @@ CREATE OR REPLACE FUNCTION public.apply_to_shift(p_shift uuid, p_staff uuid DEFA
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public', 'extensions'
+ SET jit TO 'off'
 AS $function$
 declare
   v_me     uuid := case when p_staff is not null and current_app_role() = 'admin'
@@ -62,34 +71,21 @@ begin
     return jsonb_build_object('ok', false, 'reason', v_gate);
   end if;
 
-  -- RULE-17 (20261021010000): a worker's own application waits for the
+  -- RULE-17 (20261022010000): a worker's own application waits for the
   -- qualified wave, as Radar does. staff_open_shifts() hides an unqualified
   -- worker's card while anyone qualified at this client and role is still
-  -- reachable, but the RPC took the application anyway, so a direct call
+  -- reachable, but this RPC took the application anyway, so a direct call
   -- (or a stale screen) put a wave-2 worker forward ahead of wave 1 -- the
   -- "self-apply can't bypass the priority the invitations enforce" of
-  -- wireframes/staff/radar.html. The same test, stopping at the first
-  -- reachable qualified worker, one pool row each. The office lodging an
-  -- application on a worker's behalf (p_staff, admin) is a manager's
-  -- override, like Invite, and is not held to it.
+  -- wireframes/staff/radar.html. The question is Radar's own,
+  -- auto_assign_wave1_reachable() (ADR-0170), asked of this one section:
+  -- it stops at the first reachable qualified worker and asks the pool in
+  -- rounds of 1, 4, 16 ... rather than once per qualified worker. The office
+  -- lodging an application on a worker's behalf (p_staff, admin) is a
+  -- manager's override, like Invite, and is not held to it.
   if not coalesce(v_qualified, false)
      and not (p_staff is not null and current_app_role() = 'admin')
-     and exists (
-       select 1
-         from (select cq.staff_id
-                 from client_qualifications cq
-                 join staff qs on qs.id = cq.staff_id
-                where cq.client_id = ev.client_id and cq.role_id = sr.role_id
-                  and not cq.do_not_return
-                  and qs.status = 'compliant'
-                  and exists (select 1 from staff_roles qr
-                               where qr.staff_id = cq.staff_id and qr.role_id = sr.role_id)
-                  and not exists (select 1 from bookings qb
-                                   where qb.shift_id = sr.id and qb.staff_id = cq.staff_id)
-               offset 0) q
-        where exists (select 1
-                        from auto_assign_candidates_pool(sr.id, false, array[q.staff_id]) w
-                       where w.gate is null and w.qualified and w.booking_status is null))
+     and exists (select 1 from auto_assign_wave1_reachable(array[sr.id]))
   then
     return jsonb_build_object('ok', false, 'reason', 'not_open_yet');
   end if;
@@ -148,4 +144,4 @@ begin
 end $function$;
 
 comment on function public.apply_to_shift(uuid, uuid) is
-  '§10.4 Radar self-application. The caller''s OWN row (staff_writer), or a worker named by the office from the event board (§3.3); any other caller naming another worker is refused. Refuses event_cancelled · shift_started · not_bookable (no candidate row) · the gate by name · full (confirmed-or-worked >= headcount) · already_has_booking (a live row, or a self-cancel / event-cancelled / GDPR row, or one with history). Any other ended row is reopened as applied (20260930110100). Every refusal is a reason, never an exception. SUPERSEDED FOR SERIES SIBLINGS by 20261012140000 (ADR-0117): on a section marked "Same staff on all days", a worker who fails a hard gate, has a calendar entry or exceeds the projected weekly hours on another day of the job is refused not_available_all_days, for every source (a manual invite, an Accept, an apply and a take included). ADR-0150 (20261018120000): refuses with reason quiz_required (and quizId) while the client''s quiz for this (client, role) is not passed, after the hard gates; nothing is withdrawn. RULE-17 (20261021010000): a worker''s OWN application to a section at a client where they are not qualified for the role is refused not_open_yet while anyone qualified there is still reachable -- the test staff_open_shifts() makes; the office applying on a worker''s behalf is not held to it.';
+  '§10.4 Radar self-application. The caller''s OWN row (staff_writer), or a worker named by the office from the event board (§3.3); any other caller naming another worker is refused. Refuses event_cancelled · shift_started · not_bookable (no candidate row) · the gate by name · full (confirmed-or-worked >= headcount) · already_has_booking (a live row, or a self-cancel / event-cancelled / GDPR row, or one with history). Any other ended row is reopened as applied (20260930110100). Every refusal is a reason, never an exception. SUPERSEDED FOR SERIES SIBLINGS by 20261012140000 (ADR-0117): on a section marked "Same staff on all days", a worker who fails a hard gate, has a calendar entry or exceeds the projected weekly hours on another day of the job is refused not_available_all_days, for every source (a manual invite, an Accept, an apply and a take included). ADR-0150 (20261018120000): refuses with reason quiz_required (and quizId) while the client''s quiz for this (client, role) is not passed, after the hard gates; nothing is withdrawn. RULE-17 (20261022010000): a worker''s OWN application to a section at a client where they are not qualified for the role is refused not_open_yet while anyone qualified there is still reachable -- auto_assign_wave1_reachable(), the question Radar asks; the office applying on a worker''s behalf is not held to it.';

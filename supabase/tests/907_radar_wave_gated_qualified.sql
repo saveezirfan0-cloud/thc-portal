@@ -1,12 +1,13 @@
 -- =====================================================================
--- 907 · Radar's RULE-17 wave check, asked in two steps
---   20261021010200_radar_wave_one_pool_call.sql
+-- 907 · Radar's RULE-17 wave check: who holds the wave, who does not
+--   20261021130100_radar_one_pool_pass.sql (auto_assign_wave1_reachable,
+--   ADR-0170) and 20261022010000_radar_apply_holds_the_wave.sql
 --
 -- staff_open_shifts() hides a section from a worker not qualified at that
--- client for that role while anyone qualified there is reachable. It now
--- asks the pool about a handful of qualified workers one at a time and,
--- only if none of them is reachable, once about the whole qualified set.
--- The verdict must be the one the one-at-a-time walk gave:
+-- client for that role while anyone qualified there is reachable; Apply
+-- refuses it with not_open_yet on the same answer. The helper asks the
+-- pool in rounds of 1, 4, 16 ... per section, so the verdict must hold
+-- whichever round finds (or fails to find) a reachable worker:
 --   · qualified workers the pool gates (booked elsewhere) or who are blocked
 --     or do-not-return do not hold the wave — the section is shown;
 --   · ONE reachable qualified worker among many gated ones holds it,

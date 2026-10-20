@@ -1,6 +1,6 @@
 -- =====================================================================
--- 899 · Radar self-apply holds RULE-17's qualified wave
---   20261021010000_radar_apply_holds_the_wave.sql
+-- 902 · Radar self-apply holds RULE-17's qualified wave
+--   20261022010000_radar_apply_holds_the_wave.sql
 --
 -- Radar hides a section from a worker who is not qualified at that client
 -- for that role while anyone qualified there is still reachable
@@ -86,7 +86,7 @@ update client_qualifications set do_not_return = false where staff_id = :'q';
 
 -- A qualified worker whom the pool gates (here: booked elsewhere at the same
 -- time) is not reachable either: the wave counts as exhausted
--- (20261021010100 asks the pool about the whole qualified set at once).
+-- (auto_assign_wave1_reachable(), the question Radar asks, ADR-0170).
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour) values
   (:'s2', :'ev', :'ro', (:'w'::date + 2 + time '11:00') at time zone 'Europe/London',
