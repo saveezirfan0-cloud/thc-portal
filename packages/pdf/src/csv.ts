@@ -293,7 +293,7 @@ export function financialCsv(rows: readonly FinancialCsvRow[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Invoicing — one row per billable SHIFT of a READY event (ADR-0171)
+// Invoicing — one row per billable SHIFT of a READY event (ADR-0172)
 // ---------------------------------------------------------------------------
 
 /**

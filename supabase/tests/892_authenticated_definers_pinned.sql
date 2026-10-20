@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 199 functions on 21.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0171's five invoice functions), docs/14 §4 — so a new one fails here BY
+-- 199 functions on 21.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --

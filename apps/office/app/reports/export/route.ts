@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const period = newStarterPeriod(view.date);
     name = `THC new starters (HMRC) ${period.from} to ${period.to}.csv`;
   } else if (report === 'invoicing') {
-    // ADR-0171: READY events only — the database leaves out every event that
+    // ADR-0172: READY events only — the database leaves out every event that
     // is still open, missing a check-out or awaiting the manager's sign-off.
     const event = url.searchParams.get('event');
     if (event !== null && !UUID.test(event)) return new Response('Unknown event.', { status: 400 });

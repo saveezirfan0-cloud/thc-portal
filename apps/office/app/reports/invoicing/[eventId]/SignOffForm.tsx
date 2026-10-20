@@ -6,7 +6,7 @@ import { Alert, Button, Textarea } from '@thc/ui';
 import { signOffInvoice } from '../../actions';
 
 /**
- * "Mark reviewed for invoicing" (ADR-0171). The note is mandatory, as for
+ * "Mark reviewed for invoicing" (ADR-0172). The note is mandatory, as for
  * every violation resolution (§9.5); the fingerprint is the one this page
  * was drawn from, so the database refuses a sign-off for figures that
  * changed underneath it.

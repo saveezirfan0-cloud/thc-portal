@@ -1,4 +1,4 @@
-# ADR-0171 · Ready to invoice: a per-event sign-off and a CSV of what may be invoiced
+# ADR-0172 · Ready to invoice: a per-event sign-off and a CSV of what may be invoiced
 
 **Status:** Accepted · 19.10.2026 · **Departs from:** §9.9 ("Invoicing here is a revenue forecast
 for the period, NOT the PO-based invoices. THC has its own invoicing process") · **Builds on:**

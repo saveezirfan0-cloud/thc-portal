@@ -25,7 +25,7 @@ const TABS: { tab: ReportTab; label: string }[] = [
   { tab: 'financial', label: 'Financial report' },
   { tab: 'payroll', label: 'Payroll report' },
   { tab: 'newstarter', label: 'New Starter (HMRC)' },
-  // ADR-0171: not in §9.9 — which events are safe to invoice.
+  // ADR-0172: not in §9.9 — which events are safe to invoice.
   { tab: 'invoicing', label: 'Invoicing' },
 ];
 

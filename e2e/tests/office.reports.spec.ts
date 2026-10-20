@@ -67,7 +67,7 @@ function lines(csv: string): string[] {
     .filter((line) => line !== '');
 }
 
-test('four tabs, one per report, each with its own period control (§9.9, ADR-0171)', async ({
+test('four tabs, one per report, each with its own period control (§9.9, ADR-0172)', async ({
   page,
 }) => {
   await openAsAdmin(page, '/reports');
@@ -111,7 +111,7 @@ test('four tabs, one per report, each with its own period control (§9.9, ADR-01
     /^\/reports\/export\?report=newstarter&date=\d{4}-\d{2}-\d{2}$/,
   );
 
-  // ADR-0171: Invoicing opens on last week, and its CSV carries ready events only.
+  // ADR-0172: Invoicing opens on last week, and its CSV carries ready events only.
   await invoicing.click();
   await expect(page).toHaveURL(/tab=invoicing/);
   await expect(invoicing).toHaveAttribute('aria-current', 'page');

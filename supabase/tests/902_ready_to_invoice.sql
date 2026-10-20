@@ -1,5 +1,5 @@
 -- =====================================================================
--- 902 · Ready to invoice — ADR-0171, 20261021150000_ready_to_invoice.sql
+-- 902 · Ready to invoice — ADR-0172, 20261021150000_ready_to_invoice.sql
 --
 -- Five events, each one step of the status ladder:
 --

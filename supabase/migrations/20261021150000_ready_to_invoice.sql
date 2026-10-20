@@ -1,5 +1,5 @@
 -- =====================================================================
--- 20261021150000 · Ready to invoice — ADR-0171 (THC, 19.10.2026)
+-- 20261021150000 · Ready to invoice — ADR-0172 (THC, 19.10.2026)
 --
 -- §9.9 leaves invoicing to THC's own process: the Financial tab's
 -- "Client invoicing" is a forecast, not the PO-based invoices. THC asked
@@ -72,7 +72,7 @@ create table public.event_invoice_signoffs (
 );
 
 comment on table public.event_invoice_signoffs is
-  'ADR-0171: a manager''s sign-off that an event is ready to invoice. Stale once invoice_event_fingerprint() differs from the stored one. Written only by sign_off_event_invoice().';
+  'ADR-0172: a manager''s sign-off that an event is ready to invoice. Stale once invoice_event_fingerprint() differs from the stored one. Written only by sign_off_event_invoice().';
 
 -- Every foreign key is indexed (002).
 create index event_invoice_signoffs_signed_off_by_idx on public.event_invoice_signoffs (signed_off_by);
@@ -126,7 +126,7 @@ as $$
 $$;
 
 comment on function public.invoice_event_fingerprint(uuid) is
-  'ADR-0171: md5 over every violation (id, type, resolved, minutes late, finish, resolver, note) and every shift line (booking, kind, status, check-in, check-out, break, payable minutes, charge rate, amount) of an event. A sign-off stores it; a different value later means something changed. Internal: called from the definer functions below, which run it as the owner.';
+  'ADR-0172: md5 over every violation (id, type, resolved, minutes late, finish, resolver, note) and every shift line (booking, kind, status, check-in, check-out, break, payable minutes, charge rate, amount) of an event. A sign-off stores it; a different value later means something changed. Internal: called from the definer functions below, which run it as the owner.';
 
 revoke execute on function public.invoice_event_fingerprint(uuid) from public, anon, authenticated;
 
@@ -246,7 +246,7 @@ begin
 end $$;
 
 comment on function public.invoice_events(date, date) is
-  'ADR-0171: one row per event dated in the range that has shift lines, with its invoice amount (report_payroll_lines_v.invoicing), counts, violations and status: open (check-out window not closed) → missing (a pending line, or any unresolved No check-out, including a stale-fix one with a recorded finish) → review (not signed off, or changed since) → ready. Finance callers only.';
+  'ADR-0172: one row per event dated in the range that has shift lines, with its invoice amount (report_payroll_lines_v.invoicing), counts, violations and status: open (check-out window not closed) → missing (a pending line, or any unresolved No check-out, including a stale-fix one with a recorded finish) → review (not signed off, or changed since) → ready. Finance callers only.';
 
 revoke execute on function public.invoice_events(date, date) from public, anon;
 grant execute on function public.invoice_events(date, date) to authenticated, service_role;
@@ -298,7 +298,7 @@ begin
 end $$;
 
 comment on function public.invoice_event_lines(uuid) is
-  'ADR-0171: every shift line of one event with payable minutes, charge rate and invoice amount (report_payroll_lines_v); pending lines carry no amount. Finance callers only.';
+  'ADR-0172: every shift line of one event with payable minutes, charge rate and invoice amount (report_payroll_lines_v); pending lines carry no amount. Finance callers only.';
 
 revoke execute on function public.invoice_event_lines(uuid) from public, anon;
 grant execute on function public.invoice_event_lines(uuid) to authenticated, service_role;
@@ -347,7 +347,7 @@ begin
 end $$;
 
 comment on function public.invoice_event_violations(uuid) is
-  'ADR-0171: every violation on one event, unresolved first, with who resolved it and their note — the list a manager reviews before signing the event off for invoicing. Finance callers only.';
+  'ADR-0172: every violation on one event, unresolved first, with who resolved it and their note — the list a manager reviews before signing the event off for invoicing. Finance callers only.';
 
 revoke execute on function public.invoice_event_violations(uuid) from public, anon;
 grant execute on function public.invoice_event_violations(uuid) to authenticated, service_role;
@@ -424,7 +424,7 @@ begin
 end $$;
 
 comment on function public.sign_off_event_invoice(uuid, text, text) is
-  'ADR-0171: a manager signs an event off for invoicing, with a mandatory note, once its check-out window has closed and no No check-out is unresolved, and only for the figures they saw (the fingerprint). Re-signing replaces the sign-off; each one is written to audit_log as invoice.signed_off. Owners and managers.';
+  'ADR-0172: a manager signs an event off for invoicing, with a mandatory note, once its check-out window has closed and no No check-out is unresolved, and only for the figures they saw (the fingerprint). Re-signing replaces the sign-off; each one is written to audit_log as invoice.signed_off. Owners and managers.';
 
 revoke execute on function public.sign_off_event_invoice(uuid, text, text) from public, anon;
 grant execute on function public.sign_off_event_invoice(uuid, text, text) to authenticated, service_role;
@@ -486,7 +486,7 @@ begin
 end $$;
 
 comment on function public.invoice_export_rows(date, date, uuid) is
-  'ADR-0171: the invoicing CSV — one row per billable shift (worked or cancelled on the day) of every READY event in the range, or of one event. Events not ready contribute nothing. Finance callers only.';
+  'ADR-0172: the invoicing CSV — one row per billable shift (worked or cancelled on the day) of every READY event in the range, or of one event. Events not ready contribute nothing. Finance callers only.';
 
 revoke execute on function public.invoice_export_rows(date, date, uuid) from public, anon;
 grant execute on function public.invoice_export_rows(date, date, uuid) to authenticated, service_role;

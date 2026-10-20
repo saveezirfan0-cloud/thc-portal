@@ -139,7 +139,7 @@ export function showForecastLabel(from: string, to: string, today: string): bool
 }
 
 // ---------------------------------------------------------------------------
-// Ready to invoice (ADR-0171)
+// Ready to invoice (ADR-0172)
 // ---------------------------------------------------------------------------
 
 /**
