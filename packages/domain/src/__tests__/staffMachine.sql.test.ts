@@ -1,12 +1,13 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STAFF_TRANSITIONS, type StaffStatus } from '../state.ts';
 
 /**
  * The §2.12 staff machine exists twice: as `STAFF_TRANSITIONS` here, and as
- * the `staff_transitions` table in
- * supabase/migrations/20260921180312_leaving_and_conviction.sql.
+ * the `staff_transitions` table, built in
+ * supabase/migrations/20260921180312_leaving_and_conviction.sql and added to
+ * by later migrations (20261021100000: rejected → quiz, ADR-0168).
  *
  * CLAUDE.md asks for both — "one function in packages/domain/state.ts + a DB
  * function; illegal transitions are rejected in the DB too" — and two copies
@@ -17,19 +18,30 @@ import { STAFF_TRANSITIONS, type StaffStatus } from '../state.ts';
  * table built by a different migration, or an edit made straight to the
  * database, is exactly the drift worth catching.
  */
-const MIGRATION = join(
-  import.meta.dirname,
-  '../../../../supabase/migrations/20260921180312_leaving_and_conviction.sql',
-);
+const MIGRATIONS = join(import.meta.dirname, '../../../../supabase/migrations');
+const ORIGIN = '20260921180312_leaving_and_conviction.sql';
+const INSERT = 'insert into staff_transitions (from_status, to_status) values';
 
 function sqlEdges(): Set<string> {
-  const sql = readFileSync(MIGRATION, 'utf8');
-  const start = sql.indexOf('insert into staff_transitions (from_status, to_status) values');
-  expect(start, 'the staff_transitions insert is still in the migration').toBeGreaterThan(-1);
-  const block = sql.slice(start, sql.indexOf('on conflict do nothing;', start));
+  const files = readdirSync(MIGRATIONS)
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
+  expect(
+    readFileSync(join(MIGRATIONS, ORIGIN), 'utf8').includes(INSERT),
+    'the staff_transitions insert is still in the migration',
+  ).toBe(true);
   const edges = new Set<string>();
-  for (const [, from, to] of block.matchAll(/\('([a-z_]+)',\s*'([a-z_]+)'\)/g)) {
-    edges.add(`${from}->${to}`);
+  for (const file of files) {
+    const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
+    expect(sql, `${file} deletes an edge; teach this test to read it`).not.toMatch(
+      /delete from (public\.)?staff_transitions/i,
+    );
+    for (let start = sql.indexOf(INSERT); start > -1; start = sql.indexOf(INSERT, start + 1)) {
+      const block = sql.slice(start, sql.indexOf('on conflict do nothing;', start));
+      for (const [, from, to] of block.matchAll(/\('([a-z_]+)',\s*'([a-z_]+)'\)/g)) {
+        edges.add(`${from}->${to}`);
+      }
+    }
   }
   return edges;
 }

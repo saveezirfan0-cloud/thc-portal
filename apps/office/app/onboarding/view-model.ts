@@ -136,7 +136,8 @@ export const ACTION_TARGET: Record<CandidateAction | 'reset', MachineStatus> = {
  * What the candidate profile may offer (§2.3): "no other top area
  * buttons — only Reject candidate", plus the phase-2 Accept that mirrors
  * the Willo stage change (§2.4, BO4). Rejection is final on the record, so
- * a rejected profile offers nothing. `additional_info` is outside the
+ * a rejected profile offers none of these (a quiz rejection may instead be
+ * given 3 more attempts, ADR-0168 — CandidateScreen offers that itself). `additional_info` is outside the
  * machine and gets nothing either, which is also what the database does.
  */
 export function candidateActions(status: StaffStatus): CandidateAction[] {
@@ -365,8 +366,29 @@ const CHASER_CHANNEL: Record<ChaserState['track'], string> = {
 const CHASER_UNDELIVERED: Record<ChaserState['track'], string> = {
   interview: 'the email bounced',
   activation: 'the email bounced',
-  app: 'notifications are off on their phone',
+  // A push fails when no device has notifications on: most often they were
+  // never turned on (opt-in; an iPhone needs the app on the home screen).
+  app: "notifications aren't turned on in the app",
 };
+
+/**
+ * ADR-0169: an app reminder goes by email (OC4) when no device has
+ * notifications on, so how it went, and why it failed, follow the channel.
+ */
+function chaserChannel(state: ChaserState): string {
+  return state.track === 'app' && state.last_channel === 'email'
+    ? "emailed (notifications aren't on)"
+    : CHASER_CHANNEL[state.track];
+}
+
+function chaserUndelivered(state: ChaserState): string {
+  // The drain fails a row whose code is off on /settings: that is not a
+  // bad address or a phone, and the office should not chase either.
+  if (state.last_switched_off) return 'switched off in Settings';
+  return state.track === 'app' && state.last_channel === 'email'
+    ? 'the email bounced'
+    : CHASER_UNDELIVERED[state.track];
+}
 
 /**
  * The onboarding chaser line (ADR-0071), under the stage lines. Nothing
@@ -381,7 +403,7 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
   const last = shortDate(state.last_sent_at);
   if (state.stalled) {
     const undelivered = state.last_failed
-      ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
+      ? `, the last undelivered — ${chaserUndelivered(state)}`
       : '';
     return {
       text: `Stalled — ${state.rungs_sent} reminders, no progress (last ${last}${undelivered}). Phone them.`,
@@ -390,13 +412,13 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
   }
   if (state.last_failed) {
     return {
-      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} not delivered ${last} — ${CHASER_UNDELIVERED[state.track]}. Phone them.`,
+      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} not delivered ${last} — ${chaserUndelivered(state)}. Phone them.`,
       tone: 'amber',
     };
   }
   const next = state.next_due_at ? ` · next ${shortDate(state.next_due_at)}` : '';
   return {
-    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} ${CHASER_CHANNEL[state.track]} ${last}${next}`,
+    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} ${chaserChannel(state)} ${last}${next}`,
     tone: 'muted',
   };
 }
@@ -470,7 +492,19 @@ export function cardLines(
     }
     case 'quiz': {
       const used = row.quiz_attempts_used;
-      if (used === 0) {
+      // ADR-0168: attempts the office set aside are still in the scores line.
+      const setAside = row.quiz_scores.length - used;
+      if (setAside > 0) {
+        lines.push({
+          text: `3 more attempts allowed ${shortDay(row.stage_entered_at)} · earlier ${attemptsLabel(row.quiz_scores.slice(0, setAside))}`,
+        });
+        lines.push({
+          text:
+            used === 0
+              ? `Attempts 0 / ${QUIZ_MAX_ATTEMPTS} · not started`
+              : `Attempts ${used} / ${QUIZ_MAX_ATTEMPTS} · best ${scoreLabel(Math.max(...row.quiz_scores.slice(setAside)))} (pass mark ${QUIZ_PASS_MARK}%)`,
+        });
+      } else if (used === 0) {
         // Entry to `quiz` IS the automatic unlock (20260923110000), so the
         // stage stamp is the date the last document was verified.
         lines.push({
@@ -545,9 +579,12 @@ export function rejectedLines(row: BoardCandidateRow): Line[] {
     case 'quiz_failed': {
       // "Attempts 65% · 75% · 70%" as the approved board writes it; the
       // best-over-N line only for a row from before quiz_scores existed.
+      // ADR-0168: after 3 more attempts were allowed, the current three
+      // lead and the ones set aside follow (scores run oldest first).
+      const setAside = Math.max(row.quiz_scores.length - row.quiz_attempts_used, 0);
       const attempts =
         row.quiz_scores.length > 0
-          ? `Attempts ${attemptsLabel(row.quiz_scores)}`
+          ? `Attempts ${attemptsLabel(row.quiz_scores.slice(setAside))}${setAside > 0 ? ` (earlier ${attemptsLabel(row.quiz_scores.slice(0, setAside))})` : ''}`
           : `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts`;
       return [
         {

@@ -28,7 +28,7 @@ export async function retryFinanceSend(sendId: number): Promise<{ error: string 
 }
 
 /**
- * "Mark reviewed for invoicing" (ADR-0168). Every rule is in
+ * "Mark reviewed for invoicing" (ADR-0171). Every rule is in
  * `sign_off_event_invoice()`: the mandatory note, the closed check-out
  * window, no unresolved No check-out, and the fingerprint — the figures
  * the manager was looking at must still be the figures in the database.

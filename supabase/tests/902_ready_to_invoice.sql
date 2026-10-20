@@ -1,5 +1,5 @@
 -- =====================================================================
--- 899 · Ready to invoice — ADR-0168, 20261021100000_ready_to_invoice.sql
+-- 902 · Ready to invoice — ADR-0171, 20261021150000_ready_to_invoice.sql
 --
 -- Five events, each one step of the status ladder:
 --
@@ -31,8 +31,8 @@ select plan(65);
 \set viewer_uid '89920000-0000-4000-8000-000000000002'
 
 insert into auth.users (id, email) values
-  (:'sched_uid',  'sched.899@rls.test'),
-  (:'viewer_uid', 'viewer.899@rls.test');
+  (:'sched_uid',  'sched.902@rls.test'),
+  (:'viewer_uid', 'viewer.902@rls.test');
 insert into profiles (id, role, office_role, full_name) values
   (:'sched_uid',  'admin', 'scheduler', 'Sam Scheduler'),
   (:'viewer_uid', 'admin', 'viewer',    'Vera Viewer');

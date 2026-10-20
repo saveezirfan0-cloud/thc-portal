@@ -21,7 +21,7 @@ import type { InvoiceStatus, ReportView } from '../view-model';
 import { RangeForm } from './RangeForm';
 
 /**
- * Tab 4 · Invoicing (ADR-0168) — not in §9.9, which leaves invoicing to
+ * Tab 4 · Invoicing (ADR-0171) — not in §9.9, which leaves invoicing to
  * THC's own process. This tab does not invoice either: it says which
  * events are safe to invoice and hands over their lines.
  *

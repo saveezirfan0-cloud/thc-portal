@@ -251,7 +251,7 @@ export function readNewStarters(
 }
 
 // ---------------------------------------------------------------------
-// Ready to invoice (ADR-0168, 20261021100000)
+// Ready to invoice (ADR-0171, 20261021150000)
 // ---------------------------------------------------------------------
 
 /** One event on the Invoicing tab, priced and judged by `invoice_events`. */

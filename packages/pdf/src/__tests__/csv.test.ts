@@ -281,8 +281,8 @@ describe('CSV hygiene', () => {
   });
 });
 
-describe('Invoicing CSV (ADR-0168)', () => {
-  // Rows as invoice_export_rows returns them, priced by SQL (pgTAP 899).
+describe('Invoicing CSV (ADR-0171)', () => {
+  // Rows as invoice_export_rows returns them, priced by SQL (pgTAP 902).
   function line(event: string, staff: string, over: Partial<InvoiceCsvRow> = {}): InvoiceCsvRow {
     return {
       event_id: event,

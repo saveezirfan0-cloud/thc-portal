@@ -51,6 +51,8 @@ export const EMAIL_PRESENTATION = {
     eyebrow: 'Set up your account',
     buttons: { link: 'Set your password', installLink: 'Get the THC Staff App' },
   },
+  // ADR-0169: OC3 by email, for a candidate with notifications off.
+  OC4: { eyebrow: 'Your onboarding', buttons: { link: 'Carry on with onboarding' } },
   // ADR-0122: the daily reminder to THC staff not yet on the new app. Drawn
   // in the owner's own design (email-invite-reminder.ts), not by the blocks
   // below; the entry names its eyebrow and button all the same.

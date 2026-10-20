@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InvoiceEvent, InvoiceEventDetail, InvoiceLine, InvoiceViolation } from '../data';
 
 /**
- * /reports/invoicing/:eventId (ADR-0168): what each status shows, and who
+ * /reports/invoicing/:eventId (ADR-0171): what each status shows, and who
  * may mark an event reviewed. The figures and the status come from the
- * database (pgTAP 899); this pins the page's reading of them.
+ * database (pgTAP 902); this pins the page's reading of them.
  */
 
 const state = vi.hoisted(() => ({

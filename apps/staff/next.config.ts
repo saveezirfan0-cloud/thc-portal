@@ -1,5 +1,6 @@
 import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
+import { supabaseKeyBuildEnv } from '@thc/db/public-env';
 import { securityHeaderRules } from '@thc/db/security-headers';
 import { precacheWorkingTabs } from './lib/sw-precache';
 
@@ -63,6 +64,9 @@ const nextConfig: NextConfig = {
     // the server and browser Supabase clients (packages/db/src/session.ts);
     // leaving it out caps workers at the Back Office's 30 days, not worse.
     THC_AUTH_COOKIE_FALLBACK: 'library',
+    // ADR-0165: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, when set, is what every
+    // literal process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY reads (packages/db/src/public-env.ts).
+    ...supabaseKeyBuildEnv(),
   },
 };
 

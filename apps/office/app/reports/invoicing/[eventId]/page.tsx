@@ -39,8 +39,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * /reports/invoicing/:eventId — one event's invoice lines, every violation
- * on it, and the manager's sign-off (ADR-0168). Every figure and the
- * status come from the database (20261021100000); this page adds nothing up.
+ * on it, and the manager's sign-off (ADR-0171). Every figure and the
+ * status come from the database (20261021150000); this page adds nothing up.
  */
 export default async function Page({ params }: { params: Promise<{ eventId: string }> }) {
   const role = await currentOfficeRole();

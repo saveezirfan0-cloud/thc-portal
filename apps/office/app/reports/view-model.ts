@@ -139,12 +139,12 @@ export function showForecastLabel(from: string, to: string, today: string): bool
 }
 
 // ---------------------------------------------------------------------------
-// Ready to invoice (ADR-0168)
+// Ready to invoice (ADR-0171)
 // ---------------------------------------------------------------------------
 
 /**
  * `invoice_events`' ladder, in its order: the first step an event fails is
- * its status (20261021100000).
+ * its status (20261021150000).
  */
 export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready';
 

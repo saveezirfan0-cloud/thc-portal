@@ -170,7 +170,7 @@ describe('figures', () => {
   });
 });
 
-describe('ready to invoice (ADR-0168)', () => {
+describe('ready to invoice (ADR-0171)', () => {
   it('the Invoicing tab opens on last week, the week invoiced by Tuesday evening', () => {
     expect(parseReportView({ tab: 'invoicing' }, ANCHOR)).toMatchObject({
       tab: 'invoicing',

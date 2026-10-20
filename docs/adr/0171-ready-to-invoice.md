@@ -1,4 +1,4 @@
-# ADR-0168 · Ready to invoice: a per-event sign-off and a CSV of what may be invoiced
+# ADR-0171 · Ready to invoice: a per-event sign-off and a CSV of what may be invoiced
 
 **Status:** Accepted · 19.10.2026 · **Departs from:** §9.9 ("Invoicing here is a revenue forecast
 for the period, NOT the PO-based invoices. THC has its own invoicing process") · **Builds on:**
@@ -6,7 +6,7 @@ ADR-0056 (office roles, finance-only money), ADR-0060 (the viewer writes nothing
 Completed Allocation Timesheet held for an unresolved No check-out), ADR-0163 (definers pinned by
 name) · **Asked by:** THC, 19.10.2026, for go-live
 
-`supabase/migrations/20261021100000_ready_to_invoice.sql` · pgTAP `899` (and `001`, `892`
+`supabase/migrations/20261021150000_ready_to_invoice.sql` · pgTAP `902` (and `001`, `892`
 follow) · `apps/office/app/reports/_components/InvoicingTab.tsx` ·
 `apps/office/app/reports/invoicing/[eventId]/` · `packages/pdf/src/csv.ts` (`invoiceCsv`)
 
