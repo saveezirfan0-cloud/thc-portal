@@ -10,7 +10,7 @@
 -- it, and nothing else about applying changes.
 -- =====================================================================
 begin;
-select plan(10);
+select plan(11);
 \ir _shared/fixtures.psql
 
 select cap_week_start(current_date) + 14 as w \gset
@@ -18,6 +18,7 @@ select cap_week_start(current_date) + 14 as w \gset
 \set ro   '89900000-0000-4000-8000-000000000001'
 \set ev   '89900000-0000-4000-8000-0000000000e1'
 \set s    '89910000-0000-4000-8000-000000000001'
+\set s2   '89910000-0000-4000-8000-000000000002'
 \set q    '89920000-0000-4000-8000-000000000001'
 
 insert into roles (id, name, pay_rate) values (:'ro', 'Wave Waiting Staff', 14.00);
@@ -82,6 +83,22 @@ select is(apply_to_shift(:'s') ->> 'ok', 'true',
 reset role;
 delete from bookings where shift_id = :'s';
 update client_qualifications set do_not_return = false where staff_id = :'q';
+
+-- A qualified worker whom the pool gates (here: booked elsewhere at the same
+-- time) is not reachable either: the wave counts as exhausted
+-- (20261021010100 asks the pool about the whole qualified set at once).
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour) values
+  (:'s2', :'ev', :'ro', (:'w'::date + 2 + time '11:00') at time zone 'Europe/London',
+                        (:'w'::date + 2 + time '19:00') at time zone 'Europe/London', 3, 0, 22, 14, 3);
+insert into bookings (shift_id, staff_id, status, source, confirmed_at) values (:'s2', :'q', 'confirmed', 'auto', now());
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(apply_to_shift(:'s') ->> 'ok', 'true',
+  'Dee is booked over the same hours, so nobody qualified is reachable and staff A applies');
+reset role;
+delete from bookings where shift_id in (:'s', :'s2');
+
 insert into client_qualifications (client_id, role_id, staff_id) values (:'clientb', :'ro', :'staffa');
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
