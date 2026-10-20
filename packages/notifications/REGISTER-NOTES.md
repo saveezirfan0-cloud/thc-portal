@@ -186,6 +186,7 @@ rule: **email until the account exists, push in the app after.**
 | OC1 | email · candidate (from admin@) | in Interview requested, the Willo invite sent, interview not done | `Your video interview with The Hospitality Company` | Thanks for applying… the invitation came from Willo — search your inbox for "Willo"… |
 | OC2 | email · candidate (from admin@) | accepted, E3 sent, no password set | `Set up your account with The Hospitality Company` | Your application was accepted… set your password: `{link}` … download the app: `{installLink}` |
 | OC3 | push · candidate → `/onboarding` | signed up, a wizard step open | `Pick up where you left off` | `Next up: {step}. Tap to carry on with your onboarding.` |
+| OC4 | email · candidate (from admin@) | as OC3, but no device has notifications on (ADR-0169) | `Pick up where you left off with your onboarding` | You've started onboarding… Next up: `{step}`. Open the THC Staff App to carry on: `{link}` … we're emailing because notifications aren't turned on in the app |
 
 - **The cadence.** Daily, and it never stops (owner, 29.09.2026): the first
   a day after the candidate's last progress, then one a day while the move is
@@ -208,6 +209,17 @@ rule: **email until the account exists, push in the app after.**
   "re-uploading a rejected document", "the Health & Safety induction", "the
   Health & Safety quiz", "the HMRC New Starter Checklist", "your two
   references", "your bank & payroll details", "signing your contract".
+- **OC4 is OC3 by email** (ADR-0169, owner 19.10.2026). Notifications are
+  opt-in, and an iPhone needs the app on the home screen first, so many
+  signed-up candidates had every OC3 fail with "no push subscription" and
+  were reminded of nothing. When an OC3 is due and the candidate has no
+  `push_subscriptions` row, `onboarding_chasers()` queues OC4 instead: the
+  same rung and variant, to `staff.email`, on **OC3's key** — one reminder
+  per rung by one channel, and the count carries on if they turn
+  notifications on or off part-way. `{link}` is `<STAFF_APP_URL>/onboarding`
+  (the Edge Function passes it; anything else is no link, and the reminder
+  stays a push). The board says "App reminder 2 emailed (notifications
+  aren't on) 20 Oct". It has its own switch on `/settings`.
 - **OC3's tag is its own** (`OC3`): without one the tag is the deep link,
   `/onboarding`, which N8's candidate push shares — a reminder would replace
   a document-rejected notification on the phone.

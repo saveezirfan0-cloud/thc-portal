@@ -1006,6 +1006,36 @@ export const TEMPLATES = {
     // would replace a candidate's N8 re-upload notification.
     tag: 'OC3',
   },
+  // OC3 by email (ADR-0169, owner request 19.10.2026): the same reminder,
+  // rung for rung, to a signed-up candidate with no device that has
+  // notifications on, who would otherwise get nothing. It shares OC3's
+  // ladder and keys (`OC3:staff:<id>:<epoch>:<n>`), so each day is one
+  // reminder by one channel. `{link}` is `<STAFF_APP_URL>/onboarding`,
+  // checked by onboarding_chasers(); `{step}` is OC3's words.
+  OC4: {
+    code: 'OC4',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Finish your onboarding with The Hospitality Company',
+    variants: {
+      first: {
+        title: 'Pick up where you left off with your onboarding',
+        body: "Hi {name},\n\nYou've started onboarding with The Hospitality Company. Next up: {step}.\n\nOpen the THC Staff App to carry on:\n{link}\n\nWe're emailing you because notifications aren't turned on in the app. Turn them on under Notifications in the app and we'll remind you there instead.",
+      },
+      second: {
+        title: "You're nearly there: finish your onboarding",
+        body: "Hi {name},\n\nJust a reminder that your onboarding with The Hospitality Company isn't finished. Still to do: {step}. Finish onboarding to start picking up shifts:\n{link}\n\nWe're emailing you because notifications aren't turned on in the app.",
+      },
+      repeat: {
+        title: 'Reminder: your onboarding is waiting',
+        body: "Hi {name},\n\nYour onboarding with The Hospitality Company is still waiting. Still to do: {step}. We can't offer you shifts until onboarding is finished:\n{link}\n\nNeed a hand? Reply to this email.",
+      },
+    },
+    trigger:
+      'An OC3 that is due for a signed-up candidate with no push subscription on any device (onboarding_chasers, 20261021120000). Not in §8: an addition to scope v1.6, ADR-0071 and ADR-0169',
+    timing:
+      'in place of OC3, daily from a day after their last progress, until they move on; 10:00–18:00 UK',
+  },
 
   // The daily reminder to THC's own staff who were invited onto the new app
   // and have not applied yet (ADR-0122): every `thc` row left on the invite
@@ -1202,10 +1232,12 @@ export const MESSAGE_CODES = ['OM1', 'OM2'] as const satisfies readonly Template
 /**
  * Onboarding chasers (ADR-0071): reminders to a candidate whose next
  * onboarding move is their own. Emails before sign-up (OC1 the interview,
- * OC2 the activation, with a fresh link), a push after (OC3). Daily, never
- * stopping: `first`, `second`, then `repeat` every day after.
+ * OC2 the activation, with a fresh link), a push after (OC3), or the same
+ * reminder by email when they have no device with notifications on (OC4,
+ * ADR-0169). Daily, never stopping: `first`, `second`, then `repeat`
+ * every day after.
  */
-export const CHASER_CODES = ['OC1', 'OC2', 'OC3'] as const satisfies readonly TemplateCode[];
+export const CHASER_CODES = ['OC1', 'OC2', 'OC3', 'OC4'] as const satisfies readonly TemplateCode[];
 
 /**
  * The invite-list reminder (ADR-0122): IR1, daily to THC staff invited onto

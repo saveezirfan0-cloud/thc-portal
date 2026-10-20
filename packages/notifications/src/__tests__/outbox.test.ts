@@ -384,6 +384,57 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(msg.body).not.toMatch(/\{\w+\}/);
   });
 
+  it('emails OC4, the app reminder, on OC3’s key, with the onboarding link as its button (ADR-0169)', () => {
+    const subjects: Record<string, string> = {
+      first: 'Pick up where you left off with your onboarding',
+      second: "You're nearly there: finish your onboarding",
+      repeat: 'Reminder: your onboarding is waiting',
+    };
+    for (const [variant, subject] of Object.entries(subjects)) {
+      const msg = messageFor(
+        email({
+          key: 'OC3:staff:s-1:1790000000:1',
+          template: 'OC4',
+          recipient_emails: ['amy@example.com'],
+          payload: {
+            name: 'Amy',
+            step: 'the Health & Safety quiz',
+            link: 'https://staff.test/onboarding',
+            variant,
+          },
+        }),
+      );
+      expect(msg.kind, variant).toBe('email');
+      if (msg.kind !== 'email') return;
+      expect(msg.to).toEqual(['amy@example.com']);
+      expect(msg.sender).toBe('admin');
+      expect(msg.subject).toBe(subject);
+      expect(msg.body).toContain('Hi Amy,');
+      expect(msg.body).toContain('the Health & Safety quiz');
+      expect(msg.body).toContain('https://staff.test/onboarding');
+      expect(msg.body).not.toMatch(/\{\w+\}/);
+      expect(msg.html).toContain('Carry on with onboarding');
+      expect(msg.html).toContain('href="https://staff.test/onboarding"');
+    }
+    // The first tells them why it is an email, and how to get it in the app.
+    const first = messageFor(
+      email({
+        key: 'OC3:staff:s-1:1:1',
+        template: 'OC4',
+        recipient_emails: ['amy@example.com'],
+        payload: {
+          name: 'Amy',
+          step: 'x',
+          link: 'https://staff.test/onboarding',
+          variant: 'first',
+        },
+      }),
+    );
+    expect(first.kind === 'email' && first.body).toContain(
+      "notifications aren't turned on in the app. Turn them on under Notifications in the app",
+    );
+  });
+
   it('uses the repeating subject from the third OC1 on', () => {
     const msg = messageFor(
       email({

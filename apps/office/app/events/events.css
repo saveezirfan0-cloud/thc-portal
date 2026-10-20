@@ -880,3 +880,23 @@
     display: none;
   }
 }
+
+/* ---- Today (the toolbar) lands on #today ------------------------------
+   Today's month cell, week column, or the first list row from today on
+   (`TODAY_ANCHOR`, `TodayLink`). It stops below the sticky top bar and the
+   list's sticky header row, and flashes once so the click is seen to land. */
+#today {
+  scroll-margin-top: calc(var(--topbar-h) + 3rem);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ev-list tr.landed > td,
+  .cal .day.landed,
+  .wk .col.landed {
+    animation: today-landed 1.6s ease-out;
+  }
+}
+@keyframes today-landed {
+  from {
+    background-color: var(--cyan-dim);
+  }
+}

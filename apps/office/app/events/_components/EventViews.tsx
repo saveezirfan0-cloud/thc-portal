@@ -9,7 +9,7 @@ import {
   formatEventFill,
   formatOpen,
 } from '@thc/domain';
-import { formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
+import { TODAY_ANCHOR, formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
 import {
   type DayBucket,
   type EventRow,
@@ -96,6 +96,9 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
     );
   }
 
+  // Today, or the next day with an event when today has none.
+  const anchorRow = rows.find((row) => row.date >= today)?.id;
+
   // `card-rows`: below 760px each event is a card, titled by the event, with
   // every other column printed against its `data-label`. Above it the
   // columns are fixed (events.css), so all seven fit a 1280px laptop and
@@ -121,7 +124,11 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
             const cancelled = row.status === 'cancelled';
             const open = formatOpen(row.fill);
             return (
-              <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
+              <tr
+                key={row.id}
+                id={row.id === anchorRow ? TODAY_ANCHOR : undefined}
+                className={cancelled ? undefined : 'clickable'}
+              >
                 <ColumnCellsFor
                   list={EVENT_LIST_KEY}
                   defs={EVENT_LIST_COLUMNS}
@@ -276,6 +283,7 @@ export function MonthView({
         return (
           <div
             key={cell.iso}
+            id={cell.iso === today ? TODAY_ANCHOR : undefined}
             className={classes('day', !cell.inMonth && 'other', cell.iso === today && 'today')}
           >
             <div className="d">
@@ -347,7 +355,11 @@ export function WeekView({
           const open = bucket?.open ?? 0;
           const record = iso === recordDay;
           return (
-            <div className={classes('col', iso === today && 'today', record && 'record')} key={iso}>
+            <div
+              className={classes('col', iso === today && 'today', record && 'record')}
+              id={iso === today ? TODAY_ANCHOR : undefined}
+              key={iso}
+            >
               <div className="ch">
                 <span className="d">
                   {WEEKDAY_HEADS[weekdayIndex(iso)]} {Number(iso.slice(8, 10))}

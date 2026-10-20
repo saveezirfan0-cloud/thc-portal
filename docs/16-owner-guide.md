@@ -34,6 +34,7 @@ Conventions on this page:
 | 10 | Willo, once THC sends the keys | §5 | 45 min | interviews, E1 |
 | 11 | Optional keys: Mapbox, Anthropic (document reading), Firewall rule | §3.6, §6 | as needed | maps, document reading |
 | 12 | Answer the `rls_auto_enable()` question | §1.4 | 20 min | peace of mind |
+| 13 | After go-live, before 31.12.2026: move to the new API keys | §10 | 1 h, then a week's watch | the end of the legacy keys |
 
 ### 0.2 What unblocks what
 
@@ -436,9 +437,11 @@ https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/settings/api
   the reveal/copy button — a masked paste stores bullet characters and breaks
   sign-in (the comment on the Vercel variable records this happening).
 - **service_role** under **Legacy API keys** (the long `eyJ…` JWT) →
-  `SUPABASE_SERVICE_ROLE_KEY`. This same value goes into the Vault in §4.7, and
-  the Edge Functions compare it byte for byte, so it must be this key and not
-  a newer `sb_secret_…` key.
+  `SUPABASE_SERVICE_ROLE_KEY`. This same value goes into the Vault in §4.7.
+  Since ADR-0165 a new `sb_secret_…` key works in both places too, but move to
+  the new keys as one planned change, in the order §10 gives, not piecemeal.
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is read as an alternative to
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` and wins when both are set.
 
 ### 3.3 Adding or changing a variable
 
@@ -710,10 +713,11 @@ select value #>> '{}' as edge_base_url from public.settings where key = 'edge_ba
 
 **Step 2 — the Vault secret.** The value is the **legacy `service_role` JWT**
 from §3.2 — the same string the Vercel projects hold as
-`SUPABASE_SERVICE_ROLE_KEY` — because `supabase/functions/_shared/job.ts`
-compares the bearer token character for character with the
-`SUPABASE_SERVICE_ROLE_KEY` Supabase injects into every function. A different
-key form is a permanent 401. The name must be exactly `service_role_key`.
+`SUPABASE_SERVICE_ROLE_KEY`. `supabase/functions/_shared/job.ts` compares it
+with the keys Supabase injects into every function; since ADR-0165 a new
+`sb_secret_…` key of this project is accepted as well, and is how the Vault is
+moved off the legacy key (§10.4). Any other value is a permanent 401. The name
+must be exactly `service_role_key`, whichever form it holds.
 
 ```sql
 select vault.create_secret(
@@ -1089,7 +1093,9 @@ Supabase secrets (`supabase secrets set`), never Vercel.
 | Name | Function(s) | Purpose | Set by |
 |---|---|---|---|
 | `SUPABASE_URL` | all, via `_shared/job.ts` | the project API URL | Supabase, automatically |
-| `SUPABASE_SERVICE_ROLE_KEY` | all, via `_shared/job.ts` | the service client, and the bearer every job checks its caller against | Supabase, automatically |
+| `SUPABASE_SERVICE_ROLE_KEY` | all, via `_shared/job.ts` | the legacy key: the service client until `THC_SECRET_KEY_NAME` is set, and one of the keys every job checks its caller against | Supabase, automatically |
+| `SUPABASE_SECRET_KEYS` | all, via `_shared/job.ts` | the project's new `sb_secret_…` keys by name (JSON): every job accepts a caller holding one of them (ADR-0165) | Supabase, automatically |
+| `THC_SECRET_KEY_NAME` | all, via `_shared/job.ts` | which entry of `SUPABASE_SECRET_KEYS` the service client uses; unset = the legacy key | §10.3, at the key switch |
 | `RESEND_API_KEY` | `notify-drain` | email | §4.4 |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `notify-drain` | Web Push signing | §4.4 |
 | `WILLO_WEBHOOK_SECRET` | `willo-webhook` | verifies Willo's signature | §5.1 |
@@ -1318,3 +1324,132 @@ and what a session could confirm on 23.09.2026. Tick the last column in
 | — | `/apply` salt on thc-portal-staff (ADR-0024) | §3.1 | Vercel holds `APPLY_THROTTLE_SALT`, and the code reads that name too — nothing to do | [x] |
 | — | `gdpr-purge` has no schedule row (found while writing this page) | §4.6 | a migration for a session | [ ] |
 | — | Optional: Mapbox tokens, Anthropic key, Firewall rule | §6.2, §6.1, §3.6 | none set | [ ] |
+| — | Move to the new Supabase API keys before 31.12.2026 (ADR-0165) | §10 | legacy keys in use everywhere (17.10) | [ ] |
+
+---
+
+## 10 · Moving to the new Supabase API keys (before 31.12.2026)
+
+**Why.** Supabase switches the legacy `anon` and `service_role` keys (the long
+`eyJ…` JWTs) off at the end of 2026. Their replacements are a **publishable**
+key (`sb_publishable_…`, the browser key) and **secret** keys (`sb_secret_…`,
+server only, bypassing RLS as `service_role` does). Since ADR-0165 the code
+accepts both forms everywhere, so the switch below is settings only: no code
+change, no migration, and every step can be undone until §10.6. Signed-in users
+are not affected (their tokens are already ES256, ADR-0108).
+
+**Not inside an upgrade window** (docs/22 §3), and not at a time you cannot
+watch the next 12:05 cutoff: do it on a quiet weekday morning with this page open.
+
+### 10.1 Before you start (once)
+
+1. This code is deployed: `deploy-database` has applied
+   `20261021140000_edge_calls_send_apikey` and redeployed the functions.
+2. Re-install the schedules **once**, so the cron commands send the key on the
+   `apikey` header through `edge_call_headers()`:
+
+   ```sql
+   select public.install_job_schedules();
+   select count(*) from cron.job where command like '%edge_call_headers%';   -- one per Edge Function job, about 10
+   ```
+
+   With the legacy key still in the Vault nothing else changes (it is sent as
+   before, plus an `apikey` header). Check the next two minutes of `job_runs`
+   are `ok = true` (§4.8).
+3. `APPLY_THROTTLE_SALT` is set on `thc-portal-staff` (§3.1). Without it the
+   `/apply` limit hashes under a salt derived from the service key, and
+   changing the key would reset everyone's counters.
+
+### 10.2 Create the keys
+
+https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/settings/api-keys
+
+- **Publishable key**: one named `default` already exists. Use it.
+- **Secret keys**: create two, so each can be rotated on its own: `edge-jobs`
+  (pg_cron and the Edge Functions) and `vercel` (the three apps). Copy each with
+  the copy button, never from the masked field.
+
+### 10.3 The Edge Functions use the new key for their own database calls
+
+```bash
+supabase secrets set THC_SECRET_KEY_NAME=edge-jobs
+```
+
+Supabase injects every secret key into each function as `SUPABASE_SECRET_KEYS`;
+this names the one they use (until it is set they use the legacy
+`SUPABASE_SERVICE_ROLE_KEY`, as today). A function picks it up on its next run.
+A name that does not exist makes every job fail loudly, with
+`THC_SECRET_KEY_NAME is "…", but SUPABASE_SECRET_KEYS holds no key by that name`
+in the response and the function log; undo with
+`supabase secrets unset THC_SECRET_KEY_NAME`.
+
+**Verify** with the new key on the `apikey` header and no bearer:
+
+```bash
+curl -s -X POST "https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1/notify-drain" \
+  -H "apikey: <sb_secret_… edge-jobs>" \
+  -H "Content-Type: application/json" \
+  -d '{"job":"notify-drain"}'
+```
+
+Expected `{"job":"notify-drain","ok":true,…}` and a new `job_runs` row. The
+publishable key in its place answers `{"error":"service role required"}` (401).
+
+### 10.4 pg_cron sends the new key: the Vault secret
+
+The secret keeps its name, `service_role_key`; only its value changes. In the
+SQL editor:
+
+```sql
+select vault.update_secret(
+  (select id from vault.secrets where name = 'service_role_key'),
+  '<sb_secret_… edge-jobs>'
+);
+
+-- check without printing it
+select left(decrypted_secret, 10) as starts_with, length(decrypted_secret) as chars
+  from vault.decrypted_secrets where name = 'service_role_key';   -- sb_secret_
+```
+
+Nothing to reinstall: every cron command, `willo_invite_nudge()` and "Auto-assign
+now" (`auto_assign_first_round()`) read the secret when they run, and
+`edge_call_headers()` sends a non-JWT key on `apikey` alone, never as a bearer.
+Within two minutes §4.8's queries must show `notify-drain` and `booking-tick`
+rows with `ok = true` and `net._http_response` with status 200 only. A 401 means
+the Vault value is not one of the project's secret keys: put the legacy key back
+the same way (the `eyJ…` value under **Legacy API keys**) and look again. The
+Back Office jobs (`rtw-check`, `event-documents`, `new-starter-report`) use their
+own `rtw_job_secret` and are not touched by any of this.
+
+### 10.5 The three Vercel projects
+
+For each of `thc-portal-office`, `thc-portal-staff`, `thc-portal-client` (§3):
+
+| Variable | New value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the `sb_publishable_…` key. Or leave it and add `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` with that value: when both are set the publishable one wins |
+| `SUPABASE_SERVICE_ROLE_KEY` | the `sb_secret_…` key named `vercel`. The variable keeps its name |
+
+Then **Redeploy without the build cache** (§3.3: `NEXT_PUBLIC_` values are built
+in). Smoke test on each app: sign in and out. On the Back Office open `/staff`
+and send one activation link (it needs the secret key); on the Staff App upload
+a document; on the Client Portal open a past event's documents. To undo, put the
+old values back and redeploy the same way.
+
+### 10.6 Watch, then switch the legacy keys off
+
+- Leave it a week. On the API Keys page the legacy keys' **last used** should
+  stop moving; the Edge Function logs and `net._http_response` should show no 401.
+- Then **Deactivate** the legacy `anon` and `service_role` keys on the same page.
+  This is reversible (Re-activate). Run §4.8 and one sign-in on each app at once.
+- Only much later, and only if Supabase asks for it: revoke the legacy JWT secret
+  under **JWT Keys** (wait at least the JWT expiry, 3600 s, after any rotation).
+
+### 10.7 If something answers 401 after the switch
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `job_runs` stops; `net._http_response` 401 `{"error":"service role required"}` | the Vault value is not a secret key of this project | §10.4 again, or put the legacy key back |
+| `net._http_response` 401 from the gateway (`Invalid JWT`), no `job_runs` row | Supabase has withdrawn `verify_jwt`'s acceptance of the new keys, which its docs call "for migration compatibility" | deploy the job functions with `--no-verify-jwt` (they check the key themselves, ADR-0165), or put the legacy key back until then |
+| every job fails with `THC_SECRET_KEY_NAME …` | §10.3 names a key that does not exist | `supabase secrets set THC_SECRET_KEY_NAME=<the right name>` |
+| an app: "Invalid API key", or sign-in fails | a masked or truncated paste, or a redeploy that kept the build cache | re-copy, redeploy without the cache |
