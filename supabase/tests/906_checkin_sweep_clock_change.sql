@@ -1,5 +1,5 @@
 -- =====================================================================
--- 899 · The day of the shift across the 25.10.2026 clock change
+-- 906 · The day of the shift across the 25.10.2026 clock change
 --   (§1.8, §5.1, §5.2, RULE-01, RULE-02 / BG-09, BG-03, BG-02b, BG-10)
 --
 -- At 02:00 BST on Sunday 25 October 2026 the UK clocks go back to 01:00
