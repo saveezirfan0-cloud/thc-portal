@@ -384,6 +384,23 @@
     max-width: 100%;
   }
 }
+/* ---- list: alternate days take the stripe shade ---------------------
+   Every event on one date shares a shade and the next date flips it
+   (ListView `day-alt`), so the days of a long list read as blocks. The
+   pinned date and title cells take it through --pin-bg; hover still tints. */
+.tbl.ev-list tr.day-alt {
+  --pin-bg: var(--panel-2);
+}
+.tbl.ev-list tr.day-alt > td {
+  background: var(--panel-2);
+}
+.tbl.ev-list tr.day-alt.clickable:hover {
+  --pin-bg: linear-gradient(var(--row-hover), var(--row-hover)), var(--panel-2);
+}
+.tbl.ev-list tr.day-alt.clickable:hover > td {
+  background: linear-gradient(var(--row-hover), var(--row-hover)), var(--panel-2);
+}
+
 /* A cancelled event's fill note is a sentence, not a count. */
 .tbl.ev-list td.ev-fill .muted {
   white-space: normal;

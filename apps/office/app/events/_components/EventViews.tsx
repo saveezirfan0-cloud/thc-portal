@@ -99,6 +99,17 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
   // Today, or the next day with an event when today has none.
   const anchorRow = rows.find((row) => row.date >= today)?.id;
 
+  // Each day's events share a shade, and the shade alternates day by day, so
+  // where one day ends and the next begins reads at a glance (events.css).
+  const shadedDays = new Set<string>();
+  let lastDate: string | null = null;
+  let shaded = true;
+  for (const row of rows) {
+    if (row.date !== lastDate) shaded = !shaded;
+    if (shaded) shadedDays.add(row.date);
+    lastDate = row.date;
+  }
+
   // `card-rows`: below 760px each event is a card, titled by the event, with
   // every other column printed against its `data-label`. Above it the
   // columns are fixed (events.css), so all seven fit a 1280px laptop and
@@ -127,7 +138,10 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
               <tr
                 key={row.id}
                 id={row.id === anchorRow ? TODAY_ANCHOR : undefined}
-                className={cancelled ? undefined : 'clickable'}
+                className={
+                  classes(!cancelled && 'clickable', shadedDays.has(row.date) && 'day-alt') ||
+                  undefined
+                }
               >
                 <ColumnCellsFor
                   list={EVENT_LIST_KEY}
