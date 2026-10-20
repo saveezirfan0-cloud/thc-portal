@@ -7,6 +7,11 @@ import { type DbError, explainDbError } from '../../_lib/dbError';
 import { BULK_CONCURRENCY, mapPool } from '../../_lib/pool';
 import { supabaseConfigured } from '../data';
 import { PICKER_PAGE, chargeRateProblem, pickerSearch } from './card';
+import {
+  invoiceDetailsProblem,
+  invoiceEmailsProblem,
+  normaliseInvoiceEmails,
+} from './invoiceDetails';
 import type { ActionResult, PickerPage, StaffOption } from './types';
 
 /**
@@ -188,6 +193,35 @@ export async function setLineupEmails(
     { p_client: clientId, p_kind: kind, p_on: on },
     clientId,
   );
+}
+
+/**
+ * ADR-0175: the Invoicing panel — who the invoice is addressed to, where it
+ * is emailed (up to five; none sends it to the contact emails) and the
+ * billing address printed under "Invoice to". The database normalises and
+ * validates the addresses and audits the change; the same rules are said
+ * here first so a typo costs no round trip.
+ */
+export async function setInvoiceDetails(
+  clientId: string,
+  details: { accountsContactName: string; invoiceEmails: string[]; billingAddress: string },
+): Promise<ActionResult> {
+  const emails = normaliseInvoiceEmails(details.invoiceEmails ?? []);
+  const invalid = invoiceEmailsProblem(emails);
+  if (invalid) return { ok: false, message: invalid };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { error } = await supabase.rpc('set_client_invoice_details', {
+    p_client: clientId,
+    p_contact_name: String(details.accountsContactName ?? '').trim() || null,
+    p_emails: emails,
+    p_address: String(details.billingAddress ?? '').trim() || null,
+  });
+  if (error) return { ok: false, message: invoiceDetailsProblem(error) };
+
+  revalidatePath(`/clients/${clientId}`);
+  return { ok: true };
 }
 
 /** ADR-0135 §2: a Client Portal "Request again" is dealt with (audited). */

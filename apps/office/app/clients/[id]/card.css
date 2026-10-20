@@ -296,3 +296,47 @@
   outline: 2px solid var(--focus-line);
   outline-offset: 2px;
 }
+
+/*
+ * ADR-0175: the Invoicing panel. The invoice-email chip field reads as one
+ * input — the border is on the wrapper, the text field inside it is bare —
+ * as the client modal's contact emails do (clients.css, not loaded here).
+ */
+.inv-emails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--sp-6) var(--sp-8);
+  min-height: var(--input-h);
+  border-radius: var(--r-control);
+}
+.inv-emails:focus-within {
+  border-color: var(--focus-line);
+  outline: 2px solid var(--focus-line);
+  outline-offset: 1px;
+}
+.inv-emails input {
+  flex: 1;
+  min-width: 14ch;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+}
+.inv-emails .x {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0 0 var(--sp-4);
+}
+/* The billing address keeps the lines it was typed with, as the invoice does. */
+.inv-address {
+  white-space: pre-line;
+}
