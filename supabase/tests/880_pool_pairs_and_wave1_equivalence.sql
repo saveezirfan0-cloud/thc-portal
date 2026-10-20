@@ -1,13 +1,13 @@
 -- =====================================================================
 -- 880 · The pool over pairs, Radar in one pass, wave 1 stopping at the
---       first reachable worker - old bodies against new (ADR-0167)
---   20261020100000_auto_assign_pool_pairs.sql
---   20261020100100_radar_one_pool_pass.sql
---   20261020100200_wave1_exhausted_stops_at_first.sql
+--       first reachable worker - old bodies against new (ADR-0170)
+--   20261021130000_auto_assign_pool_pairs.sql
+--   20261021130100_radar_one_pool_pass.sql
+--   20261021130200_wave1_exhausted_stops_at_first.sql
 --
 -- The three migrations change how the answers are computed and nothing
 -- about what they are. The bodies as they stood before them are
--- re-created under _old_ names (_shared/pool_radar_before_20261020100000
+-- re-created under _old_ names (_shared/pool_radar_before_20261021130000
 -- .psql, each old reader calling the old pool) and every reader is
 -- compared with its old self over 859's fixture (every gate code, both
 -- waves, every booking state, a two-day job, the 2 h gap, the term cap,
@@ -39,7 +39,7 @@ select plan(44);
 set local jit = off;
 \ir _shared/fixtures.psql
 \ir _shared/pool_radar_fixture.psql
-\ir _shared/pool_radar_before_20261020100000.psql
+\ir _shared/pool_radar_before_20261021130000.psql
 
 -- ---- open shift offers: one per wave-1 branch ------------------------
 \set o1 '88010000-0000-4000-8000-000000000001'

@@ -27,7 +27,7 @@
 --     worker's gate (auto_assign_worker_gate, as the Accept/apply paths use);
 --   * the wave-1 checks: offer_wave1_exhausted per offer (take_offered_shift
 --     asks it once) and radar_wave1_exhausted per section;
---   * where the database has it (ADR-0167), one worker against every open
+--   * where the database has it (ADR-0170), one worker against every open
 --     section in one call (auto_assign_worker_pool).
 --
 -- usage (local cluster, after migrations + seed; never against production):
@@ -337,7 +337,7 @@ begin
 end $$;
 
 -- One worker against every open section in one call, where the database
--- has it (ADR-0167): workers 1-3 and a few others.
+-- has it (ADR-0170): workers 1-3 and a few others.
 do $$
 declare r record; t timestamptz; n int;
 begin

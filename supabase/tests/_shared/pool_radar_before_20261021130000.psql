@@ -1,6 +1,6 @@
 -- =====================================================================
 -- The pool, its readers and the wave-1 checks as they stood before
--- 20261020100000 (ADR-0167), for pgTAP 880 to compare the new bodies with.
+-- 20261021130000 (ADR-0170), for pgTAP 880 to compare the new bodies with.
 --
 --   _old_auto_assign_candidates_pool   (20261019193000's set-based pool)
 --   _old_series_gate_for, _old_auto_assign_worker_gate,

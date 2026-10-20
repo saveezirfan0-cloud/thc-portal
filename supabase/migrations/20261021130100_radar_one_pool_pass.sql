@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261020100100 · Radar asks the pool once for the worker's own
---                            rows, and once a round for RULE-17 (ADR-0167)
+-- Migration 20261021130100 · Radar asks the pool once for the worker's own
+--                            rows, and once a round for RULE-17 (ADR-0170)
 --
 -- After 20261019193100 Radar still made one pool call per candidate
 -- section for the worker's own row (~190 for a two-role worker at go-live
@@ -109,7 +109,7 @@ revoke execute on function public.auto_assign_wave1_reachable(uuid[], boolean) f
 grant  execute on function public.auto_assign_wave1_reachable(uuid[], boolean) to authenticated, service_role;
 
 comment on function public.auto_assign_wave1_reachable(uuid[], boolean) is
-  'RULE-17 for many sections at once (ADR-0167): the sections of p_shifts on which a worker qualified at the client and role is still reachable - no gate, qualified and holding no booking there, in auto_assign_candidates_pool_pairs()''s words (with p_series, series_gate_for() too, as auto_assign_worker_gate() says). Stops asking about a section at its first reachable worker. SECURITY INVOKER; Radar reads it.';
+  'RULE-17 for many sections at once (ADR-0170): the sections of p_shifts on which a worker qualified at the client and role is still reachable - no gate, qualified and holding no booking there, in auto_assign_candidates_pool_pairs()''s words (with p_series, series_gate_for() too, as auto_assign_worker_gate() says). Stops asking about a section at its first reachable worker. SECURITY INVOKER; Radar reads it.';
 
 -- ---------------------------------------------------------------------
 -- 2 · staff_open_shifts(p_staff, p_shift)
@@ -127,7 +127,7 @@ begin
       -- per load, before the week meter
       ('\n  meter as materialized \(\n',
        $r$
-  -- 20261020100100: the worker's own row of each candidate section's pool,
+  -- 20261021130100: the worker's own row of each candidate section's pool,
   -- in one pass: what auto_assign_candidates_pool(section, false,
   -- array[me]) returned for it, section by section.
   own as materialized (
@@ -135,7 +135,7 @@ begin
       from me
      cross join lateral auto_assign_worker_pool(me.id, array(select cand.id from cand)) a
   ),
-  -- 20261020100100: RULE-17's answer for every section where it can
+  -- 20261021130100: RULE-17's answer for every section where it can
   -- matter (the worker's own row has no gate or only hours_limit, is not
   -- qualified, and the section has not started): the sections on which a
   -- qualified worker is still reachable. The query below asks again.
@@ -158,7 +158,7 @@ $r$),
 
       -- 2 · RULE-17 reads the answers
       ('else not exists \(.*?auto_assign_candidates_pool\(sr\.id, false, array\[q\.staff_id\]\) w\s+where w\.gate is null and w\.qualified and w\.booking_status is null\)\)',
-       $r$-- since 20261020100100 the answers for every section come from
+       $r$-- since 20261021130100 the answers for every section come from
             -- auto_assign_wave1_reachable(), which stops at the first
             -- reachable qualified worker per section (w1 above).
             else sr.id not in (select w1.shift_id from w1)$r$)
@@ -166,7 +166,7 @@ $r$),
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261020100100: staff_open_shifts - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261021130100: staff_open_shifts - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -175,6 +175,6 @@ $r$),
 
   execute format('comment on function public.staff_open_shifts(uuid, uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100100 (ADR-0167) the worker''s own rows come from auto_assign_worker_pool() in one pass and RULE-17''s wave check from auto_assign_wave1_reachable(), once per load, instead of a pool call per section.');
+    || ' Since 20261021130100 (ADR-0170) the worker''s own rows come from auto_assign_worker_pool() in one pass and RULE-17''s wave check from auto_assign_wave1_reachable(), once per load, instead of a pool call per section.');
 end;
 $$;

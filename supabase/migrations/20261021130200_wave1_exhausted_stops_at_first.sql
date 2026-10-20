@@ -1,7 +1,7 @@
 -- =====================================================================
--- Migration 20261020100200 · "is wave 1 exhausted?" stops at the first
+-- Migration 20261021130200 · "is wave 1 exhausted?" stops at the first
 --                            reachable qualified worker, once per call
---                            (ADR-0167)
+--                            (ADR-0170)
 --
 -- staff_open_offers() asked auto_assign_worker_gate() for the viewer once
 -- per open offer, and offer_wave1_exhausted() for every pool offer the
@@ -29,7 +29,7 @@
 --   * offer_wave1_exhausted(p_offer) is that for one offer. The auto-assign
 --     switches still exhaust it at once (OF1 follows them);
 --   * radar_wave1_exhausted(p_shift) is auto_assign_wave1_reachable() with
---     the series days (20261020100100) for one section;
+--     the series days (20261021130100) for one section;
 --   * staff_open_offers() reads the viewer's gate for every open offer from
 --     one auto_assign_worker_pool() pass, and the wave-1 answer for every
 --     pool offer the viewer is not qualified for from one
@@ -51,7 +51,7 @@ begin
         from pg_proc p
        where p.oid = 'public.offer_wave1_exhausted(uuid)'::regprocedure)
      is distinct from 'fc556a568dd1df79a44d2cfe46c9f331' then
-    raise exception '20261020100200: offer_wave1_exhausted() is not the body this migration replaces (20260930205000). Something changed it since; merge that change into offers_wave1_exhausted() first.';
+    raise exception '20261021130200: offer_wave1_exhausted() is not the body this migration replaces (20260930205000). Something changed it since; merge that change into offers_wave1_exhausted() first.';
   end if;
 end;
 $$;
@@ -156,7 +156,7 @@ revoke execute on function public.offers_wave1_exhausted(uuid[]) from public, an
 grant  execute on function public.offers_wave1_exhausted(uuid[]) to service_role;
 
 comment on function public.offers_wave1_exhausted(uuid[]) is
-  'RULE-17 for shift offers, many at once (ADR-0167): the offers of p_offers whose wave 1 is exhausted - auto-assign off on the event or role, or no worker qualified at the client and role left who is ungated (auto_assign_worker_gate()''s sense), not the offerer, not holding a booking that rules them out, not away and not yet told. Stops asking about an offer at its first such worker. offer_wave1_exhausted() and staff_open_offers() read it.';
+  'RULE-17 for shift offers, many at once (ADR-0170): the offers of p_offers whose wave 1 is exhausted - auto-assign off on the event or role, or no worker qualified at the client and role left who is ungated (auto_assign_worker_gate()''s sense), not the offerer, not holding a booking that rules them out, not away and not yet told. Stops asking about an offer at its first such worker. offer_wave1_exhausted() and staff_open_offers() read it.';
 
 -- ---------------------------------------------------------------------
 -- 2 · offer_wave1_exhausted(p_offer): the same, for one offer
@@ -172,14 +172,14 @@ begin
   security definer
   set search_path = public, extensions
   as $function$
-    -- 20261020100200: the question and every test in it are
+    -- 20261021130200: the question and every test in it are
     -- offers_wave1_exhausted()'s; this asks it about one offer.
     select exists (select 1 from offers_wave1_exhausted(array[p_offer]))
   $function$;
 
   execute format('comment on function public.offer_wave1_exhausted(uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100200 (ADR-0167) it is offers_wave1_exhausted() for one offer: the same tests, stopping at the first reachable qualified worker instead of reading the whole candidate list.');
+    || ' Since 20261021130200 (ADR-0170) it is offers_wave1_exhausted() for one offer: the same tests, stopping at the first reachable qualified worker instead of reading the whole candidate list.');
 end;
 $$;
 
@@ -196,9 +196,9 @@ declare
 begin
   select count(*) into v_n from regexp_matches(v_def, v_pat, 'g');
   if v_n <> 1 then
-    raise exception '20261020100200: radar_wave1_exhausted - expected one match of %, found %', v_pat, v_n;
+    raise exception '20261021130200: radar_wave1_exhausted - expected one match of %, found %', v_pat, v_n;
   end if;
-  -- 20261020100200: auto_assign_wave1_reachable() with the series days, as
+  -- 20261021130200: auto_assign_wave1_reachable() with the series days, as
   -- auto_assign_candidates() judged them; it stops at the first reachable
   -- qualified worker.
   v_def := regexp_replace(v_def, v_pat, 'select 1 from auto_assign_wave1_reachable(array[p_shift], true)');
@@ -206,7 +206,7 @@ begin
 
   execute format('comment on function public.radar_wave1_exhausted(uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100200 (ADR-0167) it is auto_assign_wave1_reachable() with the series days, stopping at the first reachable qualified worker.');
+    || ' Since 20261021130200 (ADR-0170) it is auto_assign_wave1_reachable() with the series days, stopping at the first reachable qualified worker.');
 end;
 $$;
 
@@ -232,7 +232,7 @@ begin
     select * from (values
       ('(direct as \(select coalesce\(\(select s\.value = ''true''::jsonb from settings s\s+where s\.key = ''shift_offers_direct_enabled''\), false\) as on_\))',
        $r$\1,
-       -- 20261020100200: the viewer's pool row for every open offer's
+       -- 20261021130200: the viewer's pool row for every open offer's
        -- section, in one pass (auto_assign_worker_gate() read it once per
        -- offer). The offers are narrowed again below.
        mypool as materialized (
@@ -246,7 +246,7 @@ begin
                      and o.offered_by_staff_id <> me.id
                      and (p_offer is null or o.id = p_offer))) a
        ),
-       -- 20261020100200: wave 1's answer for every open pool offer the
+       -- 20261021130200: wave 1's answer for every open pool offer the
        -- viewer is not qualified for, in one call (it was asked per offer).
        w1x as materialized (
          select x.offer_id
@@ -279,7 +279,7 @@ begin
   loop
     select count(*) into v_n from regexp_matches(v_def, p.pattern, 'g');
     if v_n <> 1 then
-      raise exception '20261020100200: staff_open_offers - expected one match of %, found %', p.pattern, v_n;
+      raise exception '20261021130200: staff_open_offers - expected one match of %, found %', p.pattern, v_n;
     end if;
     v_def := regexp_replace(v_def, p.pattern, p.replacement);
   end loop;
@@ -288,6 +288,6 @@ begin
 
   execute format('comment on function public.staff_open_offers(uuid) is %L',
     coalesce(v_cmt, '')
-    || ' Since 20261020100200 (ADR-0167) the viewer''s gate on every open offer comes from one auto_assign_worker_pool() read and the wave-1 answers from one offers_wave1_exhausted() call.');
+    || ' Since 20261021130200 (ADR-0170) the viewer''s gate on every open offer comes from one auto_assign_worker_pool() read and the wave-1 answers from one offers_wave1_exhausted() call.');
 end;
 $$;

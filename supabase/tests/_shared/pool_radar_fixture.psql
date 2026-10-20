@@ -10,7 +10,7 @@
 -- tables: t854_sec (the sections), t854_staff (the workers asked about one
 -- at a time) and t854_users (the staff users Radar is read as).
 --
--- Moved out of 859 unchanged (20261020100000) so 880 compares the next
+-- Moved out of 859 unchanged (20261021130000) so 880 compares the next
 -- bodies over the same rows. The .psql extension keeps pg_prove from
 -- running it as a test.
 -- =====================================================================
