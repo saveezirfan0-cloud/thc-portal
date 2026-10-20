@@ -153,6 +153,27 @@ export function pushLink(entry: Template, values: Record<string, string>): strin
 }
 
 /**
+ * The row's payload as render() values. `payload` is jsonb, so a sender's
+ * `jsonb_build_object('attempts', v_attempts)` arrives as a NUMBER, and
+ * render()'s `String.prototype.replace` callback throws a TypeError on one
+ * (`value.replace is not a function` further down the HTML layout). That
+ * throw is not an UnsendableRow, so the drain retried the row to its
+ * ceiling and the email never went: CR3 ("Client quiz not passed") was
+ * lost this way. Numbers and booleans are written as text, as
+ * documentMessageFor() already does; null and nested values are left out,
+ * so their placeholder stays visible rather than reading "null".
+ */
+export function payloadValues(payload: unknown): Record<string, string> {
+  const values: Record<string, string> = {};
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return values;
+  for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+    if (typeof value === 'string') values[key] = value;
+    else if (typeof value === 'number' || typeof value === 'boolean') values[key] = String(value);
+  }
+  return values;
+}
+
+/**
  * What to send for a row, or a throw saying why it can never be sent.
  *
  * Everything this rejects is a fault in the row rather than in the network,
@@ -171,7 +192,7 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
   // worked out now, as the email goes, so a row queued yesterday counts
   // today. It is ours, never the row's: a payload cannot set it.
   let values: Record<string, string> = {
-    ...(row.payload ?? {}),
+    ...payloadValues(row.payload),
     ...axlr8Values(options.now ?? new Date()),
   };
 

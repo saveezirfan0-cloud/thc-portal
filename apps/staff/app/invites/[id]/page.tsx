@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
@@ -19,6 +19,7 @@ import {
 } from '../../data';
 import { AcceptNeedsQuiz, QuizBeforeAcceptNote } from '../../_components/ShiftRequirements';
 import { getTimeFormat } from '../../_lib/timeFormat';
+import { staleInviteTarget } from '../stale';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </StaffShell>
     );
   }
-  if (!invite || invite.status !== 'invited') notFound();
+  if (!invite) notFound();
+  // A stale N5 for an invitation since accepted, or whose event was
+  // cancelled, opens the booking's own screen rather than a 404.
+  const moved = staleInviteTarget(invite);
+  if (moved) redirect(moved);
+  if (invite.status !== 'invited') notFound();
 
   const hours = sectionHours({ startsAt: invite.startsAt, endsAt: invite.endsAt });
   const limit = invite.hoursLimit

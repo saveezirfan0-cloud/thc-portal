@@ -27,6 +27,9 @@ vi.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');
   },
+  redirect: (to: string) => {
+    throw new Error(`NEXT_REDIRECT ${to}`);
+  },
 }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('../actions', () => ({
@@ -494,9 +497,15 @@ describe('/invites/:id', () => {
     expect(disabledButton(html, 'Limit Reached')).toBe(true);
   });
 
-  it('a booking that is not an invitation is a 404 here', async () => {
-    await expect(InvitePage({ params: Promise.resolve({ id: 'held-awards' }) })).rejects.toThrow(
+  it('a booking that is no longer an invitation is a 404 here', async () => {
+    await expect(InvitePage({ params: Promise.resolve({ id: 'applied-1' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',
+    );
+  });
+
+  it('a stale N5 for an invitation since accepted opens the shift, not a 404', async () => {
+    await expect(InvitePage({ params: Promise.resolve({ id: 'held-awards' }) })).rejects.toThrow(
+      'NEXT_REDIRECT /shifts/held-awards',
     );
   });
 });

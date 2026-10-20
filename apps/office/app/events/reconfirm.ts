@@ -5,6 +5,7 @@ import {
   reconfirmMovesTime,
   reconfirmReason,
   reconfirmingChanges,
+  ukDayLabel,
   ukRoleWindow,
 } from '@thc/domain';
 import { TEMPLATES, outboxKey } from '@thc/notifications';
@@ -86,8 +87,11 @@ export function planReconfirmations(
       startsAt,
       endsAt,
       // Notification copy (N11, §8): 24-hour for every recipient, whatever the
-      // manager who saved the change reads (ADR-0085).
-      window: `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)} (UK)`,
+      // manager who saved the change reads (ADR-0085). §8 fires N11 on a
+      // time OR DATE change; when the date moved the new day leads, or a
+      // date-only move would read "now 17:00 – 23:30 (UK)" — the hours the
+      // worker already had — and say nothing of the day that changed.
+      window: `${changed.dateChanged ? `${ukDayLabel(startsAt)} ` : ''}${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)} (UK)`,
     });
   }
   return out;

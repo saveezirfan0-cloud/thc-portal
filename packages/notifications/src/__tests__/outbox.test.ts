@@ -578,3 +578,74 @@ describe('onboarding chasers (ADR-0071)', () => {
     ).toThrow(/needs a variant/);
   });
 });
+
+describe('N12 — one notification per cancelled event on the phone', () => {
+  // cancel_event() queues one row per booking (queue_booking_push, with
+  // eventId in the payload); a worker on two role sections of the event
+  // gets two rows, which must collapse into one notification.
+  const n12 = (bookingId: string, eventId: string) =>
+    messageFor(
+      push({ key: `N12:booking:${bookingId}`, payload: { bookingId, eventId, event: 'Gala' } }),
+    );
+
+  it('tags N12 by event, so two bookings on one event are one notification', () => {
+    const morning = n12('b-am', 'ev-1');
+    const evening = n12('b-pm', 'ev-1');
+    if (morning.kind !== 'push' || evening.kind !== 'push') throw new Error('expected pushes');
+    expect(morning.tag).toBe('N12:ev-1');
+    expect(evening.tag).toBe(morning.tag);
+    expect(morning.url).toBe('/shifts/b-am');
+  });
+
+  it('keeps two cancelled events apart', () => {
+    const a = n12('b-1', 'ev-1');
+    const b = n12('b-2', 'ev-2');
+    if (a.kind !== 'push' || b.kind !== 'push') throw new Error('expected pushes');
+    expect(a.tag).not.toBe(b.tag);
+  });
+});
+
+describe('payload values that are not text (jsonb numbers and booleans)', () => {
+  // submit_client_quiz_attempt() writes `'attempts', v_attempts` — a jsonb
+  // number. render() threw a TypeError on it, which is not an UnsendableRow,
+  // so the drain retried CR3 to its ceiling and the office was never told.
+  const cr3 = email({
+    key: 'CR3:quiz:q-1:s-1:a-3',
+    template: 'CR3',
+    recipient_emails: ['admin@thehospitalitycompany.co.uk'],
+    payload: {
+      name: 'Staff Alpha',
+      employeeId: '90001',
+      quiz: 'Bar menu',
+      client: 'Leonardo Royal',
+      roles: 'Bar Staff',
+      best: '6 of 10',
+      attempts: 3,
+    } as unknown as Record<string, string>,
+  });
+
+  it('renders CR3 with a numeric attempts count', () => {
+    const msg = messageFor(cr3);
+    if (msg.kind !== 'email') throw new Error('expected an email');
+    expect(msg.subject).toBe('Client quiz not passed — Staff Alpha, Employee ID 90001');
+    expect(msg.body).toContain('has used all 3 attempts at "Bar menu" for Leonardo Royal');
+    expect(msg.html).toContain('3 attempts');
+    expect(msg.body).not.toMatch(/\{\w+\}/);
+  });
+
+  it('leaves a null or nested value unfilled rather than writing "null"', () => {
+    const msg = messageFor(
+      push({
+        template: 'N9b',
+        key: 'N9b:booking:b-1',
+        payload: { event: null, bookingId: 'b-1', extra: { a: 1 } } as unknown as Record<
+          string,
+          string
+        >,
+      }),
+    );
+    if (msg.kind !== 'push') throw new Error('expected a push');
+    expect(msg.body).toContain('{event}');
+    expect(msg.url).toBe('/shifts/b-1');
+  });
+});

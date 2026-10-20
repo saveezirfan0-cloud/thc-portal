@@ -363,6 +363,11 @@ export const TEMPLATES = {
     // As N10b: the booking's own screen shows "This event has been
     // cancelled"; the /shifts list no longer carries the booking.
     deepLink: '/shifts/{bookingId}',
+    // One notification per event on the phone: cancel_event() queues one
+    // row per booking, and a worker booked on two of the event's role
+    // sections (morning and evening) would otherwise get "This event has
+    // been cancelled" twice. Both land on the same static screen.
+    tag: 'N12:{eventId}',
   },
 
   // Compliance outcomes.
