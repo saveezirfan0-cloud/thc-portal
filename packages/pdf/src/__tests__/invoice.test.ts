@@ -151,8 +151,10 @@ describe('rendered invoice (ADR-0176)', () => {
     if (process.env.INVOICE_PREVIEW) writeFileSync(process.env.INVOICE_PREVIEW, pdf);
   });
 
-  it('flows a long invoice over more pages', async () => {
-    const many = Array.from({ length: 80 }, (_, i) => ({ ...LINES[i % LINES.length]! }));
+  // 50 lines is more than one A4 page holds. A full render takes a few
+  // seconds on a CI runner, so this one test is given 20 s, not vitest's 5.
+  it('flows a long invoice over more pages', { timeout: 20_000 }, async () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({ ...LINES[i % LINES.length]! }));
     const pdf = await renderInvoicePdf({ ...EXAMPLE, lines: many });
     expect(countPdfPages(pdf)).toBeGreaterThan(1);
   });
