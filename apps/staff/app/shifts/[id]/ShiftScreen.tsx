@@ -6,14 +6,15 @@ import {
   UK_ZONE,
   canCancelShift,
   effectiveStart,
+  formatDateIn,
   formatTimeIn,
   needsDualZone,
-  viewerZone,
 } from '@thc/domain';
 import { CHECK_IN_FIX, TRACKING_FIX, getFix, watchFix } from '../../../lib/geo';
 import type { Fix, FixFailure, FixOptions } from '../../../lib/geo';
 import { CancelShift } from '../../_components/CancelShift';
 import { UkTime } from '../../_components/UkTime';
+import { useViewerZone } from '../../_components/useViewerZone';
 import { isStaleDeploy, reloadForNewBuild } from '../../_lib/stale-deploy';
 import { checkIn, checkOut, finishBreak, recordPing, startBreak } from './actions';
 import type { RpcResult } from './actions';
@@ -142,7 +143,10 @@ export function ShiftScreen({
   // §10.4's dead ends and the §3.2 turn-away have no map and nothing to
   // press, so they do not ask for the worker's location either.
   const dead = isEndScreen(phase) || turnedAway !== null;
-  const zone = viewerZone();
+  // The browser's zone after mount, UK on the server's paint: read during
+  // render, the server's own zone (UTC on Vercel) drew a "your time" line
+  // a UK phone then took away — a hydration mismatch (React #418).
+  const zone = useViewerZone();
   // ADR-0085: written on the worker's own clock; which instant is unchanged.
   const format = useTimeFormat();
   const local = (iso: string) => formatTimeIn(new Date(iso), zone, format);
@@ -367,6 +371,7 @@ export function ShiftScreen({
     <HeadRow
       phase={phase}
       today={today}
+      started={started}
       venueName={shift.venueName}
       startsAt={shift.startsAt}
       endsAt={shift.endsAt}
@@ -669,6 +674,7 @@ export function ShiftScreen({
 function HeadRow({
   phase,
   today,
+  started,
   venueName,
   startsAt,
   endsAt,
@@ -678,6 +684,8 @@ function HeadRow({
 }: {
   phase: ShiftPhase;
   today: boolean;
+  /** The role window has begun: no longer "Upcoming" (a past or overnight shift). */
+  started: boolean;
   venueName: string;
   startsAt: string;
   endsAt: string;
@@ -705,7 +713,11 @@ function HeadRow({
   return (
     <>
       <div className="row" style={{ gap: 'var(--sp-8)' }}>
-        <Pill tone="cyan">{today ? 'Today' : 'Upcoming'}</Pill>
+        {today ? (
+          <Pill tone="cyan">Today</Pill>
+        ) : started ? null : (
+          <Pill tone="cyan">Upcoming</Pill>
+        )}
         {state}
         {today ? null : <Pill>{venueName}</Pill>}
         <span className="ml-auto mono sm">
@@ -824,14 +836,13 @@ function sameUkDay(iso: string, now: Date): boolean {
   return fmt(new Date(iso)) === fmt(now);
 }
 
-/** "Tue 23 Sep", the UK calendar day. */
+/**
+ * "Tue 23 Sep", the UK calendar day. Built by `formatDateIn`, not
+ * `toLocaleDateString`: Node's ICU writes "Fri 23 Oct" and Chrome's
+ * "Fri, 23 Oct", so the server's paint never matched the phone's (React #418).
+ */
 function ukDay(at: Date): string {
-  return at.toLocaleDateString('en-GB', {
-    timeZone: UK_ZONE,
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+  return formatDateIn(at, UK_ZONE, { weekday: 'short' });
 }
 
 /**

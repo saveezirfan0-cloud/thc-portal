@@ -27,6 +27,14 @@ export const NO_ANSWER: Refusal = {
  * shift has been taken", "You're already booked for an overlapping shift",
  * "Sorry, this shift is now full". Every one of them is a race the worker
  * lost between the screen loading and the tap, and each has its own words.
+ *
+ * A press that comes back with something to say — a refusal, or a note like
+ * "1 overlapping invitation was withdrawn" — is NOT revalidated by its
+ * server action (`../actions`): the refreshed list would no longer hold the
+ * card this button sits in (a taken invitation is closed, a full shift
+ * leaves Radar, an accepted one leaves Invites), and the dialog would vanish
+ * with it before the worker read it. The screen is refreshed here instead,
+ * when the dialog is dismissed.
  */
 export function ActionButton({
   label,
@@ -83,6 +91,17 @@ export function ActionButton({
     });
   }
 
+  // Read, so now the screen may change under it (see the header).
+  function dismissRefusal() {
+    setRefusal(null);
+    router.refresh();
+  }
+  function dismissNote() {
+    setNote(null);
+    if (onDone) router.replace(onDone);
+    else router.refresh();
+  }
+
   if (disabled) {
     return (
       <Button block={block} {...(size ? { size } : {})} disabled>
@@ -130,10 +149,10 @@ export function ActionButton({
       <Modal
         open={refusal !== null}
         title={refusal?.title ?? ''}
-        onClose={() => setRefusal(null)}
+        onClose={dismissRefusal}
         footer={
           <>
-            <Button onClick={() => setRefusal(null)}>OK</Button>
+            <Button onClick={dismissRefusal}>OK</Button>
             {refusal?.action ? (
               <Link className="btn primary solid" href={refusal.action.href}>
                 {refusal.action.label}
@@ -148,8 +167,8 @@ export function ActionButton({
       <Modal
         open={note !== null}
         title="Booked"
-        onClose={() => setNote(null)}
-        footer={<Button onClick={() => setNote(null)}>OK</Button>}
+        onClose={dismissNote}
+        footer={<Button onClick={dismissNote}>OK</Button>}
       >
         <Alert tone="cyan">{note}</Alert>
       </Modal>

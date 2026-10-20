@@ -1,9 +1,11 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import {
+  UK_ZONE,
   explainLimit,
   formatAllocationPair,
+  formatDateIn,
   formatDistance,
   formatHours,
   openSlots,
@@ -54,7 +56,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </StaffShell>
     );
   }
-  if (!shift) notFound();
+  // No longer open to this worker — filled, started, or the wave moved
+  // (RULE-17). Back to Radar rather than a 404: this is also the page that
+  // re-renders when "Sorry, this shift is now full" is dismissed.
+  if (!shift) redirect('/radar');
 
   const hours = sectionHours({ startsAt: shift.startsAt, endsAt: shift.endsAt });
   const open = openSlots({
@@ -75,7 +80,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="card-head">
         {shift.qualified ? <Pill tone="purple">Worked here before</Pill> : null}
         <span className="km">{formatDistance(shift.distanceKm)}</span>
-        <span className="right mono sm muted">{shift.eventDate}</span>
+        {/* "Fri 23 Oct" (wireframes/staff/*.html), the UK day the role starts
+            (RULE-18) — not the ISO date. */}
+        <span className="right mono sm muted">
+          {formatDateIn(shift.startsAt, UK_ZONE, { weekday: 'short' })}
+        </span>
       </div>
 
       <div className="card-head">

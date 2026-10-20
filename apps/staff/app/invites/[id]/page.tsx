@@ -1,7 +1,15 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
-import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
+import {
+  UK_ZONE,
+  explainLimit,
+  formatDateIn,
+  formatDistance,
+  formatHours,
+  readyDeadlinePassed,
+  sectionHours,
+} from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
 import { preloadShell } from '../../_components/preloadShell';
 import { ShiftTime } from '../../_components/ShiftTime';
@@ -46,7 +54,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </StaffShell>
     );
   }
-  if (!invite || invite.status !== 'invited') notFound();
+  if (!invite) notFound();
+  // Answered, taken or gone stale (RULE-16): not a dead end. This is also
+  // the page Accept and Decline re-render the moment they succeed — a 404
+  // was the answer to "Accept shift" until 19.10.2026. An accepted one is a
+  // shift now; anything else goes back to the list.
+  if (invite.status === 'confirmed' || invite.status === 'worked') {
+    redirect(`/shifts/${invite.bookingId}`);
+  }
+  if (!openInvites([invite]).length) redirect('/invites');
 
   const hours = sectionHours({ startsAt: invite.startsAt, endsAt: invite.endsAt });
   const limit = invite.hoursLimit
@@ -74,7 +90,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <Pill tone="cyan">Invited</Pill>
         {invite.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
         <Pill>{invite.venueName}</Pill>
-        <span className="right mono sm muted">{invite.eventDate}</span>
+        {/* "Fri 23 Oct" (wireframes/staff/*.html), the UK day the role starts
+            (RULE-18) — not the ISO date. */}
+        <span className="right mono sm muted">
+          {formatDateIn(invite.startsAt, UK_ZONE, { weekday: 'short' })}
+        </span>
       </div>
 
       <div className="card-head">
@@ -135,8 +155,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </Alert>
       ) : (
         <Alert tone="cyan">
-          Invitations don’t expire — but the slot goes to the first person who confirms. If you
-          accept, you’ll be asked to press “I’m ready” by 12:00 the day before.
+          Invitations don’t expire — but the slot goes to the first person who confirms.
+          {/* §3.5: only a booking made before the 12:00 deadline is asked
+              (readyCutoffApplies); a same-day or late accept never is. */}
+          {readyDeadlinePassed(invite.startsAt)
+            ? null
+            : ' If you accept, you’ll be asked to press “I’m ready” by 12:00 the day before.'}
         </Alert>
       )}
 

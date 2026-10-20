@@ -27,6 +27,9 @@ vi.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');
   },
+  redirect: (to: string) => {
+    throw new Error(`NEXT_REDIRECT ${to}`);
+  },
 }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('../actions', () => ({
@@ -494,8 +497,46 @@ describe('/invites/:id', () => {
     expect(disabledButton(html, 'Limit Reached')).toBe(true);
   });
 
-  it('a booking that is not an invitation is a 404 here', async () => {
+  // Accept and Decline re-render this very page when they succeed: an
+  // accepted invitation goes to its shift, an answered or stale one back to
+  // the list. A 404 is for a booking the worker does not have at all.
+  it('an accepted invitation goes to its shift, not a 404', async () => {
     await expect(InvitePage({ params: Promise.resolve({ id: 'held-awards' }) })).rejects.toThrow(
+      'NEXT_REDIRECT /shifts/held-awards',
+    );
+  });
+
+  it('a declined, ended or cancelled-event invitation goes back to the list', async () => {
+    for (const id of ['applied-1', 'inv-ended', 'inv-cancelled']) {
+      await expect(InvitePage({ params: Promise.resolve({ id }) })).rejects.toThrow(
+        'NEXT_REDIRECT /invites',
+      );
+    }
+  });
+
+  it('the head names the UK day as the wireframes do, never an ISO date', async () => {
+    const day = /class="right mono sm muted">(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2}</;
+    const invite = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(invite).toMatch(day);
+    expect(invite).not.toContain('>2026-09-19<');
+    const radar = await render(RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) }));
+    expect(radar).toMatch(day);
+    expect(radar).not.toMatch(/>\d{4}-\d{2}-\d{2}</);
+  });
+
+  it('mentions "I’m ready" only where the 12:00 deadline is still ahead (§3.5)', async () => {
+    const ahead = await render(InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) }));
+    expect(ahead).toContain('press “I’m ready” by 12:00 the day before');
+    bookings.mockResolvedValue([
+      booking({ bookingId: 'tonight', startsAt: hours(2), endsAt: hours(6) }),
+    ]);
+    const tonight = await render(InvitePage({ params: Promise.resolve({ id: 'tonight' }) }));
+    expect(tonight).toContain('the slot goes to the first person who confirms.');
+    expect(tonight).not.toContain('I’m ready');
+  });
+
+  it('a booking the worker does not have is a 404', async () => {
+    await expect(InvitePage({ params: Promise.resolve({ id: 'nobody' }) })).rejects.toThrow(
       'NEXT_NOT_FOUND',
     );
   });
@@ -548,6 +589,12 @@ describe('/radar (§10.4, radar.html)', () => {
 });
 
 describe('/radar/:id', () => {
+  it('a shift no longer open to the worker goes back to Radar, not a 404', async () => {
+    await expect(RadarDetailPage({ params: Promise.resolve({ id: 's-gone' }) })).rejects.toThrow(
+      'NEXT_REDIRECT /radar',
+    );
+  });
+
   it('an allowed shift gets the map and the week meter with the shift added, in green', async () => {
     const html = await render(RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) }));
     expect(html).toContain('class="map radar-map"');

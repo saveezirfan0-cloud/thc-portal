@@ -27,6 +27,7 @@ import {
   formatTimeIn,
   marginPerHourPence,
   rankCandidateRows,
+  readyCutoffApplies,
   roundMayInvite,
   showsUnderUnavailable,
 } from '@thc/domain';
@@ -1177,3 +1178,23 @@ export function createWithdrawGuard(now: () => number = Date.now) {
 }
 
 export const withdrawGuard = createWithdrawGuard();
+
+/**
+ * §3.5 stage 2 on a confirmed row: "I'm ready ✓ 09:40", or not yet. A worker
+ * booked after the 12:00 deadline the day before (a same-day fill, RULE-08)
+ * is never asked and never released (`readyCutoffApplies`), so for them
+ * "not yet" would read as someone at risk of the 12:05 release.
+ */
+export function readyLine(
+  dayBeforeConfirmedAt: string | null,
+  confirmedAt: string | null,
+  startsAt: Date,
+  format?: TimeFormat,
+): string {
+  if (dayBeforeConfirmedAt) {
+    return `I'm ready ✓ ${formatTimeIn(new Date(dayBeforeConfirmedAt), UK_ZONE, format)}`;
+  }
+  return readyCutoffApplies(confirmedAt ? new Date(confirmedAt) : null, startsAt)
+    ? "I'm ready — not yet"
+    : "I'm ready — not asked (booked after the 12:00 deadline)";
+}

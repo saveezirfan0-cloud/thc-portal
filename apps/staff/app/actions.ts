@@ -51,6 +51,15 @@ function refresh() {
   revalidatePath('/radar');
 }
 
+/*
+ * Revalidate on a clean success only. A refusal, or a success with a note,
+ * is answered with a dialog in ActionButton, and revalidating here would
+ * re-render the list without the card that dialog lives in — the "Sorry,
+ * this shift has been taken" popup (RULE-03) disappeared the instant it
+ * opened, because the taken invitation had just been closed. ActionButton
+ * refreshes the screen when the dialog is dismissed.
+ */
+
 type Rpc = Record<string, unknown> | null;
 
 /**
@@ -79,8 +88,8 @@ export async function acceptInvite(bookingId: string): Promise<ActionResult> {
   }
   const result = data as Rpc;
   if (result?.['ok'] === true) {
-    refresh();
     const withdrawn = Number(result['withdrawn'] ?? 0);
+    if (withdrawn === 0) refresh();
     return {
       ok: true,
       // §3.4: accepting auto-withdraws every other open invitation whose
@@ -94,7 +103,6 @@ export async function acceptInvite(bookingId: string): Promise<ActionResult> {
     };
   }
   const reason = String(result?.['reason'] ?? '');
-  refresh();
   const copy = ACCEPT_REFUSAL_COPY[reason as AcceptRefusal];
   if (copy && reason === 'quiz_required') return { refusal: quizRefusal(copy, result) };
   return { refusal: copy ?? UNKNOWN };
@@ -106,8 +114,9 @@ export async function declineInvite(bookingId: string): Promise<ActionResult> {
   const supabase = await db();
   const { data, error } = await supabase.rpc('decline_invite', { p_booking: bookingId });
   if (error) return { refusal: UNKNOWN };
+  if ((data as Rpc)?.['ok'] !== true) return { refusal: UNKNOWN };
   refresh();
-  return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
+  return { ok: true };
 }
 
 /** Stage 2 (§3.5): "I'm ready for tomorrow", by 12:00 UK. The hard one. */
@@ -116,7 +125,10 @@ export async function markReady(bookingId: string): Promise<ActionResult> {
   const supabase = await db();
   const { data, error } = await supabase.rpc('mark_ready', { p_booking: bookingId });
   if (error) return { refusal: UNKNOWN };
-  refresh();
+  if ((data as Rpc)?.['ok'] === true) {
+    refresh();
+    return { ok: true };
+  }
   if ((data as Rpc)?.['reason'] === 'deadline_passed')
     return {
       refusal: {
@@ -124,14 +136,12 @@ export async function markReady(bookingId: string): Promise<ActionResult> {
         body: '“I’m ready” closes at 12:00 (UK time) the day before the shift. Check your notifications, or contact the office.',
       },
     };
-  return (data as Rpc)?.['ok'] === true
-    ? { ok: true }
-    : {
-        refusal: {
-          title: 'This shift is no longer yours to confirm',
-          body: 'It may have been released at the 12:00 deadline, or withdrawn by the office. Check your notifications.',
-        },
-      };
+  return {
+    refusal: {
+      title: 'This shift is no longer yours to confirm',
+      body: 'It may have been released at the 12:00 deadline, or withdrawn by the office. Check your notifications.',
+    },
+  };
 }
 
 /** Stage 3 (§3.5): the on-the-day confirmation. A reminder, never a deadline. */
@@ -140,8 +150,9 @@ export async function confirmToday(bookingId: string): Promise<ActionResult> {
   const supabase = await db();
   const { data, error } = await supabase.rpc('confirm_on_day', { p_booking: bookingId });
   if (error) return { refusal: UNKNOWN };
+  if ((data as Rpc)?.['ok'] !== true) return { refusal: UNKNOWN };
   refresh();
-  return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
+  return { ok: true };
 }
 
 /**
@@ -164,8 +175,9 @@ export async function reconfirm(bookingId: string): Promise<ActionResult> {
   const supabase = await db();
   const { data, error } = await supabase.rpc('reconfirm_booking', { p_booking: bookingId });
   if (error) return { refusal: UNKNOWN };
+  if ((data as Rpc)?.['ok'] !== true) return { refusal: UNKNOWN };
   refresh();
-  return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
+  return { ok: true };
 }
 
 /**
@@ -183,7 +195,6 @@ export async function cancelShift(bookingId: string): Promise<ActionResult> {
     refresh();
     return { ok: true };
   }
-  refresh();
   return result?.['reason'] === 'too_late'
     ? {
         refusal: {
@@ -201,8 +212,10 @@ export async function applyForShift(shiftId: string): Promise<ActionResult> {
   const { data, error } = await supabase.rpc('apply_to_shift', { p_shift: shiftId });
   if (error) return { refusal: UNKNOWN };
   const result = data as Rpc;
-  refresh();
-  if (result?.['ok'] === true) return { ok: true };
+  if (result?.['ok'] === true) {
+    refresh();
+    return { ok: true };
+  }
   const reason = String(result?.['reason'] ?? '');
   const copy = APPLY_REFUSAL_COPY[reason as ApplyRefusal];
   if (copy && reason === 'quiz_required') return { refusal: quizRefusal(copy, result) };
@@ -215,8 +228,9 @@ export async function withdrawApplication(bookingId: string): Promise<ActionResu
   const supabase = await db();
   const { data, error } = await supabase.rpc('withdraw_application', { p_booking: bookingId });
   if (error) return { refusal: UNKNOWN };
+  if ((data as Rpc)?.['ok'] !== true) return { refusal: UNKNOWN };
   refresh();
-  return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------
@@ -302,9 +316,9 @@ export async function takeOfferedShift(offerId: string): Promise<ActionResult> {
     }
     return { refusal: UNKNOWN };
   }
-  refresh();
   const result = data as Rpc;
   if (result?.['ok'] === true && typeof result['bookingId'] === 'string') {
+    refresh();
     redirect(`/shifts/${result['bookingId']}`);
   }
   const reason = String(result?.['reason'] ?? '');
