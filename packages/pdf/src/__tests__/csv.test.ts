@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  INVOICE_CSV_COLUMNS,
   NEW_STARTER_CSV_COLUMNS,
   PAYROLL_CSV_COLUMNS,
   financialCsv,
+  invoiceCsv,
   newStarterCsv,
   payrollCsv,
   textCell,
   toCsv,
 } from '../csv';
-import type { NewStarterCsvRow, PayrollCsvRow } from '../csv';
+import type { InvoiceCsvRow, NewStarterCsvRow, PayrollCsvRow } from '../csv';
 
 /**
  * Rows in the shape `payroll_report()` returns them — priced by SQL, which
@@ -276,5 +278,79 @@ describe('CSV hygiene', () => {
       },
     ]);
     expect(lines(csv)[1]).toBe('Mon 03 Mar,Launch,1.00,20.00,2.41,22.41,10.00,-12.41,actual');
+  });
+});
+
+describe('Invoicing CSV (ADR-0172)', () => {
+  // Rows as invoice_export_rows returns them, priced by SQL (pgTAP 902).
+  function line(event: string, staff: string, over: Partial<InvoiceCsvRow> = {}): InvoiceCsvRow {
+    return {
+      event_id: event,
+      event_date: '2024-11-12',
+      event_title: `Gala ${event}`,
+      client_name: 'Leonardo Hotel St Pauls',
+      po_number: 'PO-4471',
+      employee_id: 89901,
+      staff_name: staff,
+      role_name: 'Waiting Staff',
+      starts_at: '2024-11-12T12:00:00Z',
+      ends_at: '2024-11-12T16:00:00Z',
+      check_in_at: '2024-11-12T12:00:00Z',
+      check_out_at: '2024-11-12T16:00:00Z',
+      kind: 'worked',
+      unpaid_break_min: 0,
+      payable_min: 240,
+      charge_rate: '22.97',
+      invoicing: '91.88',
+      ...over,
+    };
+  }
+
+  it('writes the header, then each shift, then a total row per event', () => {
+    const csv = invoiceCsv([
+      line('a', 'Ina Able'),
+      line('a', 'Ivo Baker', { invoicing: 91.88 }),
+      line('b', 'Iris Cole', {
+        event_title: 'Lunch',
+        po_number: null,
+        payable_min: 300,
+        invoicing: '114.85',
+      }),
+    ]);
+    const rows = lines(csv);
+    expect(rows[0]).toBe(INVOICE_CSV_COLUMNS.join(','));
+    expect(rows[1]).toBe(
+      '12/11/2024,Leonardo Hotel St Pauls,Gala a,PO-4471,THC-89901,Ina Able,Waiting Staff,12:00–16:00,12:00,16:00,0:00,4.00,22.97,91.88,',
+    );
+    expect(rows[3]).toBe(
+      '12/11/2024,Leonardo Hotel St Pauls,Gala a — total,PO-4471,,,,,,,,8.00,,,183.76',
+    );
+    expect(rows[5]).toBe('12/11/2024,Leonardo Hotel St Pauls,Lunch — total,,,,,,,,,5.00,,,114.85');
+    expect(rows).toHaveLength(6);
+  });
+
+  it('keeps the total out of the Amount column, so a column sum is right', () => {
+    const rows = lines(invoiceCsv([line('a', 'Ina Able'), line('a', 'Ivo Baker')])).map((r) =>
+      r.split(','),
+    );
+    const amount = INVOICE_CSV_COLUMNS.indexOf('Amount');
+    const sum = rows.slice(1).reduce((total, r) => total + Number(r[amount] || 0), 0);
+    expect(sum.toFixed(2)).toBe('183.76');
+  });
+
+  it('adds the total in pence, so it never drifts', () => {
+    const csv = invoiceCsv([0, 1, 2].map((n) => line('a', `W${n}`, { invoicing: '0.10' })));
+    expect(lines(csv)[4]?.endsWith(',0.30')).toBe(true);
+  });
+
+  it('marks a section cancelled on the day', () => {
+    const csv = invoiceCsv([
+      line('a', 'Ina Able', { kind: 'cancelled_on_day', check_in_at: null, check_out_at: null }),
+    ]);
+    expect(lines(csv)[1]).toContain(',Event cancelled on the day,,');
+  });
+
+  it('is only a header when nothing is ready', () => {
+    expect(lines(invoiceCsv([]))).toHaveLength(1);
   });
 });

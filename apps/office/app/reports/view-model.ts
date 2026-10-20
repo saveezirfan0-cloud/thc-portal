@@ -10,7 +10,7 @@
 
 import { type TimeFormat, UK_ZONE, clockLabel } from '@thc/domain';
 
-export type ReportTab = 'financial' | 'payroll' | 'newstarter';
+export type ReportTab = 'financial' | 'payroll' | 'newstarter' | 'invoicing';
 export type FinanceBy = 'day' | 'client' | 'role';
 
 export interface ReportView {
@@ -81,11 +81,15 @@ const MAX_RANGE_DAYS = 366;
 export function parseReportView(params: Params, today: string): ReportView {
   const tabParam = first(params.tab);
   const tab: ReportTab =
-    tabParam === 'payroll' || tabParam === 'newstarter' ? tabParam : 'financial';
+    tabParam === 'payroll' || tabParam === 'newstarter' || tabParam === 'invoicing'
+      ? tabParam
+      : 'financial';
   const byParam = first(params.by);
   const by: FinanceBy = byParam === 'client' || byParam === 'role' ? byParam : 'day';
 
-  const fallback = tab === 'payroll' ? lastWeek(today) : thisWeek(today);
+  // Payroll and invoicing both look back: last week is exported Monday and
+  // invoiced by Tuesday evening (§9.9, 28.07.2026).
+  const fallback = tab === 'payroll' || tab === 'invoicing' ? lastWeek(today) : thisWeek(today);
   let from = isoDate(first(params.from)) ?? fallback.from;
   let to = isoDate(first(params.to)) ?? fallback.to;
   if (from > to) [from, to] = [to, from];
@@ -132,6 +136,64 @@ export function showForecastLabel(from: string, to: string, today: string): bool
   const previous = addDays(current, -7);
   const mondayOrTuesday = weekdayIndex(today) <= 1;
   return mondayOrTuesday && to >= previous && from <= addDays(previous, 6);
+}
+
+// ---------------------------------------------------------------------------
+// Ready to invoice (ADR-0172)
+// ---------------------------------------------------------------------------
+
+/**
+ * `invoice_events`' ladder, in its order: the first step an event fails is
+ * its status (20261021150000).
+ */
+export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready';
+
+export const INVOICE_STATUS_LABEL: Readonly<Record<InvoiceStatus, string>> = {
+  open: 'Check-out open',
+  missing: 'Missing check-out',
+  review: 'Needs review',
+  ready: 'Ready to invoice',
+};
+
+/** Green only when it may be invoiced; coral when a manager must act first. */
+export const INVOICE_STATUS_TONE: Readonly<
+  Record<InvoiceStatus, 'neutral' | 'amber' | 'coral' | 'green'>
+> = {
+  open: 'neutral',
+  missing: 'coral',
+  review: 'amber',
+  ready: 'green',
+};
+
+/** What the manager does next, one line per status. */
+export const INVOICE_STATUS_HINT: Readonly<Record<InvoiceStatus, string>> = {
+  open: 'Workers can still check out until 4 hours after the last shift ends.',
+  missing:
+    'A worker’s hours are not settled: resolve their No check-out on the Check-in screen with the actual finish time, or correct their check-in/out.',
+  review: 'Review the violations and the lines below, then mark the event reviewed for invoicing.',
+  ready: 'Signed off. The lines are in the invoicing CSV.',
+};
+
+export function invoiceStatus(value: string): InvoiceStatus {
+  return value === 'open' || value === 'missing' || value === 'review' || value === 'ready'
+    ? value
+    : 'review';
+}
+
+/** `/reports/invoicing/:eventId`. */
+export function invoiceEventHref(eventId: string): string {
+  return `/reports/invoicing/${encodeURIComponent(eventId)}`;
+}
+
+/** The CSV of one ready event. */
+export function invoiceEventExportHref(eventId: string, eventDate: string): string {
+  const q = new URLSearchParams({
+    report: 'invoicing',
+    from: eventDate,
+    to: eventDate,
+    event: eventId,
+  });
+  return `/reports/export?${q.toString()}`;
 }
 
 // ---------------------------------------------------------------------------

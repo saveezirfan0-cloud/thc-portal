@@ -7,6 +7,7 @@ import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { FinancialTab } from './_components/FinancialTab';
+import { InvoicingTab } from './_components/InvoicingTab';
 import { NewStarterTab } from './_components/NewStarterTab';
 import { PayrollTab } from './_components/PayrollTab';
 import { ViewerZone } from './_components/zone';
@@ -24,6 +25,8 @@ const TABS: { tab: ReportTab; label: string }[] = [
   { tab: 'financial', label: 'Financial report' },
   { tab: 'payroll', label: 'Payroll report' },
   { tab: 'newstarter', label: 'New Starter (HMRC)' },
+  // ADR-0172: not in §9.9 — which events are safe to invoice.
+  { tab: 'invoicing', label: 'Invoicing' },
 ];
 
 /**
@@ -61,7 +64,7 @@ export default async function Page({
       title="Reports"
       crumbs={
         <>
-          three tabs · automatic send-out every <b>Monday {clockLabel('09:00', format)}</b> to
+          four tabs · automatic send-out every <b>Monday {clockLabel('09:00', format)}</b> to
           thc_payroll@topsourceworldwide.com + gisela@thehospitalitycompany.co.uk
         </>
       }
@@ -95,6 +98,9 @@ export default async function Page({
             today={today}
             format={format}
           />
+        ) : null}
+        {view.tab === 'invoicing' ? (
+          <InvoicingTab view={view} events={data.invoices} today={today} />
         ) : null}
         {view.tab === 'newstarter' ? (
           <NewStarterTab view={view} starters={data.starters} sends={data.sends} format={format} />

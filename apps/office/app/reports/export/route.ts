@@ -1,7 +1,8 @@
-import { financialCsv, newStarterCsv, payrollCsv } from '@thc/pdf/csv';
+import { financialCsv, invoiceCsv, newStarterCsv, payrollCsv } from '@thc/pdf/csv';
 import {
   EXPORT_ROW_CEILING,
   readFinance,
+  readInvoiceExportRows,
   readNewStarters,
   readPayrollLines,
   reportsDb,
@@ -23,6 +24,8 @@ import { newStarterPeriod, parseReportView, todayInUk } from '../view-model';
  * anybody else, and that becomes a 403 here.
  */
 export const dynamic = 'force-dynamic';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request) {
   if (!supabaseConfigured()) {
@@ -60,6 +63,18 @@ export async function GET(request: Request) {
     if (result.data) csv = newStarterCsv(result.data);
     const period = newStarterPeriod(view.date);
     name = `THC new starters (HMRC) ${period.from} to ${period.to}.csv`;
+  } else if (report === 'invoicing') {
+    // ADR-0172: READY events only — the database leaves out every event that
+    // is still open, missing a check-out or awaiting the manager's sign-off.
+    const event = url.searchParams.get('event');
+    if (event !== null && !UUID.test(event)) return new Response('Unknown event.', { status: 400 });
+    const result = await readInvoiceExportRows(db, view.from, view.to, event);
+    error = result.error;
+    if (result.data) csv = invoiceCsv(result.data);
+    // ASCII only: a header value cannot carry a client's accented name.
+    name = event
+      ? `THC invoice lines ${view.from} event ${event.slice(0, 8)}.csv`
+      : `THC invoice lines ${view.from} to ${view.to}.csv`;
   } else if (report === 'financial') {
     const result = await readFinance(db, view.from, view.to, view.by, EXPORT_ROW_CEILING);
     error = result.error;

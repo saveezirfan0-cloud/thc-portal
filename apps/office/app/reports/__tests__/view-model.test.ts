@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  INVOICE_STATUS_LABEL,
+  INVOICE_STATUS_TONE,
   exportHref,
   formatUkStamp,
+  invoiceEventExportHref,
+  invoiceEventHref,
+  invoiceStatus,
   lastWeek,
   maskBank,
   maskNi,
@@ -162,5 +167,42 @@ describe('figures', () => {
     expect(periodLabel('2026-09-08', '2026-09-14')).toBe('Tue 8 – Mon 14 Sep');
     expect(periodLabel('2026-09-07', '2026-09-13')).toBe('Mon 7 – Sun 13 Sep');
     expect(periodLabel('2026-09-28', '2026-10-04')).toBe('Mon 28 Sep – Sun 4 Oct');
+  });
+});
+
+describe('ready to invoice (ADR-0172)', () => {
+  it('the Invoicing tab opens on last week, the week invoiced by Tuesday evening', () => {
+    expect(parseReportView({ tab: 'invoicing' }, ANCHOR)).toMatchObject({
+      tab: 'invoicing',
+      from: '2026-09-07',
+      to: '2026-09-13',
+    });
+  });
+
+  it('keeps its range in the URL and exports the ready CSV for it', () => {
+    const view = parseReportView({ tab: 'invoicing' }, ANCHOR);
+    expect(reportHref(view)).toBe('/reports?tab=invoicing&from=2026-09-07&to=2026-09-13');
+    expect(exportHref(view)).toBe('/reports/export?report=invoicing&from=2026-09-07&to=2026-09-13');
+  });
+
+  it('links to one event and its own CSV', () => {
+    const id = '0a0a0a0a-0000-4000-8000-000000000001';
+    expect(invoiceEventHref(id)).toBe(`/reports/invoicing/${id}`);
+    expect(invoiceEventExportHref(id, '2026-09-08')).toBe(
+      `/reports/export?report=invoicing&from=2026-09-08&to=2026-09-08&event=${id}`,
+    );
+  });
+
+  it('reads the database status and is green only when ready', () => {
+    expect(invoiceStatus('ready')).toBe('ready');
+    expect(invoiceStatus('missing')).toBe('missing');
+    // Never shown as ready on a value it does not know.
+    expect(invoiceStatus('something new')).toBe('review');
+    expect(INVOICE_STATUS_LABEL.ready).toBe('Ready to invoice');
+    expect(
+      Object.entries(INVOICE_STATUS_TONE)
+        .filter(([, tone]) => tone === 'green')
+        .map(([s]) => s),
+    ).toEqual(['ready']);
   });
 });
