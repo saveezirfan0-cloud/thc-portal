@@ -28,7 +28,7 @@ import { RangeForm } from './RangeForm';
 /**
  * Tab 4 · Invoicing (ADR-0172, ADR-0176) — not in §9.9. Since ADR-0176 the
  * system issues the invoices itself: one per PO, emailed at 10:00 UK the
- * morning after the last event on it, with the completed timesheets.
+ * morning after the last event on it, with the sign-in and sign-out log.
  *
  * One row per event dated in the range. The status is the database's
  * (`invoice_events`): Check-out open → Missing check-out → Needs review
@@ -82,7 +82,7 @@ export function InvoicingTab({
           label="Invoiced"
           tone="ok"
           value={poundsWhole(sumInvoiced(invoiced))}
-          description={`${invoiced.length} ${invoiced.length === 1 ? 'event' : 'events'} · final; emailed with the timesheet`}
+          description={`${invoiced.length} ${invoiced.length === 1 ? 'event' : 'events'} · final; emailed with the sign-in log`}
         />
         <KpiTile
           label="Ready to invoice"
@@ -105,11 +105,11 @@ export function InvoicingTab({
 
       <Alert tone="cyan">
         <b>Invoices go out by themselves.</b> One invoice per PO Number (an event without one is
-        invoiced on its own), emailed to the client&apos;s accounts contact with the completed
-        timesheet of each event attached, at 10:00 UK the morning after the last event on the PO. An
-        event is ready once every worker has checked out (or a manager has entered their finish
-        time); an event with any violation also needs a manager to mark it reviewed. Events before
-        26/10/2026 are not invoiced by the system: invoice them from the CSV.
+        invoiced on its own), emailed to the client&apos;s accounts contact with the sign-in and
+        sign-out log attached (GPS-verified times), at 10:00 UK the morning after the last event on
+        the PO. An event is ready once every worker has checked out (or a manager has entered their
+        finish time); an event with any violation also needs a manager to mark it reviewed. Events
+        before 26/10/2026 are not invoiced by the system: invoice them from the CSV.
       </Alert>
 
       <Panel title={<>Events · {periodLabel(view.from, view.to)}</>} flush>

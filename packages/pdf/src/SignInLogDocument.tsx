@@ -23,7 +23,13 @@ import {
 import { LOGO_CORK, LOGO_GLASSES, LOGO_VIEW_BOX } from './logo.ts';
 import { invoiceHours } from './invoice.ts';
 import type { InvoiceDocumentData } from './invoice.ts';
-import { SIGN_IN_LOG_COLUMNS, signInLogSections, signInLogSubtitle } from './signInLog.ts';
+import {
+  SIGN_IN_LOG_COLUMNS,
+  SIGN_IN_LOG_GPS_BADGE,
+  SIGN_IN_LOG_INTRO,
+  signInLogSections,
+  signInLogSubtitle,
+} from './signInLog.ts';
 
 const INK = '#1a1a1a';
 const MUTED = '#6b6b6b';
@@ -49,7 +55,18 @@ const s = StyleSheet.create({
   brandName: { fontSize: 10.5, letterSpacing: 1.5, marginLeft: 8, lineHeight: 1.25 },
   title: { marginLeft: 'auto', fontFamily: 'Helvetica-Bold', fontSize: 18 },
   subtitle: { marginTop: 10, fontSize: 10, fontFamily: 'Helvetica-Bold' },
-  intro: { marginTop: 4, fontSize: 8, color: MUTED, lineHeight: 1.4 },
+  badge: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8.5,
+    color: INK,
+    borderWidth: 1,
+    borderColor: INK,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  intro: { marginTop: 6, fontSize: 8, color: '#444444', lineHeight: 1.45 },
   section: { marginTop: 14 },
   heading: { fontFamily: 'Helvetica-Bold', fontSize: 9.5, marginBottom: 4 },
   thead: { flexDirection: 'row', backgroundColor: BAND, paddingVertical: 5 },
@@ -110,11 +127,8 @@ export function SignInLogDocument({ data }: { data: InvoiceDocumentData }) {
         </View>
 
         <Text style={s.subtitle}>{signInLogSubtitle(data)}</Text>
-        <Text style={s.intro}>
-          Each worker signs in and out in the THC Staff App at the venue. Times are UK time
-          (24-hour). Hours are the time worked within the booked shift, less unpaid breaks, and are
-          the hours charged on the invoice.
-        </Text>
+        <Text style={s.badge}>{SIGN_IN_LOG_GPS_BADGE}</Text>
+        <Text style={s.intro}>{SIGN_IN_LOG_INTRO}</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={s.section}>

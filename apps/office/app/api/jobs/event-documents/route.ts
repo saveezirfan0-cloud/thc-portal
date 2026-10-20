@@ -29,8 +29,8 @@ import { parseAutosendConfig } from './_lib/schedule';
  * event_document_data exactly as the manager's Send draws it.
  *
  * ADR-0176: after D1/D2 the same run issues and sends THC's invoices —
- * one per PO at 10:00 UK the morning after its last event, with each
- * event's completed timesheet attached (_lib/invoices.ts). Riding this
+ * one per PO at 10:00 UK the morning after its last event, with its
+ * sign-in and sign-out log attached (_lib/invoices.ts). Riding this
  * job means no new pg_cron row has to be installed for it.
  *
  * Every run is a job_runs row with its counts, like every other §7 job.

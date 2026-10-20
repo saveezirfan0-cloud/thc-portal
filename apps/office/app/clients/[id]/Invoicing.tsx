@@ -15,7 +15,7 @@ import type { InvoiceDetails } from './types';
 
 /**
  * Invoicing (ADR-0176, THC 20.10.2026) — the system emails each invoice
- * itself, with the completed timesheets attached, addressed to the
+ * itself, with the sign-in and sign-out log attached, addressed to the
  * client's accounts contact:
  *
  *   · Accounts contact — the name under "Invoice to";
@@ -54,7 +54,7 @@ export function Invoicing({
             </Button>
           ) : null}
           <span className="muted xs">
-            the invoice is emailed with the completed timesheets, from timesheets@
+            the invoice is emailed with the sign-in and sign-out log, from timesheets@
           </span>
         </>
       }

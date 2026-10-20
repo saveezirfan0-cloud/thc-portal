@@ -11,7 +11,7 @@
  *      per PO (or per event without one) at 10:00 UK the morning after the
  *      last event — through `invoice_claim()`, which re-checks under a lock
  *      and takes the next number.
- *   3. For each: draw the invoice PDF and each event's completed timesheet,
+ *   3. For each: draw the invoice PDF and its sign-in and sign-out log,
  *      store them, record them, queue INV1. On any failure, release the
  *      invoice for the next run.
  *

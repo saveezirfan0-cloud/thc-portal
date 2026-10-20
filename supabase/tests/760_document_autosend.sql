@@ -137,10 +137,15 @@ select is(pg_temp.d('allocation', '2026-10-25 16:00+00',
 -- =====================================================================
 select is((select value->'allocation' from settings where key = 'document_autosend'),
   '{"enabled": true, "time": "16:00"}'::jsonb, 'D1 on, at 16:00 (20261005140000 moved it from 14:00)');
-select ok((select value->'completed' @> '{"enabled": true, "time": "10:00", "hold_days": 14}'
+select ok((select value->'completed' @> '{"enabled": false, "time": "10:00", "hold_days": 14}'
              and (value->'completed'->>'not_before')::timestamptz <= now()
              from settings where key = 'document_autosend'),
-  'D2 on, at 10:00, held up to 14 days, and not reaching back before the migration ran');
+  'D2 off since 20261022120000 (the invoice carries the sign-in log, ADR-0176), still at 10:00, held up to 14 days, not reaching back before the migration ran');
+
+-- The rest of this file tests the D2 machinery, which stays for a switch
+-- back on: it runs with D2 on (rolled back with the test).
+update settings set value = jsonb_set(value, '{completed,enabled}', 'true'::jsonb)
+ where key = 'document_autosend';
 
 -- =====================================================================
 -- 3 · Who can call the job's functions: the service role, and nobody else
