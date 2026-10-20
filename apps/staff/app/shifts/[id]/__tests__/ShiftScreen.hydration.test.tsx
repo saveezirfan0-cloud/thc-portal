@@ -60,12 +60,13 @@ describe('ShiftScreen server paint', () => {
   it('writes the UK day without an engine-dependent comma', () => {
     // Chrome's ICU, emulated: a weekday-day-month label gains a comma.
     const original = Date.prototype.toLocaleDateString;
-    const spy = vi
-      .spyOn(Date.prototype, 'toLocaleDateString')
-      .mockImplementation(function (this: Date, ...args) {
-        const out = original.apply(this, args);
-        return args[1]?.weekday ? out.replace(/^(\w{3}) /, '$1, ') : out;
-      });
+    const spy = vi.spyOn(Date.prototype, 'toLocaleDateString').mockImplementation(function (
+      this: Date,
+      ...args
+    ) {
+      const out = original.apply(this, args);
+      return args[1]?.weekday ? out.replace(/^(\w{3}) /, '$1, ') : out;
+    });
     try {
       const html = renderToString(<ShiftScreen shift={shift} />).replace(/<!-- -->/g, '');
       expect(html).toMatch(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2} · /);
