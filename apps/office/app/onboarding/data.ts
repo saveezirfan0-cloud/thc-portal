@@ -409,7 +409,8 @@ export async function loadCandidateFacts(
   if (!rest.data) return { data: null, error: null };
   return {
     data: {
-      ni_number: typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
+      ni_number:
+        typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
       below_degree_level: (rest.data['below_degree_level'] as boolean | null) ?? null,
       visa_weekly_hour_limit: (rest.data['visa_weekly_hour_limit'] as number | null) ?? null,
       languages: (rest.data['languages'] as string[] | null) ?? null,
