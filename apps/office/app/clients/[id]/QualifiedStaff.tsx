@@ -266,9 +266,12 @@ export function QualifiedStaff({
                 ) : (
                   <span className="cnt">{group.count} qualified</span>
                 )}
-                {group.role !== BARRED_GROUP && group.workers.length !== group.count ? (
+                {group.role !== BARRED_GROUP && group.barred > 0 ? (
+                  <span className="muted xs">— {group.barred} barred, not counted in the pool</span>
+                ) : null}
+                {group.role !== BARRED_GROUP && group.removed > 0 ? (
                   <span className="muted xs">
-                    — {group.workers.length - group.count} barred, not counted in the pool
+                    — {group.removed} removed (GDPR), not counted in the pool
                   </span>
                 ) : null}
               </button>

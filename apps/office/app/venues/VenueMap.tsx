@@ -281,6 +281,17 @@ export function VenueMap({
           src={tile.url}
           alt=""
           draggable={false}
+          // A tile that cannot load (offline, the provider down, blocked by
+          // a network) is hidden rather than drawn as the browser's broken-
+          // image icon: the grid background still reads as a map and the
+          // projection still places every pin.
+          onError={(event) => {
+            event.currentTarget.style.visibility = 'hidden';
+          }}
+          // The same element is reused when the theme swaps the tile style.
+          onLoad={(event) => {
+            event.currentTarget.style.visibility = '';
+          }}
           style={{ left: tile.left, top: tile.top, width: TILE_SIZE, height: TILE_SIZE }}
         />
       ))}

@@ -366,7 +366,10 @@ export function StaffScreen({
               {shown.length === 0 ? (
                 <EmptyState>
                   <h3>No worker matches</h3>
-                  <p>Search runs over the name, the Employee ID and the worker&rsquo;s roles.</p>
+                  <p>
+                    Search runs over the name, the Employee ID, the Payroll ID and the
+                    worker&rsquo;s roles.
+                  </p>
                 </EmptyState>
               ) : filter === 'inactive' ? (
                 /*

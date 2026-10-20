@@ -277,7 +277,11 @@ function Evidence({ row }: { row: StudentRow }) {
   if (!row.term_letter_verified_at) {
     return (
       <span className="coral">
-        No verified University Term Dates Letter — no cap can be calculated
+        {/* RULE-20: the holiday ranges come from the letter, so without
+            one every week is term time — the cap is the term cap, not
+            unknown (the cap column beside this says so). */}
+        No verified University Term Dates Letter — no holiday ranges, so the term-time cap applies
+        every week
       </span>
     );
   }

@@ -73,6 +73,8 @@ vi.mock('../../../_components/OfficeShell', () => ({
 
 const { default: Page } = await import('../page');
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
+const ID = '40000000-0000-4000-8000-000000000001';
+const NOBODY = '00000000-0000-4000-8000-000000000000';
 const text = (html: string) => html.replace(/<!-- -->/g, '');
 
 async function settled(node: ReactNode): Promise<string> {
@@ -94,20 +96,27 @@ beforeEach(() => {
 describe('/clients/:id streams the card behind its shell', () => {
   it('answers an unknown client with notFound() before anything streams', async () => {
     state.head = { client: null, problem: null };
-    await expect(Page(params('nobody'))).rejects.toMatchObject({
+    await expect(Page(params(NOBODY))).rejects.toMatchObject({
+      digest: expect.stringContaining('404'),
+    });
+  });
+
+  it('answers a malformed id with notFound() without reading anything', async () => {
+    state.head = { client: null, problem: 'invalid input syntax for type uuid' };
+    await expect(Page(params('not-a-uuid'))).rejects.toMatchObject({
       digest: expect.stringContaining('404'),
     });
   });
 
   it('a card that cannot be read is a message, not a 404', async () => {
     state.head = { client: null, problem: 'The client could not be read.' };
-    const html = renderToString(await Page(params('c1')));
+    const html = renderToString(await Page(params(ID)));
     expect(html).toContain('The client could not be read.');
   });
 
   it('starts the card with the head, and paints the name and New event over a skeleton', async () => {
     state.head = { client: { id: 'c1', name: 'Acme Hotels' }, problem: null };
-    const html = text(renderToString(await Page(params('c1'))));
+    const html = text(renderToString(await Page(params(ID))));
     expect(state.startedBeforeHead).toBe(1);
     // ADR-0061: a scheduler's card is read without rates.
     expect(state.asked).toEqual([{ ratesVisible: false }]);
@@ -121,7 +130,7 @@ describe('/clients/:id streams the card behind its shell', () => {
   it('streams the card in, bare, inside the one shell', async () => {
     state.head = { client: { id: 'c1', name: 'Acme Hotels' }, problem: null };
     state.card = async () => ({ client: { id: 'c1', name: 'Acme Hotels' }, problem: null });
-    const html = await settled(await Page(params('c1')));
+    const html = await settled(await Page(params(ID)));
     expect(html).toContain('the card');
     expect(state.props.at(-1)).toMatchObject({ bare: true, ratesVisible: false, canWrite: true });
     expect(state.shells).toBe(1);
