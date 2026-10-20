@@ -145,6 +145,11 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         when: 'After the event — sent from the event page, or automatically',
       },
       {
+        code: 'INV1',
+        label: 'Invoice',
+        when: '10:00 the morning after the last event on a PO — with the completed timesheets attached',
+      },
+      {
         code: 'CP2',
         label: 'Line-up fully confirmed',
         when: 'Every role of an upcoming event is confirmed — once per event, 07:00–23:00 UK',
