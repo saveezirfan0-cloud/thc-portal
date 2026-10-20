@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { Alert, AuthCard } from '@thc/ui';
 import { readRecoverySession } from '@thc/db/recovery';
 import type { RecoverySession } from '@thc/db/recovery';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@thc/db/server';
+import { readTwoStep } from '../login/two-step-session';
 import { USE_ACCOUNT_SCREEN } from './copy';
 import { ResetForm } from './ResetForm';
 
@@ -22,6 +24,7 @@ export const metadata = { title: 'Set a new password · THC Back Office' };
  *
  * The form names the account it is for, from the verified session: a reset
  * link someone else opened in this browser (login CSRF) shows THEIR address.
+ * A login with two-step is asked for its code on the same form (actions.ts).
  */
 export default async function Page({
   searchParams,
@@ -33,7 +36,14 @@ export default async function Page({
     !!process.env['NEXT_PUBLIC_SUPABASE_URL'] && !!process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
 
   let session: RecoverySession = { state: 'none', email: null };
-  if (configured) session = await readRecoverySession(createClient(await cookies()));
+  let needsCode = false;
+  if (configured) {
+    const supabase = createClient(await cookies());
+    session = await readRecoverySession(supabase);
+    if (session.state === 'recent') {
+      needsCode = (await readTwoStep(supabase as unknown as SupabaseClient)).decision === 'verify';
+    }
+  }
 
   if (error || (configured && session.state !== 'recent')) {
     return (
@@ -58,7 +68,7 @@ export default async function Page({
           Setting a new password for <b className="mono">{session.email}</b>.
         </p>
       ) : null}
-      <ResetForm />
+      <ResetForm needsCode={needsCode} />
     </AuthCard>
   );
 }

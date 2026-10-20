@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { Alert, Button, Input } from '@thc/ui';
 import { PASSWORD_MIN_LENGTH, checkPassword, passwordOk } from '@thc/domain';
 import { setPassword } from './actions';
+import { RESET_CODE_HINT } from './copy';
 
 /**
  * A3's form — §10.2, `wireframes/public/activate.html` (reset).
@@ -11,8 +12,12 @@ import { setPassword } from './actions';
  * The checklist updates while typing; the server checks the same rules
  * with the same function (`@thc/domain` password.ts). This is help, not
  * the gate.
+ *
+ * `needsCode`: the login has two-step, so its 6-digit code goes with the
+ * new password (GoTrue changes a password only at aal2). The field is the
+ * code step's (/login/verify): numeric keypad, `one-time-code`.
  */
-export function ResetForm() {
+export function ResetForm({ needsCode = false }: { needsCode?: boolean }) {
   const [error, formAction, pending] = useActionState(setPassword, null);
   const [password, setPasswordValue] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -49,6 +54,21 @@ export function ResetForm() {
         onChange={(event) => setConfirm(event.target.value)}
         error={confirm.length > 0 && !checks.matches ? 'Passwords don’t match.' : undefined}
       />
+      {needsCode ? (
+        <>
+          <Input
+            label="6-digit code"
+            name="code"
+            mono
+            required
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={9}
+            placeholder="123 456"
+          />
+          <p className="xs muted">{RESET_CODE_HINT}</p>
+        </>
+      ) : null}
 
       <Button type="submit" tone="primary" size="lg" block disabled={pending || !ready}>
         {pending ? 'Saving…' : 'Save new password'}

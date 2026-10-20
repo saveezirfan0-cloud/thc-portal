@@ -27,3 +27,11 @@ export function otherApp(role: unknown, staffUrl?: string): string {
 
 /** Supabase's `same_password`: the new password is the one already set. */
 export const SAME_PASSWORD = 'Choose a new password that is different from your current one.';
+
+/**
+ * Under the code field, for a login with two-step (ADR-0057): GoTrue sets a
+ * new password only once the code is given, and a lost phone is reset on
+ * /users first (ADR-0060), as the code step says.
+ */
+export const RESET_CODE_HINT =
+  'Your login has two-step sign-in, so type the code your authenticator app shows for THC Back Office. Lost or replaced your phone? Ask whoever looks after THC’s system to reset two-step sign-in for your login first.';
