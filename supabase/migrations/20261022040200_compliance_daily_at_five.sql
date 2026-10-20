@@ -36,4 +36,4 @@ as $$
 $$;
 
 comment on function public.compliance_daily_due(timestamptz) is
-  'The 05:00 UK window, or any time after 05:00 UK on a day whose sweep has not yet succeeded (§7) — never before 05:00, so N1–N4 and N14 do not reach phones at midnight. A run that answered "skipped" is not a sweep. A missed 05:00 must not defer a §4.3 block by 24 hours (20261021040200).';
+  'The 05:00 UK window, or any time after 05:00 UK on a day whose sweep has not yet succeeded (§7) — never before 05:00, so N1–N4 and N14 do not reach phones at midnight. A run that answered "skipped" is not a sweep. A missed 05:00 must not defer a §4.3 block by 24 hours (20261022040200).';

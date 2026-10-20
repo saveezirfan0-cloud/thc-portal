@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 904 · Notifications sweep (19.10.2026)
---   20261021040000_n10c_when_headcount_drops.sql, and the §8 timers
+--   20261022040000_n10c_when_headcount_drops.sql, and the §8 timers
 --   across the 25.10.2026 clock change
 --
 --   1. N10c when the office lowers a role's headcount to what is already
@@ -14,12 +14,12 @@
 --      the 12:05 and 05:00 job gates; N6, the 12:05 release with N6b and
 --      N9 driven through booking_tick() / release_unready_bookings() at
 --      fixed instants either side of the change.
---   3. N10 keyed per application (20261021040100): an application accepted,
+--   3. N10 keyed per application (20261022040100): an application accepted,
 --      withdrawn by the office, applied for again on the same booking row
 --      and accepted again is told "You're booked!" again.
 --   4. The daily compliance sweep (N1–N4, N14) is due at 05:00 UK, not at
 --      the first tick after midnight; a missed window is still healed after
---      05:00, and a "skipped" tick is not a sweep (20261021040200).
+--      05:00, and a "skipped" tick is not a sweep (20261022040200).
 -- =====================================================================
 begin;
 select plan(41);

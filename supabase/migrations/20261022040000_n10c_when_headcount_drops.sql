@@ -36,7 +36,7 @@ begin
 end $$;
 
 comment on function public.shift_requirements_close_filled_applications() is
-  '§8 N10c: a role whose headcount the office lowers to what is already confirmed is full, so its pending Radar applications close (closed / slot_taken) with N10c, as when a confirmation fills it (close_filled_role_applications, 20261021040000).';
+  '§8 N10c: a role whose headcount the office lowers to what is already confirmed is full, so its pending Radar applications close (closed / slot_taken) with N10c, as when a confirmation fills it (close_filled_role_applications, 20261022040000).';
 
 revoke execute on function public.shift_requirements_close_filled_applications() from public, anon, authenticated;
 

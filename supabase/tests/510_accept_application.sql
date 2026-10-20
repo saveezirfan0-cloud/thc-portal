@@ -201,7 +201,7 @@ select is(accept_application(:'a1'),
 select is((select status::text from bookings where id = :'a1'), 'confirmed', 'applied → confirmed');
 select isnt((select confirmed_at from bookings where id = :'a1'), null, 'confirmed_at is stamped');
 select is((select template from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')), 'N10',
-  'N10 is queued, keyed per application (booking + applied_at, 20261021040100)');
+  'N10 is queued, keyed per application (booking + applied_at, 20261022040100)');
 select is((select recipient_staff_id from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')), :'w1'::uuid,
   'to the applicant');
 select is((select payload ->> 'event' from notification_outbox where key = 'N10:booking:' || :'a1' || ':' || (select floor(extract(epoch from applied_at))::bigint from bookings where id = :'a1')), 'Radar Gala',

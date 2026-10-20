@@ -42,4 +42,4 @@ as $$
 $$;
 
 comment on function public.queue_application_push(text, uuid) is
-  'Queues N10 (application accepted) or N10c (role filled without it) for one Radar application, with the {event} and {date} values the §8 register renders. Both are keyed per application — <code>:booking:<id>:<applied_at epoch> — so a re-application on a reopened booking that is accepted (N10) or closes (N10c) again is told again (20261021040100).';
+  'Queues N10 (application accepted) or N10c (role filled without it) for one Radar application, with the {event} and {date} values the §8 register renders. Both are keyed per application — <code>:booking:<id>:<applied_at epoch> — so a re-application on a reopened booking that is accepted (N10) or closes (N10c) again is told again (20261022040100).';
