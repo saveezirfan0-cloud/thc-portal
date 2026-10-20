@@ -17,7 +17,8 @@
     "./auth-throttle": "./src/auth-throttle.ts",
     "./security-headers": "./src/security-headers.ts",
     "./csp": "./src/csp.ts",
-    "./paged": "./src/paged.ts"
+    "./paged": "./src/paged.ts",
+    "./public-env": "./src/public-env.ts"
   },
   "scripts": {
     "lint": "eslint .",
@@ -26,8 +27,8 @@
     "gen:types": "supabase gen types typescript --linked > src/types.generated.ts && prettier --write src/types.generated.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.58.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "@thc/domain": "workspace:*",
     "server-only": "0.0.1"
   },

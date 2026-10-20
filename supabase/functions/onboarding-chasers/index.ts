@@ -6,7 +6,8 @@
  * `onboarding_chasers()` decides who is waiting on themselves, whether a
  * reminder is due (daily, never stopping), and keeps every send inside the UK
  * daytime window; it queues the OC1 interview emails and the OC3 wizard
- * pushes. The OC2 activation reminder carries a freshly minted link, which
+ * pushes, or the same reminder by email (OC4, ADR-0169) to a candidate with
+ * no device that has notifications on. The OC2 activation reminder carries a freshly minted link, which
  * only GoTrue's admin API can make, so that part is here — in the order
  * `runChaserSweep` (packages/db/src/chasers.ts, held by vitest) fixes.
  *
@@ -18,7 +19,7 @@
  * Secrets (supabase secrets set …; never in code): STAFF_APP_URL — the
  * Staff App origin the link points at, the same one willo-webhook uses.
  * Without it no link is minted and every OC2 is counted as failed in
- * job_runs; OC1 and OC3 still go.
+ * job_runs and every OC3 stays a push; OC1 and OC3 still go.
  */
 
 import { runJob } from '../_shared/job.ts';
@@ -36,7 +37,12 @@ Deno.serve((request) =>
 
     const result = await runChaserSweep({
       queue: async () => {
-        const { data, error } = await db.rpc('onboarding_chasers', { p_now: now });
+        // ADR-0169: an OC3 for a candidate with notifications off goes as
+        // an email (OC4) with this link; without it, every OC3 is a push.
+        const { data, error } = await db.rpc('onboarding_chasers', {
+          p_now: now,
+          p_app_link: origin ? `${origin}/onboarding` : null,
+        });
         if (error) throw new Error(`onboarding_chasers: ${error.message}`);
         return (data ?? {}) as ChaserQueueAnswer;
       },

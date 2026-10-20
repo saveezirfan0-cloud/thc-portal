@@ -13,15 +13,22 @@
 --     (~30k bookings), no-show violations on ~3 %;
 --   * live bookings on the open sections: confirmed about half way, a few
 --     invitations and Radar applications, a few self-cancels, some sections
---     full.
+--     full;
+--   * 60 open pool shift offers on confirmed bookings, every fourth with
+--     every qualified worker already told (wave 1 exhausted by notices).
 -- and reports, from a temp table at the end:
 --   * Radar as three staff users (many roles + qualified everywhere; two
 --     roles, few qualifications; a new starter), whole list and — where the
 --     database has it — the single-section read /radar/[id] uses;
+--   * open shift offers (staff_open_offers) as the same three staff users;
 --   * the pool per section: the board's call (auto_assign_candidates as an
 --     admin, the board's filter; also on a multi-day job's section), the
 --     round's call (as service_role, ordinary and escalation), and one
---     worker's gate (auto_assign_worker_gate, as the Accept/apply paths use).
+--     worker's gate (auto_assign_worker_gate, as the Accept/apply paths use);
+--   * the wave-1 checks: offer_wave1_exhausted per offer (take_offered_shift
+--     asks it once) and radar_wave1_exhausted per section;
+--   * where the database has it (ADR-0170), one worker against every open
+--     section in one call (auto_assign_worker_pool).
 --
 -- usage (local cluster, after migrations + seed; never against production):
 --   psql -X -v ON_ERROR_STOP=1 -f scripts/bench/radar_and_pool_at_scale.sql
@@ -203,7 +210,29 @@ select o.id, md5('bench-staff-2')::uuid, 'applied', 'self', now() - interval '2 
  order by o.rn limit 1
 on conflict do nothing;
 
+-- 60 open pool offers on confirmed bookings of sections more than a day
+-- away; on every fourth, every worker qualified at its client and role has
+-- already been told (wave 1 exhausted by notices).
+create temp table bench_offer_src as
+select b.id booking_id, b.shift_id, b.staff_id, row_number() over (order by md5('offer' || b.id::text)) rn
+  from bookings b join bench_open o on o.id = b.shift_id join shift_requirements sr on sr.id = b.shift_id
+ where b.status = 'confirmed' and sr.starts_at > now() + interval '1 day';
+insert into shift_offers (booking_id, shift_id, offered_by_staff_id, mode, status, expires_at)
+select booking_id, shift_id, staff_id, 'pool', 'open', now() + interval '2 days' from bench_offer_src where rn <= 60;
+insert into shift_offer_notices (offer_id, staff_id)
+select o.id, cq.staff_id
+  from (select so.*, row_number() over (order by so.id) k
+          from shift_offers so join bench_offer_src x on x.booking_id = so.booking_id) o
+  join shift_requirements sr on sr.id = o.shift_id join events ev on ev.id = sr.event_id
+  join client_qualifications cq on cq.client_id = ev.client_id and cq.role_id = sr.role_id and not cq.do_not_return
+ where o.k % 4 = 0
+on conflict do nothing;
+create temp table bench_offers as
+select so.id from shift_offers so join bench_offer_src x on x.booking_id = so.booking_id;
+grant all on bench_offers to public;
+
 set local session_replication_role = origin;
+analyze shift_offers; analyze shift_offer_notices;
 analyze staff; analyze staff_roles; analyze client_qualifications; analyze events;
 analyze shift_requirements; analyze bookings; analyze violations;
 
@@ -288,6 +317,35 @@ begin
     t := clock_timestamp();
     select count(*) into n from auto_assign_worker_gate(r.id, r.staff_id);
     insert into bench_clock (what, n, ms) values ('one worker: auto_assign_worker_gate', n, extract(epoch from clock_timestamp() - t) * 1000);
+  end loop;
+end $$;
+
+-- The wave-1 checks, owner-run as their SECURITY DEFINER callers run them.
+do $$
+declare r record; t timestamptz; b boolean;
+begin
+  for r in select id from bench_offers order by id loop
+    t := clock_timestamp();
+    b := offer_wave1_exhausted(r.id);
+    insert into bench_clock (what, n, ms) values ('wave 1: offer_wave1_exhausted (per offer)', b::int, extract(epoch from clock_timestamp() - t) * 1000);
+  end loop;
+  for r in select id from bench_open where rn % 15 = 1 order by rn loop
+    t := clock_timestamp();
+    b := radar_wave1_exhausted(r.id);
+    insert into bench_clock (what, n, ms) values ('wave 1: radar_wave1_exhausted (per section)', b::int, extract(epoch from clock_timestamp() - t) * 1000);
+  end loop;
+end $$;
+
+-- One worker against every open section in one call, where the database
+-- has it (ADR-0170): workers 1-3 and a few others.
+do $$
+declare r record; t timestamptz; n int;
+begin
+  if to_regprocedure('public.auto_assign_worker_pool(uuid,uuid[])') is null then return; end if;
+  for r in select id from bench_staff where rn in (1, 2, 3, 100, 400, 700) order by rn loop
+    t := clock_timestamp();
+    execute 'select count(*) from auto_assign_worker_pool($1, array(select id from bench_open))' into n using r.id;
+    insert into bench_clock (what, n, ms) values ('one worker, every open section: auto_assign_worker_pool', n, extract(epoch from clock_timestamp() - t) * 1000);
   end loop;
 end $$;
 
