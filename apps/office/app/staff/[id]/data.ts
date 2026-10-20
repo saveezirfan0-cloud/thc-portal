@@ -4,9 +4,10 @@ import { supabaseConfigured } from '../data';
 import { ENTRY_COLUMNS, managerName } from '../../feedback/data';
 import { loadStaffViolationLog } from '../../checkin/data';
 import { signStaffPhotos } from '../../_lib/photos';
-import { loadRtwChecks } from '../../_lib/rtwCheckData';
+import { loadRtwChecks, loadWrongTypeNotes } from '../../_lib/rtwCheckData';
 import { loadPayFloorPence } from '../../_lib/payFloor';
 import type { FeedbackEntry } from '../../feedback/types';
+import { reviewDocumentIds } from '../../compliance/queue';
 import type { QueueRow } from '../../compliance/types';
 import { readChangeRequests } from '../requests/data';
 import type {
@@ -265,6 +266,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
   // The header selfie: a private-bucket key, signed here (_lib/photos.ts).
   const photoPath = profile.data?.photo_path ?? null;
   const photoUrl = photoPath ? ((await signStaffPhotos([photoPath])).get(photoPath) ?? null) : null;
+  // ADR-0177: the AI's "this is another kind of document", merged by id.
+  const queueRows = reviewQueue.error ? [] : (reviewQueue.data ?? []);
+  const wrongType = await loadWrongTypeNotes(supabase, reviewDocumentIds(queueRows));
 
   return {
     profile: profile.data ? { ...profile.data, photo_url: photoUrl } : null,
@@ -274,7 +278,10 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     dobClaims: rtw.dobClaims,
     // A failed read must not take the whole profile down; the tab says why
     // there are no review buttons instead.
-    reviewQueue: reviewQueue.error ? [] : (reviewQueue.data ?? []),
+    reviewQueue: queueRows.map((row) => ({
+      ...row,
+      ai_wrong_type_note: wrongType.get(row.item_id) ?? null,
+    })),
     reviewQueueProblem: readProblem(reviewQueue.error),
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],

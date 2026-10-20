@@ -6,7 +6,8 @@
 import { type TimeFormat, clockLabel, termLetterLastDay } from '@thc/domain';
 import { rtwLockedUntil } from '../_lib/rtwCheck';
 import type { RtwCheckRow, RtwLockedUntil } from '../_lib/rtwCheck';
-import { parsePeriod } from '../onboarding/view-model';
+import { parsePeriod, periodsProblem } from '../onboarding/view-model';
+import type { Period } from '../onboarding/view-model';
 import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
 import { rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
@@ -454,17 +455,25 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
  *     or an rtw_date row, whose date alone is confirmed (20260927160000) —
  *     with the course level or the visa's hours limit beside it where the
  *     route has one (D32, D36);
+ *   - `term_dates`: a University Term Dates Letter, verified on its holiday
+ *     periods — the AI's, corrected and added to by hand (§2.3, ADR-0177) —
+ *     with a student's course level beside them (D32);
  *   - `confirm`: a document with no date but something to check beside it —
- *     NI evidence against the NI number, shown in full (D43), or a
- *     student's term letter with the course level (D32);
+ *     NI evidence against the NI number, shown in full (D43);
  *   - `ni_match`: the ni_check row's "Matches", recorded on the click;
  *   - `verify`: everything else, on the click.
  */
-export type VerifyStep = 'approve' | 'confirm_date' | 'confirm' | 'ni_match' | 'verify';
+export type VerifyStep =
+  'approve' | 'confirm_date' | 'confirm' | 'term_dates' | 'ni_match' | 'verify';
 
 export function verifyStep(row: QueueRow): VerifyStep {
   if (row.kind === 'ni_check') return 'ni_match';
   if (row.item_type === 'university_completion_letter') return 'approve';
+  // §2.3 / ADR-0177: a term letter is verified on its holiday periods —
+  // the AI's, corrected or added to by hand ("+ Add period").
+  if (row.kind === 'document' && row.item_type === 'university_term_dates_letter') {
+    return 'term_dates';
+  }
   if (
     (row.kind === 'document' || row.kind === 'rtw_date') &&
     rtwDateRule(row.item_type, row.rtw_branch)
@@ -478,6 +487,55 @@ export function verifyStep(row: QueueRow): VerifyStep {
     return 'confirm';
   }
   return 'verify';
+}
+
+/**
+ * The pending uploads on the queue whose AI read the reviewer may need
+ * (ADR-0177): document rows only — a declaration, a check or an NI re-check
+ * carries no extraction of its own.
+ */
+export function reviewDocumentIds(rows: readonly QueueRow[]): string[] {
+  return rows.filter((row) => row.kind === 'document').map((row) => row.item_id);
+}
+
+/**
+ * The holiday periods a term letter's Verify opens with: what the AI read
+ * off the letter, both ends inclusive (§2.3). Empty when it read none.
+ */
+export function initialTermPeriods(row: QueueRow): Period[] {
+  return (row.term_dates ?? [])
+    .map(parsePeriod)
+    .filter((period): period is Period => period !== null);
+}
+
+/**
+ * What stops Verify on a term letter (§2.3, RULE-20, ADR-0177): a period
+ * with a missing or backwards date, or — for a worker on a student visa,
+ * whose weekly limit the periods ARE — confirming none without saying the
+ * letter shows none. Zero periods is a real answer (§2.3), but it puts
+ * every week in term time, so it is said, never defaulted to.
+ */
+export function termDatesProblem(
+  row: QueueRow,
+  periods: readonly Period[],
+  noneConfirmed: boolean,
+): string | null {
+  const problem = periodsProblem(periods);
+  if (problem) return problem;
+  if (periods.length === 0 && row.rtw_branch === 'international_student' && !noneConfirmed) {
+    return 'Add the holiday periods the letter shows, or tick that it shows none.';
+  }
+  return null;
+}
+
+/**
+ * Whether a completion letter's Approve waits on the reviewer saying they
+ * read it (ADR-0177): the AI said it is not a completion letter. Approving
+ * it lifts a student off the term-time limit, so the AI's word is shown
+ * and answered, never silently overruled — nor allowed to veto a human.
+ */
+export function approveNeedsReading(row: QueueRow): boolean {
+  return row.item_type === 'university_completion_letter' && Boolean(row.ai_wrong_type_note);
 }
 
 /**
@@ -517,6 +575,9 @@ export function verifyHint(row: QueueRow): string | null {
   if (rejectPrefill(row)) {
     return 'gov.uk recommends Reject → the reason is pre-filled; edit it before it goes to the worker (N8)';
   }
+  if (approveNeedsReading(row)) {
+    return 'The AI says this is not a completion letter — read it before you approve · Reject → N8 with Re-upload if it does not show the course has ended';
+  }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
   }
@@ -524,6 +585,9 @@ export function verifyHint(row: QueueRow): string | null {
     // compliance_verify_document() raises term_letter_expired on this row
     // (20260928110300); the screen says so before the button does.
     return 'Verify is refused — an already-expired letter is not accepted · Reject → N8 with Re-upload, the worker sends the current year’s letter';
+  }
+  if (row.kind === 'document' && row.item_type === 'university_term_dates_letter') {
+    return 'Verify → check the holiday periods against the letter, add any the AI missed → they set the weekly limit';
   }
   if (row.kind === 'declaration' && row.declaration_source === 'in_employment') {
     return 'Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block';

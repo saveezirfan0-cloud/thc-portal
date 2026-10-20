@@ -10,6 +10,8 @@ import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { visaLimitProblem, visaLimitValue } from './conditions';
+import { periodToRange, periodsProblem } from '../onboarding/view-model';
+import type { Period } from '../onboarding/view-model';
 import type { ActionResult } from './types';
 
 /**
@@ -28,7 +30,7 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
 /** See apps/office/app/staff/[id]/actions.ts: the generated types are a placeholder. */
-type RpcArguments = Record<string, string | number | boolean | null>;
+type RpcArguments = Record<string, string | string[] | number | boolean | null>;
 interface RpcClient {
   rpc(
     fn: string,
@@ -60,6 +62,13 @@ function isFailure(result: { data: unknown } | ActionResult): result is ActionRe
 export interface VerifyDates {
   expiry?: string | null;
   rightToWorkUntil?: string | null;
+  /**
+   * A term letter's holiday periods as the reviewer confirmed them, both
+   * ends inclusive (§2.3, ADR-0177). They replace what the AI read and are
+   * the weekly limit's only input (RULE-20). An empty list is a real answer
+   * — the letter shows no vacation — and is sent, not dropped.
+   */
+  termDates?: readonly Period[] | null;
 }
 
 /**
@@ -84,9 +93,14 @@ export async function verifyDocument(
     const problem = visaLimitProblem(conditions.visaHourLimit);
     if (problem) return { ok: false, message: problem };
   }
+  if (dates.termDates) {
+    const problem = periodsProblem(dates.termDates);
+    if (problem) return { ok: false, message: problem };
+  }
   const args: RpcArguments = { p_doc: docId };
   if (dates.expiry) args['p_expiry'] = dates.expiry;
   if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
+  if (dates.termDates) args['p_term_dates'] = dates.termDates.map(periodToRange);
   const result = await call('compliance_verify_document', args);
   if (isFailure(result)) return result;
   const verified = verifiedMessage(result, dates);

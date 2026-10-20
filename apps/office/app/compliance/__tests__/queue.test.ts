@@ -4,16 +4,20 @@ import {
   RTW_DATE_MISSING,
   actionsFor,
   ageLabel,
+  approveNeedsReading,
   daysLabel,
   documentLine,
   filterQueue,
   filterRadar,
   foundLine,
+  initialTermPeriods,
   queueByRecord,
   radarCounts,
   radarStatus,
   remindersLine,
+  reviewDocumentIds,
   reviewFlag,
+  termDatesProblem,
   ukDate,
   ukStamp,
   uploadedLine,
@@ -234,7 +238,7 @@ describe('Needs review (§4.1)', () => {
   it('shows no flag when the reason is absent — confidence alone, or another kind of row', () => {
     expect(reviewFlag(ROW)).toBeNull();
     expect(reviewFlag({ ...ROW, ai_confidence: 0.41, needs_manual_review: true })).toBeNull();
-    expect(verifyHint(ROW)).toBeNull();
+    expect(verifyHint({ ...ROW, item_type: 'passport' })).toBeNull();
     expect(reviewFlag(RTW_DATE)).toBeNull();
     expect(
       reviewFlag({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' }),
@@ -385,9 +389,10 @@ describe('what Verify does — shared by /compliance and the staff profile', () 
 
   it('approves a completion letter with its dates, and verifies anything else on the click', () => {
     expect(verifyStep({ ...ROW, item_type: 'university_completion_letter' })).toBe('approve');
-    // ROW is a student's term letter: its Verify asks for the course level
-    // beside it (D32, 20260930130100), so the plain click is a passport's.
-    expect(verifyStep(ROW)).toBe('confirm');
+    // ROW is a student's term letter: its Verify opens on the holiday
+    // periods (§2.3, ADR-0177), the course level beside them (D32), so the
+    // plain click is a passport's.
+    expect(verifyStep(ROW)).toBe('term_dates');
     expect(verifyStep({ ...ROW, item_type: 'passport', rtw_branch: 'uk_irish' })).toBe('verify');
     expect(verifyStep({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' })).toBe(
       'verify',
@@ -401,5 +406,70 @@ describe('what Verify does — shared by /compliance and the staff profile', () 
       { ...ROW, kind: 'rtw_check', item_id: 'k1', item_type: 'share_code_report' },
     ]);
     expect([...map.keys()]).toEqual([ROW.item_id, RTW_DATE.item_id]);
+  });
+});
+
+describe('a term letter is verified on its holiday periods (§2.3, ADR-0177)', () => {
+  it('opens on what the AI read, both ends inclusive', () => {
+    expect(initialTermPeriods(ROW)).toEqual([
+      { from: '2026-12-13', to: '2027-01-10' },
+      { from: '2027-04-01', to: '2027-04-19' },
+      { from: '2027-06-14', to: '2027-09-19' },
+    ]);
+    expect(initialTermPeriods({ ...ROW, term_dates: null })).toEqual([]);
+  });
+
+  it('a student’s letter with no periods needs “the letter shows none” — it means 20 h every week', () => {
+    const none = { ...ROW, term_dates: null };
+    expect(termDatesProblem(none, [], false)).toBe(
+      'Add the holiday periods the letter shows, or tick that it shows none.',
+    );
+    expect(termDatesProblem(none, [], true)).toBeNull();
+    // Not a student: the periods set no limit, so none is simply none.
+    expect(termDatesProblem({ ...none, rtw_branch: 'uk_irish' }, [], false)).toBeNull();
+  });
+
+  it('a period needs both dates, in order', () => {
+    expect(termDatesProblem(ROW, [{ from: '2026-10-19', to: '' }], false)).toBe(
+      'Period 1 needs both dates.',
+    );
+    expect(termDatesProblem(ROW, [{ from: '2027-01-17', to: '2026-10-19' }], false)).toBe(
+      'Period 1 ends before it starts.',
+    );
+    expect(termDatesProblem(ROW, [{ from: '2026-10-19', to: '2027-01-17' }], false)).toBeNull();
+  });
+
+  it('says what Verify does on the row', () => {
+    expect(verifyHint(ROW)).toContain('check the holiday periods against the letter');
+  });
+});
+
+describe('a completion letter the AI says is something else (ADR-0177)', () => {
+  const LETTER: QueueRow = {
+    ...ROW,
+    item_type: 'university_completion_letter',
+    item_label: 'Official University Completion Letter',
+    term_dates: null,
+    completion_date_claimed: '2027-08-15',
+  };
+
+  it('waits on the reviewer reading it only when the AI said so', () => {
+    expect(approveNeedsReading(LETTER)).toBe(false);
+    expect(approveNeedsReading({ ...LETTER, ai_wrong_type_note: null })).toBe(false);
+    const flagged = { ...LETTER, ai_wrong_type_note: 'This is a status confirmation letter.' };
+    expect(approveNeedsReading(flagged)).toBe(true);
+    expect(verifyHint(flagged)).toContain('The AI says this is not a completion letter');
+    // The note on any other document asks nothing of Approve — there is none.
+    expect(approveNeedsReading({ ...ROW, ai_wrong_type_note: 'x' })).toBe(false);
+  });
+
+  it('reads the AI note for document rows only', () => {
+    expect(
+      reviewDocumentIds([
+        ROW,
+        { ...ROW, item_id: 'decl', kind: 'declaration', item_type: 'criminal_declaration' },
+        RTW_DATE,
+      ]),
+    ).toEqual(['i1']);
   });
 });

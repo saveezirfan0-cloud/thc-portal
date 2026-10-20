@@ -95,6 +95,13 @@ export interface QueueRow {
   rtw_check_report_path?: string | null;
   /** Share codes only: whether ADR-0018's hand-typed date is allowed now. */
   rtw_manual_allowed?: boolean | null;
+  /**
+   * ADR-0177: NOT a column of compliance_review_queue_v — merged in from
+   * compliance_doc_review_v by document id: the AI's note when it said the
+   * upload is not the document type it was filed as. Approving a
+   * completion letter it flagged needs the reviewer to say they read it.
+   */
+  ai_wrong_type_note?: string | null;
   // ADR-0041 (20260930150000): NOT columns of compliance_review_queue_v —
   // merged in from rtw_checks_latest_v by document id (withLatestCheck).
   /** What the latest check recommends: verify, reject or review. */

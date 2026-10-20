@@ -49,6 +49,35 @@ describe('verifyDocument', () => {
     });
   });
 
+  it('sends a term letter’s confirmed holiday periods as half-open ranges (§2.3, ADR-0177)', async () => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+    await verifyDocument('d5', { termDates: [{ from: '2026-10-19', to: '2027-01-17' }] });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('compliance_verify_document', {
+      p_doc: 'd5',
+      p_term_dates: ['[2026-10-19,2027-01-18)'],
+    });
+  });
+
+  it('sends "no periods" as an empty list — a real answer, never dropped', async () => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+    await verifyDocument('d5', { termDates: [] });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('compliance_verify_document', {
+      p_doc: 'd5',
+      p_term_dates: [],
+    });
+  });
+
+  it('refuses a period with a missing or backwards date before reaching the database', async () => {
+    expect(
+      await verifyDocument('d5', { termDates: [{ from: '2027-01-17', to: '2026-10-19' }] }),
+    ).toEqual({ ok: false, message: 'Period 1 ends before it starts.' });
+    expect(await verifyDocument('d5', { termDates: [{ from: '', to: '2027-01-17' }] })).toEqual({
+      ok: false,
+      message: 'Period 1 needs both dates.',
+    });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('a caller who is not an admin is refused by the database, in words', async () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'not_authorised' } });
     expect(await verifyDocument('d1')).toEqual({

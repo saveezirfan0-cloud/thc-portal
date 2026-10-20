@@ -25,12 +25,16 @@ import {
 } from './conditions';
 import {
   EVIDENCE_FORM_LABEL,
+  approveNeedsReading,
+  initialTermPeriods,
   queueRowLockedUntil,
   rejectPrefill,
+  termDatesProblem,
   ukDate,
   ukStamp,
   verifyStep,
 } from './queue';
+import type { Period } from '../onboarding/view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
 import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwDateRule } from './rtw';
@@ -69,6 +73,7 @@ export function useReviewDialogs({
   const [approving, setApproving] = useState<QueueRow | null>(null);
   const [confirming, setConfirming] = useState<QueueRow | null>(null);
   const [checking, setChecking] = useState<QueueRow | null>(null);
+  const [termLetter, setTermLetter] = useState<QueueRow | null>(null);
 
   const verify = (row: QueueRow) => {
     const step = verifyStep(row);
@@ -82,6 +87,10 @@ export function useReviewDialogs({
     }
     if (step === 'approve') {
       setApproving(row);
+      return;
+    }
+    if (step === 'term_dates') {
+      setTermLetter(row);
       return;
     }
     if (step === 'confirm_date') {
@@ -148,6 +157,21 @@ export function useReviewDialogs({
               checking.item_id,
               () => verifyWith(checking, {}, conditions),
               () => setChecking(null),
+            )
+          }
+        />
+      ) : null}
+
+      {termLetter ? (
+        <TermLetterModal
+          row={termLetter}
+          busy={busy(termLetter.item_id)}
+          onClose={() => setTermLetter(null)}
+          onVerify={(periods, conditions) =>
+            run(
+              termLetter.item_id,
+              () => verifyWith(termLetter, { termDates: periods }, conditions),
+              () => setTermLetter(null),
             )
           }
         />
@@ -245,8 +269,9 @@ function useConditions(row: QueueRow) {
 
 /**
  * A document with no date to confirm but something to check beside it: NI
- * evidence against the NI number, shown in full (D43), or a student's term
- * letter with the course level (D32).
+ * evidence against the NI number, shown in full (D43). A student's term
+ * letter has its own dialog, TermLetterModal, with the course level beside
+ * its holiday periods.
  */
 function ConfirmVerifyModal({
   row,
@@ -405,6 +430,135 @@ function RejectModal({
 }
 
 /**
+ * §2.3 / ADR-0177: a University Term Dates Letter is verified on its
+ * holiday periods. Every period the AI read is shown, "+ Add period" adds
+ * one it missed, Remove drops a wrong one — the reviewer confirms the
+ * DATES, never the hours (RULE-20 calculates the limit from them). For a
+ * student, confirming none has to be said: it puts every week in term time.
+ * The course level (D32) is confirmed beside it, as before.
+ */
+function TermLetterModal({
+  row,
+  busy,
+  onClose,
+  onVerify,
+}: {
+  row: QueueRow;
+  busy: boolean;
+  onClose: () => void;
+  onVerify: (periods: Period[], conditions: ConfirmedConditions) => void;
+}) {
+  const format = useTimeFormat();
+  const conditions = useConditions(row);
+  const [periods, setPeriods] = useState<Period[]>(() => initialTermPeriods(row));
+  const [noneConfirmed, setNoneConfirmed] = useState(false);
+  const aiCount = initialTermPeriods(row).length;
+  const student = row.rtw_branch === 'international_student';
+  const problem = termDatesProblem(row, periods, noneConfirmed);
+  const update = (index: number, patch: Partial<Period>) =>
+    setPeriods(periods.map((period, i) => (i === index ? { ...period, ...patch } : period)));
+  return (
+    <Modal
+      open
+      title={`Verify ${row.item_label}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="green"
+            solid
+            disabled={busy || problem !== null || conditions.problem !== null}
+            onClick={() => onVerify(periods, conditions.confirmed)}
+          >
+            Verify
+          </Button>
+        </>
+      }
+    >
+      <div className="row">
+        <Avatar name={row.display_name} size="sm" />
+        <div className="sm">
+          {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
+          uploaded {ukStamp(row.submitted_at, format)}
+        </div>
+      </div>
+      {row.ai_wrong_type_note ? (
+        <Note tone="coral">
+          <b>The AI says this may not be a term dates letter:</b> “{row.ai_wrong_type_note}”
+        </Note>
+      ) : null}
+      <Note tone={aiCount === 0 ? 'amber' : 'neutral'}>
+        {aiCount === 0
+          ? 'The AI found no holiday periods on this letter. Read the letter and add each vacation it prints. Stage, course or teaching-block dates, and a link to a website, are not vacations.'
+          : `The AI read ${aiCount} holiday period${aiCount === 1 ? '' : 's'}. Check each against the letter, correct or remove any that are wrong, and add any it missed.`}
+      </Note>
+      <div className="stack" data-testid="term-periods">
+        {periods.map((period, index) => (
+          <div className="row wrap" key={index}>
+            {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
+            <UkDateField
+              label={`Holiday ${index + 1} from`}
+              value={period.from}
+              onChange={(from) => update(index, { from })}
+            />
+            <UkDateField
+              label={`Holiday ${index + 1} to (last day)`}
+              value={period.to}
+              onChange={(to) => update(index, { to })}
+            />
+            <span className="muted xs">{index < aiCount ? 'read by the AI' : 'added by hand'}</span>
+            <Button
+              tone="ghost"
+              size="sm"
+              onClick={() => setPeriods(periods.filter((_, i) => i !== index))}
+            >
+              Remove
+            </Button>
+          </div>
+        ))}
+        <div className="row wrap">
+          <Button
+            size="sm"
+            onClick={() => {
+              setPeriods([...periods, { from: '', to: '' }]);
+              setNoneConfirmed(false);
+            }}
+          >
+            + Add period
+          </Button>
+          <span className="muted xs">
+            for a vacation the AI missed — any number of periods; zero to four is typical
+          </span>
+        </div>
+      </div>
+      {periods.length === 0 && student ? (
+        <label className="row sm">
+          <input
+            type="checkbox"
+            checked={noneConfirmed}
+            onChange={(event) => setNoneConfirmed(event.target.checked)}
+          />
+          <span>
+            The letter shows <b>no vacation</b>. Every week counts as term time — 20 hours a week,
+            or 10 below degree level — until a letter with holiday dates is verified.
+          </span>
+        </label>
+      ) : null}
+      {conditions.fields}
+      <Note>
+        The weekly limit is calculated from these dates from the moment you verify: the term-time
+        limit in any week not wholly inside a holiday period, 48 hours in one that is (no limit with
+        a signed opt-out). The letter expires on the last day of its last period.
+      </Note>
+      {problem && periods.length > 0 ? <div className="coral sm">{problem}</div> : null}
+    </Modal>
+  );
+}
+
+/**
  * Completion letter requirement §2.2: "On approval, the reviewer
  * confirms/enters: the course completion date, and the visa expiry date
  * (should already be on file from the right-to-work check)."
@@ -423,7 +577,9 @@ function ApproveModal({
   const format = useTimeFormat();
   const [completionDate, setCompletionDate] = useState(row.completion_date_claimed ?? '');
   const [visaExpiry, setVisaExpiry] = useState(row.staff_right_to_work_until ?? '');
+  const [readIt, setReadIt] = useState(false);
   const onFile = row.staff_right_to_work_until;
+  const mustRead = approveNeedsReading(row);
   return (
     <Modal
       open
@@ -437,7 +593,7 @@ function ApproveModal({
           <Button
             tone="green"
             solid
-            disabled={busy || !completionDate || !visaExpiry}
+            disabled={busy || !completionDate || !visaExpiry || (mustRead && !readIt)}
             onClick={() => onApprove(completionDate, visaExpiry)}
           >
             Approve
@@ -453,6 +609,13 @@ function ApproveModal({
           uploaded {ukStamp(row.submitted_at, format)}
         </div>
       </div>
+      {mustRead ? (
+        <Note tone="coral">
+          <b>The AI says this is not a completion letter:</b> “{row.ai_wrong_type_note}” A status or
+          enrolment letter with an <i>expected</i> finish date does not show the course has ended —
+          Reject it and ask for the completion letter.
+        </Note>
+      ) : null}
       <UkDateField
         label={
           <>
@@ -486,6 +649,19 @@ function ApproveModal({
         — never before it, never backdated, and never past the visa expiry. A completion date in the
         future lifts nothing until it arrives.
       </Note>
+      {mustRead ? (
+        <label className="row sm">
+          <input
+            type="checkbox"
+            checked={readIt}
+            onChange={(event) => setReadIt(event.target.checked)}
+          />
+          <span>
+            I have read the document: it states that the course <b>has ended</b>, and the date above
+            is the completion date it gives — not an expected one.
+          </span>
+        </label>
+      ) : null}
     </Modal>
   );
 }

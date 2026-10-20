@@ -155,3 +155,42 @@ export async function loadDobClaimsForDocuments(
   }
   return map;
 }
+
+/**
+ * ADR-0177: the AI's note on each of these pending documents where it said
+ * the upload is not the type it was filed as, keyed by document id —
+ * through the reviewer's owner-rights compliance_doc_review_v (no API role
+ * reads compliance_docs.ai_extracted, ADR-0163). Best-effort: a failed read
+ * shows no warning, and Verify still does what it does.
+ */
+export async function loadWrongTypeNotes(
+  client: unknown,
+  documentIds: readonly string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const ids = [...new Set(documentIds.filter(Boolean))];
+  if (ids.length === 0) return map;
+  try {
+    const answers = await Promise.all(
+      chunks(ids).map((chunk) =>
+        (client as Client)
+          .from('compliance_doc_review_v')
+          .select('document_id, ai_wrong_type_note')
+          .in('document_id', chunk),
+      ),
+    );
+    if (answers.some((answer) => answer.error)) return map;
+    for (const answer of answers) {
+      for (const row of (answer.data as Record<string, unknown>[] | null) ?? []) {
+        const id = row['document_id'];
+        const note = row['ai_wrong_type_note'];
+        if (typeof id === 'string' && typeof note === 'string' && note.trim() !== '') {
+          map.set(id, note);
+        }
+      }
+    }
+  } catch {
+    return map;
+  }
+  return map;
+}

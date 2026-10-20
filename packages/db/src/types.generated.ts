@@ -8350,6 +8350,7 @@ export type Database = {
         Row: {
           ai_confidence: number | null;
           ai_term_letter: Json | null;
+          ai_wrong_type_note: string | null;
           claimed_dob: string | null;
           doc_type: Database['public']['Enums']['doc_type'] | null;
           document_id: string | null;
@@ -8364,6 +8365,7 @@ export type Database = {
         Insert: {
           ai_confidence?: number | null;
           ai_term_letter?: never;
+          ai_wrong_type_note?: never;
           claimed_dob?: string | null;
           doc_type?: Database['public']['Enums']['doc_type'] | null;
           document_id?: string | null;
@@ -8377,6 +8379,7 @@ export type Database = {
         Update: {
           ai_confidence?: number | null;
           ai_term_letter?: never;
+          ai_wrong_type_note?: never;
           claimed_dob?: string | null;
           doc_type?: Database['public']['Enums']['doc_type'] | null;
           document_id?: string | null;

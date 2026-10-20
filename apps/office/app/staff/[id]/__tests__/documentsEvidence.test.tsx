@@ -265,7 +265,7 @@ describe('the conditions beside a Verify (D32, D36)', () => {
     );
   });
 
-  it('a student’s term letter asks for the course level', async () => {
+  const termLetter = (over: Partial<QueueRow> = {}) =>
     render({
       profile: { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow,
       documents: [doc({ id: 'd4', doc_type: 'university_term_dates_letter', doc_label: 'Letter' })],
@@ -276,21 +276,117 @@ describe('the conditions beside a Verify (D32, D36)', () => {
           item_label: 'Letter',
           rtw_branch: 'international_student',
           below_degree_level: false,
+          ...over,
         }),
       ],
     });
+  const checkbox = (text: string) =>
+    [...dialog().querySelectorAll('label')]
+      .find((label) => label.textContent?.includes(text))!
+      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+  // The typed box of each UkDateField, not its hidden calendar picker.
+  const dateBoxes = () => [...dialog().querySelectorAll<HTMLInputElement>('.ukd input.input')];
+
+  it('a student’s term letter with no holiday periods waits for “the letter shows none”, and asks for the course level', async () => {
+    termLetter();
     await click(buttons('Verify')[0]);
-    const box = dialog().querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-    expect(box.checked).toBe(false);
+    expect(dialog().textContent).toContain('The AI found no holiday periods on this letter');
+    // ADR-0177: an empty list puts every week in term time — said, never defaulted to.
+    expect(buttons('Verify', dialog())[0]!.disabled).toBe(true);
+    const below = checkbox('Course is below degree level');
+    expect(below.checked).toBe(false);
     await act(async () => {
-      box.click();
+      checkbox('no vacation').click();
+      below.click();
     });
     await click(buttons('Verify', dialog())[0]);
     expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
       'd4',
-      {},
+      { termDates: [] },
       { staffId: 's1', belowDegreeLevel: true },
     );
+  });
+
+  it('+ Add period adds a vacation the AI missed, and Verify sends it (§2.3)', async () => {
+    termLetter();
+    await click(buttons('Verify')[0]);
+    await click(buttons('+ Add period', dialog())[0]);
+    expect(buttons('Verify', dialog())[0]!.disabled).toBe(true);
+    const [from, to] = dateBoxes();
+    type(from!, '19/10/2026');
+    type(to!, '17/01/2027');
+    await click(buttons('Verify', dialog())[0]);
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
+      'd4',
+      { termDates: [{ from: '2026-10-19', to: '2027-01-17' }] },
+      { staffId: 's1', belowDegreeLevel: false },
+    );
+  });
+
+  it('opens on the periods the AI read, inclusive, and a removed one is not sent', async () => {
+    termLetter({ term_dates: ['[2026-12-13,2027-01-11)', '[2027-04-01,2027-04-20)'] });
+    await click(buttons('Verify')[0]);
+    expect(dateBoxes().map((box) => box.value)).toEqual([
+      '13/12/2026',
+      '10/01/2027',
+      '01/04/2027',
+      '19/04/2027',
+    ]);
+    await click(buttons('Remove', dialog())[1]);
+    await click(buttons('Verify', dialog())[0]);
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
+      'd4',
+      { termDates: [{ from: '2026-12-13', to: '2027-01-10' }] },
+      { staffId: 's1', belowDegreeLevel: false },
+    );
+  });
+});
+
+describe('a completion letter the AI says is something else (ADR-0177)', () => {
+  const letter = (note: string | null) =>
+    render({
+      profile: { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow,
+      documents: [doc({ id: 'd6', doc_type: 'university_completion_letter', doc_label: 'Letter' })],
+      reviewQueue: [
+        queued({
+          item_id: 'd6',
+          item_type: 'university_completion_letter',
+          item_label: 'Official University Completion Letter',
+          rtw_branch: 'international_student',
+          completion_date_claimed: '2027-08-15',
+          staff_right_to_work_until: '2027-11-30',
+          ai_wrong_type_note: note,
+        }),
+      ],
+    });
+
+  it('shows the AI’s note and holds Approve until the reviewer says they read it', async () => {
+    letter('This is a current enrolment/status confirmation letter, not a completion letter.');
+    await click(buttons('Verify')[0]);
+    expect(dialog().textContent).toContain('The AI says this is not a completion letter');
+    expect(dialog().textContent).toContain('enrolment/status confirmation letter');
+    const approve = () => buttons('Approve', dialog())[0]!;
+    expect(approve().disabled).toBe(true);
+    await act(async () => {
+      [...dialog().querySelectorAll('label')]
+        .find((label) => label.textContent?.includes('I have read the document'))!
+        .querySelector<HTMLInputElement>('input')!
+        .click();
+    });
+    expect(approve().disabled).toBe(false);
+    await click(approve());
+    expect(actions.approveCompletionLetter).toHaveBeenCalledExactlyOnceWith(
+      'd6',
+      '2027-08-15',
+      '2027-11-30',
+    );
+  });
+
+  it('asks nothing extra when the AI raised nothing', async () => {
+    letter(null);
+    await click(buttons('Verify')[0]);
+    expect(dialog().textContent).not.toContain('The AI says');
+    expect(buttons('Approve', dialog())[0]!.disabled).toBe(false);
   });
 });
 

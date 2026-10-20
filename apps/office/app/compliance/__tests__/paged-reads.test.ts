@@ -18,6 +18,7 @@ vi.mock('../../_lib/rtwCheckData', () => ({
   loadRtwCheckEnabled: async () => false,
   loadRtwChecksForDocuments: async () => new Map(),
   loadDobClaimsForDocuments: async () => new Map(),
+  loadWrongTypeNotes: async () => new Map(),
 }));
 
 const { loadAuditTrail, loadCompliance } = await import('../data');
