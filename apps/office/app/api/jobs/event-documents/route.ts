@@ -3,7 +3,9 @@ import { createAdminClient } from '@thc/db/admin';
 import { generateDocument } from '../../documents/_lib/generate';
 import type { DocumentRpc } from '../../documents/_lib/generate';
 import { checkJobSecret } from '../_lib/auth';
+import { runInvoices } from './_lib/invoices';
 import { runAutosend } from './_lib/run';
+import { sendInvoice } from './_lib/sendInvoice';
 import type { DueRow } from './_lib/run';
 import { parseAutosendConfig } from './_lib/schedule';
 
@@ -25,6 +27,11 @@ import { parseAutosendConfig } from './_lib/schedule';
  * record_event_document_autosend, queue_event_document_autosend and
  * event_document_autosend_release; the PDF is drawn from
  * event_document_data exactly as the manager's Send draws it.
+ *
+ * ADR-0175: after D1/D2 the same run issues and sends THC's invoices —
+ * one per PO at 10:00 UK the morning after its last event, with each
+ * event's completed timesheet attached (_lib/invoices.ts). Riding this
+ * job means no new pg_cron row has to be installed for it.
  *
  * Every run is a job_runs row with its counts, like every other §7 job.
  */
@@ -121,8 +128,50 @@ export async function POST(request: Request) {
       log: (line) => console.warn(line),
     });
 
-    await db.rpc('job_run_finish', { p_id: runId, p_ok: true, p_counts: counts });
-    return json(200, { job: 'event-documents', ok: true, counts });
+    const invoices = await runInvoices({
+      now,
+      deadline: started + BUDGET_MS,
+      unfinished: async () => {
+        const { data, error } = await db.rpc('invoices_unfinished', { p_now: now.toISOString() });
+        if (error) throw new Error(`invoices_unfinished: ${error.message}`);
+        return (data ?? []) as string[];
+      },
+      groups: async () => {
+        const { data, error } = await db.rpc('invoice_groups_due', { p_now: now.toISOString() });
+        if (error) throw new Error(`invoice_groups_due: ${error.message}`);
+        return (data ?? []) as { group_key: string; verdict: string }[];
+      },
+      claim: async (groupKey) => {
+        const { data, error } = await db.rpc('invoice_claim', {
+          p_group_key: groupKey,
+          p_now: now.toISOString(),
+        });
+        if (error) throw new Error(`invoice_claim: ${error.message}`);
+        return (data as string | null) ?? null;
+      },
+      send: (invoiceId) =>
+        sendInvoice(
+          admin as unknown as Parameters<typeof sendInvoice>[0],
+          {
+            upload: async (path, pdf) => {
+              const { error } = await admin.storage
+                .from('timesheets')
+                .upload(path, pdf, { contentType: 'application/pdf', upsert: false });
+              if (error) throw new Error(`Storage refused ${path}: ${error.message}`);
+            },
+          },
+          invoiceId,
+          now,
+        ),
+      release: async (invoiceId, message) => {
+        await db.rpc('invoice_release', { p_invoice: invoiceId, p_error: message });
+      },
+      log: (line) => console.warn(line),
+    });
+
+    const all = { ...counts, invoices };
+    await db.rpc('job_run_finish', { p_id: runId, p_ok: true, p_counts: all });
+    return json(200, { job: 'event-documents', ok: true, counts: all });
   } catch (cause) {
     // A database error message names functions and codes, not people.
     const message = cause instanceof Error ? cause.message.slice(0, 300) : 'failed';

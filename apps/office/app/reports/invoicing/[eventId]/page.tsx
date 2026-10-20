@@ -20,6 +20,8 @@ import {
   formatUkStamp,
   hours,
   invoiceEventExportHref,
+  invoicePdfHref,
+  invoiceSendNote,
   invoiceStatus,
   pounds,
   reportHref,
@@ -89,10 +91,26 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
           <span className="muted">{INVOICE_STATUS_HINT[status]}</span>
         </div>
 
+        {status === 'invoiced' && event.invoice_id ? (
+          <Alert tone="green">
+            <b>Invoice {event.invoice_number}</b>{' '}
+            {event.invoice_status === 'queued' && event.invoice_queued_at
+              ? `emailed to the client with the completed timesheet on ${formatUkStamp(event.invoice_queued_at, format)} UK.`
+              : 'issued; the email is being sent.'}{' '}
+            <a href={invoicePdfHref(event.invoice_id)}>Download the invoice PDF</a>
+          </Alert>
+        ) : null}
+        {status !== 'invoiced' &&
+        invoiceSendNote(event.send_verdict ?? null, event.sends_at ?? null, format) ? (
+          <Alert tone="cyan">
+            {invoiceSendNote(event.send_verdict ?? null, event.sends_at ?? null, format)}.
+          </Alert>
+        ) : null}
+
         <TileGrid columns={4}>
           <KpiTile
             label="Amount"
-            tone={status === 'ready' ? 'ok' : 'default'}
+            tone={status === 'ready' || status === 'invoiced' ? 'ok' : 'default'}
             value={pounds(event.invoicing)}
             description={
               event.pending > 0
@@ -169,7 +187,7 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
         <Panel
           title="Invoice lines"
           actions={
-            status === 'ready' ? (
+            status === 'ready' || status === 'invoiced' ? (
               <a
                 className="btn sm primary"
                 href={invoiceEventExportHref(event.event_id, event.event_date)}

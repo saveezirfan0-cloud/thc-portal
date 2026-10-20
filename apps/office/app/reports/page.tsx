@@ -100,7 +100,7 @@ export default async function Page({
           />
         ) : null}
         {view.tab === 'invoicing' ? (
-          <InvoicingTab view={view} events={data.invoices} today={today} />
+          <InvoicingTab view={view} events={data.invoices} today={today} format={format} />
         ) : null}
         {view.tab === 'newstarter' ? (
           <NewStarterTab view={view} starters={data.starters} sends={data.sends} format={format} />

@@ -193,7 +193,7 @@ describe('ready to invoice (ADR-0172)', () => {
     );
   });
 
-  it('reads the database status and is green only when ready', () => {
+  it('reads the database status and is green only when ready or invoiced', () => {
     expect(invoiceStatus('ready')).toBe('ready');
     expect(invoiceStatus('missing')).toBe('missing');
     // Never shown as ready on a value it does not know.
@@ -203,6 +203,8 @@ describe('ready to invoice (ADR-0172)', () => {
       Object.entries(INVOICE_STATUS_TONE)
         .filter(([, tone]) => tone === 'green')
         .map(([s]) => s),
-    ).toEqual(['ready']);
+    ).toEqual(['ready', 'invoiced']);
+    // ADR-0175: an issued invoice reads back as its own status.
+    expect(invoiceStatus('invoiced')).toBe('invoiced');
   });
 });

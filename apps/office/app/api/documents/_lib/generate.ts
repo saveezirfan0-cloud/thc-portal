@@ -217,6 +217,33 @@ function stamp(now: Date): string {
   return now.toISOString().replace(/[:.]/g, '-');
 }
 
+/**
+ * Draw one sheet without keeping it: the data, the photos and the PDF.
+ * `generateDocument` stores and records what this draws; the invoice job
+ * (ADR-0175) attaches it to an invoice instead, so the client's D2 history
+ * is not touched.
+ */
+export async function drawSheet(
+  db: DocumentRpc,
+  eventId: string,
+  kind: SheetKind,
+): Promise<
+  | { ok: true; doc: DocumentData; layout: SheetLayout; pdf: Buffer; pages: number }
+  | { ok: false; status: number; message: string }
+> {
+  const { data, error } = await db.rpc('event_document_data', { p_event: eventId });
+  if (error) return { ok: false, ...refusal(error.message) };
+  const doc = data as DocumentData;
+
+  const layout = layoutSheet({ kind, event: doc.event, people: doc.rows });
+  const photoPaths = layout.pages.flatMap((p) =>
+    p.lines.flatMap((l) => (l.type === 'row' && l.row.photoPath ? [l.row.photoPath] : [])),
+  );
+  const photos = await loadPhotos(db, photoPaths);
+  const pdf = await renderSheetPdf(layout, photos);
+  return { ok: true, doc, layout, pdf, pages: countPdfPages(pdf) };
+}
+
 export interface GenerateOptions {
   /** The client to read, fetch photos and record through. Default: the manager's session. */
   db?: DocumentRpc;
@@ -237,17 +264,9 @@ export async function generateDocument(
   options: GenerateOptions = {},
 ): Promise<GenerateResult> {
   const db = options.db ?? (await documentsDb());
-  const { data, error } = await db.rpc('event_document_data', { p_event: eventId });
-  if (error) return { ok: false, ...refusal(error.message) };
-  const doc = data as DocumentData;
-
-  const layout = layoutSheet({ kind, event: doc.event, people: doc.rows });
-  const photoPaths = layout.pages.flatMap((p) =>
-    p.lines.flatMap((l) => (l.type === 'row' && l.row.photoPath ? [l.row.photoPath] : [])),
-  );
-  const photos = await loadPhotos(db, photoPaths);
-  const pdf = await renderSheetPdf(layout, photos);
-  const pages = countPdfPages(pdf);
+  const sheet = await drawSheet(db, eventId, kind);
+  if (!sheet.ok) return sheet;
+  const { doc, layout, pdf, pages } = sheet;
   // ADR-0081: a Send needs the badges the client asked for; a Download
   // never loses the sheet over them.
   let drawn: Awaited<ReturnType<typeof drawBadges>>;

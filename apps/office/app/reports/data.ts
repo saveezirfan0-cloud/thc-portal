@@ -283,6 +283,15 @@ export interface InvoiceEvent {
   signoff_note: string | null;
   signed_invoicing: number | string | null;
   signoff_stale: boolean;
+  /** ADR-0175: only an event with a violation waits for a sign-off. */
+  needs_signoff?: boolean;
+  invoice_id?: string | null;
+  invoice_number?: number | null;
+  invoice_status?: 'drawing' | 'failed' | 'queued' | null;
+  invoice_queued_at?: string | null;
+  /** When its PO's invoice is due to send, and why it waits (_invoice_groups). */
+  sends_at?: string | null;
+  send_verdict?: string | null;
 }
 
 /** One shift line of an event (`invoice_event_lines`). */

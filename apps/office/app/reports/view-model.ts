@@ -144,15 +144,16 @@ export function showForecastLabel(from: string, to: string, today: string): bool
 
 /**
  * `invoice_events`' ladder, in its order: the first step an event fails is
- * its status (20261021150000).
+ * its status (20261021150000; `invoiced` since ADR-0175, 20261022100000).
  */
-export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready';
+export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready' | 'invoiced';
 
 export const INVOICE_STATUS_LABEL: Readonly<Record<InvoiceStatus, string>> = {
   open: 'Check-out open',
   missing: 'Missing check-out',
   review: 'Needs review',
   ready: 'Ready to invoice',
+  invoiced: 'Invoiced',
 };
 
 /** Green only when it may be invoiced; coral when a manager must act first. */
@@ -163,6 +164,7 @@ export const INVOICE_STATUS_TONE: Readonly<
   missing: 'coral',
   review: 'amber',
   ready: 'green',
+  invoiced: 'green',
 };
 
 /** What the manager does next, one line per status. */
@@ -171,13 +173,55 @@ export const INVOICE_STATUS_HINT: Readonly<Record<InvoiceStatus, string>> = {
   missing:
     'A worker’s hours are not settled: resolve their No check-out on the Check-in screen with the actual finish time, or correct their check-in/out.',
   review: 'Review the violations and the lines below, then mark the event reviewed for invoicing.',
-  ready: 'Signed off. The lines are in the invoicing CSV.',
+  ready: 'Ready: the invoice goes out with the completed timesheet at the time shown.',
+  invoiced: 'Invoiced: the invoice and the completed timesheet were emailed to the client.',
 };
 
 export function invoiceStatus(value: string): InvoiceStatus {
-  return value === 'open' || value === 'missing' || value === 'review' || value === 'ready'
+  return value === 'open' ||
+    value === 'missing' ||
+    value === 'review' ||
+    value === 'ready' ||
+    value === 'invoiced'
     ? value
     : 'review';
+}
+
+/**
+ * Why a ready event's invoice has not gone yet, or when it will — from
+ * `_invoice_groups`' verdict (ADR-0175). Null when there is nothing to say.
+ */
+export function invoiceSendNote(
+  verdict: string | null,
+  sendsAt: string | null,
+  format?: TimeFormat,
+): string | null {
+  switch (verdict) {
+    case 'scheduled':
+    case 'due':
+      return sendsAt
+        ? `Invoice sends ${formatUkStamp(sendsAt, format)} UK`
+        : 'Invoice sends shortly';
+    case 'waiting':
+      return 'Waits for the other events on this PO';
+    case 'review':
+      return 'Waits for another event on this PO to be reviewed';
+    case 'missing':
+      return 'Waits for a missing check-out on this PO';
+    case 'no_recipients':
+      return 'No email to send it to: add one on the client card';
+    case 'disabled':
+      return 'Invoices are switched off in Settings';
+    case 'nothing_to_invoice':
+      return 'Nothing to charge';
+    default:
+      return null;
+  }
+}
+
+/** The stored invoice PDF (ADR-0175). */
+export function invoicePdfHref(invoiceId: string): string {
+  return `/api/invoices/${encodeURIComponent(invoiceId)}`;
 }
 
 /** `/reports/invoicing/:eventId`. */
