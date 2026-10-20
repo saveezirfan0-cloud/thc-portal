@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261021060000 · the §4.3 full re-check runs on the UK day
+-- Migration 20261022060000 · the §4.3 full re-check runs on the UK day
 --
 -- Rules are evaluated in Europe/London (§1.8). Two callers of the full
 -- compliance re-check still asked it about `current_date`, which is the
@@ -36,7 +36,7 @@ declare
 begin
   if new.review_status = 'verified' and old.review_status is distinct from 'verified' then
     select block_kind into v_kind from staff where id = new.staff_id;
-    -- 20261021060000: the UK day, never the session's current_date.
+    -- 20261022060000: the UK day, never the session's current_date.
     if unblock_if_compliant(new.staff_id, (now() at time zone 'Europe/London')::date)
        and v_kind = 'conviction_review' then
       -- The accepted declaration whose re-check has only now passed:
@@ -61,7 +61,7 @@ end $function$;
 
 create or replace function public.unblock_worker(
   p_staff uuid,
-  -- 20261021060000: the UK day by default (was current_date).
+  -- 20261022060000: the UK day by default (was current_date).
   p_on    date default ((now() at time zone 'Europe/London')::date),
   p_actor uuid default null::uuid
 ) returns jsonb

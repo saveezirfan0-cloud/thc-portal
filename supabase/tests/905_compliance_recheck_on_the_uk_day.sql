@@ -1,5 +1,5 @@
 -- =====================================================================
--- 899 · The §4.3 full re-check runs on the UK day (20261021060000)
+-- 905 · The §4.3 full re-check runs on the UK day (20261022060000)
 --
 -- Verify (compliance_docs_verified → unblock_if_compliant) and the
 -- profile's Unblock (unblock_worker with no p_on) asked compliance_blockers()
