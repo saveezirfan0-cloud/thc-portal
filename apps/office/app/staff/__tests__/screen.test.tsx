@@ -84,6 +84,11 @@ describe('/staff directory (§9.6)', () => {
     expect(heads.indexOf('Employee ID')).toBe(heads.indexOf('Phone') + 1);
     expect(html).toContain('href="tel:+447700900123"');
     expect(html).toContain('+44 7700 900123');
+    // Not `.phone`: that is the design system's phone-mockup frame, and a
+    // cell wearing it drew as a tall glass card across the table.
+    const cell = /data-label="Phone" class="([^"]*)"/.exec(html)?.[1]?.split(' ');
+    expect(cell).toBeDefined();
+    expect(cell).not.toContain('phone');
   });
 
   it('prints "—" for a removed worker, and nothing when the numbers were not read', () => {

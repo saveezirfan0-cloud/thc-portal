@@ -184,7 +184,7 @@
   width: 5.25rem;
 }
 .tbl td.emp-id,
-.tbl td.phone {
+.tbl td.phone-cell {
   white-space: nowrap;
 }
 /* The phone reads as text, not a link, until it is pointed at. */

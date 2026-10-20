@@ -568,7 +568,7 @@ function RoleChips({ names, pinned }: { names: string[]; pinned: string }) {
  */
 function PhoneCell({ phone }: { phone: string | null | undefined }) {
   return (
-    <td data-label="Phone" className="mono sm phone">
+    <td data-label="Phone" className="mono sm phone-cell">
       {phone ? (
         <a href={`tel:${phone}`} className="staff-phone">
           {formatPhone(phone)}
