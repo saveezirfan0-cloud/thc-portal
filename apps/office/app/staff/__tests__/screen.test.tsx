@@ -75,6 +75,38 @@ describe('/staff directory (§9.6)', () => {
     expect(html).not.toContain('<img');
   });
 
+  it('puts the phone between the name and the Employee ID, as a tel: link', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[{ ...WORKER, phone: '+447700900123' }]} students={[]} problem={null} />,
+    );
+    const heads = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
+    expect(heads.indexOf('Phone')).toBe(heads.indexOf('Name') + 1);
+    expect(heads.indexOf('Employee ID')).toBe(heads.indexOf('Phone') + 1);
+    expect(html).toContain('href="tel:+447700900123"');
+    expect(html).toContain('+44 7700 900123');
+    // Not `.phone`: that is the design system's phone-mockup frame, and a
+    // cell wearing it drew as a tall glass card across the table.
+    const cell = /data-label="Phone" class="([^"]*)"/.exec(html)?.[1]?.split(' ');
+    expect(cell).toBeDefined();
+    expect(cell).not.toContain('phone');
+  });
+
+  it('prints "—" for a removed worker, and nothing when the numbers were not read', () => {
+    const removed = renderToStaticMarkup(
+      <StaffScreen
+        staff={[{ ...WORKER, removed: true, status: 'removed', phone: null }]}
+        students={[]}
+        problem={null}
+      />,
+    );
+    expect(removed).not.toContain('tel:');
+    expect(removed).toMatch(/data-label="Phone"[^>]*><span class="muted">—<\/span>/);
+    const unread = renderToStaticMarkup(
+      <StaffScreen staff={[WORKER]} students={[]} problem={null} />,
+    );
+    expect(unread).toMatch(/data-label="Phone"[^>]*><\/td>/);
+  });
+
   it('labels the sort as the wireframe does: "newest"', () => {
     const html = renderToStaticMarkup(<StaffScreen staff={[]} students={[]} problem={null} />);
     expect(html).toContain('>Sort: newest</option>');
@@ -121,6 +153,7 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     const html = renderToStaticMarkup(
       <StaffScreen staff={[LEAVER]} students={[]} problem={null} />,
     );
+    expect(html).toMatch(/<th[^>]*>Phone<\/th>/);
     expect(html).toMatch(/<th[^>]*>Last completed shift<\/th>/);
     expect(html).toMatch(/<th[^>]*>Released shifts<\/th>/);
     expect(html).toMatch(/<th[^>]*>P45<\/th>/);

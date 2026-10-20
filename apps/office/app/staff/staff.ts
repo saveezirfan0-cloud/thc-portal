@@ -147,13 +147,16 @@ export function matchesGroup(row: StaffRow, group: GroupFilter): boolean {
 }
 
 /**
- * Search runs over the name, the Employee ID, the Payroll ID and the role
- * (§9.6). The phone is not on the directory row — it is personal data the
- * list does not print — so what is searchable here is the name and the IDs.
+ * Search runs over the name, the Employee ID, the Payroll ID, the phone and
+ * the role (§9.6; the wireframe's "Search name, Employee ID, phone"). A
+ * number is matched on its digits however it is typed — "07700 900123",
+ * "+44 7700 900123" and "900123" all find +447700900123 — and only from
+ * four digits on, so a short Employee ID search is not drowned in phones.
  */
 export function matchesQuery(row: StaffRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
+  if (row.phone && phoneMatches(row.phone, needle)) return true;
   if (row.display_name.toLowerCase().includes(needle)) return true;
   if (row.employee_id !== null && employeeId(row.employee_id).toLowerCase().includes(needle)) {
     return true;
@@ -161,6 +164,16 @@ export function matchesQuery(row: StaffRow, query: string): boolean {
   // ADR-0107: the payroll sheet's own ID.
   if (row.payroll_id && row.payroll_id.toLowerCase().includes(needle)) return true;
   return row.role_names.some((role) => role.toLowerCase().includes(needle));
+}
+
+function phoneMatches(phone: string, needle: string): boolean {
+  if (!/^[\d\s()+-]+$/.test(needle)) return false;
+  const digits = needle.replace(/\D/g, '');
+  if (digits.length < 4) return false;
+  const own = phone.replace(/\D/g, '');
+  // A UK number typed the way it is dialled at home: 07700… is +447700….
+  const national = digits.startsWith('0') ? `44${digits.slice(1)}` : digits;
+  return own.includes(digits) || own.includes(national);
 }
 
 /**

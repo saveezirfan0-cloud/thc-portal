@@ -159,6 +159,20 @@ describe('search (§9.6)', () => {
     expect(matchesQuery(WORKER, 'zzz')).toBe(false);
   });
 
+  it('matches the phone on its digits, however it is typed', () => {
+    const withPhone = row({ phone: '+447700900123' });
+    expect(matchesQuery(withPhone, '07700 900123')).toBe(true);
+    expect(matchesQuery(withPhone, '+44 7700 900123')).toBe(true);
+    expect(matchesQuery(withPhone, '900123')).toBe(true);
+    expect(matchesQuery(withPhone, '07700 900124')).toBe(false);
+  });
+
+  it('leaves a short number to the Employee ID, and a removed worker has no phone', () => {
+    const withPhone = row({ phone: '+447700900123', employee_id: 5 });
+    expect(matchesQuery(withPhone, '770')).toBe(false);
+    expect(matchesQuery(row({ phone: null }), '07700 900123')).toBe(false);
+  });
+
   it('keeps everyone on an empty query', () => {
     expect(matchesQuery(WORKER, '   ')).toBe(true);
   });

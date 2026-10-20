@@ -48,6 +48,7 @@ import {
 } from './staff';
 import type { CapFilter, Filter, GroupFilter, Sort } from './staff';
 import { formatUkStamp } from './[id]/profile';
+import { formatPhone } from './[id]/additions';
 import type { StaffRow, StudentRow } from './types';
 import './staff.css';
 
@@ -80,6 +81,7 @@ export interface StaffScreenProps {
  */
 const DIRECTORY_COLUMNS = [
   { id: 'name', label: 'Name', required: true },
+  { id: 'phone', label: 'Phone', width: 'm' },
   { id: 'employee-id', label: 'Employee ID', width: 's' },
   { id: 'roles', label: 'Role(s)' },
   { id: 'rating', label: 'Rating', width: 'xs' },
@@ -91,6 +93,7 @@ type DirectoryColumn = (typeof DIRECTORY_COLUMNS)[number]['id'];
 
 const INACTIVE_COLUMNS = [
   { id: 'name', label: 'Name', required: true },
+  { id: 'phone', label: 'Phone', width: 'm' },
   { id: 'employee-id', label: 'Employee ID', width: 's' },
   { id: 'left', label: 'Left', width: 'm' },
   { id: 'reason', label: 'Reason given' },
@@ -282,8 +285,8 @@ export function StaffScreen({
               type="search"
               value={query}
               onChange={(event) => setUrl({ q: event.target.value, page: '1' }, 'replace')}
-              placeholder="Search name, Employee ID, Payroll ID, role"
-              aria-label="Search name, Employee ID, Payroll ID, role"
+              placeholder="Search name, phone, Employee ID, Payroll ID, role"
+              aria-label="Search name, phone, Employee ID, Payroll ID, role"
             />
           </div>
           {view === 'directory' ? (
@@ -366,7 +369,10 @@ export function StaffScreen({
               {shown.length === 0 ? (
                 <EmptyState>
                   <h3>No worker matches</h3>
-                  <p>Search runs over the name, the Employee ID and the worker&rsquo;s roles.</p>
+                  <p>
+                    Search runs over the name, the phone number, the Employee ID, the Payroll ID and
+                    the worker&rsquo;s roles.
+                  </p>
                 </EmptyState>
               ) : filter === 'inactive' ? (
                 /*
@@ -380,7 +386,7 @@ export function StaffScreen({
                   label="Inactive workers"
                   fixed
                   pin={2}
-                  minWidth={inactiveColumns.minWidth('66rem', LEAD_REM)}
+                  minWidth={inactiveColumns.minWidth('75rem', LEAD_REM)}
                 >
                   <table className="tbl card-rows">
                     <thead>
@@ -407,7 +413,7 @@ export function StaffScreen({
                   label="Staff"
                   fixed
                   pin={2}
-                  minWidth={directoryColumns.minWidth('56rem', LEAD_REM)}
+                  minWidth={directoryColumns.minWidth('65rem', LEAD_REM)}
                 >
                   <table className="tbl card-rows">
                     <thead>
@@ -555,6 +561,25 @@ function RoleChips({ names, pinned }: { names: string[]; pinned: string }) {
   );
 }
 
+/**
+ * The worker's mobile, a `tel:` link so a laptop or desk phone set up for
+ * calls rings it. "—" for a removed worker (§1.7) or none on record; empty
+ * when the numbers could not be read (data.ts), rather than a claimed none.
+ */
+function PhoneCell({ phone }: { phone: string | null | undefined }) {
+  return (
+    <td data-label="Phone" className="mono sm phone-cell">
+      {phone ? (
+        <a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className="staff-phone">
+          {formatPhone(phone)}
+        </a>
+      ) : phone === null ? (
+        <span className="muted">—</span>
+      ) : null}
+    </td>
+  );
+}
+
 function StaffTableRow({
   row,
   picker,
@@ -600,6 +625,7 @@ function StaffTableRow({
         ) : null}
       </td>
     ),
+    phone: <PhoneCell phone={row.phone} />,
     'employee-id': (
       <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}
@@ -700,6 +726,7 @@ function InactiveTableRow({
         </Link>
       </td>
     ),
+    phone: <PhoneCell phone={row.phone} />,
     'employee-id': (
       <td data-label="Employee ID" className="mono sm emp-id">
         {employeeId(row.employee_id)}

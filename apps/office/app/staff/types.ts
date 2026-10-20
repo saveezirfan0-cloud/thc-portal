@@ -49,6 +49,11 @@ export interface StaffRow {
   spudbros_express?: boolean;
   thc_shifts_enabled?: boolean;
   payroll_id?: string | null;
+  /**
+   * The worker's mobile, E.164, read off `staff` beside the view (data.ts)
+   * — never for a removed worker. Undefined when it was not read.
+   */
+  phone?: string | null;
   display_name: string;
   photo_path: string | null;
   /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
