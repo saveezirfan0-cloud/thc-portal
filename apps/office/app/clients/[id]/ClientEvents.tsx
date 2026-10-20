@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Panel, Pill, SegToggle, TableScroll } from '@thc/ui';
+import { DEFAULT_LIST_PAGE_SIZE } from '../../_lib/pageSizes';
 import { formatUkDate } from '../../staff/staff';
 import { formatUkWindow } from '../../staff/[id]/profile';
 import { gbpRound, marginTone, matchesEventFilter } from './card';
@@ -27,7 +28,7 @@ const STATUS_TONE: Record<ClientEventRow['status'], 'cyan' | 'green' | 'neutral'
   cancelled: 'coral',
 };
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
 export function ClientEvents({
   rows,

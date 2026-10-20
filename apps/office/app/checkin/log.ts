@@ -47,7 +47,7 @@ function addDays(isoDate: string, days: number): string {
 // ---------------------------------------------------------------------
 
 /** Entries per page of the §9.5 violation log. */
-export const VIOLATION_PAGE_SIZE = 50;
+export const VIOLATION_PAGE_SIZE = 100;
 
 export interface LogQuery {
   /** §9.5 "Show resolved", unchecked by default. */

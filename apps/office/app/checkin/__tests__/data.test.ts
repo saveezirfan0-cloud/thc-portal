@@ -71,14 +71,14 @@ describe('the violation log read (§9.5, D50)', () => {
   it('asks the database for unresolved entries only, by default', async () => {
     await loadMonitor();
     expect(logRead().calls).toContainEqual(['eq', 'resolved', false]);
-    expect(logRead().calls).toContainEqual(['range', 0, 50]);
+    expect(logRead().calls).toContainEqual(['range', 0, 100]);
     expect(logRead().calls).toContainEqual(['order', 'detected_at', { ascending: false }]);
   });
 
   it('with Show resolved ticked, it asks for both', async () => {
     await loadMonitor({ showResolved: true, page: 2 });
     expect(logRead().calls.some((c) => c[0] === 'eq' && c[1] === 'resolved')).toBe(false);
-    expect(logRead().calls).toContainEqual(['range', 50, 100]);
+    expect(logRead().calls).toContainEqual(['range', 100, 200]);
   });
 
   it('counts every unresolved violation, not just the page', async () => {
@@ -88,9 +88,9 @@ describe('the violation log read (§9.5, D50)', () => {
   });
 
   it('shows a page and says whether there is an older one', async () => {
-    rowsFor.violations = Array.from({ length: 51 }, (_, i) => violationRow(i));
+    rowsFor.violations = Array.from({ length: 101 }, (_, i) => violationRow(i));
     const data = await loadMonitor();
-    expect(data.violations).toHaveLength(50);
+    expect(data.violations).toHaveLength(100);
     expect(data.hasMore).toBe(true);
     expect(data.violations[0]!.flaggedAs).toBe('Checked out early — Press Night');
   });

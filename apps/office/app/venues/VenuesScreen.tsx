@@ -27,6 +27,7 @@ import {
   type AddedFilter,
 } from '../_lib/addedBy';
 import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
+import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '../_lib/pageSizes';
 import { VenueMap, markerLabel } from './VenueMap';
 import { VenueModal } from './VenueModal';
 import { DeleteVenueModal } from './DeleteVenueModal';
@@ -61,9 +62,9 @@ type RadiusFilter = 'all' | 'standard' | 'custom';
 type EventsFilter = 'all' | 'with' | 'none';
 type Sort = 'name' | 'newest' | 'oldest' | 'events';
 
-/** The pager's sizes, as on /clients (ADR-0124): 68 venues were one 22,000px page on a phone. */
-export const PAGE_SIZES = [10, 25, 50, 100] as const;
-const DEFAULT_PAGE_SIZE = 25;
+/** The pager's sizes, as on /clients (ADR-0124; 100 at least, ADR-0175). */
+export const PAGE_SIZES = LIST_PAGE_SIZES;
+const DEFAULT_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
 const TABS: readonly Tab[] = ['list', 'map'];
 const RADII: readonly RadiusFilter[] = ['all', 'standard', 'custom'];

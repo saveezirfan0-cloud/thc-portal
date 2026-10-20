@@ -8,7 +8,7 @@ import { type InboxStatus, type Period, periodStart } from './filters';
 import type { InboxRow } from './view-model';
 import { readProblem } from '../_lib/dbError';
 
-export const PAGE_SIZE = 50;
+export const PAGE_SIZE = 100;
 
 export interface InboxFilters {
   type: OfficeInboxCode | null;
