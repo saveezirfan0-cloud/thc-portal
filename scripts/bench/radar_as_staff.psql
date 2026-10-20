@@ -1,7 +1,8 @@
 -- Included by radar_and_pool_at_scale.sql with :who set to 1, 2 or 3.
 -- Radar as that staff user (their own session, RLS on): the whole list
 -- three times, then — when the database has the single-section read —
--- /radar/[id] for twenty open sections, whether or not the worker sees them.
+-- /radar/[id] for twenty open sections, whether or not the worker sees them;
+-- then their open shift offers (staff_open_offers) three times.
 select set_config('request.jwt.claims',
                   json_build_object('sub', md5('bench-user-' || :'who')::uuid, 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -29,6 +30,13 @@ begin
               extract(epoch from clock_timestamp() - t) * 1000);
     end loop;
   end if;
+  for i in 1..3 loop
+    t := clock_timestamp();
+    select count(*) into n from staff_open_offers();
+    insert into bench_clock (what, n, ms)
+    values ('offers: staff_open_offers() worker ' || current_setting('bench.who'), n,
+            extract(epoch from clock_timestamp() - t) * 1000);
+  end loop;
 end $$;
 reset role;
 select set_config('request.jwt.claims', '', true);
