@@ -15,6 +15,7 @@
  * and **Reason** — why an applied row has no Payroll ID yet (`kept`).
  */
 import { textCell } from '@thc/pdf/csv';
+import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '../../_lib/pageSizes';
 import type { RosterEntry } from './data';
 import { KEPT_REASONS, KEPT_REASON_LABEL } from './report';
 import type { KeptReason, RosterKept, RosterMatch, RosterReportData } from './report';
@@ -42,9 +43,12 @@ export const PAYROLL_LABEL: Readonly<Record<Exclude<RosterPayrollFilter, 'all'>,
 };
 
 /** The filter's keys in the address bar, so a filtered list can be shared and exported. */
-/** Rows per page on the screen (ADR-0143); the export takes every row the filter keeps. */
-export const ROSTER_PAGE_SIZES = [25, 50, 100, 250] as const;
-export const DEFAULT_ROSTER_PAGE_SIZE = 50;
+/**
+ * Rows per page on the screen (ADR-0143; 100 at least, ADR-0175); the export
+ * takes every row the filter keeps.
+ */
+export const ROSTER_PAGE_SIZES = LIST_PAGE_SIZES;
+export const DEFAULT_ROSTER_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
 export const ROSTER_QUERY = {
   grp: 'all',

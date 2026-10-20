@@ -15,6 +15,7 @@ import {
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { Pager } from '../../_components/Pager';
+import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '../../_lib/pageSizes';
 import { RTW_LABEL, employeeId, formatUkDate } from '../staff';
 import { DecideDialog } from './DecideDialog';
 import type { DecideStage } from './DecideDialog';
@@ -39,9 +40,9 @@ import './requests.css';
 
 type Tab = 'pending' | 'decided';
 
-/** The pager's sizes, as on /clients and /venues (release audit L4). */
-const PAGE_SIZES = [10, 25, 50, 100] as const;
-const DEFAULT_PAGE_SIZE = 25;
+/** The pager's sizes, as on /clients and /venues (release audit L4; ADR-0175). */
+const PAGE_SIZES = LIST_PAGE_SIZES;
+const DEFAULT_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
 /**
  * /staff/requests — ADR-0045, `wireframes/backoffice/change-requests.html`

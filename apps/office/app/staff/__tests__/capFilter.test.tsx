@@ -6,7 +6,7 @@ import type { StaffRow, StudentRow } from '../types';
 /**
  * /staff against wireframes/backoffice/staff.html: the Student visa view's
  * cap filter (All caps · 20 h · term time · 48 h · holiday · 48 h ·
- * graduated · Blocked) and the directory pager's "15 / page · 50 / page".
+ * graduated · Blocked) and the directory pager's 100 / 250 / 500 per page (ADR-0175).
  */
 // The list's tab and view come from the URL (release audit L1).
 const nav = vi.hoisted(() => ({ search: '' }));
@@ -156,24 +156,26 @@ describe('the Student visa view filters by cap (wireframe)', () => {
   });
 });
 
-describe('the directory pager offers 15 or 50 per page (wireframe)', () => {
-  const many = Array.from({ length: 20 }, (_, index) => ({
+describe('the directory pager offers 100, 250 or 500 per page (ADR-0175)', () => {
+  const many = Array.from({ length: 120 }, (_, index) => ({
     ...WORKER,
     id: `w${index}`,
-    display_name: `Worker ${String(index).padStart(2, '0')}`,
+    display_name: `Worker ${String(index).padStart(3, '0')}`,
   }));
 
-  it('shows 15 by default, with both sizes to choose from', () => {
+  it('shows 100 by default, with every size to choose from', () => {
     const html = renderToStaticMarkup(<StaffScreen staff={many} students={[]} problem={null} />);
-    expect(html).toContain('Showing 1–15 of 20');
+    expect(html).toContain('Showing 1–100 of 120');
     expect(html).toContain('aria-label="Rows per page"');
-    expect(html).toMatch(/<option value="15"[^>]*>15 \/ page<\/option>/);
-    expect(html).toMatch(/<option value="50"[^>]*>50 \/ page<\/option>/);
+    for (const size of [100, 250, 500]) {
+      expect(html).toMatch(new RegExp(`<option value="${size}"[^>]*>${size} / page</option>`));
+    }
+    expect(html).not.toMatch(/<option value="(15|50)"/);
   });
 
   it('has no pager at all for one page', () => {
     const html = renderToStaticMarkup(
-      <StaffScreen staff={many.slice(0, 15)} students={[]} problem={null} />,
+      <StaffScreen staff={many.slice(0, 100)} students={[]} problem={null} />,
     );
     expect(html).not.toContain('Rows per page');
   });

@@ -17,7 +17,7 @@ import type {
  * tones the wireframe prints, and keeps the URL state in one shape.
  */
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 100;
 export const UK = 'Europe/London';
 
 // ---------------------------------------------------------------------

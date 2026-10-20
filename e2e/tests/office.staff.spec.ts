@@ -69,8 +69,8 @@ test('the directory lists workers with the §9.6 columns, and no candidates', as
 
   // Name A–Z is the default sort and Amara sorts near the top of page one.
   await expect(page.getByRole('link', { name: 'Amara Kalu', exact: true })).toBeVisible();
-  // The wireframe's pager: 15 a page by default.
-  expect(await rows(page).count()).toBeLessThanOrEqual(15);
+  // The pager: 100 a page by default (ADR-0175).
+  expect(await rows(page).count()).toBeLessThanOrEqual(100);
 
   // Keisha Campbell is a seeded candidate (status `documents`): she belongs
   // to /onboarding and the directory search does not find her.

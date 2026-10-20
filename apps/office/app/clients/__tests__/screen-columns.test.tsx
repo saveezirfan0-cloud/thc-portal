@@ -98,23 +98,23 @@ describe('/clients pager — rows per page (ADR-0124)', () => {
   const renderMany = (count: number) =>
     renderToStaticMarkup(<ClientsScreen ratesVisible problem={null} clients={many(count)} />);
 
-  it('shows 25 by default, with 10, 25, 50 and 100 to choose from', () => {
-    const markup = renderMany(60);
-    expect(markup).toContain('Showing 1–25 of 60');
+  it('shows 100 by default, with 100, 250 and 500 to choose from (ADR-0175)', () => {
+    const markup = renderMany(260);
+    expect(markup).toContain('Showing 1–100 of 260');
     expect(markup).toContain('1 / 3');
     expect(markup).toContain('aria-label="Rows per page"');
-    for (const size of [10, 25, 50, 100]) {
+    for (const size of [100, 250, 500]) {
       expect(markup).toMatch(new RegExp(`<option value="${size}"[^>]*>${size} / page</option>`));
     }
   });
 
-  it('fits a 22-client directory on one page but still offers the sizes', () => {
-    const markup = renderMany(22);
-    expect(markup).toContain('Showing 1–22 of 22');
+  it('pages a 102-client directory and offers the sizes', () => {
+    const markup = renderMany(102);
+    expect(markup).toContain('Showing 1–100 of 102');
     expect(markup).toContain('aria-label="Rows per page"');
   });
 
   it('has no pager at all when the list fits the smallest size', () => {
-    expect(renderMany(10)).not.toContain('Rows per page');
+    expect(renderMany(100)).not.toContain('Rows per page');
   });
 });
