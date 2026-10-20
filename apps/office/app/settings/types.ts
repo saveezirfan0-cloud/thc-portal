@@ -98,7 +98,48 @@ export interface SettingsData {
    */
   officeTwoStepRequired: boolean;
   officeSessionMaxHours: number;
+  /**
+   * ADR-0175: the `invoicing` row, read as `invoicing_config()` reads it
+   * (every value defaulted; off when the row is missing).
+   */
+  invoicing: InvoicingSettings;
   problem: string | null;
+}
+
+/** ADR-0175: THC's own details as printed on every invoice (`settings.invoicing.company`). */
+export interface InvoicingCompany {
+  name: string;
+  company_reg: string;
+  vat_reg: string;
+  email: string;
+  website: string;
+}
+
+/** ADR-0175: where the client pays (`settings.invoicing.bank`). */
+export interface InvoicingBank {
+  account_name: string;
+  bank: string;
+  account_number: string;
+  sort_code: string;
+}
+
+/**
+ * ADR-0175: `settings.invoicing`, the shape `invoicing_config()` reads
+ * (20261022100000_invoices_sent.sql §2). Snapshotted onto each invoice as it
+ * is issued, so a change here never alters an invoice already sent.
+ */
+export interface InvoicingSettings {
+  enabled: boolean;
+  /** "HH:MM", 24-hour, UK time: sent at this time the morning after a PO's last event. */
+  time: string;
+  /** "YYYY-MM-DD": go-live. Events dated before it are never invoiced. */
+  first_event_date: string;
+  po_window_days: number;
+  vat_rate: number;
+  payment_terms_days: number;
+  company: InvoicingCompany;
+  bank: InvoicingBank;
+  late_payment_note: string;
 }
 
 /** The screen's two tabs; `?tab=notifications` opens the second. */

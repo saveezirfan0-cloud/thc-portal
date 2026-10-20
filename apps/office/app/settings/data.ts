@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { TEMPLATES, switchedOff } from '@thc/notifications';
-import { readWeights, validateSessionHours } from './validate';
+import { readInvoicing, readWeights, validateSessionHours } from './validate';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
 import { readProblem } from '../_lib/dbError';
 
@@ -64,6 +64,7 @@ export async function loadSettings(): Promise<SettingsData> {
     clientPortalPhone: '',
     officeTwoStepRequired: true,
     officeSessionMaxHours: 12,
+    invoicing: readInvoicing(null),
     problem: null,
   };
 
@@ -126,6 +127,8 @@ export async function loadSettings(): Promise<SettingsData> {
     // anything but a whole number from 1 to 24 is the default 12.
     officeTwoStepRequired: byKey.get('office_two_step_required') !== false,
     officeSessionMaxHours: sessionHoursOf(byKey.get('office_session_max_hours')),
+    // ADR-0175: invoicing_config()'s reading — off when the row is missing.
+    invoicing: readInvoicing(byKey.get('invoicing')),
     problem: null,
   };
 }
