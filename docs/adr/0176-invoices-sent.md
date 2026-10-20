@@ -141,8 +141,8 @@ else.
   address under "Invoice to".
 - Invoice numbers are gapless and in issue order, not event order.
 - The client receives the D1 Allocation Timesheet at 16:00 the day before (who will work), and
-  at 10:00 the morning after both D2's Completed Allocation Timesheet and the invoice with its
-  sign-in / sign-out log.
+  at 10:00 the morning after the invoice with its sign-in / sign-out log (D2 is switched off;
+  see the amendment).
 - The four new tables (`invoice_counter`, `invoices`, `invoice_event_links`, `invoice_lines`)
   are readable only by admins with finance, and the viewer writes none of them (the
   `office_read_only` trigger). Three definers are added for `authenticated`:
@@ -179,4 +179,27 @@ in. It is not a log, and it does not line up with the invoice. So:
   correction shows on the office's event page, not on a document already sent.
 - INV1's wording says what is attached and why: "so you can check each line of the invoice
   against it".
-- D1 (16:00 the day before) and D2 are unchanged.
+- D1 (16:00 the day before) is unchanged.
+
+### Later the same day: GPS wording, and D2 stops
+
+THC, on the sample log: "Can this also say that all times are taken by GPS — we need to add some
+wording so clients know that these are accurate timings", and of D2: "stop it now that the
+invoice carries the log".
+
+- **The log says how its times were taken.** Under the title, a boxed line reads "All times
+  GPS-verified · recorded automatically by the THC Staff App". The introduction explains the
+  rest:
+  - a worker can only sign in when their phone's GPS places them at the venue;
+  - at sign-out the app checks GPS again, and if they have already left, the time recorded is
+    the last moment GPS placed them on site (`check_out_decision`, `recorded_last_on_site`);
+  - no time is written by hand, except where the notes say a finish time was entered by THC.
+
+  The wording is `SIGN_IN_LOG_GPS_BADGE` and `SIGN_IN_LOG_INTRO` in `signInLog.ts`. INV1's
+  email says the same in one sentence.
+- **The automatic Completed Allocation Timesheet (D2) is switched off**
+  (`20261022120000`: `settings.document_autosend.completed.enabled = false`, audited). The
+  client's 10:00 email the morning after is the invoice with its log, and only that.
+  - The office's Send / Download Completed Timesheet buttons (§11.4) are unchanged, as is the
+    D2 machinery. The same setting turns it back on.
+  - The "Consequences" line above about two emails at 10:00 no longer holds.

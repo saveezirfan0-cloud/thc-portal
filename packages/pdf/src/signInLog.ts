@@ -108,3 +108,15 @@ export function signInLogSubtitle(data: InvoiceDocumentData): string {
   const po = data.poNumber ? ` · PO ${data.poNumber}` : '';
   return `Supporting invoice ${data.number} · ${data.billTo.name}${po} · ${invoiceEventDates(data.periodFrom, data.periodTo)}`;
 }
+
+/** Under the title: the log's times are GPS-verified, not hand-written (THC, 20.10.2026). */
+export const SIGN_IN_LOG_GPS_BADGE =
+  'All times GPS-verified · recorded automatically by the THC Staff App';
+
+/** How the times were taken, in full, for the client's accounts team. */
+export const SIGN_IN_LOG_INTRO =
+  'All sign-in and sign-out times on this log are recorded automatically by the THC Staff App and verified by GPS. ' +
+  'A worker can only sign in when their phone\u2019s GPS places them at the venue. When they sign out, the app checks ' +
+  'their GPS location again; if they have already left, the time recorded is the last moment GPS placed them on site. ' +
+  'No time is written by hand, except where the notes say a finish time was entered by THC. Times are UK time (24-hour). ' +
+  'Hours are the time worked within the booked shift, less unpaid breaks, and are the hours charged on the invoice.';

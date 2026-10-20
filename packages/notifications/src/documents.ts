@@ -169,11 +169,11 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Invoice {invoiceNumber} — {client}{poSuffix}',
-    body: "Hello,\n\nPlease find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}.\n\nThe sign-in and sign-out log is attached too, so you can check each line of the invoice against it: who worked, when they signed in and out in the THC Staff App, the break taken and the hours charged.\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}.\n\nThe sign-in and sign-out log is attached too, so you can check each line of the invoice against it: who worked, when they signed in and out, the break taken and the hours charged. All sign-in and sign-out times are recorded automatically by the THC Staff App and verified by GPS at the venue, so they are accurate timings, not hand-written ones.\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Invoice',
       intro:
-        'Please find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}. The sign-in and sign-out log is attached too, so you can check each line of the invoice against it: who worked, when they signed in and out in the THC Staff App, the break taken and the hours charged.',
+        'Please find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}. The sign-in and sign-out log is attached too, so you can check each line of the invoice against it: who worked, when they signed in and out, the break taken and the hours charged. All sign-in and sign-out times are recorded automatically by the THC Staff App and verified by GPS at the venue, so they are accurate timings, not hand-written ones.',
       closing:
         "If anything doesn't match your records, just reply to this email and we'll look into it.",
       attachmentNote: 'Invoice · attached',

@@ -173,8 +173,8 @@ export const INVOICE_STATUS_HINT: Readonly<Record<InvoiceStatus, string>> = {
   missing:
     'A worker’s hours are not settled: resolve their No check-out on the Check-in screen with the actual finish time, or correct their check-in/out.',
   review: 'Review the violations and the lines below, then mark the event reviewed for invoicing.',
-  ready: 'Ready: the invoice goes out with the completed timesheet at the time shown.',
-  invoiced: 'Invoiced: the invoice is final. It is emailed with the completed timesheet.',
+  ready: 'Ready: the invoice goes out with the sign-in and sign-out log at the time shown.',
+  invoiced: 'Invoiced: the invoice is final. It is emailed with the sign-in and sign-out log.',
 };
 
 export function invoiceStatus(value: string): InvoiceStatus {

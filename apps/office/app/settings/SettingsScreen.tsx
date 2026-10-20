@@ -790,7 +790,7 @@ function InvoicingBlock({ invoicing }: { invoicing: InvoicingSettings }) {
     <Block
       className="settings-wide"
       title="Invoicing"
-      sub="Invoices are emailed at this time the morning after the last event on a PO, with the completed timesheets attached."
+      sub="Invoices are emailed at this time the morning after the last event on a PO, with the sign-in and sign-out log attached."
       actions={
         <Pill tone={invoicing.enabled ? 'green' : 'neutral'}>
           {invoicing.enabled ? 'Sending' : 'Off'}

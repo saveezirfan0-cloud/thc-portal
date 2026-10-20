@@ -17,7 +17,7 @@
 --   (none)  Wed 5 Jun 2024, clean (BST)                    → 10:00 BST = 09:00 UTC
 -- =====================================================================
 begin;
-select plan(85);
+select plan(87);
 \ir _shared/fixtures.psql
 
 \set r_wait '90900000-0000-4000-8000-000000000001'
@@ -393,6 +393,11 @@ select throws_ok(format($$ select queue_invoice_email(%L) $$, (select id from in
   'P0001', 'switched_off', 'nor queues an email');
 reset role;
 update settings set value = '{}'::jsonb where key = 'notification_switches';
+
+select is((select value -> 'completed' ->> 'enabled' from settings where key = 'document_autosend'), 'false',
+  'the automatic Completed Allocation Timesheet (D2) is off: the invoice carries the sign-in log (20261022120000)');
+select is((select count(*)::int from audit_log where action = 'settings.document_autosend'), 1,
+  'and switching it off is in the activity log');
 
 update settings set value = value || jsonb_build_object('enabled', false) where key = 'invoicing';
 select is(pg_temp.verdict('Sat', '2024-11-17 10:05+00'), 'disabled', 'switched off in settings, nothing is due');
