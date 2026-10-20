@@ -96,6 +96,7 @@ describe('the invoice step (ADR-0175)', () => {
       }),
     );
     expect(counts).toMatchObject({ issued: 0, sent: 0, deferred: 2 });
-    expect(release).toHaveBeenCalledWith('old', 'deferred: out of time this run');
+    // A deferral is not a failure: the lease runs out and the next run takes it.
+    expect(release).not.toHaveBeenCalled();
   });
 });

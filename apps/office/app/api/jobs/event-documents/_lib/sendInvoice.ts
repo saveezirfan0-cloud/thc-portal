@@ -32,6 +32,10 @@ export async function sendInvoice(
   invoiceId: string,
   now: Date = new Date(),
 ): Promise<{ number: number; queued: boolean }> {
+  // Counted before any work: a run killed mid-draw still counts (ADR-0175).
+  const begun = await db.rpc('invoice_begin', { p_invoice: invoiceId, p_now: now.toISOString() });
+  if (begun.error) throw new Error(`invoice_begin: ${begun.error.message}`);
+
   const read = await db.rpc('invoice_document_data', { p_invoice: invoiceId });
   if (read.error) throw new Error(`invoice_document_data: ${read.error.message}`);
   const doc = read.data as InvoiceDocumentData;

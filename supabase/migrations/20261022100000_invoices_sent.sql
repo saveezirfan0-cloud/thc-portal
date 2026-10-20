@@ -23,6 +23,10 @@
 --     for the ADR-0172 sign-off (and is sent on the first run after it).
 --     A missing check-out always holds it.
 --   · The separate D2 timesheet email is unchanged (both are sent).
+--   · Switching INV1 off in Settings → Notifications stops invoices being
+--     issued at all (a number is never taken for an email that cannot go).
+--   · The office sees whether the email was sent or failed, and can send
+--     it again (to the client card's current addresses).
 --   · Nothing is invoiced for an event dated before
 --     settings.invoicing.first_event_date (go-live, 26.10.2026), so
 --     switching this on never emails invoices for past events.
@@ -43,6 +47,11 @@
 --   queue_invoice_email / invoice_release / invoices_unfinished
 --                        the job's steps (service role)
 --   invoice_file         the office's download (finance callers)
+--   resend_invoice_email the office's "Send again" (finance, write)
+--   invoices_state_guard drawing → failed/queued, failed → drawing/queued;
+--                        queued is final (packages/domain/state.ts)
+--   staff_removed_purge_invoices
+--                        GDPR removal reaches invoice_lines.staff_name
 --
 -- The job: the event-documents route (every 15 min, ADR-0074) runs the
 -- invoices after D1/D2, so no new pg_cron row has to be installed.
@@ -76,9 +85,9 @@ declare
   v_emails text[];
   e text;
 begin
-  if current_app_role() is distinct from 'admin' then
-    raise exception 'admins_only' using errcode = '42501';
-  end if;
+  -- Finance: where an invoice (totals, charge rates) is emailed is a money
+  -- decision (ADR-0056), not a scheduler's.
+  perform assert_finance_caller();
   if not office_can('write') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'write';
   end if;
@@ -111,10 +120,44 @@ begin
 end $$;
 
 comment on function public.set_client_invoice_details(uuid, text, text[], text) is
-  'ADR-0175: the client card''s accounts contact, invoice emails (up to 5, validated, lower-cased) and billing address. Office callers that may write; audited as client.invoice_details.';
+  'ADR-0175: the client card''s accounts contact, invoice emails (up to 5, validated, lower-cased) and billing address. Finance callers that may write; audited as client.invoice_details.';
 
 revoke execute on function public.set_client_invoice_details(uuid, text, text[], text) from public, anon;
 grant execute on function public.set_client_invoice_details(uuid, text, text[], text) to authenticated, service_role;
+
+-- clients carries admin_all (0001_init), so a direct update could change
+-- the three columns around the function above. A signed-in caller without
+-- finance may not; the service role and migrations may.
+create or replace function public.clients_invoice_details_guard()
+returns trigger
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    if new.accounts_contact_name is null and coalesce(array_length(new.invoice_emails, 1), 0) = 0
+       and new.billing_address is null then
+      return new;
+    end if;
+  elsif new.accounts_contact_name is not distinct from old.accounts_contact_name
+        and new.invoice_emails is not distinct from old.invoice_emails
+        and new.billing_address is not distinct from old.billing_address then
+    return new;
+  end if;
+  if not office_can('finance') then
+    raise exception 'not_permitted' using errcode = '42501', detail = 'finance';
+  end if;
+  return new;
+end $$;
+
+comment on function public.clients_invoice_details_guard() is
+  'ADR-0175: the client card''s invoice details change only for a finance caller (or the service role). Trigger.';
+revoke execute on function public.clients_invoice_details_guard() from public, anon, authenticated;
+
+create trigger clients_invoice_details_guard
+  before insert or update on public.clients
+  for each row execute function public.clients_invoice_details_guard();
 
 -- ---------------------------------------------------------------------
 -- 2 · The settings THC's own invoice carries (editable on /settings)
@@ -149,7 +192,10 @@ language sql stable set search_path = public, extensions as $$
   select jsonb_build_object(
     'enabled',            coalesce((s.value ->> 'enabled')::boolean, false),
     'time',               coalesce(nullif(s.value ->> 'time', ''), '10:00'),
-    'first_event_date',   coalesce(nullif(s.value ->> 'first_event_date', ''), '2026-10-26'),
+    -- Never before go-live, whatever the row says: events up to 25.10.2026
+    -- were invoiced by hand from the ADR-0172 CSV.
+    'first_event_date',   greatest(coalesce(nullif(s.value ->> 'first_event_date', '')::date, date '2026-10-26'),
+                                   date '2026-10-26')::text,
     'po_window_days',     greatest(1, coalesce((s.value ->> 'po_window_days')::int, 7)),
     'vat_rate',           coalesce((s.value ->> 'vat_rate')::numeric, 20),
     'payment_terms_days', coalesce((s.value ->> 'payment_terms_days')::int, 7),
@@ -160,7 +206,7 @@ language sql stable set search_path = public, extensions as $$
 $$;
 
 comment on function public.invoicing_config() is
-  'ADR-0175: settings.invoicing with every value defaulted (disabled when the row is missing). Internal.';
+  'ADR-0175: settings.invoicing with every value defaulted (disabled when the row is missing); first_event_date is never before 2026-10-26. Internal.';
 revoke execute on function public.invoicing_config() from public, anon, authenticated;
 grant execute on function public.invoicing_config() to service_role;
 
@@ -262,6 +308,65 @@ begin
   end loop;
 end $$;
 
+-- The invoice's states (packages/domain/state.ts INVOICE_TRANSITIONS):
+--   drawing → queued   the files are stored and INV1 is in the outbox
+--   drawing → failed   a run failed; the next run retries it
+--   failed  → drawing  re-leased by invoices_unfinished()
+--   failed  → queued   (a run that finished after its lease ran out)
+-- queued is final: a re-send is a new outbox row, not a new state.
+create or replace function public.invoice_status_transitions()
+returns table (from_status text, to_status text)
+language sql immutable set search_path = public, extensions as $$
+  select * from (values ('drawing', 'queued'), ('drawing', 'failed'),
+                        ('failed', 'drawing'), ('failed', 'queued')) v(from_status, to_status)
+$$;
+revoke execute on function public.invoice_status_transitions() from public, anon, authenticated;
+grant execute on function public.invoice_status_transitions() to service_role;
+
+create or replace function public.invoices_state_guard()
+returns trigger
+language plpgsql set search_path = public, extensions as $$
+begin
+  if new.status is distinct from old.status
+     and not exists (select 1 from invoice_status_transitions() t
+                      where t.from_status = old.status and t.to_status = new.status) then
+    raise exception 'illegal_invoice_transition' using errcode = 'P0001',
+          detail = old.status || ' → ' || new.status;
+  end if;
+  -- What was issued is final: number, money, bill-to and seller.
+  if (new.number, new.client_id, new.net, new.vat, new.total, new.vat_rate, new.bill_to, new.seller)
+     is distinct from (old.number, old.client_id, old.net, old.vat, old.total, old.vat_rate, old.bill_to, old.seller)
+     and old.status = 'queued' then
+    raise exception 'invoice_issued' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke execute on function public.invoices_state_guard() from public, anon, authenticated;
+
+create trigger invoices_state_guard
+  before update on public.invoices
+  for each row execute function public.invoices_state_guard();
+
+-- GDPR removal (§1.7): the name on an issued line becomes "Deleted account
+-- #id", like every other history row. A PDF already stored and emailed is
+-- untouched (§11.3); a retry before the email redraws with the label.
+create or replace function public.staff_removed_purge_invoices()
+returns trigger
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  update invoice_lines l
+     set staff_name = deleted_account_label(new.employee_id)
+   where l.booking_id in (select b.id from bookings b where b.staff_id = new.id);
+  return new;
+end $$;
+revoke execute on function public.staff_removed_purge_invoices() from public, anon, authenticated;
+
+create trigger staff_removed_purge_invoices
+  after update of removed_at on public.staff
+  for each row
+  when (old.removed_at is null and new.removed_at is not null)
+  execute function public.staff_removed_purge_invoices();
+
 -- ---------------------------------------------------------------------
 -- 4 · One event's verdict, with its clock (ADR-0172 §3, made internal)
 --
@@ -302,7 +407,13 @@ returns table (
   invoice_id          uuid,
   invoice_number      int,
   invoice_status      text,
-  invoice_queued_at   timestamptz
+  invoice_queued_at   timestamptz,
+  invoice_attempts    int,
+  invoice_last_error  text,
+  email_sent_at       timestamptz,
+  email_failed_at     timestamptz,
+  email_error         text,
+  invoiced_amount     numeric
 )
 language plpgsql stable set search_path = public, extensions as $$
 #variable_conflict use_column
@@ -353,7 +464,11 @@ begin
            invoice_event_fingerprint(ev.id) as fp,
            s.signed_off_at, p.full_name as signer, s.note, s.invoicing as signed_invoicing,
            s.fingerprint as signed_fp,
-           k.invoice_id, i.number as inv_number, i.status as inv_status, i.queued_at as inv_queued_at
+           k.invoice_id, i.number as inv_number, i.status as inv_status, i.queued_at as inv_queued_at,
+           i.attempts as inv_attempts, i.last_error as inv_last_error,
+           o.sent_at as mail_sent_at, o.failed_at as mail_failed_at, o.error as mail_error,
+           (select sum(il.amount) from invoice_lines il
+             where il.invoice_id = k.invoice_id and il.event_id = ev.id) as inv_amount
       from ev
       join lines li                      on li.event_id = ev.id
       left join viol vi                  on vi.event_id = ev.id
@@ -361,6 +476,7 @@ begin
       left join profiles p               on p.id = s.signed_off_by
       left join invoice_event_links k    on k.event_id = ev.id
       left join invoices i               on i.id = k.invoice_id
+      left join notification_outbox o    on o.key = i.outbox_key
   )
   select x.id, x.event_date, x.title, x.client_id, x.client_name, x.po_number, x.venue_name, x.cancelled,
          x.last_end_at, x.closes_at,
@@ -376,7 +492,9 @@ begin
          x.signed_off_at, x.signer, x.note, x.signed_invoicing,
          (x.signed_fp is not null and x.signed_fp <> x.fp),
          x.violations > 0,
-         x.invoice_id, x.inv_number, x.inv_status, x.inv_queued_at
+         x.invoice_id, x.inv_number, x.inv_status, x.inv_queued_at,
+         x.inv_attempts, x.inv_last_error, x.mail_sent_at, x.mail_failed_at, x.mail_error,
+         coalesce(x.inv_amount, case when x.invoice_id is not null then 0 end)
     from x
    order by x.event_date, x.client_name, x.title, x.id;
 end $$;
@@ -409,7 +527,9 @@ declare
   v_first date  := (cfg ->> 'first_event_date')::date;
   v_win   int   := (cfg ->> 'po_window_days')::int;
   v_time  text  := cfg ->> 'time';
-  v_on    boolean := (cfg ->> 'enabled')::boolean;
+  -- Off in either place, nothing is issued: a number is never taken for an
+  -- email claim_outbox_batch() would fail as switched off.
+  v_on    boolean := (cfg ->> 'enabled')::boolean and notification_switched_on('INV1');
   v_ids   uuid[];
 begin
   -- Candidates: on or after go-live, not on an invoice, not cancelled before
@@ -438,22 +558,31 @@ begin
       array(select f.id from fin f where f.finished), p_now) r
   ),
   -- A member holds or joins its group: an event still running, or a
-  -- finished one with something to charge. A finished event with nothing
-  -- to charge (nobody worked) is not invoiced and holds nothing.
+  -- finished one with something to charge or a check-out still to settle.
+  -- A finished event with nothing to charge (nobody worked) is not
+  -- invoiced and holds nothing, and an event with no section at all never
+  -- finishes, so it is not a member.
   member as (
     select f.id, f.client_id, f.event_date, f.po, f.finished, r.status, r.invoicing,
-           f.client_id::text || ':' || coalesce('po:' || upper(f.po), 'event:' || f.id::text) as gkey
+           f.client_id::text || ':' || coalesce('po:' || upper(f.po), 'event:' || f.id::text) as pkey
       from fin f
       left join evr r on r.event_id = f.id
-     where not f.finished or coalesce(r.billable_shifts, 0) > 0
+     where f.last_end is not null
+       and (not f.finished or coalesce(r.invoicing, 0) > 0 or coalesce(r.pending, 0) > 0)
   ),
   anchored as (
-    select m.*, min(m.event_date) over (partition by m.gkey) as anchor
+    select m.*, min(m.event_date) over (partition by m.pkey) as anchor
       from member m
   ),
+  -- A PO is cut into consecutive po_window_days windows from its earliest
+  -- un-invoiced event, each its own invoice: an event the office has not
+  -- signed off holds only its own window, never the PO's later dates.
   win as (
-    select a.* from anchored a
-     where a.po is null or a.event_date <= a.anchor + (v_win - 1)
+    select a.*,
+           case when a.po is null then a.pkey
+                else a.pkey || ':' || (a.anchor + ((a.event_date - a.anchor) / v_win) * v_win)::text
+           end as gkey
+      from anchored a
   ),
   g as (
     select w.gkey,
@@ -491,7 +620,7 @@ begin
 end $$;
 
 comment on function public._invoice_groups(timestamptz) is
-  'ADR-0175: the invoices waiting to be issued at p_now — one per (client, PO) within po_window_days of its earliest un-invoiced event, or per event without a PO — with the events, the send time (10:00 UK the morning after the last), the net and the verdict: disabled, waiting (an event still running or inside its check-out window), missing, review, nothing_to_invoice, scheduled, no_recipients, due. Internal.';
+  'ADR-0175: the invoices waiting to be issued at p_now — one per (client, PO, po_window_days window counted from its earliest un-invoiced event), or per event without a PO — with the events, the send time (10:00 UK the morning after the last), the net and the verdict: disabled (invoicing or INV1 switched off), waiting (an event still running or inside its check-out window), missing, review, nothing_to_invoice, scheduled, no_recipients, due. Internal.';
 revoke execute on function public._invoice_groups(timestamptz) from public, anon, authenticated;
 grant execute on function public._invoice_groups(timestamptz) to service_role;
 
@@ -533,6 +662,12 @@ returns table (
   invoice_number      int,
   invoice_status      text,
   invoice_queued_at   timestamptz,
+  invoice_attempts    int,
+  invoice_last_error  text,
+  email_sent_at       timestamptz,
+  email_failed_at     timestamptz,
+  email_error         text,
+  invoiced_amount     numeric,
   sends_at            timestamptz,
   send_verdict        text
 )
@@ -553,7 +688,8 @@ begin
          r.unresolved, r.no_checkouts, r.status, r.fingerprint, r.signed_off_at,
          r.signed_off_by_name, r.signoff_note, r.signed_invoicing, r.signoff_stale,
          r.needs_signoff, r.invoice_id, r.invoice_number, r.invoice_status, r.invoice_queued_at,
-         ge.due_at, ge.verdict
+         r.invoice_attempts, r.invoice_last_error, r.email_sent_at, r.email_failed_at, r.email_error,
+         r.invoiced_amount, ge.due_at, ge.verdict
     from _invoice_event_rows(
            array(select e.id from events e where e.event_date between p_from and p_to), now()) r
     left join ge on ge.event_id = r.event_id
@@ -561,11 +697,13 @@ begin
 end $$;
 
 comment on function public.invoice_events(date, date) is
-  'ADR-0172/0175: one row per event dated in the range that has shift lines, priced, with its status (invoiced → open → missing → ready / review), its invoice (number, status) once issued, and — while it waits — when its PO''s invoice is due to send and why it waits. Finance callers only.';
+  'ADR-0172/0175: one row per event dated in the range that has shift lines, priced, with its status (invoiced → open → missing → ready / review), its invoice once issued (number, status, attempts, the INV1 email sent or failed, and the amount invoiced for this event, which the live figure is compared with), and — while it waits — when its PO''s invoice is due to send and why it waits. Finance callers only.';
 revoke execute on function public.invoice_events(date, date) from public, anon;
 grant execute on function public.invoice_events(date, date) to authenticated, service_role;
 
--- invoice_export_rows: an invoiced event is as ready as a signed-off one.
+-- invoice_export_rows: ready events only. An invoiced event was billed by
+-- the system; keying its lines into the accounting tool again would bill
+-- it twice.
 create or replace function public.invoice_export_rows(p_from date, p_to date, p_event uuid default null)
 returns table (
   event_id         uuid,
@@ -595,7 +733,7 @@ begin
   return query
   with ready as (
     select i.* from invoice_events(p_from, p_to) i
-     where i.status in ('ready', 'invoiced')
+     where i.status = 'ready'
        and (p_event is null or i.event_id = p_event)
   )
   select i.event_id, i.event_date, i.event_title, i.client_name, i.po_number,
@@ -749,6 +887,14 @@ begin
   select coalesce(sum(amount), 0), coalesce(sum(payable_min), 0)::int
     into v_net, v_min from invoice_lines where invoice_id = v_id;
 
+  -- The verdict above and the copy were separate statements: a line that
+  -- went pending, or a change to the money, between them undoes the whole
+  -- issue (number included) and the next run looks again.
+  if exists (select 1 from _invoice_event_rows(g.event_ids, p_now) r where r.pending > 0)
+     or v_net is distinct from g.net then
+    raise exception 'changed_while_issuing' using errcode = 'P0001';
+  end if;
+
   update invoices
      set net = v_net, payable_min = v_min,
          vat = round(v_net * v_rate / 100, 2),
@@ -816,6 +962,9 @@ declare
 begin
   select * into i from invoices where id = p_invoice for update;
   if i.id is null then raise exception 'invoice_not_found' using errcode = 'P0002'; end if;
+  if not notification_switched_on('INV1') then
+    raise exception 'switched_off' using errcode = 'P0001';
+  end if;
   if i.storage_path is null or i.attachments is null then
     raise exception 'invoice_has_no_files' using errcode = 'P0001';
   end if;
@@ -855,31 +1004,119 @@ begin
   return jsonb_build_object('key', v_key, 'queued', v_inserted = 1);
 end $$;
 
+-- A send is starting: count it here, before any work, so a run the
+-- platform kills mid-draw still counts, and a deferral (never started)
+-- does not.
+create or replace function public.invoice_begin(p_invoice uuid, p_now timestamptz default now())
+returns void
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  update invoices
+     set attempts = attempts + 1, lease_until = p_now + interval '10 minutes'
+   where id = p_invoice and status <> 'queued';
+  if not found then raise exception 'invoice_not_open' using errcode = 'P0001'; end if;
+end $$;
+
 -- A run that failed hands the invoice back for the next one.
 create or replace function public.invoice_release(p_invoice uuid, p_error text)
 returns void
 language sql security definer set search_path = public, extensions as $$
   update invoices
-     set status = 'failed', lease_until = null, attempts = attempts + 1,
+     set status = 'failed', lease_until = null,
          last_error = left(coalesce(p_error, 'failed'), 300)
    where id = p_invoice and status <> 'queued';
 $$;
 
 -- Issued but not yet sent (a failed or abandoned run): the job finishes
--- these first, under a fresh lease, so an invoice number is never left
--- without its email. After 24 attempts it stops and the office sees it.
-create or replace function public.invoices_unfinished(p_now timestamptz default now())
+-- these first, oldest number first and a few a run, under a fresh lease,
+-- so an invoice number is never left without its email. After 24 started
+-- attempts it stops; the office sees it failed, with the last error.
+-- Nothing is taken while invoicing or INV1 is switched off.
+create or replace function public.invoices_unfinished(p_now timestamptz default now(), p_limit int default 5)
 returns setof uuid
 language plpgsql security definer set search_path = public, extensions as $$
 begin
+  if not ((invoicing_config() ->> 'enabled')::boolean and notification_switched_on('INV1')) then
+    return;
+  end if;
   return query
-  update invoices
-     set lease_until = p_now + interval '10 minutes', status = 'drawing'
-   where status in ('drawing', 'failed')
-     and attempts < 24
-     and (lease_until is null or lease_until < p_now)
-  returning id;
+  with pick as (
+    select i.id from invoices i
+     where i.status in ('drawing', 'failed')
+       and i.attempts < 24
+       and (i.lease_until is null or i.lease_until < p_now)
+     order by i.number
+     limit greatest(p_limit, 0)
+     for update skip locked
+  ), upd as (
+    update invoices i
+       set lease_until = p_now + interval '10 minutes', status = 'drawing'
+      from pick where i.id = pick.id
+    returning i.id, i.number
+  )
+  select upd.id from upd order by upd.number;
 end $$;
+
+-- "Send again" (the office): a new INV1 outbox row for an issued invoice
+-- whose email failed (a bounce, a bad address, switched off at the time)
+-- or that the client says never arrived — to the client card's addresses
+-- as they are NOW, so a corrected address is used. Same files, same
+-- number; a new key INV1:<number>:<n>. Refused while the last email is
+-- still on its way, so one click never sends two.
+create or replace function public.resend_invoice_email(p_invoice uuid)
+returns jsonb
+language plpgsql security definer set search_path = public, extensions as $$
+declare
+  i invoices;
+  o notification_outbox;
+  c clients;
+  v_to text[];
+  v_key text;
+  v_n int;
+begin
+  perform assert_finance_caller();
+  if not office_can('write') then
+    raise exception 'not_permitted' using errcode = '42501', detail = 'write';
+  end if;
+
+  select * into i from invoices where id = p_invoice for update;
+  if i.id is null then raise exception 'invoice_not_found' using errcode = 'P0002'; end if;
+  if i.status <> 'queued' then raise exception 'invoice_not_sent_yet' using errcode = 'P0001'; end if;
+  select * into o from notification_outbox where key = i.outbox_key;
+  if o.id is not null and o.sent_at is null and o.failed_at is null then
+    raise exception 'email_pending' using errcode = 'P0001';
+  end if;
+  if not notification_switched_on('INV1') then
+    raise exception 'switched_off' using errcode = 'P0001';
+  end if;
+
+  select * into c from clients where id = i.client_id;
+  v_to := case when coalesce(array_length(c.invoice_emails, 1), 0) > 0 then c.invoice_emails
+               else c.contact_emails end;
+  if coalesce(array_length(v_to, 1), 0) = 0 then
+    raise exception 'invoice_has_no_recipients' using errcode = 'P0001';
+  end if;
+
+  select count(*) + 1 into v_n from notification_outbox where key like 'INV1:' || i.number::text || ':%';
+  v_key := 'INV1:' || i.number::text || ':' || (v_n + 1)::text;
+  insert into notification_outbox (key, channel, template, recipient_emails, payload)
+  select v_key, 'email', 'INV1', v_to, prev.payload
+    from notification_outbox prev where prev.key = 'INV1:' || i.number::text;
+  if not found then raise exception 'invoice_email_missing' using errcode = 'P0001'; end if;
+
+  update invoices set outbox_key = v_key, recipients = v_to, queued_at = clock_timestamp()
+   where id = i.id;
+
+  insert into audit_log (at, actor, action, entity, entity_id, data)
+  values (now(), auth.uid(), 'invoice.resent', 'invoice', i.id,
+          jsonb_build_object('number', i.number, 'key', v_key, 'recipients', to_jsonb(v_to)));
+  return jsonb_build_object('key', v_key, 'recipients', to_jsonb(v_to));
+end $$;
+
+revoke execute on function public.resend_invoice_email(uuid) from public, anon;
+grant execute on function public.resend_invoice_email(uuid) to authenticated, service_role;
+comment on function public.resend_invoice_email(uuid) is
+  'ADR-0175: Send again — a new INV1 row (key INV1:<number>:<n>) with the same attachments, to the client card''s current invoice emails (else contact emails). Finance callers that may write; refused while the last email is still pending; audited as invoice.resent.';
 
 -- The office's download (and the event page's link).
 create or replace function public.invoice_file(p_invoice uuid)
@@ -900,8 +1137,9 @@ begin
     'public.invoice_document_data(uuid)',
     'public.invoice_record_files(uuid, text, text, jsonb)',
     'public.queue_invoice_email(uuid)',
+    'public.invoice_begin(uuid, timestamptz)',
     'public.invoice_release(uuid, text)',
-    'public.invoices_unfinished(timestamptz)'] loop
+    'public.invoices_unfinished(timestamptz, int)'] loop
     execute format('revoke execute on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);
   end loop;

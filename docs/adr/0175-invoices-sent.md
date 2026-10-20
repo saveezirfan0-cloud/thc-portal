@@ -38,16 +38,21 @@ Asked on 20.10.2026, THC chose:
 ## Decision
 
 **Grouping.** An invoice covers one (client, PO Number), with the PO compared trimmed and in
-upper case. An event with no PO is invoiced on its own. A PO's invoice takes its events dated
-within `po_window_days` (7) of the earliest one not yet invoiced. So a PO a client reuses next
-month starts a new invoice rather than holding this one open. Each event is linked to one
-invoice, once (`invoice_event_links.event_id` is the primary key).
+upper case. An event with no PO is invoiced on its own. A PO is cut into consecutive
+`po_window_days` (7) windows, counted from its earliest event not yet invoiced, and each window
+is its own invoice. So a PO a client reuses next month starts a new invoice, and an event still
+waiting for review holds only its own window, never the PO's later dates. Each event is linked
+to one invoice, once (`invoice_event_links.event_id` is the primary key).
+
+An event joins a group while it is running, or once finished if it has something to charge or a
+check-out still to settle. An event where nobody worked, or with no section at all, is never
+invoiced and holds nothing.
 
 **When.** `_invoice_groups(now)` gives each group a verdict. They are checked in this order:
 
 | Verdict | Meaning |
 |---|---|
-| `disabled` | `settings.invoicing.enabled` is off |
+| `disabled` | `settings.invoicing.enabled` is off, or INV1 is switched off in Settings → Notifications. No number is taken for an email the outbox would refuse |
 | `waiting` | an event in the group is still running, or inside its check-out window |
 | `missing` | a check-out is unsettled (always holds the invoice) |
 | `review` | an event has violations and no sign-off, or it changed after its sign-off |
@@ -56,18 +61,26 @@ invoice, once (`invoice_event_links.event_id` is the primary key).
 | `no_recipients` | the client card has no invoice email and no contact email |
 | `due` | issue and send it now |
 
-Only events dated on or after `settings.invoicing.first_event_date` (26.10.2026, go-live) are
-ever candidates. So switching this on never invoices past events.
+Only events dated on or after `settings.invoicing.first_event_date` are ever candidates. The
+date can be moved later but never before 26.10.2026: `invoicing_config()` and the Settings
+validator both hold that floor. Events up to 25.10.2026 were invoiced by hand from the ADR-0172
+CSV, so an earlier date would bill them twice. A ready event the system will not invoice says so
+("Not invoiced by the system: invoice it from the CSV").
 
 **Issuing.** The event-documents job runs every 15 minutes (ADR-0074). After D1/D2 it does
 three things in order:
 
-1. It finishes any invoice an earlier run issued but did not send (`invoices_unfinished`: a
-   10-minute lease, at most 24 attempts).
+1. It finishes any invoice an earlier run issued but did not send (`invoices_unfinished`:
+   oldest number first, five a run, a 10-minute lease). Each send counts its attempt before
+   any work (`invoice_begin`), so a run the platform kills mid-draw still counts. A deferral
+   for lack of time is not an attempt. After 24 attempts it stops, and the office sees the
+   invoice failed with its last error.
 2. It claims each `due` group with `invoice_claim`. The claim re-checks the verdict under an
    advisory lock. In the same transaction it takes the next number from `invoice_counter`
    (starting at 4000, gapless), snapshots the settled lines, the bill-to and the seller, and
-   works out VAT as round(net × rate / 100, 2). It is audited as `invoice.issued`.
+   works out VAT as round(net × rate / 100, 2). If a line went pending, or the money moved
+   between the verdict and the copy, the whole issue is undone, number included. It is
+   audited as `invoice.issued`.
 3. It draws the invoice PDF and, for each event, a fresh Completed Allocation Timesheet. A
    cancelled event has no timesheet (§3.3) and is invoiced without one. The files are stored
    in the private `timesheets` bucket under `invoices/<number>/<stamp>/`, with a new folder
@@ -75,8 +88,24 @@ three things in order:
    `INV1:<number>`, sent from timesheets@). On any failure the invoice is released for the
    next run. The number is kept, so it is never left without its email.
 
-An issued invoice is final. `sign_off_event_invoice` refuses an invoiced event
-(`already_invoiced`). A correction is a credit note in THC's own tool.
+An issued invoice is final. Its states are `drawing → queued`, `drawing → failed`,
+`failed → drawing` and `failed → queued`, the same pairs as `INVOICE_TRANSITIONS` in
+`packages/domain/state.ts`. The `invoices_state_guard` trigger refuses any other transition,
+and any change to a queued invoice's number, money, bill-to or seller.
+`sign_off_event_invoice` refuses an invoiced event (`already_invoiced`). A correction is a
+credit note in THC's own tool: when an invoiced event's live lines no longer match what was
+invoiced, the event page says so and does not re-price the invoice. The ready CSV leaves
+invoiced events out, so they are never keyed in a second time.
+
+**The email's outcome.** "Invoiced" says nothing about delivery. The office reads the INV1
+outbox row: emailed (`sent_at`), failed with the provider's reason (`failed_at`, e.g. a bounce),
+or still queued. **Send again** (`resend_invoice_email`, finance with write, audited as
+`invoice.resent`) queues a new row, `INV1:<number>:<n>`, with the same files to the client
+card's addresses as they are now. It is refused while the last email is still on its way.
+
+**GDPR.** `invoice_lines` is the first table to keep a worker's name as text. On removal
+(§1.7) it becomes "Deleted account #id" (`staff_removed_purge_invoices`). A PDF already stored
+and emailed is not touched (§11.3).
 
 **The document** follows THC's example:
 
@@ -90,9 +119,13 @@ An issued invoice is final. `sign_off_event_invoice` refuses an invoiced event
 Every value is in `settings.invoicing` and can be edited on `/settings` → Invoicing.
 
 **The office.** Reports → Invoicing gains an **Invoiced** tile and status. An invoiced row links
-to its PDF (`/api/invoices/:id`, finance only, the stored bytes). A ready row says when it will
-be sent, or why it will not. The event page shows the invoice and keeps the sign-off form for
-events that need review.
+to its PDF (`/api/invoices/:id`, finance only, the stored bytes) and shows a failed or pending
+email. A ready row says when it will be sent, or why it will not. The event page shows the
+invoice, its email and Send again, and keeps the sign-off form for events that need review.
+Only finance may edit the client card's invoice details: where an invoice and its charge rates
+are sent is a money decision (ADR-0056). `set_client_invoice_details` requires finance, and the
+`clients_invoice_details_guard` trigger refuses a direct update of the three columns by anyone
+else.
 
 ## Consequences
 
@@ -103,6 +136,11 @@ events that need review.
 - The client receives two emails for an event: D2's timesheet and the invoice, which attaches
   the same timesheet.
 - The four new tables (`invoice_counter`, `invoices`, `invoice_event_links`, `invoice_lines`)
-  are readable only by admins with finance, and the viewer writes none of them (the `office_read_only` trigger). Two definers are added for
-  `authenticated`: `set_client_invoice_details` (admin with write, audited) and
+  are readable only by admins with finance, and the viewer writes none of them (the
+  `office_read_only` trigger). Three definers are added for `authenticated`:
+  `set_client_invoice_details` and `resend_invoice_email` (finance with write, audited), and
   `invoice_file` (finance). The rest are service role only.
+- The fallback recipients are the client's `contact_emails`, which a scheduler can still edit
+  (they also receive D1/D2). A client with invoice emails set never falls back.
+- CLAUDE.md says the client sees no money. The invoice email is a deliberate exception (§9.9
+  departure above); the product owner should add it to CLAUDE.md's list of deliberate changes.

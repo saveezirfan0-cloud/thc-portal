@@ -56,11 +56,48 @@ export async function signOffInvoice(
   return { ok: true };
 }
 
+/**
+ * "Send again" on an issued invoice whose email failed or never arrived
+ * (ADR-0175): a fresh INV1 row with the same PDF and timesheets, to the
+ * client card's addresses as they are now. `resend_invoice_email()` holds
+ * every rule.
+ */
+export async function resendInvoice(
+  invoiceId: string,
+  eventId: string,
+): Promise<{ error: string } | { ok: true }> {
+  if (!supabaseConfigured()) return { error: 'This environment has no Supabase project.' };
+  const db = await reportsDb();
+  const { error } = await db.rpc('resend_invoice_email', { p_invoice: invoiceId });
+  if (error) {
+    const known = Object.keys(RESEND_REASONS).find((key) => error.message.includes(key));
+    return {
+      error: known ? RESEND_REASONS[known]! : explainDbError(error, { log: '[reports]' }),
+    };
+  }
+  revalidatePath('/reports');
+  revalidatePath(`/reports/invoicing/${eventId}`);
+  return { ok: true };
+}
+
+const RESEND_REASONS: Record<string, string> = {
+  email_pending:
+    'The last email for this invoice is still on its way. Check back in a few minutes.',
+  invoice_not_sent_yet: 'This invoice is still being prepared; it is emailed by itself.',
+  switched_off:
+    'Invoice emails are switched off in Settings → Notifications. Switch INV1 on, then send again.',
+  invoice_has_no_recipients:
+    'The client card has no invoice email or contact email. Add one, then send again.',
+  not_permitted: 'Only an owner or a manager with finance can send an invoice again.',
+  admins_only: 'Only a manager can send an invoice again.',
+};
+
 /** The RPC's refusals in the manager's words. */
 const SIGN_OFF_REASONS: Record<string, string> = {
   note_required: 'A note is required. Say what you checked before marking the event reviewed.',
   check_out_open:
     'Workers can still check out until 4 hours after the last shift ends. Try again after that.',
+  already_invoiced: 'This event has been invoiced, so there is nothing left to sign off.',
   check_out_missing:
     'A worker never checked out. Resolve the No check-out on the Check-in screen with their actual finish time first.',
   changed_since_viewed:

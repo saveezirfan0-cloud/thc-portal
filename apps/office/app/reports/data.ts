@@ -70,6 +70,7 @@ export interface ReportsRpc {
     fn: 'sign_off_event_invoice',
     args: { p_event: string; p_note: string; p_fingerprint: string },
   ): RpcQuery;
+  rpc(fn: 'resend_invoice_email', args: { p_invoice: string }): RpcQuery;
   from(table: 'report_sends'): {
     select(columns: string): {
       eq(
@@ -289,6 +290,14 @@ export interface InvoiceEvent {
   invoice_number?: number | null;
   invoice_status?: 'drawing' | 'failed' | 'queued' | null;
   invoice_queued_at?: string | null;
+  invoice_attempts?: number | null;
+  invoice_last_error?: string | null;
+  /** The INV1 outbox row's outcome (ADR-0175): sent, or failed for good. */
+  email_sent_at?: string | null;
+  email_failed_at?: string | null;
+  email_error?: string | null;
+  /** What this event was invoiced at (its invoice_lines), to compare with `invoicing`. */
+  invoiced_amount?: number | string | null;
   /** When its PO's invoice is due to send, and why it waits (_invoice_groups). */
   sends_at?: string | null;
   send_verdict?: string | null;

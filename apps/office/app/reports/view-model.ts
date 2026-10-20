@@ -174,7 +174,7 @@ export const INVOICE_STATUS_HINT: Readonly<Record<InvoiceStatus, string>> = {
     'A worker’s hours are not settled: resolve their No check-out on the Check-in screen with the actual finish time, or correct their check-in/out.',
   review: 'Review the violations and the lines below, then mark the event reviewed for invoicing.',
   ready: 'Ready: the invoice goes out with the completed timesheet at the time shown.',
-  invoiced: 'Invoiced: the invoice and the completed timesheet were emailed to the client.',
+  invoiced: 'Invoiced: the invoice is final. It is emailed with the completed timesheet.',
 };
 
 export function invoiceStatus(value: string): InvoiceStatus {
@@ -217,6 +217,87 @@ export function invoiceSendNote(
     default:
       return null;
   }
+}
+
+/**
+ * A ready event the system will never invoice: dated before invoicing went
+ * live (or on no PO group at all), so it is invoiced from the CSV as before.
+ */
+export const NOT_SYSTEM_INVOICED_NOTE = 'Not invoiced by the system: invoice it from the CSV';
+
+/** A ready event's line under its status: when it sends, why not, or that it never will. */
+export function readyEventNote(
+  verdict: string | null,
+  sendsAt: string | null,
+  format?: TimeFormat,
+): string | null {
+  return verdict ? invoiceSendNote(verdict, sendsAt, format) : NOT_SYSTEM_INVOICED_NOTE;
+}
+
+export interface InvoiceEmailFacts {
+  invoice_status?: string | null;
+  invoice_attempts?: number | null;
+  invoice_last_error?: string | null;
+  invoice_queued_at?: string | null;
+  email_sent_at?: string | null;
+  email_failed_at?: string | null;
+  email_error?: string | null;
+}
+
+/** The invoice gives up on drawing after this many started attempts (`invoices_unfinished`). */
+export const INVOICE_MAX_ATTEMPTS = 24;
+
+/**
+ * Where an issued invoice's email is (ADR-0175), from the invoice row and
+ * its INV1 outbox row. `resendable`: the office may "Send again" — the last
+ * email is settled (sent or failed) and the files exist.
+ */
+export function invoiceEmailState(
+  f: InvoiceEmailFacts,
+  format?: TimeFormat,
+): { tone: 'green' | 'amber' | 'coral' | 'neutral'; text: string; resendable: boolean } {
+  if (f.invoice_status !== 'queued') {
+    const attempts = f.invoice_attempts ?? 0;
+    if (attempts >= INVOICE_MAX_ATTEMPTS) {
+      return {
+        tone: 'coral',
+        text: `Could not be prepared after ${attempts} attempts${f.invoice_last_error ? `: ${f.invoice_last_error}` : ''}. Ask for it to be looked at.`,
+        resendable: false,
+      };
+    }
+    return {
+      tone: f.invoice_status === 'failed' ? 'amber' : 'neutral',
+      text:
+        f.invoice_status === 'failed'
+          ? `Being prepared; the last try failed${f.invoice_last_error ? ` (${f.invoice_last_error})` : ''} and is retried every 15 minutes`
+          : 'Being prepared; it is emailed within 15 minutes',
+      resendable: false,
+    };
+  }
+  if (f.email_failed_at) {
+    return {
+      tone: 'coral',
+      text: `Email failed ${formatUkStamp(f.email_failed_at, format)} UK${f.email_error ? `: ${f.email_error}` : ''}`,
+      resendable: true,
+    };
+  }
+  if (f.email_sent_at) {
+    return {
+      tone: 'green',
+      text: `Emailed ${formatUkStamp(f.email_sent_at, format)} UK`,
+      resendable: true,
+    };
+  }
+  return { tone: 'neutral', text: 'Email queued; it goes within a few minutes', resendable: false };
+}
+
+/** Whether an invoiced event's live figure has moved away from what was invoiced. */
+export function invoicedAmountChanged(
+  live: number | string | null | undefined,
+  invoiced: number | string | null | undefined,
+): boolean {
+  if (invoiced === null || invoiced === undefined) return false;
+  return Math.round(Number(live ?? 0) * 100) !== Math.round(Number(invoiced) * 100);
 }
 
 /** The stored invoice PDF (ADR-0175). */

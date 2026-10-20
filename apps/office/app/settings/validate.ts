@@ -329,8 +329,16 @@ export function isIsoDate(value: string): boolean {
   return day.getUTCFullYear() === y && day.getUTCMonth() === m - 1 && day.getUTCDate() === d;
 }
 
+/**
+ * Never before go-live: events up to 25.10.2026 were invoiced by hand from
+ * the ADR-0172 CSV, so an earlier date would email them a second invoice.
+ * `invoicing_config()` holds the same floor in the database.
+ */
 export function validateFirstEventDate(value: string): string | null {
-  return isIsoDate(value) ? null : 'Enter the first invoiced event date as dd/mm/yyyy.';
+  if (!isIsoDate(value)) return 'Enter the first invoiced event date as dd/mm/yyyy.';
+  return value < INVOICING_DEFAULT_FIRST_EVENT_DATE
+    ? 'Invoices start with events on or after 26/10/2026 (go-live); earlier events were invoiced by hand.'
+    : null;
 }
 
 /** 0–100 %, at most two decimal places (invoices.vat_rate is numeric(5,2)). */

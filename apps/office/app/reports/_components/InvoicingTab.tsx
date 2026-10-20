@@ -10,7 +10,9 @@ import {
   hours,
   invoiceEventHref,
   invoicePdfHref,
+  invoiceEmailState,
   invoiceSendNote,
+  readyEventNote,
   invoiceStatus,
   lastWeek,
   num,
@@ -77,12 +79,12 @@ export function InvoicingTab({
           label="Invoiced"
           tone="ok"
           value={poundsWhole(sum(invoiced))}
-          description={`${invoiced.length} ${invoiced.length === 1 ? 'event' : 'events'} · emailed with the timesheet`}
+          description={`${invoiced.length} ${invoiced.length === 1 ? 'event' : 'events'} · final; emailed with the timesheet`}
         />
         <KpiTile
           label="Ready to invoice"
           value={poundsWhole(sum(ready))}
-          description={`${ready.length} ${ready.length === 1 ? 'event' : 'events'} · sending at the time shown`}
+          description={`${ready.length} ${ready.length === 1 ? 'event' : 'events'} · each row says when it sends`}
         />
         <KpiTile
           label="Needs review"
@@ -103,7 +105,8 @@ export function InvoicingTab({
         invoiced on its own), emailed to the client&apos;s accounts contact with the completed
         timesheet of each event attached, at 10:00 UK the morning after the last event on the PO. An
         event is ready once every worker has checked out (or a manager has entered their finish
-        time); an event with any violation also needs a manager to mark it reviewed.
+        time); an event with any violation also needs a manager to mark it reviewed. Events before
+        26/10/2026 are not invoiced by the system: invoice them from the CSV.
       </Alert>
 
       <Panel title={<>Events · {periodLabel(view.from, view.to)}</>} flush>
@@ -148,8 +151,9 @@ export function InvoicingTab({
           charged; an event cancelled on the day is charged in full.
         </Note>
         <Note>
-          <b>Export ready CSV</b> has one row per shift of every Ready or Invoiced event in the
-          period, with the PO Number and a total row per event, for your accounting tool.
+          <b>Export ready CSV</b> has one row per shift of every Ready event in the period, with the
+          PO Number and a total row per event, for your accounting tool. Invoiced events are left
+          out: the system has already billed them.
         </Note>
       </div>
     </div>
@@ -159,9 +163,12 @@ export function InvoicingTab({
 function EventRow({ event, format }: { event: InvoiceEvent; format?: TimeFormat }) {
   const status = invoiceStatus(event.status);
   const note =
-    status === 'invoiced'
-      ? null
-      : invoiceSendNote(event.send_verdict ?? null, event.sends_at ?? null, format);
+    status === 'ready'
+      ? readyEventNote(event.send_verdict ?? null, event.sends_at ?? null, format)
+      : status === 'invoiced'
+        ? null
+        : invoiceSendNote(event.send_verdict ?? null, event.sends_at ?? null, format);
+  const email = status === 'invoiced' ? invoiceEmailState(event, format) : null;
   return (
     <tr>
       <td className="rp-nowrap">{dayLabel(event.event_date)}</td>
@@ -198,8 +205,10 @@ function EventRow({ event, format }: { event: InvoiceEvent; format?: TimeFormat 
           ) : (
             <Pill tone={INVOICE_STATUS_TONE[status]}>{INVOICE_STATUS_LABEL[status]}</Pill>
           )}
-          {status === 'invoiced' && event.invoice_status !== 'queued' ? (
-            <span className="muted sm">being sent</span>
+          {email && email.tone !== 'green' ? (
+            <span className={email.tone === 'coral' ? 'rp-coral sm' : 'muted sm'}>
+              {email.text}
+            </span>
           ) : null}
           {event.signoff_stale ? <span className="muted sm">changed since sign-off</span> : null}
           {note && (status === 'ready' || status === 'review' || status === 'missing') ? (

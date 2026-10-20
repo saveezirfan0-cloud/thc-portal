@@ -72,6 +72,9 @@ describe('invoicing settings (ADR-0175)', () => {
   describe('first invoiced event date: an ISO day', () => {
     it('accepts a real day', () => {
       expect(validateFirstEventDate('2026-10-26')).toBeNull();
+      expect(validateFirstEventDate('2026-11-02')).toBeNull();
+      // Never before go-live: earlier events were invoiced by hand (ADR-0175).
+      expect(validateFirstEventDate('2026-10-25')).toMatch(/on or after 26\/10\/2026/);
       expect(isIsoDate('2028-02-29')).toBe(true);
     });
     it.each(['', '26/10/2026', '2026-1-26', '2026-02-30', '2027-02-29', '2026-13-01'])(

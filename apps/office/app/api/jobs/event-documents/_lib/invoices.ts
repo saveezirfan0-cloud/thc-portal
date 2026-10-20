@@ -4,8 +4,9 @@
  * a database, Storage or a PDF.
  *
  *   1. Finish what an earlier run issued but did not send (a failed upload,
- *      a run that died): `invoices_unfinished()` hands those back under a
- *      fresh lease, so a number is never left without its email.
+ *      a run that died): `invoices_unfinished()` hands back a few, oldest
+ *      number first, under a fresh lease, so a number is never left without
+ *      its email. Each send counts its own attempt (`invoice_begin`).
  *   2. Issue every group `invoice_groups_due()` calls `due` — one invoice
  *      per PO (or per event without one) at 10:00 UK the morning after the
  *      last event — through `invoice_claim()`, which re-checks under a lock
@@ -72,8 +73,9 @@ export async function runInvoices(deps: InvoiceRunDeps): Promise<InvoiceRunCount
 
   for (const id of work) {
     if (deps.deadline !== undefined && clock() > deps.deadline) {
-      // Issued already: the next run's invoices_unfinished() picks it up.
-      await deps.release(id, 'deferred: out of time this run').catch(() => undefined);
+      // Issued already and still leased (10 min, shorter than the 15-min
+      // cadence): the next run's invoices_unfinished() picks it up. Not
+      // released — a deferral is not a failed attempt.
       counts.deferred += 1;
       continue;
     }

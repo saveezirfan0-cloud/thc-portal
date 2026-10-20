@@ -182,8 +182,13 @@ export function ClientCard({
 
         <ClientEvents rows={data.events} ratesVisible={ratesVisible} />
 
-        {/* ADR-0175: who the emailed invoice is addressed to. */}
-        <Invoicing clientId={client.id} details={data.invoicing} canWrite={canWrite} />
+        {/* ADR-0175: who the emailed invoice is addressed to. Where an invoice
+            goes is a money decision: finance (ratesVisible) may edit it. */}
+        <Invoicing
+          clientId={client.id}
+          details={data.invoicing}
+          canWrite={canWrite && ratesVisible}
+        />
 
         {/* The audit trail (ADR-0055), after the scope's four blocks. */}
         <RecordHistory
