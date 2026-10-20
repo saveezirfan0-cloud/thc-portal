@@ -16,12 +16,13 @@ describe('env.ts — public Supabase values are inlinable', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '');
 
-  it.each(['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'])(
-    'reads %s as a literal process.env property',
-    (name) => {
-      expect(source).toContain(`process.env.${name}`);
-    },
-  );
+  it.each([
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  ])('reads %s as a literal process.env property', (name) => {
+    expect(source).toContain(`process.env.${name}`);
+  });
 
   it('never reads the environment by a computed key', () => {
     expect(source).not.toMatch(/process\.env\[\s*[a-z]/);

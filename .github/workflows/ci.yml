@@ -68,7 +68,7 @@ jobs:
       # both jobs together.
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
-          version: 2.120.0
+          version: 2.121.0
       # Supabase takes the digits before the first underscore as a
       # migration's version and makes that the primary key of
       # supabase_migrations.schema_migrations, so two files sharing one
@@ -245,7 +245,7 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         # The same fixed CLI as build-test: what deploys is what was tested.
         with:
-          version: 2.120.0
+          version: 2.121.0
 
       # --dry-run first, so the log records what WOULD be applied even when
       # the push then fails. Without it a failed deploy leaves no trace of
