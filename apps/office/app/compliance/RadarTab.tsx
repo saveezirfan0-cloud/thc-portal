@@ -35,10 +35,11 @@ import {
 import { reviewStamp } from '../staff/[id]/profile';
 import { Pager } from '../_components/Pager';
 import { oneOf, pageIndex, pageParam, useListQuery } from '../_lib/listQuery';
+import { DEFAULT_LIST_PAGE_SIZE } from '../_lib/pageSizes';
 import { COMPLIANCE_QUERY, RADAR_STATES } from './query';
 import type { RadarRow, WarningRow } from './types';
 
-const PAGE = 10;
+const PAGE = DEFAULT_LIST_PAGE_SIZE;
 
 const BRANCH: Record<string, string> = {
   uk_irish: 'UK / Irish citizen',

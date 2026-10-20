@@ -108,14 +108,14 @@ describe('/staff · Send push to ticked workers (ADR-0082)', () => {
   });
 
   it('sends exactly the ticked workers, kept across a page turn, and clears after', async () => {
-    // 16 workers: two pages of 15.
-    const staff = Array.from({ length: 16 }, (_, i) =>
-      row(`w${String(i + 1).padStart(2, '0')}`, `Worker ${String(i + 1).padStart(2, '0')}`),
+    // 101 workers: two pages of 100.
+    const staff = Array.from({ length: 101 }, (_, i) =>
+      row(`w${String(i + 1).padStart(3, '0')}`, `Worker ${String(i + 1).padStart(3, '0')}`),
     );
     mount(staff);
-    click(box('Select Worker 02'));
+    click(box('Select Worker 002'));
     click(button('Next ›'));
-    click(box('Select Worker 16'));
+    click(box('Select Worker 101'));
     expect(container.textContent).toContain('2 selected');
 
     actions.messageStaff.mockResolvedValue({
@@ -134,7 +134,7 @@ describe('/staff · Send push to ticked workers (ADR-0082)', () => {
       (b) => b.textContent === 'Send push',
     );
     await act(async () => send[send.length - 1]!.click());
-    expect(actions.messageStaff).toHaveBeenCalledWith(['w02', 'w16'], 'Uniforms are ready');
+    expect(actions.messageStaff).toHaveBeenCalledWith(['w002', 'w101'], 'Uniforms are ready');
     expect(document.body.textContent).toContain('Sent to 2 people.');
 
     click(button('Done'));

@@ -28,6 +28,7 @@ import {
   type AddedFilter,
 } from '../_lib/addedBy';
 import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
+import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '../_lib/pageSizes';
 import { ClientModal } from './ClientModal';
 import type { Client } from './types';
 import './clients.css';
@@ -51,9 +52,8 @@ const NO_RATE_CARD = '\u0000none';
  * how many rows a page holds (ADR-0124). 25 by default fits today's
  * directory on one page.
  */
-export const PAGE_SIZES = [10, 25, 50, 100] as const;
-type PageSize = (typeof PAGE_SIZES)[number];
-const DEFAULT_PAGE_SIZE: PageSize = 25;
+export const PAGE_SIZES = LIST_PAGE_SIZES;
+const DEFAULT_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
 const SORTS: readonly Sort[] = ['name', 'events', 'margin', 'newest', 'oldest'];
 const POLICIES: readonly PolicyFilter[] = ['all', 'paid', 'unpaid'];

@@ -26,6 +26,7 @@ import type { Columns, ColumnDef } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { Pager } from '../_components/Pager';
 import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
+import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '../_lib/pageSizes';
 import { ChangeRequestsLink, StaffActions, StaffCrumbs, directoryCounts } from './chrome';
 import { SendPush } from './SendPush';
 import { StudentVisaView } from './StudentVisaView';
@@ -110,8 +111,8 @@ const LEAD_REM = 4;
 /** A worker ticked for Send push: the id it sends, the name the dialog shows. */
 type Picked = ReadonlyMap<string, string>;
 
-/** The pager's two sizes, as the wireframe offers them ("15 / page", "50 / page"). */
-export const PAGE_SIZES = [15, 50] as const;
+/** The pager's sizes: 100 at least, 100 by default (ADR-0175, over the wireframe's 15 / 50). */
+export const PAGE_SIZES = LIST_PAGE_SIZES;
 
 const FILTERS: readonly Filter[] = ['all', 'compliant', 'blocked', 'inactive', 'removed'];
 const GROUPS: readonly GroupFilter[] = ['all', 'spudbros', 'thc'];
@@ -132,7 +133,7 @@ const QUERY = {
   sort: 'name',
   cap: 'all',
   page: '1',
-  size: String(PAGE_SIZES[0]),
+  size: String(DEFAULT_LIST_PAGE_SIZE),
 } as const satisfies Record<string, string>;
 
 /**
@@ -161,7 +162,7 @@ export function StaffScreen({
   const view = url.view === 'student' ? 'student' : 'directory';
   const filter = oneOf(url.tab, FILTERS, 'all');
   const capFilter = oneOf(url.cap, CAPS, 'all');
-  const pageSize = sizeOf(url.size, PAGE_SIZES, PAGE_SIZES[0]);
+  const pageSize = sizeOf(url.size, PAGE_SIZES, DEFAULT_LIST_PAGE_SIZE);
   const role = url.role;
   const group = oneOf(url.group, GROUPS, 'all');
   const sort = oneOf(url.sort, SORTS, 'name');
