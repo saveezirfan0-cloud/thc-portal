@@ -1,4 +1,4 @@
-# ADR-0170 · The events list shades alternate days
+# ADR-0171 · The events list shades alternate days
 
 **Status:** Accepted (owner request, 20.10.2026). A deviation from `wireframes/backoffice/events.html`, which draws the List view as a plain `.tbl`. Scope v1.6 §3.1 says nothing about list row styling.
 
