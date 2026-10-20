@@ -23,7 +23,7 @@
  *         client emails on 29.09.2026 — §11.3/§11.4 say "allocation sheet"
  *         and "sign-out timesheet" (ADR-0073).
  *   INV1  THC's invoice (ADR-0176), at 10:00 UK the morning after the last
- *         event on a PO, with the completed timesheet of every event on it
+ *         event on a PO, with the sign-in and sign-out log of its shifts
  *         attached. From timesheets@, to the client card's accounts emails
  *         (or its contact emails), which the outbox row carries.
  *
@@ -87,7 +87,7 @@ export interface DocumentEmailHtml {
   attachmentNote: string;
   /** Under the name badges' file name (ADR-0081, D1 only); `{nameBadges}` is the count. */
   badgesNote?: string;
-  /** Under each completed timesheet attached to an invoice (ADR-0176, INV1 only). */
+  /** Under the sign-in and sign-out log attached to an invoice (ADR-0176, INV1 only). */
   timesheetNote?: string;
   /** A `mailto:` button to the sender's reply-to, subject "Re: <subject>". */
   replyButton?: string;
@@ -169,15 +169,15 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Invoice {invoiceNumber} — {client}{poSuffix}',
-    body: "Hello,\n\nPlease find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}.\n\nThe completed Allocation Timesheet for each event is attached too, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}.\n\nThe sign-in and sign-out log is attached too, so you can check each line of the invoice against it: who worked, when they signed in and out in the THC Staff App, the break taken and the hours charged.\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Invoice',
       intro:
-        "Please find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}. The completed Allocation Timesheet for each event is attached too, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.",
+        'Please find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}. The sign-in and sign-out log is attached too, so you can check each line of the invoice against it: who worked, when they signed in and out in the THC Staff App, the break taken and the hours charged.',
       closing:
         "If anything doesn't match your records, just reply to this email and we'll look into it.",
       attachmentNote: 'Invoice · attached',
-      timesheetNote: 'Completed Allocation Timesheet · attached',
+      timesheetNote: 'Sign-in and sign-out log · attached',
       replyButton: 'Reply to this email',
     },
     trigger: 'ADR-0176 — the invoice job, after the event (one invoice per PO Number)',
@@ -199,8 +199,8 @@ export interface Attachment {
   /**
    * What the file is when it is not the email's main document: 'badges',
    * the D1 name badges (ADR-0081). Its card says the template's
-   * `badgesNote` instead of `attachmentNote`. 'timesheet', a completed
-   * timesheet attached to an invoice (ADR-0176): its card says `timesheetNote`.
+   * `badgesNote` instead of `attachmentNote`. 'timesheet', the sign-in and
+   * sign-out log attached to an invoice (ADR-0176): its card says `timesheetNote`.
    */
   role?: 'badges' | 'timesheet';
 }

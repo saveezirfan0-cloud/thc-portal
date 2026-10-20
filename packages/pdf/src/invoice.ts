@@ -26,6 +26,14 @@ export interface InvoiceLineData {
   rate: number | string;
   amount: number | string;
   kind: string;
+  /** The sign-in / sign-out log's facts, as issued (20261022110000). */
+  eventId?: string;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  late?: boolean;
+  leftEarly?: boolean;
+  finishByOffice?: boolean;
+  floorApplied?: boolean;
 }
 
 export interface InvoiceDocumentData {

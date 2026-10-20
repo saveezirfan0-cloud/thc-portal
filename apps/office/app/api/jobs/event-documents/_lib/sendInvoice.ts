@@ -1,18 +1,17 @@
-import { invoiceFileName, renderInvoicePdf } from '@thc/pdf';
+import { invoiceFileName, renderInvoicePdf, renderSignInLogPdf, signInLogFileName } from '@thc/pdf';
 import type { InvoiceDocumentData } from '@thc/pdf';
-import { drawSheet } from '../../../documents/_lib/generate';
 import type { DocumentRpc } from '../../../documents/_lib/generate';
 
 /**
  * Draw, store, record and queue one issued invoice (ADR-0176): the invoice
- * PDF and the completed timesheet of each event on it, side by side in the
+ * PDF and the sign-in / sign-out log that supports it, side by side in the
  * private `timesheets` bucket under `invoices/<number>/<stamp>/` — a new
  * folder every attempt, nothing overwritten — then the INV1 email.
  *
- * The timesheets are drawn fresh from `event_document_data`, exactly as the
- * D2 email draws them, but not recorded as event documents: the client's
- * timesheet history stays the D2 emails'. An event cancelled on the day has
- * no timesheet (§3.3) and is invoiced without one.
+ * The log is drawn from the invoice's own lines (actual sign-in and
+ * sign-out, break, hours charged, as issued), so it agrees with the
+ * invoice line for line (THC, 20.10.2026). The allocation-style timesheet
+ * is the 16:00 day-before email (D1), not this.
  */
 
 interface InvoiceRpc extends DocumentRpc {
@@ -45,27 +44,18 @@ export async function sendInvoice(
   const invoicePath = `${base}/invoice.pdf`;
   await storage.upload(invoicePath, await renderInvoicePdf(doc));
 
-  const attachments: {
-    bucket: 'timesheets';
-    path: string;
-    filename: string;
-    role?: 'timesheet';
-  }[] = [{ bucket: 'timesheets', path: invoicePath, filename: fileName }];
-  for (const event of doc.events) {
-    const sheet = await drawSheet(db, event.id, 'signout');
-    if (!sheet.ok) {
-      if (sheet.status === 409) continue; // cancelled: no timesheet (§3.3)
-      throw new Error(`timesheet for ${event.id}: ${sheet.message}`);
-    }
-    const path = `${base}/timesheet-${event.id}.pdf`;
-    await storage.upload(path, sheet.pdf);
-    attachments.push({
-      bucket: 'timesheets',
-      path,
-      filename: sheet.layout.fileName,
-      role: 'timesheet',
-    });
-  }
+  const logPath = `${base}/sign-in-log.pdf`;
+  await storage.upload(logPath, await renderSignInLogPdf(doc));
+
+  const attachments = [
+    { bucket: 'timesheets' as const, path: invoicePath, filename: fileName },
+    {
+      bucket: 'timesheets' as const,
+      path: logPath,
+      filename: signInLogFileName(fileName),
+      role: 'timesheet' as const,
+    },
+  ];
 
   const recorded = await db.rpc('invoice_record_files', {
     p_invoice: invoiceId,
