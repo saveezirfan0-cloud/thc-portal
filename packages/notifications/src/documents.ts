@@ -22,6 +22,10 @@
  *         card (§9.7), which the outbox row carries. THC renamed both in
  *         client emails on 29.09.2026 — §11.3/§11.4 say "allocation sheet"
  *         and "sign-out timesheet" (ADR-0073).
+ *   INV1  THC's invoice (ADR-0176), at 10:00 UK the morning after the last
+ *         event on a PO, with the completed timesheet of every event on it
+ *         attached. From timesheets@, to the client card's accounts emails
+ *         (or its contact emails), which the outbox row carries.
  *
  * Every one is sent as text AND as THC Light HTML (ADR-0073). The text is
  * `body`; the HTML is built from the same values by `documentHtml()` below,
@@ -83,6 +87,8 @@ export interface DocumentEmailHtml {
   attachmentNote: string;
   /** Under the name badges' file name (ADR-0081, D1 only); `{nameBadges}` is the count. */
   badgesNote?: string;
+  /** Under each completed timesheet attached to an invoice (ADR-0176, INV1 only). */
+  timesheetNote?: string;
   /** A `mailto:` button to the sender's reply-to, subject "Re: <subject>". */
   replyButton?: string;
 }
@@ -157,6 +163,27 @@ export const DOCUMENT_EMAILS = {
     trigger: '"Send timesheet" on the Back Office event page, after the event (§11.3, §11.4)',
     timing: 'on the press',
   },
+  INV1: {
+    code: 'INV1',
+    channel: 'email',
+    sender: 'timesheets',
+    bucket: 'timesheets',
+    title: 'Invoice {invoiceNumber} — {client}{poSuffix}',
+    body: "Hello,\n\nPlease find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}.\n\nThe completed Allocation Timesheet for each event is attached too, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.\n\nIf anything doesn't match your records, just reply to this email and we'll look into it.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    html: {
+      eyebrow: 'Invoice',
+      intro:
+        "Please find attached invoice {invoiceNumber} for {eventsLine}{poSuffix}: £{total} including VAT, payable by {dueDate}. The completed Allocation Timesheet for each event is attached too, with finish times, breaks and hours worked taken from each person's check-in and check-out in the THC Staff App.",
+      closing:
+        "If anything doesn't match your records, just reply to this email and we'll look into it.",
+      attachmentNote: 'Invoice · attached',
+      timesheetNote: 'Completed Allocation Timesheet · attached',
+      replyButton: 'Reply to this email',
+    },
+    trigger: 'ADR-0176 — the invoice job, after the event (one invoice per PO Number)',
+    timing:
+      '10:00 Europe/London the morning after the last event on the PO, once every check-out is settled and any violation signed off',
+  },
 } as const satisfies Record<string, DocumentEmailTemplate>;
 
 export type DocumentEmailCode = keyof typeof DOCUMENT_EMAILS;
@@ -172,9 +199,10 @@ export interface Attachment {
   /**
    * What the file is when it is not the email's main document: 'badges',
    * the D1 name badges (ADR-0081). Its card says the template's
-   * `badgesNote` instead of `attachmentNote`.
+   * `badgesNote` instead of `attachmentNote`. 'timesheet', a completed
+   * timesheet attached to an invoice (ADR-0176): its card says `timesheetNote`.
    */
-  role?: 'badges';
+  role?: 'badges' | 'timesheet';
 }
 
 export interface EmailWithAttachments extends EmailMessage {
@@ -214,7 +242,7 @@ function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
       bucket,
       path: a.path,
       filename: a.filename,
-      ...(a.role === 'badges' ? { role: 'badges' as const } : {}),
+      ...(a.role === 'badges' || a.role === 'timesheet' ? { role: a.role } : {}),
     };
   });
 }
@@ -249,6 +277,9 @@ function derivedValues(
       ...values,
       newStarterLine: `${n} new starter${n === 1 ? '' : 's'}.`,
     };
+  }
+  if (code === 'INV1') {
+    return { ...values, poSuffix: values.poSuffix ?? '' };
   }
   const po = (values.poNumber ?? '').trim();
   // ADR-0088: an automatic D1 that follows one already sent says so. A row
@@ -311,6 +342,17 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
       { label: 'New starters', value: get('newStarters') },
     ];
   }
+  if (code === 'INV1') {
+    const total = get('total');
+    return [
+      { label: 'Invoice number', value: get('invoiceNumber') },
+      { label: 'Client', value: get('client') },
+      { label: 'For', value: get('eventsLine') },
+      { label: 'PO number', value: get('poNumber') },
+      { label: 'Total due', value: total ? `£${total}` : '' },
+      { label: 'Payable by', value: get('dueDate') },
+    ];
+  }
   const common = [
     { label: 'Client', value: get('client') },
     { label: 'Date', value: get('date') },
@@ -352,7 +394,9 @@ function documentHtml(
       note:
         a.role === 'badges' && copy.badgesNote
           ? render(copy.badgesNote, values)
-          : copy.attachmentNote,
+          : a.role === 'timesheet' && copy.timesheetNote
+            ? copy.timesheetNote
+            : copy.attachmentNote,
     })),
   };
 

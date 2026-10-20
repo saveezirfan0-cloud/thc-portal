@@ -21,14 +21,20 @@ import {
   Pill,
   SaveBar,
   Select,
+  Switch,
   Tabs,
+  Textarea,
+  TimeField,
+  UkDateField,
   useUnsavedChanges,
 } from '@thc/ui';
+import { ukInputLabel } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import { NotificationsTab } from './NotificationsTab';
 import {
   saveAutoAssignNumbers,
   saveClientPortalPhone,
+  saveInvoicing,
   saveOfficeSignIn,
   saveRotaGuardMode,
   saveSenders,
@@ -40,11 +46,17 @@ import {
 } from './actions';
 import {
   CLIENT_PORTAL_PHONE_MAX,
+  LATE_PAYMENT_NOTE_MAX,
   MAX_RADIUS_M,
+  PAYMENT_TERMS_MAX_DAYS,
+  PO_WINDOW_MAX_DAYS,
+  PO_WINDOW_MIN_DAYS,
+  VAT_RATE_MAX,
   MIN_RADIUS_M,
   SESSION_HOURS_MAX,
   SESSION_HOURS_MIN,
   WEIGHT_FIELDS,
+  invoicingProblems,
   validateClientPortalPhone,
   validateEscalationRadius,
   validateGap,
@@ -56,6 +68,7 @@ import {
 import { KANBAN_STAGES } from './types';
 import type {
   ActionResult,
+  InvoicingSettings,
   RotaGuardMode,
   ScoringWeights,
   SettingsData,
@@ -169,6 +182,7 @@ export function SettingsScreen({
             twoStepRequired={data.officeTwoStepRequired}
             sessionMaxHours={data.officeSessionMaxHours}
           />
+          <InvoicingBlock invoicing={data.invoicing} />
           <RadiiBlock types={data.venueTypes} />
         </div>
 
@@ -706,8 +720,8 @@ function SignInSecurityBlock({
       />
       {required === 'optional' ? (
         <Note>
-          Optional means one leaked password is enough to open pay, bank details and every
-          worker’s documents, unless that person has set up two-step themselves.
+          Optional means one leaked password is enough to open pay, bank details and every worker’s
+          documents, unless that person has set up two-step themselves.
         </Note>
       ) : null}
       <Feedback note={note} error={error} />
@@ -718,6 +732,235 @@ function SignInSecurityBlock({
           onClick={() => run(() => saveOfficeSignIn(required === 'required', hours))}
         >
           {pending ? 'Saving…' : 'Save sign-in rules'}
+        </Button>
+      </SaveAction>
+    </Block>
+  );
+}
+
+/** The invoicing form: the three counts as typed, so a cleared box is not 0. */
+type InvoicingDraft = Omit<
+  InvoicingSettings,
+  'vat_rate' | 'payment_terms_days' | 'po_window_days'
+> & { vat_rate: string; payment_terms_days: string; po_window_days: string };
+
+function invoicingDraft(settings: InvoicingSettings): InvoicingDraft {
+  return {
+    ...settings,
+    vat_rate: String(settings.vat_rate),
+    payment_terms_days: String(settings.payment_terms_days),
+    po_window_days: String(settings.po_window_days),
+  };
+}
+
+/** A blank box is not a number (NaN, refused), never a silent 0. */
+function typedNumber(value: string): number {
+  return value.trim() === '' ? Number.NaN : Number(value);
+}
+
+function fromInvoicingDraft(draft: InvoicingDraft): InvoicingSettings {
+  return {
+    ...draft,
+    vat_rate: typedNumber(draft.vat_rate),
+    payment_terms_days: typedNumber(draft.payment_terms_days),
+    po_window_days: typedNumber(draft.po_window_days),
+  };
+}
+
+/**
+ * ADR-0176: the invoices the system issues and emails. One PO's events make
+ * one invoice, sent the morning after the last of them; every value here is
+ * snapshotted onto each invoice as it is issued, so a change never touches
+ * an invoice already sent.
+ */
+function InvoicingBlock({ invoicing }: { invoicing: InvoicingSettings }) {
+  const [draft, setDraft] = useState<InvoicingDraft>(() => invoicingDraft(invoicing));
+  const { note, error, pending, run } = useSave();
+  const settings = fromInvoicingDraft(draft);
+  const problems = invoicingProblems(settings);
+  // Fields are marked only after a refused save, as in every other block.
+  const shown = (field: keyof typeof problems) => (error && problems[field]) || undefined;
+  const dirty = !sameValue(settings, invoicing);
+  const company = (key: keyof InvoicingSettings['company'], value: string) =>
+    setDraft((current) => ({ ...current, company: { ...current.company, [key]: value } }));
+  const bank = (key: keyof InvoicingSettings['bank'], value: string) =>
+    setDraft((current) => ({ ...current, bank: { ...current.bank, [key]: value } }));
+
+  return (
+    <Block
+      className="settings-wide"
+      title="Invoicing"
+      sub="Invoices are emailed at this time the morning after the last event on a PO, with the completed timesheets attached."
+      actions={
+        <Pill tone={invoicing.enabled ? 'green' : 'neutral'}>
+          {invoicing.enabled ? 'Sending' : 'Off'}
+        </Pill>
+      }
+    >
+      <Switch
+        checked={draft.enabled}
+        onChange={(enabled) => setDraft((current) => ({ ...current, enabled }))}
+        label={
+          draft.enabled
+            ? 'On — invoices are issued and emailed'
+            : 'Off — no invoice is issued or emailed'
+        }
+      />
+      <div className="settings-invoicing">
+        <div className="settings-invoicing-col">
+          <h4 className="settings-subhead">Sending</h4>
+          <TimeField
+            label={ukInputLabel('Send time')}
+            value={draft.time}
+            hint="Sent from the timesheets address to the client card’s accounts contact."
+            error={shown('time')}
+            onChange={(time) => setDraft((current) => ({ ...current, time }))}
+          />
+          <UkDateField
+            label="First invoiced event date"
+            value={draft.first_event_date}
+            hint="Events dated before this day are never invoiced. Moving it earlier invoices past events that have no invoice yet."
+            error={shown('first_event_date')}
+            onChange={(first_event_date) =>
+              setDraft((current) => ({ ...current, first_event_date }))
+            }
+          />
+          <Input
+            label="PO window (days)"
+            type="number"
+            step="1"
+            min={String(PO_WINDOW_MIN_DAYS)}
+            max={String(PO_WINDOW_MAX_DAYS)}
+            mono
+            value={draft.po_window_days}
+            hint="A PO’s invoice covers its events within this many days of the first one not yet invoiced; a PO reused later starts a new invoice."
+            error={shown('po_window_days')}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, po_window_days: event.target.value }))
+            }
+          />
+          <Input
+            label="VAT rate (%)"
+            type="number"
+            step="0.01"
+            min="0"
+            max={String(VAT_RATE_MAX)}
+            mono
+            value={draft.vat_rate}
+            error={shown('vat_rate')}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, vat_rate: event.target.value }))
+            }
+          />
+          <Input
+            label="Payment terms (days)"
+            type="number"
+            step="1"
+            min="0"
+            max={String(PAYMENT_TERMS_MAX_DAYS)}
+            mono
+            value={draft.payment_terms_days}
+            hint="The due date is the invoice date plus this many days."
+            error={shown('payment_terms_days')}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, payment_terms_days: event.target.value }))
+            }
+          />
+        </div>
+        <div className="settings-invoicing-col">
+          <h4 className="settings-subhead">Company</h4>
+          <Input
+            label="Company name"
+            value={draft.company.name}
+            error={shown('company.name')}
+            onChange={(event) => company('name', event.target.value)}
+          />
+          <Input
+            label="Company registration number"
+            mono
+            value={draft.company.company_reg}
+            error={shown('company.company_reg')}
+            onChange={(event) => company('company_reg', event.target.value)}
+          />
+          <Input
+            label="VAT registration number"
+            mono
+            value={draft.company.vat_reg}
+            error={shown('company.vat_reg')}
+            onChange={(event) => company('vat_reg', event.target.value)}
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={draft.company.email}
+            error={shown('company.email')}
+            onChange={(event) => company('email', event.target.value)}
+          />
+          <Input
+            label="Website"
+            value={draft.company.website}
+            error={shown('company.website')}
+            onChange={(event) => company('website', event.target.value)}
+          />
+        </div>
+        <div className="settings-invoicing-col">
+          <h4 className="settings-subhead">Bank</h4>
+          <Input
+            label="Account name"
+            value={draft.bank.account_name}
+            error={shown('bank.account_name')}
+            onChange={(event) => bank('account_name', event.target.value)}
+          />
+          <Input
+            label="Bank"
+            value={draft.bank.bank}
+            error={shown('bank.bank')}
+            onChange={(event) => bank('bank', event.target.value)}
+          />
+          <Input
+            label="Account number"
+            inputMode="numeric"
+            maxLength={8}
+            mono
+            value={draft.bank.account_number}
+            error={shown('bank.account_number')}
+            onChange={(event) => bank('account_number', event.target.value)}
+          />
+          <Input
+            label="Sort code"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="NN-NN-NN"
+            mono
+            value={draft.bank.sort_code}
+            error={shown('bank.sort_code')}
+            onChange={(event) => bank('sort_code', event.target.value)}
+          />
+        </div>
+      </div>
+      <Textarea
+        label="Late-payment wording"
+        rows={4}
+        maxLength={LATE_PAYMENT_NOTE_MAX}
+        value={draft.late_payment_note}
+        hint="Printed under the payment details on every invoice."
+        error={shown('late_payment_note')}
+        onChange={(event) =>
+          setDraft((current) => ({ ...current, late_payment_note: event.target.value }))
+        }
+      />
+      <Note>
+        Each invoice keeps the values it was issued with: a change here applies from the next
+        invoice on and never alters one already sent.
+      </Note>
+      <Feedback note={note} error={error} />
+      <SaveAction id="invoicing" title="Invoicing" dirty={dirty}>
+        <Button
+          tone="primary"
+          disabled={pending}
+          onClick={() => run(() => saveInvoicing(settings))}
+        >
+          {pending ? 'Saving…' : 'Save invoicing'}
         </Button>
       </SaveAction>
     </Block>

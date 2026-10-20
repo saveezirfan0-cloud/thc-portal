@@ -186,7 +186,8 @@ reset role;
 
 select is((select count(*)::int from il where name = 'Gone'), 0,
   'an event cancelled before its day has nothing to invoice and is not listed');
-select is((select status from il where name = 'Clean'), 'review', 'a clean, closed event waits for the sign-off');
+select is((select status from il where name = 'Clean'), 'ready',
+  'a clean, closed event is ready with no sign-off: it has no violation to review (ADR-0176)');
 select is((select invoicing from il where name = 'Clean'), 183.76::numeric, 'two 4 h shifts × £22.97 = 183.76');
 select is((select payable_min from il where name = 'Clean'), 480, 'payable minutes add up');
 select is((select po_number from il where name = 'Clean'), 'PO-Clean', 'the PO number carries through');
@@ -211,7 +212,7 @@ select is((select pending from il where name = 'Stale'), 1,
   'its line is pending: no amount until it is resolved (ADR-0174)');
 select is((select no_checkouts from il where name = 'Stale'), 1, 'and the unresolved No check-out is counted');
 
-select is((select status from il where name = 'SameDay'), 'review', 'an event cancelled on the day is invoiced');
+select is((select status from il where name = 'SameDay'), 'ready', 'an event cancelled on the day is invoiced');
 select is((select invoicing from il where name = 'SameDay'), 91.88::numeric,
   'in full, for the scheduled hours (§3.3)');
 select is((select cancelled from il where name = 'SameDay'), true, 'and says it was cancelled');
@@ -322,10 +323,10 @@ select is((select count(*)::int from audit_log where action = 'invoice.signed_of
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is((select count(*)::int from invoice_export_rows('2024-11-01', '2024-11-30') x
-            where x.event_id in (select event_id from ev)), 2,
-  'the export carries the ready event''s two shifts and nothing from the events that are not ready');
+            where x.event_id in (select event_id from ev)), 3,
+  'the export carries the ready events'' shifts (Clean 2 + SameDay 1) and nothing from the events that are not ready');
 select is((select sum(invoicing) from invoice_export_rows('2024-11-01', '2024-11-30') x
-            where x.event_id in (select event_id from ev)), 183.76::numeric, 'for the signed-off amount');
+            where x.event_id in (select event_id from ev)), 275.64::numeric, 'for their amount: 183.76 + 91.88');
 select is((select count(*)::int from invoice_export_rows('2024-11-14', '2024-11-14',
             (select event_id from ev where name = 'NoShow'))), 0, 'an event awaiting review exports nothing');
 reset role;

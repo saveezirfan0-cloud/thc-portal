@@ -5,3 +5,5 @@ export * from './sheet.ts';
 export * from './SheetDocument.tsx';
 export * from './badges.ts';
 export * from './BadgesDocument.tsx';
+export * from './invoice.ts';
+export * from './InvoiceDocument.tsx';

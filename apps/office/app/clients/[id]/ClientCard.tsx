@@ -7,6 +7,7 @@ import { ClientCrumbs, NewEventForClient } from './chrome';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
 import { ClientEvents } from './ClientEvents';
+import { Invoicing } from './Invoicing';
 import { LineupEmails } from './LineupEmails';
 import { NameBadges } from './NameBadges';
 import { QualifiedStaff } from './QualifiedStaff';
@@ -168,7 +169,7 @@ export function ClientCard({
         {/* ADR-0110: the client's own asks of a worker, per role, and who has met them.
             Every block carries its number in page order (release audit m7):
             the wireframe's first three, these two (which it does not draw),
-            then Events and History. */}
+            then Events, Invoicing and History. */}
         <ShiftRequirements
           clientId={client.id}
           rows={data.requirements}
@@ -181,13 +182,21 @@ export function ClientCard({
 
         <ClientEvents rows={data.events} ratesVisible={ratesVisible} />
 
+        {/* ADR-0176: who the emailed invoice is addressed to. Where an invoice
+            goes is a money decision: finance (ratesVisible) may edit it. */}
+        <Invoicing
+          clientId={client.id}
+          details={data.invoicing}
+          canWrite={canWrite && ratesVisible}
+        />
+
         {/* The audit trail (ADR-0055), after the scope's four blocks. */}
         <RecordHistory
           entity="client"
           id={client.id}
           title={
             <>
-              <span className="blk-n">7</span> History
+              <span className="blk-n">8</span> History
             </>
           }
         />

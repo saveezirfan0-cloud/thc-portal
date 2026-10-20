@@ -144,15 +144,16 @@ export function showForecastLabel(from: string, to: string, today: string): bool
 
 /**
  * `invoice_events`' ladder, in its order: the first step an event fails is
- * its status (20261021150000).
+ * its status (20261021150000; `invoiced` since ADR-0176, 20261022100000).
  */
-export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready';
+export type InvoiceStatus = 'open' | 'missing' | 'review' | 'ready' | 'invoiced';
 
 export const INVOICE_STATUS_LABEL: Readonly<Record<InvoiceStatus, string>> = {
   open: 'Check-out open',
   missing: 'Missing check-out',
   review: 'Needs review',
   ready: 'Ready to invoice',
+  invoiced: 'Invoiced',
 };
 
 /** Green only when it may be invoiced; coral when a manager must act first. */
@@ -163,6 +164,7 @@ export const INVOICE_STATUS_TONE: Readonly<
   missing: 'coral',
   review: 'amber',
   ready: 'green',
+  invoiced: 'green',
 };
 
 /** What the manager does next, one line per status. */
@@ -171,13 +173,147 @@ export const INVOICE_STATUS_HINT: Readonly<Record<InvoiceStatus, string>> = {
   missing:
     'A worker’s hours are not settled: resolve their No check-out on the Check-in screen with the actual finish time, or correct their check-in/out.',
   review: 'Review the violations and the lines below, then mark the event reviewed for invoicing.',
-  ready: 'Signed off. The lines are in the invoicing CSV.',
+  ready: 'Ready: the invoice goes out with the completed timesheet at the time shown.',
+  invoiced: 'Invoiced: the invoice is final. It is emailed with the completed timesheet.',
 };
 
 export function invoiceStatus(value: string): InvoiceStatus {
-  return value === 'open' || value === 'missing' || value === 'review' || value === 'ready'
+  return value === 'open' ||
+    value === 'missing' ||
+    value === 'review' ||
+    value === 'ready' ||
+    value === 'invoiced'
     ? value
     : 'review';
+}
+
+/**
+ * Why a ready event's invoice has not gone yet, or when it will — from
+ * `_invoice_groups`' verdict (ADR-0176). Null when there is nothing to say.
+ */
+export function invoiceSendNote(
+  verdict: string | null,
+  sendsAt: string | null,
+  format?: TimeFormat,
+): string | null {
+  switch (verdict) {
+    case 'scheduled':
+    case 'due':
+      return sendsAt
+        ? `Invoice sends ${formatUkStamp(sendsAt, format)} UK`
+        : 'Invoice sends shortly';
+    case 'waiting':
+      return 'Waits for the other events on this PO';
+    case 'review':
+      return 'Waits for another event on this PO to be reviewed';
+    case 'missing':
+      return 'Waits for a missing check-out on this PO';
+    case 'no_recipients':
+      return 'No email to send it to: add one on the client card';
+    case 'disabled':
+      return 'Invoices are switched off in Settings';
+    case 'nothing_to_invoice':
+      return 'Nothing to charge';
+    default:
+      return null;
+  }
+}
+
+/**
+ * A ready event the system will never invoice: dated before invoicing went
+ * live (or on no PO group at all), so it is invoiced from the CSV as before.
+ */
+export const NOT_SYSTEM_INVOICED_NOTE = 'Not invoiced by the system: invoice it from the CSV';
+
+/** A ready event's line under its status: when it sends, why not, or that it never will. */
+export function readyEventNote(
+  verdict: string | null,
+  sendsAt: string | null,
+  format?: TimeFormat,
+  amount?: number | string | null,
+): string | null {
+  if (verdict) return invoiceSendNote(verdict, sendsAt, format);
+  // Nobody worked, or nothing is charged: no invoice from anyone.
+  if (amount !== undefined && amount !== null && Number(amount) === 0) return 'Nothing to charge';
+  return NOT_SYSTEM_INVOICED_NOTE;
+}
+
+export interface InvoiceEmailFacts {
+  invoice_status?: string | null;
+  invoice_attempts?: number | null;
+  invoice_last_error?: string | null;
+  invoice_queued_at?: string | null;
+  email_sent_at?: string | null;
+  email_failed_at?: string | null;
+  email_error?: string | null;
+}
+
+/** The invoice gives up on drawing after this many started attempts (`invoices_unfinished`). */
+export const INVOICE_MAX_ATTEMPTS = 24;
+
+/**
+ * Where an issued invoice's email is (ADR-0176), from the invoice row and
+ * its INV1 outbox row. `resendable`: the office may "Send again" — the last
+ * email is settled (sent or failed) and the files exist.
+ */
+export function invoiceEmailState(
+  f: InvoiceEmailFacts,
+  format?: TimeFormat,
+): {
+  tone: 'green' | 'amber' | 'coral' | 'neutral';
+  text: string;
+  resendable: boolean;
+  /** The job gave up: the button is "Try again" (attempts back to 0). */
+  retry?: boolean;
+} {
+  if (f.invoice_status !== 'queued') {
+    const attempts = f.invoice_attempts ?? 0;
+    if (attempts >= INVOICE_MAX_ATTEMPTS) {
+      return {
+        tone: 'coral',
+        text: `Could not be prepared after ${attempts} attempts${f.invoice_last_error ? `: ${f.invoice_last_error}` : ''}. Try again; if it fails again, ask for it to be looked at.`,
+        resendable: true,
+        retry: true,
+      };
+    }
+    return {
+      tone: f.invoice_status === 'failed' ? 'amber' : 'neutral',
+      text:
+        f.invoice_status === 'failed'
+          ? `Being prepared; the last try failed${f.invoice_last_error ? ` (${f.invoice_last_error})` : ''} and is retried every 15 minutes`
+          : 'Being prepared; it is emailed within 15 minutes',
+      resendable: false,
+    };
+  }
+  if (f.email_failed_at) {
+    return {
+      tone: 'coral',
+      text: `Email failed ${formatUkStamp(f.email_failed_at, format)} UK${f.email_error ? `: ${f.email_error}` : ''}`,
+      resendable: true,
+    };
+  }
+  if (f.email_sent_at) {
+    return {
+      tone: 'green',
+      text: `Emailed ${formatUkStamp(f.email_sent_at, format)} UK`,
+      resendable: true,
+    };
+  }
+  return { tone: 'neutral', text: 'Email queued; it goes within a few minutes', resendable: false };
+}
+
+/** Whether an invoiced event's live figure has moved away from what was invoiced. */
+export function invoicedAmountChanged(
+  live: number | string | null | undefined,
+  invoiced: number | string | null | undefined,
+): boolean {
+  if (invoiced === null || invoiced === undefined) return false;
+  return Math.round(Number(live ?? 0) * 100) !== Math.round(Number(invoiced) * 100);
+}
+
+/** The stored invoice PDF (ADR-0176). */
+export function invoicePdfHref(invoiceId: string): string {
+  return `/api/invoices/${encodeURIComponent(invoiceId)}`;
 }
 
 /** `/reports/invoicing/:eventId`. */

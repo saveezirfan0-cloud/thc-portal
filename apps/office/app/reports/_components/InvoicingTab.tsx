@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Alert, KpiTile, Note, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
+import type { TimeFormat } from '@thc/domain';
 import type { InvoiceEvent } from '../data';
 import {
   INVOICE_STATUS_LABEL,
@@ -8,6 +9,10 @@ import {
   exportHref,
   hours,
   invoiceEventHref,
+  invoicePdfHref,
+  invoiceEmailState,
+  invoiceSendNote,
+  readyEventNote,
   invoiceStatus,
   lastWeek,
   num,
@@ -21,22 +26,24 @@ import type { InvoiceStatus, ReportView } from '../view-model';
 import { RangeForm } from './RangeForm';
 
 /**
- * Tab 4 · Invoicing (ADR-0172) — not in §9.9, which leaves invoicing to
- * THC's own process. This tab does not invoice either: it says which
- * events are safe to invoice and hands over their lines.
+ * Tab 4 · Invoicing (ADR-0172, ADR-0176) — not in §9.9. Since ADR-0176 the
+ * system issues the invoices itself: one per PO, emailed at 10:00 UK the
+ * morning after the last event on it, with the completed timesheets.
  *
  * One row per event dated in the range. The status is the database's
- * (`invoice_events`): Check-out open → Missing check-out → Needs review →
- * Ready to invoice. "Export ready CSV" carries the Ready events only.
+ * (`invoice_events`): Check-out open → Missing check-out → Needs review
+ * (only an event with a violation) → Ready to invoice → Invoiced.
  */
 export function InvoicingTab({
   view,
   events,
   today,
+  format,
 }: {
   view: ReportView;
   events: InvoiceEvent[];
   today: string;
+  format?: TimeFormat;
 }) {
   const last = lastWeek(today);
   const current = thisWeek(today);
@@ -44,11 +51,14 @@ export function InvoicingTab({
   const onThis = view.from === current.from && view.to === current.to;
 
   const by = (status: InvoiceStatus) => events.filter((e) => invoiceStatus(e.status) === status);
+  const invoiced = by('invoiced');
   const ready = by('ready');
   const review = by('review');
   const missing = by('missing');
-  const open = by('open');
   const sum = (list: InvoiceEvent[]) => list.reduce((total, e) => total + num(e.invoicing), 0);
+  // What was invoiced, not today's live lines (ADR-0176: an issued invoice is never re-priced).
+  const sumInvoiced = (list: InvoiceEvent[]) =>
+    list.reduce((total, e) => total + num(e.invoiced_amount ?? e.invoicing), 0);
 
   return (
     <div className="stack">
@@ -69,10 +79,15 @@ export function InvoicingTab({
 
       <TileGrid columns={4}>
         <KpiTile
-          label="Ready to invoice"
+          label="Invoiced"
           tone="ok"
+          value={poundsWhole(sumInvoiced(invoiced))}
+          description={`${invoiced.length} ${invoiced.length === 1 ? 'event' : 'events'} · final; emailed with the timesheet`}
+        />
+        <KpiTile
+          label="Ready to invoice"
           value={poundsWhole(sum(ready))}
-          description={`${ready.length} ${ready.length === 1 ? 'event' : 'events'} · signed off`}
+          description={`${ready.length} ${ready.length === 1 ? 'event' : 'events'} · each row says when it sends`}
         />
         <KpiTile
           label="Needs review"
@@ -86,18 +101,15 @@ export function InvoicingTab({
           value={missing.length}
           description="resolve the No check-out with the actual finish time"
         />
-        <KpiTile
-          label="Check-out open"
-          value={open.length}
-          description="until 4 hours after the last shift ends"
-        />
       </TileGrid>
 
       <Alert tone="cyan">
-        <b>This list does not send invoices.</b> THC invoices from its own accounting tool. An event
-        is ready once every worker has checked out (or a manager has entered their finish time) and
-        a manager has reviewed its violations and marked it reviewed for invoicing. If anything
-        changes after that, it goes back to Needs review.
+        <b>Invoices go out by themselves.</b> One invoice per PO Number (an event without one is
+        invoiced on its own), emailed to the client&apos;s accounts contact with the completed
+        timesheet of each event attached, at 10:00 UK the morning after the last event on the PO. An
+        event is ready once every worker has checked out (or a manager has entered their finish
+        time); an event with any violation also needs a manager to mark it reviewed. Events before
+        26/10/2026 are not invoiced by the system: invoice them from the CSV.
       </Alert>
 
       <Panel title={<>Events · {periodLabel(view.from, view.to)}</>} flush>
@@ -125,7 +137,9 @@ export function InvoicingTab({
                     </td>
                   </tr>
                 ) : (
-                  events.map((event) => <EventRow key={event.event_id} event={event} />)
+                  events.map((event) => (
+                    <EventRow key={event.event_id} event={event} format={format} />
+                  ))
                 )}
               </tbody>
             </table>
@@ -140,16 +154,25 @@ export function InvoicingTab({
           charged; an event cancelled on the day is charged in full.
         </Note>
         <Note>
-          <b>Export ready CSV</b> has one row per shift of every Ready event in the period, with the
-          PO Number and a total row per event. Events that are not ready are left out.
+          <b>Export ready CSV</b> has one row per shift of every Ready event the system does not
+          invoice itself (events before 26/10/2026), with the PO Number and a total row per event,
+          for your accounting tool. Every other event is invoiced by the system, so it is never in
+          the CSV: keying it in as well would bill it twice.
         </Note>
       </div>
     </div>
   );
 }
 
-function EventRow({ event }: { event: InvoiceEvent }) {
+function EventRow({ event, format }: { event: InvoiceEvent; format?: TimeFormat }) {
   const status = invoiceStatus(event.status);
+  const note =
+    status === 'ready'
+      ? readyEventNote(event.send_verdict ?? null, event.sends_at ?? null, format, event.invoicing)
+      : status === 'invoiced'
+        ? null
+        : invoiceSendNote(event.send_verdict ?? null, event.sends_at ?? null, format);
+  const email = status === 'invoiced' ? invoiceEmailState(event, format) : null;
   return (
     <tr>
       <td className="rp-nowrap">{dayLabel(event.event_date)}</td>
@@ -179,8 +202,22 @@ function EventRow({ event }: { event: InvoiceEvent }) {
       </td>
       <td>
         <div className="rp-status">
-          <Pill tone={INVOICE_STATUS_TONE[status]}>{INVOICE_STATUS_LABEL[status]}</Pill>
+          {status === 'invoiced' && event.invoice_id ? (
+            <a href={invoicePdfHref(event.invoice_id)} className="rp-nowrap">
+              <Pill tone="green">Invoice {event.invoice_number}</Pill>
+            </a>
+          ) : (
+            <Pill tone={INVOICE_STATUS_TONE[status]}>{INVOICE_STATUS_LABEL[status]}</Pill>
+          )}
+          {email && email.tone !== 'green' ? (
+            <span className={email.tone === 'coral' ? 'rp-coral sm' : 'muted sm'}>
+              {email.text}
+            </span>
+          ) : null}
           {event.signoff_stale ? <span className="muted sm">changed since sign-off</span> : null}
+          {note && (status === 'ready' || status === 'review' || status === 'missing') ? (
+            <span className="muted sm">{note}</span>
+          ) : null}
         </div>
       </td>
     </tr>

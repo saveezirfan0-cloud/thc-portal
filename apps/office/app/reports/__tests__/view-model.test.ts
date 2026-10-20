@@ -18,6 +18,11 @@ import {
   sendStatus,
   showForecastLabel,
   thisWeek,
+  INVOICE_MAX_ATTEMPTS,
+  NOT_SYSTEM_INVOICED_NOTE,
+  invoiceEmailState,
+  invoicedAmountChanged,
+  readyEventNote,
 } from '../view-model';
 import type { ReportSend } from '../view-model';
 
@@ -193,7 +198,7 @@ describe('ready to invoice (ADR-0172)', () => {
     );
   });
 
-  it('reads the database status and is green only when ready', () => {
+  it('reads the database status and is green only when ready or invoiced', () => {
     expect(invoiceStatus('ready')).toBe('ready');
     expect(invoiceStatus('missing')).toBe('missing');
     // Never shown as ready on a value it does not know.
@@ -203,6 +208,58 @@ describe('ready to invoice (ADR-0172)', () => {
       Object.entries(INVOICE_STATUS_TONE)
         .filter(([, tone]) => tone === 'green')
         .map(([s]) => s),
-    ).toEqual(['ready']);
+    ).toEqual(['ready', 'invoiced']);
+    // ADR-0176: an issued invoice reads back as its own status.
+    expect(invoiceStatus('invoiced')).toBe('invoiced');
+  });
+});
+
+describe('the issued invoice on screen (ADR-0176)', () => {
+  const base = { invoice_status: 'queued', invoice_attempts: 1 };
+
+  it('says emailed only when the outbox row was actually sent', () => {
+    expect(invoiceEmailState({ ...base, email_sent_at: '2026-10-27T10:01:00Z' })).toMatchObject({
+      tone: 'green',
+      text: 'Emailed Tue 27 Oct, 10:01 UK',
+      resendable: true,
+    });
+    expect(invoiceEmailState(base)).toMatchObject({ tone: 'neutral', resendable: false });
+  });
+
+  it('shows a failed email with its reason, and offers Send again', () => {
+    expect(
+      invoiceEmailState({
+        ...base,
+        email_failed_at: '2026-10-27T10:01:00Z',
+        email_error: 'Bounced',
+      }),
+    ).toMatchObject({ tone: 'coral', text: expect.stringContaining('Bounced'), resendable: true });
+  });
+
+  it('says when an invoice is still being prepared, and when it gave up', () => {
+    expect(invoiceEmailState({ invoice_status: 'drawing', invoice_attempts: 1 }).text).toMatch(
+      /Being prepared/,
+    );
+    const stuck = invoiceEmailState({
+      invoice_status: 'failed',
+      invoice_attempts: INVOICE_MAX_ATTEMPTS,
+      invoice_last_error: 'Storage refused',
+    });
+    // The office can start it again: Try again sets its attempts back to 0.
+    expect(stuck).toMatchObject({ tone: 'coral', resendable: true, retry: true });
+    expect(stuck.text).toMatch(/Could not be prepared after 24 attempts: Storage refused/);
+  });
+
+  it('a ready event with no PO group is not invoiced by the system', () => {
+    expect(readyEventNote(null, null)).toBe(NOT_SYSTEM_INVOICED_NOTE);
+    expect(readyEventNote('no_recipients', null)).toMatch(/client card/);
+    expect(readyEventNote(null, null, undefined, '0.00')).toBe('Nothing to charge');
+  });
+
+  it('flags an invoiced event whose lines have moved since', () => {
+    expect(invoicedAmountChanged('183.76', '183.76')).toBe(false);
+    expect(invoicedAmountChanged(183.76, '183.76')).toBe(false);
+    expect(invoicedAmountChanged('190.00', '183.76')).toBe(true);
+    expect(invoicedAmountChanged('190.00', null)).toBe(false);
   });
 });

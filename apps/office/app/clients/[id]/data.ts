@@ -40,6 +40,7 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
   nameBadges: false,
   lineupEmails: { confirmed: true, changed: true },
+  invoicing: { accountsContactName: null, invoiceEmails: [], billingAddress: null },
   rateCard: [],
   dressCodeLibrary: [],
   qualified: [],
@@ -144,14 +145,21 @@ export async function loadClientCard(
     supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
     // ADR-0081: one switch, read from the table rather than restating the view.
     // ADR-0135 §3: and the two line-up email switches beside it.
+    // ADR-0176: and the Invoicing panel's three columns.
     supabase
       .from('clients')
-      .select('name_badges, lineup_confirmed_emails, lineup_changed_emails')
+      .select(
+        'name_badges, lineup_confirmed_emails, lineup_changed_emails, ' +
+          'accounts_contact_name, invoice_emails, billing_address',
+      )
       .eq('id', id)
       .maybeSingle<{
         name_badges: boolean | null;
         lineup_confirmed_emails: boolean | null;
         lineup_changed_emails: boolean | null;
+        accounts_contact_name: string | null;
+        invoice_emails: string[] | null;
+        billing_address: string | null;
       }>(),
     ratesVisible
       ? supabase
@@ -254,6 +262,11 @@ export async function loadClientCard(
     lineupEmails: {
       confirmed: badges.data?.lineup_confirmed_emails !== false,
       changed: badges.data?.lineup_changed_emails !== false,
+    },
+    invoicing: {
+      accountsContactName: badges.data?.accounts_contact_name ?? null,
+      invoiceEmails: badges.data?.invoice_emails ?? [],
+      billingAddress: badges.data?.billing_address ?? null,
     },
     rateCard: rateCard.data ?? [],
     dressCodeLibrary: dressCodeLibrary(

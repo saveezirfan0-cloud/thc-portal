@@ -127,6 +127,8 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   NS1: normal,
   D1: normal,
   D2: normal,
+  // ADR-0176: an invoice is a document email like D2.
+  INV1: normal,
 };
 
 /** The class for a row's template; an unknown code is `normal`, as in SQL. */

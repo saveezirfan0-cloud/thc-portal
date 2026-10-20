@@ -182,7 +182,8 @@ export function canCancelBooking(status: string): boolean {
 
 export class IllegalTransitionError extends Error {
   constructor(
-    readonly machine: 'staff' | 'booking' | 'rtw_check' | 'change_request' | 'shift_offer',
+    readonly machine:
+      'staff' | 'booking' | 'rtw_check' | 'change_request' | 'shift_offer' | 'invoice',
     readonly from: string,
     readonly to: string,
   ) {
@@ -453,4 +454,37 @@ export function canChangeShiftOfferMode(
 ): boolean {
   if (from === to) return true;
   return status === 'open' && SHIFT_OFFER_MODE_TRANSITIONS[from].includes(to);
+}
+
+/**
+ * An issued invoice (ADR-0176). The database is authoritative:
+ * `invoice_status_transitions()` lists the same pairs and the
+ * `invoices_state_guard` trigger refuses any other status change.
+ *
+ *   drawing → queued   the PDF and timesheets are stored, INV1 is in the outbox
+ *   drawing → failed   a run failed; the job retries it
+ *   failed  → drawing  re-leased by `invoices_unfinished()`
+ *   failed  → queued   a run that finished after its lease ran out
+ *
+ * `queued` is final: the number, the money and the bill-to never change,
+ * and "Send again" is a new outbox row, not a new state.
+ */
+export const INVOICE_STATUSES = ['drawing', 'failed', 'queued'] as const;
+
+export type IssuedInvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
+export const INVOICE_TRANSITIONS: Readonly<
+  Record<IssuedInvoiceStatus, readonly IssuedInvoiceStatus[]>
+> = {
+  drawing: ['queued', 'failed'],
+  failed: ['drawing', 'queued'],
+  queued: [],
+};
+
+export function canTransitionInvoice(from: IssuedInvoiceStatus, to: IssuedInvoiceStatus): boolean {
+  return from === to || INVOICE_TRANSITIONS[from].includes(to);
+}
+
+export function assertInvoiceTransition(from: IssuedInvoiceStatus, to: IssuedInvoiceStatus): void {
+  if (!canTransitionInvoice(from, to)) throw new IllegalTransitionError('invoice', from, to);
 }

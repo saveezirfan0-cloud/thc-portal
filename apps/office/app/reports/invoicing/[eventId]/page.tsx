@@ -20,13 +20,18 @@ import {
   formatUkStamp,
   hours,
   invoiceEventExportHref,
+  invoiceEmailState,
+  invoicePdfHref,
   invoiceStatus,
+  invoicedAmountChanged,
   pounds,
   reportHref,
   parseReportView,
+  readyEventNote,
   weekStart,
   addDays,
 } from '../../view-model';
+import { ResendInvoice } from './ResendInvoice';
 import { SignOffForm } from './SignOffForm';
 import '../../reports.css';
 
@@ -89,10 +94,34 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
           <span className="muted">{INVOICE_STATUS_HINT[status]}</span>
         </div>
 
+        {status === 'invoiced' && event.invoice_id ? (
+          <InvoicePanel
+            invoiceId={event.invoice_id}
+            eventId={event.event_id}
+            number={event.invoice_number ?? null}
+            email={invoiceEmailState(event, format)}
+            canResend={canSign}
+            changed={invoicedAmountChanged(event.invoicing, event.invoiced_amount)}
+            invoiced={event.invoiced_amount ?? null}
+            live={event.invoicing}
+          />
+        ) : null}
+        {status === 'ready' ? (
+          <Alert tone="cyan">
+            {readyEventNote(
+              event.send_verdict ?? null,
+              event.sends_at ?? null,
+              format,
+              event.invoicing,
+            )}
+            .
+          </Alert>
+        ) : null}
+
         <TileGrid columns={4}>
           <KpiTile
             label="Amount"
-            tone={status === 'ready' ? 'ok' : 'default'}
+            tone={status === 'ready' || status === 'invoiced' ? 'ok' : 'default'}
             value={pounds(event.invoicing)}
             description={
               event.pending > 0
@@ -169,7 +198,7 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
         <Panel
           title="Invoice lines"
           actions={
-            status === 'ready' ? (
+            status === 'ready' || status === 'invoiced' ? (
               <a
                 className="btn sm primary"
                 href={invoiceEventExportHref(event.event_id, event.event_date)}
@@ -331,3 +360,45 @@ const KIND_LABEL: Record<Exclude<InvoiceLine['kind'], 'worked'>, string> = {
   turned_away: 'Turned away · not charged',
   cancelled_on_day: 'Cancelled on the day · charged in full',
 };
+
+/** The issued invoice (ADR-0176): its PDF, where its email is, Send again. */
+function InvoicePanel({
+  invoiceId,
+  eventId,
+  number,
+  email,
+  canResend,
+  changed,
+  invoiced,
+  live,
+}: {
+  invoiceId: string;
+  eventId: string;
+  number: number | null;
+  email: ReturnType<typeof invoiceEmailState>;
+  canResend: boolean;
+  changed: boolean;
+  invoiced: number | string | null;
+  live: number | string;
+}) {
+  return (
+    <Panel title={<>Invoice {number}</>}>
+      <div className="stack" style={{ gap: 10 }}>
+        <div className="rp-status">
+          <Pill tone={email.tone}>{email.text}</Pill>
+          <a href={invoicePdfHref(invoiceId)}>Download the invoice PDF</a>
+        </div>
+        {changed ? (
+          <Alert tone="amber">
+            <b>Changed since it was invoiced.</b> This event was invoiced at {pounds(invoiced ?? 0)}
+            ; its lines now come to {pounds(live)}. An issued invoice is never corrected: raise a
+            credit note or a further invoice in your accounting tool.
+          </Alert>
+        ) : null}
+        {canResend && email.resendable ? (
+          <ResendInvoice invoiceId={invoiceId} eventId={eventId} retry={email.retry === true} />
+        ) : null}
+      </div>
+    </Panel>
+  );
+}

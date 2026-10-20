@@ -7,9 +7,11 @@ import { READ_ONLY_MESSAGE } from '../_lib/sessionRole';
 import { settingsDb } from './db';
 import { supabaseConfigured } from './data';
 import {
+  mergeInvoicing,
   validateClientPortalPhone,
   validateEscalationRadius,
   validateGap,
+  validateInvoicing,
   validateRadius,
   validateSenders,
   validateSessionHours,
@@ -18,7 +20,14 @@ import {
   validateWilloInterviewUrl,
   validateWilloReviewUrlTemplate,
 } from './validate';
-import type { ActionResult, RotaGuardMode, ScoringWeights, Senders, WilloStageMap } from './types';
+import type {
+  ActionResult,
+  InvoicingSettings,
+  RotaGuardMode,
+  ScoringWeights,
+  Senders,
+  WilloStageMap,
+} from './types';
 
 /**
  * Writes for /settings (§6, §2.4, §9.11, §9.12).
@@ -232,6 +241,35 @@ export async function saveOfficeSignIn(
   const hours = await put('office_session_max_hours', sessionMaxHours);
   if (!hours.ok) return hours;
   return put('office_two_step_required', twoStepRequired);
+}
+
+/**
+ * ADR-0176: the invoice the system issues and emails — its send time, go-live
+ * date, VAT, terms, PO window, and THC's company and bank details as printed.
+ *
+ * The whole `invoicing` object is written back, laid over the stored row so
+ * a key this screen does not edit survives. Read, merge, write — the same as
+ * the notification switches. Each invoice snapshots these values as it is
+ * issued, so a change applies to invoices from the next run on and never
+ * alters one already sent.
+ */
+export async function saveInvoicing(settings: InvoicingSettings): Promise<ActionResult> {
+  if (!settings || typeof settings !== 'object') {
+    return { ok: false, message: 'Nothing to save.' };
+  }
+  const invalid = validateInvoicing(settings);
+  if (invalid) return { ok: false, message: invalid };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+
+  const supabase = settingsDb(await cookies());
+  const { data, error } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'invoicing')
+    .maybeSingle();
+  if (error) return saveRefusal('invoicing', error);
+
+  return put('invoicing', mergeInvoicing(data?.value, settings));
 }
 
 /**
