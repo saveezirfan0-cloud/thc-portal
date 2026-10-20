@@ -25,13 +25,19 @@ import { databaseUnreachable, lit, sql } from './_support/db';
  * problem alert, so the tests skip rather than assert against an empty list.
  */
 
-const TOM = { id: '20000000-0000-4000-8000-000000000002', name: 'Tom Reid', eid: 'THC-00412' };
+const TOM = {
+  id: '20000000-0000-4000-8000-000000000002',
+  name: 'Tom Reid',
+  eid: 'THC-00412',
+  phone: '+44 7700 900102',
+};
 const AMARA_ID = '20000000-0000-4000-8000-000000000001';
 
 const rows = (page: Page) => page.locator('table.tbl tbody tr');
 const search = (page: Page) =>
-  // ADR-0107: the Payroll ID is searchable too, and the box says so.
-  page.getByRole('searchbox', { name: 'Search name, Employee ID, Payroll ID, role' });
+  // ADR-0107 / ADR-0173: the Payroll ID and the phone are searchable too,
+  // and the box says so.
+  page.getByRole('searchbox', { name: 'Search name, phone, Employee ID, Payroll ID, role' });
 
 test.beforeEach(async ({ page }) => {
   await openAsAdmin(page, '/staff');
@@ -50,6 +56,7 @@ test('the directory lists workers with the §9.6 columns, and no candidates', as
 
   for (const header of [
     'Name',
+    'Phone',
     'Employee ID',
     'Role(s)',
     'Rating',
@@ -116,7 +123,14 @@ test('the Inactive tab is its own table: left, reason, P45 requested, newest fir
     .click();
 
   await expect(page.getByText('Everyone who left through the app')).toBeVisible();
-  for (const header of ['Left', 'Reason given', 'Last completed shift', 'Released shifts', 'P45']) {
+  for (const header of [
+    'Phone',
+    'Left',
+    'Reason given',
+    'Last completed shift',
+    'Released shifts',
+    'P45',
+  ]) {
     await expect(page.getByRole('columnheader', { name: header, exact: true })).toBeVisible();
   }
 
@@ -138,12 +152,21 @@ test('the Inactive tab is its own table: left, reason, P45 requested, newest fir
   expect(names.indexOf('Marek Nowak')).toBeLessThan(names.indexOf('Sofia Almeida'));
 });
 
-test('search runs over name, Employee ID, Payroll ID and role; the role filter narrows too (§9.6)', async ({
+test('search runs over name, phone, Employee ID, Payroll ID and role; the role filter narrows too (§9.6)', async ({
   page,
 }) => {
   await search(page).fill(TOM.name);
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).locator('td[data-label="Employee ID"]')).toHaveText(TOM.eid);
+  // ADR-0173: the phone sits between the name and the Employee ID, and rings.
+  const phone = rows(page).locator('td[data-label="Phone"] a');
+  await expect(phone).toHaveText(TOM.phone);
+  await expect(phone).toHaveAttribute('href', 'tel:+447700900102');
+
+  // Typed the way it is dialled at home, it still finds him.
+  await search(page).fill('07700 900102');
+  await expect(rows(page)).toHaveCount(1);
+  await expect(page.getByRole('link', { name: TOM.name, exact: true })).toBeVisible();
 
   await search(page).fill(TOM.eid);
   await expect(rows(page)).toHaveCount(1);

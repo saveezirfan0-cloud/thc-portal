@@ -570,7 +570,7 @@ function PhoneCell({ phone }: { phone: string | null | undefined }) {
   return (
     <td data-label="Phone" className="mono sm phone-cell">
       {phone ? (
-        <a href={`tel:${phone}`} className="staff-phone">
+        <a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className="staff-phone">
           {formatPhone(phone)}
         </a>
       ) : phone === null ? (
