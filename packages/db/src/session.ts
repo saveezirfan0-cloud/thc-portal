@@ -248,7 +248,15 @@ export function applySessionPersistence(
 
 export interface SessionCookieMethods {
   getAll: () => NamedValue[];
-  setAll: (toSet: CookieToSet[]) => void;
+  /**
+   * `headers`: since @supabase/ssr 0.10 the library passes, with the first
+   * auth-cookie write of a client, the response headers that keep a CDN
+   * from caching it (`Cache-Control: private, no-cache, no-store, …`,
+   * `Expires: 0`, `Pragma: no-cache`). Forwarded untouched; a writer that
+   * can set response headers (middleware) may apply them, one that cannot
+   * (a Server Component's cookie store) ignores them.
+   */
+  setAll: (toSet: CookieToSet[], headers?: Record<string, string>) => void;
 }
 
 export interface SessionPersistenceOptions {
@@ -279,12 +287,13 @@ export function withSessionPersistence(
   const fallback = options.fallback === undefined ? defaultSessionFallback() : options.fallback;
   return {
     getAll: methods.getAll,
-    setAll: (toSet) =>
+    setAll: (toSet, headers) =>
       methods.setAll(
         applySessionPersistence(
           toSet,
           options.persistence ?? readSessionPersistence(methods.getAll()) ?? fallback,
         ),
+        headers ?? {},
       ),
   };
 }

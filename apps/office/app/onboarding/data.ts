@@ -22,6 +22,7 @@ import type {
   InterviewOverride,
   SpudbrosSkipFailure,
   QuizAttempt,
+  QuizGrant,
   Reference,
   ReferralRow,
   ReferredOnBoard,
@@ -495,6 +496,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     facts,
     override,
     skipFailure,
+    quizGrant,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -524,7 +526,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .returns<Reference[]>(),
     supabase
       .from('quiz_attempts')
-      .select('id, attempt_no, score, passed, taken_at')
+      .select('id, attempt_no, score, passed, taken_at, superseded')
       .eq('staff_id', id)
       .order('taken_at')
       .returns<QuizAttempt[]>(),
@@ -572,6 +574,16 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .order('at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // ADR-0168: the latest time the office gave three more quiz attempts.
+    // Best-effort, like the two above.
+    (supabase as unknown as OverrideRead)
+      .from('audit_log')
+      .select('at, data')
+      .eq('entity_id', id)
+      .eq('action', 'quiz_attempts_granted')
+      .order('at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const error =
@@ -589,10 +601,14 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
   const raw = candidate.data ?? null;
   // §2.12 step 3: the previous period's attempts are history, not this
   // period's quiz. They stay in the database; the profile shows the live set.
-  const live = (attempts.data ?? []).filter(
+  const period = (attempts.data ?? []).filter(
     (attempt) =>
       raw !== null && Date.parse(attempt.taken_at) >= Date.parse(raw.onboarding_started_at),
   );
+  // ADR-0168: attempts set aside when the office allowed three more are this
+  // period's history, shown beside the current three.
+  const live = period.filter((attempt) => !attempt.superseded);
+  const setAside = period.filter((attempt) => attempt.superseded);
 
   // §2.7: "the selfie avatar taken during onboarding follows them through
   // the whole system" — the key in the private bucket becomes a short-lived
@@ -627,6 +643,11 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     declarations: declarations.data ?? [],
     references: references.data ?? [],
     attempts: live,
+    attemptsSetAside: setAside,
+    quizGrant:
+      quizGrant.error || !quizGrant.data || !row
+        ? null
+        : toQuizGrant(quizGrant.data, row.onboarding_started_at),
     hmrc: hmrc.data ?? null,
     application: application.data ?? null,
     contract,
@@ -667,6 +688,15 @@ function toOverride(row: {
     byName: typeof row.data?.byName === 'string' ? row.data.byName : null,
     reason: typeof row.data?.reason === 'string' ? row.data.reason : '',
   };
+}
+
+/** The latest `quiz_attempts_granted` row of this onboarding period (ADR-0168). */
+function toQuizGrant(
+  row: { at: string; data: { reason?: unknown; byName?: unknown } | null },
+  periodStart: string,
+): QuizGrant | null {
+  if (Date.parse(row.at) < Date.parse(periodStart)) return null;
+  return toOverride(row);
 }
 
 /** The latest `spudbros_skip_failed` row of this onboarding period (ADR-0118). */

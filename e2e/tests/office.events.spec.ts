@@ -73,10 +73,11 @@ test('the arrows step a month, a week or a day, per view (§3.1)', async ({ page
 });
 
 test('past events are browsable in List too, not only in Calendar (§3.1)', async ({ page }) => {
+  // List reads four weeks from its date (ADR-0167); one step back ends the day before.
   await openAsAdmin(page, AT('list'));
-  await expect(page.locator('.datenav .lbl')).toHaveText('September 2026');
+  await expect(page.locator('.datenav .lbl')).toHaveText('Fri 18 Sep – Thu 15 Oct 2026');
   await page.getByLabel('Previous period').click();
-  await expect(page.locator('.datenav .lbl')).toHaveText('August 2026');
+  await expect(page.locator('.datenav .lbl')).toHaveText('Fri 21 Aug – Thu 17 Sep 2026');
   await expect(page).toHaveURL(/view=list/);
 });
 
