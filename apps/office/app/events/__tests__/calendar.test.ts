@@ -106,8 +106,9 @@ describe('the arrows step by the view they belong to (§3.1)', () => {
     expect(shiftPeriod('month', '2026-09-18', 1)).toBe('2026-10-18');
   });
 
-  it('steps the list a month too, so past events are browsable there as well', () => {
-    expect(shiftPeriod('list', '2026-09-18', -1)).toBe('2026-08-18');
+  it('steps the list four weeks, so past events are browsable there as well (ADR-0167)', () => {
+    expect(shiftPeriod('list', '2026-10-19', -1)).toBe('2026-09-21');
+    expect(shiftPeriod('list', '2026-10-19', 1)).toBe('2026-11-16');
   });
 });
 
@@ -124,15 +125,24 @@ describe('each view loads exactly the days it shows', () => {
     expect(periodRange('month', '2026-09-18')).toEqual({ from: '2026-08-31', to: '2026-10-04' });
   });
 
-  it('a list loads the calendar month itself, without the spill days', () => {
-    expect(periodRange('list', '2026-09-18')).toEqual({ from: '2026-09-01', to: '2026-09-30' });
+  it('a list loads four weeks from its date, so opened today it starts at today (ADR-0167)', () => {
+    expect(periodRange('list', '2026-10-19')).toEqual({ from: '2026-10-19', to: '2026-11-15' });
+  });
+
+  it('a step of the list either way meets the period it left, so nothing is skipped', () => {
+    for (const date of ['2026-10-19', '2026-03-31', '2026-01-01']) {
+      const back = periodRange('list', shiftPeriod('list', date, -1));
+      expect(addDays(back.to, 1)).toBe(date);
+      const on = periodRange('list', shiftPeriod('list', date, 1));
+      expect(on.from).toBe(addDays(periodRange('list', date).to, 1));
+    }
   });
 });
 
 describe('the period label between the arrows', () => {
   it('names the month, the week span or the day', () => {
     expect(periodLabel('month', '2026-09-18')).toBe('September 2026');
-    expect(periodLabel('list', '2026-09-18')).toBe('September 2026');
+    expect(periodLabel('list', '2026-10-19')).toBe('Mon 19 Oct – Sun 15 Nov 2026');
     expect(periodLabel('week', '2026-09-18')).toBe('Mon 14 Sep – Sun 20 Sep 2026');
     expect(periodLabel('day', '2026-09-18')).toBe('Fri 18 Sep 2026');
   });

@@ -589,6 +589,37 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
     );
   });
 
+  it('says when 3 more attempts were allowed, not that the quiz unlocked itself (ADR-0168)', () => {
+    const row = candidate({
+      status: 'quiz',
+      stage_entered_at: '2026-09-19T18:00:00Z',
+      quiz_attempts_used: 0,
+      quiz_best_score: 70,
+      quiz_scores: [70, 70, 70],
+    });
+    const texts = cardLines(row, 'quiz', NOW).map((line) => line.text);
+    expect(texts[0]).toBe('3 more attempts allowed Sat 19 Sep · earlier 70% · 70% · 70%');
+    expect(texts[1]).toBe('Attempts 0 / 3 · not started');
+    expect(texts.join(' ')).not.toMatch(/unlocked automatically/);
+    // The best of the current three, not of the ones set aside.
+    expect(
+      cardLines({ ...row, quiz_attempts_used: 1, quiz_scores: [70, 70, 70, 60] }, 'quiz', NOW)[1]!
+        .text,
+    ).toBe('Attempts 1 / 3 · best 60% (pass mark 80%)');
+  });
+
+  it('leads with the current three on a second quiz-failed card (ADR-0168)', () => {
+    const row = candidate({
+      status: 'rejected',
+      rejection_cause: 'quiz_failed',
+      quiz_attempts_used: 3,
+      quiz_scores: [70, 70, 70, 60, 75, 65],
+    });
+    expect(rejectedLines(row)[0]!.text).toMatch(
+      /^Attempts 60% · 75% · 65% \(earlier 70% · 70% · 70%\) — automatic rejection/,
+    );
+  });
+
   it('dates the automatic quiz unlock', () => {
     const row = candidate({ status: 'quiz', stage_entered_at: '2026-09-17T09:00:00Z' });
     expect(cardLines(row, 'quiz', NOW)[0]!.text).toBe(

@@ -36,8 +36,9 @@ export const STAFF_TRANSITIONS: Readonly<Record<StaffStatus, readonly StaffStatu
   contract: ['compliant', 'rejected', 'removed'],
   compliant: ['blocked', 'inactive', 'removed'],
   blocked: ['compliant', 'inactive', 'interview_requested', 'removed'],
-  // Reset to candidate is the only way out of rejected (§9.6).
-  rejected: ['interview_requested', 'removed'],
+  // Reset to candidate (§9.6), or — for a candidate the H&S quiz rejected
+  // only — three more attempts, back to the quiz (ADR-0168).
+  rejected: ['interview_requested', 'quiz', 'removed'],
   // Reset to candidate is the only way out of inactive (§2.12).
   inactive: ['interview_requested', 'removed'],
   removed: [],
