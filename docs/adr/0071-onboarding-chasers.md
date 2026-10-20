@@ -104,7 +104,7 @@ When the latest reminder could not be delivered (notifications off, a bounce), t
 
 - **Deploy.** The onboarding-chasers Edge Function deploys with the others (ci.yml). It needs the `STAFF_APP_URL` secret, which is already set for willo-webhook. The `job_schedules` row is enabled, so **`select public.install_job_schedules();` must be re-run** after this migration (docs/16 §4.7). Until it runs, nothing is chased.
 - **Without `STAFF_APP_URL`,** no link is minted and every OC2 counts as `oc2_failed` in `job_runs`. OC1 and OC3 still go.
-- **Push reach.** A signed-up candidate with notifications off gets no OC3. The drain fails the row ("no push subscription") as it does for any push. The card says so in amber straight away, so the office can phone them rather than wait for Stalled.
+- **Push reach.** A signed-up candidate with notifications off gets no OC3. The drain fails the row ("no push subscription") as it does for any push. The card says so in amber straight away, so the office can phone them rather than wait for Stalled. *(Amended by ADR-0169, 19.10.2026: such a candidate is now sent the same reminder by email, OC4.)*
 - **The first run after deploy** reminds every candidate who has been idle 2+ days, once, and spaces the rest of their ladder.
 - pgTAP 394; vitest in packages/notifications (templates, outbox), packages/db (chasers) and apps/office (chasers.test.tsx); 190's enabled-schedule list now includes onboarding-chasers.
 

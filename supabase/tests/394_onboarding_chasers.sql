@@ -81,10 +81,10 @@ insert into notification_outbox (key, channel, template, recipient_emails, paylo
 -- =====================================================================
 -- A · who can reach it
 -- =====================================================================
-select ok(not has_function_privilege('authenticated', 'onboarding_chasers(timestamptz)', 'execute')
-      and not has_function_privilege('anon', 'onboarding_chasers(timestamptz)', 'execute'),
+select ok(not has_function_privilege('authenticated', 'onboarding_chasers(timestamptz,text)', 'execute')
+      and not has_function_privilege('anon', 'onboarding_chasers(timestamptz,text)', 'execute'),
   'no signed-in session can run the job');
-select ok(has_function_privilege('service_role', 'onboarding_chasers(timestamptz)', 'execute')
+select ok(has_function_privilege('service_role', 'onboarding_chasers(timestamptz,text)', 'execute')
       and has_function_privilege('service_role', 'onboarding_chaser_activation(uuid,uuid,text,text,timestamptz)', 'execute'),
   'the service role can (the Edge Function)');
 select ok(not has_function_privilege('authenticated', 'onboarding_chaser_activation(uuid,uuid,text,text,timestamptz)', 'execute')

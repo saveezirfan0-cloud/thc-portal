@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { supabaseKeyBuildEnv } from '@thc/db/public-env';
 import { securityHeaderRules } from '@thc/db/security-headers';
 
 const nextConfig: NextConfig = {
@@ -21,6 +22,9 @@ const nextConfig: NextConfig = {
     // session. Read by the server client (packages/db/src/server.ts); the
     // middleware sets the same flag on its token refresh (ADR-0120).
     THC_AUTH_COOKIE_HTTP_ONLY: '1',
+    // ADR-0165: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, when set, is what every
+    // literal process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY reads (packages/db/src/public-env.ts).
+    ...supabaseKeyBuildEnv(),
   },
 };
 

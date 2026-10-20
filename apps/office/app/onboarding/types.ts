@@ -150,7 +150,7 @@ export interface BoardData {
 /** One row of `onboarding_chaser_state()` (20261001212000, ADR-0071). */
 export interface ChaserState {
   staff_id: string;
-  /** interview → OC1 email, activation → OC2 email, app → OC3 push. */
+  /** interview → OC1 email, activation → OC2 email, app → OC3 push (or OC4 email, ADR-0169). */
   track: 'interview' | 'activation' | 'app';
   /** The wizard step waiting on them, in the push's words (app track only). */
   step: string | null;
@@ -163,6 +163,14 @@ export interface ChaserState {
   stalled: boolean;
   /** The latest reminder could not be delivered (notifications off, a bounce). */
   last_failed: boolean;
+  /**
+   * How the latest reminder went (20261021120000). An app reminder is
+   * emailed (OC4) when no device has notifications on (ADR-0169). Absent
+   * before that migration, or before the first reminder.
+   */
+  last_channel?: 'email' | 'push' | null;
+  /** The latest was not sent because its code is switched off on /settings (20261021120000). */
+  last_switched_off?: boolean;
 }
 
 /**
@@ -282,6 +290,8 @@ export interface QuizAttempt {
   score: number;
   passed: boolean;
   taken_at: string;
+  /** Set aside by Reset to candidate, or by Allow 3 more attempts (ADR-0168). */
+  superseded?: boolean;
 }
 
 export interface HmrcChecklist {
@@ -337,7 +347,12 @@ export interface CandidateData {
   documents: CandidateDocument[];
   declarations: Declaration[];
   references: Reference[];
+  /** This period's quiz attempts that count towards the current three. */
   attempts: QuizAttempt[];
+  /** This period's attempts set aside when the office allowed three more (ADR-0168). */
+  attemptsSetAside?: QuizAttempt[];
+  /** The latest Allow 3 more attempts this period (ADR-0168). */
+  quizGrant?: QuizGrant | null;
   hmrc: HmrcChecklist | null;
   application: Application | null;
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
@@ -387,6 +402,9 @@ export interface InterviewOverride {
   byName: string | null;
   reason: string;
 }
+
+/** The audit row `grant_quiz_attempts()` leaves (ADR-0168). */
+export type QuizGrant = InterviewOverride;
 
 /** The audit row the SpudBros skip sweep leaves when it fails (ADR-0118). */
 export interface SpudbrosSkipFailure {
