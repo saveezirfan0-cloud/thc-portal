@@ -161,6 +161,8 @@ export interface WorkerRequestRow {
 export interface InvoiceDetails {
   accountsContactName: string | null;
   invoiceEmails: string[];
+  /** Copied on the invoice email (ADR-0176, THC 21.10.2026). */
+  invoiceCcEmails: string[];
   billingAddress: string | null;
 }
 

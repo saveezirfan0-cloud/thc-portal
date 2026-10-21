@@ -70,16 +70,16 @@ set local role authenticated;
 -- =====================================================================
 -- 2 · A client phone that is a phone; bounded names
 -- =====================================================================
-select throws_ok($$ select create_client('Phone Ltd', 'P', 'not a phone', 'Desk', array['a@b.co'], true, true) $$,
+select throws_ok($$ select create_client('Phone Ltd', 'P', 'not a phone', 'Desk', array['a@b.co'], true, true, array['accounts@invoice.test']) $$,
   '23514', 'Enter the contact phone as a phone number, e.g. 020 7946 0000 or +44 20 7946 0000',
   'create_client refuses "not a phone"');
-select throws_ok($$ select create_client('Phone Ltd', 'P', '12345', 'Desk', array['a@b.co'], true, true) $$,
+select throws_ok($$ select create_client('Phone Ltd', 'P', '12345', 'Desk', array['a@b.co'], true, true, array['accounts@invoice.test']) $$,
   '23514', null, 'and five digits');
-select lives_ok($$ select create_client('UK Phone Ltd', 'P', '020 7946 0000', 'Desk', array['a@b.co'], true, true) $$,
+select lives_ok($$ select create_client('UK Phone Ltd', 'P', '020 7946 0000', 'Desk', array['a@b.co'], true, true, array['accounts@invoice.test']) $$,
   'a UK number with spaces');
-select lives_ok($$ select create_client('Intl Phone Ltd', 'P', '+33 (1) 23-45-67-89', 'Desk', array['a@b.co'], true, true) $$,
+select lives_ok($$ select create_client('Intl Phone Ltd', 'P', '+33 (1) 23-45-67-89', 'Desk', array['a@b.co'], true, true, array['accounts@invoice.test']) $$,
   'an international number with brackets and dashes');
-select throws_ok(format($$ select create_client(%L, 'P', '020 7946 0000', 'Desk', array['a@b.co'], true, true) $$, repeat('N', 121)),
+select throws_ok(format($$ select create_client(%L, 'P', '020 7946 0000', 'Desk', array['a@b.co'], true, true, array['accounts@invoice.test']) $$, repeat('N', 121)),
   '23514', 'A client name is at most 120 characters', 'a 121-character client name is refused');
 
 -- =====================================================================

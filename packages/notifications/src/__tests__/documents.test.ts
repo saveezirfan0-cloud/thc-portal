@@ -347,3 +347,59 @@ describe('D1 with name badges (ADR-0081)', () => {
     }
   });
 });
+
+/**
+ * ADR-0176 (THC 21.10.2026): an invoice goes To the client's invoice
+ * emails and CC the "Invoice CC" addresses. queue_invoice_email() writes
+ * the CC list as payload.cc, the database's JSON text (909 pgTAP).
+ */
+describe('INV1 — the invoice email copies the CC addresses', () => {
+  const inv1 = (cc?: string): OutboxRow => ({
+    id: 40,
+    key: 'INV1:4000',
+    channel: 'email',
+    template: 'INV1',
+    recipient_staff_id: null,
+    recipient_emails: ['pjordan@mohg.com'],
+    payload: {
+      invoiceNumber: '4000',
+      client: 'Mandarin Oriental Hotel Group',
+      contact: 'Paul Jordan',
+      poNumber: '',
+      poSuffix: '',
+      eventsLine: 'Gala Dinner on Friday 6 November 2026',
+      total: '441.02',
+      dueDate: '06/12/2026',
+      termsDays: '30',
+      attachments: JSON.stringify([
+        { bucket: 'timesheets', path: 'invoices/4000/invoice.pdf', filename: 'Invoice 4000.pdf' },
+      ]),
+      ...(cc === undefined ? {} : { cc }),
+    },
+    attempts: 0,
+  });
+
+  it('sends To the invoice emails and CC the rest', () => {
+    const message = documentMessageFor(
+      inv1(JSON.stringify(['molonfinance@mohg.com', 'mboneva@mohg.com'])),
+    );
+    expect(message.to).toEqual(['pjordan@mohg.com']);
+    expect(message.cc).toEqual(['molonfinance@mohg.com', 'mboneva@mohg.com']);
+    // The list is an address book, not copy: it never reaches the words.
+    expect(message.body).not.toContain('molonfinance');
+    expect(message.html).not.toContain('molonfinance');
+  });
+
+  it('copies no one with no list, an empty one, or an address already in To', () => {
+    for (const cc of [undefined, '[]', JSON.stringify(['pjordan@mohg.com'])]) {
+      expect(documentMessageFor(inv1(cc)).cc).toBeUndefined();
+    }
+  });
+
+  it('fails a row whose CC is not a list of addresses rather than guessing', () => {
+    expect(() => documentMessageFor(inv1('not json'))).toThrow(/cc is not JSON/);
+    expect(() => documentMessageFor(inv1(JSON.stringify(['nobody'])))).toThrow(
+      /cc is not a list of addresses/,
+    );
+  });
+});

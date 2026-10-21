@@ -6,7 +6,9 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { eventsDb, supabaseConfigured } from './db';
 import {
+  LATE_SECTION_MESSAGE,
   ROLE_SECTION_MESSAGE,
+  canAddSectionAfterStart,
   isEditLocked,
   normaliseLanguages,
   ukRoleWindow,
@@ -88,6 +90,7 @@ function refusal(error: {
     codes: {
       read_only: 'Your login is read-only, so this cannot be changed.',
       event_started_editing_locked: 'This event has started. Editing is locked.',
+      late_section_starts_in_past: LATE_SECTION_MESSAGE,
       // shift_times_rota_guard: new times re-checked for everyone booked.
       rota_guard_rtw_expired:
         'The new times would put a booked worker past their right-to-work expiry. Withdraw them on the event board first, or keep the times.',
@@ -407,6 +410,65 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
 
   revalidatePath(`/events/${input.id}`);
   redirect(`/events/${input.id}`);
+}
+
+/**
+ * ADR-0177: a started event takes NEW role sections only — the client's
+ * same-day "one more person from 12:30". Everything already saved stays
+ * under the §3.2 lock: this inserts the sections that have no stored row and
+ * reads nothing else from the form. Each must start later than now; the
+ * database holds the same line (`late_section_guard`). An event that has not
+ * started after all is saved the ordinary way.
+ */
+export async function addRolesAfterStart(input: EventInput): Promise<SaveResult> {
+  if (!input.id) return { error: 'This event has not been created yet.' };
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+
+  const supabase = eventsDb(await cookies());
+  const { data: event } = await supabase
+    .from('events')
+    .select('event_date, cancelled_at')
+    .eq('id', input.id)
+    .single();
+  if (!event) return { error: 'That event no longer exists.' };
+  if (event.cancelled_at) return { error: 'This event is cancelled and is not edited.' };
+
+  const { data: existing } = await supabase
+    .from('shift_requirements')
+    .select('id, starts_at, ends_at')
+    .eq('event_id', input.id);
+  const stored = existing ?? [];
+  const started = isEditLocked(
+    stored.map((s) => ({ startsAt: new Date(s.starts_at), endsAt: new Date(s.ends_at) })),
+  );
+  if (!started) return updateEvent(input);
+
+  const storedIds = new Set(stored.map((s) => s.id));
+  const added = input.roles.filter((role) => !role.id || !storedIds.has(role.id));
+  if (added.length === 0) return { error: 'Add a role to save.' };
+
+  const now = new Date();
+  for (const role of added) {
+    if (!role.roleId) return { error: 'Every role section needs a role.' };
+    const window = ukRoleWindow(event.event_date, role.start, role.end);
+    const issues = validateRoleSection({
+      ...window,
+      headcount: role.headcount,
+      buffer: role.buffer,
+      allocationPerHour: role.allocationPerHour,
+    });
+    if (issues.length > 0) return { error: ROLE_SECTION_MESSAGE[issues[0]!] };
+    if (!canAddSectionAfterStart(window, now)) return { error: LATE_SECTION_MESSAGE };
+  }
+
+  const eventId = input.id;
+  const { error } = await supabase
+    .from('shift_requirements')
+    .insert(added.map((role) => sectionRow(eventId, event.event_date, role)));
+  if (error) return { error: refusal(error) };
+
+  revalidatePath(`/events/${eventId}`);
+  redirect(`/events/${eventId}`);
 }
 
 interface ExistingSection {

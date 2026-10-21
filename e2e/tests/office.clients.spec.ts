@@ -99,7 +99,7 @@ test('New client asks for every field and refuses a bad email; Cancel writes not
 
   const dialog = page.getByRole('dialog', { name: 'New client' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('all fields mandatory')).toBeVisible();
+  await expect(dialog.getByText('every * field is mandatory')).toBeVisible();
   const create = dialog.getByRole('button', { name: 'Create client' });
   // Release audit D-M2: Create says what is missing, under each field,
   // instead of sitting disabled with no reason.
@@ -117,6 +117,8 @@ test('New client asks for every field and refuses a bad email; Cancel writes not
   // Every field but the emails: still not enough.
   await create.click();
   await expect(dialog.getByText(/Add at least one contact email/)).toBeVisible();
+  // ADR-0176 (THC 21.10.2026): nor without somewhere to send the invoice.
+  await expect(dialog.getByText(/Add at least one invoice email/)).toBeVisible();
 
   // Enter adds the address — and refuses one that is not an address
   // (ClientModal.tsx addEmail, the same wording as validate.ts).
@@ -160,6 +162,12 @@ test('a new client is created through the modal and listed (§9.7)', async ({ pa
     // The chip carries its own × button (aria-label "Remove …").
     await expect(dialog.locator('.emails .chip')).toHaveCount(1);
     await expect(dialog.getByRole('button', { name: `Remove ${email}` })).toBeVisible();
+    // ADR-0176: where the invoice goes is compulsory — two addresses, one
+    // copied from the contact emails.
+    await dialog.getByRole('button', { name: 'Use the contact emails' }).click();
+    await dialog.getByLabel('Invoice emails').fill(`accounts.${stamp}@example.test`);
+    await dialog.getByLabel('Invoice emails').press('Enter');
+    await dialog.getByLabel('Accounts contact').fill('Accounts Payable');
     // Breaks paid: flip the default so the list has something to show for it.
     await dialog.getByRole('switch', { name: /Client pays for breaks/ }).click();
     await dialog.getByRole('button', { name: 'Create client' }).click();
@@ -180,6 +188,12 @@ test('a new client is created through the modal and listed (§9.7)', async ({ pa
     expect(
       sql(`select pays_breaks, pays_buffer from clients where name = ${lit(name)}`).split('\t'),
     ).toEqual(['t', 't']);
+    expect(
+      sql(
+        `select accounts_contact_name, (select string_agg(e, ',' order by e) from unnest(invoice_emails) e)
+           from clients where name = ${lit(name)}`,
+      ).split('\t'),
+    ).toEqual(['Accounts Payable', `accounts.${stamp}@example.test,${email}`]);
   } finally {
     // No delete through the UI exists (§9.7), so the made-up row goes by
     // hand. Best effort: the name is unique per run.
