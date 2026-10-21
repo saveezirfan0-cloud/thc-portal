@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Avatar, Button, Input, Modal, Note, Textarea, UkDateField, useTimeFormat } from '@thc/ui';
+import { homeOfficeCheckUntil, ukToday } from '@thc/domain';
 import {
   approveCompletionLetter,
   confirmRtwDate,
@@ -11,6 +12,7 @@ import {
   resolveNiCheck,
   verifyDeclaration,
   verifyDocument,
+  verifyHomeOfficeCheck,
 } from './actions';
 import type { VerifyConditions, VerifyDates } from './actions';
 import {
@@ -31,7 +33,13 @@ import {
   ukStamp,
   verifyStep,
 } from './queue';
-import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
+import {
+  HOME_OFFICE_APPROVED_LABEL,
+  homeOfficeVerifyProblem,
+  rtwDateProblem,
+  rtwDateRule,
+  rtwDateValue,
+} from './rtw';
 import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
@@ -121,17 +129,19 @@ export function useReviewDialogs({
           rule={rtwDateRule(confirming.item_type, confirming.rtw_branch)!}
           busy={busy(confirming.item_id)}
           onClose={() => setConfirming(null)}
-          onVerify={(field, value, conditions) =>
+          onVerify={(field, value, conditions, approvedOn) =>
             run(
               confirming.item_id,
               () =>
                 confirming.kind === 'rtw_date'
                   ? confirmRtwDate(confirming.item_id, value)
-                  : verifyWith(
-                      confirming,
-                      field === 'expiry' ? { expiry: value } : { rightToWorkUntil: value },
-                      conditions,
-                    ),
+                  : confirming.item_type === 'home_office_check_result'
+                    ? verifyHomeOfficeCheck(confirming.item_id, approvedOn ?? '', value)
+                    : verifyWith(
+                        confirming,
+                        field === 'expiry' ? { expiry: value } : { rightToWorkUntil: value },
+                        conditions,
+                      ),
               () => setConfirming(null),
             )
           }
@@ -508,9 +518,20 @@ function RightToWorkModal({
   rule: RtwDateRule;
   busy: boolean;
   onClose: () => void;
-  onVerify: (field: RtwDateRule['field'], value: string, conditions: ConfirmedConditions) => void;
+  onVerify: (
+    field: RtwDateRule['field'],
+    value: string,
+    conditions: ConfirmedConditions,
+    /** ADR-0177: the date approved on a Home Office check result. */
+    approvedOn?: string,
+  ) => void;
 }) {
   const format = useTimeFormat();
+  // ADR-0177: a Home Office check result is valid six months from the date
+  // approved printed on it; typing that date fills in the right to work,
+  // which stays editable.
+  const [approvedOn, setApprovedOn] = useState('');
+  const today = ukToday();
   const conditions = useConditions(row);
   const [date, setDate] = useState(
     (rule.field === 'expiry'
@@ -524,9 +545,11 @@ function RightToWorkModal({
   // ADR-0041: when the gov.uk check recommends Verify, its date is confirmed
   // as it is — shown read-only and sent exactly — not typed.
   const locked = reverify ? null : queueRowLockedUntil(row);
-  const problem = locked
-    ? rtwDateProblem(rule, locked.date ?? '', locked.noTimeLimit)
-    : rtwDateProblem(rule, date, noTimeLimit);
+  const problem = rule.approvedOn
+    ? homeOfficeVerifyProblem(approvedOn, date, today)
+    : locked
+      ? rtwDateProblem(rule, locked.date ?? '', locked.noTimeLimit)
+      : rtwDateProblem(rule, date, noTimeLimit);
   return (
     <Modal
       open
@@ -546,6 +569,7 @@ function RightToWorkModal({
                 rule.field,
                 locked ? rtwLockedValue(locked) : rtwDateValue(date, noTimeLimit),
                 reverify ? {} : conditions.confirmed,
+                rule.approvedOn ? approvedOn : undefined,
               )
             }
           >
@@ -562,11 +586,28 @@ function RightToWorkModal({
           {row.share_code ? (
             <>
               {' '}
-              · share code <span className="mono">{row.share_code}</span>
+              · {rule.approvedOn ? 'Home Office reference' : 'share code'}{' '}
+              <span className="mono">{row.share_code}</span>
             </>
           ) : null}
         </div>
       </div>
+      {rule.approvedOn ? (
+        <UkDateField
+          label={
+            <>
+              {HOME_OFFICE_APPROVED_LABEL} <span className="coral">*</span>
+            </>
+          }
+          value={approvedOn}
+          onChange={(value) => {
+            setApprovedOn(value);
+            const until = homeOfficeCheckUntil(value);
+            if (until) setDate(until);
+          }}
+          hint="As printed on the result the Employer Checking Service emailed."
+        />
+      ) : null}
       {locked ? (
         <div className="stack" data-testid="rtw-locked-until">
           <div className="sm">
@@ -629,7 +670,14 @@ function RightToWorkModal({
           date across the worker’s current evidence is kept.
         </Note>
       ) : null}
-      {problem && (locked || date !== '' || noTimeLimit) ? (
+      {rule.approvedOn ? (
+        <Note>
+          Only an employer can ask the Home Office, so the worker is not asked to renew this. Check
+          the name and date of birth on the result against the profile. The office is emailed 60, 30
+          and 14 days before it runs out.
+        </Note>
+      ) : null}
+      {problem && (locked || date !== '' || noTimeLimit || approvedOn !== '') ? (
         <div className="coral sm">{problem}</div>
       ) : null}
     </Modal>

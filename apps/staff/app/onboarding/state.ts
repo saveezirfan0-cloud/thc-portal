@@ -51,6 +51,8 @@ export interface OnboardingState {
   dob: string | null;
   rtwBranch: RtwBranch | null;
   shareCode: string | null;
+  /** ADR-0177: the Home Office reference typed at step 1 on that branch. */
+  homeOfficeRef: string | null;
   wtrOptOut: boolean;
   homeAddress: string | null;
   homeLat: number | null;
@@ -111,6 +113,7 @@ export function mapOnboardingState(raw: unknown): OnboardingState | null {
     dob: str(r['dob']),
     rtwBranch: str(r['rtwBranch']) as RtwBranch | null,
     shareCode: str(r['shareCode']),
+    homeOfficeRef: str(r['homeOfficeRef']),
     wtrOptOut: bool(r['wtrOptOut']),
     homeAddress: str(r['homeAddress']),
     homeLat: num(r['homeLat']),
@@ -260,6 +263,15 @@ export function shareCodeDoc(s: OnboardingState): UploadedDoc | null {
 }
 
 /**
+ * The Home Office check result row (ADR-0177), once step 4 has been
+ * submitted: filed for the office, which attaches the Home Office's answer
+ * and verifies it. Nothing for the worker to upload or re-enter.
+ */
+export function homeOfficeCheckDoc(s: OnboardingState): UploadedDoc | null {
+  return s.documents.find((d) => d.docType === 'home_office_check_result') ?? null;
+}
+
+/**
  * The optional University Completion Letter (completion letter requirement
  * §2.1) — offered in the wizard to a Student-visa candidate who has already
  * finished their course. `undefined` for any other branch: the option does
@@ -301,6 +313,8 @@ export function docLabel(t: DocType): string {
       return 'Official University Completion Letter';
     case 'share_code_report':
       return 'Right to work · share code';
+    case 'home_office_check_result':
+      return 'Right to work · Home Office check';
   }
 }
 

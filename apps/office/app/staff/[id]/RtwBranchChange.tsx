@@ -12,6 +12,7 @@ const BRANCHES = [
   'work_visa',
   'international_student',
   'dependant_other',
+  'home_office_check',
 ] as const;
 
 /**
@@ -65,6 +66,7 @@ export function RtwBranchChange({
 
   const unchanged = next === (branch ?? '') && date === (until ?? '');
   const settled = next === 'eu_settled';
+  const homeOffice = next === 'home_office_check';
 
   const save = () => {
     setFailure(null);
@@ -133,7 +135,9 @@ export function RtwBranchChange({
               hint={
                 settled
                   ? 'Leave blank for settled status (no time limit). Pre-settled status has an end date: enter it.'
-                  : 'Leave blank to keep none on file — it is then set when the share code report is verified.'
+                  : homeOffice
+                    ? 'Leave blank until you have the Home Office result — it is then set when you verify it. Until there is a date, no shift can be rostered.'
+                    : 'Leave blank to keep none on file — it is then set when the share code report is verified.'
               }
             />
           )}
@@ -142,6 +146,20 @@ export function RtwBranchChange({
               Choose this for someone whose gov.uk record says there is no limit on how long they
               can stay (settled status, or indefinite leave). Then verify the share code report with
               “no time limit”, or run the automatic check again.
+            </Note>
+          ) : null}
+          {homeOffice && branch !== 'home_office_check' ? (
+            <Note>
+              For someone whose right to work is confirmed by the Home Office Employer Checking
+              Service (an asylum claim, a pending application or appeal). Their share code report
+              and any visa document stop counting and are kept read-only. Then attach the Home
+              Office check result on the Documents tab and verify it.
+            </Note>
+          ) : null}
+          {branch === 'home_office_check' && next && !homeOffice ? (
+            <Note>
+              Their Home Office check results stop counting and are kept read-only. Verify the new
+              route’s evidence (for example the share code report) as usual.
             </Note>
           ) : null}
           <Note>

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SHARE_CODE_SQL_PATTERN } from '../shareCode.ts';
+import { HOME_OFFICE_REF_SQL_PATTERN } from '../homeOfficeRef.ts';
 import { deriveStatement } from '../hmrc.ts';
 import {
   CONTRACT_VERSION_CLAUSE_28_PENDING,
@@ -136,6 +137,8 @@ describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree
     ['work_visa', 'passport'],
     ['international_student', 'passport'],
     ['dependant_other', 'passport'],
+    // ADR-0177: no row applies — nothing is uploaded on this branch.
+    ['home_office_check', 'passport'],
   ];
 
   it.each(cases)('%s (%s)', (branch, choice) => {
@@ -144,6 +147,31 @@ describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree
       .map((r) => `${r.key}:${r.accepts.join('|')}`);
     const ts = requiredDocuments(branch, choice).map((r) => `${r.key}:${r.accepts.join('|')}`);
     expect(sql).toEqual(ts);
+  });
+});
+
+/** ADR-0177: the Home Office check branch, patched onto the live bodies. */
+const homeOfficeCheck = readFileSync(
+  join(MIGRATIONS, '20261022140100_home_office_check_branch.sql'),
+  'utf8',
+);
+
+describe('the Home Office check (ADR-0177) — SQL and TypeScript agree', () => {
+  it('is_valid_home_office_ref() uses the same pattern, and also wants a digit', () => {
+    expect(homeOfficeCheck).toContain(
+      `normalise_home_office_ref(p_ref) ~ '${HOME_OFFICE_REF_SQL_PATTERN}'`,
+    );
+    expect(homeOfficeCheck).toContain(`normalise_home_office_ref(p_ref) ~ '[0-9]'`);
+  });
+
+  it('onboarding_documents_missing() owes the office’s result and no share code on this branch', () => {
+    expect(homeOfficeCheck).toContain("missing := missing || ''home_office_check_result''::text;");
+    expect(homeOfficeCheck).toContain("if s_rtw_branch not in ('uk_irish', 'home_office_check')");
+  });
+
+  it('step 1 requires the reference on this branch', () => {
+    expect(homeOfficeCheck).toContain("raise exception ''home_office_ref_required''");
+    expect(homeOfficeCheck).toContain("raise exception ''bad_home_office_ref''");
   });
 });
 

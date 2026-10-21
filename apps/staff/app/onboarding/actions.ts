@@ -82,6 +82,8 @@ export async function saveRightToWork(input: {
   branch: string;
   dob: string;
   shareCode: string;
+  /** ADR-0177: sent on the Home Office check branch only. */
+  homeOfficeRef?: string;
   visaType: string;
   ukChoice: string | null;
   wtrOptOut: boolean;
@@ -96,6 +98,7 @@ export async function saveRightToWork(input: {
     p_visa_expiry: null,
     p_uk_doc_choice: input.ukChoice,
     p_wtr_optout: input.wtrOptOut,
+    p_home_office_ref: input.homeOfficeRef?.trim() || null,
   });
 }
 

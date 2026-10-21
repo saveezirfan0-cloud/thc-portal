@@ -15,6 +15,7 @@ import {
   currentStep,
   formatFileSize,
   looksLikeRelative,
+  needsHomeOfficeRef,
   needsShareCode,
   needsVisaType,
   refereeErrors,
@@ -90,6 +91,32 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0078)
     expect(needsVisaType('dependant_other')).toBe(false);
   });
 
+  it('Home Office check: no share code, nothing uploaded — the office attaches the result (ADR-0177)', () => {
+    expect(types('home_office_check')).toEqual([]);
+    expect(acceptedDocTypes('home_office_check', null)).toEqual([]);
+    expect(needsShareCode('home_office_check')).toBe(false);
+    expect(needsHomeOfficeRef('home_office_check')).toBe(true);
+    expect(needsVisaType('home_office_check')).toBe(false);
+    for (const branch of [
+      'uk_irish',
+      'eu_settled',
+      'work_visa',
+      'international_student',
+      'dependant_other',
+    ] as const) {
+      expect(needsHomeOfficeRef(branch)).toBe(false);
+    }
+  });
+
+  it('the Home Office check reads in plain English in the picker (ADR-0177)', () => {
+    const b = RTW_BRANCHES.find((x) => x.key === 'home_office_check');
+    expect(b?.title).toBe('Home Office check — asylum or pending application');
+    expect(b?.description).toBe(
+      "The office checks your right to work with the Home Office. You don't need a share code.",
+    );
+    expect(RTW_BRANCHES.map((x) => x.key).at(-1)).toBe('home_office_check');
+  });
+
   it('no branch collects a visa or a status document (ADR-0078)', () => {
     for (const branch of [
       'uk_irish',
@@ -141,6 +168,7 @@ describe('step 1 validation', () => {
     branch: 'eu_settled',
     dob: '1999-09-30',
     shareCode: 'W12 3AB 4CD',
+    homeOfficeRef: '',
     visaType: '',
     ukChoice: null,
     wtrOptOut: false,
@@ -193,6 +221,20 @@ describe('step 1 validation', () => {
     expect(rtwErrors({ ...base, branch: 'work_visa', visaType: 'Graduate' }, today)).toEqual({});
     expect(Object.keys(rtwErrors({ ...base, branch: 'work_visa', dob: '' }, today))).not.toContain(
       'visaExpiry',
+    );
+  });
+
+  it('the Home Office check asks for the reference, not a share code (ADR-0177)', () => {
+    const hoc: RtwForm = { ...base, branch: 'home_office_check', shareCode: '' };
+    expect(rtwErrors(hoc, today).homeOfficeRef).toBe('Enter your Home Office reference.');
+    expect(rtwErrors(hoc, today).shareCode).toBeUndefined();
+    expect(rtwFooterHint(hoc, today)).toBe('Home Office reference is required');
+    expect(rtwFooterHint({ ...hoc, homeOfficeRef: 'ABC' }, today)).toBe(
+      'Fix the Home Office reference to continue',
+    );
+    expect(rtwErrors({ ...hoc, homeOfficeRef: ' abc 123456 ' }, today)).toEqual({});
+    expect(rtwFooterHint({ ...hoc, dob: '', homeOfficeRef: '' }, today)).toBe(
+      'Date of birth and Home Office reference are required',
     );
   });
 

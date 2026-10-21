@@ -128,13 +128,18 @@ select is_empty($$
    where public.term_letter_applies(s.id, x.d) is distinct from public._old_term_letter_applies(s.id, x.d) $$,
   'term_letter_applies(): the same answer for every person on four dates');
 select is_empty($$
+  -- home_office_check_result is excluded: ADR-0177 (20261022140100) added
+  -- the type later and dates it from its right-to-work-until, as a share
+  -- code report — a deliberate change, asserted in 912, not a drift of
+  -- this plpgsql conversion.
   select t, e, u, r.cal from unnest(enum_range(null::doc_type)) t,
          unnest(array[null, date '2026-03-01']) e, unnest(array[null, date '2026-05-01']) u,
          unnest(array[null, timestamptz '2026-11-15 10:00+00', timestamptz '2026-06-15 23:30+00']) up,
          (values (null::daterange[]), ('{}'), (array['[2026-01-10,2026-06-20)'::daterange]), (array['empty'::daterange]),
                  (array['[2026-01-10,)'::daterange]), (array['[2026-01-10,2026-03-01)'::daterange, '[2026-04-01,2026-07-15)'::daterange])) r(cal)
-   where public.doc_expires_on(t, e, u, date '2026-08-01', up, r.cal) is distinct from public._old_doc_expires_on(t, e, u, date '2026-08-01', up, r.cal)
-      or public.doc_expires_on(t, e, null, null, up, r.cal) is distinct from public._old_doc_expires_on(t, e, null, null, up, r.cal) $$,
+   where t <> 'home_office_check_result'
+     and (public.doc_expires_on(t, e, u, date '2026-08-01', up, r.cal) is distinct from public._old_doc_expires_on(t, e, u, date '2026-08-01', up, r.cal)
+      or public.doc_expires_on(t, e, null, null, up, r.cal) is distinct from public._old_doc_expires_on(t, e, null, null, up, r.cal)) $$,
   'doc_expires_on(): the same date over every document type, expiry, right-to-work date, upload time and term calendar');
 select is_empty($$
   select cal from (select array(select daterange(date '2026-01-01' + (g * k) % 400, date '2026-01-01' + (g * k) % 400 + 1 + g % 90)

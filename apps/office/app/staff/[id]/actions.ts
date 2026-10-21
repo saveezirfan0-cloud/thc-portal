@@ -457,6 +457,7 @@ const RTW_BRANCHES: readonly string[] = [
   'work_visa',
   'international_student',
   'dependant_other',
+  'home_office_check',
 ];
 
 const RTW_BRANCH_MESSAGES: Readonly<Record<string, string>> = {

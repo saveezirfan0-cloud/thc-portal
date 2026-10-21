@@ -19,6 +19,7 @@ import {
   RTW_BRANCHES,
   VISA_TYPES,
   isValidShareCode,
+  needsHomeOfficeRef,
   needsShareCode,
   needsVisaType,
   requiredDocuments,
@@ -38,6 +39,10 @@ import { WizardFoot, WizardTop } from './Wizard';
  * with the wireframe's per-branch caveat (it never overrides a visa limit,
  * §4.4). No visa or status expiry is typed in any branch: the gov.uk
  * share-code check returns the right-to-work-until date (ADR-0078).
+ *
+ * The Home Office check branch (ADR-0177, THC 21.10.2026) has no share code:
+ * it asks for the Home Office reference the office puts on its Employer
+ * Checking Service form, and nothing is uploaded at step 4.
  */
 const OPT_OUT_NOTE: Record<RtwBranch, string> = {
   uk_irish: 'Optional — no visa limit applies to you.',
@@ -45,12 +50,14 @@ const OPT_OUT_NOTE: Record<RtwBranch, string> = {
   work_visa: 'Only within what your visa allows — visa conditions take precedence.',
   international_student: 'Applies outside term time only.',
   dependant_other: 'The conditions of your visa decide whether this applies.',
+  home_office_check: 'The conditions of your permission to work decide whether this applies.',
 };
 
 export function RtwStep({ initial, today }: { initial: RtwForm; today: string }) {
   const router = useRouter();
   const [form, setForm] = useState<RtwForm>(initial);
   const [touched, setTouched] = useState(false);
+  const [refTouched, setRefTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   // Every hook runs before the branch picker's early return: a hook called
@@ -71,7 +78,8 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
       const result = await saveRightToWork({
         branch: branch ?? '',
         dob: form.dob,
-        shareCode: form.shareCode,
+        shareCode: branch && needsShareCode(branch) ? form.shareCode : '',
+        homeOfficeRef: branch && needsHomeOfficeRef(branch) ? form.homeOfficeRef : '',
         visaType: form.visaType,
         ukChoice: branch === 'uk_irish' ? form.ukChoice : null,
         wtrOptOut: form.wtrOptOut,
@@ -186,6 +194,25 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         </div>
       ) : null}
 
+      {needsHomeOfficeRef(branch) ? (
+        <Input
+          label={
+            <>
+              Home Office reference <span className="coral">*</span>
+            </>
+          }
+          mono
+          autoCapitalize="characters"
+          autoComplete="off"
+          placeholder="e.g. ABC123456"
+          value={form.homeOfficeRef}
+          onChange={(e) => set('homeOfficeRef', e.target.value)}
+          onBlur={() => setRefTouched(true)}
+          error={refTouched && form.homeOfficeRef.trim() !== '' ? errors.homeOfficeRef : undefined}
+          hint="The number on your Application Registration Card (ARC), or the reference on your latest letter from the Home Office. The office uses it to check your right to work."
+        />
+      ) : null}
+
       {needsVisaType(branch) ? (
         <Select
           label={
@@ -220,7 +247,24 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         </div>
       ) : null}
 
-      <div className="label">Required documents · uploaded at step 4</div>
+      {docs.length > 0 ? (
+        <div className="label">Required documents · uploaded at step 4</div>
+      ) : null}
+      {branch === 'home_office_check' ? (
+        <div className="wiz-list">
+          <div className="docrow">
+            <span className="ico">HO</span>
+            <div>
+              <div className="t">Home Office check</div>
+              <div className="m">
+                Nothing to upload. After you submit step 4, the office checks your right to work
+                with the Home Office and adds the result to your profile.
+              </div>
+            </div>
+            <span className="pill right">Office</span>
+          </div>
+        </div>
+      ) : null}
       <div className="wiz-list">
         {docs.map((d) => (
           <div className="docrow" key={d.key}>
@@ -244,6 +288,13 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
           </div>
         ) : null}
       </div>
+
+      {branch === 'home_office_check' ? (
+        <Alert tone="cyan">
+          You can start shifts once the office has your result from the Home Office. It usually
+          lasts about six months — the office renews it, so you don’t need to upload anything.
+        </Alert>
+      ) : null}
 
       {branch === 'international_student' ? (
         <Alert tone="cyan">

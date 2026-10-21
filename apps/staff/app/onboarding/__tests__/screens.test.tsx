@@ -38,6 +38,7 @@ const blank: RtwForm = {
   branch: null,
   dob: '',
   shareCode: '',
+  homeOfficeRef: '',
   visaType: '',
   ukChoice: null,
   wtrOptOut: false,
@@ -54,7 +55,7 @@ function footer(html: string): { label: string; disabled: boolean } {
 }
 
 describe('1/11 Right to work', () => {
-  it('branch picker — nothing selected: five branches, Continue disabled', () => {
+  it('branch picker — nothing selected: six branches, Continue disabled', () => {
     const html = renderToStaticMarkup(<RtwStep initial={blank} today={TODAY} />);
     expect(html).toContain('1/11 · Right to work');
     expect(html).toContain('Which describes you?');
@@ -64,9 +65,11 @@ describe('1/11 Right to work', () => {
       'Work visa',
       'International student',
       'Dependant or other visa',
+      'Home Office check — asylum or pending application',
     ]) {
       expect(html).toContain(t);
     }
+    expect(html).toContain('You don&#x27;t need a share code.');
     expect(footer(html)).toEqual({ label: 'Continue', disabled: true });
     expect(html).toContain('Choose one to continue');
   });
@@ -159,6 +162,33 @@ describe('1/11 Right to work', () => {
     expect(html).toContain('Date of birth and share code are required');
     expect(html).not.toContain('expiry');
     expect(footer(html).disabled).toBe(true);
+  });
+
+  it('Home Office check — a reference instead of a share code, nothing to upload (ADR-0177)', () => {
+    const html = renderToStaticMarkup(
+      <RtwStep
+        initial={{ ...blank, branch: 'home_office_check', dob: '1996-03-12' }}
+        today={TODAY}
+      />,
+    );
+    expect(html).toContain('Home Office reference');
+    expect(html).not.toContain('Share code');
+    expect(html).not.toContain('Required documents');
+    expect(html).toContain('Nothing to upload.');
+    expect(html).toContain('Home Office reference is required');
+    expect(footer(html).disabled).toBe(true);
+    const done = renderToStaticMarkup(
+      <RtwStep
+        initial={{
+          ...blank,
+          branch: 'home_office_check',
+          dob: '1996-03-12',
+          homeOfficeRef: 'ABC123456',
+        }}
+        today={TODAY}
+      />,
+    );
+    expect(footer(done).disabled).toBe(false);
   });
 
   it('dependant — passport + share code is complete, no status document', () => {

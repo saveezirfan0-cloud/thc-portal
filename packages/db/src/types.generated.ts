@@ -2235,6 +2235,7 @@ export type Database = {
           right_to_work_until: string | null;
           rtw_no_time_limit: boolean;
           share_code: string | null;
+          home_office_approved_on: string | null;
           size_bytes: number | null;
           staff_id: string;
           term_dates: unknown[] | null;
@@ -2271,6 +2272,7 @@ export type Database = {
           right_to_work_until?: string | null;
           rtw_no_time_limit?: boolean;
           share_code?: string | null;
+          home_office_approved_on?: string | null;
           size_bytes?: number | null;
           staff_id: string;
           term_dates?: unknown[] | null;
@@ -2306,6 +2308,7 @@ export type Database = {
           right_to_work_until?: string | null;
           rtw_no_time_limit?: boolean;
           share_code?: string | null;
+          home_office_approved_on?: string | null;
           size_bytes?: number | null;
           staff_id?: string;
           term_dates?: unknown[] | null;
@@ -5695,6 +5698,7 @@ export type Database = {
           right_to_work_until: string | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
           share_code: string | null;
+          home_office_ref: string | null;
           spudbros_express: boolean;
           stage_entered_at: string;
           status: Database['public']['Enums']['staff_status'];
@@ -5762,6 +5766,7 @@ export type Database = {
           right_to_work_until?: string | null;
           rtw_branch?: Database['public']['Enums']['rtw_branch'] | null;
           share_code?: string | null;
+          home_office_ref?: string | null;
           spudbros_express?: boolean;
           stage_entered_at?: string;
           status?: Database['public']['Enums']['staff_status'];
@@ -5827,6 +5832,7 @@ export type Database = {
           right_to_work_until?: string | null;
           rtw_branch?: Database['public']['Enums']['rtw_branch'] | null;
           share_code?: string | null;
+          home_office_ref?: string | null;
           spudbros_express?: boolean;
           stage_entered_at?: string;
           status?: Database['public']['Enums']['staff_status'];
@@ -10636,6 +10642,7 @@ export type Database = {
         Row: {
           dob: string | null;
           home_address: string | null;
+          home_office_ref: string | null;
           ni_number: string | null;
           share_code: string | null;
           staff_id: string | null;
@@ -10644,6 +10651,7 @@ export type Database = {
         Insert: {
           dob?: never;
           home_address?: never;
+          home_office_ref?: never;
           ni_number?: never;
           share_code?: never;
           staff_id?: string | null;
@@ -10651,6 +10659,7 @@ export type Database = {
         Update: {
           dob?: never;
           home_address?: never;
+          home_office_ref?: never;
           ni_number?: never;
           share_code?: never;
           staff_id?: string | null;
@@ -11947,6 +11956,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      compliance_verify_home_office_check: {
+        Args: { p_approved_on: string; p_doc: string; p_right_to_work_until?: string };
+        Returns: Json;
+      };
       compliance_verify_document_as: {
         Args: {
           p_doc: string;
@@ -12831,6 +12844,10 @@ export type Database = {
           starts_at: string;
         }[];
       };
+      office_attach_home_office_check: {
+        Args: { p_path: string; p_staff: string };
+        Returns: Json;
+      };
       office_submit_completion_letter: {
         Args: {
           p_awarding_institution?: string;
@@ -13162,6 +13179,7 @@ export type Database = {
         Args: {
           p_branch: string;
           p_dob: string;
+          p_home_office_ref?: string;
           p_share_code: string;
           p_uk_doc_choice: string;
           p_visa_expiry: string;
@@ -15093,7 +15111,8 @@ export type Database = {
         | 'status_document'
         | 'university_term_dates_letter'
         | 'university_completion_letter'
-        | 'share_code_report';
+        | 'share_code_report'
+        | 'home_office_check_result';
       event_status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
       feedback_author: 'client' | 'office';
       hmrc_statement: 'A' | 'B' | 'C';
@@ -15101,7 +15120,12 @@ export type Database = {
       office_role: 'owner' | 'manager' | 'scheduler' | 'viewer';
       review_status: 'pending' | 'verified' | 'rejected' | 'superseded';
       rtw_branch:
-        'uk_irish' | 'eu_settled' | 'work_visa' | 'international_student' | 'dependant_other';
+        | 'uk_irish'
+        | 'eu_settled'
+        | 'work_visa'
+        | 'international_student'
+        | 'dependant_other'
+        | 'home_office_check';
       staff_status:
         | 'interview_requested'
         | 'interview_completed'
@@ -15284,6 +15308,7 @@ export const Constants = {
         'university_term_dates_letter',
         'university_completion_letter',
         'share_code_report',
+        'home_office_check_result',
       ],
       event_status: ['upcoming', 'ongoing', 'completed', 'cancelled'],
       feedback_author: ['client', 'office'],
@@ -15297,6 +15322,7 @@ export const Constants = {
         'work_visa',
         'international_student',
         'dependant_other',
+        'home_office_check',
       ],
       staff_status: [
         'interview_requested',

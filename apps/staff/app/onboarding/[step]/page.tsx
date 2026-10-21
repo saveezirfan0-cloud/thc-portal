@@ -1,6 +1,13 @@
 import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
-import { BRANCH_HEADING, TOTAL_STEPS, canEditStep, stepAccess, ukToday } from '@thc/domain';
+import {
+  BRANCH_HEADING,
+  TOTAL_STEPS,
+  canEditStep,
+  needsShareCode,
+  stepAccess,
+  ukToday,
+} from '@thc/domain';
 import { signOwnPhoto } from '../../profile/photos';
 import { AddressStep } from '../_components/AddressStep';
 import { splitHomeAddress } from '../../_lib/address';
@@ -95,6 +102,7 @@ function render(
             branch: s.rtwBranch,
             dob: s.dob ?? '',
             shareCode: s.shareCode ?? '',
+            homeOfficeRef: s.homeOfficeRef ?? '',
             visaType: s.progress.visaType ?? '',
             ukChoice: s.progress.ukDocChoice ?? (s.rtwBranch === 'uk_irish' ? 'passport' : null),
             wtrOptOut: s.wtrOptOut,
@@ -116,7 +124,8 @@ function render(
         <DocumentsStep
           branchTitle={s.rtwBranch ? BRANCH_HEADING[s.rtwBranch] : ''}
           rows={requirementRows(s)}
-          shareCode={s.rtwBranch && s.rtwBranch !== 'uk_irish' ? s.shareCode : null}
+          shareCode={s.rtwBranch && needsShareCode(s.rtwBranch) ? s.shareCode : null}
+          homeOfficeRef={s.rtwBranch === 'home_office_check' ? (s.homeOfficeRef ?? '') : null}
           today={today}
           completionLetter={completionLetterDoc(s)}
         />

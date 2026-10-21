@@ -152,3 +152,31 @@ export function canAttachReport(
   if (!checkEnabled) return true;
   return check !== null && (check.status === 'needs_review' || check.stuck);
 }
+
+/**
+ * "Attach Home Office check result" (ADR-0177): offered on a live profile
+ * on the Home Office check route. Always — the first result onto the row
+ * step 4 filed, a renewal (they run about six months) as a fresh row, or a
+ * replacement for one not yet reviewed. office_attach_home_office_check()
+ * applies the same rule in the database.
+ */
+export function canAttachHomeOfficeResult(subject: {
+  status: string;
+  rtw_branch: string | null;
+}): boolean {
+  if (subject.rtw_branch !== 'home_office_check') return false;
+  return !['rejected', 'removed', 'inactive'].includes(subject.status);
+}
+
+/** The label of that upload: the first result, or the next one. */
+export function homeOfficeAttachLabel(
+  documents: readonly { doc_type: string; review_status: string; file_path?: string | null }[],
+): string {
+  const onFile = documents.some(
+    (d) =>
+      d.doc_type === 'home_office_check_result' &&
+      d.review_status !== 'superseded' &&
+      Boolean(d.file_path),
+  );
+  return onFile ? 'Attach new Home Office check result' : 'Attach Home Office check result';
+}

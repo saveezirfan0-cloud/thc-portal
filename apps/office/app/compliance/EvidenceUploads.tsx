@@ -7,6 +7,7 @@ import { COMPLETION_EVIDENCE_FORM_LABELS, evidenceFileProblem } from '@thc/domai
 import type { CompletionEvidenceForm } from '@thc/domain';
 import { Alert, Button, Input, Select, UkDateField } from '@thc/ui';
 import {
+  attachHomeOfficeCheck,
   attachRtwReport,
   setBelowDegreeLevel,
   setVisaHourLimit,
@@ -27,6 +28,10 @@ import type { ActionResult } from './types';
  *     like the worker's own upload; Approve confirms the dates.
  *   · the gov.uk right-to-work report (D31), when the share code was verified
  *     by hand (the automated check stores its own).
+ *   · the Home Office Employer Checking Service result (ADR-0177), for a
+ *     worker on the Home Office check route — the worker cannot obtain it.
+ *     A renewal is attached the same way and replaces the old one once it
+ *     is verified.
  *   · the course level / visa hours limit (D32, D36), outside a Verify.
  *
  * Files go browser → Storage on a one-object signed upload issued for the
@@ -200,6 +205,54 @@ export function RtwReportUpload({ docId, staffId }: { docId: string; staffId: st
         <Button size="sm" tone="ghost" disabled={busy} onClick={() => input.current?.click()}>
           {busy ? 'Attaching…' : 'Attach gov.uk report'}
         </Button>
+      </span>
+      <Result result={result} />
+    </span>
+  );
+}
+
+/**
+ * ADR-0177 · Attach the Home Office check result the Employer Checking
+ * Service emailed to the office. Lands in Needs review; Verify takes the
+ * date approved printed on it.
+ */
+export function HomeOfficeResultUpload({
+  staffId,
+  label = 'Attach Home Office check result',
+}: {
+  staffId: string;
+  label?: string;
+}) {
+  const { busy, result, run } = useRun();
+  const input = useRef<HTMLInputElement>(null);
+  const pick = (file: File | undefined) => {
+    if (!file) return;
+    run(
+      async () => {
+        const uploaded = await uploadOfficeEvidence(staffId, 'home-office-check-result', file);
+        if (!uploaded.ok) return uploaded;
+        return attachHomeOfficeCheck(staffId, uploaded.path);
+      },
+      () => {
+        if (input.current) input.current.value = '';
+      },
+    );
+  };
+  return (
+    <span className="stack">
+      <span className="row wrap">
+        <input
+          ref={input}
+          type="file"
+          accept={EVIDENCE_ACCEPT}
+          hidden
+          aria-label="Home Office check result file"
+          onChange={(event) => pick(event.target.files?.[0])}
+        />
+        <Button size="sm" tone="ghost" disabled={busy} onClick={() => input.current?.click()}>
+          {busy ? 'Attaching…' : label}
+        </Button>
+        <span className="muted xs">PDF, JPG or PNG, up to 10 MB</span>
       </span>
       <Result result={result} />
     </span>

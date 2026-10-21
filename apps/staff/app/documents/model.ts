@@ -10,6 +10,7 @@ import {
   daysBetween,
   documentState,
   isDocType,
+  isOfficeOnlyDocument,
   rtwCheckInFlight,
 } from '@thc/domain';
 import type { DocType, DocumentState, TimeFormat } from '@thc/domain';
@@ -31,6 +32,10 @@ import type { DeclarationRecord, DocumentRecord, DocumentsData } from './types';
  *   superseded    an earlier period's evidence (§2.12), read-only history
  *   not_needed    a graduate's term letter (§4.5)
  *   optional      the completion letter slot, Student visa only
+ *
+ * The Home Office check result (ADR-0177) has every state but never an
+ * action: the office attaches and renews it, so its rows say so instead of
+ * asking the worker to upload anything.
  *
  * Nothing here decides compliance. The status pill is the database's
  * status; the lock is `appLock()`'s; a row being "expired" is
@@ -137,6 +142,7 @@ const BRANCH_LABELS: Record<string, string> = {
   work_visa: 'Work visa',
   international_student: 'International student',
   dependant_other: 'Dependant / other status',
+  home_office_check: 'Home Office check',
 };
 
 /**
@@ -201,6 +207,16 @@ function verifiedMeta(record: DocumentRecord, state: DocumentState, today: strin
     return 'No longer needed — your completion letter is approved';
   }
   if (!expires) return 'Verified';
+  if (record.docType === 'home_office_check_result') {
+    // ADR-0177: only an employer can ask the Home Office, so the office renews it.
+    if (state === 'expired') {
+      return `Expired ${formatDay(expires)} — the office is renewing your Home Office check`;
+    }
+    const days = plural(daysBetween(today, expires), 'day', 'days');
+    return state === 'expiring'
+      ? `Right to work until ${formatDay(expires)} (${days}) — the office renews your Home Office check`
+      : `Verified · right to work until ${formatDay(expires)} (Home Office check)`;
+  }
   if (state === 'expired') return `Expired ${formatDay(expires)}`;
   const left = daysBetween(today, expires);
   const leftText = plural(left, 'day', 'days');
@@ -231,6 +247,9 @@ function rowFor(
   const title = titleFor(docType, current);
   const today = data.today;
   const isShare = docType === 'share_code_report';
+  // ADR-0177: the office attaches it; the worker is never offered an upload.
+  const officeOnly = isOfficeOnlyDocument(docType);
+  const upload = canUpload && !officeOnly;
 
   const state = documentState(current, today, data.termLetterApplies);
   const base = { key: `doc:${docType}`, kind: docType, title, state } as const;
@@ -245,13 +264,17 @@ function rowFor(
     const check = isShare ? data.rtwChecks?.[current.id] : undefined;
     const checking = rtwCheckInFlight(check?.status);
     const entered = `${shareCodeMeta(current)} entered ${formatDay(ukDay(current.uploadedAt))}`;
-    const what = isShare
-      ? checking
-        ? `Checking with gov.uk… · ${entered}`
-        : check?.status === 'needs_review'
-          ? `In review · gov.uk’s result is with the office · ${entered}`
-          : `In review · new ${entered}`
-      : `In review · uploaded ${formatDay(ukDay(current.uploadedAt))}`;
+    const what = officeOnly
+      ? current.hasFile
+        ? `In review · the office has the Home Office’s result, received ${formatDay(ukDay(current.uploadedAt))}`
+        : 'With the office · they are checking your right to work with the Home Office'
+      : isShare
+        ? checking
+          ? `Checking with gov.uk… · ${entered}`
+          : check?.status === 'needs_review'
+            ? `In review · gov.uk’s result is with the office · ${entered}`
+            : `In review · new ${entered}`
+        : `In review · uploaded ${formatDay(ukDay(current.uploadedAt))}`;
     let tail = '';
     if (counted && counted.id !== current.id && counted.expiresOn) {
       const old = documentState(counted, today, data.termLetterApplies);
@@ -279,10 +302,12 @@ function rowFor(
       ...base,
       tone: 'rejected',
       icon: '✕',
-      meta: `Re-upload · ${reason}`,
+      meta: officeOnly
+        ? `Not accepted · ${reason} · the office will be in touch`
+        : `Re-upload · ${reason}`,
       metaTone: 'coral',
       pill: null,
-      action: canUpload
+      action: upload
         ? {
             label: isShare ? 'Enter new code' : 'Re-upload',
             href: uploadHref(docType),
@@ -300,7 +325,7 @@ function rowFor(
       meta: verifiedMeta(current, state, today),
       metaTone: 'coral',
       pill: null,
-      action: canUpload
+      action: upload
         ? { label: isShare ? 'Enter new code' : 'Upload', href: uploadHref(docType), primary: true }
         : null,
     };
@@ -314,7 +339,7 @@ function rowFor(
       meta: verifiedMeta(current, state, today),
       metaTone: 'amber',
       pill: null,
-      action: canUpload
+      action: upload
         ? { label: isShare ? 'Enter new code' : 'Upload', href: uploadHref(docType), primary: true }
         : null,
     };
@@ -342,6 +367,22 @@ function missingRows(data: DocumentsData, present: ReadonlySet<string>, canUploa
     const docType: DocType | null =
       token === 'share_code' ? 'share_code_report' : isDocType(token) ? token : null;
     if (!docType || present.has(docType)) continue;
+    if (isOfficeOnlyDocument(docType)) {
+      // ADR-0177: nothing for the worker to supply — the office adds it.
+      rows.push({
+        key: `missing:${docType}`,
+        kind: docType,
+        title: DOC_LABELS[docType],
+        state: 'missing',
+        tone: 'pending',
+        icon: '—',
+        meta: 'Not on file yet · the office adds it once they have checked with the Home Office',
+        metaTone: null,
+        pill: null,
+        action: null,
+      });
+      continue;
+    }
     rows.push({
       key: `missing:${docType}`,
       kind: docType,
@@ -619,12 +660,15 @@ export function buildDocumentsView(
   const declaration = declarationRow(data.declarations, format);
   const rows = declaration ? [...docRows, declaration] : docRows;
 
+  // A row only the office can act on (ADR-0177) is not the worker's to fix.
   const needs = docRows.filter(
     (r) =>
-      r.state === 'expired' ||
-      r.state === 'rejected' ||
-      r.state === 'missing' ||
-      r.state === 'expiring',
+      r.kind !== 'criminal_declaration' &&
+      !isOfficeOnlyDocument(r.kind) &&
+      (r.state === 'expired' ||
+        r.state === 'rejected' ||
+        r.state === 'missing' ||
+        r.state === 'expiring'),
   ).length;
   const replacing = docRows.some((r) => r.state === 'in_review');
   const attention =

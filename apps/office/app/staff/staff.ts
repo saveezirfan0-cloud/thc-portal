@@ -93,6 +93,8 @@ export const RTW_LABEL: Record<string, string> = {
   work_visa: 'Work visa',
   international_student: 'International student',
   dependant_other: 'Dependant or other',
+  // ADR-0177: confirmed by the Home Office Employer Checking Service.
+  home_office_check: 'Home Office check',
 };
 
 /**

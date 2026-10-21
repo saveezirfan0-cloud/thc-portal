@@ -12,7 +12,13 @@ import { loadMyRtwChecks } from '../_lib/rtwCheck';
 import type { MyRtwChecks } from '../_lib/rtwCheck';
 import { WizardFrame, workerFor } from './_components/Wizard';
 import { loadOnboarding, supabaseConfigured } from './data';
-import { completionLetterDoc, requirementRows, shareCodeDoc, wizardFacts } from './state';
+import {
+  completionLetterDoc,
+  homeOfficeCheckDoc,
+  requirementRows,
+  shareCodeDoc,
+  wizardFacts,
+} from './state';
 import './onboarding.css';
 
 export const dynamic = 'force-dynamic';
@@ -152,6 +158,7 @@ export default async function Page() {
           rows={requirementRows(state)}
           shareDoc={shareDoc}
           shareCheck={shareCheck}
+          homeOfficeDoc={homeOfficeCheckDoc(state)}
           dob={state.dob}
           declaration={state.declaration}
           completionLetter={completionLetterDoc(state)}

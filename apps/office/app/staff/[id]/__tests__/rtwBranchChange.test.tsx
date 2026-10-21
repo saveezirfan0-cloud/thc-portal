@@ -71,6 +71,16 @@ describe('changeRtwBranch', () => {
     });
   });
 
+  it('moves a worker onto the Home Office check route (ADR-0177)', async () => {
+    expect(await changeRtwBranch('s1', 'home_office_check', '2027-04-21')).toEqual({ ok: true });
+    expect(rpc).toHaveBeenCalledWith('record_right_to_work_change', {
+      p_staff: 's1',
+      p_branch: 'home_office_check',
+      p_until: '2027-04-21',
+      p_share_code: null,
+    });
+  });
+
   it('refuses a branch that is not one of the five, and a malformed date, before the database', async () => {
     expect((await changeRtwBranch('s1', 'settled', null)).ok).toBe(false);
     expect((await changeRtwBranch('s1', 'work_visa', '31/12/2027')).ok).toBe(false);

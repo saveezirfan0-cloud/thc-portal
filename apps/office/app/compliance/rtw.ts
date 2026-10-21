@@ -22,7 +22,18 @@ export interface RtwDateRule {
   hint: string;
   /** Settled status: the reviewer may confirm there is no end date. */
   allowNoTimeLimit: boolean;
+  /**
+   * The Home Office check result (ADR-0177): the reviewer types the date
+   * the Home Office approved it, and the right to work runs six months from
+   * it (`homeOfficeCheckUntil`), editable.
+   */
+  approvedOn?: boolean;
 }
+
+/** The Home Office check result's two labels and hint (THC, 22.10.2026). */
+export const HOME_OFFICE_APPROVED_LABEL = 'Date approved (on the Home Office result)';
+export const HOME_OFFICE_UNTIL_HINT =
+  'Six months from the date approved. Change it only if the result says otherwise.';
 
 export function rtwDateRule(docType: string, branch: string | null): RtwDateRule | null {
   if (docType === 'visa_document' || docType === 'status_document') {
@@ -31,6 +42,15 @@ export function rtwDateRule(docType: string, branch: string | null): RtwDateRule
       label: docType === 'visa_document' ? 'Visa expiry' : 'Status document expiry',
       hint: 'Check it against the document. It becomes the worker’s right-to-work date if it is the earliest on file — no shift after it can be rostered.',
       allowNoTimeLimit: false,
+    };
+  }
+  if (docType === 'home_office_check_result') {
+    return {
+      field: 'right_to_work_until',
+      label: 'Right to work until',
+      hint: HOME_OFFICE_UNTIL_HINT,
+      allowNoTimeLimit: false,
+      approvedOn: true,
     };
   }
   if (docType === 'share_code_report') {
@@ -57,6 +77,24 @@ export function rtwDateProblem(
       : 'Only a share code showing EU settled status can be verified with no time limit.';
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return `Confirm the ${rule.label.toLowerCase()}.`;
+  return null;
+}
+
+/**
+ * Why a Home Office check result cannot be verified yet, or null — the
+ * database's own refusals (compliance_verify_home_office_check), said first.
+ */
+export function homeOfficeVerifyProblem(
+  approvedOn: string,
+  until: string,
+  today: string,
+): string | null {
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  if (!iso.test(approvedOn)) return 'Enter the date approved on the Home Office result.';
+  if (approvedOn > today) return 'The date approved cannot be in the future.';
+  if (!iso.test(until)) return 'Confirm the right to work until.';
+  if (until <= approvedOn) return 'The right to work must end after the date approved.';
+  if (until <= today) return 'This result has already run out — it cannot be verified.';
   return null;
 }
 

@@ -67,6 +67,7 @@ export function ReviewHub({
   rows,
   shareDoc,
   shareCheck = null,
+  homeOfficeDoc = null,
   dob,
   declaration,
   completionLetter,
@@ -75,6 +76,11 @@ export function ReviewHub({
   shareDoc: UploadedDoc | null;
   /** The latest automated gov.uk check on `shareDoc` (`my_rtw_checks()`). */
   shareCheck?: { status: RtwCheckStatus } | null;
+  /**
+   * ADR-0177: the Home Office check result the office attaches and verifies.
+   * The worker can neither upload nor re-enter it, so the row has no button.
+   */
+  homeOfficeDoc?: UploadedDoc | null;
   dob: string | null;
   declaration: { answer: boolean; status: DocStatus; declaredAt: string } | null;
   /** `completionLetterDoc()`: undefined hides the optional row (not a Student visa). */
@@ -85,6 +91,7 @@ export function ReviewHub({
   const shareRejected = shareDoc?.status === 'rejected';
   const shareState =
     shareDoc?.status === 'pending' ? rtwCheckWorkerState(shareCheck?.status) : null;
+  const homeOfficeRejected = homeOfficeDoc?.status === 'rejected';
   const rejected =
     rows.some((r) => r.doc?.status === 'rejected') ||
     shareRejected ||
@@ -168,6 +175,41 @@ export function ReviewHub({
                   {shareState === 'checking' ? 'Checking' : STATUS_PILL[shareDoc.status].label}
                 </Pill>
               )}
+            </div>
+          </div>
+        ) : null}
+        {homeOfficeDoc ? (
+          <div
+            className={`docrow ${
+              homeOfficeDoc.status === 'verified'
+                ? 'verified'
+                : homeOfficeRejected
+                  ? 'rejected'
+                  : 'pending'
+            }`}
+          >
+            <span className="ico">
+              {homeOfficeDoc.status === 'verified' ? '✓' : homeOfficeRejected ? '✕' : 'HO'}
+            </span>
+            <div>
+              <div className="t">
+                Right to work · Home Office check
+                {homeOfficeDoc.shareCode ? ` · ${homeOfficeDoc.shareCode}` : ''}
+              </div>
+              <div className={`m ${homeOfficeRejected ? 'coral' : ''}`}>
+                {homeOfficeDoc.status === 'verified'
+                  ? `Verified${homeOfficeDoc.rightToWorkUntil ? ` · right to work until ${fmtDate(homeOfficeDoc.rightToWorkUntil)}` : ''}`
+                  : homeOfficeRejected
+                    ? `Not accepted · “${homeOfficeDoc.rejectionReason ?? 'see the office'}” · the office will be in touch`
+                    : 'With the office · they check your right to work with the Home Office'}
+              </div>
+            </div>
+            <div className="right">
+              <Pill tone={STATUS_PILL[homeOfficeDoc.status].tone}>
+                {homeOfficeDoc.status === 'pending'
+                  ? 'With the office'
+                  : STATUS_PILL[homeOfficeDoc.status].label}
+              </Pill>
             </div>
           </div>
         ) : null}

@@ -49,9 +49,14 @@ export function expiringDocument(
   return soonest;
 }
 
-/** The share code's expiry is the right-to-work date (§4.4), so it is named that. */
+/**
+ * The share code's expiry is the right-to-work date (§4.4), so it is named
+ * that — as is the Home Office check result's (ADR-0177).
+ */
 function labelFor(doc: { docType: DocType; label: string }): string {
-  if (doc.docType === 'share_code_report') return 'Right to work';
+  if (doc.docType === 'share_code_report' || doc.docType === 'home_office_check_result') {
+    return 'Right to work';
+  }
   return doc.label || DOC_LABELS[doc.docType];
 }
 

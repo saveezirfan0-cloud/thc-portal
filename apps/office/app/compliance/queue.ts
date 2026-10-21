@@ -87,6 +87,11 @@ export const DOCUMENT_FILTERS: { value: string; label: string; types: string[] }
   { value: 'id', label: 'Passport / ID', types: ['passport', 'national_id', 'birth_certificate'] },
   { value: 'visa', label: 'Visa document', types: ['visa_document', 'status_document'] },
   { value: 'rtw', label: 'Right to work (share code)', types: ['share_code_report'] },
+  {
+    value: 'home_office',
+    label: 'Right to work (Home Office check)',
+    types: ['home_office_check_result'],
+  },
   { value: 'term', label: 'University Term Dates Letter', types: ['university_term_dates_letter'] },
   {
     value: 'completion',
@@ -142,6 +147,7 @@ const BRANCH_LABEL: Record<string, string> = {
   work_visa: 'Work visa',
   international_student: 'International student',
   dependant_other: 'Dependant / other',
+  home_office_check: 'Home Office check',
 };
 
 /**
@@ -270,6 +276,8 @@ export function rejectPrefill(row: QueueRow): string {
  */
 export function verifyAllowed(row: QueueRow): boolean {
   if (row.kind === 'rtw_check') return false;
+  // ADR-0177: verified on the attached result, never on the empty row step 4 files.
+  if (row.item_type === 'home_office_check_result') return Boolean(row.file_path);
   if (row.item_type !== 'share_code_report') return true;
   return row.rtw_manual_allowed !== false;
 }
@@ -305,6 +313,14 @@ export function documentLine(row: QueueRow): string {
     return `Answer: Yes · ${source}`;
   }
   const parts: string[] = [];
+  if (row.item_type === 'home_office_check_result') {
+    parts.push(
+      row.share_code
+        ? `Home Office reference ${row.share_code}`
+        : 'no Home Office reference on file',
+    );
+    if (!row.file_path) parts.push('result not attached yet');
+  }
   if (row.item_type === 'university_completion_letter') {
     if (row.evidence_form) parts.push(EVIDENCE_FORM_LABEL[row.evidence_form] ?? row.evidence_form);
     parts.push('optional document, International student branch');
@@ -354,6 +370,16 @@ export function foundLine(row: QueueRow): {
           ? 'gov.uk: no time limit'
           : 'gov.uk check',
       confidence: row.rtw_check_status === 'needs_review' ? 'manual' : null,
+    };
+  }
+  if (row.item_type === 'home_office_check_result') {
+    // Attached by the office and never read by the AI: the reviewer types
+    // the date approved off the result on Verify.
+    return {
+      text: row.file_path
+        ? 'Not read automatically — enter the date approved on Verify'
+        : 'Waiting for the office to attach the result',
+      confidence: null,
     };
   }
   if (row.item_type === 'university_completion_letter') {
@@ -507,6 +533,11 @@ export function verifyHint(row: QueueRow): string | null {
   }
   if (row.kind === 'ni_check') {
     return 'Matches → recorded as compared · Reject → the evidence is rejected and the worker asked to re-upload (N8)';
+  }
+  if (row.item_type === 'home_office_check_result') {
+    return row.file_path
+      ? 'Verify → enter the date approved on the result; the right to work runs six months from it'
+      : 'Run the Employer Checking Service check, then attach the result it emails back → Verify';
   }
   if (row.item_type === 'share_code_report' && !verifyAllowed(row)) {
     return 'Verified by the automatic gov.uk check — run it again from here';

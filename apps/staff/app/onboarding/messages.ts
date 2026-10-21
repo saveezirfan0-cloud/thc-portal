@@ -17,6 +17,10 @@ const REASONS: Record<string, string> = {
   bad_share_code:
     "Share code must be 9 letters and numbers starting with W — e.g. W123AB4CD. Spaces are fine, we'll remove them.",
   visa_type_required: 'Choose your visa type.',
+  // ADR-0177, the Home Office check branch.
+  home_office_ref_required: 'Enter your Home Office reference.',
+  bad_home_office_ref:
+    'Enter the reference exactly as the Home Office wrote it — letters and numbers, e.g. the number on your ARC card.',
   address_required: 'Enter the first line of your address and your town.',
   bad_postcode: 'Enter a UK postcode, e.g. E2 0RY.',
   pin_outside_uk: 'Drop the pin on your home in the UK.',

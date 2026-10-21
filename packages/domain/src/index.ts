@@ -13,6 +13,7 @@ export * from './staff';
 export * from './rotaGuard';
 export * from './completionLetter';
 export * from './shareCode';
+export * from './homeOfficeRef';
 export * from './rtwCheck';
 export * from './hmrc';
 export * from './countries';

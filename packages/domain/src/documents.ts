@@ -19,7 +19,10 @@
 import { isValidShareCode, normaliseShareCode } from './shareCode';
 import type { StaffStatus } from './state';
 
-/** Every value of the `doc_type` enum (0001_init). */
+/**
+ * Every value of the `doc_type` enum (0001_init, then `add value` in
+ * 20261022140000 for the Home Office check result, ADR-0177).
+ */
 export const DOC_TYPES = [
   'passport',
   'birth_certificate',
@@ -30,6 +33,7 @@ export const DOC_TYPES = [
   'university_term_dates_letter',
   'university_completion_letter',
   'share_code_report',
+  'home_office_check_result',
 ] as const;
 export type DocType = (typeof DOC_TYPES)[number];
 
@@ -52,6 +56,7 @@ export const DOC_LABELS: Record<DocType, string> = {
   university_term_dates_letter: 'University Term Dates Letter',
   university_completion_letter: 'Official University Completion Letter',
   share_code_report: 'Right to work · share code',
+  home_office_check_result: 'Right to work · Home Office check',
 };
 
 // ---------------------------------------------------------------------
@@ -95,9 +100,22 @@ export function documentFolder(docType: DocType): DocumentFolder {
  * The types uploaded through `submit_document_upload()`. The completion
  * letter is not one of them — it has its own RPC because the requirement
  * makes the worker state the form and the course completion date (§2.1).
+ * Nor is the Home Office check result: the office attaches it
+ * (`office_attach_home_office_check()`), and the database refuses it from
+ * the worker with `office_only` (ADR-0177).
  */
 export function usesGenericUpload(docType: DocType): boolean {
-  return docType !== 'university_completion_letter';
+  return docType !== 'university_completion_letter' && !isOfficeOnlyDocument(docType);
+}
+
+/**
+ * A document the worker cannot obtain or upload — the Home Office's
+ * Employer Checking Service result, which only an employer can request
+ * (ADR-0177). The worker's screens never offer an upload for it and never
+ * tell them to renew it; the office is the one reminded (CL4).
+ */
+export function isOfficeOnlyDocument(docType: DocType): boolean {
+  return docType === 'home_office_check_result';
 }
 
 /**
@@ -115,6 +133,7 @@ export const DOCUMENT_UPLOAD_REASONS: Record<string, string> = {
   invalid_doc_type: 'Choose which document this is.',
   use_completion_letter: 'Upload the completion letter from its own row.',
   not_required: 'That document isn’t one we need from you.',
+  office_only: 'The office adds this document for you — there’s nothing to upload.',
   already_pending: 'This document is already with the office for review.',
   file_required: 'Choose a file to upload.',
   share_code_invalid:

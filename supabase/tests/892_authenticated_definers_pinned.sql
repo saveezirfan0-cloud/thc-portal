@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 202 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email), docs/14 §4 — so a new one fails here BY
+-- 204 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0177's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0177 also gave onboarding_save_right_to_work an eighth argument), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -75,6 +75,7 @@ select bag_eq(
             ('compliance_set_visa_hour_limit(uuid,integer)'),
             ('compliance_verify_declaration(uuid,text)'),
             ('compliance_verify_document(uuid,date,daterange[],date)'),
+            ('compliance_verify_home_office_check(uuid,date,date)'),
             ('confirm_on_day(uuid)'),
             ('current_app_role()'),
             ('current_client_id()'),
@@ -121,6 +122,7 @@ select bag_eq(
             ('office_session_policy()'),
             ('office_staff_referrals(uuid)'),
             ('office_staff_unavailability(uuid,timestamp with time zone,timestamp with time zone)'),
+            ('office_attach_home_office_check(uuid,text)'),
             ('office_submit_completion_letter(uuid,text,date,text,text)'),
             ('office_user_name(uuid)'),
             ('onboarding_accept_with_account(uuid,uuid[],text,uuid,text,text)'),
@@ -139,7 +141,7 @@ select bag_eq(
             ('onboarding_resolve_returning(uuid,text,text)'),
             ('onboarding_save_bank(text,text,text)'),
             ('onboarding_save_references(jsonb)'),
-            ('onboarding_save_right_to_work(text,date,text,text,date,text,boolean)'),
+            ('onboarding_save_right_to_work(text,date,text,text,date,text,boolean,text)'),
             ('onboarding_state()'),
             ('onboarding_submit_documents(boolean,text,date)'),
             ('password_check_allowed()'),
@@ -238,7 +240,7 @@ select bag_eq(
             ('withdraw_booking(uuid)'),
             ('withdraw_profile_change(uuid)'),
             ('withdraw_shift_offer(uuid)') $$,
-  'the security definer functions a signed-in caller can execute are exactly these 202 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
+  'the security definer functions a signed-in caller can execute are exactly these 204 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
 );
 
 select is_empty(
