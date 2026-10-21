@@ -2149,6 +2149,8 @@ export type Database = {
       };
       clients: {
         Row: {
+          archived_at: string | null;
+          archived_by: string | null;
           contact_emails: string[];
           contact_name: string;
           created_at: string;
@@ -2165,6 +2167,8 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          archived_at?: string | null;
+          archived_by?: string | null;
           contact_emails: string[];
           contact_name: string;
           created_at?: string;
@@ -2180,6 +2184,8 @@ export type Database = {
           staff_contact_point: string;
         };
         Update: {
+          archived_at?: string | null;
+          archived_by?: string | null;
           contact_emails?: string[];
           contact_name?: string;
           created_at?: string;
@@ -2195,6 +2201,13 @@ export type Database = {
           staff_contact_point?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'clients_archived_by_fkey';
+            columns: ['archived_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'clients_created_by_fkey';
             columns: ['created_by'];
@@ -7671,6 +7684,7 @@ export type Database = {
       };
       clients_directory_v: {
         Row: {
+          archived_at: string | null;
           avg_margin_pct: number | null;
           contact_emails: string[] | null;
           contact_name: string | null;
@@ -7689,6 +7703,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          archived_at?: never;
           avg_margin_pct?: never;
           contact_emails?: string[] | null;
           contact_name?: string | null;
@@ -7706,6 +7721,7 @@ export type Database = {
           staff_contact_point?: string | null;
         };
         Update: {
+          archived_at?: never;
           avg_margin_pct?: never;
           contact_emails?: string[] | null;
           contact_name?: string | null;
@@ -11445,6 +11461,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      archive_client: { Args: { p_client: string }; Returns: undefined };
       assert_booking_transition: {
         Args: {
           p_from: Database['public']['Enums']['booking_status'];
@@ -13579,6 +13596,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      restore_client: { Args: { p_client: string }; Returns: undefined };
       retained_storage_paths: { Args: { p_staff: string }; Returns: string[] };
       retry_finance_report: { Args: { p_send: number }; Returns: Json };
       reviewer_name: { Args: { p_profile: string }; Returns: string };

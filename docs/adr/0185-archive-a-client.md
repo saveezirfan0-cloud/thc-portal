@@ -47,5 +47,9 @@ There is still no `delete_client` (asserted by `280`).
 - **Provisional:** whether an archived client's Client Portal login should stop working was not
   decided; it keeps working. Say if archiving should also lock the portal.
 - Archiving is per client, not per venue or per rate-card role.
-- `packages/db/src/types.generated.ts` is regenerated with `pnpm --filter @thc/db gen:types`
-  after the migration is applied; it was already behind the schema and is not edited by hand here.
+- `packages/db/src/types.generated.ts` carries the new columns, the two functions and the view
+  column, added by hand on 22.10.2026 because the file was already behind the schema (it has no
+  invoice columns, for one). `pnpm --filter @thc/db gen:types` brings the rest up to date.
+- Applied to the live project (`THC Portal`) on 22.10.2026 as `20261022210000_archive_clients`,
+  in four steps with the `events` trigger last; checked there with a rolled-back run of the same
+  cases `922` asserts. No client was archived by the check.
