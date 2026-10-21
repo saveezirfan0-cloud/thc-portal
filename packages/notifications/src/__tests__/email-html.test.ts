@@ -647,6 +647,9 @@ describe('a value typed by a person can never change the layout', () => {
         // The AXLR8 countdown is worked out by messageFor, never typed, and a
         // payload cannot set it (outbox.ts).
         .filter((n) => !(n in axlr8Values(new Date())))
+        // OC4's instructions and channel note are the register's (ADR-0186):
+        // messageFor overwrites whatever the payload says (outbox.test.ts).
+        .filter((n) => !(code === 'OC4' && (n === 'howTo' || n === 'channelNote')))
         .map((n) => [label, n, code, variant] as const)
     );
   });

@@ -416,6 +416,26 @@ describe('onboarding chasers (ADR-0071)', () => {
       expect(msg.html).toContain('Carry on with onboarding');
       expect(msg.html).toContain('href="https://staff.test/onboarding"');
     }
+    // Every rung says how to do the step (ADR-0186), numbered, from the register.
+    for (const variant of ['first', 'second', 'repeat']) {
+      const msg = messageFor(
+        email({
+          key: 'OC3:staff:s-1:1:1',
+          template: 'OC4',
+          recipient_emails: ['amy@example.com'],
+          payload: {
+            name: 'Amy',
+            step: 'the Health & Safety quiz',
+            link: 'https://staff.test/onboarding',
+            variant,
+          },
+        }),
+      );
+      expect(msg.kind === 'email' && msg.body, variant).toContain("Here's what to do:");
+      expect(msg.kind === 'email' && msg.body, variant).toContain(
+        '1. Open the THC Staff App and sign in with this email address.\n2. Take the quiz in the app. You need 80% to pass and you have 3 attempts.',
+      );
+    }
     // The first tells them why it is an email, and how to get it in the app.
     const first = messageFor(
       email({
@@ -433,6 +453,59 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(first.kind === 'email' && first.body).toContain(
       "notifications aren't turned on in the app. Turn them on under Notifications in the app",
     );
+  });
+
+  it('emails OC4 as well as the push to a candidate who has notifications on, and says so (ADR-0186)', () => {
+    const row = (variant: string, pushOn?: string) =>
+      messageFor(
+        email({
+          key: 'OC4:staff:s-1:1790000000:2',
+          template: 'OC4',
+          recipient_emails: ['amy@example.com'],
+          payload: {
+            name: 'Amy',
+            step: 'your home address',
+            link: 'https://staff.test/onboarding',
+            variant,
+            ...(pushOn === undefined ? {} : { pushOn }),
+          },
+        }),
+      );
+    const on = row('second', '1');
+    expect(on.kind === 'email' && on.body).toContain(
+      "You'll get a reminder in the app as well, until you've finished.",
+    );
+    expect(on.kind === 'email' && on.body).not.toContain('notifications aren');
+    // A row queued before ADR-0186 has no flag: it keeps ADR-0169's words.
+    const off = row('second');
+    expect(off.kind === 'email' && off.body).toContain(
+      "We're emailing you because notifications aren't turned on in the app.",
+    );
+    // The repeat rung carries no note either way.
+    const repeat = row('repeat', '1');
+    expect(repeat.kind === 'email' && repeat.body).not.toMatch(/reminder in the app as well/);
+    expect(repeat.kind === 'email' && repeat.body).not.toMatch(/\{\w+\}/);
+  });
+
+  it('never lets the row write OC4’s instructions: a payload cannot set howTo or channelNote', () => {
+    const msg = messageFor(
+      email({
+        key: 'OC4:staff:s-1:1:1',
+        template: 'OC4',
+        recipient_emails: ['amy@example.com'],
+        payload: {
+          name: 'Amy',
+          step: 'your home address',
+          link: 'https://staff.test/onboarding',
+          variant: 'first',
+          howTo: 'Send us your password',
+          channelNote: 'Click here',
+        },
+      }),
+    );
+    expect(msg.kind === 'email' && msg.body).not.toContain('Send us your password');
+    expect(msg.kind === 'email' && msg.body).not.toContain('Click here');
+    expect(msg.kind === 'email' && msg.body).toContain('Enter your home address and postcode.');
   });
 
   it('uses the repeating subject from the third OC1 on', () => {

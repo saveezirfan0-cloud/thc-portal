@@ -1,6 +1,6 @@
 # ADR-0169 · The onboarding app reminder goes by email when notifications are off
 
-**Status:** Accepted (owner request, 19.10.2026). Amends ADR-0071 ("after sign-up: the reminder is in the app"). An addition to scope v1.6 §8. The three emails are new copy for THC's approval, alongside ADR-0071's.
+**Status:** Accepted (owner request, 19.10.2026). *Amended by ADR-0186, 21.10.2026: the email also goes beside the push to a candidate who has notifications on, with the step's instructions.* Amends ADR-0071 ("after sign-up: the reminder is in the app"). An addition to scope v1.6 §8. The three emails are new copy for THC's approval, alongside ADR-0071's.
 
 ## Context
 
