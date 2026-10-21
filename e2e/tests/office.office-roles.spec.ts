@@ -199,7 +199,12 @@ test('a scheduler and a manager see only their sections; a role change follows o
       await pickOfficeRole(dialog.getByLabel('Office role', { exact: true }), 'Manager');
       await confirm.click();
       await expect(dialog).toBeHidden();
-      await expect(row.locator('td[data-label="Office role"]')).toHaveText('Manager');
+      // The dialog closes once the database has answered; the table then
+      // follows on router.refresh(), a full server render of /users that can
+      // take longer than the default 5 s on a loaded CI runner.
+      await expect(row.locator('td[data-label="Office role"]')).toHaveText('Manager', {
+        timeout: 20_000,
+      });
       expect(
         sql(
           `select p.office_role from auth.users u join profiles p on p.id = u.id
