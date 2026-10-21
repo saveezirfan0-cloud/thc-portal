@@ -29,9 +29,12 @@
 --   L  QA review (20261022170300): no direct write by any office session,
 --      no free text in the audit log, a reversal lifts only the hold it
 --      can prove, and /users keeps the fallback honest
+--   M  security re-review (20261022170400): block fields only through the
+--      functions, a rejection hold lifted only by a reviewer, no rejection
+--      text left behind a removal, declare refused while an answer is owed
 -- =====================================================================
 begin;
-select plan(133);
+select plan(149);
 \ir _shared/fixtures.psql
 
 \set cara      '91500000-0000-4000-8000-000000000001'
@@ -62,6 +65,8 @@ select plan(133);
 \set sky       '91500000-0000-4000-8000-00000000000c'
 \set d_pat     '91520000-0000-4000-8000-00000000000a'
 \set d_quin    '91520000-0000-4000-8000-00000000000b'
+\set tia       '91500000-0000-4000-8000-00000000000d'
+\set tia_uid   '91510000-0000-4000-8000-00000000000d'
 \set d_cara    '91520000-0000-4000-8000-000000000001'
 \set d_rob     '91520000-0000-4000-8000-000000000002'
 \set d_rhea    '91520000-0000-4000-8000-000000000003'
@@ -318,7 +323,8 @@ select (declare_conviction(:'ivy', 'Theft, 2026', null, now()) ->> 'declarationI
 select lives_ok(format('select compliance_reject_declaration(%L, %L)', :'d_ivy', 'Not enough detail'),
   'the office rejects Ivy''s declaration');
 select is((select status::text || '/' || block_kind::text || '/' || block_reason from staff where id = :'ivy'),
-  'blocked/manual/Not enough detail', '§10.7: the block hardens into a manual one with the reason');
+  'blocked/manual/Declared conviction not accepted',
+  '§10.7: the block hardens into a manual one — with fixed words, never the reviewer''s note');
 
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'ivy_uid', 'role', 'authenticated')::text, true);
@@ -589,18 +595,18 @@ insert into staff (id, employee_id, first_name, last_name, email, phone, dob, st
 insert into criminal_declarations (id, staff_id, source, answer, details) values
   (:'d_quin', :'quin', 'onboarding', true, 'Old matter');
 select compliance_reject_declaration(:'d_quin', 'Need the sentence');
-select block_worker_manually(:'quin', 'Need the sentence');
+select block_worker_manually(:'quin', 'Declared conviction not accepted');
 select r ->> 'liftedHold' as quin_lift, coalesce(r ->> 'stillBlockedFor', '') as quin_for
   from (select compliance_reverse_declaration_rejection(:'d_quin', 'Cleared') r) x \gset
 select is((select row(:'quin_lift', s.status::text, s.block_kind::text, s.block_reason)::text
              from staff s where s.id = :'quin'),
-  row('false', 'blocked', 'manual', 'Need the sentence')::text,
+  row('false', 'blocked', 'manual', 'Declared conviction not accepted')::text,
   'an onboarding rejection on staff never lifts a manager''s block, even one with the same words');
 
 select (declare_conviction(:'ray', 'Matter, 2026', null, now()) ->> 'declarationId') as d_ray \gset
 select compliance_reject_declaration(:'d_ray', 'Not enough detail');
 select unblock_worker(:'ray');
-select block_worker_manually(:'ray', 'Not enough detail');
+select block_worker_manually(:'ray', 'Declared conviction not accepted');
 select r ->> 'liftedHold' as ray_lift, coalesce(r ->> 'stillBlockedFor', '') as ray_for
   from (select compliance_reverse_declaration_rejection(:'d_ray', 'Cleared') r) x \gset
 select is((select row(:'ray_lift', s.status::text, s.block_kind::text)::text
@@ -635,6 +641,79 @@ select ok(exists (select 1 from audit_log where action = 'account.criminal_recor
                    and entity_id = :'manager' and data ->> 'because' = 'became_viewer'),
   'and the log says so');
 select ok(can_review_criminal_records(), 'with nobody named any more, owners decide again');
+
+-- =====================================================================
+-- M · security re-review
+-- =====================================================================
+-- H1 · the block columns, only through the functions.
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'scheduler', 'role', 'authenticated')::text, true);
+select throws_ok(format($$ update staff set block_kind = 'auto_document', block_reason = null where id = %L $$, :'ray'),
+  '42501', 'staff_block_rpc_only', 'a scheduler cannot PATCH a rejection hold into a document block');
+select set_config('request.jwt.claims', json_build_object('sub', :'owner2', 'role', 'authenticated')::text, true);
+select throws_ok(format($$ update staff set block_reason = 'Something else' where id = %L $$, :'ray'),
+  '42501', 'staff_block_rpc_only', 'nor can an owner rewrite a block''s reason directly');
+reset role;
+select is((select block_kind::text from staff where id = :'ray'), 'manual', 'Ray''s block is untouched');
+
+-- H1 · Unblock leaves a rejection's hold to a criminal-records reviewer.
+insert into auth.users (id, email) values (:'tia_uid', 'tia@decl915.test');
+insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status, rtw_branch) values
+  (:'tia', :'tia_uid', 91513, 'Tia', 'Staff', 'tia@decl915.test', '+447700915013', date '1990-01-01', 'compliant', 'uk_irish');
+select (declare_conviction(:'tia', 'Theft of a laptop, 2026', null, now()) ->> 'declarationId') as d_tia \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
+select compliance_reject_declaration(:'d_tia', 'Theft of a laptop — not disclosed at interview');
+select is((select block_reason from staff where id = :'tia'), 'Declared conviction not accepted',
+  'H2: the hold carries the fixed words, not the reviewer''s note');
+select is(declaration_rejection_hold(:'tia'), :'d_tia'::uuid, 'and it is recognised as the rejection''s hold');
+select set_config('request.jwt.claims', '', true);
+select throws_ok(format('select unblock_worker(%L, current_date, %L)', :'tia', :'scheduler'),
+  '42501', 'criminal_records_reviewer_only',
+  'a scheduler who may not decide criminal declarations cannot Unblock a rejection''s hold');
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
+select admin_set_criminal_records_reviewer(:'owner2', true);
+select set_config('request.jwt.claims', '', true);
+select throws_ok(format('select unblock_worker(%L, current_date, %L)', :'tia', :'admin_uid'),
+  '42501', 'criminal_records_reviewer_only', 'nor an owner who is not named, once someone is');
+select is(unblock_worker(:'tia', current_date, :'owner2') ->> 'unblocked', 'true',
+  'the named reviewer may');
+select is((select status::text from staff where id = :'tia'), 'compliant', 'Tia is compliant');
+select is((select data ->> 'reason' from audit_log where action = 'unblock' and entity_id = :'tia'),
+  'Declared conviction not accepted', 'the unblock audit row names the fixed words only');
+select ok(unblock_worker(:'ray', current_date, :'scheduler') is not null,
+  'a manager''s own block (Ray''s, put back after an unblock) is anyone''s to lift');
+
+-- H2 · nothing of the rejection's text survives a removal.
+select block_worker_manually(:'tia', 'Timesheet dispute — call Richard', now(), :'owner2');
+-- An Unblock row from before 20261022170400, when a rejection's note
+-- became the block's reason and so the unblock row's.
+insert into audit_log (at, actor, action, entity, entity_id, data)
+values (now() - interval '1 day', :'owner2', 'unblock', 'staff', :'tia',
+        jsonb_build_object('blockKind', 'manual', 'reason', 'Theft of a laptop — not disclosed'));
+select set_config('request.jwt.claims', '', true);
+select remove_worker(:'tia');
+select is_empty(format($$ select 1 from audit_log
+                           where (entity_id = %L or data ->> 'staffId' = %L)
+                             and data::text like '%%laptop%%' $$, :'tia', :'tia'),
+  'after a GDPR removal no audit row about Tia carries the rejection''s words');
+select is((select data ->> 'reason' from audit_log where action = 'block_manual' and entity_id = :'tia'),
+  'Timesheet dispute — call Richard', 'while a manager''s own block reason stays the office''s record (ADR-0039)');
+select is_empty(format($$ select 1 from criminal_declarations
+                           where staff_id = %L and (review_note is not null or details is not null) $$, :'tia'),
+  'and the declaration''s own texts are gone');
+
+-- Low · while the office waits for an answer, the answer is the update.
+insert into auth.users (id, email) values ('91510000-0000-4000-8000-000000000009', 'pat@decl915.test');
+update staff set user_id = '91510000-0000-4000-8000-000000000009' where id = :'pat';
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', '91510000-0000-4000-8000-000000000009', 'role', 'authenticated')::text, true);
+select is(declare_my_conviction('Another matter', null) ->> 'reason', 'update_instead',
+  'a worker the office asked for more details answers with Update your declaration, not a second declaration');
+select is(has_table_privilege('authenticated', 'public.criminal_declarations', 'select')
+          and not has_table_privilege('authenticated', 'public.criminal_declarations', 'update')
+          and not has_table_privilege('anon', 'public.criminal_declarations', 'select'),
+  true, 'criminal_declarations: authenticated may only SELECT (admin_read decides the rows); anon nothing');
+reset role;
 
 select * from finish();
 rollback;

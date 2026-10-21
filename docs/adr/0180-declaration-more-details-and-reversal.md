@@ -196,3 +196,46 @@ an unsent DR1 goes with the person through `remove_worker()`'s outbox scrub.
    office email, without the text, listing what was released ("(none)" for a worker already
    paused). A candidate's update goes to Needs review only, as their first declaration did;
    whether THC wants an email for that too is an open question.
+
+## Update — security re-review of 7923e994 (`20261022170400_declaration_holds_and_block_fields.sql`)
+
+1. **Block fields only through the functions (H1).** `staff.block_kind` and `block_reason` were
+   writable by any office session (`admin_all` on `staff` + the table UPDATE grant; the 787 guard
+   covers `status` only), so a PATCH to `auto_document` turned a rejection's hold into one the
+   next document verification lifts, unaudited. An invoker trigger now refuses any change to
+   either column from `anon` / `authenticated` (42501 `staff_block_rpc_only`); it is named
+   `staff_status_rpc_only_block_fields` so it fires after `staff_status_rpc_only` and 787's
+   expectations hold. Nothing in the apps writes the columns; the seed and the e2e helpers run as
+   the owner.
+2. **A rejection's hold is a reviewer's to lift (H1).** `unblock_worker()` (the profile's
+   Unblock, service key with the manager as `p_actor`) refuses `criminal_records_reviewer_only`
+   — "Only office users allowed to review criminal records can lift this — use Reverse
+   rejection." — when the block is a declaration's rejection hold
+   (`declaration_rejection_hold()`, the same rule Reverse rejection uses) and the actor may not
+   decide criminal declarations (`can_review_criminal_records_as(p_actor)`, the same rule as
+   `can_review_criminal_records()` for a named login). `210` now passes the fixture owner as the
+   actor, deliberately: "a manager CAN lift it" now means one allowed to review criminal
+   records.
+3. **No rejection text on the block (H2).** An in-employment Reject no longer copies its review
+   note into `staff.block_reason`; the hold carries the fixed words "Declared conviction not
+   accepted" (`declaration_hold_reason()`), and the reversal's provenance check compares against
+   them (or, for a hold made earlier, the note). The note stays on the declaration, which a GDPR
+   removal clears. The removal trigger also strips `reason` from the worker's `unblock` audit
+   rows, which copy a block's reason. A `block_manual` row keeps the manager's own reason — the
+   office's record of why they acted (ADR-0039, pinned by `670`). `210` and `444` assert the
+   fixed words, deliberately.
+4. **Low.** `criminal_declarations`: ALL revoked from `anon` and `authenticated`, SELECT granted
+   back to `authenticated` (`admin_read` decides the rows). `declare_my_conviction()` refuses
+   `update_instead` while the latest declaration is waiting on the worker's answer — "Answer it
+   with Update your declaration on your Documents" — rather than adding an unrelated second row.
+5. **DR1 is one line from generic.** The body stays "We need a bit more detail about your
+   declaration — {message}" pending THC's answer on lock-screen wording. To send no office text
+   to the lock screen, change DR1's `body` in `packages/notifications/src/templates.ts` to e.g.
+   `'The office has a question about your declaration. Tap to answer it.'` and the `DR1` test's
+   expected placeholders to `[]`; the message is still shown in the app, where the worker
+   answers (`my_declaration_update()`), and the outbox row keeps carrying it for the screen.
+
+Not changed here, outside this ADR: `compliance_docs` keeps `admin_all` and the table DML grant,
+so an office session can still PATCH a document's `review_status` to `verified` directly
+(`010_rls_admin` "admin writes compliance docs" pins it), and `compliance_docs_verified()` then
+runs the unblock — the same shape as B1, for documents.

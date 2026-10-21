@@ -82,6 +82,19 @@ describe('the privileged /staff/:id actions name the manager (§1.7, §9.6)', ()
     expect(rpc).toHaveBeenCalledWith('unblock_worker', { p_staff: 's1', p_actor: 'u-admin' });
   });
 
+  it('Unblock on a rejected declaration’s hold says who may lift it (ADR-0180)', async () => {
+    rpc.mockImplementation(async (...args: unknown[]) =>
+      args[0] === 'unblock_worker'
+        ? { error: { message: 'criminal_records_reviewer_only' } }
+        : { error: null },
+    );
+    expect(await unblockWorker('s1')).toEqual({
+      ok: false,
+      message:
+        'Only office users allowed to review criminal records can lift this — use Reverse rejection.',
+    });
+  });
+
   it('Reset to candidate passes the session user as p_actor', async () => {
     expect(await resetToCandidate('s1', 'Returning next season')).toEqual({ ok: true });
     expect(rpc).toHaveBeenCalledWith('reset_to_candidate', {

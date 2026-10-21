@@ -155,6 +155,9 @@ export const DECLARE_CONVICTION_REASONS: Record<string, string> = {
   details_too_long: 'Keep the details under 4,000 characters — the office will contact you.',
   conviction_date_in_future: 'The date of conviction can’t be in the future.',
   unknown_staff: 'We couldn’t find your record. Please contact the office.',
+  // ADR-0180: the office asked about the latest one; the answer is the update.
+  update_instead:
+    'The office asked for more detail about your declaration. Answer it with Update your declaration on your Documents.',
 };
 
 /** §10.7: the details field is bounded in the database at the same number. */

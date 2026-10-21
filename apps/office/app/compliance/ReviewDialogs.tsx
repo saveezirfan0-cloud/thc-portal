@@ -319,9 +319,9 @@ function ConfirmVerifyModal({
             aiCount={(row.term_dates ?? []).length}
           />
           <span className="muted xs">
-            Check them against the letter and add any vacation the AI did not read. The weekly
-            limit is 48 h inside these periods and the term-time limit outside them; the letter
-            expires on the last date of the last period.
+            Check them against the letter and add any vacation the AI did not read. The weekly limit
+            is 48 h inside these periods and the term-time limit outside them; the letter expires on
+            the last date of the last period.
           </span>
         </div>
       ) : null}
@@ -407,8 +407,9 @@ function RejectModal({
         hint={
           inEmployment ? (
             <>
-              Kept on the profile: the block converts to a manual block with this reason, and only a
-              manager can lift it. The worker is not told through the app — the office calls them.
+              Kept on the declaration, for the office only: the block converts to a manual block
+              (“Declared conviction not accepted”), which only Reverse rejection lifts. The worker
+              is not told through the app — the office calls them.
             </>
           ) : (
             <>
