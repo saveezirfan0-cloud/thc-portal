@@ -33,7 +33,7 @@ import type { DeclarationRecord, DocumentRecord, DocumentsData } from './types';
  *   not_needed    a graduate's term letter (§4.5)
  *   optional      the completion letter slot, Student visa only
  *
- * The Home Office check result (ADR-0177) has every state but never an
+ * The Home Office check result (ADR-0182) has every state but never an
  * action: the office attaches and renews it, so its rows say so instead of
  * asking the worker to upload anything.
  *
@@ -208,7 +208,7 @@ function verifiedMeta(record: DocumentRecord, state: DocumentState, today: strin
   }
   if (!expires) return 'Verified';
   if (record.docType === 'home_office_check_result') {
-    // ADR-0177: only an employer can ask the Home Office, so the office renews it.
+    // ADR-0182: only an employer can ask the Home Office, so the office renews it.
     if (state === 'expired') {
       return `Expired ${formatDay(expires)} — the office is renewing your Home Office check`;
     }
@@ -247,7 +247,7 @@ function rowFor(
   const title = titleFor(docType, current);
   const today = data.today;
   const isShare = docType === 'share_code_report';
-  // ADR-0177: the office attaches it; the worker is never offered an upload.
+  // ADR-0182: the office attaches it; the worker is never offered an upload.
   const officeOnly = isOfficeOnlyDocument(docType);
   const upload = canUpload && !officeOnly;
 
@@ -368,7 +368,7 @@ function missingRows(data: DocumentsData, present: ReadonlySet<string>, canUploa
       token === 'share_code' ? 'share_code_report' : isDocType(token) ? token : null;
     if (!docType || present.has(docType)) continue;
     if (isOfficeOnlyDocument(docType)) {
-      // ADR-0177: nothing for the worker to supply — the office adds it.
+      // ADR-0182: nothing for the worker to supply — the office adds it.
       rows.push({
         key: `missing:${docType}`,
         kind: docType,
@@ -660,7 +660,7 @@ export function buildDocumentsView(
   const declaration = declarationRow(data.declarations, format);
   const rows = declaration ? [...docRows, declaration] : docRows;
 
-  // A row only the office can act on (ADR-0177) is not the worker's to fix.
+  // A row only the office can act on (ADR-0182) is not the worker's to fix.
   const needs = docRows.filter(
     (r) =>
       r.kind !== 'criminal_declaration' &&

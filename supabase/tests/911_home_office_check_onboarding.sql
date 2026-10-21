@@ -1,6 +1,6 @@
 -- =====================================================================
--- 911 · The Home Office check branch in the wizard — ADR-0177,
---       20261022140000 + 20261022140100 (THC, 21.10.2026, an addition to
+-- 911 · The Home Office check branch in the wizard — ADR-0182,
+--       20261022190000 + 20261022190100 (THC, 21.10.2026, an addition to
 --       scope §2.5)
 --
 --   1. the reference: what is accepted (packages/domain homeOfficeRef.ts

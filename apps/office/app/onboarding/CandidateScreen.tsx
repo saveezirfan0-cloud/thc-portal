@@ -267,7 +267,7 @@ export function CandidateScreen({
     onVerify: (d: CandidateDocument, input: VerifyChoice = {}) =>
       run(() =>
         d.doc_type === 'home_office_check_result'
-          ? // ADR-0177: the date approved, then the right to work six months on.
+          ? // ADR-0182: the date approved, then the right to work six months on.
             verifyHomeOfficeCheck(d.id, input.approvedOn ?? '', input.expiry ?? '')
           : verifyDocument(row.id, d.id, {
               periods: input.periods ?? null,
@@ -1273,7 +1273,7 @@ function RoleGroups({
 interface VerifyChoice {
   periods?: Period[] | null;
   expiry?: string | null;
-  /** ADR-0177: the date approved on a Home Office check result. */
+  /** ADR-0182: the date approved on a Home Office check result. */
   approvedOn?: string | null;
 }
 
@@ -1422,7 +1422,7 @@ function DocumentLine({
 }
 
 /**
- * The Home Office check result (ADR-0177): the office runs the Employer
+ * The Home Office check result (ADR-0182): the office runs the Employer
  * Checking Service check with the candidate's Home Office reference and
  * attaches the PDF it emails back. Verify takes the date approved printed on
  * it; the right to work runs six months from that date (THC, 22.10.2026),
@@ -2346,7 +2346,7 @@ function DocumentsPhase({
             {row.rtw_branch && RTW_BRANCH_NO[row.rtw_branch] ? (
               <>
                 <Pill tone="cyan">
-                  {/* ADR-0177: THC's sixth branch is not one of §2.5's five. */}
+                  {/* ADR-0182: THC's sixth branch is not one of §2.5's five. */}
                   {RTW_BRANCH_NO[row.rtw_branch]! <= 5
                     ? `Branch ${RTW_BRANCH_NO[row.rtw_branch]} of 5`
                     : 'Home Office check'}

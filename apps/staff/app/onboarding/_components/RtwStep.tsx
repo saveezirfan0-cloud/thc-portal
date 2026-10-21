@@ -40,7 +40,7 @@ import { WizardFoot, WizardTop } from './Wizard';
  * §4.4). No visa or status expiry is typed in any branch: the gov.uk
  * share-code check returns the right-to-work-until date (ADR-0078).
  *
- * The Home Office check branch (ADR-0177, THC 21.10.2026) has no share code:
+ * The Home Office check branch (ADR-0182, THC 21.10.2026) has no share code:
  * it asks for the Home Office reference the office puts on its Employer
  * Checking Service form, and nothing is uploaded at step 4.
  */

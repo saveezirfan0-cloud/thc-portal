@@ -188,7 +188,7 @@ const DOC_INSTRUCTIONS: Record<DocType, string> = {
     'This should be a UK visa, biometric residence permit or eVisa record. expiryDate: the date the permission to stay or work ends (for example "valid until", "expiry date", "leave to remain until").',
   status_document:
     'This should be a UK immigration status document (for example a dependant visa, biometric residence permit or EU Settlement Scheme letter). expiryDate: the date the status or permission ends; null if the document grants indefinite leave or settled status with no end date.',
-  // ADR-0177: never sent here — the office attaches it and types the date on
+  // ADR-0182: never sent here — the office attaches it and types the date on
   // Verify. Kept so the map covers every type.
   home_office_check_result:
     'This should be a Home Office Employer Checking Service result. It is not read automatically: return expiryDate null.',
@@ -279,7 +279,7 @@ const EXPECTS: Record<DocType, 'expiry' | 'holidays' | 'completion' | 'nothing'>
   ni_evidence: 'nothing',
   university_term_dates_letter: 'holidays',
   university_completion_letter: 'completion',
-  // ADR-0177: attached by the office and dated by hand on Verify — never read.
+  // ADR-0182: attached by the office and dated by hand on Verify — never read.
   home_office_check_result: 'nothing',
 };
 

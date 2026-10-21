@@ -21,7 +21,7 @@ import type { StaffStatus } from './state';
 
 /**
  * Every value of the `doc_type` enum (0001_init, then `add value` in
- * 20261022140000 for the Home Office check result, ADR-0177).
+ * 20261022190000 for the Home Office check result, ADR-0182).
  */
 export const DOC_TYPES = [
   'passport',
@@ -102,7 +102,7 @@ export function documentFolder(docType: DocType): DocumentFolder {
  * makes the worker state the form and the course completion date (§2.1).
  * Nor is the Home Office check result: the office attaches it
  * (`office_attach_home_office_check()`), and the database refuses it from
- * the worker with `office_only` (ADR-0177).
+ * the worker with `office_only` (ADR-0182).
  */
 export function usesGenericUpload(docType: DocType): boolean {
   return docType !== 'university_completion_letter' && !isOfficeOnlyDocument(docType);
@@ -111,7 +111,7 @@ export function usesGenericUpload(docType: DocType): boolean {
 /**
  * A document the worker cannot obtain or upload — the Home Office's
  * Employer Checking Service result, which only an employer can request
- * (ADR-0177). The worker's screens never offer an upload for it and never
+ * (ADR-0182). The worker's screens never offer an upload for it and never
  * tell them to renew it; the office is the one reminded (CL4).
  */
 export function isOfficeOnlyDocument(docType: DocType): boolean {

@@ -82,7 +82,7 @@ export async function saveRightToWork(input: {
   branch: string;
   dob: string;
   shareCode: string;
-  /** ADR-0177: sent on the Home Office check branch only. */
+  /** ADR-0182: sent on the Home Office check branch only. */
   homeOfficeRef?: string;
   visaType: string;
   ukChoice: string | null;

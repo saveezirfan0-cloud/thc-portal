@@ -44,18 +44,18 @@ describe('the doc_type enum', () => {
   });
 
   it('labels every type the way doc_label() does, so the push and the row agree', () => {
-    // doc_label() as it was first written, and as ADR-0177 restated it with
+    // doc_label() as it was first written, and as ADR-0182 restated it with
     // the Home Office check result.
     const sql =
       readFileSync(resolve(migrations, '20260921170411_compliance_daily.sql'), 'utf8') +
-      readFileSync(resolve(migrations, '20261022140100_home_office_check_branch.sql'), 'utf8');
+      readFileSync(resolve(migrations, '20261022190100_home_office_check_branch.sql'), 'utf8');
     for (const type of DOC_TYPES) {
       expect(sql).toContain(`when '${type}'`);
       expect(sql).toContain(`then '${DOC_LABELS[type]}'`);
     }
   });
 
-  it('the Home Office check result is the office’s to attach, never an upload of the worker’s (ADR-0177)', () => {
+  it('the Home Office check result is the office’s to attach, never an upload of the worker’s (ADR-0182)', () => {
     expect(isOfficeOnlyDocument('home_office_check_result')).toBe(true);
     expect(usesGenericUpload('home_office_check_result')).toBe(false);
     for (const type of DOC_TYPES.filter((t) => t !== 'home_office_check_result')) {

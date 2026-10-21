@@ -18,7 +18,7 @@ import { reviewErrorMessage, uploadRefusal } from '../messages';
 import type { QueueRow } from '../types';
 
 /**
- * The Home Office check result on the office's side (ADR-0177): attached by
+ * The Home Office check result on the office's side (ADR-0182): attached by
  * the office, verified with the date approved printed on it and a
  * right-to-work date six months on (THC, 22.10.2026), never read by the AI.
  */

@@ -82,7 +82,7 @@ const MESSAGES: [RegExp, string][] = [
   [/^ni_number_not_entered/, 'No NI number has been entered yet, so there is nothing to compare.'],
   [/^not_a_share_code_document/, 'Only a share code document carries a gov.uk report.'],
   [/^unknown_staff/, 'This person no longer exists — refresh the page.'],
-  // The Home Office check result (ADR-0177).
+  // The Home Office check result (ADR-0182).
   [/^home_office_result_missing/, 'Attach the Home Office check result before verifying it.'],
   [/^approved_on_required/, 'Enter the date approved, as it is printed on the Home Office result.'],
   [/^approved_on_invalid/, 'The date approved cannot be in the future.'],

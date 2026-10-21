@@ -77,7 +77,7 @@ export function ReviewHub({
   /** The latest automated gov.uk check on `shareDoc` (`my_rtw_checks()`). */
   shareCheck?: { status: RtwCheckStatus } | null;
   /**
-   * ADR-0177: the Home Office check result the office attaches and verifies.
+   * ADR-0182: the Home Office check result the office attaches and verifies.
    * The worker can neither upload nor re-enter it, so the row has no button.
    */
   homeOfficeDoc?: UploadedDoc | null;

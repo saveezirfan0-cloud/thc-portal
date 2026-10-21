@@ -164,7 +164,7 @@ describe('1/11 Right to work', () => {
     expect(footer(html).disabled).toBe(true);
   });
 
-  it('Home Office check — a reference instead of a share code, nothing to upload (ADR-0177)', () => {
+  it('Home Office check — a reference instead of a share code, nothing to upload (ADR-0182)', () => {
     const html = renderToStaticMarkup(
       <RtwStep
         initial={{ ...blank, branch: 'home_office_check', dob: '1996-03-12' }}

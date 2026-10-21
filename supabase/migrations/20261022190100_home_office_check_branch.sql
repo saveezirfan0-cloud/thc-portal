@@ -1,5 +1,5 @@
 -- =====================================================================
--- The Home Office check branch — ADR-0177
+-- The Home Office check branch — ADR-0182
 --
 -- A deliberate addition to scope v1.6 §2.5 ("5 branches"), asked for by
 -- THC on 21.10.2026 (Richard): "On occasions we need to run an Employer
@@ -88,7 +88,7 @@ declare
   v_n int := (length(p_def) - length(replace(p_def, p_from, ''))) / greatest(length(p_from), 1);
 begin
   if v_n <> p_expect then
-    raise exception '20261022140100: % matched % time(s), expected %', p_label, v_n, p_expect;
+    raise exception '20261022190100: % matched % time(s), expected %', p_label, v_n, p_expect;
   end if;
   return replace(p_def, p_from, p_to);
 end $f$;
@@ -110,7 +110,7 @@ as $$
 $$;
 
 comment on function public.normalise_home_office_ref(text) is
-  'ADR-0177: a Home Office reference as stored — trimmed, inner spaces collapsed to one, upper case; null when blank.';
+  'ADR-0182: a Home Office reference as stored — trimmed, inner spaces collapsed to one, upper case; null when blank.';
 
 create or replace function public.is_valid_home_office_ref(p_ref text)
 returns boolean
@@ -123,7 +123,7 @@ as $$
 $$;
 
 comment on function public.is_valid_home_office_ref(text) is
-  'ADR-0177: an Application Registration Card number or Home Office application reference, after normalise_home_office_ref(): 6–30 characters, letters, digits, spaces, "/" or "-", starting and ending with a letter or digit, with at least one digit. A shape check only — the office checks it with the Home Office.';
+  'ADR-0182: an Application Registration Card number or Home Office application reference, after normalise_home_office_ref(): 6–30 characters, letters, digits, spaces, "/" or "-", starting and ending with a letter or digit, with at least one digit. A shape check only — the office checks it with the Home Office.';
 
 revoke all on function public.normalise_home_office_ref(text) from public, anon;
 revoke all on function public.is_valid_home_office_ref(text) from public, anon;
@@ -135,7 +135,7 @@ alter table public.staff add constraint staff_home_office_ref_shape
   check (home_office_ref is null or is_valid_home_office_ref(home_office_ref));
 
 comment on column public.staff.home_office_ref is
-  'ADR-0177: the Home Office reference (ARC number or application reference) a worker on the home_office_check branch typed at step 1, for the office''s Employer Checking Service form. Admin-only like share_code: no API role holds the column (ADR-0163) — the office reads it through staff_identity_v, the worker through onboarding_state(). Cleared when the branch changes, on a reset to candidate and on a GDPR removal (staff_home_office_ref_follows_branch).';
+  'ADR-0182: the Home Office reference (ARC number or application reference) a worker on the home_office_check branch typed at step 1, for the office''s Employer Checking Service form. Admin-only like share_code: no API role holds the column (ADR-0163) — the office reads it through staff_identity_v, the worker through onboarding_state(). Cleared when the branch changes, on a reset to candidate and on a GDPR removal (staff_home_office_ref_follows_branch).';
 
 -- The reference belongs to the branch: a worker moved off it (step 1, the
 -- office's Change dialog, reset_to_candidate) or removed (§1.7) keeps none.
@@ -174,7 +174,7 @@ where (select current_app_role()) = 'admin'
    or current_user not in ('anon', 'authenticated');
 
 comment on view public.staff_identity_v is
-  'ADR-0163: the only route to staff.dob, home_address, share_code, ni_number and (ADR-0177) home_office_ref for a PostgREST role. Owner rights + the admin gate in the body (ADR-0004); a worker reads their own values through staff_me() / onboarding_state(), which show what the wireframes show.';
+  'ADR-0163: the only route to staff.dob, home_address, share_code, ni_number and (ADR-0182) home_office_ref for a PostgREST role. Owner rights + the admin gate in the body (ADR-0004); a worker reads their own values through staff_me() / onboarding_state(), which show what the wireframes show.';
 
 revoke all on table public.staff_identity_v from public, anon, authenticated;
 grant select on table public.staff_identity_v to authenticated;
@@ -222,7 +222,7 @@ as $$
 $$;
 
 comment on function public.rtw_doc_until(doc_type, date, date) is
-  'The right-to-work date a document confirms: a share code report''s or (ADR-0177) a Home Office check result''s right_to_work_until, a visa or status document''s expiry; null for anything else.';
+  'The right-to-work date a document confirms: a share code report''s or (ADR-0182) a Home Office check result''s right_to_work_until, a visa or status document''s expiry; null for anything else.';
 
 create or replace function public.rtw_evidence_until(p_staff uuid)
 returns date
@@ -243,7 +243,7 @@ as $$
 $$;
 
 comment on function public.rtw_evidence_until(uuid) is
-  'ADR-0018: the earliest right-to-work date across the worker''s current verified evidence — the latest verified visa document, status document, share code report and (ADR-0177) Home Office check result.';
+  'ADR-0018: the earliest right-to-work date across the worker''s current verified evidence — the latest verified visa document, status document, share code report and (ADR-0182) Home Office check result.';
 
 do $$
 declare
@@ -297,7 +297,7 @@ alter table public.compliance_docs add constraint compliance_docs_home_office_ap
   check (home_office_approved_on is null or doc_type = 'home_office_check_result');
 
 comment on column public.compliance_docs.home_office_approved_on is
-  'ADR-0177: the date the Home Office approved an Employer Checking Service result, as printed on it, confirmed by the reviewer on Verify (compliance_verify_home_office_check). The result is valid for six months from it; the right-to-work-until defaults to it + 6 months. Home Office check results only.';
+  'ADR-0182: the date the Home Office approved an Employer Checking Service result, as printed on it, confirmed by the reviewer on Verify (compliance_verify_home_office_check). The result is valid for six months from it; the right-to-work-until defaults to it + 6 months. Home Office check results only.';
 
 -- A result is verified on the file the office attached and the date it was
 -- approved, never on the empty row step 4 files — whatever path flips it.
@@ -310,12 +310,12 @@ begin
   if new.file_path is null then
     raise exception 'home_office_result_missing'
       using errcode = 'P0001',
-            hint = 'Attach the Home Office check result (the PDF the Employer Checking Service emailed) before verifying it (ADR-0177).';
+            hint = 'Attach the Home Office check result (the PDF the Employer Checking Service emailed) before verifying it (ADR-0182).';
   end if;
   if new.home_office_approved_on is null then
     raise exception 'approved_on_required'
       using errcode = 'P0001',
-            hint = 'Verify a Home Office check result with compliance_verify_home_office_check(), giving the date approved printed on it (ADR-0177).';
+            hint = 'Verify a Home Office check result with compliance_verify_home_office_check(), giving the date approved printed on it (ADR-0182).';
   end if;
   return new;
 end $$;
@@ -366,7 +366,7 @@ begin
   v_def := pg_temp.hoc_sub(v_def,
     E'''link'', n8_link(s.status)))\n  on conflict (key) do nothing;',
     E'''link'', n8_link(s.status))\n'
-    || E'   -- ADR-0177: the worker cannot obtain a Home Office check result, so\n'
+    || E'   -- ADR-0182: the worker cannot obtain a Home Office check result, so\n'
     || E'   -- "Re-upload" would be untrue; the office contacts them.\n'
     || E'   where d.doc_type <> ''home_office_check_result''\n'
     || E'  on conflict (key) do nothing;',
@@ -406,7 +406,7 @@ begin
   v_def := pg_temp.hoc_sub(v_def,
     E'  v_type := p_doc_type::doc_type;\n',
     E'  v_type := p_doc_type::doc_type;\n\n'
-    || E'  -- ADR-0177: the office attaches the Home Office check result\n'
+    || E'  -- ADR-0182: the office attaches the Home Office check result\n'
     || E'  -- (office_attach_home_office_check); the worker cannot obtain it.\n'
     || E'  if v_type = ''home_office_check_result'' then\n'
     || E'    return jsonb_build_object(''ok'', false, ''reason'', ''office_only'');\n'
@@ -452,7 +452,7 @@ begin
   v_def := pg_temp.hoc_sub(v_def,
     E'      when ''work_visa'', ''dependant_other'' then\n',
     E'      when ''home_office_check'' then\n'
-    || E'        -- ADR-0177: no share code and nothing the worker uploads; the\n'
+    || E'        -- ADR-0182: no share code and nothing the worker uploads; the\n'
     || E'        -- office attaches the Home Office''s result to the row step 4 files.\n'
     || E'        if not (''home_office_check_result'' = any(have)) then\n'
     || E'          missing := missing || ''home_office_check_result''::text;\n'
@@ -471,7 +471,7 @@ begin
     E'  if s.rtw_branch <> ''uk_irish'' then\n'
     || E'    update compliance_docs set review_status = ''superseded''\n'
     || E'     where staff_id = s.id and doc_type = ''share_code_report'' and review_status = ''pending'';\n',
-    E'  -- ADR-0177: no share code on the Home Office check branch. The row is\n'
+    E'  -- ADR-0182: no share code on the Home Office check branch. The row is\n'
     || E'  -- the office''s place in the queue until it attaches the result the\n'
     || E'  -- Employer Checking Service emails back; it carries the reference.\n'
     || E'  if s.rtw_branch = ''home_office_check'' then\n'
@@ -517,7 +517,7 @@ begin
     E'      raise exception ''doc_choice_required'' using errcode = ''P0001'';\n    end if;\n  else\n',
     E'      raise exception ''doc_choice_required'' using errcode = ''P0001'';\n    end if;\n'
     || E'  elsif v_branch = ''home_office_check'' then\n'
-    || E'    -- ADR-0177: no share code. The Home Office reference the office puts\n'
+    || E'    -- ADR-0182: no share code. The Home Office reference the office puts\n'
     || E'    -- on its Employer Checking Service form (ARC or application number).\n'
     || E'    v_code := null;\n'
     || E'    v_choice := null;\n'
@@ -543,7 +543,7 @@ begin
   execute v_def;
   execute format('comment on function public.onboarding_save_right_to_work(text,date,text,text,date,text,boolean,text) is %L',
     coalesce(v_comment || ' ', '')
-    || 'ADR-0177 (20261022140100): on the home_office_check branch no share code is taken; p_home_office_ref (ARC or application reference, is_valid_home_office_ref) is required and stored on staff.home_office_ref.');
+    || 'ADR-0182 (20261022190100): on the home_office_check branch no share code is taken; p_home_office_ref (ARC or application reference, is_valid_home_office_ref) is required and stored on staff.home_office_ref.');
 end $$;
 
 revoke all on function public.onboarding_save_right_to_work(text, date, text, text, date, text, boolean, text)
@@ -565,7 +565,7 @@ begin
     1, 'record_right_to_work_change declare');
   v_def := pg_temp.hoc_sub(v_def,
     E'  insert into audit_log (at, actor, action, entity, entity_id, data)\n  values (now(), v_reviewer, ''rtw.changed''',
-    E'  -- ADR-0177: onto the Home Office check branch, the share code report\n'
+    E'  -- ADR-0182: onto the Home Office check branch, the share code report\n'
     || E'  -- and any visa / status document stop being the evidence (an expired\n'
     || E'  -- one would otherwise keep blocking); off it, the Home Office results\n'
     || E'  -- do. Superseded, kept read-only (§2.12), never deleted.\n'
@@ -684,7 +684,7 @@ begin
 end $$;
 
 comment on function public.office_attach_home_office_check(uuid, text) is
-  'ADR-0177: the office attaches the Home Office Employer Checking Service result (PDF/JPG/PNG ≤ 10 MB, <staff>/home-office-check-result/…) for a worker on the home_office_check branch — onto the pending row step 4 filed while it has no file, otherwise as a fresh pending row (a renewal, or a replacement that supersedes a result not yet reviewed). Verify then needs the right-to-work-until date. Reviewer only (assert_reviewer); audited as rtw.home_office_check_attached.';
+  'ADR-0182: the office attaches the Home Office Employer Checking Service result (PDF/JPG/PNG ≤ 10 MB, <staff>/home-office-check-result/…) for a worker on the home_office_check branch — onto the pending row step 4 filed while it has no file, otherwise as a fresh pending row (a renewal, or a replacement that supersedes a result not yet reviewed). Verify then needs the right-to-work-until date. Reviewer only (assert_reviewer); audited as rtw.home_office_check_attached.';
 
 revoke all on function public.office_attach_home_office_check(uuid, text) from public, anon;
 grant execute on function public.office_attach_home_office_check(uuid, text) to authenticated, service_role;
@@ -702,7 +702,7 @@ as $$
 $$;
 
 comment on function public.home_office_check_until(date) is
-  'ADR-0177: the right-to-work-until a Home Office check result gives by default — six months from the date approved, the same day of the month, clamped to the end of a shorter month (31.08 → 28/29.02). homeOfficeCheckUntil() in packages/domain is the same rule; pgTAP 912 runs its vectors here.';
+  'ADR-0182: the right-to-work-until a Home Office check result gives by default — six months from the date approved, the same day of the month, clamped to the end of a shorter month (31.08 → 28/29.02). homeOfficeCheckUntil() in packages/domain is the same rule; pgTAP 912 runs its vectors here.';
 
 revoke all on function public.home_office_check_until(date) from public, anon;
 grant execute on function public.home_office_check_until(date) to authenticated, service_role;
@@ -760,12 +760,12 @@ begin
 end $$;
 
 comment on function public.compliance_verify_home_office_check(uuid, date, date) is
-  'ADR-0177: Verify a Home Office Employer Checking Service result. The reviewer gives the date approved printed on it (stored as home_office_approved_on; not in the future); the right-to-work-until is that date + 6 months (THC, 22.10.2026: "valid for 6 months from the date it was approved") unless the reviewer types another, and must fall after it. Then the one Verify path (compliance_verify_document_as). Reviewer only (assert_reviewer).';
+  'ADR-0182: Verify a Home Office Employer Checking Service result. The reviewer gives the date approved printed on it (stored as home_office_approved_on; not in the future); the right-to-work-until is that date + 6 months (THC, 22.10.2026: "valid for 6 months from the date it was approved") unless the reviewer types another, and must fall after it. Then the one Verify path (compliance_verify_document_as). Reviewer only (assert_reviewer).';
 
 revoke all on function public.compliance_verify_home_office_check(uuid, date, date) from public, anon;
 grant execute on function public.compliance_verify_home_office_check(uuid, date, date) to authenticated, service_role;
 
 comment on function public.compliance_docs_rtw_date_guard() is
-  'ADR-0018: a visa document, status document, share code report or (ADR-0177) Home Office check result is verified with the right-to-work date it confirms; "no time limit" only on an EU settled share code report.';
+  'ADR-0018: a visa document, status document, share code report or (ADR-0182) Home Office check result is verified with the right-to-work date it confirms; "no time limit" only on an EU settled share code report.';
 
 drop function pg_temp.hoc_sub(text, text, text, int, text);

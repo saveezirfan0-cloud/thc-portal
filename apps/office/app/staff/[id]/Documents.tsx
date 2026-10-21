@@ -112,7 +112,7 @@ function meta(row: DocumentRow, format: TimeFormat): string {
   }
   if (row.rejection_reason) parts.push(rejectionLine(row.rejection_reason, row.review_status));
   if (row.share_code) {
-    // ADR-0177: on a Home Office check result the code is the worker's Home Office reference.
+    // ADR-0182: on a Home Office check result the code is the worker's Home Office reference.
     parts.push(
       row.doc_type === 'home_office_check_result'
         ? `Home Office reference ${row.share_code}`
@@ -389,7 +389,7 @@ export function Documents({
         {canUploadCompletionLetter(profile, documents) ? (
           <CompletionLetterUpload staffId={profile.id} />
         ) : null}
-        {/* ADR-0177: the Employer Checking Service result, and each renewal. */}
+        {/* ADR-0182: the Employer Checking Service result, and each renewal. */}
         {!profile.removed && canAttachHomeOfficeResult(profile) ? (
           <HomeOfficeResultUpload staffId={profile.id} label={homeOfficeAttachLabel(documents)} />
         ) : null}

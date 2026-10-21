@@ -276,7 +276,7 @@ export function rejectPrefill(row: QueueRow): string {
  */
 export function verifyAllowed(row: QueueRow): boolean {
   if (row.kind === 'rtw_check') return false;
-  // ADR-0177: verified on the attached result, never on the empty row step 4 files.
+  // ADR-0182: verified on the attached result, never on the empty row step 4 files.
   if (row.item_type === 'home_office_check_result') return Boolean(row.file_path);
   if (row.item_type !== 'share_code_report') return true;
   return row.rtw_manual_allowed !== false;

@@ -322,7 +322,7 @@ export async function rejectDeclaration(
 export type OfficeUploadFolder =
   | 'completion-letter'
   | 'share-code-report'
-  // ADR-0177: the Home Office Employer Checking Service result.
+  // ADR-0182: the Home Office Employer Checking Service result.
   | 'home-office-check-result';
 
 const OFFICE_UPLOAD_FOLDERS: readonly OfficeUploadFolder[] = [
@@ -489,7 +489,7 @@ export async function attachRtwReport(
 }
 
 /**
- * ADR-0177: the Home Office Employer Checking Service result the office was
+ * ADR-0182: the Home Office Employer Checking Service result the office was
  * emailed, attached for a worker on that route — onto the row their step 4
  * filed, or as a fresh one (a renewal). Lands pending; Verify takes the date
  * approved printed on it.
@@ -522,7 +522,7 @@ export async function attachHomeOfficeCheck(staffId: string, path: string): Prom
 }
 
 /**
- * ADR-0177: Verify a Home Office check result — the date approved printed on
+ * ADR-0182: Verify a Home Office check result — the date approved printed on
  * it, and the right-to-work-until (six months from it unless the result says
  * otherwise).
  */

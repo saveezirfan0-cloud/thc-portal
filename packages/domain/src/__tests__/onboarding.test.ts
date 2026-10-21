@@ -91,7 +91,7 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0078)
     expect(needsVisaType('dependant_other')).toBe(false);
   });
 
-  it('Home Office check: no share code, nothing uploaded — the office attaches the result (ADR-0177)', () => {
+  it('Home Office check: no share code, nothing uploaded — the office attaches the result (ADR-0182)', () => {
     expect(types('home_office_check')).toEqual([]);
     expect(acceptedDocTypes('home_office_check', null)).toEqual([]);
     expect(needsShareCode('home_office_check')).toBe(false);
@@ -108,7 +108,7 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0078)
     }
   });
 
-  it('the Home Office check reads in plain English in the picker (ADR-0177)', () => {
+  it('the Home Office check reads in plain English in the picker (ADR-0182)', () => {
     const b = RTW_BRANCHES.find((x) => x.key === 'home_office_check');
     expect(b?.title).toBe('Home Office check — asylum or pending application');
     expect(b?.description).toBe(
@@ -224,7 +224,7 @@ describe('step 1 validation', () => {
     );
   });
 
-  it('the Home Office check asks for the reference, not a share code (ADR-0177)', () => {
+  it('the Home Office check asks for the reference, not a share code (ADR-0182)', () => {
     const hoc: RtwForm = { ...base, branch: 'home_office_check', shareCode: '' };
     expect(rtwErrors(hoc, today).homeOfficeRef).toBe('Enter your Home Office reference.');
     expect(rtwErrors(hoc, today).shareCode).toBeUndefined();

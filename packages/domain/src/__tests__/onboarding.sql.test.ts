@@ -137,7 +137,7 @@ describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree
     ['work_visa', 'passport'],
     ['international_student', 'passport'],
     ['dependant_other', 'passport'],
-    // ADR-0177: no row applies — nothing is uploaded on this branch.
+    // ADR-0182: no row applies — nothing is uploaded on this branch.
     ['home_office_check', 'passport'],
   ];
 
@@ -150,13 +150,13 @@ describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree
   });
 });
 
-/** ADR-0177: the Home Office check branch, patched onto the live bodies. */
+/** ADR-0182: the Home Office check branch, patched onto the live bodies. */
 const homeOfficeCheck = readFileSync(
-  join(MIGRATIONS, '20261022140100_home_office_check_branch.sql'),
+  join(MIGRATIONS, '20261022190100_home_office_check_branch.sql'),
   'utf8',
 );
 
-describe('the Home Office check (ADR-0177) — SQL and TypeScript agree', () => {
+describe('the Home Office check (ADR-0182) — SQL and TypeScript agree', () => {
   it('is_valid_home_office_ref() uses the same pattern, and also wants a digit', () => {
     expect(homeOfficeCheck).toContain(
       `normalise_home_office_ref(p_ref) ~ '${HOME_OFFICE_REF_SQL_PATTERN}'`,

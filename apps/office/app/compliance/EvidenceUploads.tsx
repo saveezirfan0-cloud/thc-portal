@@ -28,7 +28,7 @@ import type { ActionResult } from './types';
  *     like the worker's own upload; Approve confirms the dates.
  *   · the gov.uk right-to-work report (D31), when the share code was verified
  *     by hand (the automated check stores its own).
- *   · the Home Office Employer Checking Service result (ADR-0177), for a
+ *   · the Home Office Employer Checking Service result (ADR-0182), for a
  *     worker on the Home Office check route — the worker cannot obtain it.
  *     A renewal is attached the same way and replaces the old one once it
  *     is verified.
@@ -212,7 +212,7 @@ export function RtwReportUpload({ docId, staffId }: { docId: string; staffId: st
 }
 
 /**
- * ADR-0177 · Attach the Home Office check result the Employer Checking
+ * ADR-0182 · Attach the Home Office check result the Employer Checking
  * Service emailed to the office. Lands in Needs review; Verify takes the
  * date approved printed on it.
  */

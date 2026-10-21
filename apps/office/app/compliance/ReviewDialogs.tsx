@@ -522,12 +522,12 @@ function RightToWorkModal({
     field: RtwDateRule['field'],
     value: string,
     conditions: ConfirmedConditions,
-    /** ADR-0177: the date approved on a Home Office check result. */
+    /** ADR-0182: the date approved on a Home Office check result. */
     approvedOn?: string,
   ) => void;
 }) {
   const format = useTimeFormat();
-  // ADR-0177: a Home Office check result is valid six months from the date
+  // ADR-0182: a Home Office check result is valid six months from the date
   // approved printed on it; typing that date fills in the right to work,
   // which stays editable.
   const [approvedOn, setApprovedOn] = useState('');

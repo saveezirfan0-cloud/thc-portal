@@ -999,7 +999,7 @@ export function candidateCap(
   return capReason(band, capHours, until).replace(/^(\d+) h — /, '$1 h/week — ');
 }
 
-/** §2.5's five branches, numbered as the scope numbers them, then THC's sixth (ADR-0177). */
+/** §2.5's five branches, numbered as the scope numbers them, then THC's sixth (ADR-0182). */
 export const RTW_BRANCH_NO: Record<string, number> = {
   uk_irish: 1,
   eu_settled: 2,

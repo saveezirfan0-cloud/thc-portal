@@ -51,7 +51,7 @@ export interface OnboardingState {
   dob: string | null;
   rtwBranch: RtwBranch | null;
   shareCode: string | null;
-  /** ADR-0177: the Home Office reference typed at step 1 on that branch. */
+  /** ADR-0182: the Home Office reference typed at step 1 on that branch. */
   homeOfficeRef: string | null;
   wtrOptOut: boolean;
   homeAddress: string | null;
@@ -263,7 +263,7 @@ export function shareCodeDoc(s: OnboardingState): UploadedDoc | null {
 }
 
 /**
- * The Home Office check result row (ADR-0177), once step 4 has been
+ * The Home Office check result row (ADR-0182), once step 4 has been
  * submitted: filed for the office, which attaches the Home Office's answer
  * and verifies it. Nothing for the worker to upload or re-enter.
  */

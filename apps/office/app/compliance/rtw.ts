@@ -23,7 +23,7 @@ export interface RtwDateRule {
   /** Settled status: the reviewer may confirm there is no end date. */
   allowNoTimeLimit: boolean;
   /**
-   * The Home Office check result (ADR-0177): the reviewer types the date
+   * The Home Office check result (ADR-0182): the reviewer types the date
    * the Home Office approved it, and the right to work runs six months from
    * it (`homeOfficeCheckUntil`), editable.
    */

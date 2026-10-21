@@ -1,6 +1,6 @@
 -- =====================================================================
 -- A sixth right-to-work branch: the Home Office Employer Checking Service
--- (ADR-0177) — the two enum values only
+-- (ADR-0182) — the two enum values only
 --
 -- THC, 21.10.2026: some workers (mostly people claiming asylum, and anyone
 -- with a pending application or appeal or on section 3C leave) have no
@@ -16,7 +16,7 @@
 --
 -- `alter type … add value` cannot be used in the transaction that adds it,
 -- so every rule that reads the two values is in the next migration,
--- 20261022140100.
+-- 20261022190100.
 -- =====================================================================
 
 alter type public.rtw_branch add value if not exists 'home_office_check' after 'dependant_other';

@@ -1,5 +1,5 @@
 /**
- * The Home Office reference — ADR-0177 (THC, 21.10.2026), the sixth
+ * The Home Office reference — ADR-0182 (THC, 21.10.2026), the sixth
  * right-to-work branch.
  *
  * A worker whose right to work is confirmed by the Home Office's Employer
@@ -19,7 +19,7 @@
  *   - at least one digit.
  *
  * The same rule is in SQL (`normalise_home_office_ref()` /
- * `is_valid_home_office_ref()`, migration 20261022140100), because the
+ * `is_valid_home_office_ref()`, migration 20261022190100), because the
  * database refuses a malformed reference even when the call does not come
  * through this app. `homeOfficeRef.test.ts` holds the two to the same
  * literal, and pgTAP 911 runs the same examples against the SQL.
@@ -59,7 +59,7 @@ export const HOME_OFFICE_CHECK_MONTHS = 6;
  * months from the date approved printed on it — the same day of the month,
  * clamped to the end of a shorter month (31.08.2026 → 28.02.2027), which is
  * how PostgreSQL adds `interval '6 months'`. The SQL twin is
- * `home_office_check_until()` (migration 20261022140100); pgTAP 912 runs the
+ * `home_office_check_until()` (migration 20261022190100); pgTAP 912 runs the
  * same vectors there. Null for anything that is not a real ISO date.
  */
 export function homeOfficeCheckUntil(approvedIso: string): string | null {

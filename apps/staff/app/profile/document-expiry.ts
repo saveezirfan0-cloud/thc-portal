@@ -51,7 +51,7 @@ export function expiringDocument(
 
 /**
  * The share code's expiry is the right-to-work date (§4.4), so it is named
- * that — as is the Home Office check result's (ADR-0177).
+ * that — as is the Home Office check result's (ADR-0182).
  */
 function labelFor(doc: { docType: DocType; label: string }): string {
   if (doc.docType === 'share_code_report' || doc.docType === 'home_office_check_result') {

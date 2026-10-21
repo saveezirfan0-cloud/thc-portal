@@ -128,7 +128,7 @@ select is_empty($$
    where public.term_letter_applies(s.id, x.d) is distinct from public._old_term_letter_applies(s.id, x.d) $$,
   'term_letter_applies(): the same answer for every person on four dates');
 select is_empty($$
-  -- home_office_check_result is excluded: ADR-0177 (20261022140100) added
+  -- home_office_check_result is excluded: ADR-0182 (20261022190100) added
   -- the type later and dates it from its right-to-work-until, as a share
   -- code report — a deliberate change, asserted in 912, not a drift of
   -- this plpgsql conversion.

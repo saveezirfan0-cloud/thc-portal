@@ -51,7 +51,7 @@ export function stepByNumber(n: number) {
 
 // ---------------------------------------------------------------------
 // Right to work — §2.5's five branches and their document sets (pts 1–5,
-// 8), plus the Home Office check THC added on 21.10.2026 (ADR-0177)
+// 8), plus the Home Office check THC added on 21.10.2026 (ADR-0182)
 // ---------------------------------------------------------------------
 
 export type RtwBranch =
@@ -91,7 +91,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
     description: 'Passport + your gov.uk share code.',
   },
   {
-    // ADR-0177: asylum seekers with permission to work, a pending
+    // ADR-0182: asylum seekers with permission to work, a pending
     // application or appeal, section 3C leave — the Employer Checking
     // Service confirms it, and there is no share code.
     key: 'home_office_check',
@@ -167,7 +167,7 @@ const PASSPORT: DocRequirement = {
  *     Not a row of its own here, but a graduate uploads it INSTEAD of the
  *     Term Dates Letter and it answers that row (ADR-0112);
  *   · a P45 — never accepted anywhere (§2.8);
- *   · anything on the Home Office check branch (ADR-0177): identity is the
+ *   · anything on the Home Office check branch (ADR-0182): identity is the
  *     step 3 selfie, and the right-to-work evidence is the Employer
  *     Checking Service's result, which the OFFICE attaches to the row
  *     step 4's submit files (`home_office_check_result`). An optional
@@ -234,7 +234,7 @@ export function acceptedDocTypes(branch: RtwBranch, ukChoice: UkDocChoice | null
 
 /**
  * Branch 1 has no share code (§2.5 pt 1), nor has the Home Office check
- * (ADR-0177); every other branch does.
+ * (ADR-0182); every other branch does.
  */
 export function needsShareCode(branch: RtwBranch): boolean {
   return branch !== 'uk_irish' && branch !== 'home_office_check';
@@ -242,7 +242,7 @@ export function needsShareCode(branch: RtwBranch): boolean {
 
 /**
  * The Home Office check branch types the reference the office puts on its
- * Employer Checking Service form instead of a share code (ADR-0177).
+ * Employer Checking Service form instead of a share code (ADR-0182).
  */
 export function needsHomeOfficeRef(branch: RtwBranch): boolean {
   return branch === 'home_office_check';
@@ -270,7 +270,7 @@ export interface RtwForm {
   /** ISO date, YYYY-MM-DD. */
   dob: string;
   shareCode: string;
-  /** ADR-0177: the ARC number or Home Office application reference. */
+  /** ADR-0182: the ARC number or Home Office application reference. */
   homeOfficeRef: string;
   visaType: string;
   ukChoice: UkDocChoice | null;
