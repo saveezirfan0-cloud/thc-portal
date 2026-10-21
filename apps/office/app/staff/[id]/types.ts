@@ -20,6 +20,8 @@ export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
 export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
 
 export interface ProfileRow extends StaffRow {
+  /** ADR-0182: read from staff_identity_v (admin-only) on the Home Office check route. */
+  home_office_ref?: string | null;
   email: string | null;
   phone: string | null;
   dob: string | null;

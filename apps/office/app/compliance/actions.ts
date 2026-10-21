@@ -369,7 +369,17 @@ export async function rejectDeclaration(
 // the manager's own session, and refuses anything else.
 // ---------------------------------------------------------------------
 
-export type OfficeUploadFolder = 'completion-letter' | 'share-code-report';
+export type OfficeUploadFolder =
+  | 'completion-letter'
+  | 'share-code-report'
+  // ADR-0182: the Home Office Employer Checking Service result.
+  | 'home-office-check-result';
+
+const OFFICE_UPLOAD_FOLDERS: readonly OfficeUploadFolder[] = [
+  'completion-letter',
+  'share-code-report',
+  'home-office-check-result',
+];
 export type OfficeUploadSlot =
   { ok: true; path: string; token: string } | { ok: false; message: string };
 
@@ -426,7 +436,7 @@ export async function startOfficeUpload(
 ): Promise<OfficeUploadSlot> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   if (!UUID.test(staffId)) return { ok: false, message: uploadRefusal('invalid_path') };
-  if (folder !== 'completion-letter' && folder !== 'share-code-report') {
+  if (!OFFICE_UPLOAD_FOLDERS.includes(folder)) {
     return { ok: false, message: uploadRefusal('invalid_path') };
   }
   const problem = evidenceFileProblem(file);
@@ -526,6 +536,59 @@ export async function attachRtwReport(
     return { ok: false, message: uploadRefusal(data.reason) };
   }
   return { ok: true, message: 'gov.uk report attached to the share code.' };
+}
+
+/**
+ * ADR-0182: the Home Office Employer Checking Service result the office was
+ * emailed, attached for a worker on that route — onto the row their step 4
+ * filed, or as a fresh one (a renewal). Lands pending; Verify takes the date
+ * approved printed on it.
+ */
+export async function attachHomeOfficeCheck(staffId: string, path: string): Promise<ActionResult> {
+  if (!isOwnUploadPath(staffId, 'home-office-check-result', path)) {
+    return { ok: false, message: uploadRefusal('invalid_path') };
+  }
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  // Before the RPC: its refusal is followed by discard() with the service key.
+  const refused = await officeWriteRefusal();
+  if (refused) return { ok: false, message: refused };
+  const result = await call('office_attach_home_office_check', { p_staff: staffId, p_path: path });
+  if (isFailure(result)) {
+    await discard(staffId, path);
+    return result;
+  }
+  const data = (result.data ?? {}) as { ok?: boolean; reason?: string; mode?: string };
+  if (!data.ok) {
+    await discard(staffId, path);
+    return { ok: false, message: uploadRefusal(data.reason) };
+  }
+  return {
+    ok: true,
+    message:
+      data.mode === 'replaced'
+        ? 'Attached. It replaces the result that was waiting for review (kept on file). Verify it with the date approved.'
+        : 'Attached. It is waiting in Needs review: verify it with the date approved on the result.',
+  };
+}
+
+/**
+ * ADR-0182: Verify a Home Office check result — the date approved printed on
+ * it, and the right-to-work-until (six months from it unless the result says
+ * otherwise).
+ */
+export async function verifyHomeOfficeCheck(
+  docId: string,
+  approvedOn: string,
+  rightToWorkUntil: string,
+): Promise<ActionResult> {
+  if (!approvedOn) return { ok: false, message: reviewErrorMessage('approved_on_required') };
+  const result = await call('compliance_verify_home_office_check', {
+    p_doc: docId,
+    p_approved_on: approvedOn,
+    p_right_to_work_until: rightToWorkUntil || null,
+  });
+  if (isFailure(result)) return result;
+  return verifiedMessage(result, { rightToWorkUntil });
 }
 
 function ukDate(iso: string | undefined): string {

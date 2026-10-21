@@ -6,7 +6,7 @@ import { createClient } from '@thc/db/server';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../../_lib/sessionRole';
 import { NOT_ALLOWED, explainDbError } from '../../_lib/dbError';
 import { createAdminClient } from '@thc/db/admin';
-import { validateEmergencyContact } from '@thc/domain';
+import { homeOfficeRefError, normaliseHomeOfficeRef, validateEmergencyContact } from '@thc/domain';
 import type { EmergencyContactInput } from '@thc/domain';
 import { supabaseConfigured } from '../data';
 import { parseRate } from '../../roles/money';
@@ -460,6 +460,7 @@ const RTW_BRANCHES: readonly string[] = [
   'work_visa',
   'international_student',
   'dependant_other',
+  'home_office_check',
 ];
 
 const RTW_BRANCH_MESSAGES: Readonly<Record<string, string>> = {
@@ -469,12 +470,18 @@ const RTW_BRANCH_MESSAGES: Readonly<Record<string, string>> = {
   read_only: 'Your login is read-only, so this cannot be changed.',
   'not_reviewable: removed':
     'This worker was removed under GDPR; nothing about them is recorded now.',
+  // ADR-0182: the Home Office check route needs the reference.
+  home_office_ref_required: 'Enter their Home Office reference.',
+  bad_home_office_ref:
+    'Enter the reference exactly as the Home Office wrote it — letters and numbers, e.g. the ARC number.',
 };
 
 export async function changeRtwBranch(
   staffId: string,
   branch: string,
   until: string | null,
+  /** ADR-0182: on the Home Office check route only — required there, or kept from file. */
+  homeOfficeRef?: string | null,
 ): Promise<ActionResult> {
   if (!RTW_BRANCHES.includes(branch)) return { ok: false, message: 'Choose a branch.' };
   if (until !== null && !/^\d{4}-\d{2}-\d{2}$/.test(until)) {
@@ -486,11 +493,22 @@ export async function changeRtwBranch(
   if (branch === 'uk_irish' && until !== null) {
     return { ok: false, message: 'A UK or Irish citizen has no right-to-work date.' };
   }
-  const result = await callRpc(
-    'record_right_to_work_change',
-    { p_staff: staffId, p_branch: branch, p_until: until, p_share_code: null },
-    staffId,
-  );
+  const args: RpcArguments = {
+    p_staff: staffId,
+    p_branch: branch,
+    p_until: until,
+    p_share_code: null,
+  };
+  if (branch === 'home_office_check') {
+    const ref = normaliseHomeOfficeRef(homeOfficeRef);
+    if (ref !== '' && homeOfficeRefError(ref)) {
+      return { ok: false, message: RTW_BRANCH_MESSAGES['bad_home_office_ref']! };
+    }
+    // Blank: the database keeps the one on file, or refuses with
+    // home_office_ref_required when there is none.
+    args['p_home_office_ref'] = ref || null;
+  }
+  const result = await callRpc('record_right_to_work_change', args, staffId);
   if (result.ok) {
     revalidatePath('/compliance');
     revalidatePath(`/onboarding/${staffId}`);

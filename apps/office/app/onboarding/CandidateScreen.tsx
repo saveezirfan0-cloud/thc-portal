@@ -21,7 +21,13 @@ import {
   UkDateField,
   useTimeFormat,
 } from '@thc/ui';
-import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
+import {
+  contractClause28Pending,
+  formatLanguages,
+  groupRolesByArea,
+  homeOfficeCheckUntil,
+  ukToday,
+} from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
 import { DeclarationDecisions, DeclarationFollowUp } from '../compliance/DeclarationFollowUp';
 import { declarationFollowUps } from '../compliance/declarationLines';
@@ -81,14 +87,25 @@ import {
   verifiedTally,
 } from './view-model';
 import type { Period } from './view-model';
-import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
 import {
+  HOME_OFFICE_APPROVED_LABEL,
+  HOME_OFFICE_UNTIL_HINT,
+  homeOfficeVerifyProblem,
+  rtwDateProblem,
+  rtwDateRule,
+  rtwDateValue,
+} from '../compliance/rtw';
+import { verifyHomeOfficeCheck } from '../compliance/actions';
+import {
+  canAttachHomeOfficeResult,
   canAttachReport,
   canUploadCompletionLetter,
+  homeOfficeAttachLabel,
   niEvidenceLine,
 } from '../compliance/conditions';
 import {
   CompletionLetterUpload,
+  HomeOfficeResultUpload,
   RtwConditionsEditor,
   RtwReportUpload,
 } from '../compliance/EvidenceUploads';
@@ -137,6 +154,7 @@ const ICON: Record<string, string> = {
   university_term_dates_letter: 'PDF',
   university_completion_letter: 'PDF',
   share_code_report: 'GOV',
+  home_office_check_result: 'HO',
 };
 
 type Reject =
@@ -259,11 +277,14 @@ export function CandidateScreen({
     branch: row.rtw_branch,
     onVerify: (d: CandidateDocument, input: VerifyChoice = {}) =>
       run(() =>
-        verifyDocument(row.id, d.id, {
-          periods: input.periods ?? null,
-          expiry: input.expiry ?? null,
-          ...(input.noHolidays ? { noHolidays: true } : {}),
-        }),
+        d.doc_type === 'home_office_check_result'
+          ? // ADR-0182: the date approved, then the right to work six months on.
+            verifyHomeOfficeCheck(d.id, input.approvedOn ?? '', input.expiry ?? '')
+          : verifyDocument(row.id, d.id, {
+              periods: input.periods ?? null,
+              expiry: input.expiry ?? null,
+              ...(input.noHolidays ? { noHolidays: true } : {}),
+            }),
       ),
     onReject: (d: CandidateDocument, suggested?: string) => {
       // ADR-0041: a share code the gov.uk check recommends rejecting opens
@@ -1265,6 +1286,8 @@ function RoleGroups({
 interface VerifyChoice {
   periods?: Period[] | null;
   expiry?: string | null;
+  /** ADR-0182: the date approved on a Home Office check result. */
+  approvedOn?: string | null;
   /** ADR-0183: the "this letter shows no holidays" tick, with an empty list. */
   noHolidays?: boolean;
 }
@@ -1423,6 +1446,116 @@ function DocumentLine({
         </>
       }
     />
+  );
+}
+
+/**
+ * The Home Office check result (ADR-0182): the office runs the Employer
+ * Checking Service check with the candidate's Home Office reference and
+ * attaches the PDF it emails back. Verify takes the date approved printed on
+ * it; the right to work runs six months from that date (THC, 22.10.2026),
+ * pre-filled and editable. Nothing is read by the AI.
+ */
+function HomeOfficeCheckCard({ doc, handlers }: { doc: CandidateDocument; handlers: DocHandlers }) {
+  const format = useTimeFormat();
+  const pill = REVIEW_PILL[doc.review_status];
+  const attached = Boolean(doc.file_path);
+  const actionable = !handlers.readOnly && doc.review_status === 'pending' && attached;
+  const [approvedOn, setApprovedOn] = useState('');
+  const [until, setUntil] = useState('');
+  const problem = homeOfficeVerifyProblem(approvedOn, until, ukToday());
+  const meta = [
+    doc.share_code ? `Home Office reference ${doc.share_code}` : 'No Home Office reference',
+    attached
+      ? `Attached ${formatUkStamp(doc.uploaded_at, format)}`
+      : 'Not attached yet — run the Employer Checking Service check with this reference, then attach the PDF it emails back',
+    doc.review_status === 'verified' && doc.right_to_work_until
+      ? `Right to work until ${formatUkDate(doc.right_to_work_until)}`
+      : null,
+    doc.reviewed_at
+      ? reviewStamp(doc.review_status, doc.reviewed_by_name, doc.reviewed_at, format)
+      : null,
+    doc.review_status === 'rejected' && doc.rejection_reason
+      ? rejectionLine(doc.rejection_reason, doc.review_status)
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <div className="pdfcard">
+      <div className="thumb">
+        HOME
+        <br />
+        OFFICE
+      </div>
+      <div className="grow stack">
+        <div className="row wrap">
+          <b>Home Office check result</b>
+          <Pill tone={pill.tone}>
+            {attached || doc.review_status !== 'pending' ? pill.label : 'Waiting for the result'}
+          </Pill>
+        </div>
+        <div className="muted sm">{meta}</div>
+        {actionable ? (
+          <div className="row wrap">
+            <UkDateField
+              label={
+                <>
+                  {HOME_OFFICE_APPROVED_LABEL} <span className="coral">*</span>
+                </>
+              }
+              value={approvedOn}
+              onChange={(value) => {
+                setApprovedOn(value);
+                const next = homeOfficeCheckUntil(value);
+                if (next) setUntil(next);
+              }}
+            />
+            <UkDateField
+              label={
+                <>
+                  Right to work until <span className="coral">*</span>
+                </>
+              }
+              value={until}
+              onChange={setUntil}
+              hint={HOME_OFFICE_UNTIL_HINT}
+            />
+          </div>
+        ) : null}
+        {actionable && problem && (approvedOn !== '' || until !== '') ? (
+          <div className="coral sm">{problem}</div>
+        ) : null}
+        <div className="row wrap">
+          {actionable ? (
+            <>
+              <Button
+                size="sm"
+                tone="green"
+                disabled={handlers.busy || problem !== null}
+                title={problem ?? undefined}
+                onClick={() => handlers.onVerify(doc, { approvedOn, expiry: until })}
+              >
+                Verify
+              </Button>
+              <Button
+                size="sm"
+                tone="danger"
+                disabled={handlers.busy}
+                onClick={() => handlers.onReject(doc)}
+              >
+                Reject
+              </Button>
+            </>
+          ) : null}
+          {attached ? (
+            <Button size="sm" tone="ghost" onClick={() => handlers.onOpen(doc.id, 'file')}>
+              Download
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2216,7 +2349,10 @@ function DocumentsPhase({
   const currentTermLetter = currentTermLetterOf(live);
   const shareCode = live.filter((d) => d.doc_type === 'share_code_report');
   const checks = checksByDocument(data.rtwChecks ?? []);
-  const others = live.filter((d) => d.doc_type !== 'share_code_report');
+  const homeOffice = live.filter((d) => d.doc_type === 'home_office_check_result');
+  const others = live.filter(
+    (d) => d.doc_type !== 'share_code_report' && d.doc_type !== 'home_office_check_result',
+  );
   const declarations = data.declarations.filter((d) => !d.superseded);
   const gate = quizGate(row);
   const niNumber = data.facts?.niNumber ?? null;
@@ -2264,7 +2400,12 @@ function DocumentsPhase({
             {/* §2.5: which of the five branches, and the document set it collects. */}
             {row.rtw_branch && RTW_BRANCH_NO[row.rtw_branch] ? (
               <>
-                <Pill tone="cyan">Branch {RTW_BRANCH_NO[row.rtw_branch]} of 5</Pill>
+                <Pill tone="cyan">
+                  {/* ADR-0182: THC's sixth branch is not one of §2.5's five. */}
+                  {RTW_BRANCH_NO[row.rtw_branch]! <= 5
+                    ? `Branch ${RTW_BRANCH_NO[row.rtw_branch]} of 5`
+                    : 'Home Office check'}
+                </Pill>
                 <span className="muted sm">{RTW_REQUIRED[row.rtw_branch]}</span>
               </>
             ) : null}
@@ -2334,6 +2475,22 @@ function DocumentsPhase({
               claim={(data.dobClaims ?? []).find((c) => c.documentId === d.id) ?? null}
             />
           ))}
+          {homeOffice.map((d) => (
+            <HomeOfficeCheckCard key={d.id} doc={d} handlers={doc} />
+          ))}
+          {!doc.readOnly && canAttachHomeOfficeResult(row) ? (
+            <HomeOfficeResultUpload
+              staffId={row.id}
+              label={homeOfficeAttachLabel(data.documents)}
+            />
+          ) : null}
+          {row.rtw_branch === 'home_office_check' && homeOffice.length === 0 ? (
+            <Note>
+              No share code on this route: the candidate gave their Home Office reference at step 1.
+              When they submit their documents it appears here, ready for you to run the Employer
+              Checking Service check and attach the result.
+            </Note>
+          ) : null}
           {!doc.readOnly && canUploadCompletionLetter(row, data.documents) ? (
             <CompletionLetterUpload staffId={row.id} />
           ) : null}

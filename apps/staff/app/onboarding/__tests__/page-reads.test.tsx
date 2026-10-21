@@ -67,6 +67,7 @@ vi.mock('../state', async (importOriginal) => ({
   requirementRows: () => [],
   completionLetterDoc: () => null,
   shareCodeDoc: () => h.shareDoc.value,
+  homeOfficeCheckDoc: () => null,
 }));
 vi.mock('../data', () => ({
   supabaseConfigured: () => true,

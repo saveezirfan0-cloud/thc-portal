@@ -97,6 +97,8 @@ export interface Template {
   /**
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
+   * A code that also has a `body` (N4, ADR-0182) sends that body when the
+   * row names no variant: the variant is the exception, not a half.
    */
   variants?: Readonly<Record<string, { body: string; title?: string }>>;
 }
@@ -198,6 +200,14 @@ export const TEMPLATES = {
     trigger: 'Document expired',
     timing: 'on the day (+ automatic block)',
     deepLink: '/documents',
+    // ADR-0182: the one document the worker cannot update — the Home Office
+    // check result only an employer can ask for. Sent with this variant by
+    // compliance_daily(); every other N4 has none and reads §8's body.
+    variants: {
+      home_office: {
+        body: 'Your Home Office check has expired. The office is renewing it; shifts are paused until then.',
+      },
+    },
   },
 
   // Invitation and the three-stage confirmation (§3.5).
@@ -1317,8 +1327,11 @@ export function body(code: TemplateCode, variant?: string): string {
     if (entry.body === undefined) throw new Error(`${code} has no body`);
     return entry.body;
   }
-  if (variant === undefined)
+  if (variant === undefined) {
+    // N4 (ADR-0182): §8's body by default, a variant only where the row asks.
+    if (entry.body !== undefined) return entry.body;
     throw new Error(`${code} needs a variant: ${Object.keys(entry.variants).join(' | ')}`);
+  }
   const half = entry.variants[variant];
   if (!half) throw new Error(`${code} has no variant "${variant}"`);
   return half.body;

@@ -13,6 +13,7 @@
 
 import { UK_ZONE } from './time';
 import { shareCodeError } from './shareCode';
+import { homeOfficeRefError } from './homeOfficeRef';
 // The doc_type enum has one TypeScript home, documents.ts, checked there
 // against 0001_init — not declared a second time here.
 import type { DocType } from './documents';
@@ -49,11 +50,17 @@ export function stepByNumber(n: number) {
 }
 
 // ---------------------------------------------------------------------
-// Right to work — five branches, five document sets (§2.5 pts 1–5, 8)
+// Right to work — §2.5's five branches and their document sets (pts 1–5,
+// 8), plus the Home Office check THC added on 21.10.2026 (ADR-0182)
 // ---------------------------------------------------------------------
 
 export type RtwBranch =
-  'uk_irish' | 'eu_settled' | 'work_visa' | 'international_student' | 'dependant_other';
+  | 'uk_irish'
+  | 'eu_settled'
+  | 'work_visa'
+  | 'international_student'
+  | 'dependant_other'
+  | 'home_office_check';
 
 export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description: string }[] = [
   {
@@ -83,6 +90,15 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
     title: 'Dependant or other visa',
     description: 'Passport + your gov.uk share code.',
   },
+  {
+    // ADR-0182: asylum seekers with permission to work, a pending
+    // application or appeal, section 3C leave — the Employer Checking
+    // Service confirms it, and there is no share code.
+    key: 'home_office_check',
+    title: 'Home Office check — asylum or pending application',
+    description:
+      "The office checks your right to work with the Home Office. You don't need a share code.",
+  },
 ];
 
 /** The heading a chosen branch carries on step 1 and in the Documents step. */
@@ -92,6 +108,7 @@ export const BRANCH_HEADING: Readonly<Record<RtwBranch, string>> = {
   work_visa: 'Work visa',
   international_student: 'International student',
   dependant_other: 'Dependant / other visa',
+  home_office_check: 'Home Office check',
 };
 
 /**
@@ -149,7 +166,14 @@ const PASSPORT: DocRequirement = {
  *   · the completion letter — uploaded once the student graduates (§4.5).
  *     Not a row of its own here, but a graduate uploads it INSTEAD of the
  *     Term Dates Letter and it answers that row (ADR-0112);
- *   · a P45 — never accepted anywhere (§2.8).
+ *   · a P45 — never accepted anywhere (§2.8);
+ *   · anything on the Home Office check branch (ADR-0182): identity is the
+ *     step 3 selfie, and the right-to-work evidence is the Employer
+ *     Checking Service's result, which the OFFICE attaches to the row
+ *     step 4's submit files (`home_office_check_result`). An optional
+ *     passport was considered and left out: a rejected optional upload
+ *     would hold the quiz gate shut (compliance_blockers counts every
+ *     current document), as the graduate's term letter once did (ADR-0112).
  *
  * The visa_document and status_document types stay in the schema: rows
  * uploaded before ADR-0078 are kept.
@@ -188,6 +212,8 @@ export function requiredDocuments(
     case 'work_visa':
     case 'dependant_other':
       return [PASSPORT];
+    case 'home_office_check':
+      return [];
     case 'international_student':
       return [
         PASSPORT,
@@ -206,9 +232,20 @@ export function acceptedDocTypes(branch: RtwBranch, ukChoice: UkDocChoice | null
   return [...new Set(requiredDocuments(branch, ukChoice).flatMap((r) => r.accepts))];
 }
 
-/** Branch 1 has no share code (§2.5 pt 1); every other branch does. */
+/**
+ * Branch 1 has no share code (§2.5 pt 1), nor has the Home Office check
+ * (ADR-0182); every other branch does.
+ */
 export function needsShareCode(branch: RtwBranch): boolean {
-  return branch !== 'uk_irish';
+  return branch !== 'uk_irish' && branch !== 'home_office_check';
+}
+
+/**
+ * The Home Office check branch types the reference the office puts on its
+ * Employer Checking Service form instead of a share code (ADR-0182).
+ */
+export function needsHomeOfficeRef(branch: RtwBranch): boolean {
+  return branch === 'home_office_check';
 }
 
 /**
@@ -233,6 +270,8 @@ export interface RtwForm {
   /** ISO date, YYYY-MM-DD. */
   dob: string;
   shareCode: string;
+  /** ADR-0182: the ARC number or Home Office application reference. */
+  homeOfficeRef: string;
   visaType: string;
   ukChoice: UkDocChoice | null;
   wtrOptOut: boolean;
@@ -287,6 +326,10 @@ export function rtwErrors(
     const err = shareCodeError(form.shareCode);
     if (err) errors.shareCode = err;
   }
+  if (needsHomeOfficeRef(form.branch)) {
+    const err = homeOfficeRefError(form.homeOfficeRef);
+    if (err) errors.homeOfficeRef = err;
+  }
   if (needsVisaType(form.branch) && !form.visaType) errors.visaType = 'Choose your visa type.';
   if (form.branch === 'uk_irish' && !form.ukChoice) {
     errors.ukChoice = 'Choose which documents you will provide.';
@@ -299,9 +342,13 @@ export function rtwFooterHint(form: RtwForm, today: string = ukToday()): string 
   const errors = rtwErrors(form, today);
   if (errors.branch) return errors.branch;
   if (errors.shareCode && form.shareCode.trim() !== '') return 'Fix the share code to continue';
+  if (errors.homeOfficeRef && form.homeOfficeRef.trim() !== '') {
+    return 'Fix the Home Office reference to continue';
+  }
   const missing = [
     errors.dob && 'date of birth',
     errors.shareCode && 'share code',
+    errors.homeOfficeRef && 'Home Office reference',
     errors.visaType && 'visa type',
     errors.ukChoice && 'document choice',
   ].filter((m): m is string => Boolean(m));

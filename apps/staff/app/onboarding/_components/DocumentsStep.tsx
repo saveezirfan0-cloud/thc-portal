@@ -25,12 +25,15 @@ export function DocumentsStep({
   branchTitle,
   rows,
   shareCode,
+  homeOfficeRef = null,
   today,
   completionLetter,
 }: {
   branchTitle: string;
   rows: RequirementRow[];
   shareCode: string | null;
+  /** ADR-0182: the Home Office check branch's reference; null on every other branch. */
+  homeOfficeRef?: string | null;
   today: string;
   /** `completionLetterDoc()`: undefined hides the optional row (not a Student visa). */
   completionLetter?: UploadedDoc | null;
@@ -131,6 +134,23 @@ export function DocumentsStep({
             </div>
             <div className="right">
               <Pill>Entered</Pill>
+            </div>
+          </div>
+        ) : null}
+        {homeOfficeRef !== null ? (
+          <div className="docrow verified">
+            <span className="ico">HO</span>
+            <div>
+              <div className="t">
+                Home Office check{homeOfficeRef ? ` · reference ${homeOfficeRef}` : ''}
+              </div>
+              <div className="m">
+                Nothing to upload. After you submit, the office checks your right to work with the
+                Home Office and adds the result.
+              </div>
+            </div>
+            <div className="right">
+              <Pill>Office</Pill>
             </div>
           </div>
         ) : null}

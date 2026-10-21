@@ -303,6 +303,7 @@ export const RTW_SHORT: Record<string, string> = {
   work_visa: 'Work visa',
   international_student: 'International student',
   dependant_other: 'Dependant / other visa',
+  home_office_check: 'Home Office check',
 };
 
 function plural(n: number, one: string, many = `${one}s`): string {
@@ -1000,13 +1001,14 @@ export function candidateCap(
   return capReason(band, capHours, until).replace(/^(\d+) h — /, '$1 h/week — ');
 }
 
-/** §2.5's five branches, numbered as the scope numbers them. */
+/** §2.5's five branches, numbered as the scope numbers them, then THC's sixth (ADR-0182). */
 export const RTW_BRANCH_NO: Record<string, number> = {
   uk_irish: 1,
   eu_settled: 2,
   work_visa: 3,
   international_student: 4,
   dependant_other: 5,
+  home_office_check: 6,
 };
 
 /**
@@ -1023,6 +1025,8 @@ export const RTW_REQUIRED: Record<string, string> = {
   international_student:
     'passport + share code + University Term Dates Letter (+ Completion Letter after graduation)',
   dependant_other: 'passport + share code · expiry from the gov.uk check',
+  home_office_check:
+    'Home Office reference · nothing uploaded · the office attaches the Home Office check result (six months from the date approved)',
 };
 
 // ---------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Alert } from '@thc/ui';
-import { describeBlockers } from '../profile/lock';
+import { describeBlockers, onlyHomeOfficeBlockers } from '../profile/lock';
 import { HELP_EMAIL } from '../profile/types';
 
 /**
@@ -70,6 +70,15 @@ export function documentsNotice(
       tone: 'coral',
       headline: 'Your account is blocked.',
       detail: `Shifts, Invites and Radar are closed. There is nothing for you to upload — please contact the office at: ${HELP_EMAIL}`,
+    };
+  }
+
+  if (onlyHomeOfficeBlockers(blockers)) {
+    // ADR-0182: the worker cannot renew a Home Office check; the office does.
+    return {
+      tone: 'coral',
+      headline: 'Your shifts are paused.',
+      detail: `${described} You’ve been removed from your upcoming shifts and your invitations have been withdrawn.`,
     };
   }
 

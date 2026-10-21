@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SHARE_CODE_SQL_PATTERN } from '../shareCode.ts';
+import { HOME_OFFICE_REF_SPACES_SQL, HOME_OFFICE_REF_SQL_PATTERN } from '../homeOfficeRef.ts';
 import { deriveStatement } from '../hmrc.ts';
 import {
   CONTRACT_VERSION_CLAUSE_28_PENDING,
@@ -136,6 +137,8 @@ describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree
     ['work_visa', 'passport'],
     ['international_student', 'passport'],
     ['dependant_other', 'passport'],
+    // ADR-0182: no row applies — nothing is uploaded on this branch.
+    ['home_office_check', 'passport'],
   ];
 
   it.each(cases)('%s (%s)', (branch, choice) => {
@@ -144,6 +147,44 @@ describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree
       .map((r) => `${r.key}:${r.accepts.join('|')}`);
     const ts = requiredDocuments(branch, choice).map((r) => `${r.key}:${r.accepts.join('|')}`);
     expect(sql).toEqual(ts);
+  });
+});
+
+/** ADR-0182: the Home Office check branch, patched onto the live bodies. */
+const homeOfficeCheck = readFileSync(
+  join(MIGRATIONS, '20261022190100_home_office_check_branch.sql'),
+  'utf8',
+);
+
+describe('the Home Office check (ADR-0182) — SQL and TypeScript agree', () => {
+  it('is_valid_home_office_ref() uses the same pattern, and also wants a digit', () => {
+    expect(homeOfficeCheck).toContain(
+      `normalise_home_office_ref(p_ref) ~ '${HOME_OFFICE_REF_SQL_PATTERN}'`,
+    );
+    expect(homeOfficeCheck).toContain(`normalise_home_office_ref(p_ref) ~ '[0-9]'`);
+  });
+
+  it('normalise_home_office_ref() reads the same Unicode spaces as JavaScript’s \\s', () => {
+    expect(homeOfficeCheck).toContain(`'${HOME_OFFICE_REF_SPACES_SQL}', ' ', 'g'`);
+    // Every space JavaScript's \s matches is in the SQL class.
+    const sqlClass = HOME_OFFICE_REF_SPACES_SQL.slice(1, -2).replace(/\\s/, ' \t\n\r\v\f');
+    const re = new RegExp(
+      `[${sqlClass.replace(/\\u([0-9a-f]{4})/g, (_, h: string) => String.fromCharCode(parseInt(h, 16)))}]`,
+    );
+    for (let c = 0; c <= 0xffff; c++) {
+      const ch = String.fromCharCode(c);
+      if (/\s/.test(ch)) expect(re.test(ch), `U+${c.toString(16)}`).toBe(true);
+    }
+  });
+
+  it('onboarding_documents_missing() owes the office’s result and no share code on this branch', () => {
+    expect(homeOfficeCheck).toContain("missing := missing || ''home_office_check_result''::text;");
+    expect(homeOfficeCheck).toContain("if s_rtw_branch not in ('uk_irish', 'home_office_check')");
+  });
+
+  it('step 1 requires the reference on this branch', () => {
+    expect(homeOfficeCheck).toContain("raise exception ''home_office_ref_required''");
+    expect(homeOfficeCheck).toContain("raise exception ''bad_home_office_ref''");
   });
 });
 

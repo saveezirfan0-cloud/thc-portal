@@ -47,6 +47,7 @@ const BRANCH: Record<string, string> = {
   work_visa: 'Work visa',
   international_student: 'International student',
   dependant_other: 'Dependant / other',
+  home_office_check: 'Home Office check',
 };
 
 /**

@@ -71,6 +71,49 @@ describe('changeRtwBranch', () => {
     });
   });
 
+  it('moves a worker onto the Home Office check route with their reference (ADR-0182)', async () => {
+    expect(
+      await changeRtwBranch('s1', 'home_office_check', '2027-04-21', ' arc\u00a0778899 '),
+    ).toEqual({ ok: true });
+    expect(rpc).toHaveBeenCalledWith('record_right_to_work_change', {
+      p_staff: 's1',
+      p_branch: 'home_office_check',
+      p_until: '2027-04-21',
+      p_share_code: null,
+      p_home_office_ref: 'ARC 778899',
+    });
+  });
+
+  it('checks the reference before the database, and words its refusals', async () => {
+    expect(await changeRtwBranch('s1', 'home_office_check', null, 'X1')).toEqual({
+      ok: false,
+      message:
+        'Enter the reference exactly as the Home Office wrote it — letters and numbers, e.g. the ARC number.',
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    state.rpcError = { message: 'home_office_ref_required' };
+    expect(await changeRtwBranch('s1', 'home_office_check', null, '')).toEqual({
+      ok: false,
+      message: 'Enter their Home Office reference.',
+    });
+  });
+
+  it('shows the reference on the Right to Work row', () => {
+    const html = render(
+      {
+        ...PROFILE,
+        rtw_branch: 'home_office_check',
+        home_office_ref: 'ARC 778899',
+      } as ProfileRow,
+      true,
+    );
+    expect(html).toContain('Home Office reference');
+    expect(html).toContain('ARC 778899');
+    expect(render({ ...PROFILE, rtw_branch: 'home_office_check' } as ProfileRow, true)).toContain(
+      'no Home Office reference',
+    );
+  });
+
   it('refuses a branch that is not one of the five, and a malformed date, before the database', async () => {
     expect((await changeRtwBranch('s1', 'settled', null)).ok).toBe(false);
     expect((await changeRtwBranch('s1', 'work_visa', '31/12/2027')).ok).toBe(false);

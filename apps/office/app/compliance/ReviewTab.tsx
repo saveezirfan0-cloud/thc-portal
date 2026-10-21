@@ -38,6 +38,7 @@ import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { useReviewDialogs } from './ReviewDialogs';
 import { DeclarationDecisions, DeclarationFollowUp } from './DeclarationFollowUp';
+import { HomeOfficeResultUpload } from './EvidenceUploads';
 import { oneOf, useListQuery } from '../_lib/listQuery';
 import { COMPLIANCE_QUERY, WHO } from './query';
 import type { ActionResult, QueueRow } from './types';
@@ -320,6 +321,11 @@ function QueueLine({
             docStatus={row.kind === 'document' ? 'pending' : 'rejected'}
             enabled={rtwCheckEnabled}
           />
+        ) : null}
+        {row.kind === 'document' &&
+        row.item_type === 'home_office_check_result' &&
+        !row.file_path ? (
+          <HomeOfficeResultUpload staffId={row.staff_id} />
         ) : null}
         {/* ADR-0070: Verify will also change the date of birth. */}
         {row.kind === 'document' ? <DobClaimNote claim={row.dob_claim} /> : null}

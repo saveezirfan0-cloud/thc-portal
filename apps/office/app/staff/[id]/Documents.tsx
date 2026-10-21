@@ -18,8 +18,17 @@ import { documentLink } from '../../onboarding/actions';
 import { useReviewDialogs } from '../../compliance/ReviewDialogs';
 import { DeclarationDecisions, DeclarationFollowUp } from '../../compliance/DeclarationFollowUp';
 import { declarationFollowUpLine, isLiveDeclaration } from './declaration';
-import { CompletionLetterUpload, RtwReportUpload } from '../../compliance/EvidenceUploads';
-import { canAttachReport, canUploadCompletionLetter } from '../../compliance/conditions';
+import {
+  CompletionLetterUpload,
+  HomeOfficeResultUpload,
+  RtwReportUpload,
+} from '../../compliance/EvidenceUploads';
+import {
+  canAttachHomeOfficeResult,
+  canAttachReport,
+  canUploadCompletionLetter,
+  homeOfficeAttachLabel,
+} from '../../compliance/conditions';
 import {
   actionsFor,
   queueByRecord,
@@ -105,7 +114,17 @@ function meta(row: DocumentRow, format: TimeFormat): string {
     parts.push(reviewStamp(row.review_status, row.reviewed_by_name, row.reviewed_at, format));
   }
   if (row.rejection_reason) parts.push(rejectionLine(row.rejection_reason, row.review_status));
-  if (row.share_code) parts.push(`share code ${row.share_code}`);
+  if (row.share_code) {
+    // ADR-0182: on a Home Office check result the code is the worker's Home Office reference.
+    parts.push(
+      row.doc_type === 'home_office_check_result'
+        ? `Home Office reference ${row.share_code}`
+        : `share code ${row.share_code}`,
+    );
+  }
+  if (row.doc_type === 'home_office_check_result' && !row.file_path && !row.superseded) {
+    parts.push('result not attached yet');
+  }
   if (row.awarding_institution) parts.push(row.awarding_institution);
   return parts.join(' · ');
 }
@@ -414,6 +433,10 @@ export function Documents({
 
         {canUploadCompletionLetter(profile, documents) ? (
           <CompletionLetterUpload staffId={profile.id} />
+        ) : null}
+        {/* ADR-0182: the Employer Checking Service result, and each renewal. */}
+        {!profile.removed && canAttachHomeOfficeResult(profile) ? (
+          <HomeOfficeResultUpload staffId={profile.id} label={homeOfficeAttachLabel(documents)} />
         ) : null}
 
         {superseded.length > 0 || supersededDeclarations.length > 0 ? (

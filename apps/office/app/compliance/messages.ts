@@ -117,6 +117,20 @@ const MESSAGES: [RegExp, string][] = [
   [/^ni_number_not_entered/, 'No NI number has been entered yet, so there is nothing to compare.'],
   [/^not_a_share_code_document/, 'Only a share code document carries a gov.uk report.'],
   [/^unknown_staff/, 'This person no longer exists — refresh the page.'],
+  // The Home Office check result (ADR-0182).
+  [/^home_office_result_missing/, 'Attach the Home Office check result before verifying it.'],
+  [/^approved_on_required/, 'Enter the date approved, as it is printed on the Home Office result.'],
+  [/^approved_on_invalid/, 'The date approved cannot be in the future.'],
+  [/^approved_on_implausible/, 'Check the date approved — it is before 2000.'],
+  [
+    /^until_too_far/,
+    'The right to work can run at most a year from the date approved — check the date.',
+  ],
+  [
+    /^until_before_approved/,
+    'The right-to-work date must be after the date the Home Office approved the result.',
+  ],
+  [/^not_a_home_office_check/, 'Only a Home Office check result is verified this way.'],
 ];
 
 /** The office upload RPCs answer `{ ok: false, reason }`; these are the words. */
@@ -136,6 +150,8 @@ const UPLOAD_REFUSALS: Record<string, string> = {
   report_already_attached: 'A gov.uk report is already attached to this share code.',
   automated_check_owns_report:
     'The automatic gov.uk check stores its own report for this share code. Attach one by hand only once its check is in Needs review.',
+  not_home_office_branch:
+    'A Home Office check result is only for someone on the Home Office check route. Change their right-to-work route first.',
 };
 
 export function uploadRefusal(reason: string | undefined): string {
