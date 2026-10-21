@@ -57,7 +57,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     return Response.json({ error: message }, { status });
   }
 
-  const { recipients } = queued.data as { key: string; recipients: string[] };
+  // ADR-0179: `bcc` is the office's hidden copy — named to the office only.
+  const { recipients, bcc } = queued.data as { key: string; recipients: string[]; bcc?: string[] };
   return Response.json({
     ok: true,
     documentId: result.documentId,
@@ -66,5 +67,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     rows: result.layout.rowCount,
     badges: result.badges?.layout.count ?? 0,
     recipients,
+    officeCopy: bcc ?? [],
   });
 }

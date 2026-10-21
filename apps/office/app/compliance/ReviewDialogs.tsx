@@ -37,6 +37,9 @@ import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
 import { HolidayPeriodsEditor, periodsFrom } from '../_components/TermPeriods';
 import { type Period, periodsProblem } from '../onboarding/view-model';
+import { TermLetterOutcome } from './TermLetterOutcome';
+import { termLetterVerifyProblem } from './termDates';
+import { ukDay } from './queue';
 
 /**
  * Verify and Reject on a queue row (§4.1, §10.7) — the ONE path, shared by
@@ -267,7 +270,19 @@ function ConfirmVerifyModal({
   const termLetter = row.item_type === 'university_term_dates_letter';
   // What the AI read, as rows; the reviewer adds any vacation it missed.
   const [periods, setPeriods] = useState<Period[]>(() => periodsFrom(row.term_dates));
-  const periodsIssue = termLetter ? periodsProblem(periods) : null;
+  // ADR-0183: none at all is ticked; a period over a year, or dates that
+  // have already run out, keep Verify shut.
+  const [noHolidays, setNoHolidays] = useState(false);
+  const [today] = useState(() => ukDay(new Date()));
+  const periodsIssue = termLetter
+    ? (periodsProblem(periods) ??
+      termLetterVerifyProblem({
+        periods,
+        noHolidaysConfirmed: noHolidays,
+        uploadedAt: row.submitted_at,
+        today,
+      }))
+    : null;
   return (
     <Modal
       open
@@ -283,7 +298,12 @@ function ConfirmVerifyModal({
             solid
             disabled={busy || conditions.problem !== null || periodsIssue !== null}
             onClick={() =>
-              onVerify(conditions.confirmed, termLetter ? { termPeriods: periods } : {})
+              onVerify(
+                conditions.confirmed,
+                termLetter
+                  ? { termPeriods: periods, ...(periods.length === 0 ? { noHolidays } : {}) }
+                  : {},
+              )
             }
           >
             Verify
@@ -318,10 +338,18 @@ function ConfirmVerifyModal({
             onChange={setPeriods}
             aiCount={(row.term_dates ?? []).length}
           />
+          <TermLetterOutcome
+            periods={periods}
+            uploadedAt={row.submitted_at}
+            today={today}
+            noHolidaysConfirmed={noHolidays}
+            onNoHolidaysConfirmed={setNoHolidays}
+            previous={row.staff_term_dates ?? null}
+          />
           <span className="muted xs">
-            Check them against the letter and add any vacation the AI did not read. The weekly
-            limit is 48 h inside these periods and the term-time limit outside them; the letter
-            expires on the last date of the last period.
+            Check them against the letter and add any vacation the AI did not read. The weekly limit
+            is 48 h inside these periods and the term-time limit outside them; the letter expires on
+            the last date of the last period.
           </span>
         </div>
       ) : null}

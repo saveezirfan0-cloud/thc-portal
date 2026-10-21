@@ -7,6 +7,7 @@
 export * from './templates.ts';
 export * from './outbox.ts';
 export * from './documents.ts';
+export * from './office-copy.ts';
 export * from './senders.ts';
 export * from './webpush.ts';
 export * from './resend.ts';

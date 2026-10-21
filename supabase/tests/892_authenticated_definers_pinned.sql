@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 203 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods), docs/14 §4 — so a new one fails here BY
+-- 204 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0183's compliance_withdraw_completion_approval), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -75,6 +75,7 @@ select bag_eq(
             ('compliance_set_visa_hour_limit(uuid,integer)'),
             ('compliance_verify_declaration(uuid,text)'),
             ('compliance_verify_document(uuid,date,daterange[],date)'),
+            ('compliance_withdraw_completion_approval(uuid,text)'),
             ('confirm_on_day(uuid)'),
             ('current_app_role()'),
             ('current_client_id()'),

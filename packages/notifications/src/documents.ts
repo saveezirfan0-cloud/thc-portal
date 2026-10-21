@@ -21,7 +21,8 @@
  *         Both from timesheets@ (§9.12) to the contact emails on the client
  *         card (§9.7), which the outbox row carries. THC renamed both in
  *         client emails on 29.09.2026 — §11.3/§11.4 say "allocation sheet"
- *         and "sign-out timesheet" (ADR-0073).
+ *         and "sign-out timesheet" (ADR-0073). Both also go, hidden, to the
+ *         office's copy addresses on /settings (`payload.bcc`, ADR-0179).
  *   INV1  THC's invoice (ADR-0176), at 10:00 UK the morning after the last
  *         event on a PO, with the sign-in and sign-out log of its shifts
  *         attached. From timesheets@, to the client card's accounts emails
@@ -50,6 +51,7 @@ import { preheaderFrom, renderEmailHtml, templateToBlocks } from './email-html.t
 import type { EmailMessage, OutboxRow, RenderOptions } from './outbox.ts';
 import { UnsendableRow } from './outbox.ts';
 import { DEFAULT_SENDER_ADDRESSES, signedBy } from './senders.ts';
+import { parseBcc } from './office-copy.ts';
 import { TEMPLATES, render } from './templates.ts';
 
 export type DocumentBucket = 'reports' | 'timesheets';
@@ -203,6 +205,11 @@ export interface Attachment {
 }
 
 export interface EmailWithAttachments extends EmailMessage {
+  /**
+   * The office's hidden copy (ADR-0179: D1/D2 only), from the row's
+   * `payload.bcc`, less anyone already in To. Absent when there is none.
+   */
+  bcc?: readonly string[];
   attachments: Attachment[];
   /**
    * Copied on the email (ADR-0176, THC 21.10.2026: INV1's "Invoice CC"
@@ -482,7 +489,10 @@ export function documentMessageFor(
   if (!to || to.length === 0) {
     throw new UnsendableRow(`${code} is an email with no recipient`);
   }
-  const payload = (row.payload ?? {}) as Record<string, unknown>;
+  // ADR-0179: `bcc` is an envelope field, never a value the copy can name.
+  const { bcc: rawBcc, ...payload } = (row.payload ?? {}) as Record<string, unknown>;
+  const inTo = new Set(to.map((address) => address.trim().toLowerCase()));
+  const bcc = parseBcc(rawBcc, code).filter((address) => !inTo.has(address));
   const attachments = parseAttachments(payload.attachments, code);
   const cc = parseCc(payload.cc, code).filter((address) => !to.includes(address));
   const values = derivedValues(
@@ -504,6 +514,7 @@ export function documentMessageFor(
     subject,
     body: text,
     html: documentHtml(code, values, subject, text, attachments, replyTo),
+    ...(bcc.length > 0 ? { bcc } : {}),
     attachments,
     ...(cc.length > 0 ? { cc } : {}),
   };

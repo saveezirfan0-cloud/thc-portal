@@ -127,6 +127,12 @@ select is((select sent_at from notification_outbox where key = 'TEST-N12:booking
 -- ---------------------------------------------------------------------
 -- job_runs
 -- ---------------------------------------------------------------------
+-- The local stack's own schedules (notify-drain every minute, …) run from
+-- the moment `supabase start` returns, so a committed run can already be in
+-- the log when this file starts — it failed main once (21.10.2026) on
+-- exactly that. The log is emptied inside this transaction (rolled back
+-- with everything else) so the assertions below start from nothing.
+delete from job_runs;
 select is((select count(*)::int from job_runs), 0, 'no job has run yet');
 
 -- A temp table rather than \gset: psql does not interpolate :variables

@@ -20,6 +20,7 @@ import { ukInputLabel } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import { BufferSuggestionBlock } from './BufferSuggestionBlock';
 import { NotificationsTab } from './NotificationsTab';
+import { OfficeCopyBlock } from './OfficeCopyBlock';
 import { Block, Feedback, SaveAction, SaveSlot, useMarkDirty, useSave } from './blocks';
 // blocks.tsx is their home; this re-export keeps settings blocks that import them from here compiling.
 export { Block, Feedback, SaveAction, useSave } from './blocks';
@@ -169,6 +170,7 @@ export function SettingsScreen({
             interviewUrl={data.willoInterviewUrl}
           />
           <SendersBlock senders={data.senders} recipients={data.recipients} />
+          <OfficeCopyBlock emails={data.documentOfficeCopy} />
           <ClientPortalBlock phone={data.clientPortalPhone} />
           <SignInSecurityBlock
             twoStepRequired={data.officeTwoStepRequired}

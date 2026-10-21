@@ -94,6 +94,10 @@ import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobCorrection } from '../_components/DobCorrection';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { EditTermPeriods, periodsFrom } from '../_components/TermPeriods';
+import { TermLetterOutcome } from '../compliance/TermLetterOutcome';
+import { termLetterVerifyProblem } from '../compliance/termDates';
+import { ukDay } from '../compliance/queue';
+import { VerifiedLetterActions, currentTermLetterOf } from '../compliance/VerifiedLetterActions';
 import type { DobClaim } from '../_lib/dobCorrection';
 import {
   checksByDocument,
@@ -255,6 +259,7 @@ export function CandidateScreen({
         verifyDocument(row.id, d.id, {
           periods: input.periods ?? null,
           expiry: input.expiry ?? null,
+          ...(input.noHolidays ? { noHolidays: true } : {}),
         }),
       ),
     onReject: (d: CandidateDocument, suggested?: string) => {
@@ -1257,6 +1262,8 @@ function RoleGroups({
 interface VerifyChoice {
   periods?: Period[] | null;
   expiry?: string | null;
+  /** ADR-0183: the "this letter shows no holidays" tick, with an empty list. */
+  noHolidays?: boolean;
 }
 
 interface DocHandlers {
@@ -1318,11 +1325,13 @@ function DocumentLine({
   handlers,
   niNumber,
   periods,
+  noHolidays = false,
 }: {
   doc: CandidateDocument;
   handlers: DocHandlers;
   niNumber: string | null;
   periods?: Period[] | null;
+  noHolidays?: boolean;
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const pill = REVIEW_PILL[doc.review_status];
@@ -1333,6 +1342,17 @@ function DocumentLine({
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
   const [expiry, setExpiry] = useState(doc.expiry_date ?? '');
   const expiryProblem = rtwDateProblem(rule, expiry, false);
+  // ADR-0183: as in the Verify dialog — none at all ticked, at most a year
+  // each, and not a letter whose dates have already run out.
+  const periodsBlocked = periods
+    ? (periodsProblem(periods) ??
+      termLetterVerifyProblem({
+        periods,
+        noHolidaysConfirmed: noHolidays,
+        uploadedAt: doc.uploaded_at,
+        today: ukDay(new Date()),
+      }))
+    : null;
   return (
     <DocRow
       icon={ICON[doc.doc_type] ?? 'DOC'}
@@ -1370,14 +1390,14 @@ function DocumentLine({
               <Button
                 size="sm"
                 tone="green"
-                disabled={
-                  handlers.busy ||
-                  (periods ? periodsProblem(periods) !== null : false) ||
-                  expiryProblem !== null
-                }
-                title={expiryProblem ?? undefined}
+                disabled={handlers.busy || periodsBlocked !== null || expiryProblem !== null}
+                title={periodsBlocked ?? expiryProblem ?? undefined}
                 onClick={() =>
-                  handlers.onVerify(doc, { periods: periods ?? null, expiry: rule ? expiry : null })
+                  handlers.onVerify(doc, {
+                    periods: periods ?? null,
+                    expiry: rule ? expiry : null,
+                    ...(periods?.length === 0 && noHolidays ? { noHolidays: true } : {}),
+                  })
                 }
               >
                 Verify
@@ -1672,6 +1692,9 @@ function TermDates({
   editable,
   capText,
   edit,
+  noHolidays = false,
+  setNoHolidays = () => {},
+  previous = null,
 }: {
   doc: CandidateDocument;
   periods: Period[];
@@ -1680,6 +1703,11 @@ function TermDates({
   capText: string;
   /** ADR-0178: "Edit holiday periods" once the letter is verified. */
   edit?: ReactNode;
+  /** ADR-0183: the "this letter shows no holidays" tick, held by the Verify it gates. */
+  noHolidays?: boolean;
+  setNoHolidays?: (next: boolean) => void;
+  /** ADR-0183: holiday ranges on file from a previous letter. */
+  previous?: readonly string[] | null;
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const aiCount = (doc.term_dates ?? []).length;
@@ -1763,6 +1791,17 @@ function TermDates({
         </div>
       ) : null}
       {problem ? <div className="coral sm">{problem}</div> : null}
+      {editable ? (
+        // ADR-0183: the tick, the live expiry, what it replaces.
+        <TermLetterOutcome
+          periods={periods}
+          uploadedAt={doc.uploaded_at}
+          today={ukDay(new Date())}
+          noHolidaysConfirmed={noHolidays}
+          onNoHolidaysConfirmed={setNoHolidays}
+          previous={previous}
+        />
+      ) : null}
       <hr />
       <div className="kv">
         <span className="k">Weekly limit (calculated)</span>
@@ -2170,6 +2209,8 @@ function DocumentsPhase({
   const [periods, setPeriods] = useState<Period[]>(() =>
     (termLetter?.term_dates ?? []).map(parsePeriod).filter((p): p is Period => p !== null),
   );
+  const [noHolidays, setNoHolidays] = useState(false);
+  const currentTermLetter = currentTermLetterOf(live);
   const shareCode = live.filter((d) => d.doc_type === 'share_code_report');
   const checks = checksByDocument(data.rtwChecks ?? []);
   const others = live.filter((d) => d.doc_type !== 'share_code_report');
@@ -2242,7 +2283,17 @@ function DocumentsPhase({
                 handlers={doc}
                 niNumber={niNumber}
                 periods={d.doc_type === 'university_term_dates_letter' ? periods : undefined}
+                noHolidays={noHolidays}
               />
+              {/* ADR-0183: an approval that turns out wrong can be withdrawn. */}
+              {!doc.readOnly ? (
+                <VerifiedLetterActions
+                  doc={d}
+                  currentTermLetter={currentTermLetter}
+                  canWithdraw={canEditTermPeriods}
+                  name={row.display_name}
+                />
+              ) : null}
               {d.doc_type === 'university_term_dates_letter' ? (
                 <TermDates
                   doc={d}
@@ -2252,6 +2303,9 @@ function DocumentsPhase({
                   setPeriods={setPeriods}
                   editable={!doc.readOnly && d.review_status === 'pending'}
                   capText={capText}
+                  noHolidays={noHolidays}
+                  setNoHolidays={setNoHolidays}
+                  previous={data.profile?.term_dates ?? null}
                   edit={
                     d.review_status === 'verified' ? (
                       <EditTermPeriods
@@ -2259,6 +2313,7 @@ function DocumentsPhase({
                         ranges={d.term_dates}
                         allowed={canEditTermPeriods}
                         name={row.display_name}
+                        uploadedAt={d.uploaded_at}
                       />
                     ) : null
                   }

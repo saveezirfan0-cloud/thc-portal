@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal, Note, UkDateField } from '@thc/ui';
 import { type Period, parsePeriod, periodsProblem } from '../onboarding/view-model';
 import { setTermLetterPeriods } from '../compliance/actions';
+import { TermLetterOutcome } from '../compliance/TermLetterOutcome';
+import { termLetterVerifyProblem } from '../compliance/termDates';
+import { ukDay } from '../compliance/queue';
 import './term-periods.css';
 
 /**
@@ -115,6 +118,9 @@ export function EditTermPeriods({
   ranges,
   allowed,
   name,
+  uploadedAt,
+  startOpen = false,
+  onClosed,
 }: {
   docId: string;
   /** The verified letter's ranges, as the database returns them. */
@@ -122,10 +128,20 @@ export function EditTermPeriods({
   allowed: boolean;
   /** For the dialog's title. */
   name: string;
+  /** ADR-0183: when the letter was uploaded — its calendar-year fallback expiry counts from it. */
+  uploadedAt: string;
+  /**
+   * ADR-0183: open the dialog straight away, with no button of its own —
+   * "Correct term dates first" in the Withdraw approval dialog.
+   */
+  startOpen?: boolean;
+  onClosed?: () => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [periods, setPeriods] = useState<Period[]>([]);
+  const [open, setOpen] = useState(startOpen);
+  const [periods, setPeriods] = useState<Period[]>(() => (startOpen ? periodsFrom(ranges) : []));
+  const [noHolidays, setNoHolidays] = useState(false);
+  const [today] = useState(() => ukDay(new Date()));
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -134,34 +150,43 @@ export function EditTermPeriods({
 
   const openDialog = () => {
     setPeriods(periodsFrom(ranges));
+    setNoHolidays(false);
     setFailure(null);
     setOpen(true);
   };
   const close = () => {
     setOpen(false);
     setFailure(null);
+    onClosed?.();
   };
-  const problem = periodsProblem(periods);
+  // ADR-0183: as at Verify — none at all ticked, at most a year each, and
+  // not leaving the letter expired (the database refuses that too).
+  const problem =
+    periodsProblem(periods) ??
+    termLetterVerifyProblem({ periods, noHolidaysConfirmed: noHolidays, uploadedAt, today });
 
   const save = () => {
     setFailure(null);
     start(async () => {
-      const result = await setTermLetterPeriods(docId, periods);
+      const result = await setTermLetterPeriods(docId, periods, noHolidays);
       if (!result.ok) {
         setFailure(result.message ?? 'The periods could not be saved.');
         return;
       }
       setDone(result.message ?? 'Holiday periods saved.');
       setOpen(false);
+      onClosed?.();
       router.refresh();
     });
   };
 
   return (
     <>
-      <Button size="sm" disabled={pending} onClick={openDialog}>
-        Edit holiday periods
-      </Button>
+      {startOpen ? null : (
+        <Button size="sm" disabled={pending} onClick={openDialog}>
+          Edit holiday periods
+        </Button>
+      )}
       {done ? <span className="green sm">{done}</span> : null}
 
       <Modal
@@ -186,6 +211,13 @@ export function EditTermPeriods({
             onChange={setPeriods}
             aiLabel="on file"
             aiCount={(ranges ?? []).length}
+          />
+          <TermLetterOutcome
+            periods={periods}
+            uploadedAt={uploadedAt}
+            today={today}
+            noHolidaysConfirmed={noHolidays}
+            onNoHolidaysConfirmed={setNoHolidays}
           />
           <Note>
             The University Term Dates Letter is already verified. Add any vacation the AI did not
