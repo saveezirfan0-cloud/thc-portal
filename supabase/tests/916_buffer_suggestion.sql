@@ -4,7 +4,7 @@
 -- settings.buffer_suggestion ships as the client's answer of 21.10.2026:
 -- one for every five, rounded up; roles under five get none unless they
 -- start before 08:00, then one. Only those six keys in those shapes can be
--- stored — the accepted and refused cases are the ones in
+-- stored — the accepted and refused cases are a superset of the ones in
 -- packages/domain/src/bufferSuggestion.vectors.json. Every office role
 -- reads it (the Shift Builder pre-fills from it), the viewer included;
 -- only an owner changes it, and the change is audited; a worker or a

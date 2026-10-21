@@ -65,8 +65,9 @@ export interface ReferenceData {
   roles: RoleOption[];
   /**
    * ADR-0181: the suggested-buffer rule (`settings.buffer_suggestion`), or
-   * THC's default (one for every five, rounded down) when the row is
-   * missing or unreadable.
+   * THC's default (one for every five, rounded up; under five none unless
+   * the role starts before 08:00, then one) when the row is missing or
+   * unreadable.
    */
   bufferRule: BufferSuggestionRule;
   /** Set when this environment has no Supabase project wired up yet. */

@@ -111,6 +111,6 @@ new rule; events already saved keep their buffers.
 - A new event's overall window pre-fills 07:00, so a role added before the manager moves its
   start reads 1 extra; moving the start to 08:00 or later takes it back to 0 while the buffer is
   still following.
-- pgTAP 916: the seeded row, the guard (the vectors' accepted shapes and 25 refusals, including a
+- pgTAP 916: the seeded row, the guard (the vectors' accepted shapes and 27 refusals, including a
   non-string rounding, a null `enabled` and bad times), RLS (scheduler, manager and viewer read;
   none of them writes; staff and client neither read nor write; owner writes) and the audit row.

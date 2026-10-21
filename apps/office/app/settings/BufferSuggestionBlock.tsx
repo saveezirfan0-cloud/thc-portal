@@ -145,6 +145,7 @@ export function BufferSuggestionBlock({ rule }: { rule: BufferSuggestionRule }) 
           label={ukInputLabel('Unless they start before')}
           value={draft.early_start_before}
           hint="Blank: no extra for an early start."
+          error={error && timeInvalid ? EARLY_TIME_PROBLEM : undefined}
           onInvalidChange={setTimeInvalid}
           onChange={(early_start_before) => set({ early_start_before })}
         />
