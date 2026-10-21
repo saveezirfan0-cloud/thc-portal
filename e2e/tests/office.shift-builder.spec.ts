@@ -112,13 +112,15 @@ test('the buffer is absolute and never collapses into the total (§3.2)', async 
   await expect(section(page).locator('.rh').getByText('7', { exact: true })).toHaveCount(0);
 });
 
-test('a new role suggests 1 buffer for every 5 staff until one is typed (ADR-0181)', async ({
+test('a new role suggests 1 buffer for every 5 staff, rounded up, until one is typed (ADR-0181)', async ({
   page,
 }) => {
   await page.getByRole('button', { name: '+ Add role' }).click();
   await section(page).getByLabel('Headcount').fill('10');
   await expect(section(page).getByLabel('Buffer')).toHaveValue('2');
-  await expect(section(page).getByText('Suggested: 2 (1 for every 5)')).toBeVisible();
+  await expect(
+    section(page).getByText('Suggested: 2 (1 for every 5, rounded up)', { exact: false }),
+  ).toBeVisible();
   await expect(section(page).getByLabel('Allocation per hour')).toHaveValue('12');
 
   // Typed: it stops following the headcount.
@@ -129,6 +131,13 @@ test('a new role suggests 1 buffer for every 5 staff until one is typed (ADR-018
   // And the suggestion can be taken back.
   await section(page).getByRole('button', { name: 'Use suggestion (4)' }).click();
   await expect(section(page).getByLabel('Buffer')).toHaveValue('4');
+
+  // Under 5 staff: none, unless the role's own start is before 08:00.
+  await section(page).getByLabel('Headcount').fill('3');
+  await section(page).getByLabel('Start (UK time)').fill('17:00');
+  await expect(section(page).getByLabel('Buffer')).toHaveValue('0');
+  await section(page).getByLabel('Start (UK time)').fill('06:00');
+  await expect(section(page).getByLabel('Buffer')).toHaveValue('1');
 });
 
 test('allocation defaults to headcount + buffer and then stays put (§3.4)', async ({ page }) => {

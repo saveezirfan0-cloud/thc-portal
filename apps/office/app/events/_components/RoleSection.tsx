@@ -10,7 +10,7 @@ import {
   type RoleSectionIssue,
   clockLabel,
   defaultAllocationPerHour,
-  describeBufferRule,
+  describeSuggestion,
   finalHourlyPence,
   formatAllocationPair,
   formatConfirmationTarget,
@@ -134,7 +134,7 @@ export function RoleSection({
   const chargeFromCard = mode === 'new' && !chargeOverride && cardRate !== undefined;
 
   // ADR-0181: the suggestion, and the edit "Use suggestion" would make.
-  const suggestedBuffer = bufferRule ? suggestBuffer(role.headcount, bufferRule) : null;
+  const suggestedBuffer = bufferRule ? suggestBuffer(role.headcount, bufferRule, role.start) : null;
   const suggestionPatch = bufferSuggestionPatch(role, bufferRule);
 
   const issueFor = (field: RoleSectionIssue) => (issues.includes(field) ? field : null);
@@ -272,39 +272,41 @@ export function RoleSection({
                 ? { hint: `was ${original.headcount}` }
                 : {})}
           />
-          <Input
-            label="Buffer"
-            type="number"
-            min={0}
-            mono
-            value={role.buffer}
-            onChange={(e) => onChange({ buffer: Number(e.target.value) })}
-            {...(issues.includes('negative_buffer')
-              ? { error: ROLE_SECTION_MESSAGE.negative_buffer }
-              : {
-                  hint:
-                    bufferRule && suggestedBuffer !== null ? (
-                      <>
-                        Suggested: {suggestedBuffer} ({describeBufferRule(bufferRule)}) · shown as{' '}
-                        {formatAllocationPair(role.headcount, role.buffer)}
-                        {suggestionPatch ? (
-                          <>
-                            {' · '}
-                            <button
-                              type="button"
-                              className="linkish"
-                              onClick={() => onChange(suggestionPatch)}
-                            >
-                              Use suggestion ({suggestedBuffer})
-                            </button>
-                          </>
-                        ) : null}
-                      </>
-                    ) : (
-                      `absolute, not % · shown as ${formatAllocationPair(role.headcount, role.buffer)}`
-                    ),
-                })}
-          />
+          {/* ADR-0181: the suggestion is said in the hint; taking it back is a
+              button of its own below the field, not inside the hint. */}
+          <div className="buffer-field">
+            <Input
+              label="Buffer"
+              type="number"
+              min={0}
+              mono
+              value={role.buffer}
+              onChange={(e) => onChange({ buffer: Number(e.target.value) })}
+              {...(issues.includes('negative_buffer')
+                ? { error: ROLE_SECTION_MESSAGE.negative_buffer }
+                : {
+                    hint: `${
+                      bufferRule && suggestedBuffer !== null
+                        ? `Suggested: ${suggestedBuffer} (${describeSuggestion(
+                            role.headcount,
+                            bufferRule,
+                            role.start,
+                            (time) => clockLabel(time, format),
+                          )}) · `
+                        : ''
+                    }absolute, not % · shown as ${formatAllocationPair(role.headcount, role.buffer)}`,
+                  })}
+            />
+            {suggestionPatch ? (
+              <button
+                type="button"
+                className="linkish sm"
+                onClick={() => onChange(suggestionPatch)}
+              >
+                Use suggestion ({suggestedBuffer})
+              </button>
+            ) : null}
+          </div>
 
           {ratesVisible ? (
             <>

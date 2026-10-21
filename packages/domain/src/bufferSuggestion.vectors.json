@@ -1,0 +1,384 @@
+{
+  "$comment": [
+    "Test vectors for the suggested buffer (ADR-0181), packages/domain/bufferSuggestion.ts.",
+    "`suggestions`: headcount + the role section's OWN start (HH:MM, UK) -> the buffer the",
+    "Shift Builder pre-fills, under THC's rule unless `rule` overrides some keys.",
+    "`rules`: shapes settings.buffer_suggestion accepts or refuses. The database's guard",
+    "(20261022180000_buffer_suggestion.sql) must agree; pgTAP 916 holds the same cases.",
+    "Owned by the `scheduling` bot."
+  ],
+  "defaultRule": {
+    "enabled": true,
+    "per": 5,
+    "rounding": "up",
+    "from_headcount": 5,
+    "early_start_before": "08:00",
+    "early_start_extra": 1
+  },
+  "suggestions": [
+    { "name": "nobody, early or not", "headcount": 0, "start": "06:00", "expect": 0 },
+    { "name": "1 staff at 17:00", "headcount": 1, "start": "17:00", "expect": 0 },
+    { "name": "1 staff at 07:00 — early", "headcount": 1, "start": "07:00", "expect": 1 },
+    {
+      "name": "4 staff at 08:00 — not before 08:00",
+      "headcount": 4,
+      "start": "08:00",
+      "expect": 0
+    },
+    { "name": "4 staff at 07:59 — early", "headcount": 4, "start": "07:59", "expect": 1 },
+    {
+      "name": "4 staff at 00:30 — a night start is early",
+      "headcount": 4,
+      "start": "00:30",
+      "expect": 1
+    },
+    { "name": "4 staff, start half-typed", "headcount": 4, "start": "07:", "expect": 0 },
+    { "name": "5 staff", "headcount": 5, "start": "17:00", "expect": 1 },
+    {
+      "name": "5 staff at 06:00 — the early extra is for small roles only",
+      "headcount": 5,
+      "start": "06:00",
+      "expect": 1
+    },
+    { "name": "6 staff", "headcount": 6, "start": "17:00", "expect": 2 },
+    { "name": "7 staff — the client's own example", "headcount": 7, "start": "17:00", "expect": 2 },
+    { "name": "10 staff", "headcount": 10, "start": "17:00", "expect": 2 },
+    { "name": "11 staff", "headcount": 11, "start": "17:00", "expect": 3 },
+    { "name": "1000 staff", "headcount": 1000, "start": "17:00", "expect": 200 },
+    {
+      "name": "rounded down: 7 staff",
+      "headcount": 7,
+      "start": "17:00",
+      "rule": { "rounding": "down" },
+      "expect": 1
+    },
+    {
+      "name": "rounded down: 10 staff",
+      "headcount": 10,
+      "start": "17:00",
+      "rule": { "rounding": "down" },
+      "expect": 2
+    },
+    {
+      "name": "no early-start rule: 4 staff at 06:00",
+      "headcount": 4,
+      "start": "06:00",
+      "rule": { "early_start_before": null },
+      "expect": 0
+    },
+    {
+      "name": "early extra of 2",
+      "headcount": 3,
+      "start": "06:00",
+      "rule": { "early_start_extra": 2 },
+      "expect": 2
+    },
+    {
+      "name": "from 0: 3 staff rounded up",
+      "headcount": 3,
+      "start": "06:00",
+      "rule": { "from_headcount": 0 },
+      "expect": 1
+    },
+    {
+      "name": "from 0, rounded down: 3 staff",
+      "headcount": 3,
+      "start": "06:00",
+      "rule": { "from_headcount": 0, "rounding": "down" },
+      "expect": 0
+    },
+    {
+      "name": "from 10: 9 staff at 17:00",
+      "headcount": 9,
+      "start": "17:00",
+      "rule": { "from_headcount": 10 },
+      "expect": 0
+    },
+    {
+      "name": "from 10: 9 staff at 06:00",
+      "headcount": 9,
+      "start": "06:00",
+      "rule": { "from_headcount": 10 },
+      "expect": 1
+    },
+    {
+      "name": "switched off",
+      "headcount": 10,
+      "start": "17:00",
+      "rule": { "enabled": false },
+      "expect": null
+    }
+  ],
+  "rules": {
+    "accepted": [
+      {
+        "name": "THC's rule",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "off, rounded down, no early start",
+        "value": {
+          "enabled": false,
+          "per": 4,
+          "rounding": "down",
+          "from_headcount": 0,
+          "early_start_before": null,
+          "early_start_extra": 0
+        }
+      },
+      {
+        "name": "the upper edges",
+        "value": {
+          "enabled": true,
+          "per": 100,
+          "rounding": "up",
+          "from_headcount": 100,
+          "early_start_before": "23:59",
+          "early_start_extra": 20
+        }
+      },
+      {
+        "name": "the lower edges",
+        "value": {
+          "enabled": true,
+          "per": 1,
+          "rounding": "up",
+          "from_headcount": 0,
+          "early_start_before": "00:00",
+          "early_start_extra": 0
+        }
+      }
+    ],
+    "refused": [
+      { "name": "a string", "value": "1 per 5" },
+      { "name": "a list", "value": [] },
+      {
+        "name": "a missing key",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00"
+        }
+      },
+      {
+        "name": "an extra key",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1,
+          "minimum": 0
+        }
+      },
+      {
+        "name": "enabled as text",
+        "value": {
+          "enabled": "yes",
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "enabled null",
+        "value": {
+          "enabled": null,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "per 0",
+        "value": {
+          "enabled": true,
+          "per": 0,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "per 101",
+        "value": {
+          "enabled": true,
+          "per": 101,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "per a fraction",
+        "value": {
+          "enabled": true,
+          "per": 2.5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "per as text",
+        "value": {
+          "enabled": true,
+          "per": "5",
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "another rounding",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "nearest",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "rounding not a string",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": 1,
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "from_headcount negative",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": -1,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "from_headcount 101",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 101,
+          "early_start_before": "08:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "early start 8am",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "8am",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "early start 24:00",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "24:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "early start with seconds",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00:00",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "early start blank text",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "",
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "early start a number",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": 800,
+          "early_start_extra": 1
+        }
+      },
+      {
+        "name": "early extra negative",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": -1
+        }
+      },
+      {
+        "name": "early extra 21",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 21
+        }
+      },
+      {
+        "name": "early extra a fraction",
+        "value": {
+          "enabled": true,
+          "per": 5,
+          "rounding": "up",
+          "from_headcount": 5,
+          "early_start_before": "08:00",
+          "early_start_extra": 0.5
+        }
+      }
+    ]
+  }
+}

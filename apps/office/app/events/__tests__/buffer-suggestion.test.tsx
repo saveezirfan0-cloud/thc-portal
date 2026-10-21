@@ -5,9 +5,11 @@ import { TimeFormatProvider } from '@thc/ui';
 
 /**
  * ADR-0181 in the Shift Builder: a new role section's Buffer follows the
- * suggested "1 for every 5" as the headcount changes, until the manager
- * types one. A saved buffer — edited or duplicated — is never changed by
- * the suggestion; it is at most shown beside the field.
+ * suggested overs — 1 for every 5 rounded up; under 5 none, unless the
+ * section's OWN start is before 08:00, then 1 — as the headcount or the
+ * section's start changes, until the manager types one. A saved buffer —
+ * edited or duplicated — is never changed by the suggestion; it is at most
+ * shown beside the field.
  */
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -24,7 +26,7 @@ import type { EventDraft, RoleDraft } from '../draft';
 import type { SavedEvent } from '../data';
 
 const RULE: BufferSuggestionRule = { ...DEFAULT_BUFFER_RULE };
-const UP: BufferSuggestionRule = { ...DEFAULT_BUFFER_RULE, rounding: 'up' };
+const DOWN: BufferSuggestionRule = { ...DEFAULT_BUFFER_RULE, rounding: 'down' };
 const OFF: BufferSuggestionRule = { ...DEFAULT_BUFFER_RULE, enabled: false };
 
 const DRAFT: EventDraft = {
@@ -43,7 +45,9 @@ const DRAFT: EventDraft = {
   roles: [],
 };
 
-const saved = (buffer: number, headcount = 12): SavedEvent => ({
+const EARLY: EventDraft = { ...DRAFT, overallStart: '06:00', overallEnd: '14:00' };
+
+const saved = (buffer: number, headcount = 12, start = '17:00'): SavedEvent => ({
   id: 'ev-1',
   clientId: 'client-1',
   venueId: 'venue-1',
@@ -60,7 +64,7 @@ const saved = (buffer: number, headcount = 12): SavedEvent => ({
     {
       id: 'sec-waiting',
       roleId: 'role-waiting',
-      start: '17:00',
+      start,
       end: '23:30',
       headcount,
       buffer,
@@ -83,58 +87,77 @@ function type(role: RoleDraft, rule: BufferSuggestionRule, ...patches: Partial<R
   return patches.reduce<RoleDraft>((current, patch) => editRole(current, patch, rule), role);
 }
 
+const fresh = (draft: EventDraft = DRAFT, rule: BufferSuggestionRule = RULE) =>
+  newRoleDraft(draft, 'role-waiting', 0, rule);
+
 describe('a new role section follows the suggestion', () => {
-  it('starts at the suggestion for one person: 0 under the default rule', () => {
-    const role = newRoleDraft(DRAFT, 'role-waiting', 0, RULE);
+  it('starts at 0 for one person starting at 17:00', () => {
+    const role = fresh();
     expect(role.headcount).toBe(1);
     expect(role.buffer).toBe(0);
     expect(role.bufferTouched).toBe(false);
     expect(role.allocationPerHour).toBe(1);
   });
 
-  it('starts at 1 when the rule rounds up, and allocation counts it', () => {
-    const role = newRoleDraft(DRAFT, 'role-waiting', 0, UP);
+  it('starts at 1 for one person when the window starts before 08:00', () => {
+    const role = fresh(EARLY);
+    expect(role.start).toBe('06:00');
     expect(role.buffer).toBe(1);
     expect(role.allocationPerHour).toBe(2);
   });
 
-  it('moves with the headcount: 4 → 0, 5 → 1, 7 → 1, 10 → 2', () => {
-    let role = newRoleDraft(DRAFT, 'role-waiting', 0, RULE);
+  it('moves with the headcount: 4 → 0, 5 → 1, 6 → 2, 7 → 2, 10 → 2, 11 → 3', () => {
+    let role = fresh();
     const seen: number[] = [];
-    for (const headcount of [4, 5, 7, 10, 3]) {
+    for (const headcount of [4, 5, 6, 7, 10, 11, 3]) {
       role = editRole(role, { headcount }, RULE);
       seen.push(role.buffer);
     }
-    expect(seen).toEqual([0, 1, 1, 2, 0]);
+    expect(seen).toEqual([0, 1, 2, 2, 2, 3, 0]);
+  });
+
+  it('rounds down when the rule says so', () => {
+    expect(type(fresh(DRAFT, DOWN), DOWN, { headcount: 7 }).buffer).toBe(1);
+  });
+
+  it('moves with the section’s OWN start: 4 staff get 1 once it starts before 08:00', () => {
+    const role = type(fresh(), RULE, { headcount: 4 });
+    expect(role.buffer).toBe(0);
+    const early = type(role, RULE, { start: '07:30' });
+    expect(early.buffer).toBe(1);
+    expect(early.allocationPerHour).toBe(5);
+    expect(type(early, RULE, { start: '08:00' }).buffer).toBe(0);
+  });
+
+  it('a half-typed start is not early', () => {
+    expect(type(fresh(), RULE, { headcount: 4 }, { start: '' }).buffer).toBe(0);
+  });
+
+  it('the early extra is for small roles only', () => {
+    expect(type(fresh(EARLY), RULE, { headcount: 5 }).buffer).toBe(1);
   });
 
   it('keeps allocation per hour on headcount + buffer as it moves', () => {
-    const role = type(newRoleDraft(DRAFT, 'role-waiting', 0, RULE), RULE, { headcount: 10 });
-    expect(role.buffer).toBe(2);
-    expect(role.allocationPerHour).toBe(12);
+    const role = type(fresh(), RULE, { headcount: 11 });
+    expect(role.buffer).toBe(3);
+    expect(role.allocationPerHour).toBe(14);
   });
 
   it('reads a headcount being retyped (cleared to 0) as no extras, then picks up again', () => {
-    const role = type(
-      newRoleDraft(DRAFT, 'role-waiting', 0, RULE),
-      RULE,
-      { headcount: 10 },
-      { headcount: 0 },
-      { headcount: 15 },
-    );
+    const role = type(fresh(EARLY), RULE, { headcount: 10 }, { headcount: 0 }, { headcount: 15 });
     expect(role.buffer).toBe(3);
   });
 });
 
 describe('typing a buffer stops it following', () => {
-  it('keeps the typed number however the headcount moves', () => {
+  it('keeps the typed number however the headcount or the start moves', () => {
     const role = type(
-      newRoleDraft(DRAFT, 'role-waiting', 0, RULE),
+      fresh(),
       RULE,
       { headcount: 10 },
       { buffer: 4 },
       { headcount: 20 },
-      { headcount: 2 },
+      { headcount: 2, start: '06:00' },
     );
     expect(role.bufferTouched).toBe(true);
     expect(role.buffer).toBe(4);
@@ -143,23 +166,12 @@ describe('typing a buffer stops it following', () => {
   });
 
   it('typing the same number as the suggestion still counts as the manager’s', () => {
-    const role = type(
-      newRoleDraft(DRAFT, 'role-waiting', 0, RULE),
-      RULE,
-      { headcount: 5 },
-      { buffer: 1 },
-      { headcount: 10 },
-    );
+    const role = type(fresh(), RULE, { headcount: 5 }, { buffer: 1 }, { headcount: 10 });
     expect(role.buffer).toBe(1);
   });
 
   it('a typed allocation still stops only the allocation', () => {
-    const role = type(
-      newRoleDraft(DRAFT, 'role-waiting', 0, RULE),
-      RULE,
-      { allocationPerHour: 3 },
-      { headcount: 10 },
-    );
+    const role = type(fresh(), RULE, { allocationPerHour: 3 }, { headcount: 10 });
     expect(role.buffer).toBe(2);
     expect(role.allocationPerHour).toBe(3);
   });
@@ -167,14 +179,7 @@ describe('typing a buffer stops it following', () => {
 
 describe('"Use suggestion" brings it back', () => {
   it('hands a new section back to the suggestion, which follows again', () => {
-    const typed = type(
-      newRoleDraft(DRAFT, 'role-waiting', 0, RULE),
-      RULE,
-      { headcount: 10 },
-      {
-        buffer: 5,
-      },
-    );
+    const typed = type(fresh(), RULE, { headcount: 10 }, { buffer: 5 });
     const patch = bufferSuggestionPatch(typed, RULE);
     expect(patch).toEqual({ bufferTouched: false });
     const restored = type(typed, RULE, patch!, { headcount: 15 });
@@ -183,35 +188,33 @@ describe('"Use suggestion" brings it back', () => {
   });
 
   it('offers nothing while the buffer already is the suggestion', () => {
-    const role = type(newRoleDraft(DRAFT, 'role-waiting', 0, RULE), RULE, { headcount: 10 });
-    expect(bufferSuggestionPatch(role, RULE)).toBeNull();
+    expect(bufferSuggestionPatch(type(fresh(), RULE, { headcount: 10 }), RULE)).toBeNull();
   });
 
   it('offers nothing with the rule off', () => {
-    const role = type(newRoleDraft(DRAFT, 'role-waiting', 0, OFF), OFF, { buffer: 3 });
+    const role = type(fresh(DRAFT, OFF), OFF, { buffer: 3 });
     expect(bufferSuggestionPatch(role, OFF)).toBeNull();
   });
 });
 
 describe('with the rule switched off, the builder is as it was', () => {
-  it('starts at 0 and never follows', () => {
-    const role = type(newRoleDraft(DRAFT, 'role-waiting', 0, OFF), OFF, { headcount: 20 });
+  it('starts at 0 and never follows, early or not', () => {
+    const role = type(fresh(EARLY, OFF), OFF, { headcount: 20 });
     expect(role.buffer).toBe(0);
     expect(role.allocationPerHour).toBe(20);
   });
 
   it('and with no rule at all', () => {
-    const role = editRole(newRoleDraft(DRAFT, 'role-waiting'), { headcount: 20 });
-    expect(role.buffer).toBe(0);
+    expect(editRole(newRoleDraft(DRAFT, 'role-waiting'), { headcount: 20 }).buffer).toBe(0);
   });
 });
 
 describe('a saved buffer is never changed by the suggestion', () => {
   const dressCodes = () => [];
 
-  it('editing: the saved 0 on 12 staff stays 0 as the headcount moves', () => {
+  it('editing: the saved 0 on 12 staff stays 0 as the headcount or start moves', () => {
     const draft = draftFromSaved(saved(0), dressCodes, 'edit');
-    const role = type(draft.roles[0]!, RULE, { headcount: 20 });
+    const role = type(draft.roles[0]!, RULE, { headcount: 20 }, { start: '06:00' });
     expect(role.bufferTouched).toBe(true);
     expect(role.buffer).toBe(0);
   });
@@ -224,9 +227,9 @@ describe('a saved buffer is never changed by the suggestion', () => {
   it('editing: "Use suggestion" only sets the number, and it stays put after', () => {
     const draft = draftFromSaved(saved(0), dressCodes, 'edit');
     const patch = bufferSuggestionPatch(draft.roles[0]!, RULE);
-    expect(patch).toEqual({ buffer: 2 });
+    expect(patch).toEqual({ buffer: 3 });
     const role = type(draft.roles[0]!, RULE, patch!, { headcount: 30 });
-    expect(role.buffer).toBe(2);
+    expect(role.buffer).toBe(3);
     // A silent edit (§3.5): buffer, never a re-confirmation.
     const plan = reconfirmPlan(draft, { ...draft, roles: [role] });
     expect(plan.roles[0]!.changed).toContain('buffer');
@@ -242,8 +245,7 @@ describe('a saved buffer is never changed by the suggestion', () => {
 
   it('a role ADDED to a saved event is new, and follows', () => {
     const draft = draftFromSaved(saved(0), dressCodes, 'edit');
-    const added = type(newRoleDraft(draft, 'role-chef', 0, RULE), RULE, { headcount: 6 });
-    expect(added.buffer).toBe(1);
+    expect(type(newRoleDraft(draft, 'role-chef', 0, RULE), RULE, { headcount: 6 }).buffer).toBe(2);
   });
 });
 
@@ -251,9 +253,14 @@ describe('a saved buffer is never changed by the suggestion', () => {
 // What the office sees under the Buffer field
 // ---------------------------------------------------------------------
 
-function section(role: RoleDraft, rule: BufferSuggestionRule | null, mode: 'new' | 'edit' = 'new') {
+function section(
+  role: RoleDraft,
+  rule: BufferSuggestionRule | null,
+  mode: 'new' | 'edit' = 'new',
+  clock: '24h' | '12h' = '24h',
+) {
   return renderToStaticMarkup(
-    <TimeFormatProvider format="24h">
+    <TimeFormatProvider format={clock}>
       <RoleSection
         mode={mode}
         index={0}
@@ -278,45 +285,59 @@ function section(role: RoleDraft, rule: BufferSuggestionRule | null, mode: 'new'
   );
 }
 
+/** The Buffer field's hint, alone. */
+function bufferHint(html: string): string {
+  const field = /<div class="buffer-field">([^]*?)<\/div><div class="field">/.exec(html)?.[1];
+  expect(field, 'the buffer field').toBeDefined();
+  return /<span class="hint">([^<]*)<\/span>/.exec(field!)?.[1] ?? '';
+}
+
 describe('the Buffer hint', () => {
-  it('names the suggestion and the rule, and still shows the pair', () => {
-    const role = type(newRoleDraft(DRAFT, 'role-waiting', 0, RULE), RULE, { headcount: 10 });
-    const html = section(role, RULE);
-    expect(html).toContain('Suggested: 2 (1 for every 5) · shown as 10 (+2)');
+  it('names the suggestion and the rule, and keeps "absolute, not %" and the pair', () => {
+    const html = section(type(fresh(), RULE, { headcount: 10 }), RULE);
+    expect(bufferHint(html)).toBe(
+      'Suggested: 2 (1 for every 5, rounded up) · absolute, not % · shown as 10 (+2)',
+    );
     expect(html).not.toContain('Use suggestion');
   });
 
-  it('offers "Use suggestion (N)" once the buffer differs from it', () => {
-    const role = type(
-      newRoleDraft(DRAFT, 'role-waiting', 0, RULE),
-      RULE,
-      { headcount: 10 },
-      {
-        buffer: 0,
-      },
+  it('says why a small role gets what it gets', () => {
+    expect(bufferHint(section(type(fresh(), RULE, { headcount: 3 }), RULE))).toBe(
+      'Suggested: 0 (under 5 staff) · absolute, not % · shown as 3 (+0)',
     );
-    const html = section(role, RULE);
-    expect(html).toContain('Suggested: 2 (1 for every 5) · shown as 10 (+0)');
-    expect(html).toContain('Use suggestion (2)');
+    expect(bufferHint(section(type(fresh(EARLY), RULE, { headcount: 3 }), RULE))).toBe(
+      'Suggested: 1 (under 5 staff, starts before 08:00) · absolute, not % · shown as 3 (+1)',
+    );
   });
 
-  it('says how the rule rounds when it is not the default', () => {
-    const role = type(newRoleDraft(DRAFT, 'role-waiting', 0, UP), UP, { headcount: 7 });
-    expect(section(role, UP)).toContain('Suggested: 2 (1 for every 5, rounded up)');
+  it('writes the early start on the operator’s clock', () => {
+    const html = section(type(fresh(EARLY), RULE, { headcount: 3 }), RULE, 'new', '12h');
+    expect(bufferHint(html)).toContain('starts before 8:00 am');
+  });
+
+  it('offers "Use suggestion (N)" as its own button, outside the hint', () => {
+    const html = section(type(fresh(), RULE, { headcount: 10 }, { buffer: 0 }), RULE);
+    expect(bufferHint(html)).toBe(
+      'Suggested: 2 (1 for every 5, rounded up) · absolute, not % · shown as 10 (+0)',
+    );
+    expect(html).toMatch(
+      /<span class="hint">[^<]*<\/span><\/div><button type="button" class="linkish sm">Use suggestion \(2\)<\/button>/,
+    );
   });
 
   it('on a saved section, shows the suggestion beside the saved number', () => {
     const draft = draftFromSaved(saved(0), () => [], 'edit');
     const html = section(draft.roles[0]!, RULE, 'edit');
-    expect(html).toContain('Suggested: 2 (1 for every 5) · shown as 12 (+0)');
-    expect(html).toContain('Use suggestion (2)');
+    expect(bufferHint(html)).toBe(
+      'Suggested: 3 (1 for every 5, rounded up) · absolute, not % · shown as 12 (+0)',
+    );
+    expect(html).toContain('Use suggestion (3)');
     expect(html).toMatch(/<input[^>]*value="0"/);
   });
 
   it('is the plain hint with the rule off or absent', () => {
-    const role = newRoleDraft(DRAFT, 'role-waiting', 0, OFF);
-    expect(section(role, OFF)).toContain('absolute, not % · shown as 1 (+0)');
-    expect(section(role, null)).toContain('absolute, not % · shown as 1 (+0)');
-    expect(section(role, OFF)).not.toContain('Suggested');
+    const role = fresh(DRAFT, OFF);
+    expect(bufferHint(section(role, OFF))).toBe('absolute, not % · shown as 1 (+0)');
+    expect(bufferHint(section(role, null))).toBe('absolute, not % · shown as 1 (+0)');
   });
 });

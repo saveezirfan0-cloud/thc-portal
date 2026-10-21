@@ -131,8 +131,9 @@ let keySeq = 0;
 /**
  * A new role section, pre-filled with the event's current window (§3.2), then
  * edited independently. The buffer starts at the suggestion for one person
- * (ADR-0181; 0 under the default rule, or with the rule off) and allocation
- * at headcount + buffer (§3.4).
+ * at the section's start (ADR-0181: 0, or 1 when the window starts before
+ * 08:00 under THC's rule; 0 with the rule off) and allocation at
+ * headcount + buffer (§3.4).
  */
 export function newRoleDraft(
   draft: EventDraft,
@@ -141,7 +142,7 @@ export function newRoleDraft(
   bufferRule: BufferSuggestionRule | null = null,
 ): RoleDraft {
   keySeq += 1;
-  const buffer = suggestBuffer(1, bufferRule) ?? 0;
+  const buffer = suggestBuffer(1, bufferRule, draft.overallStart) ?? 0;
   return {
     key: `role-${keySeq}`,
     id: null,
@@ -166,7 +167,8 @@ export function newRoleDraft(
 /**
  * Applies one edit to a role section.
  *
- *   * The buffer follows the suggestion as the headcount changes until the
+ *   * The buffer follows the suggestion as the headcount — or the section's
+ *     own start, which decides the early-start extra — changes, until the
  *     manager types one (ADR-0181). With no rule, or the rule off, nothing
  *     follows and the buffer is only what was typed.
  *   * The allocation default then follows headcount and buffer until the
@@ -180,7 +182,8 @@ export function editRole(
   const next = { ...role, ...patch };
   if (patch.buffer !== undefined && patch.bufferTouched === undefined) next.bufferTouched = true;
   if (!next.bufferTouched) {
-    const suggested = suggestBuffer(next.headcount, bufferRule);
+    // RULE-18: the section's own start, never the event window.
+    const suggested = suggestBuffer(next.headcount, bufferRule, next.start);
     if (suggested !== null) next.buffer = suggested;
   }
   if (patch.allocationPerHour !== undefined) next.allocationTouched = true;
@@ -203,7 +206,7 @@ export function bufferSuggestionPatch(
   role: RoleDraft,
   bufferRule: BufferSuggestionRule | null,
 ): Partial<RoleDraft> | null {
-  const suggested = suggestBuffer(role.headcount, bufferRule);
+  const suggested = suggestBuffer(role.headcount, bufferRule, role.start);
   if (suggested === null || suggested === role.buffer) return null;
   return role.id === null ? { bufferTouched: false } : { buffer: suggested };
 }

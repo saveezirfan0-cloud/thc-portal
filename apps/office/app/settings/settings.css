@@ -42,6 +42,19 @@
 .settings-grid .panel-b > hr {
   margin: 0;
 }
+/* ADR-0181 "Suggested overs": the rule's five small fields side by side,
+   wrapping on a narrow column, and the rule read back as one sentence. */
+.settings-overs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--sp-12);
+  align-items: start;
+}
+.settings-overs-rule {
+  margin: 0;
+  font-weight: 600;
+}
+
 /* The radii table draws its own rules between rows. */
 .settings-grid .panel-b:has(> .radius-row) {
   gap: 0;
