@@ -1,33 +1,21 @@
 import { type DbError, explainDbError } from '../../_lib/dbError';
-import { isEmail } from '../validate';
+import { MAX_INVOICE_EMAILS, isEmail, normaliseInvoiceEmails } from '../validate';
+
+export { MAX_INVOICE_EMAILS, normaliseInvoiceEmails };
 
 /**
  * The Invoicing panel's rules (ADR-0176). Pure, so the server action and
  * the panel share them and a test can drive them directly.
  *
  * The database is the gate — `set_client_invoice_details()` trims,
- * lower-cases, de-duplicates and drops blanks, refuses a sixth address and
+ * lower-cases, de-duplicates and drops blanks, refuses an eleventh address and
  * anything that is not an address — and these say the same thing before
  * the round trip, and turn its refusals into sentences.
  */
 
-/** `clients_invoice_emails_max`: at most five invoice addresses. */
-export const MAX_INVOICE_EMAILS = 5;
-
 /** Shown under the invoice emails, and in their place when there are none. */
-export const INVOICE_EMAILS_HINT = 'Empty: invoices go to the contact emails above';
-
-/** What the database stores: trimmed, lower-cased, de-duplicated, no blanks. */
-export function normaliseInvoiceEmails(emails: readonly string[]): string[] {
-  const seen = new Set<string>();
-  for (const email of emails) {
-    const value = String(email ?? '')
-      .trim()
-      .toLowerCase();
-    if (value) seen.add(value);
-  }
-  return [...seen];
-}
+export const INVOICE_EMAILS_HINT =
+  'Empty: invoices go to the main contact — the allocation emails above';
 
 /** Why these addresses cannot be saved, or null when they can. */
 export function invoiceEmailsProblem(emails: readonly string[]): string | null {

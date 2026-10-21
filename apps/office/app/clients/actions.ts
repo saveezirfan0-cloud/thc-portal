@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { type DbError, explainDbError } from '../_lib/dbError';
 import { supabaseConfigured } from './data';
-import { validateClient } from './validate';
+import { normaliseInvoiceEmails, validateClient } from './validate';
 import type { ActionResult, ClientDraft } from './types';
 
 /**
@@ -30,7 +30,16 @@ interface RpcClient {
 /** Release audit D-M5: the database's words, as a sentence (`_lib/dbError`). */
 const CLIENT_WORDING = {
   unique: 'A client with that name already exists.',
-  codes: { unknown_client: 'That client no longer exists. Refresh the page.' },
+  codes: {
+    unknown_client: 'That client no longer exists. Refresh the page.',
+    invoice_email_required:
+      'Add at least one invoice email: the invoice and the sign-in and sign-out log go to these.',
+    too_many_invoice_emails: 'Up to 10 invoice emails.',
+    invalid_invoice_email:
+      'One of the invoice emails is not an email address. Check them and save again.',
+    invoice_details_too_long:
+      'The accounts contact is at most 200 characters and the billing address at most 1,000.',
+  },
   log: '[clients]',
 };
 
@@ -60,11 +69,19 @@ function args(draft: ClientDraft): RpcArguments {
 }
 
 export async function createClientRecord(draft: ClientDraft): Promise<ActionResult> {
-  const invalid = validateClient(draft);
+  const invalid = validateClient(draft, true);
   if (invalid) return { ok: false, message: invalid };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
-  return callRpc('create_client', args(draft));
+  // ADR-0176 (THC 21.10.2026): a new client is created with where its
+  // invoices go; create_client refuses one with no invoice email.
+  const invoicing = draft.invoicing!;
+  return callRpc('create_client', {
+    ...args(draft),
+    p_invoice_emails: normaliseInvoiceEmails(invoicing.invoice_emails),
+    p_accounts_contact_name: invoicing.accounts_contact_name.trim() || null,
+    p_billing_address: invoicing.billing_address.trim() || null,
+  });
 }
 
 export async function updateClientRecord(id: string, draft: ClientDraft): Promise<ActionResult> {

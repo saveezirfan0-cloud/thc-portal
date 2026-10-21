@@ -5,7 +5,7 @@ import type { InvoiceDetails } from '../types';
 
 /**
  * ADR-0176 (THC 20.10.2026): the client card's Invoicing panel — the
- * accounts contact, up to five invoice emails and the billing address —
+ * accounts contact, up to ten invoice emails and the billing address —
  * saved through `set_client_invoice_details()`, whose refusals reach the
  * manager as sentences.
  */
@@ -65,14 +65,17 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     });
   });
 
-  it('refuses a sixth address and a non-address before the round trip', async () => {
-    const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((n) => `${n}@acme.co.uk`);
+  it('refuses an eleventh address and a non-address before the round trip', async () => {
+    const eleven = Array.from({ length: 11 }, (_, n) => `a${n}@acme.co.uk`);
     const many = await setInvoiceDetails('c-1', {
       accountsContactName: '',
-      invoiceEmails: six,
+      invoiceEmails: eleven,
       billingAddress: '',
     });
-    expect(many).toEqual({ ok: false, message: expect.stringContaining('Up to 5 invoice emails') });
+    expect(many).toEqual({
+      ok: false,
+      message: expect.stringContaining('Up to 10 invoice emails'),
+    });
     const bad = await setInvoiceDetails('c-1', {
       accountsContactName: '',
       invoiceEmails: ['accounts at acme'],
@@ -93,7 +96,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     ],
     [
       { code: '22023', message: 'too_many_invoice_emails' },
-      'Up to 5 invoice emails. Remove one before adding another.',
+      'Up to 10 invoice emails. Remove one before adding another.',
     ],
     [
       { code: '22023', message: 'invalid_invoice_email', details: 'ap@acme' },
@@ -150,7 +153,7 @@ describe('The Invoicing panel on the client card (ADR-0176)', () => {
     expect(html).toContain('Accounts Payable');
     expect(html).toContain('ap@acme.co.uk');
     expect(html).toContain('finance@acme.co.uk');
-    expect(html).toContain('Empty: invoices go to the contact emails above');
+    expect(html).toContain('Empty: invoices go to the main contact — the allocation emails above');
     expect(html).toContain('class="inv-address"');
     expect(html).toContain('1 Hotel Row\nLondon W1 1AA');
     expect(html).toMatch(/<button[^>]*>Edit<\/button>/);
@@ -177,6 +180,6 @@ describe('The Invoicing panel on the client card (ADR-0176)', () => {
     );
     expect(html).toContain('Not set');
     expect(html).toContain('None');
-    expect(html).toContain('Empty: invoices go to the contact emails above');
+    expect(html).toContain('Empty: invoices go to the main contact — the allocation emails above');
   });
 });

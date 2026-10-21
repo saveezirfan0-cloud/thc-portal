@@ -19,7 +19,7 @@ import type { InvoiceDetails } from './types';
  * client's accounts contact:
  *
  *   · Accounts contact — the name under "Invoice to";
- *   · Invoice emails — up to five; none sends the invoice to the
+ *   · Invoice emails — up to ten; none sends the invoice to the
  *     allocation emails above;
  *   · Billing address — printed under the name on the invoice.
  *

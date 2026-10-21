@@ -24,7 +24,26 @@ export const CONTACT_NAME_MAX = 120;
 export const CONTACT_POINT_MAX = 200;
 
 export type ClientField =
-  'name' | 'contact_name' | 'phone' | 'staff_contact_point' | 'contact_emails';
+  'name' | 'contact_name' | 'phone' | 'staff_contact_point' | 'contact_emails' | 'invoice_emails';
+
+/** `clients_invoice_emails_max`: at most ten invoice addresses (THC, 21.10.2026). */
+export const MAX_INVOICE_EMAILS = 10;
+
+/** What the database stores: trimmed, lower-cased, de-duplicated, no blanks. */
+export function normaliseInvoiceEmails(emails: readonly string[]): string[] {
+  const seen = new Set<string>();
+  for (const email of emails) {
+    const value = String(email ?? '')
+      .trim()
+      .toLowerCase();
+    if (value) seen.add(value);
+  }
+  return [...seen];
+}
+
+/** create_client's own limits on the optional invoicing fields (20261022130000). */
+export const ACCOUNTS_CONTACT_MAX = 200;
+export const BILLING_ADDRESS_MAX = 1000;
 
 export function isEmail(value: string): boolean {
   return EMAIL.test(value.trim());
@@ -32,9 +51,14 @@ export function isEmail(value: string): boolean {
 
 /**
  * What is wrong with each field, in the order the form shows them. A
- * field that is right has no entry.
+ * field that is right has no entry. `creating`: a new client must also say
+ * where its invoices go (ADR-0176, THC 21.10.2026) — `create_client`
+ * refuses one with no invoice email.
  */
-export function clientFieldErrors(draft: ClientDraft): Partial<Record<ClientField, string>> {
+export function clientFieldErrors(
+  draft: ClientDraft,
+  creating = false,
+): Partial<Record<ClientField, string>> {
   const errors: Partial<Record<ClientField, string>> = {};
   const name = draft.name.trim();
   if (!name) errors.name = 'Give the client a name.';
@@ -73,14 +97,34 @@ export function clientFieldErrors(draft: ClientDraft): Partial<Record<ClientFiel
     const bad = draft.contact_emails.find((email) => !isEmail(email));
     if (bad) errors.contact_emails = `“${bad}” is not an email address.`;
   }
+
+  if (creating) {
+    const invoice = normaliseInvoiceEmails(draft.invoicing?.invoice_emails ?? []);
+    if (invoice.length === 0) {
+      errors.invoice_emails =
+        'Add at least one invoice email: the invoice and the sign-in and sign-out log go to these.';
+    } else if (invoice.length > MAX_INVOICE_EMAILS) {
+      errors.invoice_emails = `Up to ${MAX_INVOICE_EMAILS} invoice emails.`;
+    } else {
+      const bad = invoice.find((email) => !isEmail(email));
+      if (bad) errors.invoice_emails = `“${bad}” is not an email address.`;
+    }
+  }
   return errors;
 }
 
 /** The first problem, for the server action's single message. */
-export function validateClient(draft: ClientDraft): string | null {
-  const errors = clientFieldErrors(draft);
+export function validateClient(draft: ClientDraft, creating = false): string | null {
+  const errors = clientFieldErrors(draft, creating);
   const first = (
-    ['name', 'contact_name', 'phone', 'staff_contact_point', 'contact_emails'] as const
+    [
+      'name',
+      'contact_name',
+      'phone',
+      'staff_contact_point',
+      'contact_emails',
+      'invoice_emails',
+    ] as const
   ).find((field) => errors[field]);
   return first ? errors[first]! : null;
 }

@@ -125,21 +125,18 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}{updateTag}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nThere's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with the invoice at 10:00 the morning after the event. Any questions, just reply to this email.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
         "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}",
-      stepsLead: 'On the day, please ask your manager on site to:',
-      steps: [
-        "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
-        'print and sign their name at the bottom,',
-        'email the signed sheet back to us — just reply to this email.',
-      ],
-      closing: 'Any questions, you can reach us the same way.',
+      // THC, 21.10.2026: the times are GPS-verified, so the client no longer
+      // fills in, signs or returns the sheet (ADR-0176 amendment).
+      closing:
+        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with the invoice at 10:00 the morning after the event. Any questions, just reply to this email.",
       attachmentNote: 'Allocation Timesheet · attached',
       badgesNote: 'Name badges · {nameBadges} to print',
-      replyButton: 'Reply with the signed sheet',
+      replyButton: 'Reply to this email',
     },
     trigger: '"Send allocation sheet" on the Back Office event page (§11.4)',
     timing: 'on the press — any time, including mid-event (§11.3)',

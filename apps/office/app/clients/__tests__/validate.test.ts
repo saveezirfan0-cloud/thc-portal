@@ -98,3 +98,43 @@ describe('a present value must also be right (release audit D-M2, D-M3)', () => 
     expect(Object.keys(errors).sort()).toEqual(['contact_emails', 'name', 'phone']);
   });
 });
+
+/**
+ * ADR-0176 (THC 21.10.2026): a NEW client must say where its invoices go —
+ * `create_client` refuses one with no invoice email
+ * (supabase/tests/910_client_invoicing_contact_required.sql). Edit does
+ * not ask: the card's Invoicing panel owns these once the client exists.
+ */
+describe('a new client needs an invoice email', () => {
+  const invoicing = (invoice_emails: string[]) => ({
+    invoice_emails,
+    accounts_contact_name: '',
+    billing_address: '',
+  });
+
+  it('is refused with none, and an edit is not', () => {
+    expect(validateClient(CLARIDGES, true)).toMatch(/at least one invoice email/i);
+    expect(validateClient(draft({ invoicing: invoicing(['  ']) }), true)).toMatch(
+      /at least one invoice email/i,
+    );
+    expect(validateClient(CLARIDGES)).toBeNull();
+  });
+
+  it('takes several, up to ten, and only addresses', () => {
+    const ten = Array.from({ length: 10 }, (_, n) => `ap${n}@claridges.example`);
+    expect(validateClient(draft({ invoicing: invoicing(ten) }), true)).toBeNull();
+    expect(
+      validateClient(draft({ invoicing: invoicing([...ten, 'ap10@claridges.example']) }), true),
+    ).toMatch(/up to 10 invoice emails/i);
+    expect(
+      validateClient(draft({ invoicing: invoicing(['accounts at claridges']) }), true),
+    ).toMatch(/is not an email address/);
+  });
+
+  it('counts an address once, whatever its case', () => {
+    const same = Array.from({ length: 11 }, (_, n) =>
+      n % 2 ? 'AP@claridges.example' : 'ap@claridges.example',
+    );
+    expect(validateClient(draft({ invoicing: invoicing(same) }), true)).toBeNull();
+  });
+});
