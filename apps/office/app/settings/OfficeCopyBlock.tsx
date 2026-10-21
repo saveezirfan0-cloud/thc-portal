@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Textarea } from '@thc/ui';
-import { Block, Feedback, SaveAction, useSave } from './SettingsScreen';
+import { Block, Feedback, SaveAction, useSave } from './blocks';
 import { OFFICE_COPY_MAX, officeCopyText, splitAddresses, validateOfficeCopy } from './officeCopy';
 import { saveDocumentOfficeCopy } from './officeCopyActions';
 

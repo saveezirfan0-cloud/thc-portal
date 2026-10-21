@@ -195,6 +195,19 @@
   outline-offset: 2px;
 }
 
+/* ADR-0181: the Buffer field with its "Use suggestion (N)" button below
+   it, kept out of the hint so the hint stays plain text. */
+.buffer-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.buffer-field > .field {
+  align-self: stretch;
+}
+
 /* A button that reads as a link — the "override" affordance beside the
    rate-card charge rate (§3.2). Tokens only, no hard-coded colour. */
 .linkish {
