@@ -196,8 +196,8 @@ update criminal_declarations set review_status = 'rejected', reviewed_at = :'now
                                  review_note = 'Not accepted — see file'
  where staff_id = :'rejectd';
 select is((select status::text || '/' || block_kind::text || '/' || block_reason from staff where id = :'rejectd'),
-  'blocked/manual/Not accepted — see file',
-  '§10.7 Reject: the block STANDS and converts to a manual block with the manager''s reason, so only a manager can ever lift it');
+  'blocked/manual/Declared conviction not accepted',
+  '§10.7 Reject: the block STANDS and converts to a manual block, so only a manager can ever lift it — with fixed words since ADR-0180 (20261022170400): the reviewer''s note stays on the declaration, which a GDPR removal clears, and never reaches the block or its audit rows');
 select is(
   (select count(*)::int from notification_outbox
     where key = 'N15:declaration:' || (select id from criminal_declarations
@@ -212,7 +212,10 @@ select is(unblock_if_compliant(:'rejectd', date '2026-09-21'), false,
 -- used to emit conviction_unreviewed for any Yes not `verified`, which is
 -- permanently true of a REJECTED one, so unblock_worker refused for ever
 -- and the only exits were re-onboarding or GDPR removal.
-select is((unblock_worker(:'rejectd', date '2026-09-21'))->>'unblocked', 'true',
+-- Since ADR-0180 (20261022170400) that manager is one allowed to review
+-- criminal records — an owner while nobody is named — passed as p_actor,
+-- as the Back Office does.
+select is((unblock_worker(:'rejectd', date '2026-09-21', :'admin_uid'))->>'unblocked', 'true',
   '§10.7/§9.6: a manager CAN lift the converted block — a rejected declaration has been decided, and the manual block is what carries it');
 select is((select status::text from staff where id = :'rejectd'), 'compliant',
   'and the worker comes back, which is the whole point of the block being a manager''s to lift');

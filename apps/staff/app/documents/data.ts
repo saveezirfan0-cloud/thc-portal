@@ -2,9 +2,11 @@ import { cookies } from 'next/headers';
 import { isDocType } from '@thc/domain';
 import type { CompletionEvidenceForm } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
+import { parseDeclarationUpdate } from './declarationUpdate';
 import type {
   CapNow,
   DeclarationRecord,
+  DeclarationStatus,
   DocumentRecord,
   DocumentsData,
   OptOutRecord,
@@ -24,9 +26,17 @@ export { supabaseConfigured };
 export async function loadDocuments(): Promise<DocumentsData | null> {
   if (!supabaseConfigured()) return null;
   const supabase = staffDb(await cookies());
-  const { data, error } = await supabase.rpc('staff_documents');
+  // ADR-0180: alongside, what the office asked about the declaration. A
+  // failed read of it leaves the tab as it was, with nothing to answer.
+  const [{ data, error }, update] = await Promise.all([
+    supabase.rpc('staff_documents'),
+    Promise.resolve(supabase.rpc('my_declaration_update')).then(
+      (answer) => (answer.error ? null : parseDeclarationUpdate(answer.data)),
+      () => null,
+    ),
+  ]);
   if (error || !data) return null;
-  return parseDocuments(data as Record<string, unknown>);
+  return { ...parseDocuments(data as Record<string, unknown>), declarationUpdate: update };
 }
 
 const str = (value: unknown): string | null =>
@@ -36,6 +46,9 @@ const day = (value: unknown): string | null => (value ? String(value).slice(0, 1
 const REVIEW: ReadonlySet<string> = new Set(['pending', 'verified', 'rejected', 'superseded']);
 const review = (value: unknown): ReviewStatus =>
   REVIEW.has(String(value)) ? (String(value) as ReviewStatus) : 'pending';
+// ADR-0180: a declaration (never a document) may be sent back for more details.
+const declarationStatus = (value: unknown): DeclarationStatus =>
+  value === 'details_requested' ? 'details_requested' : review(value);
 
 /**
  * The RPC's JSON, typed. Pure, so the view-model tests start from exactly
@@ -70,7 +83,7 @@ export function parseDocuments(row: Record<string, unknown>): DocumentsData {
     source: c['source'] === 'in_employment' ? 'in_employment' : 'onboarding',
     answer: Boolean(c['answer']),
     declaredAt: String(c['declaredAt']),
-    reviewStatus: review(c['reviewStatus']),
+    reviewStatus: declarationStatus(c['reviewStatus']),
     superseded: Boolean(c['superseded']),
   }));
 

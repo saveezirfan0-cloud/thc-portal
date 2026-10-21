@@ -1,4 +1,5 @@
 import type { CompletionEvidenceForm, DocType, RtwCheckStatus, StaffStatus } from '@thc/domain';
+import type { DeclarationUpdate } from './declarationUpdate';
 
 /**
  * What `staff_documents()` (20260923150000) hands the Documents tab.
@@ -8,6 +9,9 @@ import type { CompletionEvidenceForm, DocType, RtwCheckStatus, StaffStatus } fro
  * field for this screen to render them into (§10.7 step 5).
  */
 export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
+
+/** ADR-0180: a declaration (never a document) may also be sent back for more details. */
+export type DeclarationStatus = ReviewStatus | 'details_requested';
 
 export interface DocumentRecord {
   id: string;
@@ -37,7 +41,7 @@ export interface DeclarationRecord {
   source: 'onboarding' | 'in_employment';
   answer: boolean;
   declaredAt: string;
-  reviewStatus: ReviewStatus;
+  reviewStatus: DeclarationStatus;
   superseded: boolean;
 }
 
@@ -85,6 +89,12 @@ export interface DocumentsData {
    * read failed — the row then reads as it always did.
    */
   rtwChecks?: Record<string, { status: RtwCheckStatus; workerReason: string | null }>;
+  /**
+   * ADR-0180 (`my_declaration_update()`): the office sent the declaration back
+   * for more details, or rejected it — with its message, and whether the
+   * worker may answer. Absent or null: nothing to answer.
+   */
+  declarationUpdate?: DeclarationUpdate | null;
 }
 
 export type ActionResult = { ok: true; note?: string } | { ok: false; message: string };

@@ -277,6 +277,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       { code: 'CL2', label: 'Completion letter approved', when: 'The office approves it' },
       { code: 'N14', label: 'Weekly limit changed', when: 'A worker’s weekly hours limit changes' },
       { code: 'N15', label: 'Shifts open again', when: 'A block is lifted' },
+      {
+        code: 'DR1',
+        label: 'More detail needed on a declaration',
+        when: 'The office asks for more details on a criminal declaration',
+        warning:
+          'Workers are not told the office asked; the request still shows on their Documents and onboarding screens.',
+      },
       { code: 'RC2', label: 'Profile updated', when: 'The office approves a profile change' },
       {
         code: 'CR1',

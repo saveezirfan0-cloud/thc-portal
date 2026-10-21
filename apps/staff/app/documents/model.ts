@@ -14,6 +14,8 @@ import {
 } from '@thc/domain';
 import type { DocType, DocumentState, TimeFormat } from '@thc/domain';
 import type { DeclarationRecord, DocumentRecord, DocumentsData } from './types';
+import { UPDATE_DECLARATION_HREF } from './declarationUpdate';
+import type { DeclarationUpdate } from './declarationUpdate';
 
 /**
  * The Documents tab as a view — §10.4, §4.1–4.5, §10.7,
@@ -376,9 +378,16 @@ function missingRows(data: DocumentsData, present: ReadonlySet<string>, canUploa
 function declarationRow(
   declarations: readonly DeclarationRecord[],
   format: TimeFormat,
+  update: DeclarationUpdate | null = null,
 ): DocRowView | null {
   const latest = declarations.find((d) => !d.superseded);
   if (!latest) return null;
+  // ADR-0180: what the office asked about THIS declaration, and whether the
+  // worker may answer it (my_declaration_update()).
+  const answer = update && update.declarationId === latest.id ? update : null;
+  const updateAction: RowAction | null = answer?.canUpdate
+    ? { label: 'Update your declaration', href: UPDATE_DECLARATION_HREF, primary: true }
+    : null;
   const when = latest.source === 'onboarding' ? 'at onboarding' : 'from the app';
   const base = {
     key: 'declaration',
@@ -395,6 +404,35 @@ function declarationRow(
       metaTone: null,
       pill: { tone: 'amber', text: 'In review' },
       action: null,
+    };
+  }
+  if (latest.reviewStatus === 'details_requested') {
+    // ADR-0180: the office's message for the worker, word for word — never
+    // the details they declared, never the office's own note.
+    return {
+      ...base,
+      state: 'rejected',
+      tone: 'rejected',
+      icon: '!',
+      meta: answer?.message
+        ? `The office needs more detail: “${answer.message}”`
+        : 'The office needs more detail about your declaration',
+      metaTone: 'amber',
+      pill: updateAction ? null : { tone: 'amber', text: 'More detail needed' },
+      action: updateAction,
+    };
+  }
+  if (latest.reviewStatus === 'rejected' && updateAction) {
+    // ADR-0180: a rejected declaration the worker may send again in full.
+    return {
+      ...base,
+      state: 'rejected',
+      tone: 'rejected',
+      icon: '✕',
+      meta: 'Not accepted as it was — please update it with the full details',
+      metaTone: 'coral',
+      pill: null,
+      action: updateAction,
     };
   }
   if (latest.reviewStatus === 'rejected') {
@@ -616,16 +654,17 @@ export function buildDocumentsView(
   docRows.push(...missingRows(data, present, canUpload));
   docRows.sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.title.localeCompare(b.title));
 
-  const declaration = declarationRow(data.declarations, format);
+  const declaration = declarationRow(data.declarations, format, data.declarationUpdate ?? null);
   const rows = declaration ? [...docRows, declaration] : docRows;
 
-  const needs = docRows.filter(
-    (r) =>
-      r.state === 'expired' ||
-      r.state === 'rejected' ||
-      r.state === 'missing' ||
-      r.state === 'expiring',
-  ).length;
+  const needs =
+    docRows.filter(
+      (r) =>
+        r.state === 'expired' ||
+        r.state === 'rejected' ||
+        r.state === 'missing' ||
+        r.state === 'expiring',
+    ).length + (declaration?.action ? 1 : 0);
   const replacing = docRows.some((r) => r.state === 'in_review');
   const attention =
     data.status === 'compliant' && needs > 0

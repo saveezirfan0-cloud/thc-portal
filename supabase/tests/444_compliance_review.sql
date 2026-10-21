@@ -211,8 +211,8 @@ select lives_ok($$ select compliance_reject_declaration('c6200000-0000-4000-8000
                                              'Not compatible with licensed-venue work') $$,
   '§10.7 Reject');
 select is((select block_kind::text || ' — ' || block_reason from staff where id = :'w_stu'),
-  'manual — Not compatible with licensed-venue work',
-  '§10.7: the block converts to a manual block carrying the manager''s reason ("Blocked — <reason>")');
+  'manual — Declared conviction not accepted',
+  '§10.7: the block converts to a manual block ("Blocked — <reason>") — since ADR-0180 (20261022170400) with fixed words: the reviewer''s reason stays on the declaration, which a GDPR removal clears, and never reaches the block or its audit rows');
 select is((select count(*)::int from notification_outbox
             where recipient_staff_id = :'w_stu' and template in ('N8', 'N15')), 0,
   'and nothing is pushed: the office calls the worker');

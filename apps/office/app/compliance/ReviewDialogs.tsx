@@ -435,8 +435,9 @@ function RejectModal({
         hint={
           inEmployment ? (
             <>
-              Kept on the profile: the block converts to a manual block with this reason, and only a
-              manager can lift it. The worker is not told through the app — the office calls them.
+              Kept on the declaration, for the office only: the block converts to a manual block
+              (“Declared conviction not accepted”), which only Reverse rejection lifts. The worker
+              is not told through the app — the office calls them.
             </>
           ) : (
             <>

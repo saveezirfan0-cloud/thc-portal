@@ -9,6 +9,7 @@ import {
 import { EMPTY_MONITOR } from './checks';
 import { loadCheckMonitor } from './checksData';
 import { withLatestCheck } from './queue';
+import { loadDeclarationFollowUps } from './declarationData';
 import { loadStaffTermDates, termLetterStaffIds, withStaffTermDates } from './termDatesData';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 import { readProblem } from '../_lib/dbError';
@@ -99,7 +100,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
   // rtw_checks_latest_v, not on the queue view — one read for every share
   // code on the queue, merged by document id.
   const rows = queue.data ?? [];
-  const [checks, claims, termDates] = await Promise.all([
+  const [checks, claims, followUps, termDates] = await Promise.all([
     loadRtwChecksForDocuments(
       supabase,
       rows
@@ -116,6 +117,11 @@ export async function loadCompliance(): Promise<CompliancePageData> {
         .filter((row) => row.kind === 'document' && row.item_type === 'share_code_report')
         .map((row) => row.item_id),
     ),
+    // ADR-0180: an updated declaration, beside the question it answers.
+    loadDeclarationFollowUps(
+      supabase,
+      rows.filter((row) => row.kind === 'declaration').map((row) => row.item_id),
+    ),
     // ADR-0183: the holiday dates a pending term letter would replace.
     loadStaffTermDates(supabase, termLetterStaffIds(rows)),
   ]);
@@ -125,6 +131,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
       rows.map((row) => ({
         ...withLatestCheck(row, checks.get(row.item_id)),
         dob_claim: claims.get(row.item_id) ?? null,
+        ...followUps.get(row.item_id),
       })),
       termDates,
     ),

@@ -63,6 +63,14 @@ export interface QueueRow {
   declaration_source: 'onboarding' | 'in_employment' | null;
   declaration_details: string | null;
   conviction_date: string | null;
+  /**
+   * ADR-0180: NOT columns of the queue view — merged in from
+   * staff_declarations_v by declaration id. On an updated declaration, the
+   * status of the one it answers (details_requested or rejected) and the
+   * message the office sent with the request.
+   */
+  declaration_previous_status?: string | null;
+  declaration_previous_message?: string | null;
   staff_right_to_work_until: string | null;
   // Completion letter only (requirement §2.1).
   evidence_form: 'letter' | 'transcript' | 'university_email' | null;

@@ -917,6 +917,8 @@ export const REVIEW_PILL: Record<
   pending: { tone: 'amber', label: 'Under review' },
   rejected: { tone: 'coral', label: 'Rejected' },
   superseded: { tone: 'neutral', label: 'Superseded' },
+  // ADR-0180: a declaration sent back to the candidate.
+  details_requested: { tone: 'amber', label: 'More details asked' },
 };
 
 // ---------------------------------------------------------------------

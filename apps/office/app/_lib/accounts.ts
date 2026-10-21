@@ -126,6 +126,10 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   block_manual: 'Blocked worker',
   unblock: 'Unblocked worker',
   reset_to_candidate: 'Reset to candidate',
+  // ADR-0180: a criminal declaration's follow-ups.
+  'declaration.details_requested': 'Asked for more details on a declaration',
+  'declaration.rejection_reversed': 'Reversed a declaration rejection',
+  'declaration.updated': 'Updated their declaration',
   gdpr_remove: 'Removed worker (GDPR)',
   'rtw.verified': 'Verified right to work',
   'rtw.changed': 'Changed right to work',
@@ -156,6 +160,9 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'account.reinvited': 'Re-sent user invite',
   'account.invite_emailed': 'Emailed user invite',
   'account.role_changed': 'Changed office role',
+  // ADR-0180.
+  'account.criminal_records_granted': 'Allowed to review criminal records',
+  'account.criminal_records_revoked': 'Stopped reviewing criminal records',
   'account.two_step_reset': 'Reset two-step sign-in',
   'account.disabled': 'Switched login off',
   'account.enabled': 'Switched login on',

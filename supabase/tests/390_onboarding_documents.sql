@@ -391,7 +391,11 @@ update criminal_declarations set review_status = 'rejected', reviewed_at = now()
  where staff_id = :'tom';
 select is((select status::text from staff where id = :'tom'), 'documents',
   'rejecting the declaration opens nothing: only a verified item can move him on (§2.3)');
-update criminal_declarations set review_status = 'verified', reviewed_at = now()
+-- Since ADR-0180 a rejected declaration becomes verified only as a recorded
+-- reversal (reversed_at + a note, compliance_reverse_declaration_rejection);
+-- the guard refuses a bare flip even from the table owner.
+update criminal_declarations set review_status = 'verified', reviewed_at = now(),
+                                 reversed_at = now(), review_note = 'Cleared after a call'
  where staff_id = :'tom';
 select is((select status::text from staff where id = :'tom'), 'quiz',
   'a verified one does — the declaration is part of the one combined blocker (§2.10)');

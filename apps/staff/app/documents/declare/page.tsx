@@ -2,6 +2,7 @@ import { canDeclareConviction } from '@thc/domain';
 import { loadBookings } from '../../data';
 import { NotAvailable, SubScreen } from '../_components/SubScreen';
 import { DeclareForm } from '../_components/DeclareForm';
+import { UpdateDeclarationForm } from '../_components/UpdateDeclarationForm';
 import '../../staff-app.css';
 import '../documents.css';
 
@@ -9,7 +10,12 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Declare a criminal conviction · THC Staff' };
 
 /**
- * Declare a criminal conviction — §10.7.
+ * Declare a criminal conviction — §10.7. And, since ADR-0180, Update your
+ * declaration: when the office has asked for more details or could not
+ * accept the latest declaration, this screen is where the worker answers
+ * (DR1 lands here). Whether they may is the database's answer
+ * (`my_declaration_update().canUpdate`); otherwise the screen is the
+ * original declaration form.
  *
  * The count the confirmation quotes is the worker's confirmed bookings that
  * have not started: exactly the set `block_worker()` releases, since a shift
@@ -19,7 +25,13 @@ export default async function Page() {
   return (
     <SubScreen title="Declare a criminal conviction">
       {async (data) => {
-        if (!canDeclareConviction(data.status, data.blockKind)) {
+        const update = data.declarationUpdate ?? null;
+        const answering =
+          update?.canUpdate &&
+          (update.status === 'details_requested' || update.status === 'rejected')
+            ? { ...update, status: update.status }
+            : null;
+        if (!answering && !canDeclareConviction(data.status, data.blockKind)) {
           return (
             <NotAvailable>
               Declarations can’t be made from the app on your account. Please contact the office at:
@@ -36,6 +48,18 @@ export default async function Page() {
           : rows.filter(
               (booking) => booking.status === 'confirmed' && booking.startsAt.getTime() > now,
             ).length;
+        if (answering) {
+          return (
+            <UpdateDeclarationForm
+              status={answering.status}
+              message={answering.message}
+              pausesShifts={answering.pausesShifts}
+              futureShifts={futureShifts}
+              today={data.today}
+              after="/documents"
+            />
+          );
+        }
         return <DeclareForm futureShifts={futureShifts} today={data.today} />;
       }}
     </SubScreen>
