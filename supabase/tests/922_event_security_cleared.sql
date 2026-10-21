@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 921 · Security-cleared events: bring a passport or driving licence ·
---       20261023100000 · ADR-0184
+--       20261023100000 · ADR-0185
 --
 --   A. Shape: events.security_cleared is not null and false by default;
 --      the three definers pin their search_path; the activity log names it.

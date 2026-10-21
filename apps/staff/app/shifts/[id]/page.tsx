@@ -73,7 +73,7 @@ export default async function Page({
     loadBookingOffers(),
     // ADR-0110: the client's quiz and kit message for this shift.
     loadShiftRequirements(),
-    // ADR-0184: "bring your passport or driving licence" on a security-cleared event.
+    // ADR-0185: "bring your passport or driving licence" on a security-cleared event.
     loadSecurityClearedBookings(),
   ]);
   const requirement = requirements.find((row) => row.bookingId === id) ?? null;

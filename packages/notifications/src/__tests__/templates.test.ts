@@ -81,7 +81,7 @@ const INVITE_EMAIL_CODES = ['IR1'];
 const CLIENT_REQUIREMENT_PUSH_CODES = ['CR1', 'CR2'];
 const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
 
-/** Security-cleared events (ADR-0184): a worker is told to bring ID when confirmed. */
+/** Security-cleared events (ADR-0185): a worker is told to bring ID when confirmed. */
 const SECURITY_PUSH_CODES = ['SC1'];
 
 /**
@@ -188,7 +188,7 @@ describe('notification register (§8)', () => {
     expect([...CLIENT_PORTAL_CODES]).toEqual(CLIENT_PORTAL_EMAIL_CODES);
     // ADR-0180: the office asks for more detail on a criminal declaration.
     expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
-    // ADR-0184: a worker confirmed on a security-cleared event is told to bring ID.
+    // ADR-0185: a worker confirmed on a security-cleared event is told to bring ID.
     expect([...SECURITY_CLEARANCE_CODES]).toEqual(SECURITY_PUSH_CODES);
     const union = [
       ...SCOPE_CODES,

@@ -65,7 +65,7 @@ export interface EventInput {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
-  /** ADR-0184: staff must bring a passport or driving licence. */
+  /** ADR-0185: staff must bring a passport or driving licence. */
   securityCleared: boolean;
   /**
    * ADR-0117: the event this one was Duplicated from (create only). Saving
@@ -191,7 +191,7 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
       auto_assign: input.autoAssign,
       // English is always in it; the database's CHECK holds the same.
       required_languages: normaliseLanguages(input.requiredLanguages),
-      // ADR-0184: the confirmation trigger tells each worker to bring ID.
+      // ADR-0185: the confirmation trigger tells each worker to bring ID.
       security_cleared: input.securityCleared,
       // Release audit D-M1: a Duplicate says what it was made from, so the
       // activity log reads "Duplicated event" (20261014093200). created_by
@@ -345,7 +345,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
       auto_assign: input.autoAssign,
       // ADR-0080: not under the §3.2 lock, and nobody booked is re-asked.
       required_languages: normaliseLanguages(input.requiredLanguages),
-      // ADR-0184: not under the §3.2 lock; nobody booked is re-asked, but
+      // ADR-0185: not under the §3.2 lock; nobody booked is re-asked, but
       // ticking it tells those already confirmed (SC1).
       security_cleared: input.securityCleared,
     })

@@ -118,7 +118,7 @@ export interface EventDraft {
    */
   requiredLanguages: string[];
   /**
-   * ADR-0184: the event is security cleared — staff bring a passport or
+   * ADR-0185: the event is security cleared — staff bring a passport or
    * driving licence, and are told so when they are confirmed (SC1).
    */
   securityCleared: boolean;
@@ -419,7 +419,7 @@ export function draftFromSaved(
 }
 
 /**
- * ADR-0184: how many confirmed workers saving this edit tells to bring ID —
+ * ADR-0185: how many confirmed workers saving this edit tells to bring ID —
  * everyone confirmed, when "Security cleared" goes from unticked to ticked
  * (the database pushes SC1 to each, once per booking), and nobody otherwise.
  */

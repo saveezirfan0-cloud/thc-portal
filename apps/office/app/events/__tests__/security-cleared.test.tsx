@@ -4,10 +4,10 @@ import { DEFAULT_BUFFER_RULE, requiresReconfirmation } from '@thc/domain';
 import { TimeFormatProvider } from '@thc/ui';
 
 /**
- * ADR-0184 in the Shift Builder: the "Security cleared event" tick box
+ * ADR-0185 in the Shift Builder: the "Security cleared event" tick box
  * (staff bring a passport or driving licence), what saving writes, and that
  * ticking it re-confirms nobody. The confirmation push itself is the
- * database's (SC1, pgTAP 921).
+ * database's (SC1, pgTAP 922).
  */
 const state = vi.hoisted(() => ({
   eventRows: [] as Record<string, unknown>[],
@@ -166,7 +166,7 @@ beforeEach(() => {
   state.eventUpdates.length = 0;
 });
 
-describe('the Security cleared tick box (ADR-0184)', () => {
+describe('the Security cleared tick box (ADR-0185)', () => {
   it('is a real, unticked checkbox on a new event, worded as the ask', () => {
     const html = builder(DRAFT);
     expect(html).toContain('Security cleared event');
@@ -248,7 +248,7 @@ describe('saving it', () => {
       sections: [],
     };
     for (const as of ['edit', 'duplicate'] as const) {
-      expect(draftFromSaved(saved, [], as).securityCleared).toBe(true);
+      expect(draftFromSaved(saved, () => [], as).securityCleared).toBe(true);
     }
   });
 });

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261023100000 · Security-cleared events — staff bring ID
---   (ADR-0184; THC request 21.10.2026)
+--   (ADR-0185; THC request 21.10.2026)
 --
 -- "Some events need to be 'security cleared' which means that the staff
 -- members need to bring with them a form of ID: passport or driving
@@ -48,7 +48,7 @@ alter table public.events
   add column if not exists security_cleared boolean not null default false;
 
 comment on column public.events.security_cleared is
-  'ADR-0184: the event is security cleared — staff must bring a passport or driving licence. Event level; ticked in the Shift Builder. Every worker confirmed on it is pushed SC1 (once per booking) and the shift screen carries the note. Not a booking gate, not under the §3.2 edit lock, re-confirms nobody.';
+  'ADR-0185: the event is security cleared — staff must bring a passport or driving licence. Event level; ticked in the Shift Builder. Every worker confirmed on it is pushed SC1 (once per booking) and the shift screen carries the note. Not a booking gate, not under the §3.2 edit lock, re-confirms nobody.';
 
 -- ---------------------------------------------------------------------
 -- 2 · The activity log names it
@@ -116,7 +116,7 @@ create trigger bookings_security_cleared_notice
   for each row execute function public.bookings_security_cleared_notice();
 
 comment on function public.bookings_security_cleared_notice() is
-  'ADR-0184: queues SC1 ("bring your passport or driving licence", once per booking) when a booking becomes confirmed on an event marked security cleared. A trigger on bookings, so every path that confirms one is covered.';
+  'ADR-0185: queues SC1 ("bring your passport or driving licence", once per booking) when a booking becomes confirmed on an event marked security cleared. A trigger on bookings, so every path that confirms one is covered.';
 revoke execute on function public.bookings_security_cleared_notice() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
@@ -158,7 +158,7 @@ create trigger events_security_cleared_notice
   execute function public.events_security_cleared_notice();
 
 comment on function public.events_security_cleared_notice() is
-  'ADR-0184: when "Security cleared" is ticked on an event that already has confirmed staff, queues SC1 for each of them (once per booking, the same key as the confirmation trigger). Clearing the box tells nobody.';
+  'ADR-0185: when "Security cleared" is ticked on an event that already has confirmed staff, queues SC1 for each of them (once per booking, the same key as the confirmation trigger). Clearing the box tells nobody.';
 revoke execute on function public.events_security_cleared_notice() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
@@ -188,7 +188,7 @@ as $$
 $$;
 
 comment on function public.staff_security_cleared_bookings() is
-  'ADR-0184: the ids of the caller''s confirmed, live bookings on a security-cleared event — for the "bring your passport or driving licence" note on the shift screen. Resolves the caller through staff_caller(); nobody else''s booking.';
+  'ADR-0185: the ids of the caller''s confirmed, live bookings on a security-cleared event — for the "bring your passport or driving licence" note on the shift screen. Resolves the caller through staff_caller(); nobody else''s booking.';
 
 revoke execute on function public.staff_security_cleared_bookings() from public, anon;
 grant  execute on function public.staff_security_cleared_bookings() to authenticated;
@@ -278,7 +278,7 @@ language sql immutable set search_path = public, extensions as $$
 $$;
 
 comment on function public.notification_priorities() is
-  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176), DR1 20261022170100 (ADR-0180), SC1 20261023100000 (ADR-0184).';
+  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176), DR1 20261022170100 (ADR-0180), SC1 20261023100000 (ADR-0185).';
 
 revoke execute on function public.notification_priorities() from public, anon, authenticated;
 grant execute on function public.notification_priorities() to service_role;

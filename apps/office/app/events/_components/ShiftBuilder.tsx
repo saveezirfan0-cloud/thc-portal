@@ -207,7 +207,7 @@ export function ShiftBuilder({
   const languagesChanged =
     mode === 'edit' && languagesAdded.some((language) => !savedLanguages.includes(language));
   const bookedTotal = Object.values(booked).reduce((sum, n) => sum + n, 0);
-  // ADR-0184: ticking Security cleared on a saved event tells everyone already
+  // ADR-0185: ticking Security cleared on a saved event tells everyone already
   // confirmed on it to bring ID, so say how many before the office saves.
   const confirmedTotal = Object.values(confirmed).reduce((sum, n) => sum + n, 0);
   const securityTold = securityClearedToTell(initial, draft, confirmedTotal);
@@ -650,7 +650,7 @@ export function ShiftBuilder({
                 else on the event board.
               </Alert>
             ) : null}
-            {/* ADR-0184: a tick box, not a gate. Nobody is refused a booking for
+            {/* ADR-0185: a tick box, not a gate. Nobody is refused a booking for
                 it and check-in is unchanged; each worker confirmed on the event
                 is pushed SC1 and sees the note on their shift. */}
             <div className="field">

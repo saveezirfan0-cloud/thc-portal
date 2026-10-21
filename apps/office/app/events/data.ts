@@ -296,7 +296,7 @@ export interface SavedEvent {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
-  /** ADR-0184: staff must bring a passport or driving licence. */
+  /** ADR-0185: staff must bring a passport or driving licence. */
   securityCleared: boolean;
   cancelledAt: string | null;
   /**

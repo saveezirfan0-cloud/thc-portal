@@ -182,7 +182,7 @@ export interface BoardEvent {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
-  /** ADR-0184: staff were told to bring a passport or driving licence. */
+  /** ADR-0185: staff were told to bring a passport or driving licence. */
   securityCleared: boolean;
   /**
    * ADR-0117: "Day 2 of 3" when this event is one day of a multi-day job

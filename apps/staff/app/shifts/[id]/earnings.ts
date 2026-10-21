@@ -18,6 +18,11 @@ export interface Earnings {
   totalPence: number;
   /** RULE-14 lifted it; worth telling the worker why the number is bigger. */
   floorApplied: boolean;
+  /**
+   * ADR-0184: signed out more than 15 minutes after the end, so paid to the
+   * sign-out; these are the minutes past the scheduled end (0 otherwise).
+   */
+  overrunMin: number;
 }
 
 /**
@@ -50,6 +55,7 @@ export function shiftEarnings(shift: ShiftDetail, now = new Date()): Earnings | 
     hourlyRatePence,
     totalPence: Math.round((result.payableMin / 60) * hourlyRatePence),
     floorApplied: result.floorApplied,
+    overrunMin: result.overrunMin ?? 0,
   };
 }
 
@@ -71,9 +77,10 @@ export function leftEarly(shift: ShiftDetail): boolean {
 
 /**
  * The unpaid break minutes the PAY deducts (§5.2b, D49): each break clipped
- * to [max(check-in, start), min(finish, end)], exactly as
- * `unpaid_break_minutes()` does. A break outside the paid window was never
- * paid, so it is not taken off again.
+ * to the paid window [max(check-in, start), paid end], exactly as
+ * `unpaid_break_minutes()` does — the paid end being the scheduled end, or
+ * the sign-out when it was more than 15 minutes past it (ADR-0184). A break
+ * outside the paid window was never paid, so it is not taken off again.
  */
 export function paidBreakMinutes(shift: ShiftDetail, now = new Date()): number {
   return unpaidBreakMinutes(

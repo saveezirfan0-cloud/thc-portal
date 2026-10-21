@@ -153,6 +153,12 @@ export function ShiftCompleteScreen({
           <span className="v">{formatMoney(earnings.hourlyRatePence)} / h</span>
         </div>
       </div>
+      {earnings.overrunMin > 0 ? (
+        <Note>
+          You checked out {formatDuration(earnings.overrunMin)} after the scheduled end, so you’re
+          paid to when you checked out. The office will be in touch to ask why the shift ran late.
+        </Note>
+      ) : null}
       {earnings.floorApplied ? (
         <Note>Short shifts are paid a four-hour minimum, so that is what this comes to.</Note>
       ) : null}

@@ -229,7 +229,7 @@ export function toShiftRequirements(data: unknown): ShiftRequirementRow[] {
 }
 
 /**
- * ADR-0184: the caller's confirmed bookings on a security-cleared event, from
+ * ADR-0185: the caller's confirmed bookings on a security-cleared event, from
  * `staff_security_cleared_bookings()` — the shift screen's "bring your
  * passport or driving licence" note. A failed read is not shown to the
  * worker: the note is a reminder of what the SC1 push already said, and a

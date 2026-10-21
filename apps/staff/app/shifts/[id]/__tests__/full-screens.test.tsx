@@ -13,7 +13,8 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-const { NoOnSiteFixScreen, OffSiteCheckOutScreen } = await import('../FullScreens');
+const { NoOnSiteFixScreen, OffSiteCheckOutScreen, ShiftCompleteScreen } =
+  await import('../FullScreens');
 
 describe('(i) check-out pressed off site', () => {
   it('says the recorded time, lays out the three stamps, and continues to the summary', () => {
@@ -50,5 +51,43 @@ describe('(j) off site with no on-site fix — RULE-02', () => {
     );
     expect(html).toContain('Your check-in at 07:51 was recorded on site');
     expect(html).toContain('OK, I understand');
+  });
+});
+
+describe('(k) the shift complete summary, signed out late (ADR-0184)', () => {
+  const earnings = {
+    workedMin: 315,
+    unpaidBreakMin: 0,
+    payableMin: 315,
+    hourlyRatePence: 1400,
+    totalPence: 7350,
+    floorApplied: false,
+    overrunMin: 75,
+  };
+
+  it('says the worker is paid to the check-out and the office will ask why', () => {
+    const html = renderToStaticMarkup(
+      <ShiftCompleteScreen
+        firstName="Amara"
+        checkedOutAt="17:15"
+        window="12:00 – 16:00"
+        earnings={earnings}
+      />,
+    );
+    expect(html).toContain('You checked out 1 h 15 m after the scheduled end');
+    expect(html).toContain('paid to when you checked out');
+    expect(html).toContain('£73.50');
+  });
+
+  it('says nothing of it when the check-out was inside the 15 minutes', () => {
+    const html = renderToStaticMarkup(
+      <ShiftCompleteScreen
+        firstName="Amara"
+        checkedOutAt="16:10"
+        window="12:00 – 16:00"
+        earnings={{ ...earnings, workedMin: 240, payableMin: 240, totalPence: 5600, overrunMin: 0 }}
+      />,
+    );
+    expect(html).not.toContain('after the scheduled end');
   });
 });

@@ -239,7 +239,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               </Pill>
               {/* ADR-0080: auto-assign, Radar and Accept book only staff who speak these. */}
               {languagesLabel ? <Pill tone="cyan">{languagesLabel}</Pill> : null}
-              {/* ADR-0184: confirmed staff are told to bring a passport or driving licence. */}
+              {/* ADR-0185: confirmed staff are told to bring a passport or driving licence. */}
               {event.securityCleared ? <Pill tone="cyan">Security cleared</Pill> : null}
               {/* ADR-0117: one day of a multi-day job. */}
               {event.seriesLabel ? <Pill tone="cyan">{event.seriesLabel}</Pill> : null}

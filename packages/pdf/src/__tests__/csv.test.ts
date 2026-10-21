@@ -353,4 +353,25 @@ describe('Invoicing CSV (ADR-0172)', () => {
   it('is only a header when nothing is ready', () => {
     expect(lines(invoiceCsv([]))).toHaveLength(1);
   });
+
+  it('writes an overrun as its own row after the shift, and the total still adds up (ADR-0184)', () => {
+    const out = '2024-11-12T17:15:00Z';
+    const csv = invoiceCsv([
+      line('a', 'Ina Able', { check_out_at: out }),
+      line('a', 'Ina Able', {
+        kind: 'overrun',
+        starts_at: '2024-11-12T16:00:00Z',
+        ends_at: out,
+        check_out_at: out,
+        payable_min: 75,
+        invoicing: '28.71',
+      }),
+    ]);
+    const rows = lines(csv);
+    expect(rows[1]).toContain(',Waiting Staff,12:00–16:00,12:00,17:15,0:00,4.00,22.97,91.88,');
+    expect(rows[2]).toBe(
+      '12/11/2024,Leonardo Hotel St Pauls,Gala a,PO-4471,THC-89901,Ina Able,Overrun – Waiting Staff,16:00–17:15,,17:15,0:00,1.25,22.97,28.71,',
+    );
+    expect(rows[3]?.endsWith(',5.25,,,120.59')).toBe(true);
+  });
 });

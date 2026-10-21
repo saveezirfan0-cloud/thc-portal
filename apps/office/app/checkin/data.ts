@@ -3,7 +3,13 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../_lib/photos';
 import { type LogQuery, VIOLATION_PAGE_SIZE, flaggedAs, pageRange, ukDayBounds } from './log';
-import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
+import type {
+  LateCheckOutRow,
+  MonitorRow,
+  MonitorStatus,
+  ViolationRow,
+  ViolationType,
+} from './types';
 import { readProblem } from '../_lib/dbError';
 
 /**
@@ -26,7 +32,43 @@ export interface MonitorPageData {
   unresolvedCount: number;
   /** There is an older page. */
   hasMore: boolean;
+  /** ADR-0184: late sign-outs of the last fortnight still to verify. */
+  lateCheckOuts: LateCheckOutRow[];
   problem: string | null;
+}
+
+/**
+ * `late_check_outs()` (20261022200000): the placeholder `Database` types
+ * know no RPC, so its name and arguments are spelled out here.
+ */
+interface LateCheckOutsRpc {
+  rpc(
+    fn: 'late_check_outs',
+    args: { p_days: number; p_include_verified: boolean },
+  ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
+}
+
+/** `late_check_outs()` rows, before the photo path is signed. */
+type UnsignedLateCheckOut = Omit<LateCheckOutRow, 'photoUrl'> & { photoPath: string | null };
+
+export function readLateCheckOuts(data: unknown): UnsignedLateCheckOut[] {
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    bookingId: r.booking_id as string,
+    staffName: (r.staff_name as string) ?? '',
+    photoPath: (r.photo_path as string | null) ?? null,
+    eventTitle: (r.event_title as string) ?? '',
+    venueName: (r.venue_name as string) ?? '',
+    roleName: (r.role_name as string) ?? '',
+    startsAt: r.starts_at as string,
+    endsAt: r.ends_at as string,
+    checkInAt: (r.check_in_at as string | null) ?? null,
+    checkOutAt: r.check_out_at as string,
+    finishByOffice: r.finish_by_office === true,
+    minutesPastEnd: Number(r.minutes_past_end ?? 0),
+    verifiedAt: (r.verified_at as string | null) ?? null,
+    verifiedByName: (r.verified_by_name as string | null) ?? null,
+    note: (r.note as string | null) ?? null,
+  }));
 }
 
 /** The session client, as `createClient` returns it. */
@@ -167,6 +209,7 @@ export async function loadMonitor(
       violations: [],
       unresolvedCount: 0,
       hasMore: false,
+      lateCheckOuts: [],
       problem:
         'This environment has no Supabase project, so the live monitor cannot be read. See docs/04-setup-github-vercel-supabase.md.',
     };
@@ -175,7 +218,7 @@ export async function loadMonitor(
   const supabase = createClient(await cookies());
   const { from, to } = ukDayBounds();
 
-  const [monitor, violations, unresolved] = await Promise.all([
+  const [monitor, violations, unresolved, late] = await Promise.all([
     // Every role section that overlaps today's UK day: today's, and last
     // night's still running past midnight (log.ts).
     supabase
@@ -186,6 +229,11 @@ export async function loadMonitor(
       .order('starts_at', { ascending: true }),
     queryViolations(supabase, { log }),
     supabase.from('violations').select('id', { count: 'exact', head: true }).eq('resolved', false),
+    // ADR-0184: the fortnight's late sign-outs nobody has verified yet.
+    (supabase as unknown as LateCheckOutsRpc).rpc('late_check_outs', {
+      p_days: 14,
+      p_include_verified: false,
+    }),
   ]);
 
   if (monitor.error) {
@@ -194,6 +242,7 @@ export async function loadMonitor(
       violations: [],
       unresolvedCount: 0,
       hasMore: false,
+      lateCheckOuts: [],
       problem: readProblem(monitor.error),
     };
   }
@@ -221,6 +270,10 @@ export async function loadMonitor(
     breaksCount: (r.breaks_count as number | null) ?? null,
     lastBreakAt: (r.last_break_at as string | null) ?? null,
     lateCheckOut: Boolean(r.late_check_out),
+    // 20261022200000 (ADR-0184) appended these; absent reads as unverified.
+    lateCheckOutVerifiedAt: (r.late_check_out_verified_at as string | null) ?? null,
+    lateCheckOutVerifiedByName: (r.late_check_out_verified_by_name as string | null) ?? null,
+    lateCheckOutNote: (r.late_check_out_note as string | null) ?? null,
     // 20261012121200 appended it to the view; absent (an older database)
     // reads as not flagged.
     locationSuspect: r.location_suspect === true,
@@ -229,13 +282,16 @@ export async function loadMonitor(
 
   // `photo_path` is a key in the private `photos` bucket, not a URL — the
   // browser cannot fetch it. Both tables' paths are signed in one batch.
+  const lateRows = late.error ? [] : readLateCheckOuts(late.data);
   const urls = await signStaffPhotos([
     ...unsigned.map((r) => r.photoPath),
     ...violations.rows.map((v) => v.photoPath),
+    ...lateRows.map((r) => r.photoPath),
   ]);
 
   const rows: MonitorRow[] = withUrls(unsigned, urls);
   const violationRows: ViolationRow[] = withUrls(violations.rows, urls);
+  const lateCheckOuts: LateCheckOutRow[] = withUrls(lateRows, urls);
 
   // A failed violation read no longer passes silently as "No violations
   // logged": the board still renders, with the reason above it.
@@ -247,6 +303,7 @@ export async function loadMonitor(
         ? violationRows.filter((v) => !v.resolved).length
         : unresolved.count,
     hasMore: violations.hasMore,
-    problem: readProblem(violations.error ?? unresolved.error),
+    lateCheckOuts,
+    problem: readProblem(violations.error ?? unresolved.error ?? late.error),
   };
 }

@@ -908,7 +908,7 @@ export const TEMPLATES = {
   },
 
   // ────────────────────────────────────────────────────────────────────────
-  // SECURITY-CLEARED EVENTS (ADR-0184, product owner 21.10.2026) — an event
+  // SECURITY-CLEARED EVENTS (ADR-0185, product owner 21.10.2026) — an event
   // whose Shift Builder box "Security cleared" is ticked needs each worker
   // to bring a passport or driving licence. SC1 tells them the moment they
   // are confirmed (and, if the box is ticked later, the moment it is, for
@@ -922,7 +922,7 @@ export const TEMPLATES = {
     title: 'Bring ID to your shift',
     body: '{event} · {dateTime} is a security-cleared event. Please bring your passport or driving licence with you.',
     trigger:
-      'A booking is confirmed on an event marked Security cleared, or the box is ticked on an event that already has confirmed staff (bookings_security_cleared_notice, events_security_cleared_notice). Not in §8: ADR-0184',
+      'A booking is confirmed on an event marked Security cleared, or the box is ticked on an event that already has confirmed staff (bookings_security_cleared_notice, events_security_cleared_notice). Not in §8: ADR-0185',
     timing: 'the moment the booking is confirmed; once per booking',
     deepLink: '/shifts/{bookingId}',
   },
@@ -1285,7 +1285,7 @@ export const CLIENT_REQUIREMENT_CODES = [
 ] as const satisfies readonly TemplateCode[];
 
 /**
- * Security-cleared event codes (ADR-0184): SC1, a worker confirmed on an
+ * Security-cleared event codes (ADR-0185): SC1, a worker confirmed on an
  * event marked Security cleared is told to bring a passport or driving
  * licence. Not §8's.
  */

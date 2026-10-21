@@ -326,13 +326,13 @@ None is `mandatory`.
 | CR3 | email · admin@ only (from admin@) | `Client quiz not passed — {name}, Employee ID {employeeId}` | who, which client and quiz, the attempts, their best, the roles it covers, and "They cannot be confirmed on {client} shifts until you reset" with where to reset (ADR-0150; ADR-0110 said "They stay booked") | on the failed last attempt, once · `CR3:quiz:<quiz>:<staff>:<attempt>` |
 
 
-## Security-cleared events (ADR-0184)
+## Security-cleared events (ADR-0185)
 
 The owner's request of 21.10.2026: an event can be "security cleared", which
 means staff bring a passport or driving licence, and they are told when they
 are confirmed on it. The Shift Builder's **Security cleared** box
 (`events.security_cleared`) is the data; the code is generic. It sits in
-`SECURITY_CLEARANCE_CODES`; its `trigger` names ADR-0184 and says "Not in §8".
+`SECURITY_CLEARANCE_CODES`; its `trigger` names ADR-0185 and says "Not in §8".
 Not `mandatory`.
 
 | Code | Channel · to | Title | Body | When · key |

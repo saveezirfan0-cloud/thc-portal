@@ -1,6 +1,6 @@
-# ADR-0184 · Security-cleared events — staff are told to bring ID when they are confirmed
+# ADR-0185 · Security-cleared events — staff are told to bring ID when they are confirmed
 
-**Status:** Accepted, 23.10.2026 (product owner request) · **Builds on:** [ADR-0080](0080-languages-spoken.md) (an event-level ask carried as one column, set in the Shift Builder), [ADR-0110](0110-client-shift-requirements.md) (a push fired by a trigger on `bookings` the moment a booking is confirmed — CR1), [ADR-0158](0158-notify-drain-priority-and-run-budget.md) (every register code has a send class), [ADR-0031](0031-worker-reads-declarations-through-rpcs-only.md) (the worker reads through definer RPCs) · **§3.2, §3.3, §8, §10.4** · **Code:** migration `20261023100000_event_security_cleared.sql`; pgTAP `921`; `packages/notifications` (`SC1`, `SECURITY_CLEARANCE_CODES`); `apps/office/app/events` (`ShiftBuilder.tsx`, `draft.ts`, `actions.ts`, `data.ts`, `[id]/page.tsx`); `apps/staff/app/_components/SecurityCleared.tsx`, `shifts/[id]/page.tsx`, `data.ts`
+**Status:** Accepted, 23.10.2026 (product owner request) · **Builds on:** [ADR-0080](0080-languages-spoken.md) (an event-level ask carried as one column, set in the Shift Builder), [ADR-0110](0110-client-shift-requirements.md) (a push fired by a trigger on `bookings` the moment a booking is confirmed — CR1), [ADR-0158](0158-notify-drain-priority-and-run-budget.md) (every register code has a send class), [ADR-0031](0031-worker-reads-declarations-through-rpcs-only.md) (the worker reads through definer RPCs) · **§3.2, §3.3, §8, §10.4** · **Code:** migration `20261023100000_event_security_cleared.sql`; pgTAP `922`; `packages/notifications` (`SC1`, `SECURITY_CLEARANCE_CODES`); `apps/office/app/events` (`ShiftBuilder.tsx`, `draft.ts`, `actions.ts`, `data.ts`, `[id]/page.tsx`); `apps/staff/app/_components/SecurityCleared.tsx`, `shifts/[id]/page.tsx`, `data.ts`
 
 ## Context
 
@@ -52,4 +52,4 @@ On a confirmed booking on a cleared event, an amber **Bring ID** note sits at th
 - **An acknowledgement ("I'll bring it") is not built.** CR2's kit message asks for one; this request did not. It would be a second table and a morning-of reminder.
 - **A booking confirmed after the shift started** is still told (the push is cheap and the shift screen shows the note), though in practice the box is edit-locked by then.
 - Not in the wireframes: the tick box, the pill and the note. This ADR is the deviation record; `docs/08-screen-inventory.md` lists them against `/events/new`, `/events/:id` and `/shifts/:id`.
-- `staff_security_cleared_bookings()` is the 214th definer reachable by `authenticated`; `892` and `docs/14` §4 are updated.
+- `staff_security_cleared_bookings()` is the 215th definer reachable by `authenticated`; `892` and `docs/14` §4 are updated.

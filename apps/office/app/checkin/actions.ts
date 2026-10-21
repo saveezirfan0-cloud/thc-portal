@@ -25,6 +25,10 @@ interface RpcClient {
       p_arrived_at: string | null;
     },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'verify_late_check_out',
+    args: { p_booking: string; p_note: string },
+  ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
 
 /**
@@ -78,6 +82,48 @@ export async function resolveViolation(
       }
     : { ok: true };
 }
+
+export type VerifyResult = { error: string } | { ok: true };
+
+/**
+ * Verify a late sign-out (ADR-0184): the office spoke to the worker about
+ * why they signed out more than 15 minutes after the end, and says what
+ * they were told. A flag only — the shift is already paid and charged to
+ * the sign-out, and nothing waits for this. `verify_late_check_out` holds
+ * the rules (office write, a 1–500 character note, a sign-out that really
+ * was late) and writes the audit entry.
+ */
+export async function verifyLateCheckOut(bookingId: string, note: string): Promise<VerifyResult> {
+  if (!supabaseConfigured()) {
+    return {
+      error:
+        'This environment has no Supabase project, so a late sign-out cannot be verified (docs/04-setup-github-vercel-supabase.md).',
+    };
+  }
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { error } = await supabase.rpc('verify_late_check_out', {
+    p_booking: bookingId,
+    p_note: note,
+  });
+  if (error)
+    return {
+      error:
+        VERIFY_REASONS[error.message] ??
+        explainDbError(error, { codes: VERIFY_REASONS, log: '[checkin]' }),
+    };
+  revalidatePath('/checkin');
+  return { ok: true };
+}
+
+const VERIFY_REASONS: Record<string, string> = {
+  note_required: 'A note is required. Say what the worker told you about finishing late.',
+  note_too_long: 'Keep the note to 500 characters.',
+  not_signed_out_late:
+    'This shift was not signed out more than 15 minutes late, so there is nothing to verify.',
+  admins_only: 'Only the office can verify a late sign-out.',
+  not_permitted: 'Your office role can view this screen but not verify a late sign-out.',
+  booking_not_found: 'That shift no longer exists. Refresh the page.',
+};
 
 /** The RPC's errcodes, in the manager's language rather than Postgres's. */
 const REASONS: Record<string, string> = {

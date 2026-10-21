@@ -390,7 +390,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
     }
   });
 
-  // ADR-0184: Security cleared is the client's ask for the event, so a
+  // ADR-0185: Security cleared is the client's ask for the event, so a
   // duplicate keeps it, and an event saved without it reopens unticked.
   it('edit and duplicate both keep Security cleared', () => {
     for (const as of ['edit', 'duplicate'] as const) {

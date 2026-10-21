@@ -5,6 +5,7 @@ import { renderSignInLogPdf } from '../SignInLogDocument';
 import {
   logNotes,
   logTime,
+  overrunNote,
   signInLogFileName,
   signInLogRow,
   signInLogSections,
@@ -117,6 +118,51 @@ describe('sign-in and sign-out log rows (ADR-0176)', () => {
     expect(logNotes(DATA.lines[2]!)).toBe('No sign-out: finish time entered by THC');
     expect(logNotes(line({ kind: 'cancelled_on_day', checkInAt: null }))).toBe(
       'Cancelled on the day: charged in full',
+    );
+  });
+
+  it("folds an overrun line into its shift: one row, both lines' hours, the overrun noted (ADR-0184)", () => {
+    const shift = line({
+      bookingId: 'b-1',
+      checkOutAt: '2026-10-14T17:15:00+01:00',
+      breakMin: 0,
+      payableMin: 300,
+    });
+    const overrun = line({
+      bookingId: 'b-1',
+      kind: 'overrun',
+      startsAt: '2026-10-14T16:00:00+01:00',
+      endsAt: '2026-10-14T17:15:00+01:00',
+      breakMin: 0,
+      payableMin: 75,
+    });
+    const data = {
+      ...DATA,
+      lines: [shift, overrun, line({ bookingId: 'b-2', staffName: 'Luca Moretti' })],
+    };
+    const [section] = signInLogSections(data);
+    expect(section!.rows).toHaveLength(2);
+    expect(section!.rows[0]).toEqual([
+      'Grace Lindqvist',
+      '619',
+      'Team Leader',
+      '11:00–16:00',
+      '10:52',
+      '17:15',
+      '—',
+      '6.25',
+      'Overrun 1 h 15 min',
+    ]);
+    // The log's hours are the invoice lines' hours.
+    expect(section!.payableMin).toBe(300 + 75 + 270);
+  });
+
+  it('writes the overrun in hours and minutes', () => {
+    expect(overrunNote(75)).toBe('Overrun 1 h 15 min');
+    expect(overrunNote(45)).toBe('Overrun 45 min');
+    expect(overrunNote(120)).toBe('Overrun 2 h');
+    expect(logNotes(line({ late: true, floorApplied: true }), 30)).toBe(
+      'Late · Overrun 30 min · 4-hour minimum',
     );
   });
 
