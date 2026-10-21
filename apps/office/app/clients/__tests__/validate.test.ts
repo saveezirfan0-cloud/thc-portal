@@ -106,8 +106,9 @@ describe('a present value must also be right (release audit D-M2, D-M3)', () => 
  * not ask: the card's Invoicing panel owns these once the client exists.
  */
 describe('a new client needs an invoice email', () => {
-  const invoicing = (invoice_emails: string[]) => ({
+  const invoicing = (invoice_emails: string[], invoice_cc_emails: string[] = []) => ({
     invoice_emails,
+    invoice_cc_emails,
     accounts_contact_name: '',
     billing_address: '',
   });
@@ -128,6 +129,18 @@ describe('a new client needs an invoice email', () => {
     ).toMatch(/up to 10 invoice emails/i);
     expect(
       validateClient(draft({ invoicing: invoicing(['accounts at claridges']) }), true),
+    ).toMatch(/is not an email address/);
+  });
+
+  it('takes optional CC emails, up to ten, only addresses', () => {
+    const ok = draft({ invoicing: invoicing(['ap@claridges.example'], ['cfo@claridges.example']) });
+    expect(validateClient(ok, true)).toBeNull();
+    const eleven = Array.from({ length: 11 }, (_, n) => `cc${n}@claridges.example`);
+    expect(
+      validateClient(draft({ invoicing: invoicing(['ap@claridges.example'], eleven) }), true),
+    ).toMatch(/up to 10 CC emails/i);
+    expect(
+      validateClient(draft({ invoicing: invoicing(['ap@claridges.example'], ['nope']) }), true),
     ).toMatch(/is not an email address/);
   });
 

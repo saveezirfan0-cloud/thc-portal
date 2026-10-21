@@ -204,6 +204,28 @@ export interface Attachment {
 
 export interface EmailWithAttachments extends EmailMessage {
   attachments: Attachment[];
+  /**
+   * Copied on the email (ADR-0176, THC 21.10.2026: INV1's "Invoice CC"
+   * addresses), from the row's `payload.cc`. Absent when there are none.
+   */
+  cc?: readonly string[];
+}
+
+/** `payload.cc`: a JSON array of addresses (the database's own text form). */
+function parseCc(raw: unknown, code: DocumentEmailCode): string[] {
+  if (raw === undefined || raw === null || raw === '') return [];
+  let list: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      list = JSON.parse(raw);
+    } catch {
+      throw new UnsendableRow(`${code}: cc is not JSON`);
+    }
+  }
+  if (!Array.isArray(list) || list.some((a) => typeof a !== 'string' || !a.includes('@'))) {
+    throw new UnsendableRow(`${code}: cc is not a list of addresses`);
+  }
+  return list as string[];
 }
 
 function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
@@ -462,11 +484,12 @@ export function documentMessageFor(
   }
   const payload = (row.payload ?? {}) as Record<string, unknown>;
   const attachments = parseAttachments(payload.attachments, code);
+  const cc = parseCc(payload.cc, code).filter((address) => !to.includes(address));
   const values = derivedValues(
     code,
     Object.fromEntries(
       Object.entries(payload)
-        .filter(([key]) => key !== 'attachments')
+        .filter(([key]) => key !== 'attachments' && key !== 'cc')
         .map(([key, value]) => [key, value === null || value === undefined ? '' : String(value)]),
     ),
   );
@@ -482,5 +505,6 @@ export function documentMessageFor(
     body: text,
     html: documentHtml(code, values, subject, text, attachments, replyTo),
     attachments,
+    ...(cc.length > 0 ? { cc } : {}),
   };
 }

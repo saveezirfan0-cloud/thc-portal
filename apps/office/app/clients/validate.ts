@@ -24,7 +24,13 @@ export const CONTACT_NAME_MAX = 120;
 export const CONTACT_POINT_MAX = 200;
 
 export type ClientField =
-  'name' | 'contact_name' | 'phone' | 'staff_contact_point' | 'contact_emails' | 'invoice_emails';
+  | 'name'
+  | 'contact_name'
+  | 'phone'
+  | 'staff_contact_point'
+  | 'contact_emails'
+  | 'invoice_emails'
+  | 'invoice_cc_emails';
 
 /** `clients_invoice_emails_max`: at most ten invoice addresses (THC, 21.10.2026). */
 export const MAX_INVOICE_EMAILS = 10;
@@ -109,6 +115,13 @@ export function clientFieldErrors(
       const bad = invoice.find((email) => !isEmail(email));
       if (bad) errors.invoice_emails = `“${bad}” is not an email address.`;
     }
+    const cc = normaliseInvoiceEmails(draft.invoicing?.invoice_cc_emails ?? []);
+    if (cc.length > MAX_INVOICE_EMAILS) {
+      errors.invoice_cc_emails = `Up to ${MAX_INVOICE_EMAILS} CC emails.`;
+    } else {
+      const bad = cc.find((email) => !isEmail(email));
+      if (bad) errors.invoice_cc_emails = `“${bad}” is not an email address.`;
+    }
   }
   return errors;
 }
@@ -124,6 +137,7 @@ export function validateClient(draft: ClientDraft, creating = false): string | n
       'staff_contact_point',
       'contact_emails',
       'invoice_emails',
+      'invoice_cc_emails',
     ] as const
   ).find((field) => errors[field]);
   return first ? errors[first]! : null;

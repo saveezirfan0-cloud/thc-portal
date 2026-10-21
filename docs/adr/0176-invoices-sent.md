@@ -233,6 +233,20 @@ is no invoice email address, this should be sent to the main contact."
   - `client.created` records them.
 - **Up to ten invoice emails** (was five), the same ceiling as the contact emails (ADR-0087):
   `clients_invoice_emails_max`, `set_client_invoice_details()`, the card's panel and the form.
+- **A real CC** (THC, with its billing contacts list's "Invoice To" and "Invoice CC" columns:
+  "keep a real CC").
+  - `clients.invoice_cc_emails`, up to ten, is set on New client and on the card's panel.
+  - The INV1 email goes To the invoice emails (else the contact emails) and CC this list, less
+    any address already in To.
+  - `queue_invoice_email()` and `resend_invoice_email()` put the list in `payload.cc` and record
+    it on `invoices.cc_recipients`. The drain hands it to Resend as `cc`.
+  - `set_client_invoice_details()` takes `p_cc_emails`, and one normaliser,
+    `_invoice_email_list()`, checks both lists.
+- **THC's list is loaded once, by hand.** THC's billing contacts spreadsheet is imported with a
+  one-off SQL script, run in the Supabase SQL editor. Contact emails, including private
+  individuals' addresses, are not put in the repository. Clients already on the system get the
+  invoicing details; clients not yet on it are created with a placeholder phone and on-site
+  contact for the office to complete.
 - **The fallback is unchanged.** A client with no invoice email is invoiced at its contact
   emails, the main contact's addresses. That covers every client created before this rule. The
   card's hint now says "Empty: invoices go to the main contact — the allocation emails above".

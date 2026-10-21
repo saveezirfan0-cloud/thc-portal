@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Alert, Button, Chip, Input, Panel, Textarea } from '@thc/ui';
-import { isEmail } from '../validate';
+import { EmailChipsField } from '../EmailChipsField';
 import { setInvoiceDetails } from './actions';
 import {
   INVOICE_EMAILS_HINT,
@@ -19,8 +18,9 @@ import type { InvoiceDetails } from './types';
  * client's accounts contact:
  *
  *   · Accounts contact — the name under "Invoice to";
- *   · Invoice emails — up to ten; none sends the invoice to the
- *     allocation emails above;
+ *   · Invoice emails — To, up to ten; none sends the invoice to the
+ *     allocation emails above, the main contact;
+ *   · CC emails — copied on the same email, up to ten (THC 21.10.2026);
  *   · Billing address — printed under the name on the invoice.
  *
  * Not in the wireframe; the ADR is the deviation record. Without the
@@ -86,6 +86,18 @@ function InvoicingView({ details }: { details: InvoiceDetails }) {
         )}
         <span className="muted xs">{INVOICE_EMAILS_HINT}</span>
       </span>
+      <span className="k">CC</span>
+      <span>
+        {details.invoiceCcEmails.length > 0 ? (
+          <span className="row wrap">
+            {details.invoiceCcEmails.map((email) => (
+              <Chip key={email}>{email}</Chip>
+            ))}
+          </span>
+        ) : (
+          <span className="muted">None</span>
+        )}
+      </span>
       <span className="k">Billing address</span>
       <span className="stack tight">
         {details.billingAddress ? (
@@ -111,44 +123,17 @@ function InvoicingForm({
   const [name, setName] = useState(details.accountsContactName ?? '');
   const [emails, setEmails] = useState<string[]>(details.invoiceEmails);
   const [draft, setDraft] = useState('');
+  const [ccEmails, setCcEmails] = useState<string[]>(details.invoiceCcEmails);
+  const [ccDraft, setCcDraft] = useState('');
   const [address, setAddress] = useState(details.billingAddress ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
 
-  const addEmail = () => {
-    const value = draft.trim().toLowerCase();
-    if (!value) return;
-    if (!isEmail(value)) {
-      setError(`“${value}” is not an email address.`);
-      return;
-    }
-    if (emails.includes(value)) {
-      setDraft('');
-      return;
-    }
-    if (emails.length >= MAX_INVOICE_EMAILS) {
-      setError(`Up to ${MAX_INVOICE_EMAILS} invoice emails.`);
-      return;
-    }
-    setError(null);
-    setEmails([...emails, value]);
-    setDraft('');
-  };
-
-  const onEmailKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === ',') {
-      // Enter adds the address; the field takes several.
-      event.preventDefault();
-      addEmail();
-    } else if (event.key === 'Backspace' && draft === '' && emails.length > 0) {
-      setEmails(emails.slice(0, -1));
-    }
-  };
-
   const save = () => {
     // A half-typed address is kept, not lost to Save.
     const pending = normaliseInvoiceEmails(draft.trim() ? [...emails, draft] : emails);
-    const problem = invoiceEmailsProblem(pending);
+    const pendingCc = normaliseInvoiceEmails(ccDraft.trim() ? [...ccEmails, ccDraft] : ccEmails);
+    const problem = invoiceEmailsProblem(pending) ?? invoiceEmailsProblem(pendingCc, 'CC emails');
     if (problem) {
       setError(problem);
       return;
@@ -158,6 +143,7 @@ function InvoicingForm({
       const result = await setInvoiceDetails(clientId, {
         accountsContactName: name,
         invoiceEmails: pending,
+        invoiceCcEmails: pendingCc,
         billingAddress: address,
       });
       if (result.ok) onDone();
@@ -176,41 +162,41 @@ function InvoicingForm({
         maxLength={200}
       />
 
-      <div className="field">
-        <label className="label" htmlFor={`invoice-email-${clientId}`}>
-          Invoice emails <span className="muted">· up to {MAX_INVOICE_EMAILS}</span>
-        </label>
-        <div className="inv-emails">
-          {emails.map((email) => (
-            <span className="chip" key={email}>
-              {email}
-              <button
-                type="button"
-                className="x"
-                aria-label={`Remove ${email}`}
-                onClick={() => setEmails(emails.filter((other) => other !== email))}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          {emails.length < MAX_INVOICE_EMAILS ? (
-            <input
-              id={`invoice-email-${clientId}`}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={onEmailKey}
-              onBlur={addEmail}
-              placeholder={emails.length === 0 ? 'add an email ↵' : 'add another email ↵'}
-              inputMode="email"
-              aria-describedby={`invoice-email-hint-${clientId}`}
-            />
-          ) : null}
-        </div>
-        <span className="hint" id={`invoice-email-hint-${clientId}`}>
-          {INVOICE_EMAILS_HINT}
-        </span>
-      </div>
+      <EmailChipsField
+        id={`invoice-email-${clientId}`}
+        label={
+          <>
+            Invoice emails <span className="muted">· To · up to {MAX_INVOICE_EMAILS}</span>
+          </>
+        }
+        emails={emails}
+        onEmailsChange={setEmails}
+        draft={draft}
+        onDraftChange={setDraft}
+        max={MAX_INVOICE_EMAILS}
+        noun="invoice emails"
+        hint={INVOICE_EMAILS_HINT}
+        onProblem={setError}
+        boxClass="inv-emails"
+      />
+
+      <EmailChipsField
+        id={`invoice-cc-${clientId}`}
+        label={
+          <>
+            CC emails <span className="muted">· up to {MAX_INVOICE_EMAILS}</span>
+          </>
+        }
+        emails={ccEmails}
+        onEmailsChange={setCcEmails}
+        draft={ccDraft}
+        onDraftChange={setCcDraft}
+        max={MAX_INVOICE_EMAILS}
+        noun="CC emails"
+        hint="Copied on the same email, e.g. the accounts payable inbox."
+        onProblem={setError}
+        boxClass="inv-emails"
+      />
 
       <Textarea
         label="Billing address"

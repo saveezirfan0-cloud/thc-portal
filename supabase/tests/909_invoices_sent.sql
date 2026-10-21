@@ -17,7 +17,7 @@
 --   (none)  Wed 5 Jun 2024, clean (BST)                    → 10:00 BST = 09:00 UTC
 -- =====================================================================
 begin;
-select plan(87);
+select plan(91);
 \ir _shared/fixtures.psql
 
 \set r_wait '90900000-0000-4000-8000-000000000001'
@@ -242,6 +242,10 @@ select is((select row(template, recipient_emails, payload ->> 'invoiceNumber', p
              from notification_outbox where key = 'INV1:4000'),
   row('INV1', array['accounts@client.test', 'pjordan@client.test'], '4000', '441.02')::text,
   'INV1:4000 carries the number and the total to the accounts emails');
+-- 20261022130000: a client with no CC list copies no one.
+select is((select row(payload ->> 'cc', i.cc_recipients)::text
+             from notification_outbox o join invoices i on i.outbox_key = o.key where o.key = 'INV1:4000'),
+  row('[]', '{}'::text[])::text, 'with no CC emails the invoice copies no one');
 select is((select status from invoices where id = (select id from inv where name = 'po77')), 'queued', 'and the invoice is queued');
 
 -- =====================================================================
@@ -337,9 +341,23 @@ select is((select count(*)::int from invoice_export_rows('2024-11-01', '2024-11-
 select is((select count(*)::int from invoice_export_rows('2024-11-01', '2024-11-30', null) x
             where x.event_id = (select event_id from ev where name = 'Nxt')), 0,
   'nor is a ready event the system is about to invoice (Nxt is due)');
+-- 20261022130000 (THC 21.10.2026): a real CC. An address already in To
+-- is not copied as well.
+select lives_ok($$ select set_client_invoice_details('aaaaaaaa-0000-4000-8000-000000000001', 'Paul Jordan',
+                     array['accounts@client.test', 'pjordan@client.test'], '66 Knightsbridge, London SW1X 7LA',
+                     array[' Finance@Client.test ', 'pjordan@client.test']) $$,
+  'finance adds a CC email; the one already in To is dropped');
 select is(resend_invoice_email((select id from inv where name = 'po77')) ->> 'key', 'INV1:4000:2',
   'Send again queues a new email for the same invoice');
 reset role;
+select is((select invoice_cc_emails from clients where id = 'aaaaaaaa-0000-4000-8000-000000000001'),
+  array['finance@client.test'], 'the client keeps the CC list, lower-cased, less To');
+select is((select row(o.recipient_emails, o.payload ->> 'cc', i.cc_recipients)::text
+             from invoices i join notification_outbox o on o.key = i.outbox_key
+            where i.id = (select id from inv where name = 'po77')),
+  row(array['accounts@client.test', 'pjordan@client.test'], '["finance@client.test"]',
+      array['finance@client.test'])::text,
+  'the email goes To the invoice emails and CC the CC list, and the invoice records both');
 select is((select row(o.payload ->> 'invoiceNumber', i.outbox_key)::text
              from invoices i join notification_outbox o on o.key = i.outbox_key
             where i.id = (select id from inv where name = 'po77')),

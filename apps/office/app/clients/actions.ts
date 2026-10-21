@@ -81,6 +81,7 @@ export async function createClientRecord(draft: ClientDraft): Promise<ActionResu
     p_invoice_emails: normaliseInvoiceEmails(invoicing.invoice_emails),
     p_accounts_contact_name: invoicing.accounts_contact_name.trim() || null,
     p_billing_address: invoicing.billing_address.trim() || null,
+    p_invoice_cc_emails: normaliseInvoiceEmails(invoicing.invoice_cc_emails ?? []),
   });
 }
 

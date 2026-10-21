@@ -5,6 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Alert, Button, Input, Modal, Pill, Switch, Textarea } from '@thc/ui';
 import { lengthHint } from '../_lib/length';
 import { createClientRecord, updateClientRecord } from './actions';
+import { EmailChipsField } from './EmailChipsField';
 import {
   ACCOUNTS_CONTACT_MAX,
   BILLING_ADDRESS_MAX,
@@ -56,6 +57,8 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
   const [paysBuffer, setPaysBuffer] = useState(client?.pays_buffer ?? true);
   const [invoiceEmails, setInvoiceEmails] = useState<string[]>([]);
   const [invoiceDraft, setInvoiceDraft] = useState('');
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [ccDraft, setCcDraft] = useState('');
   const [accountsContact, setAccountsContact] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -97,35 +100,6 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
     }
   };
 
-  const addInvoiceEmail = () => {
-    const value = invoiceDraft.trim().toLowerCase();
-    if (!value) return;
-    if (!isEmail(value)) {
-      setError(`“${value}” is not an email address.`);
-      return;
-    }
-    if (invoiceEmails.includes(value)) {
-      setInvoiceDraft('');
-      return;
-    }
-    if (invoiceEmails.length >= MAX_INVOICE_EMAILS) {
-      setError(`Up to ${MAX_INVOICE_EMAILS} invoice emails.`);
-      return;
-    }
-    setError(null);
-    setInvoiceEmails([...invoiceEmails, value]);
-    setInvoiceDraft('');
-  };
-
-  const onInvoiceEmailKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === ',') {
-      event.preventDefault();
-      addInvoiceEmail();
-    } else if (event.key === 'Backspace' && invoiceDraft === '' && invoiceEmails.length > 0) {
-      setInvoiceEmails(invoiceEmails.slice(0, -1));
-    }
-  };
-
   // The draft the server sees, with the half-typed address folded in — a
   // manager who types an address and presses Create should not lose it.
   const pendingEmails =
@@ -134,6 +108,9 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
     invoiceDraft.trim() && isEmail(invoiceDraft.trim())
       ? [...invoiceEmails, invoiceDraft]
       : invoiceEmails,
+  );
+  const pendingCcEmails = normaliseInvoiceEmails(
+    ccDraft.trim() && isEmail(ccDraft.trim()) ? [...ccEmails, ccDraft] : ccEmails,
   );
   // Where the main contact's own addresses are where the invoice goes too.
   const useContactEmails = () => {
@@ -146,6 +123,7 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
     ? undefined
     : {
         invoice_emails: pendingInvoiceEmails,
+        invoice_cc_emails: pendingCcEmails,
         accounts_contact_name: accountsContact,
         billing_address: billingAddress,
       };
@@ -163,6 +141,8 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
     paysBuffer !== (client?.pays_buffer ?? true) ||
     invoiceEmails.length > 0 ||
     invoiceDraft.trim() !== '' ||
+    ccEmails.length > 0 ||
+    ccDraft.trim() !== '' ||
     accountsContact.trim() !== '' ||
     billingAddress.trim() !== '';
 
@@ -358,52 +338,25 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
             <Pill id="client-invoicing">Invoicing</Pill>
             <span className="muted xs">where the invoice is emailed, from timesheets@</span>
           </div>
+          <EmailChipsField
+            id="client-invoice-email"
+            label={
+              <>
+                Invoice emails <span className="coral">*</span>{' '}
+                <span className="muted">· To · up to {MAX_INVOICE_EMAILS}</span>
+              </>
+            }
+            emails={invoiceEmails}
+            onEmailsChange={setInvoiceEmails}
+            draft={invoiceDraft}
+            onDraftChange={setInvoiceDraft}
+            max={MAX_INVOICE_EMAILS}
+            noun="invoice emails"
+            hint="The invoice and the sign-in and sign-out log go to every address here, at 10:00 the morning after the event."
+            error={tried ? fieldErrors.invoice_emails : undefined}
+            onProblem={setError}
+          />
           <div className="field">
-            <label className="label" htmlFor="client-invoice-email">
-              Invoice emails <span className="coral">*</span>{' '}
-              <span className="muted">· up to {MAX_INVOICE_EMAILS}</span>
-            </label>
-            <div className="emails">
-              {invoiceEmails.map((email) => (
-                <span className="chip" key={email}>
-                  {email}
-                  <button
-                    type="button"
-                    className="x"
-                    aria-label={`Remove ${email}`}
-                    onClick={() =>
-                      setInvoiceEmails(invoiceEmails.filter((other) => other !== email))
-                    }
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              {invoiceEmails.length < MAX_INVOICE_EMAILS ? (
-                <input
-                  id="client-invoice-email"
-                  value={invoiceDraft}
-                  onChange={(event) => setInvoiceDraft(event.target.value)}
-                  onKeyDown={onInvoiceEmailKey}
-                  onBlur={addInvoiceEmail}
-                  placeholder={
-                    invoiceEmails.length === 0 ? 'add an email ↵' : 'add another email ↵'
-                  }
-                  inputMode="email"
-                  aria-describedby="client-invoice-email-hint"
-                  aria-invalid={tried && fieldErrors.invoice_emails ? true : undefined}
-                />
-              ) : null}
-            </div>
-            {tried && fieldErrors.invoice_emails ? (
-              <span className="error" role="alert">
-                {fieldErrors.invoice_emails}
-              </span>
-            ) : null}
-            <span className="hint" id="client-invoice-email-hint">
-              The invoice and the sign-in and sign-out log go to every address here, at 10:00 the
-              morning after the event.
-            </span>
             {pendingEmails.length > 0 ? (
               <div className="row">
                 <Button size="sm" onClick={useContactEmails}>
@@ -412,6 +365,23 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
               </div>
             ) : null}
           </div>
+          <EmailChipsField
+            id="client-invoice-cc"
+            label={
+              <>
+                CC emails <span className="muted">· optional · up to {MAX_INVOICE_EMAILS}</span>
+              </>
+            }
+            emails={ccEmails}
+            onEmailsChange={setCcEmails}
+            draft={ccDraft}
+            onDraftChange={setCcDraft}
+            max={MAX_INVOICE_EMAILS}
+            noun="CC emails"
+            hint="Copied on the same email, e.g. the accounts payable inbox."
+            error={tried ? fieldErrors.invoice_cc_emails : undefined}
+            onProblem={setError}
+          />
           <div className="grid c2">
             <Input
               label={

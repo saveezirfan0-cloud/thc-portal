@@ -181,7 +181,7 @@ select bag_eq(
             ('send_event_message(uuid,uuid,text,text,uuid)'),
             ('send_staff_message(uuid[],text)'),
             ('set_client_lineup_emails(uuid,text,boolean)'),
-            ('set_client_invoice_details(uuid,text,text[],text)'),
+            ('set_client_invoice_details(uuid,text,text[],text,text[])'),
             ('set_client_name_badges(uuid,boolean)'),
             ('set_do_not_return(uuid,boolean,text)'),
             ('set_event_document_recipients(uuid,text[])'),

@@ -18,15 +18,18 @@ export const INVOICE_EMAILS_HINT =
   'Empty: invoices go to the main contact — the allocation emails above';
 
 /** Why these addresses cannot be saved, or null when they can. */
-export function invoiceEmailsProblem(emails: readonly string[]): string | null {
+export function invoiceEmailsProblem(
+  emails: readonly string[],
+  noun = 'invoice emails',
+): string | null {
   const list = normaliseInvoiceEmails(emails);
-  if (list.length > MAX_INVOICE_EMAILS) return tooMany();
+  if (list.length > MAX_INVOICE_EMAILS) return tooMany(noun);
   const bad = list.find((email) => !isEmail(email));
   return bad ? notAnEmail(bad) : null;
 }
 
-const tooMany = () =>
-  `Up to ${MAX_INVOICE_EMAILS} invoice emails. Remove one before adding another.`;
+const tooMany = (noun = 'invoice emails') =>
+  `Up to ${MAX_INVOICE_EMAILS} ${noun}. Remove one before adding another.`;
 const notAnEmail = (email: string) =>
   `“${email}” is not an email address. Check it and save again.`;
 
@@ -34,7 +37,7 @@ const WORDING = {
   codes: {
     not_permitted:
       'Your login cannot change invoicing details. Ask an owner, a manager or a scheduler.',
-    too_many_invoice_emails: tooMany(),
+    too_many_invoice_emails: `Up to ${MAX_INVOICE_EMAILS} invoice emails and ${MAX_INVOICE_EMAILS} CC emails. Remove one before adding another.`,
     unknown_client: 'That client no longer exists. Refresh the page.',
   },
   log: '[client card · invoicing]',

@@ -46,6 +46,8 @@ export interface ClientDraft {
 
 export interface NewClientInvoicing {
   invoice_emails: string[];
+  /** Optional: copied on the invoice email. */
+  invoice_cc_emails: string[];
   /** Optional: empty puts the main contact under "Invoice to". */
   accounts_contact_name: string;
   /** Optional. */

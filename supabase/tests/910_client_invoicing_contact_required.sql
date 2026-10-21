@@ -7,7 +7,7 @@
 -- no invoice email is invoiced at the main contact's.
 -- =====================================================================
 begin;
-select plan(20);
+select plan(25);
 \ir _shared/fixtures.psql
 
 \set sched_uid '91020000-0000-4000-8000-000000000001'
@@ -60,7 +60,8 @@ select throws_ok($$ insert into clients (name, contact_name, phone, staff_contac
 select create_client('Savoy Events', 'Helena Ash', '020 7836 4343', 'Banqueting office',
                      array['helena@savoy.test'], false, true,
                      array[' Accounts@Savoy.test ', 'ap@savoy.test', 'accounts@savoy.test'],
-                     ' Accounts Payable ', ' The Strand, London WC2R 0EZ ') as savoy \gset
+                     ' Accounts Payable ', ' The Strand, London WC2R 0EZ ',
+                     array['CFO@savoy.test', 'ap@savoy.test']) as savoy \gset
 reset role;
 select is((select invoice_emails from clients where id = :'savoy'),
   array['accounts@savoy.test', 'ap@savoy.test'], 'invoice emails are trimmed, lower-cased and de-duplicated');
@@ -70,6 +71,10 @@ select is((select billing_address from clients where id = :'savoy'), 'The Strand
   'and the billing address');
 select is((select data -> 'invoiceEmails' from audit_log where action = 'client.created' and entity_id = :'savoy'),
   '["accounts@savoy.test", "ap@savoy.test"]'::jsonb, 'client.created records where its invoices go');
+select is((select invoice_cc_emails from clients where id = :'savoy'), array['cfo@savoy.test'],
+  'and who is copied: CC emails normalised, less any already in To');
+select is((select data -> 'invoiceCcEmails' from audit_log where action = 'client.created' and entity_id = :'savoy'),
+  '["cfo@savoy.test"]'::jsonb, 'client.created records the CC list too');
 
 set local role authenticated;
 select create_client('Name Optional Ltd', 'Omar O', '020 7946 0000', 'Desk',
@@ -78,6 +83,7 @@ reset role;
 select is((select accounts_contact_name from clients where id = :'optional'), null,
   'the accounts contact name is optional');
 select is((select billing_address from clients where id = :'optional'), null, 'and so is the billing address');
+select is((select invoice_cc_emails from clients where id = :'optional'), '{}'::text[], 'and the CC list');
 
 -- =====================================================================
 -- 15-17 · A scheduler adds a client with its invoicing contact, but
@@ -104,6 +110,13 @@ select lives_ok(format($$ select set_client_invoice_details(%L, null,
                      array['i1@s.test','i2@s.test','i3@s.test','i4@s.test','i5@s.test','i6@s.test',
                            'i7@s.test','i8@s.test','i9@s.test','i10@s.test'], null) $$, :'savoy'),
   'the card''s panel takes ten invoice emails too');
+select throws_ok(format($$ select set_client_invoice_details(%L, null, array['a@s.test'], null,
+                     array['c1@s.test','c2@s.test','c3@s.test','c4@s.test','c5@s.test','c6@s.test',
+                           'c7@s.test','c8@s.test','c9@s.test','c10@s.test','c11@s.test']) $$, :'savoy'),
+  '22023', 'too_many_invoice_emails', 'and refuses eleven CC emails');
+select throws_ok(format($$ select set_client_invoice_details(%L, null, array['a@s.test'], null,
+                     array['not an email']) $$, :'savoy'),
+  '22023', 'invalid_invoice_email', 'or a CC that is not an address');
 select throws_ok(format($$ select set_client_invoice_details(%L, null,
                      array['i1@s.test','i2@s.test','i3@s.test','i4@s.test','i5@s.test','i6@s.test',
                            'i7@s.test','i8@s.test','i9@s.test','i10@s.test','i11@s.test'], null) $$, :'savoy'),

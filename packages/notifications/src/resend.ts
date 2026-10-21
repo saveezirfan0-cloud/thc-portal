@@ -30,6 +30,8 @@ export interface ResendAttachment {
 export interface ResendEmail {
   from: string;
   to: readonly string[];
+  /** Copied (ADR-0176: an invoice's CC addresses). Sent only when non-empty. */
+  cc?: readonly string[];
   subject: string;
   /** The plain-text alternative. Always sent, beside `html`. */
   text: string;
@@ -63,6 +65,7 @@ export function buildResendRequest(
     subject: email.subject,
     text: email.text,
   };
+  if (email.cc && email.cc.length > 0) body.cc = [...email.cc];
   if (email.html) body.html = email.html;
   if (email.replyTo) body.reply_to = email.replyTo;
   if (email.attachments && email.attachments.length > 0) {

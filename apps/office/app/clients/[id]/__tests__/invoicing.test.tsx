@@ -39,6 +39,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     const result = await setInvoiceDetails('c-1', {
       accountsContactName: '  Accounts Payable ',
       invoiceEmails: [' AP@Acme.co.uk', '', 'ap@acme.co.uk', 'finance@acme.co.uk'],
+      invoiceCcEmails: [' Controller@Acme.co.uk', 'ap@acme.co.uk'],
       billingAddress: ' 1 Hotel Row\nLondon W1 1AA ',
     });
     expect(result).toEqual({ ok: true });
@@ -47,6 +48,8 @@ describe('setInvoiceDetails (ADR-0176)', () => {
       p_contact_name: 'Accounts Payable',
       p_emails: ['ap@acme.co.uk', 'finance@acme.co.uk'],
       p_address: '1 Hotel Row\nLondon W1 1AA',
+      // CC is normalised too, and an address already in To is not copied.
+      p_cc_emails: ['controller@acme.co.uk'],
     });
     expect(revalidatePath).toHaveBeenCalledWith('/clients/c-1');
   });
@@ -55,6 +58,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     await setInvoiceDetails('c-1', {
       accountsContactName: ' ',
       invoiceEmails: [],
+      invoiceCcEmails: [],
       billingAddress: '',
     });
     expect(rpc).toHaveBeenCalledWith('set_client_invoice_details', {
@@ -62,6 +66,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
       p_contact_name: null,
       p_emails: [],
       p_address: null,
+      p_cc_emails: [],
     });
   });
 
@@ -70,6 +75,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     const many = await setInvoiceDetails('c-1', {
       accountsContactName: '',
       invoiceEmails: eleven,
+      invoiceCcEmails: [],
       billingAddress: '',
     });
     expect(many).toEqual({
@@ -79,6 +85,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     const bad = await setInvoiceDetails('c-1', {
       accountsContactName: '',
       invoiceEmails: ['accounts at acme'],
+      invoiceCcEmails: [],
       billingAddress: '',
     });
     expect(bad).toEqual({
@@ -96,7 +103,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     ],
     [
       { code: '22023', message: 'too_many_invoice_emails' },
-      'Up to 10 invoice emails. Remove one before adding another.',
+      'Up to 10 invoice emails and 10 CC emails. Remove one before adding another.',
     ],
     [
       { code: '22023', message: 'invalid_invoice_email', details: 'ap@acme' },
@@ -111,6 +118,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     const result = await setInvoiceDetails('c-1', {
       accountsContactName: 'Accounts',
       invoiceEmails: ['ap@acme.co.uk'],
+      invoiceCcEmails: [],
       billingAddress: '',
     });
     expect(result).toEqual({ ok: false, message: sentence });
@@ -141,6 +149,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
 const details = (over: Partial<InvoiceDetails> = {}): InvoiceDetails => ({
   accountsContactName: 'Accounts Payable',
   invoiceEmails: ['ap@acme.co.uk', 'finance@acme.co.uk'],
+  invoiceCcEmails: ['controller@acme.co.uk'],
   billingAddress: '1 Hotel Row\nLondon W1 1AA',
   ...over,
 });
@@ -153,6 +162,8 @@ describe('The Invoicing panel on the client card (ADR-0176)', () => {
     expect(html).toContain('Accounts Payable');
     expect(html).toContain('ap@acme.co.uk');
     expect(html).toContain('finance@acme.co.uk');
+    // THC 21.10.2026: a real CC, listed on its own row.
+    expect(html).toMatch(/>CC<\/span>[\s\S]*controller@acme\.co\.uk/);
     expect(html).toContain('Empty: invoices go to the main contact — the allocation emails above');
     expect(html).toContain('class="inv-address"');
     expect(html).toContain('1 Hotel Row\nLondon W1 1AA');
@@ -174,7 +185,12 @@ describe('The Invoicing panel on the client card (ADR-0176)', () => {
     const html = renderToStaticMarkup(
       <Invoicing
         clientId="c1"
-        details={{ accountsContactName: null, invoiceEmails: [], billingAddress: null }}
+        details={{
+          accountsContactName: null,
+          invoiceEmails: [],
+          invoiceCcEmails: [],
+          billingAddress: null,
+        }}
         canWrite
       />,
     );
