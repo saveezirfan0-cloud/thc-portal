@@ -10,6 +10,7 @@ import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { visaLimitProblem, visaLimitValue } from './conditions';
+import { type Period, periodToRange, periodsProblem } from '../onboarding/view-model';
 import type { ActionResult } from './types';
 
 /**
@@ -28,7 +29,7 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
 /** See apps/office/app/staff/[id]/actions.ts: the generated types are a placeholder. */
-type RpcArguments = Record<string, string | number | boolean | null>;
+type RpcArguments = Record<string, string | number | boolean | null | string[]>;
 interface RpcClient {
   rpc(
     fn: string,
@@ -60,6 +61,12 @@ function isFailure(result: { data: unknown } | ActionResult): result is ActionRe
 export interface VerifyDates {
   expiry?: string | null;
   rightToWorkUntil?: string | null;
+  /**
+   * A term letter's holiday periods as the reviewer confirms them — the AI's,
+   * with any it missed added by hand (§2.3 "+ Add period", ADR-0178). Absent:
+   * the ranges on the row are confirmed as read.
+   */
+  termPeriods?: Period[] | null;
 }
 
 /**
@@ -84,9 +91,16 @@ export async function verifyDocument(
     const problem = visaLimitProblem(conditions.visaHourLimit);
     if (problem) return { ok: false, message: problem };
   }
+  if (dates.termPeriods) {
+    const problem = periodsProblem(dates.termPeriods);
+    if (problem) return { ok: false, message: problem };
+  }
   const args: RpcArguments = { p_doc: docId };
   if (dates.expiry) args['p_expiry'] = dates.expiry;
   if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
+  // An empty list is a real answer ("no holidays on this letter"), so it is
+  // sent, not dropped.
+  if (dates.termPeriods) args['p_term_dates'] = dates.termPeriods.map(periodToRange);
   const result = await call('compliance_verify_document', args);
   if (isFailure(result)) return result;
   const verified = verifiedMessage(result, dates);
@@ -94,6 +108,33 @@ export async function verifyDocument(
   return verified.ok
     ? { ok: true, message: `${verified.message ?? 'Verified.'}${saved}` }
     : verified;
+}
+
+/**
+ * ADR-0178: the holiday periods of a VERIFIED University Term Dates Letter,
+ * corrected by hand — a vacation the AI did not read and the reviewer
+ * missed. The whole list is replaced; the worker's RULE-20 cap and the
+ * letter's ADR-0103 expiry follow from it at once. Shared by the candidate
+ * screen, the staff profile and Compliance.
+ */
+export async function setTermLetterPeriods(
+  docId: string,
+  periods: Period[],
+): Promise<ActionResult> {
+  const problem = periodsProblem(periods);
+  if (problem) return { ok: false, message: problem };
+  const result = await call('set_term_letter_periods', {
+    p_doc: docId,
+    p_term_dates: periods.map(periodToRange),
+  });
+  if (isFailure(result)) return result;
+  const data = (result.data ?? {}) as { expiresOn?: string | null };
+  return {
+    ok: true,
+    message: `Holiday periods saved. The weekly limit follows them from now${
+      data.expiresOn ? `; the letter expires ${ukDate(data.expiresOn)}` : ''
+    }.`,
+  };
 }
 
 async function saveConditions(conditions: VerifyConditions): Promise<string> {

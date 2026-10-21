@@ -110,6 +110,7 @@ import {
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobCorrection } from '../_components/DobCorrection';
 import { DobClaimNote } from '../_components/DobClaimNote';
+import { EditTermPeriods, periodsFrom } from '../_components/TermPeriods';
 import type { DobClaim } from '../_lib/dobCorrection';
 import {
   checksByDocument,
@@ -171,6 +172,7 @@ export function CandidateScreen({
   canCorrectDob = false,
   canMarkInterview = false,
   canGrantQuizAttempts = false,
+  canEditTermPeriods = false,
   bare = false,
 }: {
   data: CandidateData;
@@ -181,6 +183,8 @@ export function CandidateScreen({
   canMarkInterview?: boolean;
   /** ADR-0168: `officeCan(role, 'write')` — a viewer does not see Allow 3 more attempts. */
   canGrantQuizAttempts?: boolean;
+  /** ADR-0178: `officeCan(role, 'write')` — "Edit holiday periods" on a verified term letter. */
+  canEditTermPeriods?: boolean;
   /**
    * ADR-0161: the page has drawn the `OfficeShell` itself, around the
    * Suspense this screen streams in behind, so the screen draws only its
@@ -428,6 +432,7 @@ export function CandidateScreen({
             row={row}
             data={data}
             doc={doc}
+            canEditTermPeriods={canEditTermPeriods && row.status !== 'rejected'}
             onSaveRole={(roleId, on) =>
               on
                 ? addQualifiedRole(row.id, roleId, false)
@@ -1799,12 +1804,15 @@ function TermDates({
   setPeriods,
   editable,
   capText,
+  edit,
 }: {
   doc: CandidateDocument;
   periods: Period[];
   setPeriods: (next: Period[]) => void;
   editable: boolean;
   capText: string;
+  /** ADR-0178: "Edit holiday periods" once the letter is verified. */
+  edit?: ReactNode;
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const aiCount = (doc.term_dates ?? []).length;
@@ -1819,6 +1827,7 @@ function TermDates({
         <span className="muted sm">
           Verify the dates against the letter — the manager confirms the dates, not the hours
         </span>
+        {edit ? <span className="right">{edit}</span> : null}
       </div>
       <CourseFacts doc={doc} badge={badge} />
       <hr />
@@ -2268,6 +2277,7 @@ function DocumentsPhase({
   row,
   data,
   doc,
+  canEditTermPeriods,
   onSaveRole,
   onRolesSaved,
   onGrantClients,
@@ -2278,6 +2288,7 @@ function DocumentsPhase({
   row: CandidateRow;
   data: CandidateData;
   doc: DocHandlers;
+  canEditTermPeriods: boolean;
   onSaveRole: (roleId: string, on: boolean) => Promise<ActionResult>;
   onRolesSaved: () => void;
   onGrantClients: (clientIds: string[], roleIds: string[], after: () => void) => void;
@@ -2376,10 +2387,22 @@ function DocumentsPhase({
               {d.doc_type === 'university_term_dates_letter' ? (
                 <TermDates
                   doc={d}
-                  periods={periods}
+                  // A verified letter shows what is on file — it changes
+                  // under "Edit holiday periods", not under the Verify state.
+                  periods={d.review_status === 'pending' ? periods : periodsFrom(d.term_dates)}
                   setPeriods={setPeriods}
                   editable={!doc.readOnly && d.review_status === 'pending'}
                   capText={capText}
+                  edit={
+                    d.review_status === 'verified' ? (
+                      <EditTermPeriods
+                        docId={d.id}
+                        ranges={d.term_dates}
+                        allowed={canEditTermPeriods}
+                        name={row.display_name}
+                      />
+                    ) : null
+                  }
                 />
               ) : null}
             </div>

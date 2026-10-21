@@ -102,7 +102,7 @@ end $f$;
 --
 -- packages/domain homeOfficeRef.ts (normaliseHomeOfficeRef,
 -- isValidHomeOfficeRef) is the same rule; its vectors are held to these
--- two functions by pgTAP 911.
+-- two functions by pgTAP 919.
 -- ---------------------------------------------------------------------
 create or replace function public.normalise_home_office_ref(p_ref text)
 returns text
@@ -796,7 +796,7 @@ as $$
 $$;
 
 comment on function public.home_office_check_until(date) is
-  'ADR-0182: the right-to-work-until a Home Office check result gives by default — six months from the date approved, the same day of the month, clamped to the end of a shorter month (31.08 → 28/29.02). homeOfficeCheckUntil() in packages/domain is the same rule; pgTAP 912 runs its vectors here.';
+  'ADR-0182: the right-to-work-until a Home Office check result gives by default — six months from the date approved, the same day of the month, clamped to the end of a shorter month (31.08 → 28/29.02). homeOfficeCheckUntil() in packages/domain is the same rule; pgTAP 920 runs its vectors here.';
 
 revoke all on function public.home_office_check_until(date) from public, anon;
 grant execute on function public.home_office_check_until(date) to authenticated, service_role;

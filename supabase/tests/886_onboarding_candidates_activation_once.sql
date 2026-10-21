@@ -130,7 +130,7 @@ select is_empty($$
 select is_empty($$
   -- home_office_check_result is excluded: ADR-0182 (20261022190100) added
   -- the type later and dates it from its right-to-work-until, as a share
-  -- code report — a deliberate change, asserted in 912, not a drift of
+  -- code report — a deliberate change, asserted in 920, not a drift of
   -- this plpgsql conversion.
   select t, e, u, r.cal from unnest(enum_range(null::doc_type)) t,
          unnest(array[null, date '2026-03-01']) e, unnest(array[null, date '2026-05-01']) u,

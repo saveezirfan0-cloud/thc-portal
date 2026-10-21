@@ -11,7 +11,7 @@ evidence held after removal), ADR-0078 (the share code is the visa evidence), AD
 columns leave the API roles; definers pinned by name)
 
 `supabase/migrations/20261022190000_home_office_check_values.sql`,
-`20261022190100_home_office_check_branch.sql` · pgTAP `911`, `912` (and `892`, `445`, `886`
+`20261022190100_home_office_check_branch.sql` · pgTAP `919`, `920` (and `892`, `445`, `886`
 follow) · `packages/notifications/src/templates.ts` (N4's `home_office` variant) · `packages/domain/src/homeOfficeRef.ts`, `onboarding.ts`, `documents.ts` · Staff App
 step 1, step 4, the review hub and the Documents tab · Back Office candidate page, Compliance →
 Needs review, the staff Documents tab and the right-to-work **Change** dialog
@@ -140,7 +140,7 @@ A sixth branch, `rtw_branch = 'home_office_check'`, and a sixth right-to-work do
   stays valid until …".
 - RLS: the office sees every result and the reference; a worker sees their own result rows
   (`staff_self_docs`), never the reference (the `share_code` column of `compliance_docs` and
-  `staff.home_office_ref` are both outside their grants); a client sees neither (pgTAP `912`).
+  `staff.home_office_ref` are both outside their grants); a client sees neither (pgTAP `920`).
 
 ## Ordering against the other branches
 

@@ -9,7 +9,7 @@ import {
 
 /**
  * The Home Office reference (ADR-0182). The same examples are run against
- * the SQL twins in pgTAP 911, and onboarding.sql.test.ts holds the two
+ * the SQL twins in pgTAP 919, and onboarding.sql.test.ts holds the two
  * patterns to one literal.
  */
 describe('the Home Office reference', () => {
@@ -19,7 +19,7 @@ describe('the Home Office reference', () => {
     expect(normaliseHomeOfficeRef(null)).toBe('');
   });
 
-  it('reads every Unicode space a phone or PDF pastes as a space (pgTAP 911 runs these in SQL)', () => {
+  it('reads every Unicode space a phone or PDF pastes as a space (pgTAP 919 runs these in SQL)', () => {
     expect(normaliseHomeOfficeRef('ABC\u00a0123456')).toBe('ABC 123456');
     expect(normaliseHomeOfficeRef('\u202fU1234567\u00a0/\u2009001\u3000')).toBe('U1234567 / 001');
     expect(isValidHomeOfficeRef('ABC\u00a0123456')).toBe(true);
@@ -54,7 +54,7 @@ describe('the Home Office reference', () => {
 });
 
 describe('the six months of a Home Office check result', () => {
-  // The same vectors run against home_office_check_until() in pgTAP 912.
+  // The same vectors run against home_office_check_until() in pgTAP 920.
   it.each([
     ['2026-10-21', '2027-04-21'],
     ['2026-08-31', '2027-02-28'],

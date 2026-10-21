@@ -1,5 +1,5 @@
 -- =====================================================================
--- 912 · The Home Office check result on the office's side — ADR-0182,
+-- 920 · The Home Office check result on the office's side — ADR-0182,
 --       20261022190100
 --
 --   1. office_attach_home_office_check(): this branch only, the worker's
@@ -18,7 +18,7 @@
 --   6. RLS: the office sees every result and the reference; a worker their
 --      own result rows only, and cannot read the reference from the tables
 --      (they see the one they typed in their own onboarding state, as with
---      a share code — 911); a client nothing.
+--      a share code — 919); a client nothing.
 --
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================

@@ -22,7 +22,7 @@
  * `is_valid_home_office_ref()`, migration 20261022190100), because the
  * database refuses a malformed reference even when the call does not come
  * through this app. `homeOfficeRef.test.ts` holds the two to the same
- * literal, and pgTAP 911 runs the same examples against the SQL.
+ * literal, and pgTAP 919 runs the same examples against the SQL.
  */
 
 /** The pattern as the SQL migration spells it — asserted equal in tests. */
@@ -73,7 +73,7 @@ export const HOME_OFFICE_CHECK_MAX_MONTHS = 12;
  * months from the date approved printed on it — the same day of the month,
  * clamped to the end of a shorter month (31.08.2026 → 28.02.2027), which is
  * how PostgreSQL adds `interval '6 months'`. The SQL twin is
- * `home_office_check_until()` (migration 20261022190100); pgTAP 912 runs the
+ * `home_office_check_until()` (migration 20261022190100); pgTAP 920 runs the
  * same vectors there. Null for anything that is not a real ISO date.
  */
 export function homeOfficeCheckUntil(approvedIso: string): string | null {
