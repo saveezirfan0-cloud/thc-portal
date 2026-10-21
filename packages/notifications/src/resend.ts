@@ -37,6 +37,8 @@ export interface ResendEmail {
   html?: string;
   /** Replies go to the sender's monitored mailbox (§9.12). */
   replyTo?: string;
+  /** Hidden copies (ADR-0179: the office's copy of a timesheet). Sent only when non-empty. */
+  bcc?: readonly string[];
   attachments?: readonly ResendAttachment[];
 }
 
@@ -65,6 +67,7 @@ export function buildResendRequest(
   };
   if (email.html) body.html = email.html;
   if (email.replyTo) body.reply_to = email.replyTo;
+  if (email.bcc && email.bcc.length > 0) body.bcc = [...email.bcc];
   if (email.attachments && email.attachments.length > 0) {
     body.attachments = email.attachments.map((a) => ({
       filename: a.filename,

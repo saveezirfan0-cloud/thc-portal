@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { TEMPLATES, switchedOff } from '@thc/notifications';
 import { readInvoicing, readWeights, validateSessionHours } from './validate';
+import { OFFICE_COPY_SETTING_KEY, readOfficeCopy } from './officeCopy';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
 import { readProblem } from '../_lib/dbError';
 
@@ -55,6 +56,7 @@ export async function loadSettings(): Promise<SettingsData> {
     willoReviewUrlTemplate: null,
     willoInterviewUrl: null,
     senders: DEFAULT_SENDERS,
+    documentOfficeCopy: [],
     recipients: RECIPIENTS,
     bookedElsewhereGapMinutes: 120,
     escalationRadiusMiles: 3,
@@ -110,6 +112,8 @@ export async function loadSettings(): Promise<SettingsData> {
         ? (byKey.get('willo_interview_public_url') as string)
         : null,
     senders: object('senders', DEFAULT_SENDERS),
+    // document_office_copy()'s reading: anything but { emails: [...] } is off.
+    documentOfficeCopy: readOfficeCopy(byKey.get(OFFICE_COPY_SETTING_KEY)),
     recipients: RECIPIENTS,
     bookedElsewhereGapMinutes: number('booked_elsewhere_gap_minutes', 120),
     escalationRadiusMiles: number('escalation_radius_miles', 3),
