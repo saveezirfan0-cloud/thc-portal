@@ -296,6 +296,8 @@ export interface SavedEvent {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
+  /** ADR-0185: staff must bring a passport or driving licence. */
+  securityCleared: boolean;
   cancelledAt: string | null;
   /**
    * ADR-0117: every event of the multi-day job this one belongs to (itself
@@ -317,6 +319,7 @@ interface EventRow {
   notes: string | null;
   auto_assign: boolean;
   required_languages: string[] | null;
+  security_cleared: boolean | null;
   cancelled_at: string | null;
   series_id: string | null;
 }
@@ -374,7 +377,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, required_languages, cancelled_at, series_id',
+      'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, required_languages, security_cleared, cancelled_at, series_id',
     )
     .eq('id', id)
     .maybeSingle();
@@ -452,6 +455,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
     notes: event.notes ?? '',
     autoAssign: event.auto_assign,
     requiredLanguages: normaliseLanguages(event.required_languages),
+    securityCleared: event.security_cleared === true,
     cancelledAt: event.cancelled_at,
     seriesDays,
     sections: sections.map((s) => ({

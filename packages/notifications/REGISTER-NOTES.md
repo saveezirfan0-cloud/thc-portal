@@ -326,6 +326,23 @@ None is `mandatory`.
 | CR3 | email · admin@ only (from admin@) | `Client quiz not passed — {name}, Employee ID {employeeId}` | who, which client and quiz, the attempts, their best, the roles it covers, and "They cannot be confirmed on {client} shifts until you reset" with where to reset (ADR-0150; ADR-0110 said "They stay booked") | on the failed last attempt, once · `CR3:quiz:<quiz>:<staff>:<attempt>` |
 
 
+## Security-cleared events (ADR-0185)
+
+The owner's request of 21.10.2026: an event can be "security cleared", which
+means staff bring a passport or driving licence, and they are told when they
+are confirmed on it. The Shift Builder's **Security cleared** box
+(`events.security_cleared`) is the data; the code is generic. It sits in
+`SECURITY_CLEARANCE_CODES`; its `trigger` names ADR-0185 and says "Not in §8".
+Not `mandatory`.
+
+| Code | Channel · to | Title | Body | When · key |
+| --- | --- | --- | --- | --- |
+| SC1 | push · worker → `/shifts/{bookingId}` | `Bring ID to your shift` | `{event} · {dateTime} is a security-cleared event. Please bring your passport or driving licence with you.` | the moment a booking is confirmed on a security-cleared event (trigger on `bookings`, so every confirming path), and for everyone already confirmed when the box is ticked later (trigger on `events`) · `SC1:booking:<id>`, once per booking. **Confirm the wording**: the owner named passport or driving licence and said nothing of what happens without one, so the copy says nothing either |
+
+The shift screen the push opens carries the same note on a confirmed booking
+(`staff_security_cleared_bookings()`).
+
+
 ## Client Portal additions (ADR-0135)
 
 The product owner's approval of 14.10.2026 ("Request again / notifications",

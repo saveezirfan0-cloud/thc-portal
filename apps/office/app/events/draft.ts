@@ -118,6 +118,11 @@ export interface EventDraft {
    */
   requiredLanguages: string[];
   /**
+   * ADR-0185: the event is security cleared — staff bring a passport or
+   * driving licence, and are told so when they are confirmed (SC1).
+   */
+  securityCleared: boolean;
+  /**
    * ADR-0117: the event this one is a Duplicate of, or null. Saving links
    * the two as the days of one multi-day job (`link_event_series`) — the
    * staff are still not copied (§3.2).
@@ -405,9 +410,25 @@ export function draftFromSaved(
     notes: event.notes,
     autoAssign: duplicate ? true : event.autoAssign,
     requiredLanguages: [...event.requiredLanguages],
+    // A Duplicate keeps it, as the languages: it is the client's ask of the
+    // event, not a decision about one day's people.
+    securityCleared: event.securityCleared,
     duplicateOf: duplicate ? event.id : null,
     roles,
   };
+}
+
+/**
+ * ADR-0185: how many confirmed workers saving this edit tells to bring ID —
+ * everyone confirmed, when "Security cleared" goes from unticked to ticked
+ * (the database pushes SC1 to each, once per booking), and nobody otherwise.
+ */
+export function securityClearedToTell(
+  before: Pick<EventDraft, 'securityCleared'>,
+  after: Pick<EventDraft, 'securityCleared'>,
+  confirmed: number,
+): number {
+  return !before.securityCleared && after.securityCleared ? confirmed : 0;
 }
 
 /** What the worker is actually told to wear (§9.7). */

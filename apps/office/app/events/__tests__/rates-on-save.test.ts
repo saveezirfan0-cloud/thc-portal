@@ -118,6 +118,7 @@ function input(id: string | null, roles: ReturnType<typeof section>[]) {
     notes: '',
     autoAssign: true,
     requiredLanguages: ['English'],
+    securityCleared: false,
     roles,
   };
 }

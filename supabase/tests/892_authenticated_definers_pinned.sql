@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 213 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0180's compliance_request_declaration_details, compliance_reverse_declaration_rejection, my_declaration_update and update_my_declaration, and can_review_criminal_records, admin_set_criminal_records_reviewer and admin_criminal_records_reviewers + ADR-0183's compliance_withdraw_completion_approval + ADR-0182's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0182 also gave onboarding_save_right_to_work an eighth argument and record_right_to_work_change a fifth; 214 with ADR-0184's verify_late_check_out), docs/14 §4 — so a new one fails here BY
+-- 215 functions on 23.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0180's compliance_request_declaration_details, compliance_reverse_declaration_rejection, my_declaration_update and update_my_declaration, and can_review_criminal_records, admin_set_criminal_records_reviewer and admin_criminal_records_reviewers + ADR-0183's compliance_withdraw_completion_approval + ADR-0182's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0182 also gave onboarding_save_right_to_work an eighth argument and record_right_to_work_change a fifth; 214 with ADR-0184's verify_late_check_out + ADR-0185's staff_security_cleared_bookings), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -223,6 +223,7 @@ select bag_eq(
             ('staff_open_shifts(uuid,uuid)'),
             ('staff_save_bank(text,text,text)'),
             ('staff_save_languages(text[])'),
+            ('staff_security_cleared_bookings()'),
             ('staff_set_ni_number(text)'),
             ('staff_set_photo(text)'),
             ('staff_shift_detail(uuid)'),
@@ -250,7 +251,7 @@ select bag_eq(
             ('withdraw_booking(uuid)'),
             ('withdraw_profile_change(uuid)'),
             ('withdraw_shift_offer(uuid)') $$,
-  'the security definer functions a signed-in caller can execute are exactly these 214 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
+  'the security definer functions a signed-in caller can execute are exactly these 215 — a new one is a reviewed addition (ADR-0163, docs/14 §4)'
 );
 
 select is_empty(
