@@ -37,6 +37,7 @@ import {
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { useReviewDialogs } from './ReviewDialogs';
+import { DeclarationDecisions, DeclarationFollowUp } from './DeclarationFollowUp';
 import { oneOf, useListQuery } from '../_lib/listQuery';
 import { COMPLIANCE_QUERY, WHO } from './query';
 import type { ActionResult, QueueRow } from './types';
@@ -204,6 +205,7 @@ export function ReviewTab({
                       busy={pendingId === row.item_id}
                       onVerify={() => verify(row)}
                       onReject={() => reject(row)}
+                      onFollowUp={setResult}
                     />
                   ))}
                 </tbody>
@@ -233,6 +235,7 @@ function QueueLine({
   busy,
   onVerify,
   onReject,
+  onFollowUp,
 }: {
   row: QueueRow;
   rtwCheckEnabled: boolean;
@@ -240,6 +243,8 @@ function QueueLine({
   busy: boolean;
   onVerify: () => void;
   onReject: () => void;
+  /** ADR-0180: Ask for more details reports into the tab's banner. */
+  onFollowUp: (result: ActionResult) => void;
 }) {
   const format = useTimeFormat();
   const who = whoLine(row);
@@ -247,6 +252,23 @@ function QueueLine({
   const flag = reviewFlag(row);
   const hint = verifyHint(row);
   const actions = actionsFor(row);
+  const decisions = (
+    <>
+      {verifyAllowed(row) ? (
+        <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
+          {actions.verify}
+        </Button>
+      ) : null}
+      {actions.reject ? (
+        <>
+          {' '}
+          <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
+            Reject
+          </Button>
+        </>
+      ) : null}
+    </>
+  );
   const cells: Record<ColumnId, ReactNode> = {
     who: (
       <td className="cell-title">
@@ -276,12 +298,18 @@ function QueueLine({
           <Pill tone="purple">in-employment</Pill>
         ) : null}
         {row.is_reupload ? <Pill tone="amber">re-upload</Pill> : null}
+        {row.kind === 'declaration' && row.declaration_previous_status ? (
+          <Pill tone="amber">updated</Pill>
+        ) : null}
         {row.kind === 'rtw_check' ? <Pill tone="coral">no right to work</Pill> : null}
         {row.kind === 'rtw_date' ? <Pill tone="coral">re-verify</Pill> : null}
         <span className="sub">
           {documentLine(row)}
           {row.kind === 'declaration' && row.declaration_details ? (
             <> · “{row.declaration_details}” · details visible to Admin only</>
+          ) : null}
+          {row.kind === 'declaration' && row.declaration_previous_message ? (
+            <> · in answer to: “{row.declaration_previous_message}”</>
           ) : null}
         </span>
         {row.item_type === 'share_code_report' && row.kind !== 'rtw_date' ? (
@@ -333,19 +361,28 @@ function QueueLine({
     ),
     actions: (
       <td className="right-align cell-actions">
-        {verifyAllowed(row) ? (
-          <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
-            {actions.verify}
-          </Button>
-        ) : null}
-        {actions.reject ? (
-          <>
-            {' '}
-            <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
-              Reject
-            </Button>
-          </>
-        ) : null}
+        {row.kind === 'declaration' ? (
+          // ADR-0180: only the office users named to review criminal
+          // records decide one; everyone else reads it.
+          <DeclarationDecisions>
+            {decisions}{' '}
+            <DeclarationFollowUp
+              target={{
+                id: row.item_id,
+                answer: true,
+                status: 'pending',
+                superseded: false,
+                source: row.declaration_source ?? 'onboarding',
+                staffStatus: row.status,
+                displayName: row.display_name,
+              }}
+              disabled={busy}
+              onResult={onFollowUp}
+            />
+          </DeclarationDecisions>
+        ) : (
+          decisions
+        )}
         {hint ? <span className="sub muted xs">{hint}</span> : null}
       </td>
     ),

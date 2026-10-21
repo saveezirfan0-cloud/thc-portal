@@ -46,6 +46,7 @@ import {
   setLoginDisabled,
 } from './actions';
 import type { AccountRow, UsersPageData } from './data';
+import { CriminalRecordsToggle } from './CriminalRecordsToggle';
 import { inviteMailto } from './invite';
 import '../account/account.css';
 
@@ -220,6 +221,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                     tab={tab}
                     columns={columns}
                     self={account.id === data.selfId}
+                    anyoneNamed={data.accounts.some((a) => a.reviews_criminal_records)}
                     onSwitch={() => setSwitching(account)}
                     onChangeRole={() => setReroling(account)}
                     onResetTwoStep={() => setResetting(account)}
@@ -252,6 +254,12 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
             {OFFICE_ROLE_SUMMARY.viewer} New logins are managers unless you choose otherwise. Nobody
             can change their own role, and there is always at least one working owner. Role changes
             are in the <Link href="/activity">activity log</Link> under the owner’s name.
+          </p>
+          <p className="sm muted users-plain">
+            <b>Criminal records</b>: only the logins allowed to review criminal records decide a
+            criminal declaration — Verify, Reject, Ask for more details and Reverse rejection. Every
+            other office login reads it without deciding. While nobody is allowed, owners decide.
+            Changes are in the activity log.
           </p>
           <p className="sm muted users-plain">
             <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
@@ -299,6 +307,7 @@ function UserRow({
   tab,
   columns,
   self,
+  anyoneNamed,
   onSwitch,
   onChangeRole,
   onResetTwoStep,
@@ -308,6 +317,8 @@ function UserRow({
   tab: Tab;
   columns: Columns<ColumnId>;
   self: boolean;
+  /** ADR-0180: whether any Back Office login may review criminal records. */
+  anyoneNamed: boolean;
   onSwitch: () => void;
   onChangeRole: () => void;
   onResetTwoStep: () => void;
@@ -356,6 +367,12 @@ function UserRow({
         ) : (
           '—'
         )}
+        {/* ADR-0180: who decides criminal declarations. */}
+        {tab === 'admin' ? (
+          <span className="sub">
+            <CriminalRecordsToggle account={account} anyoneNamed={anyoneNamed} />
+          </span>
+        ) : null}
       </td>
     ),
     client: <td data-label="Client">{account.client_name ?? '—'}</td>,

@@ -7,6 +7,11 @@ import { explainDbError } from '../_lib/dbError';
  */
 const MESSAGES: [RegExp, string][] = [
   [/^not_authorised/, 'Only the office can review documents.'],
+  // ADR-0180: only named office users decide a criminal declaration.
+  [
+    /^not_criminal_records_reviewer/,
+    'Only office users allowed to review criminal records can decide this.',
+  ],
   [/^reason_required/, 'A rejection needs a reason — the worker is sent it.'],
   [/^not_pending: verified/, 'This has already been verified.'],
   [/^not_pending: rejected/, 'This has already been rejected. The worker re-uploads.'],

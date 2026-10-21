@@ -13,7 +13,8 @@ import type { RtwCheckRow } from '../_lib/rtwCheck';
 
 export type { StaffStatus };
 
-export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
+/** `details_requested` is a declaration's only (ADR-0180): a document is never sent back. */
+export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded' | 'details_requested';
 export type RejectionCause = 'willo' | 'manager' | 'quiz_failed';
 
 export interface CandidateRow {
@@ -274,6 +275,13 @@ export interface Declaration {
   reviewed_by_name: string | null;
   review_note: string | null;
   superseded: boolean;
+  // ADR-0180 (staff_declarations_v, 20261022170100); optional so an older read still types.
+  /** What the office asked the candidate, when it asked for more details. */
+  worker_message?: string | null;
+  replaces_declaration_id?: string | null;
+  reversed_at?: string | null;
+  /** The reason the reversed rejection had. */
+  reversed_rejection_reason?: string | null;
 }
 
 export interface Reference {

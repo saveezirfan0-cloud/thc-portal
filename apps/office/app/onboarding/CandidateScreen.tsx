@@ -23,6 +23,8 @@ import {
 } from '@thc/ui';
 import { contractClause28Pending, formatLanguages, groupRolesByArea } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
+import { DeclarationDecisions, DeclarationFollowUp } from '../compliance/DeclarationFollowUp';
+import { declarationFollowUps } from '../compliance/declarationLines';
 import { OfficeShell } from '../_components/OfficeShell';
 import { CandidateCrumbs } from './chrome';
 import { RejectSelfie } from '../_components/RejectSelfie';
@@ -118,6 +120,7 @@ const STATE = {
   pending: 'review',
   rejected: 'rejected',
   superseded: 'pending',
+  details_requested: 'pending',
 } as const;
 const ICON: Record<string, string> = {
   passport: 'PDF',
@@ -2358,7 +2361,7 @@ function DocumentsPhase({
               }
               meta={
                 d.answer
-                  ? `Details: “${orDash(d.details)}”${d.conviction_date ? ` · Conviction date: ${formatUkDate(d.conviction_date)}` : ''} · No file — text only${d.reviewed_at && d.review_status !== 'pending' ? ` · ${reviewStamp(d.review_status, d.reviewed_by_name, d.reviewed_at, format)}` : ''}${d.review_note ? ` · Note: ${d.review_note}` : ''}`
+                  ? `Details: “${orDash(d.details)}”${d.conviction_date ? ` · Conviction date: ${formatUkDate(d.conviction_date)}` : ''} · No file — text only${d.reviewed_at && d.review_status !== 'pending' ? ` · ${reviewStamp(d.review_status, d.reviewed_by_name, d.reviewed_at, format)}` : ''}${d.review_note ? ` · Note: ${d.review_note}` : ''}${declarationFollowUps(d, format)}`
                   : `No · auto-verified ${d.reviewed_at ? formatUkDate(d.reviewed_at) : formatUkDate(d.declared_at)}`
               }
               actions={
@@ -2366,34 +2369,57 @@ function DocumentsPhase({
                   <Pill tone={REVIEW_PILL[d.review_status].tone}>
                     {REVIEW_PILL[d.review_status].label}
                   </Pill>
-                  {d.answer && d.review_status === 'pending' && !doc.readOnly ? (
-                    <>
-                      <Button
-                        size="sm"
-                        tone="green"
+                  {/* ADR-0180: only the office users named to review criminal
+                      records decide a declaration; everyone else reads it. */}
+                  {d.answer &&
+                  (d.review_status === 'pending' || d.review_status === 'rejected') &&
+                  !doc.readOnly ? (
+                    <DeclarationDecisions>
+                      {d.review_status === 'pending' ? (
+                        <>
+                          <Button
+                            size="sm"
+                            tone="green"
+                            disabled={doc.busy}
+                            onClick={() => onVerifyDeclaration(d)}
+                          >
+                            Verify
+                          </Button>
+                          <Button
+                            size="sm"
+                            tone="danger"
+                            disabled={doc.busy}
+                            onClick={() => onRejectDeclaration(d)}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      ) : null}
+                      <DeclarationFollowUp
+                        target={{
+                          id: d.id,
+                          answer: d.answer,
+                          status: d.review_status,
+                          superseded: d.superseded,
+                          source: d.source,
+                          staffStatus: row.status,
+                          displayName: `${row.first_name} ${row.last_name}`,
+                          rejectionReason: d.review_note,
+                        }}
                         disabled={doc.busy}
-                        onClick={() => onVerifyDeclaration(d)}
-                      >
-                        Verify
-                      </Button>
-                      <Button
-                        size="sm"
-                        tone="danger"
-                        disabled={doc.busy}
-                        onClick={() => onRejectDeclaration(d)}
-                      >
-                        Reject
-                      </Button>
-                    </>
+                        readOnly={doc.readOnly}
+                      />
+                    </DeclarationDecisions>
                   ) : null}
                 </>
               }
             />
           ))}
           <Note>
-            Verify / Reject appear <b>only</b> when the answer is Yes. A <b>No</b> answer is
-            auto-verified on submission and never needs a manual action. Declarations are a history,
-            never overwritten.
+            Verify / Reject / Ask for more details appear <b>only</b> when the answer is Yes. A{' '}
+            <b>No</b> answer is auto-verified on submission and never needs a manual action. A
+            rejected Yes can be reversed. Declarations are a history, never overwritten: an updated
+            declaration is added, and the one it answers is kept, read-only.
           </Note>
         </div>
       </Panel>

@@ -179,7 +179,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     supabase
       .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name, superseded, review_note, worker_message, replaces_declaration_id, reversed_at, reversed_rejection_reason',
       )
       .eq('staff_id', id)
       .order('declared_at')

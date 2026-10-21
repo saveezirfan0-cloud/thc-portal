@@ -1,0 +1,23 @@
+-- =====================================================================
+-- Migration 20261022170000 · a criminal declaration can be sent back for
+--                            more details (ADR-0180)
+--
+-- The office's question (Sam and Richard, 21.10.2026): when a Yes
+-- declaration's details are not enough, is it best to reject it and ask
+-- for full details — and if they decide the person can still work, can
+-- the rejection be overturned? Rejecting was the only way to ask, and a
+-- rejected declaration could not be answered from the app.
+--
+-- `details_requested` is the third outcome of a pending review: the
+-- declaration is closed, the worker is asked for more, and their answer
+-- is a NEW declaration that supersedes it (20261022170100). A value of
+-- the existing review_status enum rather than a flag beside it, so every
+-- reader that already asks "is it pending?" — the Needs review queue, the
+-- Verify / Reject refusals — keeps meaning what it says.
+--
+-- On its own because `alter type … add value` cannot be used in the
+-- transaction that adds it. The enum is shared with compliance_docs,
+-- which never takes this value: 20261022170100 says so with a check.
+-- =====================================================================
+
+alter type public.review_status add value if not exists 'details_requested';

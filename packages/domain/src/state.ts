@@ -183,7 +183,13 @@ export function canCancelBooking(status: string): boolean {
 export class IllegalTransitionError extends Error {
   constructor(
     readonly machine:
-      'staff' | 'booking' | 'rtw_check' | 'change_request' | 'shift_offer' | 'invoice',
+      | 'staff'
+      | 'booking'
+      | 'rtw_check'
+      | 'change_request'
+      | 'shift_offer'
+      | 'invoice'
+      | 'declaration_review',
     readonly from: string,
     readonly to: string,
   ) {
@@ -487,4 +493,61 @@ export function canTransitionInvoice(from: IssuedInvoiceStatus, to: IssuedInvoic
 
 export function assertInvoiceTransition(from: IssuedInvoiceStatus, to: IssuedInvoiceStatus): void {
   if (!canTransitionInvoice(from, to)) throw new IllegalTransitionError('invoice', from, to);
+}
+
+/**
+ * A criminal declaration's review (ADR-0180). The database is authoritative:
+ * `declaration_review_transitions()` lists the same pairs and the
+ * `criminal_declarations_never_edited` trigger refuses any other status
+ * change, whoever makes it.
+ *
+ *   pending → verified            Verify (compliance_verify_declaration)
+ *   pending → rejected            Reject, with a reason
+ *   pending → details_requested   Ask for more details, with a message for
+ *                                 the worker (compliance_request_declaration_details)
+ *   rejected → verified           Reverse rejection, with a note — the office
+ *                                 decided they can work after all
+ *                                 (compliance_reverse_declaration_rejection)
+ *
+ * `details_requested` and `verified` are terminal. The worker's answer to a
+ * request — or to a rejection at onboarding — is a NEW declaration
+ * (update_my_declaration), and the old row is superseded, never edited: a
+ * declaration is the record of what was declared, and when.
+ */
+export const DECLARATION_REVIEW_STATUSES = [
+  'pending',
+  'verified',
+  'rejected',
+  'details_requested',
+] as const;
+
+export type DeclarationReviewStatus = (typeof DECLARATION_REVIEW_STATUSES)[number];
+
+export const DECLARATION_REVIEW_TRANSITIONS: Readonly<
+  Record<DeclarationReviewStatus, readonly DeclarationReviewStatus[]>
+> = {
+  pending: ['verified', 'rejected', 'details_requested'],
+  rejected: ['verified'],
+  details_requested: [],
+  verified: [],
+};
+
+export function isDeclarationReviewStatus(value: unknown): value is DeclarationReviewStatus {
+  return (DECLARATION_REVIEW_STATUSES as readonly unknown[]).includes(value);
+}
+
+export function canTransitionDeclarationReview(
+  from: DeclarationReviewStatus,
+  to: DeclarationReviewStatus,
+): boolean {
+  return from === to || DECLARATION_REVIEW_TRANSITIONS[from].includes(to);
+}
+
+export function assertDeclarationReviewTransition(
+  from: DeclarationReviewStatus,
+  to: DeclarationReviewStatus,
+): void {
+  if (!canTransitionDeclarationReview(from, to)) {
+    throw new IllegalTransitionError('declaration_review', from, to);
+  }
 }

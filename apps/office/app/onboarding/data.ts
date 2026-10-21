@@ -410,7 +410,8 @@ export async function loadCandidateFacts(
   if (!rest.data) return { data: null, error: null };
   return {
     data: {
-      ni_number: typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
+      ni_number:
+        typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
       below_degree_level: (rest.data['below_degree_level'] as boolean | null) ?? null,
       visa_weekly_hour_limit: (rest.data['visa_weekly_hour_limit'] as number | null) ?? null,
       languages: (rest.data['languages'] as string[] | null) ?? null,
@@ -495,7 +496,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     supabase
       .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name, review_note, superseded',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name, review_note, superseded, worker_message, replaces_declaration_id, reversed_at, reversed_rejection_reason',
       )
       .eq('staff_id', id)
       .order('declared_at')

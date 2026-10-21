@@ -16,6 +16,8 @@ import {
 } from './profile';
 import { documentLink } from '../../onboarding/actions';
 import { useReviewDialogs } from '../../compliance/ReviewDialogs';
+import { DeclarationDecisions, DeclarationFollowUp } from '../../compliance/DeclarationFollowUp';
+import { declarationFollowUpLine, isLiveDeclaration } from './declaration';
 import { CompletionLetterUpload, RtwReportUpload } from '../../compliance/EvidenceUploads';
 import { canAttachReport, canUploadCompletionLetter } from '../../compliance/conditions';
 import {
@@ -112,6 +114,8 @@ const STATE = {
   pending: 'review',
   rejected: 'rejected',
   superseded: 'pending',
+  // ADR-0180: waiting on the worker's updated declaration.
+  details_requested: 'pending',
 } as const;
 
 const STATUS_PILL = {
@@ -119,9 +123,10 @@ const STATUS_PILL = {
   pending: { tone: 'amber', label: 'Under review' },
   rejected: { tone: 'coral', label: 'Rejected' },
   superseded: { tone: 'neutral', label: 'Superseded' },
+  details_requested: { tone: 'amber', label: 'More details asked' },
 } as const;
 
-function StatusPill({ status }: { status: ReviewStatus }) {
+function StatusPill({ status }: { status: ReviewStatus | 'details_requested' }) {
   return <Pill tone={STATUS_PILL[status].tone}>{STATUS_PILL[status].label}</Pill>;
 }
 
@@ -162,8 +167,10 @@ export function Documents({
   const sorted = [...documents].sort(documentOrder);
   const live = sorted.filter((row) => !row.superseded);
   const superseded = sorted.filter((row) => row.superseded);
-  const liveDeclarations = declarations.filter((row) => row.review_status !== 'superseded');
-  const supersededDeclarations = declarations.filter((row) => row.review_status === 'superseded');
+  // ADR-0180: an updated declaration supersedes the one it answers (the flag,
+  // as Reset to candidate sets it), and the old one joins the history.
+  const liveDeclarations = declarations.filter(isLiveDeclaration);
+  const supersededDeclarations = declarations.filter((row) => !isLiveDeclaration(row));
 
   const download = (docId: string, which: 'file' | 'report') => {
     setProblem(null);
@@ -323,7 +330,7 @@ export function Documents({
             icon="DECL"
             title={`Criminal Record declaration · ${row.answer ? 'Yes' : 'No'}`}
             meta={withHint(
-              declarationMeta(row, format),
+              declarationFollowUpLine(declarationMeta(row, format), row, format),
               declarationActionable(row) ? queue.get(row.id) : undefined,
               declarationActionable(row),
             )}
@@ -331,7 +338,33 @@ export function Documents({
             actions={
               <>
                 <StatusPill status={row.review_status} />
-                {declarationActionable(row) ? reviewButtons(queue.get(row.id)) : null}
+                {/* ADR-0180: only the office users named to review criminal records
+                    decide one — Verify / Reject, Ask for more details (pending),
+                    Reverse rejection (rejected); everyone else reads it. */}
+                {row.answer &&
+                (declarationActionable(row)
+                  ? queue.get(row.id)
+                  : row.review_status === 'rejected') ? (
+                  <DeclarationDecisions>
+                    {declarationActionable(row) ? reviewButtons(queue.get(row.id)) : null}
+                    {!reviewQueueProblem &&
+                    (row.review_status !== 'pending' || queue.get(row.id)) ? (
+                      <DeclarationFollowUp
+                        target={{
+                          id: row.id,
+                          answer: row.answer,
+                          status: row.review_status,
+                          superseded: false,
+                          source: row.source,
+                          staffStatus: profile.status,
+                          displayName: profile.display_name,
+                          rejectionReason: row.review_note ?? null,
+                        }}
+                        disabled={pending}
+                      />
+                    ) : null}
+                  </DeclarationDecisions>
+                ) : null}
               </>
             }
           />
@@ -398,7 +431,7 @@ export function Documents({
                 key={row.id}
                 icon="DECL"
                 title={`Criminal Record declaration · ${row.answer ? 'Yes' : 'No'}`}
-                meta={declarationMeta(row, format)}
+                meta={declarationFollowUpLine(declarationMeta(row, format), row, format)}
                 state="pending"
                 actions={<Pill>Superseded</Pill>}
               />
