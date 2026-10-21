@@ -2,16 +2,21 @@
 
 import { useState, useTransition } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Alert, Button, Input, Modal, Pill, Switch } from '@thc/ui';
+import { Alert, Button, Input, Modal, Pill, Switch, Textarea } from '@thc/ui';
 import { lengthHint } from '../_lib/length';
 import { createClientRecord, updateClientRecord } from './actions';
+import { EmailChipsField } from './EmailChipsField';
 import {
+  ACCOUNTS_CONTACT_MAX,
+  BILLING_ADDRESS_MAX,
   CLIENT_NAME_MAX,
   CONTACT_NAME_MAX,
   CONTACT_POINT_MAX,
   MAX_CONTACT_EMAILS,
+  MAX_INVOICE_EMAILS,
   clientFieldErrors,
   isEmail,
+  normaliseInvoiceEmails,
 } from './validate';
 import type { Client } from './types';
 
@@ -32,6 +37,12 @@ export interface ClientModalProps {
  *
  * The rate card, the dress codes and the qualified staff are deliberately
  * not here: they are added on the client card after creation.
+ *
+ * New client also asks where its invoices go (ADR-0176, THC 21.10.2026):
+ * at least one invoice email is compulsory, up to ten; the accounts
+ * contact and billing address are optional. Edit does not show them —
+ * once the client exists they are the card's Invoicing panel's, finance
+ * only.
  */
 export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
   const editing = client !== null;
@@ -44,6 +55,12 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
   const [emailDraft, setEmailDraft] = useState('');
   const [paysBreaks, setPaysBreaks] = useState(client?.pays_breaks ?? false);
   const [paysBuffer, setPaysBuffer] = useState(client?.pays_buffer ?? true);
+  const [invoiceEmails, setInvoiceEmails] = useState<string[]>([]);
+  const [invoiceDraft, setInvoiceDraft] = useState('');
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [ccDraft, setCcDraft] = useState('');
+  const [accountsContact, setAccountsContact] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
   const [error, setError] = useState<string | null>(null);
   // Release audit D-M2: what is missing is said under the field once Save
   // has been tried; what is malformed (a phone that is not one) as soon as
@@ -87,6 +104,29 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
   // manager who types an address and presses Create should not lose it.
   const pendingEmails =
     emailDraft.trim() && isEmail(emailDraft.trim()) ? [...emails, emailDraft.trim()] : emails;
+  const pendingInvoiceEmails = normaliseInvoiceEmails(
+    invoiceDraft.trim() && isEmail(invoiceDraft.trim())
+      ? [...invoiceEmails, invoiceDraft]
+      : invoiceEmails,
+  );
+  const pendingCcEmails = normaliseInvoiceEmails(
+    ccDraft.trim() && isEmail(ccDraft.trim()) ? [...ccEmails, ccDraft] : ccEmails,
+  );
+  // Where the main contact's own addresses are where the invoice goes too.
+  const useContactEmails = () => {
+    setError(null);
+    setInvoiceEmails(
+      normaliseInvoiceEmails([...invoiceEmails, ...pendingEmails]).slice(0, MAX_INVOICE_EMAILS),
+    );
+  };
+  const invoicing = editing
+    ? undefined
+    : {
+        invoice_emails: pendingInvoiceEmails,
+        invoice_cc_emails: pendingCcEmails,
+        accounts_contact_name: accountsContact,
+        billing_address: billingAddress,
+      };
 
   // Release audit E-M4 / m2: Escape or the backdrop on a filled-in form
   // asks first; Enter submits.
@@ -98,17 +138,27 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
     emailDraft.trim() !== '' ||
     emails.join('\n') !== (client?.contact_emails ?? []).join('\n') ||
     paysBreaks !== (client?.pays_breaks ?? false) ||
-    paysBuffer !== (client?.pays_buffer ?? true);
+    paysBuffer !== (client?.pays_buffer ?? true) ||
+    invoiceEmails.length > 0 ||
+    invoiceDraft.trim() !== '' ||
+    ccEmails.length > 0 ||
+    ccDraft.trim() !== '' ||
+    accountsContact.trim() !== '' ||
+    billingAddress.trim() !== '';
 
-  const fieldErrors = clientFieldErrors({
-    name,
-    contact_name: contactName,
-    phone,
-    staff_contact_point: contactPoint,
-    contact_emails: pendingEmails,
-    pays_breaks: paysBreaks,
-    pays_buffer: paysBuffer,
-  });
+  const fieldErrors = clientFieldErrors(
+    {
+      name,
+      contact_name: contactName,
+      phone,
+      staff_contact_point: contactPoint,
+      contact_emails: pendingEmails,
+      pays_breaks: paysBreaks,
+      pays_buffer: paysBuffer,
+      invoicing,
+    },
+    !editing,
+  );
   /** The error to draw under a field: always once tried, else only for a value that is there but wrong. */
   const shown = (field: keyof typeof fieldErrors, value: string) =>
     tried || value.trim() !== '' ? fieldErrors[field] : undefined;
@@ -132,6 +182,7 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
         contact_emails: pendingEmails,
         pays_breaks: paysBreaks,
         pays_buffer: paysBuffer,
+        invoicing,
       };
       const result = client
         ? await updateClientRecord(client.id, draft)
@@ -163,7 +214,9 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
       }
     >
       <div className="row">
-        <Pill tone="amber">all fields mandatory</Pill>
+        {/* The invoicing name and address are optional (ADR-0176); every
+            §9.7 field still is mandatory. */}
+        <Pill tone="amber">{editing ? 'all fields mandatory' : 'every * field is mandatory'}</Pill>
         {editing ? <Pill>{client.name}</Pill> : null}
       </div>
 
@@ -278,6 +331,83 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           from timesheets@thehospitalitycompany.co.uk.
         </span>
       </div>
+
+      {editing ? null : (
+        <div className="stack" role="group" aria-labelledby="client-invoicing">
+          <div className="row">
+            <Pill id="client-invoicing">Invoicing</Pill>
+            <span className="muted xs">where the invoice is emailed, from timesheets@</span>
+          </div>
+          <EmailChipsField
+            id="client-invoice-email"
+            label={
+              <>
+                Invoice emails <span className="coral">*</span>{' '}
+                <span className="muted">· To · up to {MAX_INVOICE_EMAILS}</span>
+              </>
+            }
+            emails={invoiceEmails}
+            onEmailsChange={setInvoiceEmails}
+            draft={invoiceDraft}
+            onDraftChange={setInvoiceDraft}
+            max={MAX_INVOICE_EMAILS}
+            noun="invoice emails"
+            hint="The invoice and the sign-in and sign-out log go to every address here."
+            error={tried ? fieldErrors.invoice_emails : undefined}
+            onProblem={setError}
+          />
+          {pendingEmails.length > 0 ? (
+            <div className="row">
+              <Button size="sm" onClick={useContactEmails}>
+                Use the contact emails
+              </Button>
+            </div>
+          ) : null}
+          <EmailChipsField
+            id="client-invoice-cc"
+            label={
+              <>
+                CC emails <span className="muted">· optional · up to {MAX_INVOICE_EMAILS}</span>
+              </>
+            }
+            emails={ccEmails}
+            onEmailsChange={setCcEmails}
+            draft={ccDraft}
+            onDraftChange={setCcDraft}
+            max={MAX_INVOICE_EMAILS}
+            noun="CC emails"
+            hint="Copied on the same email, e.g. the accounts payable inbox."
+            error={tried ? fieldErrors.invoice_cc_emails : undefined}
+            onProblem={setError}
+          />
+          <div className="grid c2">
+            <Input
+              label={
+                <>
+                  Accounts contact <span className="muted">· optional</span>
+                </>
+              }
+              value={accountsContact}
+              maxLength={ACCOUNTS_CONTACT_MAX}
+              onChange={(event) => setAccountsContact(event.target.value)}
+              placeholder="e.g. Accounts Payable"
+              hint="The name the invoice is addressed to; empty uses the contact above."
+            />
+            <Textarea
+              label={
+                <>
+                  Billing address <span className="muted">· optional</span>
+                </>
+              }
+              value={billingAddress}
+              rows={3}
+              maxLength={BILLING_ADDRESS_MAX}
+              onChange={(event) => setBillingAddress(event.target.value)}
+              hint="Printed under “Invoice to”, line by line."
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid c2">
         <div className="field">

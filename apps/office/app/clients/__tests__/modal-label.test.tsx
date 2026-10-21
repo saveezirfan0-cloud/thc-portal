@@ -49,3 +49,25 @@ describe('the client modal names the emails as §9.7 does', () => {
     expect(markup).toContain('Edit client');
   });
 });
+
+/** ADR-0176 (THC 21.10.2026): New client asks where the invoice goes; Edit leaves it to the card. */
+describe('the client modal asks for the invoicing contact on New client only', () => {
+  it('New client: invoice emails are compulsory, up to 10; the name and address optional', () => {
+    const markup = renderToStaticMarkup(
+      <ClientModal client={null} onClose={() => undefined} onSaved={() => undefined} />,
+    );
+    expect(markup).toContain('Invoicing');
+    expect(markup).toMatch(/Invoice emails <span class="coral">\*<\/span>/);
+    expect(markup).toContain('Accounts contact');
+    expect(markup).toContain('Billing address');
+    expect(markup).toContain('every * field is mandatory');
+  });
+
+  it('Edit client: no invoicing fields — the card’s panel owns them', () => {
+    const markup = renderToStaticMarkup(
+      <ClientModal client={CLIENT} onClose={() => undefined} onSaved={() => undefined} />,
+    );
+    expect(markup).not.toContain('Invoice emails');
+    expect(markup).toContain('all fields mandatory');
+  });
+});

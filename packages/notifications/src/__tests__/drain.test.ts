@@ -606,6 +606,16 @@ describe('Resend', () => {
     });
   });
 
+  it('sends cc only when there is someone to copy (ADR-0176)', () => {
+    const base = { from: 'A <a@b.c>', to: ['x@y.z'], subject: 's', text: 't' };
+    expect(
+      JSON.parse(buildResendRequest({ ...base, cc: ['c@y.z'] }, 'k', 'INV1:4000').body).cc,
+    ).toEqual(['c@y.z']);
+    expect(
+      JSON.parse(buildResendRequest({ ...base, cc: [] }, 'k', 'INV1:4000').body),
+    ).not.toHaveProperty('cc');
+  });
+
   it('sends html beside text, and an inline image with content_id / content_type', () => {
     const r = buildResendRequest(
       {
