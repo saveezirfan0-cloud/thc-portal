@@ -110,6 +110,22 @@ const BLOCKED = student({
 const ALL = [TERM, HOLIDAY, GRADUATED, BLOCKED];
 
 describe('the Student visa view filters by cap (wireframe)', () => {
+  it('lists workers only, and words each status as the directory does (§4.5, §9.6)', () => {
+    nav.search = 'view=student';
+    const CANDIDATE = student({ id: 's5', display_name: 'Tomas Candidate', status: 'documents' });
+    const LEAVER = student({ id: 's6', display_name: 'Lena Leaver', status: 'inactive' });
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[]} students={[...ALL, CANDIDATE, LEAVER]} problem={null} />,
+    );
+    // A candidate still in onboarding is not a worker: not listed, not counted.
+    expect(html).not.toContain('Tomas Candidate');
+    expect(html).toMatch(/Student visa(<!-- -->)?\s*<span[^>]*>5<\/span>/);
+    // A leaver is Inactive, never "Compliant".
+    const row = html.slice(html.indexOf('Lena Leaver'));
+    expect(row.slice(0, row.indexOf('</tr>'))).toContain('Inactive');
+    expect(row.slice(0, row.indexOf('</tr>'))).not.toContain('Compliant');
+  });
+
   it('offers every cap in the toolbar', () => {
     nav.search = 'view=student';
     const html = renderToStaticMarkup(<StaffScreen staff={[]} students={ALL} problem={null} />);

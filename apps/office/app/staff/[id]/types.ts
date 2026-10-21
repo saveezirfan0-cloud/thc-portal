@@ -15,6 +15,7 @@ import type { CapBand, StaffRow } from '../types';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
 import type { ChangeRequestView } from '../requests/types';
+import type { BlockAudit } from './profile';
 
 export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
 export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
@@ -277,6 +278,12 @@ export interface ProfileData {
   reviewQueue?: QueueRow[];
   /** Why the queue could not be read; the tab says so instead of hiding the buttons silently. */
   reviewQueueProblem?: string | null;
+  /**
+   * The latest manual Block / Unblock (`staff_block_audit_v`): who, when and
+   * what was released, for the blocked banner (§9.6). Null when there is
+   * none or it could not be read — the banner then shows the reason alone.
+   */
+  blockAudit?: BlockAudit | null;
   qualifications: QualificationRow[];
   shifts: ShiftRow[];
   violations: ViolationRow[];

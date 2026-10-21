@@ -45,6 +45,20 @@ describe('documents lock copy', () => {
     expect(notice.detail).not.toMatch(/expired/);
   });
 
+  it('once the declaration is accepted, an expired document is what holds them — and says so', () => {
+    // Verify accepted the declaration but the full re-check failed on the
+    // passport: block_kind stays conviction_review (N15 is still owed), and
+    // compliance_blockers() no longer lists conviction_unreviewed.
+    const notice = documentsNotice(['document_expired:passport'], 'conviction_review', false);
+    expect(notice.headline).toBe('You have been blocked — update your document.');
+    expect(notice.detail).toContain('1 expired document');
+    expect(notice.detail).not.toMatch(/reviews your declaration/);
+  });
+
+  it('keeps the §10.7 copy for a conviction block with nothing else to name', () => {
+    expect(documentsNotice([], 'conviction_review', false).headline).toBe('Thanks for telling us.');
+  });
+
   it('does not tell a worker to upload something when nothing is uploadable', () => {
     // A block with no `block_kind` recorded: #42's rule reads anything not
     // 'manual' as the documents case, so it lands here with no blocker to

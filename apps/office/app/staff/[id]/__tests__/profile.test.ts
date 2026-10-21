@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockBanner,
+  blockStamp,
+  verifiedDocumentPill,
+  inEmploymentDeclarationAccepted,
+  weeklyLimitFact,
   canBlock,
   canReset,
   complianceSummary,
@@ -318,6 +322,33 @@ describe('the blocked banner says how THIS block lifts (§9.6, §4.3, §10.7)', 
     expect(banner.detail).toMatch(/reject it and it becomes a manual block/);
   });
 
+  it('once the declaration is verified, the banner no longer says "under review"', () => {
+    const declarations = [
+      { source: 'onboarding', review_status: 'verified', declared_at: '2026-01-01T10:00:00Z' },
+      { source: 'in_employment', review_status: 'verified', declared_at: '2026-10-19T20:13:00Z' },
+    ];
+    expect(inEmploymentDeclarationAccepted(declarations)).toBe(true);
+    const banner = blockBanner(
+      {
+        block_kind: 'conviction_review',
+        block_reason: 'Criminal conviction declared — under review',
+      },
+      inEmploymentDeclarationAccepted(declarations),
+    );
+    expect(banner.title).not.toMatch(/under review/);
+    expect(banner.title).toMatch(/accepted; a document is still outstanding/);
+    expect(banner.detail).toMatch(/lifts by itself once the outstanding document is verified/);
+  });
+
+  it('a pending declaration keeps the review banner', () => {
+    expect(
+      inEmploymentDeclarationAccepted([
+        { source: 'in_employment', review_status: 'pending', declared_at: '2026-10-19T20:13:00Z' },
+      ]),
+    ).toBe(false);
+    expect(inEmploymentDeclarationAccepted([])).toBe(false);
+  });
+
   it('a manual block is lifted by a manager only, and says so', () => {
     const banner = blockBanner({ block_kind: 'manual', block_reason: 'Client complaint' });
     expect(banner.title).toBe('Blocked — Client complaint');
@@ -329,6 +360,74 @@ describe('the blocked banner says how THIS block lifts (§9.6, §4.3, §10.7)', 
       const banner = blockBanner({ block_kind: kind, block_reason: null });
       expect(`${banner.title} ${banner.detail}`).not.toMatch(/§|RULE-/);
     }
+  });
+});
+
+describe('the manual block line: who, when, what was released (§9.6, wireframe)', () => {
+  const audit = {
+    action: 'block_manual',
+    at: '2026-09-17T15:20:00Z',
+    actor_name: 'Gisela M.',
+    released: 2,
+    withdrawn: 1,
+  };
+
+  it('names the manager, the UK time and the cascade', () => {
+    expect(blockStamp(audit)).toBe(
+      'Manual block by Gisela M. · 17.09.2026 16:20 UK time · 2 future bookings released · 1 invitation withdrawn',
+    );
+  });
+
+  it('says when there was nothing to release', () => {
+    expect(blockStamp({ ...audit, released: 0, withdrawn: 0 })).toBe(
+      'Manual block by Gisela M. · 17.09.2026 16:20 UK time · no future bookings to release',
+    );
+  });
+
+  it('draws nothing for an Unblock row or a failed read', () => {
+    expect(blockStamp({ ...audit, action: 'unblock' })).toBeNull();
+    expect(blockStamp(null)).toBeNull();
+  });
+});
+
+describe('a verified document reads its expiry (§4.4 document states)', () => {
+  const today = '2026-10-19';
+  const passport = (expires_on: string | null) => ({ doc_type: 'passport', expires_on });
+
+  it('is Expired on and after its expiry day — the day it blocked the worker', () => {
+    expect(verifiedDocumentPill(passport('2026-10-19'), today, false)).toEqual({
+      tone: 'coral',
+      label: 'Expired',
+    });
+    expect(verifiedDocumentPill(passport('2026-10-18'), today, false).label).toBe('Expired');
+  });
+
+  it('is Expiring within 30 days, Verified beyond, and Verified with no expiry', () => {
+    expect(verifiedDocumentPill(passport('2026-11-18'), today, false).label).toBe('Expiring');
+    expect(verifiedDocumentPill(passport('2026-11-19'), today, false).label).toBe('Verified');
+    expect(verifiedDocumentPill(passport(null), today, false).label).toBe('Verified');
+  });
+
+  it('a graduate’s term letter runs no clock (§4.5)', () => {
+    const letter = { doc_type: 'university_term_dates_letter', expires_on: '2026-09-20' };
+    expect(verifiedDocumentPill(letter, today, true).label).toBe('Verified');
+    expect(verifiedDocumentPill(letter, today, false).label).toBe('Expired');
+  });
+});
+
+describe('the weekly limit fact (§9.6, §4.4, wireframe)', () => {
+  it('a blocked worker cannot be booked, so no limit is stated', () => {
+    expect(weeklyLimitFact('blocked', '20 h — term time until 13.12.2026')).toEqual({
+      text: '— (blocked, cannot be booked)',
+      muted: true,
+    });
+  });
+
+  it('everyone else reads the calculated band', () => {
+    expect(weeklyLimitFact('compliant', '20 h — term time until 13.12.2026')).toEqual({
+      text: '20 h — term time until 13.12.2026',
+      muted: false,
+    });
   });
 });
 

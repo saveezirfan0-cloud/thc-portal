@@ -1,4 +1,11 @@
-import { STAFF_STATUSES, canTransitionStaff, clockLabel, formatTimeIn } from '@thc/domain';
+import {
+  EXPIRING_WITHIN_DAYS,
+  STAFF_STATUSES,
+  canTransitionStaff,
+  clockLabel,
+  daysBetween,
+  formatTimeIn,
+} from '@thc/domain';
 import type { StaffStatus as MachineStatus, TimeFormat } from '@thc/domain';
 import { hoursText, ukNumericDate } from '../staff';
 import type {
@@ -122,10 +129,26 @@ export function complianceSummary(
  *                      into a manual block;
  *   manual             only a manager's Unblock lifts it.
  */
-export function blockBanner(profile: {
-  block_kind: 'auto_document' | 'manual' | 'conviction_review' | null;
-  block_reason: string | null;
-}): { title: string; detail: string } {
+export function blockBanner(
+  profile: {
+    block_kind: 'auto_document' | 'manual' | 'conviction_review' | null;
+    block_reason: string | null;
+  },
+  /**
+   * The latest in-employment declaration has been VERIFIED. Its block keeps
+   * `conviction_review` when the full re-check failed on a document (so N15
+   * is still owed when that document is verified, 20260927161100), but the
+   * review is over: the banner must not still say "under review".
+   */
+  declarationAccepted = false,
+): { title: string; detail: string } {
+  if (profile.block_kind === 'conviction_review' && declarationAccepted) {
+    return {
+      title: 'Blocked — conviction declaration accepted; a document is still outstanding',
+      detail:
+        'The declaration was verified, but the full compliance re-check did not pass. The block lifts by itself once the outstanding document is verified, and the worker is then told their shifts are open again.',
+    };
+  }
   switch (profile.block_kind) {
     case 'manual':
       return {
@@ -148,6 +171,89 @@ export function blockBanner(profile: {
           'System block: temporary, not a penalty. It lifts by itself once the document is verified and the full compliance re-check passes.',
       };
   }
+}
+
+/**
+ * The header's "Weekly limit" fact (§9.6). A blocked worker cannot be
+ * booked at all, so there is no limit to state — the wireframe's blocked
+ * profile reads "— (blocked, cannot be booked)" (§4.4: "there is no cap to
+ * calculate because the worker is already blocked"). Everyone else gets
+ * the calculated band in words (`capReason`).
+ */
+export function weeklyLimitFact(status: string, capWhy: string): { text: string; muted: boolean } {
+  return status === 'blocked'
+    ? { text: '— (blocked, cannot be booked)', muted: true }
+    : { text: capWhy, muted: false };
+}
+
+/**
+ * A VERIFIED document's pill, by its effective expiry (§4.4: verified →
+ * expiring ≤ 30 days → expired). A verified row whose day has come is what
+ * blocked the worker (§4.3) and must not read a green "Verified". A
+ * graduate's term letter no longer runs a clock (§4.5), so it keeps its pill.
+ * Other review states are the caller's.
+ */
+export function verifiedDocumentPill(
+  row: { doc_type: string; expires_on: string | null },
+  today: string,
+  graduated: boolean,
+): { tone: 'green' | 'amber' | 'coral'; label: string } {
+  const verified = { tone: 'green', label: 'Verified' } as const;
+  if (!row.expires_on) return verified;
+  if (row.doc_type === 'university_term_dates_letter' && graduated) return verified;
+  const left = daysBetween(today, row.expires_on.slice(0, 10));
+  if (left <= 0) return { tone: 'coral', label: 'Expired' };
+  if (left <= EXPIRING_WITHIN_DAYS) return { tone: 'amber', label: 'Expiring' };
+  return verified;
+}
+
+/**
+ * Whether the latest live in-employment declaration (§10.7) has been
+ * verified — the office's half of "the review is over" for `blockBanner`.
+ */
+export function inEmploymentDeclarationAccepted(
+  declarations: readonly { source: string; review_status: string; declared_at: string }[],
+): boolean {
+  const latest = declarations
+    .filter((d) => d.source === 'in_employment' && d.review_status !== 'superseded')
+    .sort((a, b) => b.declared_at.localeCompare(a.declared_at))[0];
+  return latest?.review_status === 'verified';
+}
+
+/** The latest manual Block / Unblock on this worker (`staff_block_audit_v`). */
+export interface BlockAudit {
+  action: string;
+  at: string;
+  actor_name: string | null;
+  released: number | null;
+  withdrawn: number | null;
+}
+
+/**
+ * The line under a manual block's reason (§9.6, wireframe): who pressed
+ * Block, when (UK time, an audit stamp — §1.8), and what the cascade
+ * released — "Manual block by Gisela M. · 17.09.2026 16:20 UK time · 2
+ * future bookings released · 1 invitation withdrawn". Null when there is
+ * no Block row to read (the read failed, or the latest row is an Unblock).
+ */
+export function blockStamp(
+  audit: BlockAudit | null | undefined,
+  format?: TimeFormat,
+): string | null {
+  if (!audit || audit.action !== 'block_manual') return null;
+  const by = audit.actor_name ? ` by ${audit.actor_name}` : '';
+  const parts = [`Manual block${by} · ${formatUkStamp(audit.at, format)}`];
+  const released = audit.released ?? 0;
+  parts.push(
+    released === 0
+      ? 'no future bookings to release'
+      : `${released} future ${released === 1 ? 'booking' : 'bookings'} released`,
+  );
+  const withdrawn = audit.withdrawn ?? 0;
+  if (withdrawn > 0) {
+    parts.push(`${withdrawn} ${withdrawn === 1 ? 'invitation' : 'invitations'} withdrawn`);
+  }
+  return parts.join(' · ');
 }
 
 /**

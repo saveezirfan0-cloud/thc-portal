@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, DocRow, Panel, Pill, useTimeFormat } from '@thc/ui';
+import { ukToday } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
 import { SETTLED_NO_TIME_LIMIT, formatUkDate } from '../staff';
 import {
@@ -13,6 +14,7 @@ import {
   reviewStamp,
   documentOrder,
   formatUkStamp,
+  verifiedDocumentPill,
 } from './profile';
 import { documentLink } from '../../onboarding/actions';
 import { useReviewDialogs } from '../../compliance/ReviewDialogs';
@@ -123,6 +125,12 @@ const STATUS_PILL = {
 
 function StatusPill({ status }: { status: ReviewStatus }) {
   return <Pill tone={STATUS_PILL[status].tone}>{STATUS_PILL[status].label}</Pill>;
+}
+
+/** A verified document reads Expiring / Expired by its UK-day expiry (§4.4). */
+function VerifiedPill({ row, graduated }: { row: DocumentRow; graduated: boolean }) {
+  const pill = verifiedDocumentPill(row, ukToday(), graduated);
+  return <Pill tone={pill.tone}>{pill.label}</Pill>;
 }
 
 export function Documents({
@@ -287,7 +295,11 @@ export function Documents({
               state={STATE[row.review_status]}
               actions={
                 <>
-                  <StatusPill status={row.review_status} />
+                  {row.review_status === 'verified' ? (
+                    <VerifiedPill row={row} graduated={profile.graduated_at !== null} />
+                  ) : (
+                    <StatusPill status={row.review_status} />
+                  )}
                   {queue.get(row.id)?.kind === 'rtw_date' ? (
                     <Pill tone="coral">re-verify</Pill>
                   ) : null}

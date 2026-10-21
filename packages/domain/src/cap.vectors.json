@@ -620,6 +620,191 @@
         "capHours": null,
         "band": "uncapped"
       }
+    },
+    {
+      "name": "Below degree level in a week straddling term and holiday: the lower cap is 10",
+      "input": {
+        "visaLimited": true,
+        "termState": "straddle",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "belowDegreeLevel": true,
+        "weekStart": "2026-12-07"
+      },
+      "expect": {
+        "capHours": 10,
+        "band": "student_term_10"
+      }
+    },
+    {
+      "name": "Below degree level, opt-out signed: the visa's 10 h still stands",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "belowDegreeLevel": true,
+        "weekStart": "2026-10-05"
+      },
+      "expect": {
+        "capHours": 10,
+        "band": "student_term_10"
+      }
+    },
+    {
+      "name": "Graduated below degree level: 48, the 10 h term condition no longer applies",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "belowDegreeLevel": true,
+        "completionDate": "2026-06-30",
+        "verifiedOn": "2026-07-01",
+        "weekStart": "2026-07-06"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Course completes on a Monday: released from that Monday",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-07-06",
+        "verifiedOn": "2026-07-01",
+        "weekStart": "2026-07-06"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Letter verified on a Sunday: that week stays at the term cap",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-06-30",
+        "verifiedOn": "2026-09-27",
+        "weekStart": "2026-09-21"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "Letter verified on a Sunday: released from the next day, a Monday",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-06-30",
+        "verifiedOn": "2026-09-27",
+        "weekStart": "2026-09-28"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "An under-18 student in a university holiday: 48, the opt-out tick does not count",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "under18": true,
+        "weekStart": "2026-12-21"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "student_holiday_48"
+      }
+    },
+    {
+      "name": "Student in a holiday week whose opt-out notice ends mid-week: the lower cap, 48",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "optOutCancelledFrom": "2026-12-23",
+        "weekStart": "2026-12-21"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "student_holiday_48"
+      }
+    },
+    {
+      "name": "Opt-out notice ended weeks ago: the 48 h ceiling stands",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "optOutCancelledFrom": "2026-07-01",
+        "weekStart": "2026-08-10"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "standard_48"
+      }
+    },
+    {
+      "name": "Notice period ends on the Sunday: that week already takes the 48 h",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "optOutCancelledFrom": "2026-08-16",
+        "weekStart": "2026-08-10"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "standard_48"
+      }
+    },
+    {
+      "name": "Student visa expires on the Sunday: the week keeps its 20 h cap",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "weekStart": "2026-09-28",
+        "visaExpiry": "2026-10-04"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "Student visa expired the Sunday before: nothing rosters this week",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "weekStart": "2026-09-28",
+        "visaExpiry": "2026-09-27"
+      },
+      "expect": {
+        "capHours": 0,
+        "band": "visa_expired_0"
+      }
     }
   ]
 }

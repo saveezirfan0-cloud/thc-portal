@@ -26,6 +26,7 @@ import type {
   ViolationRow,
 } from './types';
 import { readProblem } from '../../_lib/dbError';
+import type { BlockAudit } from './profile';
 
 /**
  * Reads for /staff/:id (§9.6).
@@ -132,6 +133,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     changeRequests,
     payRate,
     payFloorPence,
+    blockAudit,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -247,6 +249,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .maybeSingle<PersonalPayRate>(),
     // ADR-0137: no personal rate below today's National Living Wage.
     loadPayFloorPence(supabase),
+    // §9.6: who blocked, when, and what the cascade released — the line
+    // under a manual block's reason. Chrome: a failed read drops the line.
+    supabase
+      .from('staff_block_audit_v')
+      .select('action, at, actor_name, released, withdrawn')
+      .eq('staff_id', id)
+      .maybeSingle<BlockAudit>(),
   ]);
 
   const error =
@@ -314,6 +323,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     payRate: payRate.error ? null : (payRate.data ?? null),
     payRateProblem: readProblem(payRate.error),
     payFloorPence,
+    blockAudit: blockAudit.error ? null : (blockAudit.data ?? null),
     problem: null,
   };
 }

@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { Avatar, Pill } from '@thc/ui';
 import { StaffSignOut } from '../../_components/StaffSignOut';
 import type { Tone } from '@thc/ui';
-import { appLock, canReachPayments, canReachProfileDetails, p45Availability } from '../lock';
+import {
+  appLock,
+  canReachPayments,
+  canReachProfileDetails,
+  convictionUnderReview,
+  p45Availability,
+} from '../lock';
 import { CONNECTEAM_LABEL, HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
 import { expiryLine } from '../document-expiry';
@@ -294,8 +300,7 @@ export function documentsStatus(
   >,
 ): DocumentsStatus | null {
   const lock = appLock(profile);
-  const reviewing =
-    profile.blockKind === 'conviction_review' || profile.blockers.includes('conviction_unreviewed');
+  const reviewing = convictionUnderReview(profile.blockers, profile.blockKind);
 
   if (lock === 'documents') {
     return reviewing

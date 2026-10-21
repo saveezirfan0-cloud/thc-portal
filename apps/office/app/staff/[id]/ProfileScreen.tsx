@@ -15,6 +15,7 @@ import {
   Textarea,
   TileGrid,
   toast,
+  useTimeFormat,
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { ProfileCrumbs } from './chrome';
@@ -41,11 +42,14 @@ import { Qualifications } from './Qualifications';
 import { Shifts } from './Shifts';
 import {
   blockBanner,
+  blockStamp,
   canBlock,
+  inEmploymentDeclarationAccepted,
   canReset,
   hoursThisWeek,
   isActionable,
   noShowTone,
+  weeklyLimitFact,
 } from './profile';
 import {
   addRole,
@@ -160,13 +164,16 @@ export function ProfileScreen({
     !profile.removed && !canReset(profile.status)
       ? 'Reset to candidate is only for a blocked, rejected or inactive profile.'
       : null;
-  const banner = blockBanner(profile);
+  const banner = blockBanner(profile, inEmploymentDeclarationAccepted(data.declarations));
+  const timeFormat = useTimeFormat();
+  const stamp = profile.block_kind === 'manual' ? blockStamp(data.blockAudit, timeFormat) : null;
   const hours = hoursThisWeek(profile);
   const capWhy = capReason(
     profile.weekly_cap_band,
     profile.weekly_cap_hours,
     profile.weekly_cap_until,
   );
+  const limitFact = weeklyLimitFact(profile.status, capWhy);
   const unheld = data.roles.filter((role) => !profile.role_names.includes(role.name));
 
   // ADR-0137 §1: a role chip's × used to remove on the click.
@@ -208,6 +215,12 @@ export function ProfileScreen({
             <span>
               <b>{banner.title}</b>
               <br />
+              {stamp ? (
+                <>
+                  <span className="muted sm">{stamp}</span>
+                  <br />
+                </>
+              ) : null}
               <span className="muted sm">{banner.detail}</span>
             </span>
             <Button
@@ -256,7 +269,8 @@ export function ProfileScreen({
                   : ''}
               </span>
               <span>
-                Weekly limit <b>{capWhy}</b>
+                Weekly limit{' '}
+                <b className={limitFact.muted ? 'muted' : undefined}>{limitFact.text}</b>
               </span>
               <span>
                 Joined <b>{formatUkDate(profile.joined_at)}</b>

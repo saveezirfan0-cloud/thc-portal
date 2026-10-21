@@ -21,7 +21,12 @@ const state = vi.hoisted(() => ({
   sessionCalls: [] as [string, unknown][],
 }));
 
-const rpc = vi.fn(async (..._args: unknown[]) => ({ error: null as null | { message: string } }));
+const rpc = vi.fn(
+  async (..._args: unknown[]): Promise<{ data?: unknown; error: null | { message: string } }> => ({
+    data: null as unknown,
+    error: null as null | { message: string },
+  }),
+);
 const createAdminClient = vi.fn(() => ({ rpc }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
@@ -59,7 +64,7 @@ beforeEach(() => {
   state.officeRole = 'manager';
   state.sessionCalls = [];
   rpc.mockClear();
-  rpc.mockImplementation(async () => ({ error: null }));
+  rpc.mockImplementation(async () => ({ data: null, error: null }));
   createAdminClient.mockClear();
 });
 
@@ -103,6 +108,28 @@ describe('the privileged /staff/:id actions name the manager (§1.7, §9.6)', ()
       p_staff: 's1',
       p_actor: 'u-other-manager',
     });
+  });
+});
+
+describe('Unblock runs the full compliance check first (§4.3, §9.6)', () => {
+  it('says what is still outstanding when the check refuses, instead of nothing', async () => {
+    rpc.mockImplementation(async () => ({
+      data: {
+        unblocked: false,
+        blockers: ['document_expired:passport', 'conviction_unreviewed'],
+      },
+      error: null,
+    }));
+    expect(await unblockWorker('s1')).toEqual({
+      ok: false,
+      message:
+        'Still blocked — the full compliance check did not pass: Passport expired; Criminal Record declaration (Yes) not yet verified.',
+    });
+  });
+
+  it('is a success only when the database lifted the block', async () => {
+    rpc.mockImplementation(async () => ({ data: { unblocked: true, blockers: [] }, error: null }));
+    expect(await unblockWorker('s1')).toEqual({ ok: true });
   });
 });
 
