@@ -35,6 +35,46 @@ const MESSAGES: [RegExp, string][] = [
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
   [
+    /^term_dates_implausible/,
+    'A holiday period cannot run for more than a year — check the year of each date.',
+  ],
+  // ADR-0178: the edited periods reach p_term_dates as daterange literals,
+  // and Postgres refuses a backwards or unreadable one before the body runs.
+  [
+    /range lower bound must be less than or equal to range upper bound/,
+    'A holiday period ends before it starts — check its dates.',
+  ],
+  [/malformed range literal/, 'A holiday period could not be read — enter both of its dates.'],
+  [/date\/time field value out of range/, 'That date is not a real calendar date.'],
+  // Correcting a decided letter (20261022150100).
+  [/^not_permitted/, 'Only an owner or a manager can do this.'],
+  [/^note_required/, 'Say why the dates are being corrected.'],
+  [/^note_too_long/, 'Keep the note to 500 characters.'],
+  [/^term_dates_required/, 'Enter the holiday periods on the letter.'],
+  [
+    /^no_holidays_not_confirmed/,
+    'Tick to confirm the letter shows no holidays, or add the periods it shows.',
+  ],
+  [/^term_dates_unchanged/, 'These are the dates already on file — nothing to correct.'],
+  [
+    /^not_current_letter/,
+    'Only the worker’s current term letter can be corrected; an older one is kept as history.',
+  ],
+  [/^not_a_term_letter/, 'Only a University Term Dates Letter has holiday periods to correct.'],
+  [/^not_a_completion_letter/, 'Only a completion letter’s approval can be withdrawn.'],
+  [
+    /^letter_not_verified/,
+    'This letter is not verified, so there is nothing to withdraw or correct.',
+  ],
+  [
+    /^another_completion_letter_verified/,
+    'Another completion letter is also verified for this worker — refresh the page and check which one to withdraw.',
+  ],
+  [
+    /^illegal_review_transition/,
+    'A verified completion letter can only be withdrawn, not put back under review or rejected.',
+  ],
+  [
     /^rtw_date_required/,
     'Confirm the right-to-work date on this document before verifying it — the expiry of a visa or status document, or the date on the gov.uk report.',
   ],

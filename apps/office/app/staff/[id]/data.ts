@@ -8,6 +8,7 @@ import { loadRtwChecks } from '../../_lib/rtwCheckData';
 import { loadPayFloorPence } from '../../_lib/payFloor';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { QueueRow } from '../../compliance/types';
+import { withStaffTermDates } from '../../compliance/termDatesData';
 import { readChangeRequests } from '../requests/data';
 import type {
   AvailabilityRow,
@@ -274,7 +275,10 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     dobClaims: rtw.dobClaims,
     // A failed read must not take the whole profile down; the tab says why
     // there are no review buttons instead.
-    reviewQueue: reviewQueue.error ? [] : (reviewQueue.data ?? []),
+    // ADR-0178: a term letter's Verify says which holiday dates it replaces.
+    reviewQueue: reviewQueue.error
+      ? []
+      : withStaffTermDates(reviewQueue.data ?? [], () => profile.data?.term_dates ?? null),
     reviewQueueProblem: readProblem(reviewQueue.error),
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],

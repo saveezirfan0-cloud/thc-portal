@@ -32,6 +32,7 @@ import {
   verifyStep,
 } from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
+import { TermLetterVerifyModal } from './TermLetterVerifyModal';
 import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
@@ -69,11 +70,16 @@ export function useReviewDialogs({
   const [approving, setApproving] = useState<QueueRow | null>(null);
   const [confirming, setConfirming] = useState<QueueRow | null>(null);
   const [checking, setChecking] = useState<QueueRow | null>(null);
+  const [termLetter, setTermLetter] = useState<QueueRow | null>(null);
 
   const verify = (row: QueueRow) => {
     const step = verifyStep(row);
     if (step === 'ni_match') {
       run(row.item_id, () => resolveNiCheck(row.item_id, true));
+      return;
+    }
+    if (step === 'term_dates') {
+      setTermLetter(row);
       return;
     }
     if (step === 'confirm') {
@@ -148,6 +154,21 @@ export function useReviewDialogs({
               checking.item_id,
               () => verifyWith(checking, {}, conditions),
               () => setChecking(null),
+            )
+          }
+        />
+      ) : null}
+
+      {termLetter ? (
+        <TermLetterVerifyModal
+          row={termLetter}
+          busy={busy(termLetter.item_id)}
+          onClose={() => setTermLetter(null)}
+          onVerify={(dates, conditions) =>
+            run(
+              termLetter.item_id,
+              () => verifyWith(termLetter, dates, conditions),
+              () => setTermLetter(null),
             )
           }
         />

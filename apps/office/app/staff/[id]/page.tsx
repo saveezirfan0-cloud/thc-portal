@@ -10,7 +10,7 @@ import {
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
-import { officeCan } from '../../_lib/permissions';
+import { canCorrectLetters, officeCan } from '../../_lib/permissions';
 import type { OfficeRole } from '../../_lib/permissions';
 import { loadProfile } from './data';
 import { loadProfileHead } from './head';
@@ -99,6 +99,7 @@ async function Profile({ id, role }: { id: string; role: OfficeRole | null }) {
       bare
       data={data}
       canCorrectDob={officeCan(role, 'identity')}
+      canCorrectLetters={canCorrectLetters(role)}
       canEditGender={officeCan(role, 'write')}
       canEditPassportCountry={officeCan(role, 'write')}
       canEditLanguages={officeCan(role, 'write')}

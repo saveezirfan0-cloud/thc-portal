@@ -385,9 +385,10 @@ describe('what Verify does — shared by /compliance and the staff profile', () 
 
   it('approves a completion letter with its dates, and verifies anything else on the click', () => {
     expect(verifyStep({ ...ROW, item_type: 'university_completion_letter' })).toBe('approve');
-    // ROW is a student's term letter: its Verify asks for the course level
-    // beside it (D32, 20260930130100), so the plain click is a passport's.
-    expect(verifyStep(ROW)).toBe('confirm');
+    // ROW is a student's term letter: its Verify opens the holiday-period
+    // editor, with the course level beside it (ADR-0178, D32), so the plain
+    // click is a passport's.
+    expect(verifyStep(ROW)).toBe('term_dates');
     expect(verifyStep({ ...ROW, item_type: 'passport', rtw_branch: 'uk_irish' })).toBe('verify');
     expect(verifyStep({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' })).toBe(
       'verify',

@@ -10,6 +10,8 @@ import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { visaLimitProblem, visaLimitValue } from './conditions';
+import { termDatesPayload, termDatesPayloadProblem } from './termDates';
+import type { Period } from './termDates';
 import type { ActionResult } from './types';
 
 /**
@@ -28,7 +30,7 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
 /** See apps/office/app/staff/[id]/actions.ts: the generated types are a placeholder. */
-type RpcArguments = Record<string, string | number | boolean | null>;
+type RpcArguments = Record<string, string | number | boolean | null | string[]>;
 interface RpcClient {
   rpc(
     fn: string,
@@ -60,6 +62,15 @@ function isFailure(result: { data: unknown } | ActionResult): result is ActionRe
 export interface VerifyDates {
   expiry?: string | null;
   rightToWorkUntil?: string | null;
+  /**
+   * A University Term Dates Letter (ADR-0178): the holiday periods the
+   * reviewer confirmed — the AI's, corrected, removed or added to — sent as
+   * `p_term_dates`. An empty list is a real answer (a letter with no
+   * holidays) and needs `noHolidays`. Absent: the row's own ranges.
+   */
+  termDates?: readonly Period[] | null;
+  /** The reviewer ticked "This letter shows no holidays" (required with an empty list). */
+  noHolidays?: boolean;
 }
 
 /**
@@ -84,9 +95,14 @@ export async function verifyDocument(
     const problem = visaLimitProblem(conditions.visaHourLimit);
     if (problem) return { ok: false, message: problem };
   }
+  if (dates.termDates) {
+    const problem = termDatesPayloadProblem(dates.termDates, dates.noHolidays);
+    if (problem) return { ok: false, message: problem };
+  }
   const args: RpcArguments = { p_doc: docId };
   if (dates.expiry) args['p_expiry'] = dates.expiry;
   if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
+  if (dates.termDates) args['p_term_dates'] = termDatesPayload(dates.termDates);
   const result = await call('compliance_verify_document', args);
   if (isFailure(result)) return result;
   const verified = verifiedMessage(result, dates);
@@ -118,11 +134,12 @@ function verifiedMessage(result: { data: unknown }, dates: VerifyDates): ActionR
     rightToWorkUntil?: string | null;
   };
   const rtw =
-    dates.expiry || dates.rightToWorkUntil
+    (dates.termDates ? termDatesLine(dates.termDates.length) : '') +
+    (dates.expiry || dates.rightToWorkUntil
       ? data.rightToWorkUntil
         ? ` Right to work until ${ukDate(data.rightToWorkUntil)} — no shift after it can be rostered.`
         : ' Right to work: no time limit on file.'
-      : '';
+      : '');
   if (data.unblocked)
     return { ok: true, message: `Verified. Everything is in order — unblocked.${rtw}` };
   if (data.status === 'blocked' && data.blockers?.length) {
@@ -132,6 +149,14 @@ function verifiedMessage(result: { data: unknown }, dates: VerifyDates): ActionR
     };
   }
   return { ok: true, message: `Verified.${rtw}` };
+}
+
+/** What a verified term letter now means for the worker's weekly limit (ADR-0178). */
+function termDatesLine(count: number): string {
+  if (count === 0) {
+    return ' No holidays on the letter: 20 hours a week (10 below degree level) all year.';
+  }
+  return ` ${count} holiday period${count === 1 ? '' : 's'} confirmed: 48 hours a week in them, the term-time limit outside them.`;
 }
 
 /**

@@ -82,6 +82,8 @@ export interface DocumentRow {
   rtw_no_time_limit: boolean;
   completion_date: string | null;
   awarding_institution: string | null;
+  /** A term letter's holiday ranges, half-open `daterange` literals (ADR-0178). */
+  term_dates?: string[] | null;
 }
 
 export interface QualificationRow {

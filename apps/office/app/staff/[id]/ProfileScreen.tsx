@@ -107,6 +107,7 @@ export function ProfileScreen({
   showPayRate = false,
   canEditPayRate = false,
   canMessage = false,
+  canCorrectLetters = false,
   bare = false,
 }: {
   data: ProfileData;
@@ -115,6 +116,8 @@ export function ProfileScreen({
    * correct the date of birth and decide a date-of-birth change request.
    */
   canCorrectDob?: boolean;
+  /** ADR-0178: owners and managers correct a verified term letter / withdraw a completion approval. */
+  canCorrectLetters?: boolean;
   /** ADR-0079: any office login that may write records a gender. */
   canEditGender?: boolean;
   /** ADR-0159: any office login that may write records the passport country. */
@@ -538,6 +541,7 @@ export function ProfileScreen({
             dobClaims={data.dobClaims ?? []}
             reviewQueue={data.reviewQueue}
             reviewQueueProblem={data.reviewQueueProblem}
+            canCorrectLetters={canCorrectLetters}
           />
         ) : null}
         {tab === 'qualification' ? (

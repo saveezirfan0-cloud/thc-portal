@@ -265,7 +265,7 @@ describe('the conditions beside a Verify (D32, D36)', () => {
     );
   });
 
-  it('a student’s term letter asks for the course level', async () => {
+  it('a student’s term letter asks for the course level, beside its holiday periods', async () => {
     render({
       profile: { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow,
       documents: [doc({ id: 'd4', doc_type: 'university_term_dates_letter', doc_label: 'Letter' })],
@@ -276,11 +276,14 @@ describe('the conditions beside a Verify (D32, D36)', () => {
           item_label: 'Letter',
           rtw_branch: 'international_student',
           below_degree_level: false,
+          term_dates: ['[2036-12-19,2037-01-11)'],
         }),
       ],
     });
     await click(buttons('Verify')[0]);
-    const box = dialog().querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    const box = [...dialog().querySelectorAll<HTMLLabelElement>('label')]
+      .find((label) => label.textContent?.includes('Course is below degree level'))!
+      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
     expect(box.checked).toBe(false);
     await act(async () => {
       box.click();
@@ -288,8 +291,50 @@ describe('the conditions beside a Verify (D32, D36)', () => {
     await click(buttons('Verify', dialog())[0]);
     expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
       'd4',
-      {},
+      { termDates: [{ from: '2036-12-19', to: '2037-01-10' }], noHolidays: false },
       { staffId: 's1', belowDegreeLevel: true },
+    );
+  });
+
+  it('a term letter with no holiday periods needs the tick before Verify (ADR-0178)', async () => {
+    render({
+      profile: { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow,
+      documents: [doc({ id: 'd4', doc_type: 'university_term_dates_letter', doc_label: 'Letter' })],
+      reviewQueue: [
+        queued({
+          item_id: 'd4',
+          item_type: 'university_term_dates_letter',
+          item_label: 'Letter',
+          rtw_branch: 'international_student',
+          submitted_at: '2036-02-01T10:00:00Z',
+          term_dates: [],
+          staff_term_dates: ['[2036-06-13,2036-09-22)'],
+        }),
+      ],
+    });
+    await click(buttons('Verify')[0]);
+    const text = dialog().textContent ?? '';
+    expect(text).toContain('No holiday periods — add any the letter shows.');
+    expect(text).toContain(
+      'Letter expires 31.12.2036 (no dates on the letter — calendar-year fallback)',
+    );
+    expect(text).toContain(
+      'Verifying removes the holiday dates from their previous letter (13.06.2036–21.09.2036).',
+    );
+    const verify = buttons('Verify', dialog())[0]!;
+    expect(verify.disabled).toBe(true);
+    const tick = [...dialog().querySelectorAll<HTMLLabelElement>('label')]
+      .find((label) => label.textContent?.includes('This letter shows no holidays.'))!
+      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    await act(async () => {
+      tick.click();
+    });
+    expect(verify.disabled).toBe(false);
+    await click(verify);
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
+      'd4',
+      { termDates: [], noHolidays: true },
+      { staffId: 's1', belowDegreeLevel: false },
     );
   });
 });

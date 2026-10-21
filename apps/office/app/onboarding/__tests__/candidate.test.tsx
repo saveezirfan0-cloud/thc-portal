@@ -788,3 +788,36 @@ describe('the candidate profile · SpudBros Express skip the interview (ADR-0118
     expect(html).toContain('Accepted — SpudBros Express, no Willo decision needed');
   });
 });
+
+describe('the candidate profile · term dates on Verify (ADR-0178)', () => {
+  const letter = (over: Partial<CandidateDocument>) =>
+    doc({
+      id: 'tl',
+      doc_type: 'university_term_dates_letter',
+      doc_label: 'University Term Dates Letter',
+      uploaded_at: '2036-02-01T09:00:00Z',
+      ai_confidence: 0.91,
+      ...over,
+    });
+  const verifyButton = (html: string) => /<button[^>]*>Verify<\/button>/.exec(html)?.[0] ?? '';
+
+  it('shows the shared editor: the AI’s periods with their source, and the expiry they give', () => {
+    const html = render(data({ documents: [letter({ term_dates: ['[2036-12-19,2037-01-11)'] })] }));
+    expect(html).toContain('Holiday 1');
+    expect(html).toContain('AI 91%');
+    expect(html).toContain('+ Add period');
+    expect(html).toContain('Letter expires 10.01.2037 (last date on the letter)');
+    expect(verifyButton(html)).not.toContain('disabled');
+  });
+
+  it('a letter with no periods needs the no-holidays tick before Verify', () => {
+    const html = render(data({ documents: [letter({ term_dates: [] })] }));
+    expect(html).toContain(
+      'This letter shows no holidays. The worker will be limited to 20 hours a week (10 below degree level) all year.',
+    );
+    expect(html).toContain(
+      'Letter expires 31.12.2036 (no dates on the letter — calendar-year fallback)',
+    );
+    expect(verifyButton(html)).toContain('disabled');
+  });
+});

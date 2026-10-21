@@ -67,8 +67,6 @@ import {
   matchesName,
   newEntryCount,
   orDash,
-  parsePeriod,
-  periodsProblem,
   phaseIndex,
   phaseLabel,
   quizGate,
@@ -80,6 +78,11 @@ import {
 } from './view-model';
 import type { Period } from './view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
+import { ukDay } from '../compliance/queue';
+import { periodsFromLetter, termLetterVerifyProblem } from '../compliance/termDates';
+import type { TermPeriod } from '../compliance/termDates';
+import { TermDatesEditor } from '../compliance/TermDatesEditor';
+import { VerifiedLetterActions, currentTermLetterId } from '../compliance/VerifiedLetterActions';
 import {
   canAttachReport,
   canUploadCompletionLetter,
@@ -153,6 +156,7 @@ export function CandidateScreen({
   canCorrectDob = false,
   canMarkInterview = false,
   canGrantQuizAttempts = false,
+  canCorrectLetters = false,
   bare = false,
 }: {
   data: CandidateData;
@@ -163,6 +167,8 @@ export function CandidateScreen({
   canMarkInterview?: boolean;
   /** ADR-0168: `officeCan(role, 'write')` — a viewer does not see Allow 3 more attempts. */
   canGrantQuizAttempts?: boolean;
+  /** ADR-0178: owners and managers correct a verified term letter / withdraw a completion approval. */
+  canCorrectLetters?: boolean;
   /**
    * ADR-0161: the page has drawn the `OfficeShell` itself, around the
    * Suspense this screen streams in behind, so the screen draws only its
@@ -242,6 +248,8 @@ export function CandidateScreen({
   const doc: DocHandlers = {
     // Looking back at a finished phase never offers its actions again.
     readOnly: readOnly || past,
+    canCorrectLetters,
+    currentTermLetter: currentTermLetterId(data.documents),
     qualificationsLocked: row.status === 'rejected',
     busy,
     staffId: row.id,
@@ -251,6 +259,7 @@ export function CandidateScreen({
         verifyDocument(row.id, d.id, {
           periods: input.periods ?? null,
           expiry: input.expiry ?? null,
+          ...(input.noHolidays ? { noHolidays: true } : {}),
         }),
       ),
     onReject: (d: CandidateDocument, suggested?: string) => {
@@ -1252,6 +1261,8 @@ function RoleGroups({
 interface VerifyChoice {
   periods?: Period[] | null;
   expiry?: string | null;
+  /** The "this letter shows no holidays" tick, with an empty list (ADR-0178). */
+  noHolidays?: boolean;
 }
 
 interface DocHandlers {
@@ -1273,6 +1284,10 @@ interface DocHandlers {
   /** `suggested`: the gov.uk check's N8 text to pre-fill the reason with (ADR-0041). */
   onReject: (doc: CandidateDocument, suggested?: string) => void;
   onOpen: (docId: string, which: 'file' | 'report') => void;
+  /** ADR-0178: "Correct term dates" / "Withdraw approval" on a decided letter. */
+  canCorrectLetters?: boolean;
+  /** The current verified term letter — the only one whose dates are corrected. */
+  currentTermLetter?: string | null;
 }
 
 function docMeta(doc: CandidateDocument, niNumber: string | null, format?: TimeFormat): ReactNode {
@@ -1313,11 +1328,13 @@ function DocumentLine({
   handlers,
   niNumber,
   periods,
+  noHolidays = false,
 }: {
   doc: CandidateDocument;
   handlers: DocHandlers;
   niNumber: string | null;
   periods?: Period[] | null;
+  noHolidays?: boolean;
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const pill = REVIEW_PILL[doc.review_status];
@@ -1328,6 +1345,14 @@ function DocumentLine({
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
   const [expiry, setExpiry] = useState(doc.expiry_date ?? '');
   const expiryProblem = rtwDateProblem(rule, expiry, false);
+  const periodsBlocked = periods
+    ? termLetterVerifyProblem({
+        periods,
+        noHolidaysConfirmed: noHolidays,
+        uploadedAt: doc.uploaded_at,
+        today: ukDay(new Date()),
+      })
+    : null;
   return (
     <DocRow
       icon={ICON[doc.doc_type] ?? 'DOC'}
@@ -1342,6 +1367,13 @@ function DocumentLine({
       actions={
         <>
           <Pill tone={pill.tone}>{pill.label}</Pill>
+          {!handlers.readOnly ? (
+            <VerifiedLetterActions
+              doc={doc}
+              currentTermLetter={handlers.currentTermLetter ?? null}
+              canCorrect={handlers.canCorrectLetters ?? false}
+            />
+          ) : null}
           {actionable && doc.doc_type === 'university_completion_letter' ? (
             // A completion letter is approved, not verified: the reviewer
             // confirms the completion date AND the visa expiry, and the
@@ -1365,14 +1397,14 @@ function DocumentLine({
               <Button
                 size="sm"
                 tone="green"
-                disabled={
-                  handlers.busy ||
-                  (periods ? periodsProblem(periods) !== null : false) ||
-                  expiryProblem !== null
-                }
-                title={expiryProblem ?? undefined}
+                disabled={handlers.busy || periodsBlocked !== null || expiryProblem !== null}
+                title={periodsBlocked ?? expiryProblem ?? undefined}
                 onClick={() =>
-                  handlers.onVerify(doc, { periods: periods ?? null, expiry: rule ? expiry : null })
+                  handlers.onVerify(doc, {
+                    periods: periods ? periods.map(({ from, to }) => ({ from, to })) : null,
+                    expiry: rule ? expiry : null,
+                    ...(periods?.length === 0 && noHolidays ? { noHolidays: true } : {}),
+                  })
                 }
               >
                 Verify
@@ -1664,20 +1696,22 @@ function TermDates({
   doc,
   periods,
   setPeriods,
+  noHolidays,
+  setNoHolidays,
+  previous,
   editable,
   capText,
 }: {
   doc: CandidateDocument;
-  periods: Period[];
-  setPeriods: (next: Period[]) => void;
+  periods: TermPeriod[];
+  setPeriods: (next: TermPeriod[]) => void;
+  noHolidays: boolean;
+  setNoHolidays: (next: boolean) => void;
+  previous: string[] | null;
   editable: boolean;
   capText: string;
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
-  const aiCount = (doc.term_dates ?? []).length;
-  const problem = periodsProblem(periods);
-  const update = (index: number, patch: Partial<Period>) =>
-    setPeriods(periods.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 
   return (
     <div className="card term stack">
@@ -1689,71 +1723,18 @@ function TermDates({
       </div>
       <CourseFacts doc={doc} badge={badge} />
       <hr />
-      {periods.length === 0 ? (
-        <div className="muted sm">No holiday periods — add any the letter shows.</div>
-      ) : (
-        <div className="periods">
-          <div className="period head">
-            <span className="label">#</span>
-            <span className="label">Period</span>
-            <span className="label">From</span>
-            <span />
-            <span className="label">To</span>
-            <span className="label">Source</span>
-            <span />
-          </div>
-          {periods.map((period, index) => (
-            <div className="period" key={index}>
-              <span className="mono muted">{index + 1}</span>
-              <span>Holiday {index + 1}</span>
-              {/* dd/mm/yyyy whatever the device's locale (ADR-0140). */}
-              <UkDateField
-                label={`Period ${index + 1} from`}
-                labelHidden
-                value={period.from}
-                disabled={!editable}
-                onChange={(from) => update(index, { from })}
-              />
-              <span className="muted">→</span>
-              <UkDateField
-                label={`Period ${index + 1} to`}
-                labelHidden
-                value={period.to}
-                disabled={!editable}
-                onChange={(to) => update(index, { to })}
-              />
-              {index < aiCount && badge ? (
-                <span className={`ai ${badge.tone}`}>{badge.label}</span>
-              ) : (
-                <span className="ai">added by hand</span>
-              )}
-              {editable ? (
-                <button
-                  type="button"
-                  className="rm"
-                  onClick={() => setPeriods(periods.filter((_, i) => i !== index))}
-                >
-                  remove
-                </button>
-              ) : (
-                <span />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {editable ? (
-        <div className="row wrap">
-          <Button size="sm" onClick={() => setPeriods([...periods, { from: '', to: '' }])}>
-            + Add period
-          </Button>
-          <span className="muted xs">
-            for a range the AI missed (poor scan, non-standard letter) — any number of periods, zero
-            to four is typical
-          </span>
-        </div>
-      ) : null}
-      {problem ? <div className="coral sm">{problem}</div> : null}
+      {/* The one editor the Needs review dialog uses too (ADR-0178). */}
+      <TermDatesEditor
+        periods={periods}
+        onChange={setPeriods}
+        editable={editable}
+        badge={badge}
+        noHolidaysConfirmed={noHolidays}
+        onNoHolidaysConfirmed={setNoHolidays}
+        uploadedAt={doc.uploaded_at}
+        today={ukDay(new Date())}
+        previous={previous}
+      />
       <hr />
       <div className="kv">
         <span className="k">Weekly limit (calculated)</span>
@@ -2156,9 +2137,10 @@ function DocumentsPhase({
   const live = data.documents.filter((d) => !d.superseded);
   const superseded = data.documents.filter((d) => d.superseded);
   const termLetter = live.find((d) => d.doc_type === 'university_term_dates_letter');
-  const [periods, setPeriods] = useState<Period[]>(() =>
-    (termLetter?.term_dates ?? []).map(parsePeriod).filter((p): p is Period => p !== null),
+  const [periods, setPeriods] = useState<TermPeriod[]>(() =>
+    periodsFromLetter(termLetter?.term_dates),
   );
+  const [noHolidays, setNoHolidays] = useState(false);
   const shareCode = live.filter((d) => d.doc_type === 'share_code_report');
   const checks = checksByDocument(data.rtwChecks ?? []);
   const others = live.filter((d) => d.doc_type !== 'share_code_report');
@@ -2231,12 +2213,16 @@ function DocumentsPhase({
                 handlers={doc}
                 niNumber={niNumber}
                 periods={d.doc_type === 'university_term_dates_letter' ? periods : undefined}
+                noHolidays={noHolidays}
               />
               {d.doc_type === 'university_term_dates_letter' ? (
                 <TermDates
                   doc={d}
                   periods={periods}
                   setPeriods={setPeriods}
+                  noHolidays={noHolidays}
+                  setNoHolidays={setNoHolidays}
+                  previous={data.profile?.term_dates ?? null}
                   editable={!doc.readOnly && d.review_status === 'pending'}
                   capText={capText}
                 />

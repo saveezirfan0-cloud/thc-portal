@@ -454,13 +454,16 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
  *     or an rtw_date row, whose date alone is confirmed (20260927160000) —
  *     with the course level or the visa's hours limit beside it where the
  *     route has one (D32, D36);
+ *   - `term_dates`: a University Term Dates Letter — its holiday periods
+ *     confirmed or corrected, with the course level for a student
+ *     (ADR-0178, D32);
  *   - `confirm`: a document with no date but something to check beside it —
- *     NI evidence against the NI number, shown in full (D43), or a
- *     student's term letter with the course level (D32);
+ *     NI evidence against the NI number, shown in full (D43);
  *   - `ni_match`: the ni_check row's "Matches", recorded on the click;
  *   - `verify`: everything else, on the click.
  */
-export type VerifyStep = 'approve' | 'confirm_date' | 'confirm' | 'ni_match' | 'verify';
+export type VerifyStep =
+  'approve' | 'confirm_date' | 'term_dates' | 'confirm' | 'ni_match' | 'verify';
 
 export function verifyStep(row: QueueRow): VerifyStep {
   if (row.kind === 'ni_check') return 'ni_match';
@@ -470,6 +473,9 @@ export function verifyStep(row: QueueRow): VerifyStep {
     rtwDateRule(row.item_type, row.rtw_branch)
   ) {
     return 'confirm_date';
+  }
+  if (row.kind === 'document' && row.item_type === 'university_term_dates_letter') {
+    return 'term_dates';
   }
   if (
     row.kind === 'document' &&
