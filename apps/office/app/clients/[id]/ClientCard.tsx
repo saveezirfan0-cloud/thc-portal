@@ -10,6 +10,7 @@ import { ClientEvents } from './ClientEvents';
 import { Invoicing } from './Invoicing';
 import { LineupEmails } from './LineupEmails';
 import { NameBadges } from './NameBadges';
+import { OneOffClient } from './OneOffClient';
 import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
 import { ShiftRequirements } from './ShiftRequirements';
@@ -102,6 +103,8 @@ export function ClientCard({
                   <Chip key={email}>{email}</Chip>
                 ))}
               </span>
+              <span className="k">One-off client</span>
+              <OneOffClient clientId={client.id} on={data.oneOff} canWrite={canWrite} />
               <span className="k">Name badges</span>
               <NameBadges clientId={client.id} on={data.nameBadges} canWrite={canWrite} />
               <span className="k">Line-up emails</span>

@@ -39,6 +39,7 @@ const NOT_CONFIGURED =
 const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
   nameBadges: false,
+  oneOff: false,
   lineupEmails: { confirmed: true, changed: true },
   invoicing: {
     accountsContactName: null,
@@ -154,12 +155,13 @@ export async function loadClientCard(
     supabase
       .from('clients')
       .select(
-        'name_badges, lineup_confirmed_emails, lineup_changed_emails, ' +
+        'name_badges, one_off, lineup_confirmed_emails, lineup_changed_emails, ' +
           'accounts_contact_name, invoice_emails, invoice_cc_emails, billing_address',
       )
       .eq('id', id)
       .maybeSingle<{
         name_badges: boolean | null;
+        one_off: boolean | null;
         lineup_confirmed_emails: boolean | null;
         lineup_changed_emails: boolean | null;
         accounts_contact_name: string | null;
@@ -265,6 +267,7 @@ export async function loadClientCard(
   return {
     client: client.data ?? null,
     nameBadges: badges.data?.name_badges === true,
+    oneOff: badges.data?.one_off === true,
     lineupEmails: {
       confirmed: badges.data?.lineup_confirmed_emails !== false,
       changed: badges.data?.lineup_changed_emails !== false,

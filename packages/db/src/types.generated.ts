@@ -2158,6 +2158,7 @@ export type Database = {
           lineup_confirmed_emails: boolean;
           name: string;
           name_badges: boolean;
+          one_off: boolean;
           pays_breaks: boolean;
           pays_buffer: boolean;
           phone: string;
@@ -2174,6 +2175,7 @@ export type Database = {
           lineup_confirmed_emails?: boolean;
           name: string;
           name_badges?: boolean;
+          one_off?: boolean;
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           phone: string;
@@ -2189,6 +2191,7 @@ export type Database = {
           lineup_confirmed_emails?: boolean;
           name?: string;
           name_badges?: boolean;
+          one_off?: boolean;
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           phone?: string;
@@ -7683,6 +7686,7 @@ export type Database = {
           event_count: number | null;
           id: string | null;
           name: string | null;
+          one_off: boolean | null;
           pays_breaks: boolean | null;
           pays_buffer: boolean | null;
           phone: string | null;
@@ -7701,6 +7705,7 @@ export type Database = {
           event_count?: never;
           id?: string | null;
           name?: string | null;
+          one_off?: boolean | null;
           pays_breaks?: boolean | null;
           pays_buffer?: boolean | null;
           phone?: string | null;
@@ -7718,6 +7723,7 @@ export type Database = {
           event_count?: never;
           id?: string | null;
           name?: string | null;
+          one_off?: boolean | null;
           pays_breaks?: boolean | null;
           pays_buffer?: boolean | null;
           phone?: string | null;
@@ -13758,6 +13764,10 @@ export type Database = {
       set_client_name_badges: {
         Args: { p_client: string; p_on: boolean };
         Returns: undefined;
+      };
+      set_clients_one_off: {
+        Args: { p_clients: string[]; p_one_off: boolean };
+        Returns: number;
       };
       set_do_not_return: {
         Args: { p_id: string; p_on: boolean; p_reason?: string };

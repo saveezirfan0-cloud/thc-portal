@@ -366,7 +366,7 @@ export interface CandidateData {
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
   contract: ContractVersion | null;
   roles: RoleOption[];
-  /** Every client, for the client-qualification picker (§9.6). */
+  /** Every client, for the client-qualification picker (§9.6); one-off ones are left out until asked for (ADR-0186). */
   clients?: ClientOption[];
   /** The candidate's client qualifications (§9.6), read from `staff_client_qualifications_v`. */
   qualifications?: CandidateQualification[];
@@ -392,6 +392,8 @@ export interface CandidateData {
 export interface ClientOption {
   id: string;
   name: string;
+  /** ADR-0186: not expected to order again; the picker leads without it. */
+  one_off?: boolean;
 }
 
 /** One client + role entry on the candidate's profile (§9.6). */

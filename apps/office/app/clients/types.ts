@@ -25,6 +25,8 @@ export interface Client {
   /** The manager who added it; NULL for clients that pre-date the column. */
   created_by: string | null;
   created_by_name: string | null;
+  /** ADR-0186: not expected to order again; the pickers and this list lead without it. */
+  one_off: boolean;
 }
 
 /** §9.7: every field on the form is mandatory, both policies included. */

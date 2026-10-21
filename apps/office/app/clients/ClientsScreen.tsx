@@ -15,11 +15,13 @@ import {
   Panel,
   Select,
   TableScroll,
+  toast,
   useColumns,
 } from '@thc/ui';
 import type { ColumnDef } from '@thc/ui';
 import { AddedFilters } from '../_components/AddedFilters';
 import { OfficeShell } from '../_components/OfficeShell';
+import { useConfirm } from '../_components/useConfirm';
 import { Pager } from '../_components/Pager';
 import {
   addedFilterActive,
@@ -29,6 +31,7 @@ import {
 } from '../_lib/addedBy';
 import { oneOf, pageIndex, pageParam, sizeOf, useListQuery } from '../_lib/listQuery';
 import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '../_lib/pageSizes';
+import { setClientsOneOff } from './actions';
 import { ClientModal } from './ClientModal';
 import type { Client } from './types';
 import './clients.css';
@@ -38,11 +41,17 @@ export interface ClientsScreenProps {
   problem: string | null;
   /** ADR-0061: false for an office role without finance — no margin anywhere. */
   ratesVisible?: boolean;
+  /** Office roles that may write (ADR-0060): the bulk one-off button is drawn for these only. */
+  canWrite?: boolean;
 }
 
 type Sort = 'name' | 'events' | 'margin' | 'newest' | 'oldest';
 type PolicyFilter = 'all' | 'paid' | 'unpaid';
 type BufferFilter = 'all' | 'paid' | 'strict';
+/** ADR-0186: regular clients lead; one-off ones are a click away. */
+type TypeFilter = 'regular' | 'one_off' | 'all';
+/** How often the client has ordered: `once` is one event or none. */
+type OrdersFilter = 'all' | 'once' | 'repeat';
 
 /** The Rate-card-role filter's value for clients with an empty rate card. */
 const NO_RATE_CARD = '\u0000none';
@@ -58,6 +67,8 @@ const DEFAULT_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 const SORTS: readonly Sort[] = ['name', 'events', 'margin', 'newest', 'oldest'];
 const POLICIES: readonly PolicyFilter[] = ['all', 'paid', 'unpaid'];
 const BUFFERS: readonly BufferFilter[] = ['all', 'paid', 'strict'];
+const TYPES: readonly TypeFilter[] = ['regular', 'one_off', 'all'];
+const ORDERS: readonly OrdersFilter[] = ['all', 'once', 'repeat'];
 
 /**
  * The directory's columns, declared once (ADR-0139). Client stays first;
@@ -83,6 +94,8 @@ const QUERY = {
   sort: 'name',
   breaks: 'all',
   buffer: 'all',
+  type: 'regular',
+  orders: 'all',
   role: '',
   by: '',
   from: '',
@@ -103,7 +116,12 @@ const QUERY = {
  * explicit that a client record can be edited at any time but never
  * removed from the system.
  */
-export function ClientsScreen({ clients, problem, ratesVisible = true }: ClientsScreenProps) {
+export function ClientsScreen({
+  clients,
+  problem,
+  ratesVisible = true,
+  canWrite = false,
+}: ClientsScreenProps) {
   const router = useRouter();
   const [url, setUrl] = useListQuery(QUERY);
   const query = url.q;
@@ -112,6 +130,8 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   const pageSize = sizeOf(url.size, PAGE_SIZES, DEFAULT_PAGE_SIZE);
   const breaks = oneOf(url.breaks, POLICIES, 'all');
   const buffer = oneOf(url.buffer, BUFFERS, 'all');
+  const type = oneOf(url.type, TYPES, 'regular');
+  const orders = oneOf(url.orders, ORDERS, 'all');
   const role = url.role;
   const added: AddedFilter = useMemo(
     () => ({ by: url.by, from: url.from, to: url.to }),
@@ -127,13 +147,33 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   );
   const hasEmptyRateCard = clients.some((client) => client.rate_card_roles.length === 0);
 
+  const oneOffCount = useMemo(() => clients.filter((client) => client.one_off).length, [clients]);
+  const confirm = useConfirm();
+  const [marking, setMarking] = useState(false);
+
+  // `type` is a view, not a narrowing filter: it is not cleared by "Clear
+  // filters" and does not count as one, so the default (regular clients)
+  // never makes a short list read as "filtered".
   const filtersActive =
-    breaks !== 'all' || buffer !== 'all' || role !== '' || addedFilterActive(added);
+    breaks !== 'all' ||
+    buffer !== 'all' ||
+    orders !== 'all' ||
+    role !== '' ||
+    addedFilterActive(added);
 
   // Every filter change goes back to the first page: the pager would
   // otherwise be left past the end of a shorter list.
   const clearFilters = () =>
-    setUrl({ breaks: 'all', buffer: 'all', role: '', by: '', from: '', to: '', page: '1' });
+    setUrl({
+      breaks: 'all',
+      buffer: 'all',
+      orders: 'all',
+      role: '',
+      by: '',
+      from: '',
+      to: '',
+      page: '1',
+    });
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -146,6 +186,10 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       ) {
         return false;
       }
+      if (type === 'regular' && client.one_off) return false;
+      if (type === 'one_off' && !client.one_off) return false;
+      if (orders === 'once' && client.event_count > 1) return false;
+      if (orders === 'repeat' && client.event_count < 2) return false;
       if (breaks !== 'all' && client.pays_breaks !== (breaks === 'paid')) return false;
       // The buffer policy's two words are "paid" and "strict" (§3.2, RULE-15).
       if (buffer !== 'all' && client.pays_buffer !== (buffer === 'paid')) return false;
@@ -167,7 +211,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       sorted.sort((a, b) => (b.avg_margin_pct ?? -1) - (a.avg_margin_pct ?? -1));
     } else sorted.sort((a, b) => a.name.localeCompare(b.name));
     return sorted;
-  }, [clients, query, breaks, buffer, role, added, sort]);
+  }, [clients, query, type, orders, breaks, buffer, role, added, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pages - 1);
@@ -183,6 +227,35 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
     // Selecting a phone number or an email to copy it is not a click.
     if (window.getSelection()?.toString()) return;
     router.push(`/clients/${id}`);
+  };
+
+  // ADR-0186: the whole filtered list, not the page, so "Ordered once or
+  // never" + this is one step for a long tail of private events.
+  const markShown = (oneOff: boolean) => {
+    const ids = filtered.map((client) => client.id);
+    const n = ids.length;
+    const noun = `${n} client${n === 1 ? '' : 's'}`;
+    confirm.ask({
+      title: oneOff ? `Mark ${noun} as one-off?` : `Move ${noun} back to regular?`,
+      body: oneOff
+        ? `They stop leading the lists workers are qualified from and move to the One-off view here. Nothing is deleted or blocked: events can still be built for them, qualified staff stay qualified, and auto-assign is unchanged. Each one has the switch on its card to undo it.`
+        : `They lead the lists workers are qualified from again.`,
+      confirm: oneOff ? `Mark ${noun} as one-off` : `Move ${noun} back`,
+      onConfirm: () => {
+        setMarking(true);
+        void setClientsOneOff(ids, oneOff).then((result) => {
+          setMarking(false);
+          if (result.ok) {
+            toast(oneOff ? `${noun} marked as one-off` : `${noun} moved back to regular`, {
+              tone: 'green',
+            });
+            router.refresh();
+          } else {
+            toast(result.message, { tone: 'coral' });
+          }
+        });
+      },
+    });
   };
 
   const close = () => setEditing(null);
@@ -248,6 +321,26 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
 
       <div className="toolbar filters" role="group" aria-label="Client filters">
         <Select
+          value={type}
+          onChange={(event) => setUrl({ type: event.target.value, page: '1' })}
+          aria-label="Regular or one-off clients"
+          style={{ width: 200 }}
+        >
+          <option value="regular">Regular clients ({clients.length - oneOffCount})</option>
+          <option value="one_off">One-off clients ({oneOffCount})</option>
+          <option value="all">All clients ({clients.length})</option>
+        </Select>
+        <Select
+          value={orders}
+          onChange={(event) => setUrl({ orders: event.target.value, page: '1' })}
+          aria-label="Filter by how often the client has ordered"
+          style={{ width: 200 }}
+        >
+          <option value="all">Events: any</option>
+          <option value="once">Ordered once or never</option>
+          <option value="repeat">Ordered more than once</option>
+        </Select>
+        <Select
           value={breaks}
           onChange={(event) => setUrl({ breaks: event.target.value, page: '1' })}
           aria-label="Filter by break policy"
@@ -286,13 +379,25 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
           value={added}
           onChange={(next) => setUrl({ by: next.by, from: next.from, to: next.to, page: '1' })}
         />
-        {filtersActive ? (
-          <div className="right">
+        <div className="right row">
+          {canWrite && type !== 'all' && filtered.length > 0 ? (
+            <Button
+              size="sm"
+              tone={type === 'regular' ? 'primary' : 'ghost'}
+              disabled={marking}
+              onClick={() => markShown(type === 'regular')}
+            >
+              {type === 'regular'
+                ? `Mark the ${filtered.length} shown as one-off`
+                : `Move the ${filtered.length} shown back to regular`}
+            </Button>
+          ) : null}
+          {filtersActive ? (
             <Button size="sm" tone="ghost" onClick={clearFilters}>
               Clear filters
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
 
       <Panel flush>
@@ -311,7 +416,9 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                   ? 'A client has to exist before an event can be built for it.'
                   : filtersActive
                     ? 'Loosen a filter, or clear them to see every client.'
-                    : 'Search runs over the client name, the contact and the contact emails.'}
+                    : type !== 'all' && clients.length > 0
+                      ? 'Search runs over the client name, the contact and the contact emails. Regular and one-off clients are listed apart; All shows both.'
+                      : 'Search runs over the client name, the contact and the contact emails.'}
               </p>
             </EmptyState>
           ) : (
@@ -436,6 +543,8 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
         A client record can be edited at any time but <b>never deleted</b>. Charge rates and dress
         codes are per client, per role — set on the client card, nowhere else.
       </Note>
+
+      {confirm.dialog}
 
       {editing !== null ? (
         <ClientModal

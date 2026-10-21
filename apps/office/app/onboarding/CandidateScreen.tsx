@@ -2111,6 +2111,9 @@ function ClientQualification({
   const [search, setSearch] = useState('');
   const [listSearch, setListSearch] = useState('');
   const [chosen, setChosen] = useState<string[]>([]);
+  // ADR-0186: one-off clients (private events that will not book again) stay
+  // out of the list, and out of "Select all", until the office asks for them.
+  const [withOneOff, setWithOneOff] = useState(false);
   // The ticks on the left are the role list: every client added is cleared for
   // all of them, so there is no second role pick here.
   const roleIds = held.map((role) => role.id);
@@ -2124,7 +2127,11 @@ function ClientQualification({
   // A client already cleared for every role is not offered again: it is in
   // "Cleared at" below, so the list only ever holds what is left to do.
   const open = clients.filter((client) => !doneAt(client.id));
-  const shown = open.filter((client) => matchesName(client.name, search));
+  const hiddenOneOff = withOneOff ? 0 : open.filter((client) => client.one_off).length;
+  const offered = withOneOff
+    ? open
+    : open.filter((client) => !client.one_off || chosen.includes(client.id));
+  const shown = offered.filter((client) => matchesName(client.name, search));
   const pickable = shown.map((client) => client.id);
   const toggleClient = (id: string) =>
     setChosen((now) => (now.includes(id) ? now.filter((x) => x !== id) : [...now, id]));
@@ -2158,7 +2165,7 @@ function ClientQualification({
               <Input
                 type="search"
                 aria-label="Search clients to add"
-                placeholder={`Search ${open.length} clients to add…`}
+                placeholder={`Search ${offered.length} clients to add…`}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -2178,6 +2185,18 @@ function ClientQualification({
                   onClick={() => setChosen([])}
                 >
                   Clear
+                </button>
+              ) : null}
+              {hiddenOneOff > 0 || withOneOff ? (
+                <button
+                  type="button"
+                  className="linkish sm"
+                  disabled={busy}
+                  onClick={() => setWithOneOff((now) => !now)}
+                >
+                  {withOneOff
+                    ? 'Hide one-off clients'
+                    : `Show ${hiddenOneOff} one-off client${hiddenOneOff === 1 ? '' : 's'}`}
                 </button>
               ) : null}
             </div>

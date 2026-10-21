@@ -27,6 +27,7 @@ export default async function Page() {
       clients={clients}
       problem={problem}
       ratesVisible={officeCan(officeRole, 'finance')}
+      canWrite={officeCan(officeRole, 'write')}
     />
   );
 }

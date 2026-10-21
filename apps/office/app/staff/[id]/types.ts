@@ -203,6 +203,8 @@ export interface RoleOption {
 export interface ClientOption {
   id: string;
   name: string;
+  /** ADR-0186: not expected to order again; the picker leads without it. */
+  one_off?: boolean;
 }
 
 /**

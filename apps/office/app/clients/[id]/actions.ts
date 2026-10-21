@@ -182,6 +182,11 @@ export async function setNameBadges(clientId: string, on: boolean): Promise<Acti
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
 }
 
+/** ADR-0186: the One-off client switch; the database audits it and refuses a viewer. */
+export async function setClientOneOff(clientId: string, on: boolean): Promise<ActionResult> {
+  return callRpc('set_clients_one_off', { p_clients: [clientId], p_one_off: on }, clientId);
+}
+
 /** ADR-0135 §3: one of the two line-up emails to this client, on or off (audited). */
 export async function setLineupEmails(
   clientId: string,

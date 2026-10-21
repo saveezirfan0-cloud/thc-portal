@@ -38,7 +38,7 @@ export async function loadClients(): Promise<ClientsPageData> {
       supabase
         .from('clients_directory_v')
         .select(
-          'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct, created_at, created_by, created_by_name',
+          'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct, created_at, created_by, created_by_name, one_off',
         )
         .order('name')
         .order('id')

@@ -549,6 +549,32 @@ describe('the candidate profile, roles and clients on the Documents step (§2.4,
     expect(html).toContain('1 client');
   });
 
+  it('leaves one-off clients out of the picker until asked for (ADR-0186)', () => {
+    const html = render(
+      data({
+        roles,
+        clients: [
+          { id: 'c1', name: 'Grand Hotel' },
+          { id: 'c2', name: 'Smith Birthday Party', one_off: true },
+          { id: 'c3', name: 'Jones Wedding', one_off: true },
+        ],
+        qualifications: [],
+      }),
+    );
+    // "Select all" can only take what is listed, so it cannot tick the long tail.
+    expect(html).toContain('Search 1 clients to add');
+    expect(html).toContain('Grand Hotel');
+    expect(html).not.toContain('Smith Birthday Party');
+    expect(html).toContain('Show 2 one-off clients');
+  });
+
+  it('draws no one-off link when no client is one-off', () => {
+    const html = render(
+      data({ roles, clients: [{ id: 'c1', name: 'Grand Hotel' }], qualifications: [] }),
+    );
+    expect(html).not.toContain('one-off client');
+  });
+
   it('does not offer a client the candidate is already cleared at for every role', () => {
     const html = render(
       data({

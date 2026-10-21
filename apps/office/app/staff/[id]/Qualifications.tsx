@@ -60,6 +60,9 @@ export function Qualifications({
   const [barringClient, setBarringClient] = useState(false);
   const [barClientId, setBarClientId] = useState('');
   const [clientId, setClientId] = useState('');
+  // ADR-0186: one-off clients are left out of the picker until asked for,
+  // so clearing a worker does not mean scrolling past every private event.
+  const [withOneOff, setWithOneOff] = useState(false);
   // §9.6: "then one or more of that worker's roles" — a set, not a pick.
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -75,6 +78,11 @@ export function Qualifications({
   // dropdown offers only the roles they hold. Offering the whole catalogue
   // would let a manager build a row auto-assign will never read.
   const held = roles.filter((role) => profile.role_names.includes(role.name));
+
+  const oneOffCount = clients.filter((client) => client.one_off).length;
+  const pickable = clients.filter(
+    (client) => withOneOff || !client.one_off || client.id === clientId,
+  );
 
   const run = (
     work: () => Promise<{ ok: true } | { ok: false; message: string }>,
@@ -317,12 +325,18 @@ export function Qualifications({
           onChange={(event) => setClientId(event.target.value)}
         >
           <option value="">Choose a client…</option>
-          {clients.map((client) => (
+          {pickable.map((client) => (
             <option key={client.id} value={client.id}>
               {client.name}
+              {client.one_off ? ' (one-off)' : ''}
             </option>
           ))}
         </Select>
+        {oneOffCount > 0 ? (
+          <Checkbox checked={withOneOff} onChange={setWithOneOff}>
+            Include the {oneOffCount} one-off client{oneOffCount === 1 ? '' : 's'}
+          </Checkbox>
+        ) : null}
         <div className="field" role="group" aria-labelledby={`${rolesId}-label`}>
           <span className="label" id={`${rolesId}-label`}>
             Role(s)

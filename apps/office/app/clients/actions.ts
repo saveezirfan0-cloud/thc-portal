@@ -85,6 +85,17 @@ export async function createClientRecord(draft: ClientDraft): Promise<ActionResu
   });
 }
 
+/**
+ * ADR-0186: mark clients as one-off (or back to regular). One function for
+ * the directory's bulk button and the card's switch; the database audits
+ * each change on the client's History and refuses a viewer.
+ */
+export async function setClientsOneOff(ids: string[], oneOff: boolean): Promise<ActionResult> {
+  if (ids.length === 0) return { ok: true };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  return callRpc('set_clients_one_off', { p_clients: ids, p_one_off: oneOff });
+}
+
 export async function updateClientRecord(id: string, draft: ClientDraft): Promise<ActionResult> {
   const invalid = validateClient(draft);
   if (invalid) return { ok: false, message: invalid };
