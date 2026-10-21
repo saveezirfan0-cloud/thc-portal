@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import {
   Avatar,
   ColumnCells,
@@ -139,7 +140,10 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
                               size="sm"
                             />
                             <div>
-                              <div className="n">{row.display_name}</div>
+                              {/* §9.6: the name is clickable → the profile, as in the Directory. */}
+                              <Link href={`/staff/${row.id}`} className="n staff-name">
+                                {row.display_name}
+                              </Link>
                               <div className="s">{employeeId(row.employee_id)}</div>
                             </div>
                           </div>
