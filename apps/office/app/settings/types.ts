@@ -63,6 +63,8 @@ export interface SettingsData {
   willoReviewUrlTemplate: WilloReviewUrlTemplate;
   willoInterviewUrl: WilloInterviewUrl;
   senders: Senders;
+  /** ADR-0179: who gets a hidden copy of every timesheet sent to a client (`document_office_copy`). */
+  documentOfficeCopy: string[];
   /**
    * §8's fixed recipients for the office/payroll emails, read from the
    * notification register on the server so the screen's note can never

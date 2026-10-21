@@ -19,6 +19,13 @@ const LABEL: Record<Kind, { send: string; download: string; noun: string }> = {
   },
 };
 
+/** ADR-0179: the office's hidden copy, said to the office only. */
+export function officeCopyLine(officeCopy: readonly string[] | undefined): string {
+  return officeCopy && officeCopy.length > 0
+    ? ` A hidden office copy goes to ${officeCopy.join(', ')}.`
+    : '';
+}
+
 /**
  * §11.4 on the event page: "Send Allocation Timesheet" (an action) +
  * "Download Allocation Timesheet" (a PDF, for WhatsApp). The Completed
@@ -66,6 +73,7 @@ export function DocumentActions({
       const body = (await response.json().catch(() => ({}))) as {
         error?: string;
         recipients?: string[];
+        officeCopy?: string[];
         pages?: number;
         badges?: number;
       };
@@ -82,7 +90,7 @@ export function DocumentActions({
         badges > 0 ? `, with ${badges} name ${badges === 1 ? 'badge' : 'badges'},` : '';
       setResult({
         tone: 'green',
-        text: `The ${LABEL[kind].noun} (${body.pages ?? 1} ${body.pages === 1 ? 'page' : 'pages'})${withBadges} is queued from timesheets@ to ${(body.recipients ?? []).join(', ')}.`,
+        text: `The ${LABEL[kind].noun} (${body.pages ?? 1} ${body.pages === 1 ? 'page' : 'pages'})${withBadges} is queued from timesheets@ to ${(body.recipients ?? []).join(', ')}.${officeCopyLine(body.officeCopy)}`,
       });
     });
   }
