@@ -286,9 +286,10 @@ describe('the conditions beside a Verify (D32, D36)', () => {
       box.click();
     });
     await click(buttons('Verify', dialog())[0]);
+    // ADR-0178: the holiday periods ride along — none read, none added here.
     expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
       'd4',
-      {},
+      { termPeriods: [] },
       { staffId: 's1', belowDegreeLevel: true },
     );
   });

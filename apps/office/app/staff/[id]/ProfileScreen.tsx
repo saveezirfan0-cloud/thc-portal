@@ -106,6 +106,7 @@ export function ProfileScreen({
   canEditPayrollId = false,
   showPayRate = false,
   canEditPayRate = false,
+  canEditTermPeriods = false,
   canMessage = false,
   bare = false,
 }: {
@@ -129,6 +130,8 @@ export function ProfileScreen({
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
   canEditPayRate?: boolean;
+  /** ADR-0178: any office login that may write corrects a verified term letter's holiday periods. */
+  canEditTermPeriods?: boolean;
   /** ADR-0082: Send push — `canMessageWorker()`, any office login that may write. */
   canMessage?: boolean;
   /**
@@ -519,6 +522,15 @@ export function ProfileScreen({
             {...(data.payFloorPence ? { payFloorPence: data.payFloorPence } : {})}
             showPayRate={showPayRate}
             canEditPayRate={canEditPayRate}
+            termLetterId={
+              data.documents.find(
+                (d) =>
+                  d.doc_type === 'university_term_dates_letter' &&
+                  d.review_status === 'verified' &&
+                  !d.superseded,
+              )?.id ?? null
+            }
+            canEditTermPeriods={canEditTermPeriods}
           />
         ) : null}
         {tab === 'availability' ? (

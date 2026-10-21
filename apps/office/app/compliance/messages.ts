@@ -39,6 +39,16 @@ const MESSAGES: [RegExp, string][] = [
   [/^completion_date_required/, 'Confirm the course completion date.'],
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
+  // set_term_letter_periods (ADR-0178): correcting a verified letter's periods.
+  [
+    /^term_letter_not_verified/,
+    'This letter is still waiting for review — confirm its periods with Verify.',
+  ],
+  [/^not_a_term_letter/, 'Only a University Term Dates Letter has holiday periods.'],
+  [
+    /^term_periods_expire_letter/,
+    'Those periods would leave the letter expired: its last date must be after today. Check the dates, or ask the worker for a current letter.',
+  ],
   [
     /^rtw_date_required/,
     'Confirm the right-to-work date on this document before verifying it — the expiry of a visa or status document, or the date on the gov.uk report.',

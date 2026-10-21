@@ -77,6 +77,7 @@ async function Candidate({ id, role }: { id: string; role: OfficeRole | null }) 
       canCorrectDob={officeCan(role, 'identity')}
       canMarkInterview={canMarkInterviewComplete(role)}
       canGrantQuizAttempts={officeCan(role, 'write')}
+      canEditTermPeriods={officeCan(role, 'write')}
     />
   );
 }
