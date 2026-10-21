@@ -1,28 +1,28 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal, Note, Textarea, toast } from '@thc/ui';
-import { correctTermDates, withdrawCompletionApproval } from './letterActions';
-import { ukDate, ukDay } from './queue';
 import { resolveTermState } from '@thc/domain';
-import { periodsEdited, periodsFromLetter, termLetterVerifyProblem } from './termDates';
-import type { TermPeriod } from './termDates';
-import { TermDatesEditor } from './TermDatesEditor';
+import { EditTermPeriods, periodsFrom } from '../_components/TermPeriods';
+import { withdrawCompletionApproval } from './letterActions';
+import { ukDate, ukDay } from './queue';
 import type { ActionResult } from './types';
 
 /**
- * What the office can still change on a letter it has already decided
- * (ADR-0178), beside that letter wherever the office lists it:
+ * "Withdraw approval" on a verified Official University Completion Letter
+ * (ADR-0183), beside the letter wherever the office lists it — the staff
+ * profile's Documents tab and the candidate screen — for when the course
+ * turns out not to be over. The worker stops being treated as a graduate,
+ * and their term letter decides the weekly limit again.
  *
- *   · "Correct term dates" on the worker's CURRENT verified University Term
- *     Dates Letter — the Verify dialog's editor, pre-filled with the dates
- *     on file, and a note saying why;
- *   · "Withdraw approval" on a verified Official University Completion
- *     Letter — with a reason — when the course turns out not to be over.
+ * Correcting the term letter's periods is ADR-0178's "Edit holiday periods"
+ * (`EditTermPeriods`); this dialog opens it ("Correct term dates first")
+ * when withdrawing would put the worker on the term-time limit today, so
+ * the worker is told their new limit once, not twice.
  *
- * Owners and managers (`canCorrect`); the database refuses anyone else
- * whatever this shows. Anyone else sees nothing to press.
+ * Any office login that may write (`canWithdraw`); the database refuses
+ * anyone else whatever this shows (assert_reviewer, office_read_only).
  */
 export interface DecidedLetter {
   id: string;
@@ -43,49 +43,42 @@ export function currentTermLetterOf<T extends DecidedLetter>(documents: readonly
 
 /**
  * Whether withdrawing an approval NOW would put the worker on the term-time
- * limit from their current term letter — no letter, no holiday periods on
- * it, or this week is not wholly a holiday on it. Then the office corrects
- * the dates first: withdrawing and then correcting changes the limit twice,
- * and each change tells the worker (N14).
+ * limit from their current term letter — no holiday periods on it, or this
+ * week is not wholly a holiday on it. Then the office corrects the dates
+ * first: withdrawing and then correcting changes the limit twice, and each
+ * change tells the worker (N14).
  */
 export function correctTermDatesFirst(termLetter: DecidedLetter | null, today: string): boolean {
   if (!termLetter) return false;
-  const ranges = periodsFromLetter(termLetter.term_dates);
+  const ranges = periodsFrom(termLetter.term_dates);
   if (ranges.length === 0) return true;
   return resolveTermState(ranges, today) !== 'holiday';
 }
 
-/** Which correction this letter offers, if any. */
-export function letterCorrection(
-  doc: DecidedLetter,
-  currentTermLetter: DecidedLetter | null,
-): 'term_dates' | 'withdraw' | null {
-  if (doc.review_status !== 'verified') return null;
-  if (doc.doc_type === 'university_term_dates_letter' && doc.id === currentTermLetter?.id) {
-    return 'term_dates';
-  }
-  if (doc.doc_type === 'university_completion_letter') return 'withdraw';
-  return null;
+/** Whether this letter offers "Withdraw approval". */
+export function canWithdrawLetter(doc: DecidedLetter): boolean {
+  return doc.doc_type === 'university_completion_letter' && doc.review_status === 'verified';
 }
 
 export function VerifiedLetterActions({
   doc,
   currentTermLetter,
-  canCorrect,
+  canWithdraw,
+  name,
 }: {
   doc: DecidedLetter;
   /** The worker's current verified term letter (`currentTermLetterOf`). */
   currentTermLetter: DecidedLetter | null;
-  canCorrect: boolean;
+  canWithdraw: boolean;
+  /** The worker's name, for "Edit holiday periods". */
+  name: string;
 }) {
   const router = useRouter();
-  // Which dialog: this letter's own, or — from Withdraw — the term letter's.
-  const [open, setOpen] = useState<'term_dates' | 'withdraw' | null>(null);
-  const today = useMemo(() => ukDay(new Date()), []);
+  const [open, setOpen] = useState<'withdraw' | 'term_dates' | null>(null);
+  const [today] = useState(() => ukDay(new Date()));
   const [busy, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
-  const kind = letterCorrection(doc, currentTermLetter);
-  if (!canCorrect || !kind) return null;
+  if (!canWithdraw || !canWithdrawLetter(doc)) return null;
 
   const run = (work: () => Promise<ActionResult>) => {
     setProblem(null);
@@ -104,24 +97,12 @@ export function VerifiedLetterActions({
     setProblem(null);
     setOpen(null);
   };
-  const termLetter = kind === 'term_dates' ? doc : currentTermLetter;
 
   return (
     <>
-      <Button size="sm" tone="ghost" disabled={busy} onClick={() => setOpen(kind)}>
-        {kind === 'term_dates' ? 'Correct term dates' : 'Withdraw approval'}
+      <Button size="sm" tone="ghost" disabled={busy} onClick={() => setOpen('withdraw')}>
+        Withdraw approval
       </Button>
-      {open === 'term_dates' && termLetter ? (
-        <CorrectTermDatesModal
-          doc={termLetter}
-          busy={busy}
-          problem={problem}
-          onClose={close}
-          onSave={(periods, note, noHolidays) =>
-            run(() => correctTermDates(termLetter.id, periods, note, noHolidays))
-          }
-        />
-      ) : null}
       {open === 'withdraw' ? (
         <WithdrawApprovalModal
           doc={doc}
@@ -137,97 +118,19 @@ export function VerifiedLetterActions({
           onWithdraw={(reason) => run(() => withdrawCompletionApproval(doc.id, reason))}
         />
       ) : null}
+      {open === 'term_dates' && currentTermLetter ? (
+        // ADR-0178's dialog, opened straight away; it saves and refreshes itself.
+        <EditTermPeriods
+          docId={currentTermLetter.id}
+          ranges={currentTermLetter.term_dates ?? null}
+          allowed
+          name={name}
+          uploadedAt={currentTermLetter.uploaded_at}
+          startOpen
+          onClosed={() => setOpen(null)}
+        />
+      ) : null}
     </>
-  );
-}
-
-function CorrectTermDatesModal({
-  doc,
-  busy,
-  problem,
-  onClose,
-  onSave,
-}: {
-  doc: DecidedLetter;
-  busy: boolean;
-  problem: string | null;
-  onClose: () => void;
-  onSave: (periods: { from: string; to: string }[], note: string, noHolidays: boolean) => void;
-}) {
-  const today = useMemo(() => ukDay(new Date()), []);
-  const [periods, setPeriods] = useState<TermPeriod[]>(() => periodsFromLetter(doc.term_dates));
-  const [noHolidays, setNoHolidays] = useState(false);
-  const [note, setNote] = useState('');
-  const edited = periodsEdited(periods, doc.term_dates);
-  const blocked =
-    termLetterVerifyProblem({
-      periods,
-      noHolidaysConfirmed: noHolidays,
-      uploadedAt: doc.uploaded_at,
-      today,
-    }) ?? (edited ? null : 'Change a date first — these are the dates on file.');
-  const noteMissing = note.trim() === '';
-
-  return (
-    <Modal
-      open
-      wide
-      dirty={edited || note.trim() !== ''}
-      title="Correct term dates"
-      onClose={onClose}
-      footer={
-        <>
-          <Button tone="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            tone="green"
-            solid
-            disabled={busy || blocked !== null || noteMissing}
-            title={blocked ?? (noteMissing ? 'Say why the dates are being corrected.' : undefined)}
-            onClick={() =>
-              onSave(
-                periods.map(({ from, to }) => ({ from, to })),
-                note,
-                periods.length === 0 && noHolidays,
-              )
-            }
-          >
-            Save corrected dates
-          </Button>
-        </>
-      }
-    >
-      {problem ? <Alert tone="coral">{problem}</Alert> : null}
-      <div className="muted sm">
-        The holiday periods on this verified letter, as they are on file. Correct them against the
-        letter: the weekly limit is calculated from these dates — 48 hours in a holiday week, 20 in
-        term time (10 below degree level), the lower in a week that runs across both — and the
-        letter expires on the last of them. The change applies from now; shifts already worked are
-        not recalculated.
-      </div>
-      <TermDatesEditor
-        periods={periods}
-        onChange={setPeriods}
-        editable
-        badge={{ tone: 'hi', label: 'as verified' }}
-        noHolidaysConfirmed={noHolidays}
-        onNoHolidaysConfirmed={setNoHolidays}
-        uploadedAt={doc.uploaded_at}
-        today={today}
-      />
-      <Textarea
-        label={
-          <>
-            Why are the dates being corrected? <span className="coral">*</span>
-          </>
-        }
-        value={note}
-        maxLength={500}
-        onChange={(event) => setNote(event.target.value)}
-        hint="Kept with the change in the audit log, with your name and the time. The worker is not sent it."
-      />
-    </Modal>
   );
 }
 

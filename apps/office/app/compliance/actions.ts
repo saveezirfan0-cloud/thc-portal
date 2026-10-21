@@ -10,8 +10,8 @@ import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { visaLimitProblem, visaLimitValue } from './conditions';
-import { termDatesPayload, termDatesPayloadProblem } from './termDates';
-import type { Period } from './termDates';
+import { type Period, periodToRange } from '../onboarding/view-model';
+import { termDatesPayloadProblem } from './termDates';
 import type { ActionResult } from './types';
 
 /**
@@ -63,13 +63,15 @@ export interface VerifyDates {
   expiry?: string | null;
   rightToWorkUntil?: string | null;
   /**
-   * A University Term Dates Letter (ADR-0178): the holiday periods the
-   * reviewer confirmed — the AI's, corrected, removed or added to — sent as
-   * `p_term_dates`. An empty list is a real answer (a letter with no
-   * holidays) and needs `noHolidays`. Absent: the row's own ranges.
+   * A term letter's holiday periods as the reviewer confirms them — the AI's,
+   * with any it missed added by hand (§2.3 "+ Add period", ADR-0178). Absent:
+   * the ranges on the row are confirmed as read.
    */
-  termDates?: readonly Period[] | null;
-  /** The reviewer ticked "This letter shows no holidays" (required with an empty list). */
+  termPeriods?: Period[] | null;
+  /**
+   * ADR-0183: the office ticked "This letter shows no holidays" — required
+   * with an empty `termPeriods`, which limits the worker to term time all year.
+   */
   noHolidays?: boolean;
 }
 
@@ -95,14 +97,16 @@ export async function verifyDocument(
     const problem = visaLimitProblem(conditions.visaHourLimit);
     if (problem) return { ok: false, message: problem };
   }
-  if (dates.termDates) {
-    const problem = termDatesPayloadProblem(dates.termDates, dates.noHolidays);
+  if (dates.termPeriods) {
+    const problem = termDatesPayloadProblem(dates.termPeriods, dates.noHolidays);
     if (problem) return { ok: false, message: problem };
   }
   const args: RpcArguments = { p_doc: docId };
   if (dates.expiry) args['p_expiry'] = dates.expiry;
   if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
-  if (dates.termDates) args['p_term_dates'] = termDatesPayload(dates.termDates);
+  // An empty list is a real answer ("no holidays on this letter"), so it is
+  // sent, not dropped.
+  if (dates.termPeriods) args['p_term_dates'] = dates.termPeriods.map(periodToRange);
   const result = await call('compliance_verify_document', args);
   if (isFailure(result)) return result;
   const verified = verifiedMessage(result, dates);
@@ -110,6 +114,36 @@ export async function verifyDocument(
   return verified.ok
     ? { ok: true, message: `${verified.message ?? 'Verified.'}${saved}` }
     : verified;
+}
+
+/**
+ * ADR-0178: the holiday periods of a VERIFIED University Term Dates Letter,
+ * corrected by hand — a vacation the AI did not read and the reviewer
+ * missed. The whole list is replaced; the worker's RULE-20 cap and the
+ * letter's ADR-0103 expiry follow from it at once. Shared by the candidate
+ * screen, the staff profile and Compliance.
+ */
+export async function setTermLetterPeriods(
+  docId: string,
+  periods: Period[],
+  noHolidays = false,
+): Promise<ActionResult> {
+  // ADR-0183: as at Verify — complete, real, at most a year each, and none
+  // at all only when the office ticked that the letter shows none.
+  const problem = termDatesPayloadProblem(periods, noHolidays);
+  if (problem) return { ok: false, message: problem };
+  const result = await call('set_term_letter_periods', {
+    p_doc: docId,
+    p_term_dates: periods.map(periodToRange),
+  });
+  if (isFailure(result)) return result;
+  const data = (result.data ?? {}) as { expiresOn?: string | null; unblocked?: boolean };
+  return {
+    ok: true,
+    message: `Holiday periods saved. The weekly limit follows them from now${
+      data.expiresOn ? `; the letter expires ${ukDate(data.expiresOn)}` : ''
+    }.${data.unblocked ? ' The expiry block is lifted — everything else is in order.' : ''}`,
+  };
 }
 
 async function saveConditions(conditions: VerifyConditions): Promise<string> {
@@ -134,12 +168,11 @@ function verifiedMessage(result: { data: unknown }, dates: VerifyDates): ActionR
     rightToWorkUntil?: string | null;
   };
   const rtw =
-    (dates.termDates ? termDatesLine(dates.termDates.length) : '') +
-    (dates.expiry || dates.rightToWorkUntil
+    dates.expiry || dates.rightToWorkUntil
       ? data.rightToWorkUntil
         ? ` Right to work until ${ukDate(data.rightToWorkUntil)} — no shift after it can be rostered.`
         : ' Right to work: no time limit on file.'
-      : '');
+      : '';
   if (data.unblocked)
     return { ok: true, message: `Verified. Everything is in order — unblocked.${rtw}` };
   if (data.status === 'blocked' && data.blockers?.length) {
@@ -149,14 +182,6 @@ function verifiedMessage(result: { data: unknown }, dates: VerifyDates): ActionR
     };
   }
   return { ok: true, message: `Verified.${rtw}` };
-}
-
-/** What a verified term letter now means for the worker's weekly limit (ADR-0178). */
-function termDatesLine(count: number): string {
-  if (count === 0) {
-    return ' No holidays on the letter: 20 hours a week (10 below degree level) all year.';
-  }
-  return ` ${count} holiday period${count === 1 ? '' : 's'} confirmed: 48 hours a week in them, the term-time limit outside them.`;
 }
 
 /**

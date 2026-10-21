@@ -152,12 +152,3 @@ export function explainOfficeError(message: string): string | null {
 export function canMarkInterviewComplete(role: OfficeRole | null | undefined): boolean {
   return role === 'owner' || role === 'manager';
 }
-
-/**
- * ADR-0178: "Correct term dates" on a verified term letter and "Withdraw
- * approval" on a verified completion letter — owners and managers, as
- * assert_letter_editor() decides in the database.
- */
-export function canCorrectLetters(role: OfficeRole | null | undefined): boolean {
-  return role === 'owner' || role === 'manager';
-}

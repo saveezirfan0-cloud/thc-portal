@@ -6,7 +6,8 @@ import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from '../staff/data';
-import { termDatesPayload, termDatesPayloadProblem } from '../compliance/termDates';
+import { periodToRange } from './view-model';
+import { termDatesPayloadProblem } from '../compliance/termDates';
 import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
 import { explainDbError } from '../_lib/dbError';
@@ -396,7 +397,7 @@ export interface VerifyInput {
    */
   expiry?: string | null;
   periods?: Period[] | null;
-  /** The "this letter shows no holidays" tick — required with an empty list (ADR-0178). */
+  /** The "this letter shows no holidays" tick — required with an empty list (ADR-0183). */
   noHolidays?: boolean;
 }
 
@@ -414,7 +415,7 @@ export async function verifyDocument(
   if (input.expiry) args['p_expiry'] = input.expiry;
   // An empty list is a real answer — "zero periods" happens (§2.3) — so it
   // is sent as an empty array, not dropped.
-  if (periods) args['p_term_dates'] = termDatesPayload(periods);
+  if (periods) args['p_term_dates'] = periods.map(periodToRange);
   // A completion letter is approved in Compliance (approve_completion_letter),
   // so there is no completion date to send from here.
   return call('verify_document', args, paths(staffId));

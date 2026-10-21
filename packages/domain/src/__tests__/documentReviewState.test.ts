@@ -8,7 +8,7 @@ import {
 } from '../state';
 
 /**
- * The review state of a document (ADR-0178). The same edges as
+ * The review state of a document (ADR-0183). The same edges as
  * document_review_transition_allowed() in 20261022150100 — pgTAP 918 asks
  * the database the cases below.
  */

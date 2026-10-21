@@ -5,19 +5,20 @@ import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * "Correct term dates" and "Withdraw approval" on letters the office has
- * already decided (ADR-0178).
+ * "Withdraw approval" on a verified completion letter (ADR-0183), and the
+ * safety extras ADR-0183 adds to ADR-0178's "Edit holiday periods" — which
+ * the Withdraw dialog opens when the term letter needs correcting first.
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 const ok = () => Promise.resolve({ ok: true as const, message: 'Done.' });
-vi.mock('../letterActions', () => ({
-  correctTermDates: vi.fn(ok),
-  withdrawCompletionApproval: vi.fn(ok),
-}));
+vi.mock('../letterActions', () => ({ withdrawCompletionApproval: vi.fn(ok) }));
+vi.mock('../actions', () => ({ setTermLetterPeriods: vi.fn(ok) }));
 
-const actions = await import('../letterActions');
-const { VerifiedLetterActions, correctTermDatesFirst, currentTermLetterOf, letterCorrection } =
+const letterActions = await import('../letterActions');
+const actions = await import('../actions');
+const { VerifiedLetterActions, canWithdrawLetter, correctTermDatesFirst, currentTermLetterOf } =
   await import('../VerifiedLetterActions');
+const { EditTermPeriods } = await import('../../_components/TermPeriods');
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -94,68 +95,43 @@ async function click(el: HTMLElement) {
   });
 }
 
-describe('which decided letter offers what', () => {
-  it('the current verified term letter is the latest verified one; only it is corrected', () => {
-    const current = currentTermLetterOf([OLD_TERM, TERM, COMPLETION]);
-    expect(current?.id).toBe('t2');
-    expect(letterCorrection(TERM, current)).toBe('term_dates');
-    expect(letterCorrection(OLD_TERM, current)).toBeNull();
-    expect(letterCorrection(COMPLETION, current)).toBe('withdraw');
-    expect(letterCorrection({ ...COMPLETION, review_status: 'pending' }, current)).toBeNull();
-    expect(letterCorrection({ ...TERM, doc_type: 'passport' }, current)).toBeNull();
+function tick(text: string): HTMLInputElement {
+  const label = [...dialog().querySelectorAll('label')].find((l) => l.textContent?.includes(text));
+  if (!label) throw new Error(`no tick ${text}`);
+  return label.querySelector('input[type="checkbox"]')!;
+}
+
+describe('which letter offers Withdraw approval', () => {
+  it('a verified completion letter only; the current term letter is the latest verified one', () => {
+    expect(currentTermLetterOf([OLD_TERM, TERM, COMPLETION])?.id).toBe('t2');
+    expect(canWithdrawLetter(COMPLETION)).toBe(true);
+    expect(canWithdrawLetter({ ...COMPLETION, review_status: 'pending' })).toBe(false);
+    expect(canWithdrawLetter(TERM)).toBe(false);
   });
 
-  it('nothing for a role that may not', () => {
-    render(<VerifiedLetterActions doc={TERM} currentTermLetter={TERM} canCorrect={false} />);
-    expect(container.textContent).toBe('');
-  });
-});
-
-describe('Correct term dates', () => {
-  it('the office enters the holiday the AI missed, with a note', async () => {
-    render(<VerifiedLetterActions doc={TERM} currentTermLetter={TERM} canCorrect />);
-    await click(button('Correct term dates'));
-    const save = button('Save corrected dates', dialog());
-    expect(save.disabled).toBe(true);
-    await click(button('+ Add period', dialog()));
-    type(field('Period 1 from') as HTMLInputElement, '16/08/2026');
-    type(field('Period 1 to') as HTMLInputElement, '17/01/2027');
-    expect(dialog().textContent).toContain('added by hand');
-    expect(dialog().textContent).toContain('Letter expires 17.01.2027 (last date on the letter)');
-    // ADR-0103 stands: the letter runs out on its last date.
-    expect(dialog().textContent).toContain(
-      'The worker will need to upload their next letter by then.',
-    );
-    expect(save.disabled).toBe(true);
-    type(field('Why are the dates being corrected?'), 'Course restarts 18/01/2027');
-    expect(save.disabled).toBe(false);
-    await click(save);
-    expect(actions.correctTermDates).toHaveBeenCalledExactlyOnceWith(
-      't2',
-      [{ from: '2026-08-16', to: '2027-01-17' }],
-      'Course restarts 18/01/2027',
-      false,
-    );
-  });
-
-  it('opens on the dates on file, marked as verified, and a change is edited by hand', async () => {
+  it('nothing for a login that may not write', () => {
     render(
       <VerifiedLetterActions
-        doc={{ ...TERM, term_dates: ['[2026-12-19,2027-01-11)'] }}
+        doc={COMPLETION}
         currentTermLetter={TERM}
-        canCorrect
+        canWithdraw={false}
+        name="Prabin T."
       />,
     );
-    await click(button('Correct term dates'));
-    expect(dialog().textContent).toContain('as verified');
-    type(field('Period 1 to') as HTMLInputElement, '17/01/2027');
-    expect(dialog().textContent).toContain('edited by hand');
+    expect(container.textContent).toBe('');
   });
 });
 
 describe('Withdraw approval', () => {
   it('needs a reason, says what it does, and sends it', async () => {
-    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter={TERM} canCorrect />);
+    render(
+      <VerifiedLetterActions
+        doc={COMPLETION}
+        currentTermLetter={TERM}
+        canWithdraw
+        name="Prabin T."
+      />,
+    );
     await click(button('Withdraw approval'));
     const text = dialog().textContent ?? '';
     expect(text).toContain('the letter gave 15.08.2026');
@@ -165,27 +141,48 @@ describe('Withdraw approval', () => {
     expect(withdraw.disabled).toBe(true);
     type(field('Reason'), 'Course resumes 18/01/2027 — not completed');
     await click(withdraw);
-    expect(actions.withdrawCompletionApproval).toHaveBeenCalledExactlyOnceWith(
+    expect(letterActions.withdrawCompletionApproval).toHaveBeenCalledExactlyOnceWith(
       'c1',
       'Course resumes 18/01/2027 — not completed',
     );
   });
 
-  it('says to correct the term dates first when withdrawing would put them on term time today', async () => {
-    // Today, 21/10/2026, is in no holiday on a letter with no dates.
+  it('says to correct the term dates first when withdrawing would put them on term time today, and opens Edit holiday periods', async () => {
+    // 21/10/2026 is in no holiday on a letter with no dates.
     expect(correctTermDatesFirst(TERM, '2026-10-21')).toBe(true);
     const holiday = { ...TERM, term_dates: ['[2026-08-16,2027-01-18)'] };
     expect(correctTermDatesFirst(holiday, '2026-10-21')).toBe(false);
     expect(correctTermDatesFirst(holiday, '2027-01-18')).toBe(true);
     expect(correctTermDatesFirst(null, '2026-10-21')).toBe(false);
 
-    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter={TERM} canCorrect />);
+    render(
+      <VerifiedLetterActions
+        doc={COMPLETION}
+        currentTermLetter={TERM}
+        canWithdraw
+        name="Prabin T."
+      />,
+    );
     await click(button('Withdraw approval'));
     expect(dialog().textContent).toContain(
       'correct the term dates first, so the worker is only told once about their new limit',
     );
     await click(button('Correct term dates first', dialog()));
-    expect(button('Save corrected dates', dialog())).toBeTruthy();
+    // ADR-0178's dialog, for the term letter.
+    expect(dialog().textContent).toContain('Holiday periods — Prabin T.');
+    await click(button('+ Add period', dialog()));
+    type(field('Holiday 1 from') as HTMLInputElement, '16/08/2026');
+    type(field('Holiday 1 to') as HTMLInputElement, '17/01/2027');
+    expect(dialog().textContent).toContain('Letter expires 17.01.2027 (last date on the letter)');
+    expect(dialog().textContent).toContain(
+      'The worker will need to upload their next letter by then.',
+    );
+    await click(button('Save periods', dialog()));
+    expect(actions.setTermLetterPeriods).toHaveBeenCalledExactlyOnceWith(
+      't2',
+      [{ from: '2026-08-16', to: '2027-01-17' }],
+      false,
+    );
   });
 
   it('no hint with the holiday already on file; a note when there is no term letter at all', async () => {
@@ -193,15 +190,67 @@ describe('Withdraw approval', () => {
       <VerifiedLetterActions
         doc={COMPLETION}
         currentTermLetter={{ ...TERM, term_dates: ['[2026-08-16,2027-01-18)'] }}
-        canCorrect
+        canWithdraw
+        name="Prabin T."
       />,
     );
     await click(button('Withdraw approval'));
     expect(dialog().textContent).not.toContain('Correct term dates first');
     act(() => root.unmount());
     root = createRoot(container);
-    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter={null} canCorrect />);
+    render(
+      <VerifiedLetterActions
+        doc={COMPLETION}
+        currentTermLetter={null}
+        canWithdraw
+        name="Prabin T."
+      />,
+    );
     await click(button('Withdraw approval'));
     expect(dialog().textContent).toContain('There is no verified term letter on file.');
+  });
+});
+
+describe('Edit holiday periods, with the ADR-0183 extras', () => {
+  it('a letter left with no periods needs the tick before Save', async () => {
+    render(
+      <EditTermPeriods
+        docId="t2"
+        ranges={['[2026-12-19,2027-01-11)']}
+        allowed
+        name="Prabin T."
+        uploadedAt="2026-09-20T10:00:00Z"
+      />,
+    );
+    await click(button('Edit holiday periods'));
+    expect(dialog().textContent).toContain('Letter expires 10.01.2027 (last date on the letter)');
+    await click(button('remove', dialog()));
+    expect(dialog().textContent).toContain(
+      'Letter expires 31.12.2026 (no dates on the letter — calendar-year fallback)',
+    );
+    const save = button('Save periods', dialog());
+    expect(save.disabled).toBe(true);
+    await click(tick('This letter shows no holidays.'));
+    expect(save.disabled).toBe(false);
+    await click(save);
+    expect(actions.setTermLetterPeriods).toHaveBeenCalledExactlyOnceWith('t2', [], true);
+  });
+
+  it('a period longer than a year is said in words and blocks Save', async () => {
+    render(
+      <EditTermPeriods
+        docId="t2"
+        ranges={['[2026-12-19,2027-01-11)']}
+        allowed
+        name="Prabin T."
+        uploadedAt="2026-09-20T10:00:00Z"
+      />,
+    );
+    await click(button('Edit holiday periods'));
+    type(field('Holiday 1 to') as HTMLInputElement, '10/01/2072');
+    expect(dialog().textContent).toContain(
+      'Period 1 runs for more than a year — check the year of each date.',
+    );
+    expect(button('Save periods', dialog()).disabled).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The candidate screen's Verify of a University Term Dates Letter
- * (ADR-0178): the periods go to verify_document() as p_term_dates, and a
+ * (ADR-0178, with ADR-0183's tick): the periods go to verify_document() as p_term_dates, and a
  * letter verified with none needs the "this letter shows no holidays" tick
  * — the same rule as the Needs review dialog.
  */

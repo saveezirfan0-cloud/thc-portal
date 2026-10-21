@@ -20,7 +20,7 @@ vi.mock('@thc/db/admin', () => ({ createAdminClient }));
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
 
-const { rejectDocument, verifyDocument } = await import('../actions');
+const { rejectDocument, setTermLetterPeriods, verifyDocument } = await import('../actions');
 
 beforeEach(() => {
   rpc.mockReset();
@@ -64,90 +64,6 @@ describe('verifyDocument', () => {
   });
 });
 
-describe('verifyDocument on a term letter (ADR-0178)', () => {
-  it('sends the confirmed holiday periods as p_term_dates, half-open, from/to only', async () => {
-    rpc.mockResolvedValue({ data: { status: 'compliant' }, error: null });
-    const result = await verifyDocument('d3', {
-      termDates: [
-        { from: '2026-08-16', to: '2027-01-17' },
-        { from: '2027-06-12', to: '2027-09-26' },
-      ],
-      noHolidays: false,
-    });
-    expect(rpc).toHaveBeenCalledExactlyOnceWith('compliance_verify_document', {
-      p_doc: 'd3',
-      p_term_dates: ['[2026-08-16,2027-01-18)', '[2027-06-12,2027-09-27)'],
-    });
-    expect(result).toEqual({
-      ok: true,
-      message:
-        'Verified. 2 holiday periods confirmed: 48 hours a week in them, the term-time limit outside them.',
-    });
-  });
-
-  it('sends an empty list when the reviewer ticked that the letter shows no holidays', async () => {
-    rpc.mockResolvedValue({ data: {}, error: null });
-    const result = await verifyDocument('d3', { termDates: [], noHolidays: true });
-    expect(rpc).toHaveBeenCalledExactlyOnceWith('compliance_verify_document', {
-      p_doc: 'd3',
-      p_term_dates: [],
-    });
-    expect(result.ok && result.message).toBe(
-      'Verified. No holidays on the letter: 20 hours a week (10 below degree level) all year.',
-    );
-  });
-
-  it('refuses no periods without the tick, and an incomplete or backwards one, before the database', async () => {
-    expect(await verifyDocument('d3', { termDates: [] })).toEqual({
-      ok: false,
-      message: 'Tick to confirm the letter shows no holidays, or add the periods it shows.',
-    });
-    expect(await verifyDocument('d3', { termDates: [{ from: '2026-08-16', to: '' }] })).toEqual({
-      ok: false,
-      message: 'Period 1 needs both dates.',
-    });
-    expect(
-      await verifyDocument('d3', { termDates: [{ from: '2027-01-17', to: '2026-08-16' }] }),
-    ).toEqual({ ok: false, message: 'Period 1 ends before it starts.' });
-    expect(
-      await verifyDocument('d3', { termDates: [{ from: '2026-08-16', to: '2072-01-17' }] }),
-    ).toEqual({
-      ok: false,
-      message: 'Period 1 runs for more than a year — check the year of each date.',
-    });
-    expect(rpc).not.toHaveBeenCalled();
-  });
-
-  it('puts the database’s refusals of a period in words', async () => {
-    rpc.mockResolvedValue({
-      data: null,
-      error: { message: 'range lower bound must be less than or equal to range upper bound' },
-    });
-    expect(
-      await verifyDocument('d3', { termDates: [{ from: '2026-08-16', to: '2027-01-17' }] }),
-    ).toEqual({ ok: false, message: 'A holiday period ends before it starts — check its dates.' });
-    rpc.mockResolvedValue({
-      data: null,
-      error: {
-        message:
-          'term_dates_implausible: a holiday period on this letter runs for more than a year',
-      },
-    });
-    expect(
-      await verifyDocument('d3', { termDates: [{ from: '2026-08-16', to: '2027-01-17' }] }),
-    ).toEqual({
-      ok: false,
-      message: 'A holiday period cannot run for more than a year — check the year of each date.',
-    });
-  });
-
-  it('leaves p_term_dates out for any other document', async () => {
-    rpc.mockResolvedValue({ data: {}, error: null });
-    await verifyDocument('d1');
-    expect(rpc).toHaveBeenCalledExactlyOnceWith('compliance_verify_document', { p_doc: 'd1' });
-  });
-});
-
 describe('rejectDocument', () => {
   it('refuses an empty reason before reaching the database', async () => {
     const result = await rejectDocument('d1', '   ');
@@ -171,5 +87,95 @@ describe('rejectDocument', () => {
       ok: false,
       message: 'Only the office can review documents.',
     });
+  });
+});
+
+describe('term letter holiday periods (ADR-0178)', () => {
+  it('Verify sends the periods the reviewer confirmed, hand-added ones included, as half-open ranges', async () => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+    await verifyDocument('t1', {
+      termPeriods: [
+        { from: '2026-12-13', to: '2027-01-10' },
+        { from: '2027-03-27', to: '2027-04-25' },
+      ],
+    });
+    expect(rpc).toHaveBeenCalledWith('compliance_verify_document', {
+      p_doc: 't1',
+      p_term_dates: ['[2026-12-13,2027-01-11)', '[2027-03-27,2027-04-26)'],
+    });
+  });
+
+  it('Verify refuses a period with a missing date before reaching the database', async () => {
+    const result = await verifyDocument('t1', { termPeriods: [{ from: '2026-12-13', to: '' }] });
+    expect(result).toEqual({ ok: false, message: 'Period 1 needs both dates.' });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('a verified letter’s periods are replaced through set_term_letter_periods on the session client', async () => {
+    rpc.mockResolvedValue({ data: { expiresOn: '2027-04-25' }, error: null });
+    const result = await setTermLetterPeriods('t2', [{ from: '2027-03-27', to: '2027-04-25' }]);
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('set_term_letter_periods', {
+      p_doc: 't2',
+      p_term_dates: ['[2027-03-27,2027-04-26)'],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.message).toMatch(/expires 25\.04\.2027/);
+  });
+
+  it('ADR-0183: no periods at all needs the no-holidays tick, at Verify and after', async () => {
+    expect(await verifyDocument('t1', { termPeriods: [] })).toEqual({
+      ok: false,
+      message: 'Tick to confirm the letter shows no holidays, or add the periods it shows.',
+    });
+    expect((await setTermLetterPeriods('t2', [])).ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({ data: {}, error: null });
+    await verifyDocument('t1', { termPeriods: [], noHolidays: true });
+    expect(rpc).toHaveBeenLastCalledWith('compliance_verify_document', {
+      p_doc: 't1',
+      p_term_dates: [],
+    });
+    await setTermLetterPeriods('t2', [], true);
+    expect(rpc).toHaveBeenLastCalledWith('set_term_letter_periods', {
+      p_doc: 't2',
+      p_term_dates: [],
+    });
+  });
+
+  it('ADR-0183: a period over a year is refused before the database, and in words after', async () => {
+    expect(await setTermLetterPeriods('t2', [{ from: '2026-08-16', to: '2072-01-17' }])).toEqual({
+      ok: false,
+      message: 'Period 1 runs for more than a year — check the year of each date.',
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({
+      data: null,
+      error: {
+        message:
+          'term_dates_implausible: a holiday period on this letter runs for more than a year',
+      },
+    });
+    expect(
+      (await verifyDocument('t1', { termPeriods: [{ from: '2026-08-16', to: '2027-01-17' }] }))
+        .message,
+    ).toBe('A holiday period cannot run for more than a year — check the year of each date.');
+  });
+
+  it('ADR-0183: says when a correction lifted an expiry block', async () => {
+    rpc.mockResolvedValue({ data: { expiresOn: '2027-01-17', unblocked: true }, error: null });
+    expect(
+      (await setTermLetterPeriods('t2', [{ from: '2026-08-16', to: '2027-01-17' }])).message,
+    ).toMatch(/expires 17\.01\.2027\. The expiry block is lifted/);
+  });
+
+  it('says in words when the periods would leave the letter expired', async () => {
+    rpc.mockResolvedValue({
+      data: null,
+      error: { message: 'term_periods_expire_letter: 2026-10-01' },
+    });
+    const result = await setTermLetterPeriods('t2', [{ from: '2026-09-01', to: '2026-09-30' }]);
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/would leave the letter expired/);
   });
 });

@@ -178,6 +178,12 @@ function buttons(label: string, scope: ParentNode = container): HTMLButtonElemen
   return [...scope.querySelectorAll('button')].filter((b) => b.textContent?.trim() === label);
 }
 
+function tickNamed(text: string): HTMLInputElement {
+  const label = [...dialog().querySelectorAll('label')].find((l) => l.textContent?.includes(text));
+  if (!label) throw new Error(`no tick ${text}`);
+  return label.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+}
+
 function dialog(): HTMLElement {
   const el = container.querySelector<HTMLElement>('[role="dialog"]');
   if (!el) throw new Error('no dialog open');
@@ -265,7 +271,7 @@ describe('the conditions beside a Verify (D32, D36)', () => {
     );
   });
 
-  it('a student’s term letter asks for the course level, beside its holiday periods', async () => {
+  it('a student’s term letter asks for the course level', async () => {
     render({
       profile: { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow,
       documents: [doc({ id: 'd4', doc_type: 'university_term_dates_letter', doc_label: 'Letter' })],
@@ -281,22 +287,21 @@ describe('the conditions beside a Verify (D32, D36)', () => {
       ],
     });
     await click(buttons('Verify')[0]);
-    const box = [...dialog().querySelectorAll<HTMLLabelElement>('label')]
-      .find((label) => label.textContent?.includes('Course is below degree level'))!
-      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    const box = tickNamed('Course is below degree level');
     expect(box.checked).toBe(false);
     await act(async () => {
       box.click();
     });
     await click(buttons('Verify', dialog())[0]);
+    // ADR-0178: the holiday periods ride along, as read.
     expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
       'd4',
-      { termDates: [{ from: '2036-12-19', to: '2037-01-10' }], noHolidays: false },
+      { termPeriods: [{ from: '2036-12-19', to: '2037-01-10' }] },
       { staffId: 's1', belowDegreeLevel: true },
     );
   });
 
-  it('a term letter with no holiday periods needs the tick before Verify (ADR-0178)', async () => {
+  it('a term letter with no holiday periods needs the tick before Verify (ADR-0183)', async () => {
     render({
       profile: { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow,
       documents: [doc({ id: 'd4', doc_type: 'university_term_dates_letter', doc_label: 'Letter' })],
@@ -314,26 +319,23 @@ describe('the conditions beside a Verify (D32, D36)', () => {
     });
     await click(buttons('Verify')[0]);
     const text = dialog().textContent ?? '';
-    expect(text).toContain('No holiday periods — add any the letter shows.');
     expect(text).toContain(
       'Letter expires 31.12.2036 (no dates on the letter — calendar-year fallback)',
     );
+    expect(text).toContain('The worker will need to upload their next letter by then.');
     expect(text).toContain(
       'Verifying removes the holiday dates from their previous letter (13.06.2036–21.09.2036).',
     );
     const verify = buttons('Verify', dialog())[0]!;
     expect(verify.disabled).toBe(true);
-    const tick = [...dialog().querySelectorAll<HTMLLabelElement>('label')]
-      .find((label) => label.textContent?.includes('This letter shows no holidays.'))!
-      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
     await act(async () => {
-      tick.click();
+      tickNamed('This letter shows no holidays.').click();
     });
     expect(verify.disabled).toBe(false);
     await click(verify);
     expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith(
       'd4',
-      { termDates: [], noHolidays: true },
+      { termPeriods: [], noHolidays: true },
       { staffId: 's1', belowDegreeLevel: false },
     );
   });
@@ -373,5 +375,25 @@ describe('the office’s own evidence (D31, D47)', () => {
     expect(buttons('Upload completion letter')).toHaveLength(1);
     render({ profile: { ...PROFILE, rtw_branch: 'work_visa' } as ProfileRow });
     expect(buttons('Upload completion letter')).toHaveLength(0);
+  });
+
+  it('offers "Withdraw approval" on a verified completion letter to a login that may write (ADR-0183)', () => {
+    const letter = doc({
+      id: 'd6',
+      doc_type: 'university_completion_letter',
+      doc_label: 'Completion letter',
+      review_status: 'verified',
+    });
+    const student = { ...PROFILE, rtw_branch: 'international_student' } as ProfileRow;
+    render({ profile: student, documents: [letter], canWithdrawApproval: true });
+    expect(buttons('Withdraw approval')).toHaveLength(1);
+    render({ profile: student, documents: [letter] });
+    expect(buttons('Withdraw approval')).toHaveLength(0);
+    render({
+      profile: student,
+      documents: [{ ...letter, review_status: 'pending' }],
+      canWithdrawApproval: true,
+    });
+    expect(buttons('Withdraw approval')).toHaveLength(0);
   });
 });

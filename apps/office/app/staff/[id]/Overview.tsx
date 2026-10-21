@@ -5,6 +5,7 @@ import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
 import { formatUkStamp, reviewLabel, reviewStamp } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
+import { EditTermPeriods } from '../../_components/TermPeriods';
 import { RtwBranchChange } from './RtwBranchChange';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
@@ -75,6 +76,9 @@ export function Overview({
   payFloorPence,
   showPayRate = false,
   canEditPayRate = false,
+  termLetterId = null,
+  termLetterUploadedAt = null,
+  canEditTermPeriods = false,
 }: {
   profile: ProfileRow;
   references: ReferenceRow[];
@@ -120,6 +124,12 @@ export function Overview({
   showPayRate?: boolean;
   /** Finance and write: owners and managers edit; a viewer only reads. */
   canEditPayRate?: boolean;
+  /** ADR-0178: the worker's verified University Term Dates Letter, if any. */
+  termLetterId?: string | null;
+  /** ADR-0183: its upload instant — the calendar-year fallback expiry counts from it. */
+  termLetterUploadedAt?: string | null;
+  /** ADR-0178: any office login that may write corrects its holiday periods. */
+  canEditTermPeriods?: boolean;
 }) {
   const format = useTimeFormat();
   return (
@@ -395,7 +405,21 @@ export function Overview({
       <Panel
         className="span-2"
         title="Term dates &amp; calculated weekly limit"
-        actions={<Pill>read-only · calculated</Pill>}
+        actions={
+          <>
+            {/* ADR-0178: a vacation the AI missed, added after verification. */}
+            {termLetterId ? (
+              <EditTermPeriods
+                docId={termLetterId}
+                ranges={profile.term_dates}
+                allowed={canEditTermPeriods && !profile.removed}
+                name={profile.display_name}
+                uploadedAt={termLetterUploadedAt ?? new Date().toISOString()}
+              />
+            ) : null}
+            <Pill>read-only · calculated</Pill>
+          </>
+        }
       >
         <div className="row wrap" style={{ gap: 24 }}>
           <div>
@@ -427,7 +451,7 @@ export function Overview({
         </div>
         <Note>
           The cap is calculated live from this evidence, never stored. Correcting a date on the
-          Documents tab changes it from that moment.
+          Documents tab, or the holiday periods here, changes it from that moment.
         </Note>
       </Panel>
     </div>

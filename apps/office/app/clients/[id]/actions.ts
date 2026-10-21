@@ -204,10 +204,16 @@ export async function setLineupEmails(
  */
 export async function setInvoiceDetails(
   clientId: string,
-  details: { accountsContactName: string; invoiceEmails: string[]; billingAddress: string },
+  details: {
+    accountsContactName: string;
+    invoiceEmails: string[];
+    invoiceCcEmails: string[];
+    billingAddress: string;
+  },
 ): Promise<ActionResult> {
   const emails = normaliseInvoiceEmails(details.invoiceEmails ?? []);
-  const invalid = invoiceEmailsProblem(emails);
+  const cc = normaliseInvoiceEmails(details.invoiceCcEmails ?? []);
+  const invalid = invoiceEmailsProblem(emails) ?? invoiceEmailsProblem(cc, 'CC emails');
   if (invalid) return { ok: false, message: invalid };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
@@ -217,6 +223,8 @@ export async function setInvoiceDetails(
     p_contact_name: String(details.accountsContactName ?? '').trim() || null,
     p_emails: emails,
     p_address: String(details.billingAddress ?? '').trim() || null,
+    // An address in both lists goes To; the database drops it from CC.
+    p_cc_emails: cc.filter((email) => !emails.includes(email)),
   });
   if (error) return { ok: false, message: invoiceDetailsProblem(error) };
 

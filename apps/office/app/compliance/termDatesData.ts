@@ -3,7 +3,7 @@ import type { QueueRow } from './types';
 /**
  * The holiday ranges each worker has on file now (staff.term_dates) — what
  * their previous verified term letter set, and what verifying a new one
- * replaces (ADR-0178). Read only for the workers with a term letter waiting
+ * replaces (ADR-0183). Read only for the workers with a term letter waiting
  * on Needs review, so the dialog can say so before the reviewer presses
  * Verify.
  *

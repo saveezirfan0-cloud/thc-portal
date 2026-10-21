@@ -32,10 +32,14 @@ import {
   verifyStep,
 } from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
-import { TermLetterVerifyModal } from './TermLetterVerifyModal';
 import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
+import { HolidayPeriodsEditor, periodsFrom } from '../_components/TermPeriods';
+import { type Period, periodsProblem } from '../onboarding/view-model';
+import { TermLetterOutcome } from './TermLetterOutcome';
+import { termLetterVerifyProblem } from './termDates';
+import { ukDay } from './queue';
 
 /**
  * Verify and Reject on a queue row (§4.1, §10.7) — the ONE path, shared by
@@ -70,16 +74,11 @@ export function useReviewDialogs({
   const [approving, setApproving] = useState<QueueRow | null>(null);
   const [confirming, setConfirming] = useState<QueueRow | null>(null);
   const [checking, setChecking] = useState<QueueRow | null>(null);
-  const [termLetter, setTermLetter] = useState<QueueRow | null>(null);
 
   const verify = (row: QueueRow) => {
     const step = verifyStep(row);
     if (step === 'ni_match') {
       run(row.item_id, () => resolveNiCheck(row.item_id, true));
-      return;
-    }
-    if (step === 'term_dates') {
-      setTermLetter(row);
       return;
     }
     if (step === 'confirm') {
@@ -149,26 +148,11 @@ export function useReviewDialogs({
           row={checking}
           busy={busy(checking.item_id)}
           onClose={() => setChecking(null)}
-          onVerify={(conditions) =>
+          onVerify={(conditions, dates) =>
             run(
               checking.item_id,
-              () => verifyWith(checking, {}, conditions),
+              () => verifyWith(checking, dates, conditions),
               () => setChecking(null),
-            )
-          }
-        />
-      ) : null}
-
-      {termLetter ? (
-        <TermLetterVerifyModal
-          row={termLetter}
-          busy={busy(termLetter.item_id)}
-          onClose={() => setTermLetter(null)}
-          onVerify={(dates, conditions) =>
-            run(
-              termLetter.item_id,
-              () => verifyWith(termLetter, dates, conditions),
-              () => setTermLetter(null),
             )
           }
         />
@@ -266,8 +250,8 @@ function useConditions(row: QueueRow) {
 
 /**
  * A document with no date to confirm but something to check beside it: NI
- * evidence against the NI number, shown in full (D43), or a student's term
- * letter with the course level (D32).
+ * evidence against the NI number, shown in full (D43), or a term letter with
+ * its holiday periods (ADR-0178) and, for a student, the course level (D32).
  */
 function ConfirmVerifyModal({
   row,
@@ -278,11 +262,27 @@ function ConfirmVerifyModal({
   row: QueueRow;
   busy: boolean;
   onClose: () => void;
-  onVerify: (conditions: ConfirmedConditions) => void;
+  onVerify: (conditions: ConfirmedConditions, dates: VerifyDates) => void;
 }) {
   const format = useTimeFormat();
   const conditions = useConditions(row);
   const ni = row.item_type === 'ni_evidence';
+  const termLetter = row.item_type === 'university_term_dates_letter';
+  // What the AI read, as rows; the reviewer adds any vacation it missed.
+  const [periods, setPeriods] = useState<Period[]>(() => periodsFrom(row.term_dates));
+  // ADR-0183: none at all is ticked; a period over a year, or dates that
+  // have already run out, keep Verify shut.
+  const [noHolidays, setNoHolidays] = useState(false);
+  const [today] = useState(() => ukDay(new Date()));
+  const periodsIssue = termLetter
+    ? (periodsProblem(periods) ??
+      termLetterVerifyProblem({
+        periods,
+        noHolidaysConfirmed: noHolidays,
+        uploadedAt: row.submitted_at,
+        today,
+      }))
+    : null;
   return (
     <Modal
       open
@@ -296,8 +296,15 @@ function ConfirmVerifyModal({
           <Button
             tone="green"
             solid
-            disabled={busy || conditions.problem !== null}
-            onClick={() => onVerify(conditions.confirmed)}
+            disabled={busy || conditions.problem !== null || periodsIssue !== null}
+            onClick={() =>
+              onVerify(
+                conditions.confirmed,
+                termLetter
+                  ? { termPeriods: periods, ...(periods.length === 0 ? { noHolidays } : {}) }
+                  : {},
+              )
+            }
           >
             Verify
           </Button>
@@ -322,6 +329,29 @@ function ConfirmVerifyModal({
             niEvidenceLine(null)
           )}
         </Note>
+      ) : null}
+      {termLetter ? (
+        <div className="stack tight">
+          <b className="sm">Holiday periods on the letter</b>
+          <HolidayPeriodsEditor
+            periods={periods}
+            onChange={setPeriods}
+            aiCount={(row.term_dates ?? []).length}
+          />
+          <TermLetterOutcome
+            periods={periods}
+            uploadedAt={row.submitted_at}
+            today={today}
+            noHolidaysConfirmed={noHolidays}
+            onNoHolidaysConfirmed={setNoHolidays}
+            previous={row.staff_term_dates ?? null}
+          />
+          <span className="muted xs">
+            Check them against the letter and add any vacation the AI did not read. The weekly limit
+            is 48 h inside these periods and the term-time limit outside them; the letter expires on
+            the last date of the last period.
+          </span>
+        </div>
       ) : null}
       {conditions.fields}
     </Modal>

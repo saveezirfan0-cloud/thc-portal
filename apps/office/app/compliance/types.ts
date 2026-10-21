@@ -121,7 +121,7 @@ export interface QueueRow {
   /** A gov.uk report already on the share code document (D31). */
   gov_report_path?: string | null;
   /**
-   * ADR-0178: NOT a column of the queue view — merged in from staff by id on
+   * ADR-0183: NOT a column of the queue view — merged in from staff by id on
    * a term letter row: the holiday ranges on file now, from the worker's
    * previous letter, which verifying this one replaces.
    */

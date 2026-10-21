@@ -1,10 +1,11 @@
 -- =====================================================================
 -- Migration 20261022150000 · a term letter's holiday periods are checked
---                            when it is verified (ADR-0178)
+--                            when it is verified (ADR-0183)
 --
--- The office now corrects the holiday periods on a University Term Dates
--- Letter as it verifies it — from Needs review and the /staff/:id
--- Documents tab, as the candidate screen already could. Those periods are
+-- Since ADR-0178 the office types the holiday periods on a University
+-- Term Dates Letter at every Verify and corrects them afterwards
+-- (set_term_letter_periods, which 20261022150300 holds to the same rule).
+-- Those periods are
 -- what the weekly cap is calculated from (RULE-20) and the last of them is
 -- the letter's expiry (ADR-0103), so a typo is not cosmetic: 17/01/2072
 -- for 17/01/2027 would give a student 48 hours a week, and a letter that
@@ -56,7 +57,7 @@ as $$
 $$;
 
 comment on function public.term_letter_periods_problem(daterange[]) is
-  'ADR-0178: why a University Term Dates Letter''s holiday periods cannot be verified — term_dates_invalid (an empty or open-ended period) or term_dates_implausible (a period longer than a year, 366 days inclusive) — or null. Mirrors termPeriodsProblem in apps/office/app/compliance/termDates.ts.';
+  'ADR-0183: why a University Term Dates Letter''s holiday periods cannot be verified — term_dates_invalid (an empty or open-ended period) or term_dates_implausible (a period longer than a year, 366 days inclusive) — or null. Mirrors termPeriodsProblem in apps/office/app/compliance/termDates.ts.';
 
 revoke all on function public.term_letter_periods_problem(daterange[]) from public, anon;
 grant execute on function public.term_letter_periods_problem(daterange[]) to authenticated, service_role;
@@ -75,7 +76,7 @@ begin
   if v_problem = 'term_dates_implausible' then
     raise exception 'term_dates_implausible: a holiday period on this letter runs for more than a year'
       using errcode = '22023',
-            hint = 'No holiday on a University Term Dates Letter is longer than a year — check the year of each date (ADR-0178).';
+            hint = 'No holiday on a University Term Dates Letter is longer than a year — check the year of each date (ADR-0183).';
   elsif v_problem is not null then
     raise exception '%', v_problem using errcode = '22023';
   end if;
@@ -83,7 +84,7 @@ begin
 end $$;
 
 comment on function public.compliance_docs_term_periods_guard() is
-  'ADR-0178: refuses the flip to verified of a University Term Dates Letter carrying a holiday period that is empty, open-ended or longer than a year (term_letter_periods_problem).';
+  'ADR-0183: refuses the flip to verified of a University Term Dates Letter carrying a holiday period that is empty, open-ended or longer than a year (term_letter_periods_problem).';
 
 revoke all on function public.compliance_docs_term_periods_guard() from public, anon, authenticated;
 

@@ -106,8 +106,8 @@ export function ProfileScreen({
   canEditPayrollId = false,
   showPayRate = false,
   canEditPayRate = false,
+  canEditTermPeriods = false,
   canMessage = false,
-  canCorrectLetters = false,
   bare = false,
 }: {
   data: ProfileData;
@@ -116,8 +116,6 @@ export function ProfileScreen({
    * correct the date of birth and decide a date-of-birth change request.
    */
   canCorrectDob?: boolean;
-  /** ADR-0178: owners and managers correct a verified term letter / withdraw a completion approval. */
-  canCorrectLetters?: boolean;
   /** ADR-0079: any office login that may write records a gender. */
   canEditGender?: boolean;
   /** ADR-0159: any office login that may write records the passport country. */
@@ -132,6 +130,8 @@ export function ProfileScreen({
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
   canEditPayRate?: boolean;
+  /** ADR-0178: any office login that may write corrects a verified term letter's holiday periods. */
+  canEditTermPeriods?: boolean;
   /** ADR-0082: Send push — `canMessageWorker()`, any office login that may write. */
   canMessage?: boolean;
   /**
@@ -142,6 +142,14 @@ export function ProfileScreen({
   bare?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
+  // The current verified term letter (ADR-0178, ADR-0183): the newest
+  // verified one — documents arrive newest first.
+  const currentTermLetter = data.documents.find(
+    (d) =>
+      d.doc_type === 'university_term_dates_letter' &&
+      d.review_status === 'verified' &&
+      !d.superseded,
+  );
   const [url, setUrl] = useListQuery(QUERY);
   const tab = oneOf(url.tab, TABS, 'overview');
   const setTab = (next: Tab) => setUrl({ tab: next });
@@ -522,6 +530,9 @@ export function ProfileScreen({
             {...(data.payFloorPence ? { payFloorPence: data.payFloorPence } : {})}
             showPayRate={showPayRate}
             canEditPayRate={canEditPayRate}
+            termLetterId={currentTermLetter?.id ?? null}
+            termLetterUploadedAt={currentTermLetter?.uploaded_at ?? null}
+            canEditTermPeriods={canEditTermPeriods}
           />
         ) : null}
         {tab === 'availability' ? (
@@ -541,7 +552,7 @@ export function ProfileScreen({
             dobClaims={data.dobClaims ?? []}
             reviewQueue={data.reviewQueue}
             reviewQueueProblem={data.reviewQueueProblem}
-            canCorrectLetters={canCorrectLetters}
+            canWithdrawApproval={canEditTermPeriods}
           />
         ) : null}
         {tab === 'qualification' ? (

@@ -6,25 +6,23 @@ import { createClient } from '@thc/db/server';
 import { reviewErrorMessage } from './messages';
 import { supabaseConfigured } from './data';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
-import { termDatesPayload, termDatesPayloadProblem } from './termDates';
-import type { Period } from './termDates';
 import type { ActionResult } from './types';
 
 /**
- * Correcting a letter the office has already decided (ADR-0178): the
- * holiday periods on a worker's current verified University Term Dates
- * Letter, and the approval of an Official University Completion Letter.
+ * Withdrawing a completion letter's approval (ADR-0183) — when the course
+ * turns out not to be over. Correcting a verified term letter's periods is
+ * ADR-0178's setTermLetterPeriods (./actions.ts).
  *
- * Both go through the MANAGER'S OWN SESSION: the database names who did it
- * in the audit row, and refuses anyone who is not an owner or a manager
- * (`assert_letter_editor`). Nothing is decided here beyond refusing what
- * the database would refuse anyway, in the same words.
+ * Through the MANAGER'S OWN SESSION: the database names who did it in the
+ * audit row and refuses anyone who is not the office (assert_reviewer; a
+ * viewer meets office_read_only). Nothing is decided here beyond refusing
+ * what the database would refuse anyway, in the same words.
  */
 
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
-type RpcArguments = Record<string, string | boolean | string[]>;
+type RpcArguments = Record<string, string>;
 interface RpcClient {
   rpc(
     fn: string,
@@ -36,7 +34,7 @@ async function call(fn: string, args: RpcArguments): Promise<{ data: unknown } |
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const session = createClient(await cookies());
   // A read-only login (ADR-0060) is told so before anything is sent; the
-  // database refuses it anyway (office_read_only, assert_letter_editor).
+  // database refuses it anyway (office_read_only, assert_reviewer).
   if (!(await officeMayWrite(session))) {
     return {
       ok: false,
@@ -55,45 +53,6 @@ async function call(fn: string, args: RpcArguments): Promise<{ data: unknown } |
 }
 
 const NOTE_LIMIT = 500;
-
-/** `2027-01-17` → `17.01.2027`. */
-function shown(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const [y, m, d] = iso.slice(0, 10).split('-');
-  return `${d}.${m}.${y}`;
-}
-
-/**
- * "Correct term dates" on the current verified term letter. Same rules as
- * Verify: complete, ordered, real periods; none at all only when ticked.
- */
-export async function correctTermDates(
-  docId: string,
-  periods: readonly Period[],
-  note: string,
-  noHolidays = false,
-): Promise<ActionResult> {
-  const problem = termDatesPayloadProblem(periods, noHolidays);
-  if (problem) return { ok: false, message: problem };
-  if (note.trim() === '') return { ok: false, message: 'Say why the dates are being corrected.' };
-  if (note.trim().length > NOTE_LIMIT) {
-    return { ok: false, message: `Keep the note to ${NOTE_LIMIT} characters.` };
-  }
-  const result = await call('compliance_correct_term_dates', {
-    p_doc: docId,
-    p_term_dates: termDatesPayload(periods),
-    p_note: note.trim(),
-    p_no_holidays: periods.length === 0 && noHolidays,
-  });
-  if ('ok' in result) return result;
-  const data = (result.data ?? {}) as { expiresOn?: string; unblocked?: boolean };
-  return {
-    ok: true,
-    message: `Term dates corrected. The letter now expires ${shown(data.expiresOn)}; the weekly limit and the reminders follow the new dates.${
-      data.unblocked ? ' The expiry block is lifted — everything else is in order.' : ''
-    }`,
-  };
-}
 
 /**
  * "Withdraw approval" on a verified completion letter: the graduation is

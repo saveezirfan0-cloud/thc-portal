@@ -2,13 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   NO_HOLIDAYS_REQUIRED,
   NO_HOLIDAYS_TICK,
-  blankPeriod,
   letterExpiry,
-  periodSource,
-  periodsEdited,
-  periodsFromLetter,
   replacesPreviousLine,
-  termDatesPayload,
   termDatesPayloadProblem,
   termLetterVerifyProblem,
   termPeriodsProblem,
@@ -18,46 +13,13 @@ import type { QueueRow } from '../types';
 
 /**
  * The holiday periods a reviewer confirms on a University Term Dates Letter
- * (ADR-0178): the same rules on the candidate screen, the Needs review
+ * (ADR-0183): the same rules on the candidate screen, the Needs review
  * dialog and the /staff/:id Documents tab.
  */
 
 // The office's example: the course finished 15/08/2026 and restarts
 // 18/01/2027, so the holiday is 16/08/2026–17/01/2027.
 const PRABIN = { from: '2026-08-16', to: '2027-01-17' };
-
-describe('the periods the letter was read as', () => {
-  it('opens on the AI’s ranges, both ends inclusive, each marked as the AI’s', () => {
-    const rows = periodsFromLetter(['[2026-12-19,2027-01-11)', '[2027-06-19,2027-09-27)']);
-    expect(rows.map(({ from, to }) => ({ from, to }))).toEqual([
-      { from: '2026-12-19', to: '2027-01-10' },
-      { from: '2027-06-19', to: '2027-09-26' },
-    ]);
-    expect(rows.map(periodSource)).toEqual(['ai', 'ai']);
-    expect(new Set(rows.map((r) => r.key)).size).toBe(2);
-  });
-
-  it('opens empty when the AI read nothing, and skips what it cannot parse', () => {
-    expect(periodsFromLetter(null)).toEqual([]);
-    expect(periodsFromLetter(['empty', '[2026-12-19,)'])).toEqual([]);
-  });
-
-  it('marks a corrected row as edited by hand, and a new one as added by hand', () => {
-    const [row] = periodsFromLetter(['[2026-12-19,2027-01-11)']);
-    expect(periodSource({ ...row!, to: '2027-01-17' })).toBe('edited');
-    expect(periodSource(blankPeriod())).toBe('hand');
-    expect(periodSource({ ...blankPeriod(), ...PRABIN })).toBe('hand');
-  });
-
-  it('knows when the reviewer changed anything (the dialog asks before discarding)', () => {
-    const ranges = ['[2026-12-19,2027-01-11)'];
-    const rows = periodsFromLetter(ranges);
-    expect(periodsEdited(rows, ranges)).toBe(false);
-    expect(periodsEdited([], ranges)).toBe(true);
-    expect(periodsEdited([...rows, blankPeriod()], ranges)).toBe(true);
-    expect(periodsEdited([{ ...rows[0]!, from: '2026-12-18' }], ranges)).toBe(true);
-  });
-});
 
 describe('what is wrong with the periods', () => {
   it('uses the candidate screen’s words', () => {
@@ -94,16 +56,6 @@ describe('no holidays on the letter', () => {
     expect(termDatesPayloadProblem([], undefined)).toBe(NO_HOLIDAYS_REQUIRED);
     expect(termDatesPayloadProblem([], true)).toBeNull();
     expect(termDatesPayloadProblem([PRABIN], false)).toBeNull();
-  });
-});
-
-describe('the wire form', () => {
-  it('is the half-open daterange verify takes, from/to only', () => {
-    expect(termDatesPayload([PRABIN])).toEqual(['[2026-08-16,2027-01-18)']);
-    expect(termDatesPayload([{ ...blankPeriod(), from: '2026-12-31', to: '2026-12-31' }])).toEqual([
-      '[2026-12-31,2027-01-01)',
-    ]);
-    expect(termDatesPayload([])).toEqual([]);
   });
 });
 
@@ -169,7 +121,7 @@ describe('whether Verify is available', () => {
     expect(
       termLetterVerifyProblem({
         ...base,
-        periods: [PRABIN, blankPeriod()],
+        periods: [PRABIN, { from: '', to: '' }],
         noHolidaysConfirmed: false,
       }),
     ).toBe('Period 2 needs both dates.');

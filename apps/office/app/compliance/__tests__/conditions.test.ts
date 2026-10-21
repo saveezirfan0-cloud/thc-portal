@@ -159,18 +159,20 @@ describe('Needs review: NI evidence and the NI check row (D43)', () => {
 });
 
 describe('what Verify opens, on /compliance and the profile alike', () => {
-  it('opens the holiday periods (and course level) on a term letter, and the NI number beside NI evidence', () => {
+  it('asks for the course level beside a student’s term letter, and the NI number beside NI evidence', () => {
     expect(
       verifyStep(
         row({ item_type: 'university_term_dates_letter', rtw_branch: 'international_student' }),
       ),
-    ).toBe('term_dates');
-    // Whatever the branch: the periods are what the cap and the expiry read (ADR-0178).
-    expect(verifyStep(row({ item_type: 'university_term_dates_letter', rtw_branch: null }))).toBe(
-      'term_dates',
-    );
+    ).toBe('confirm');
     expect(verifyStep(row({ item_type: 'ni_evidence' }))).toBe('confirm');
     expect(verifyStep(row({ item_type: 'passport' }))).toBe('verify');
+  });
+
+  it('opens the holiday periods on every term letter, whatever the route (ADR-0178)', () => {
+    expect(verifyStep(row({ item_type: 'university_term_dates_letter', rtw_branch: null }))).toBe(
+      'confirm',
+    );
   });
 
   it('keeps the date step for right-to-work documents — the condition rides along in it', () => {

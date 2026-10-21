@@ -73,7 +73,7 @@ set local role authenticated;
 -- Clients (create_client, update_client)
 -- =====================================================================
 select create_client('Audit Fixture Client', 'Ann Audit', '+447700900820', 'Front desk',
-                     array['ann@audit.test'], true, true) as new_client \gset
+                     array['ann@audit.test'], true, true, array['accounts@invoice.test']) as new_client \gset
 select update_client(:'new_client', 'Audit Fixture Client', 'Ann Audit', '+447700900820', 'Front desk',
                      array['ann@audit.test'], false, true);
 select update_client(:'new_client', 'Audit Fixture Client', 'Ann Audit', '+447700900820', 'Front desk',

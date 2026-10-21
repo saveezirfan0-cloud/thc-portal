@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 913 · The office confirms or corrects a term letter's holiday periods
---       as it verifies it (ADR-0178, 20261022150000)
+--       as it verifies it (ADR-0178; the year limit is ADR-0183, 20261022150000)
 --
 --   A · Needs review / the Documents tab: Verify with edited periods sets
 --       the letter's and the worker's term_dates, and the letter expires on

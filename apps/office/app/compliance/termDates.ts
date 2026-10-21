@@ -1,63 +1,22 @@
 /**
- * The holiday periods a reviewer confirms when they verify a University Term
- * Dates Letter (ADR-0178) — pure, so the candidate screen, the Needs review
- * dialog and the /staff/:id Documents tab share one set of rules and one set
- * of words, and each is tested without a browser.
+ * The safety rules around a University Term Dates Letter's holiday periods
+ * (ADR-0183, layered on ADR-0178's editor): pure, so the Verify dialog,
+ * "Edit holiday periods" and the candidate screen share one set of rules
+ * and words, and each is tested without a browser.
  *
- * The periods are what the weekly cap is calculated from (RULE-20: 48 h in a
- * holiday week, 20 h — 10 below degree level — in term, the lower cap in a
- * week that straddles), and the last day on them is when the letter expires
- * (ADR-0103). So the reviewer can correct a date the AI read, remove one it
- * invented and add one it missed — and a letter verified with none at all is
- * an explicit, ticked decision, because it caps the worker all year.
- *
- * The wire form is the onboarding screen's: half-open `daterange` literals
- * (`periodToRange`), the same `p_term_dates` verify_document() and
- * compliance_verify_document() take.
+ * The periods are what the weekly cap is calculated from (RULE-20: 48 h in
+ * a holiday week, 20 h — 10 below degree level — in term, the lower cap in
+ * a week that straddles), and the last day on them is when the letter
+ * expires (ADR-0103). So a letter with none at all is an explicit, ticked
+ * decision, a period longer than a year is a typed year, and the expiry is
+ * shown before anything is saved.
  */
 import { isRealIsoDate, termLetterFallbackExpiry, termLetterLastDay } from '@thc/domain';
-import { parsePeriod, periodToRange, periodsProblem } from '../onboarding/view-model';
+import { parsePeriod, periodsProblem } from '../onboarding/view-model';
 import type { Period } from '../onboarding/view-model';
 import { ukDate, ukDay } from './queue';
 
 export type { Period };
-
-/**
- * One row of the editor. `read` is what the AI read for this row, kept so
- * the row can say whether the reviewer changed it; null for a row added by
- * hand. `key` is the React key, stable across edits and removals.
- */
-export interface TermPeriod extends Period {
-  key: string;
-  read: Period | null;
-}
-
-export type PeriodSource = 'ai' | 'edited' | 'hand';
-
-let counter = 0;
-function nextKey(prefix: string): string {
-  counter += 1;
-  return `${prefix}${counter}`;
-}
-
-/** The letter's stored ranges as editor rows, in the order the AI read them. */
-export function periodsFromLetter(ranges: readonly string[] | null | undefined): TermPeriod[] {
-  return (ranges ?? []).flatMap((range) => {
-    const period = parsePeriod(range);
-    return period ? [{ ...period, read: { ...period }, key: nextKey('ai') }] : [];
-  });
-}
-
-/** "+ Add period": an empty row the reviewer types into. */
-export function blankPeriod(): TermPeriod {
-  return { from: '', to: '', read: null, key: nextKey('hand') };
-}
-
-/** Whether a row is the AI's read as it was, the AI's read changed, or added by hand. */
-export function periodSource(period: TermPeriod): PeriodSource {
-  if (!period.read) return 'hand';
-  return period.read.from === period.from && period.read.to === period.to ? 'ai' : 'edited';
-}
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -84,7 +43,7 @@ function inclusiveDays(period: Period): number {
  * words ("Period 2 needs both dates.", "Period 2 ends before it starts."),
  * plus a date that is not on the calendar, which only a hand-built request
  * can carry (the date field never applies one), and a period longer than a
- * year, which the database refuses too (ADR-0178).
+ * year, which the database refuses too (ADR-0183).
  */
 export function termPeriodsProblem(periods: readonly Period[]): string | null {
   for (const [index, period] of periods.entries()) {
@@ -111,7 +70,7 @@ export const NO_HOLIDAYS_TICK =
 /**
  * Said beside the expiry: on that day the letter has expired and, like any
  * expired document, the worker is blocked until a new one is verified
- * (ADR-0103, which the product owner confirmed stands — ADR-0178).
+ * (ADR-0103, which the product owner confirmed stands — ADR-0183).
  */
 export const LETTER_RENEWAL_LINE = 'The worker will need to upload their next letter by then.';
 
@@ -130,11 +89,6 @@ export function termDatesPayloadProblem(
   if (problem) return problem;
   if (periods.length === 0 && !noHolidaysConfirmed) return NO_HOLIDAYS_REQUIRED;
   return null;
-}
-
-/** The wire form: half-open `daterange` literals, from/to only. */
-export function termDatesPayload(periods: readonly Period[]): string[] {
-  return periods.map((period) => periodToRange({ from: period.from, to: period.to }));
 }
 
 /** Only complete, ordered periods count towards the letter's last day. */
@@ -229,14 +183,4 @@ export function termLetterVerifyProblem({
     termDatesPayloadProblem(periods, noHolidaysConfirmed) ??
     letterExpiry(periods, uploadedAt, today).problem
   );
-}
-
-/** Whether the rows differ from what the letter was read as (the dialog's "discard changes?"). */
-export function periodsEdited(
-  periods: readonly TermPeriod[],
-  ranges: readonly string[] | null | undefined,
-): boolean {
-  const read = periodsFromLetter(ranges);
-  if (read.length !== periods.length) return true;
-  return periods.some((period) => periodSource(period) !== 'ai');
 }

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
-import { canCorrectLetters, canMarkInterviewComplete, officeCan } from '../../_lib/permissions';
+import { canMarkInterviewComplete, officeCan } from '../../_lib/permissions';
 import type { OfficeRole } from '../../_lib/permissions';
 import { loadCandidate } from '../data';
 import { loadCandidateHead } from '../head';
@@ -76,8 +76,8 @@ async function Candidate({ id, role }: { id: string; role: OfficeRole | null }) 
       now={new Date().toISOString()}
       canCorrectDob={officeCan(role, 'identity')}
       canMarkInterview={canMarkInterviewComplete(role)}
-      canCorrectLetters={canCorrectLetters(role)}
       canGrantQuizAttempts={officeCan(role, 'write')}
+      canEditTermPeriods={officeCan(role, 'write')}
     />
   );
 }

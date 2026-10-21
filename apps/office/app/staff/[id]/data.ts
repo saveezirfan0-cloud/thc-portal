@@ -275,7 +275,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     dobClaims: rtw.dobClaims,
     // A failed read must not take the whole profile down; the tab says why
     // there are no review buttons instead.
-    // ADR-0178: a term letter's Verify says which holiday dates it replaces.
+    // ADR-0183: a term letter's Verify says which holiday dates it replaces.
     reviewQueue: reviewQueue.error
       ? []
       : withStaffTermDates(reviewQueue.data ?? [], () => profile.data?.term_dates ?? null),

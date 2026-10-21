@@ -34,41 +34,35 @@ const MESSAGES: [RegExp, string][] = [
   [/^completion_date_required/, 'Confirm the course completion date.'],
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
+  // ADR-0183: a period over a year is a typed year (20261022150000/150300);
+  // Postgres refuses a backwards or unreadable daterange before any body runs.
   [
     /^term_dates_implausible/,
     'A holiday period cannot run for more than a year — check the year of each date.',
   ],
-  // ADR-0178: the edited periods reach p_term_dates as daterange literals,
-  // and Postgres refuses a backwards or unreadable one before the body runs.
   [
     /range lower bound must be less than or equal to range upper bound/,
     'A holiday period ends before it starts — check its dates.',
   ],
   [/malformed range literal/, 'A holiday period could not be read — enter both of its dates.'],
   [/date\/time field value out of range/, 'That date is not a real calendar date.'],
-  // Correcting a decided letter (20261022150100).
-  [/^not_permitted/, 'Only an owner or a manager can do this.'],
-  [/^note_required/, 'Say why the dates are being corrected.'],
-  [/^note_too_long/, 'Keep the note to 500 characters.'],
-  [/^term_dates_required/, 'Enter the holiday periods on the letter.'],
-  [
-    /^no_holidays_not_confirmed/,
-    'Tick to confirm the letter shows no holidays, or add the periods it shows.',
-  ],
-  [/^term_dates_unchanged/, 'These are the dates already on file — nothing to correct.'],
-  [
-    /^not_current_letter/,
-    'Only the worker’s current term letter can be corrected; an older one is kept as history.',
-  ],
-  [/^not_a_term_letter/, 'Only a University Term Dates Letter has holiday periods to correct.'],
+  // Withdrawing a completion letter's approval (ADR-0183).
   [/^not_a_completion_letter/, 'Only a completion letter’s approval can be withdrawn.'],
-  [
-    /^letter_not_verified/,
-    'This letter is not verified, so there is nothing to withdraw or correct.',
-  ],
+  [/^letter_not_verified/, 'This letter is not verified, so there is no approval to withdraw.'],
+  [/^note_too_long/, 'Keep the reason to 500 characters.'],
   [
     /^illegal_review_transition/,
     'A verified completion letter can only be withdrawn, not put back under review or rejected.',
+  ],
+  // set_term_letter_periods (ADR-0178): correcting a verified letter's periods.
+  [
+    /^term_letter_not_verified/,
+    'This letter is still waiting for review — confirm its periods with Verify.',
+  ],
+  [/^not_a_term_letter/, 'Only a University Term Dates Letter has holiday periods.'],
+  [
+    /^term_periods_expire_letter/,
+    'Those periods would leave the letter expired: its last date must be after today. Check the dates, or ask the worker for a current letter.',
   ],
   [
     /^rtw_date_required/,

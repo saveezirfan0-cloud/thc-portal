@@ -135,7 +135,7 @@ export function Documents({
   reviewQueue = [],
   reviewQueueProblem = null,
   dobClaims = [],
-  canCorrectLetters = false,
+  canWithdrawApproval = false,
 }: {
   profile: ProfileRow;
   documents: DocumentRow[];
@@ -147,8 +147,8 @@ export function Documents({
   reviewQueueProblem?: string | null;
   /** ADR-0070: dates of birth entered with pending share codes. */
   dobClaims?: DobClaim[];
-  /** ADR-0178: "Correct term dates" / "Withdraw approval" — owners and managers. */
-  canCorrectLetters?: boolean;
+  /** ADR-0183: "Withdraw approval" on a verified completion letter — any login that may write. */
+  canWithdrawApproval?: boolean;
 }) {
   const router = useRouter();
   const format = useTimeFormat();
@@ -303,7 +303,8 @@ export function Documents({
                   <VerifiedLetterActions
                     doc={row}
                     currentTermLetter={currentTermLetter}
-                    canCorrect={canCorrectLetters && !reviewClosed}
+                    canWithdraw={canWithdrawApproval && !reviewClosed}
+                    name={profile.display_name}
                   />
                   {downloads(row)}
                   {!reviewClosed &&

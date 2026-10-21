@@ -243,7 +243,7 @@ export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatu
 }
 
 /**
- * A document's review state (`compliance_docs.review_status`, ADR-0178).
+ * A document's review state (`compliance_docs.review_status`, ADR-0183).
  * The database holds the same edges in `document_review_transition_allowed()`
  * (20261022150100) and refuses any other move of a verified completion
  * letter in `completion_letter_state_guard`; pgTAP 918 holds the edges.
@@ -253,7 +253,7 @@ export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatu
  *   pending → superseded    a newer upload, a reset (§2.12), a graduate's
  *                           term letter no longer needed (ADR-0112)
  *   verified → superseded   a reset, a newer letter — or a completion
- *                           letter's approval withdrawn (ADR-0178), which is
+ *                           letter's approval withdrawn (ADR-0183), which is
  *                           not a rejection: the worker is not told to re-upload
  *   verified → rejected     NI evidence only: the NI number does not match (D43)
  *   rejected → superseded   a reset
@@ -295,7 +295,7 @@ export function assertDocumentReviewTransition(
 }
 
 /**
- * Withdrawing a completion letter's approval (ADR-0178): `verified →
+ * Withdrawing a completion letter's approval (ADR-0183): `verified →
  * superseded`, with a reason, by `compliance_withdraw_completion_approval()`.
  */
 export function withdrawnCompletionStatus(from: DocumentReviewStatus): DocumentReviewStatus {

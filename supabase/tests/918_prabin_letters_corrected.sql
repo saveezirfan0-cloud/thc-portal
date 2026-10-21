@@ -1,24 +1,30 @@
 -- =====================================================================
--- 918 · A staff member's verified letters corrected (ADR-0178,
---       20261022150100) — the case THC asked about, end to end
+-- 918 · A staff member's verified letters corrected (ADR-0183 on
+--       ADR-0178: 20261022150100–150300) — the case THC asked about, end
+--       to end
 --
 -- Prabin is STAFF. His term letter was verified with no dates (the AI
 -- missed them) and his completion letter approved with a completion date
 -- of 15/08/2026 — but the course restarts on 18/01/2027, so it should
 -- never have been approved: graduated_at made his cap 48 h for good.
 --
---   A · who may: an owner or a manager; not a scheduler, a viewer, a
---       worker or a client
+--   A · who may: the office (assert_reviewer); not a viewer
+--       (office_read_only), a worker or a client
 --   B · Withdraw approval: the completion letter is superseded with its
 --       reason, graduated_at and course_completion_date cleared, the
 --       right to work kept, no N8, the unsent CL2 dropped, audited, the
 --       term letter applies again and is the current one; a verified
 --       completion letter leaves `verified` only for `superseded`
---   C · Correct term dates on the current verified term letter:
+--   C · set_term_letter_periods() (ADR-0178) on the verified term letter:
 --       16/08/2026–17/01/2027 → 48 h the week of Monday 11/01/2027, 20 h
 --       from Monday 18/01/2027; the expiry is the last printed day; the
 --       ladder's receipts for the old expiry are cleared; audited
 --   D · N14 the moment the band changes, and never twice
+--   E · the 17/01/2027 expiry stands (ADR-0103): blocked on the day,
+--       rosterable again at 20 h once the next letter is verified
+--   F · one current completion letter; a withdrawal takes them all
+--   G · a correction lifts an expiry block, not a manual one; the same
+--       last day leaves the ladder alone
 --
 -- Verify-style checks run on the real clock, so the corrected ranges are
 -- the office's holiday plus — only once today is within a week of
@@ -26,7 +32,7 @@
 -- running after January. Every row is rolled back.
 -- =====================================================================
 begin;
-select plan(66);
+select plan(62);
 \ir _shared/fixtures.psql
 
 \set prabin    'c9180000-0000-4000-8000-00000000000a'
@@ -37,16 +43,13 @@ select plan(66);
 \set other_cl  'c9181000-0000-4000-8000-00000000000d'
 \set viewer    'c9182000-0000-4000-8000-000000000001'
 \set manager   'c9182000-0000-4000-8000-000000000002'
-\set scheduler 'c9182000-0000-4000-8000-000000000003'
 
 insert into auth.users (id, email) values
   (:'viewer',    'viewer.918@rls.test'),
-  (:'manager',   'manager.918@rls.test'),
-  (:'scheduler', 'scheduler.918@rls.test');
+  (:'manager',   'manager.918@rls.test');
 insert into profiles (id, role, office_role, full_name) values
   (:'viewer',    'admin', 'viewer',    'Vera Viewer'),
-  (:'manager',   'admin', 'manager',   'Mona Manager'),
-  (:'scheduler', 'admin', 'scheduler', 'Sam Scheduler');
+  (:'manager',   'admin', 'manager',   'Mona Manager');
 
 insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, wtr_optout,
                    term_dates, graduated_at, course_completion_date, right_to_work_until) values
@@ -93,7 +96,6 @@ select (case when current_date < date '2027-01-10'
 
 \set viewer_claims    '{"sub":"c9182000-0000-4000-8000-000000000001","role":"authenticated"}'
 \set manager_claims   '{"sub":"c9182000-0000-4000-8000-000000000002","role":"authenticated"}'
-\set scheduler_claims '{"sub":"c9182000-0000-4000-8000-000000000003","role":"authenticated"}'
 
 select is(weekly_cap_band(:'prabin', date '2027-01-18')::text, 'graduated_48',
   'before: the wrongly approved completion letter has him at 48 h for good');
@@ -108,27 +110,23 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
 select throws_like(format('select compliance_withdraw_completion_approval(%L, %L)', :'completion', 'x'),
   '%not_authorised%', 'A: a worker cannot withdraw an approval');
-select throws_like(format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term',
-                          '{"[2026-08-16,2027-01-18)"}', 'x'),
+select throws_like(format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
+                          '{"[2026-08-16,2027-01-18)"}'),
   '%not_authorised%', 'A: nor correct a term letter');
 
 set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
 select throws_like(format('select compliance_withdraw_completion_approval(%L, %L)', :'completion', 'x'),
   '%not_authorised%', 'A: a client cannot withdraw an approval');
-select throws_like(format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term',
-                          '{"[2026-08-16,2027-01-18)"}', 'x'),
+select throws_like(format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
+                          '{"[2026-08-16,2027-01-18)"}'),
   '%not_authorised%', 'A: nor correct a term letter');
 
 set local "request.jwt.claims" = :'viewer_claims';
 select throws_like(format('select compliance_withdraw_completion_approval(%L, %L)', :'completion', 'x'),
-  '%not_permitted%', 'A: a viewer cannot withdraw an approval');
-select throws_like(format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term',
-                          '{"[2026-08-16,2027-01-18)"}', 'x'),
-  '%not_permitted%', 'A: nor correct a term letter');
-
-set local "request.jwt.claims" = :'scheduler_claims';
-select throws_like(format('select compliance_withdraw_completion_approval(%L, %L)', :'completion', 'x'),
-  '%not_permitted%', 'A: a scheduler cannot either — owners and managers only');
+  '%read_only%', 'A: a viewer cannot withdraw an approval');
+select throws_like(format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
+                          '{"[2026-08-16,2027-01-18)"}'),
+  '%read_only%', 'A: nor correct a term letter');
 
 reset role;
 select is((select review_status::text from compliance_docs where id = :'completion'), 'verified',
@@ -148,7 +146,7 @@ select lives_ok(
          'Course resumes 18/01/2027 — not completed'),
   'B: a manager withdraws the approval');
 select throws_like(format('select compliance_withdraw_completion_approval(%L, %L)', :'completion', 'again'),
-  '%not_verified: superseded%', 'B: once — it is no longer an approval');
+  '%letter_not_verified: superseded%', 'B: once — it is no longer an approval');
 reset role;
 
 select results_eq(
@@ -204,26 +202,16 @@ select throws_like(
 -- =====================================================================
 set local role authenticated;
 select throws_like(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term', :'ranges', ' '),
-  '%note_required%', 'C: a correction needs a note');
+  format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
+         array[daterange(current_date + 30, current_date + 30 + 400)]),
+  '%term_dates_implausible%', 'C: a period longer than a year is refused, as on Verify (20261022150300)');
 select throws_like(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term_old', :'ranges', 'x'),
-  '%not_current_letter%', 'C: only the current letter is corrected — last year''s is history');
-select throws_like(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term', '{}', 'none'),
-  '%no_holidays_not_confirmed%', 'C: no holidays at all must be confirmed explicitly');
-select throws_like(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term',
-         array[daterange(current_date + 30, current_date + 30 + 400)], 'typo'),
-  '%term_dates_implausible%', 'C: a period longer than a year is refused, as on Verify');
-select throws_like(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term',
-         array[daterange(current_date - 60, current_date - 30)], 'past'),
-  '%term_letter_expired%', 'C: so are dates that have all run out');
+  format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
+         array[daterange(current_date - 60, current_date - 30)]),
+  '%term_periods_expire_letter%', 'C: so are dates that have all run out');
 select lives_ok(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'term', :'ranges',
-         'Course finished 15/08/2026, restarts 18/01/2027 — holiday missed by the AI'),
-  'C: the manager corrects the term letter''s dates');
+  format('select set_term_letter_periods(%L, %L::daterange[])', :'term', :'ranges'),
+  'C: the manager enters the holiday the AI missed');
 reset role;
 
 select is((select term_dates from compliance_docs where id = :'term'), :'ranges'::daterange[],
@@ -249,12 +237,11 @@ select ok(exists (select 1 from notification_outbox
                    where key like 'N3:doc:' || :'term' || ':until:%' and attempts = 1 and sent_at is null),
   'C: a rung the drain had already claimed is re-keyed, never deleted from under it');
 select results_eq(
-  format($$ select actor, data->>'note', data->'from', data->'to', (data->>'expiresAfter')::date
-              from audit_log where action = 'term_letter.dates_corrected' and entity_id = %L $$, :'term'),
-  format($$ values (%L::uuid, 'Course finished 15/08/2026, restarts 18/01/2027 — holiday missed by the AI',
-                    '[]'::jsonb, to_jsonb(%L::daterange[]::text[]), %L::date) $$,
+  format($$ select actor, data->'before', data->'after', (data->>'expiresOn')::date, (data->>'ladderReset')::int
+              from audit_log where action = 'term_letter.periods_changed' and entity_id = %L $$, :'term'),
+  format($$ values (%L::uuid, '[]'::jsonb, to_jsonb(%L::daterange[]::text[]), %L::date, 3) $$,
          :'manager', :'ranges', :'expires_on'),
-  'C: audited — who, the note, from what, to what, and the new expiry');
+  'C: audited — who, from what, to what, the new expiry, and the three ladder receipts it moved');
 
 -- =====================================================================
 -- D · N14
@@ -400,17 +387,16 @@ values ('N1:doc:' || :'d_same', 'push', 'N1', :'w_same', '{}', now() - interval 
 
 set local role authenticated;
 select lives_ok(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'d_exp',
-         array[daterange(current_date - 60, current_date + 200)], 'The letter runs to the summer'),
+  format('select set_term_letter_periods(%L, %L::daterange[])', :'d_exp',
+         array[daterange(current_date - 60, current_date + 200)]),
   'G: correcting an expired letter''s dates to the ones it really shows');
 select lives_ok(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'d_man',
-         array[daterange(current_date + 12, current_date + 40)], 'Holiday starts two days later'),
+  format('select set_term_letter_periods(%L, %L::daterange[])', :'d_man',
+         array[daterange(current_date + 12, current_date + 40)]),
   'G: correcting a manually blocked worker''s letter');
 select lives_ok(
-  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'d_same',
-         array[daterange(current_date + 12, current_date + 40), daterange(current_date + 100, current_date + 130)],
-         'First holiday starts two days later'),
+  format('select set_term_letter_periods(%L, %L::daterange[])', :'d_same',
+         array[daterange(current_date + 12, current_date + 40), daterange(current_date + 100, current_date + 130)]),
   'G: correcting a period that is not the last one');
 reset role;
 select results_eq(

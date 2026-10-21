@@ -116,7 +116,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
         .filter((row) => row.kind === 'document' && row.item_type === 'share_code_report')
         .map((row) => row.item_id),
     ),
-    // ADR-0178: the holiday dates a pending term letter would replace.
+    // ADR-0183: the holiday dates a pending term letter would replace.
     loadStaffTermDates(supabase, termLetterStaffIds(rows)),
   ]);
 
