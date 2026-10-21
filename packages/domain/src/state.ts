@@ -189,7 +189,7 @@ export class IllegalTransitionError extends Error {
       | 'change_request'
       | 'shift_offer'
       | 'invoice'
-      | 'declaration_review',
+      | 'declaration_review'
       | 'document_review',
     readonly from: string,
     readonly to: string,
