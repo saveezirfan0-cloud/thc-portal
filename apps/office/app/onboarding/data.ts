@@ -246,7 +246,6 @@ const BOARD_COLUMN_LIST = [
   'docs_pending',
   'docs_rejected',
   'last_doc_rejected_at',
-  'docs_missing',
   'declaration_answer',
   'declaration_status',
   'quiz_attempts_used',
@@ -271,15 +270,32 @@ const BOARD_COLUMN_LIST = [
   'payroll_id',
 ] as const satisfies readonly (keyof BoardCandidateRow)[];
 // Fails to compile when a column is added to BoardCandidateRow but not
-// here (photo_url is signed on the server, not read).
+// here (photo_url is signed on the server, not read; docs_missing is read
+// on its own below).
 const BOARD_COLUMNS_COMPLETE: Exclude<
   keyof BoardCandidateRow,
-  (typeof BOARD_COLUMN_LIST)[number] | 'photo_url'
+  (typeof BOARD_COLUMN_LIST)[number] | 'photo_url' | 'docs_missing'
 > extends never
   ? true
   : false = true;
 void BOARD_COLUMNS_COMPLETE;
 const BOARD_COLUMNS = BOARD_COLUMN_LIST.join(', ');
+
+/**
+ * `docs_missing` is onboarding_documents_missing() per row — ~1.8 ms a card
+ * for an office session on the live project, 830 ms of the board's 900 ms
+ * read at 458 cards (22.10.2026). The board draws it on one line only: a
+ * card in the Documents column with nothing uploaded yet, "0 of 3 uploaded
+ * yet" (cardLines, `docs_total === 0`). A card sits in that column when its
+ * status is `documents`, or when it was rejected from `documents`
+ * (rejectedColumn: rejected_from; a rejection older than rejected_from lands
+ * there only with docs_total > 0, when the line is not drawn). So it is read
+ * for exactly those cards, in parallel with the board, and every other
+ * card carries null, which no line reads (view-model.test pins that). The
+ * candidate screen still reads the whole row (`*`) for its one candidate.
+ */
+export const DOCS_COLUMN_FILTER =
+  'status.eq.documents,and(status.eq.rejected,rejected_from.eq.documents)';
 
 export async function loadBoard(): Promise<BoardData> {
   if (!supabaseConfigured()) {
@@ -294,8 +310,8 @@ export async function loadBoard(): Promise<BoardData> {
   // first — would drop the OLDEST candidates without a word. Every card is
   // read, in pages, in a total order (the id breaks ties); a column with
   // hundreds of cards is the board's to fold, never the read's to hide.
-  const [candidates, returning, roles] = await Promise.all([
-    readAllPages<BoardCandidateRow>(
+  const [candidates, docsMissing, returning, roles] = await Promise.all([
+    readAllPages<Omit<BoardCandidateRow, 'docs_missing'>>(
       (range) =>
         supabase
           .from('onboarding_candidates_v')
@@ -304,7 +320,18 @@ export async function loadBoard(): Promise<BoardData> {
           .order('stage_entered_at', { ascending: false })
           .order('id', { ascending: true })
           .range(range.from, range.to)
-          .returns<BoardCandidateRow[]>(),
+          .returns<Omit<BoardCandidateRow, 'docs_missing'>[]>(),
+      { what: 'candidates', key: (row) => row.id, ceiling: BOARD_CEILING },
+    ),
+    readAllPages<Pick<BoardCandidateRow, 'id' | 'docs_missing'>>(
+      (range) =>
+        supabase
+          .from('onboarding_candidates_v')
+          .select('id, docs_missing')
+          .or(DOCS_COLUMN_FILTER)
+          .order('id', { ascending: true })
+          .range(range.from, range.to)
+          .returns<Pick<BoardCandidateRow, 'id' | 'docs_missing'>[]>(),
       { what: 'candidates', key: (row) => row.id, ceiling: BOARD_CEILING },
     ),
     readAllPages<ReturningRow>(
@@ -321,11 +348,16 @@ export async function loadBoard(): Promise<BoardData> {
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
   ]);
 
-  const error = candidates.error ?? returning.error ?? roles.error;
+  const error = candidates.error ?? docsMissing.error ?? returning.error ?? roles.error;
   if (error) return { candidates: [], returning: [], roles: [], problem: readProblem(error) };
+  const missingOf = new Map((docsMissing.data ?? []).map((row) => [row.id, row.docs_missing]));
+  const board: BoardCandidateRow[] = (candidates.data ?? []).map((row) => ({
+    ...row,
+    docs_missing: missingOf.get(row.id) ?? null,
+  }));
   const [referrals, chasers] = await Promise.all([
     loadBoardReferrals(supabase as unknown as ReferralReader, [
-      ...(candidates.data ?? []).map((row) => row.id),
+      ...board.map((row) => row.id),
       ...(returning.data ?? []).map((row) => row.staff_id),
     ]),
     chasersRead,
@@ -333,7 +365,7 @@ export async function loadBoard(): Promise<BoardData> {
   return {
     // §2.7: the onboarding selfie follows them through the whole system —
     // the card too, signed here as on every other office face.
-    candidates: await withPhotoUrls(candidates.data ?? []),
+    candidates: await withPhotoUrls(board),
     returning: returning.data ?? [],
     roles: roles.data ?? [],
     referred: referrals.referred,
@@ -410,7 +442,8 @@ export async function loadCandidateFacts(
   if (!rest.data) return { data: null, error: null };
   return {
     data: {
-      ni_number: typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
+      ni_number:
+        typeof identity.data?.['ni_number'] === 'string' ? identity.data['ni_number'] : null,
       below_degree_level: (rest.data['below_degree_level'] as boolean | null) ?? null,
       visa_weekly_hour_limit: (rest.data['visa_weekly_hour_limit'] as number | null) ?? null,
       languages: (rest.data['languages'] as string[] | null) ?? null,
