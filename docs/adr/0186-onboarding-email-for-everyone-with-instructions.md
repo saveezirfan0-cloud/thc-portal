@@ -29,13 +29,13 @@ The sends that day were delivered without failure (OC1 328, OC2 16, OC4 30). Two
 5. **The reason line follows the candidate.** `pushOn` ('1' beside a push, '0' in place of one; absent on a row queued before this change, which reads as '0') picks `{channelNote}`: "You'll get a reminder in the app as well" or ADR-0169's "We're emailing you because notifications aren't turned on". The third rung carries no note, as before.
 6. **Settings.** OC4 keeps its own switch. While it is off, the drain settles these rows as switched off; the push is unaffected.
 
-Migration `20261023120000` re-creates `onboarding_chasers(timestamptz, text)` from its live body (md5 checked) with three edits: the `also_email` flag, the second insert, and `pushOn` on both OC4 inserts. The result gains `oc4_also`. Signature and grants are unchanged, so no redeploy of the Edge Function is needed.
+Migration `20261023120000` re-creates `onboarding_chasers(timestamptz, text)` from its live body (md5 checked) with three edits: the `also_email` flag, the second insert, and `pushOn` on both OC4 inserts. The result gains `oc4_also`, carried into the job's `job_runs` summary by `runChaserSweep`, so the volume of added mail is visible. Signature and grants are unchanged, so no redeploy of the Edge Function is needed.
 
 ## Consequences
 
 - **More mail.** The 9 candidates today (and anyone who turns notifications on later) now get an email a day as well as the push. ADR-0071's warning about bulk-mail reputation applies.
 - **The first run after deploy** emails each wizard candidate whose next rung is due; it does not catch up days already missed.
-- **The board** shows a pushed rung as pushed. It does not yet say "and emailed" beside it, and the extra email's delivery is visible only in the outbox.
+- **The board** shows a pushed rung as pushed. It does not yet say "and emailed" beside it, and a bounce of the extra email is visible only in the outbox: a follow-up if the owner wants it on the card.
 - pgTAP 900 follows (29 assertions); 394, 805 and 856 pass unchanged. Vitest: `packages/notifications` (`onboarding-howto`, `outbox`, `email-html`).
 
 ## Not done

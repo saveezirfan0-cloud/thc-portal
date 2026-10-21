@@ -7,7 +7,8 @@
  * reminder is due (daily, never stopping), and keeps every send inside the UK
  * daytime window; it queues the OC1 interview emails and the OC3 wizard
  * pushes, or the same reminder by email (OC4, ADR-0169) to a candidate with
- * no device that has notifications on. The OC2 activation reminder carries a freshly minted link, which
+ * no device that has notifications on — and beside the push, with how to do
+ * the step, to one who has (ADR-0186). The OC2 activation reminder carries a freshly minted link, which
  * only GoTrue's admin API can make, so that part is here — in the order
  * `runChaserSweep` (packages/db/src/chasers.ts, held by vitest) fixes.
  *

@@ -433,7 +433,7 @@ describe('onboarding chasers (ADR-0071)', () => {
       );
       expect(msg.kind === 'email' && msg.body, variant).toContain("Here's what to do:");
       expect(msg.kind === 'email' && msg.body, variant).toContain(
-        '1. Open the THC Staff App and sign in with this email address.\n2. Take the quiz in the app. You need 80% to pass and you have 3 attempts.',
+        '1. Open the THC Staff App and sign in with this email address.\n2. Take the quiz in the app. You need 80% to pass, and you get 3 attempts in all.',
       );
     }
     // The first tells them why it is an email, and how to get it in the app.

@@ -55,12 +55,14 @@ describe('runChaserSweep', () => {
   });
 
   it('reports the emails and pushes the database queued', async () => {
-    const t = deps({ oc1: 2, oc3: 5, oc4: 3, activation: [] });
+    const t = deps({ oc1: 2, oc3: 5, oc4: 3, oc4_also: 4, activation: [] });
     expect(await runChaserSweep(t.d)).toEqual({
       oc1: 2,
       oc3: 5,
       // ADR-0169: the app reminders emailed to candidates with notifications off.
       oc4: 3,
+      // ADR-0186: the emails sent beside a push to candidates with notifications on.
+      oc4_also: 4,
       oc2_due: 0,
       oc2_queued: 0,
       oc2_not_due: 0,

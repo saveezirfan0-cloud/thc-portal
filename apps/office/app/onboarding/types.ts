@@ -151,7 +151,7 @@ export interface BoardData {
 /** One row of `onboarding_chaser_state()` (20261001212000, ADR-0071). */
 export interface ChaserState {
   staff_id: string;
-  /** interview → OC1 email, activation → OC2 email, app → OC3 push (or OC4 email, ADR-0169). */
+  /** interview → OC1 email, activation → OC2 email, app → OC3 push (or OC4 email: instead of the push, ADR-0169, or beside it, ADR-0186). */
   track: 'interview' | 'activation' | 'app';
   /** The wizard step waiting on them, in the push's words (app track only). */
   step: string | null;

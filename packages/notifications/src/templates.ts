@@ -1399,7 +1399,7 @@ export const ONBOARDING_STEP_HOWTO: Readonly<Record<string, readonly string[]>> 
   ],
   'your profile selfie': [
     'Take a clear photo of your face against a plain background, with no hat or sunglasses.',
-    'It becomes your photo across the system, so the office and our clients will see it.',
+    'It becomes your photo across the system, so the office and our clients will see it, and it is locked once saved.',
   ],
   'uploading your documents': [
     'Upload a photo or PDF of each document the app lists for you (PDF, JPG, PNG or HEIC, up to 10 MB each).',
@@ -1414,7 +1414,7 @@ export const ONBOARDING_STEP_HOWTO: Readonly<Record<string, readonly string[]>> 
     'The Health & Safety quiz that follows is based on it.',
   ],
   'the Health & Safety quiz': [
-    'Take the quiz in the app. You need 80% to pass and you have 3 attempts.',
+    'Take the quiz in the app. You need 80% to pass, and you get 3 attempts in all.',
     'If you are not sure of an answer, go back over the induction slides first.',
   ],
   'the HMRC New Starter Checklist': [
@@ -1427,11 +1427,12 @@ export const ONBOARDING_STEP_HOWTO: Readonly<Record<string, readonly string[]>> 
   ],
   'your bank & payroll details': [
     'Enter a UK bank account in your own name: the account holder, sort code and account number.',
+    'The app asks for the password you set up, to keep your pay safe. If you have forgotten it, use "Forgot password" on the sign-in screen.',
     'You are paid by bank transfer on the Friday after the week you worked (Monday to Sunday weeks).',
   ],
   'signing your contract': [
     'Read your contract all the way through.',
-    'Tick "I agree" to sign it. Once it is signed you are on our staff and can start picking up shifts.',
+    'Tick "I agree" to sign it. One short "How it works" screen is all that is left after that.',
   ],
 };
 

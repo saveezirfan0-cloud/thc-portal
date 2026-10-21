@@ -37,6 +37,8 @@ export interface ChaserQueueAnswer {
   oc3?: number;
   /** OC3s sent by email instead, to candidates with notifications off (ADR-0169). */
   oc4?: number;
+  /** OC4 emails sent beside the OC3 push to candidates with notifications on (ADR-0186). */
+  oc4_also?: number;
   activation?: ActivationDue[];
 }
 
@@ -60,6 +62,7 @@ export interface ChaserSweepResult {
   oc1: number;
   oc3: number;
   oc4: number;
+  oc4_also: number;
   oc2_due: number;
   oc2_queued: number;
   oc2_not_due: number;
@@ -72,6 +75,7 @@ export async function runChaserSweep(deps: ChaserSweepDeps): Promise<ChaserSweep
     oc1: answer.oc1 ?? 0,
     oc3: answer.oc3 ?? 0,
     oc4: answer.oc4 ?? 0,
+    oc4_also: answer.oc4_also ?? 0,
     oc2_due: 0,
     oc2_queued: 0,
     oc2_not_due: 0,
