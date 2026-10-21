@@ -124,6 +124,79 @@ describe('/checkin (§9.5)', () => {
     expect(html).toContain('<tr class="violation clickable" tabindex="0"');
   });
 
+  describe('ADR-0184 signed out late', () => {
+    const LATE: MonitorRow = {
+      ...ROW,
+      checkOutAt: '2026-09-24T20:15:00Z',
+      lateCheckOut: true,
+      status: 'checked_out',
+    };
+
+    it('keeps the red pill and asks the office to verify, with a Verify button', () => {
+      const html = renderToStaticMarkup(<MonitorScreen rows={[LATE]} violations={[]} />);
+      expect(html).toMatch(/<span class="pill coral"[^>]*>Checked out/);
+      expect(html).toContain('Signed out late — verify with the worker');
+      expect(html).toContain('>Verify<');
+      // Nothing on the screen says the pay stops at the end any more.
+      expect(html).not.toMatch(/scheduled end/i);
+    });
+
+    it('once verified, the pill is neutral and the line says who verified it', () => {
+      const html = renderToStaticMarkup(
+        <MonitorScreen
+          rows={[
+            {
+              ...LATE,
+              lateCheckOutVerifiedAt: '2026-09-25T08:00:00Z',
+              lateCheckOutVerifiedByName: 'Sam S.',
+            },
+          ]}
+          violations={[]}
+        />,
+      );
+      expect(html).toContain('<span class="pill">Checked out 21:15</span>');
+      expect(html).toContain('Signed out late · verified by Sam S.');
+      expect(html).not.toContain('>Verify<');
+    });
+
+    it('lists the fortnight’s late sign-outs still to verify', () => {
+      const html = renderToStaticMarkup(
+        <MonitorScreen
+          rows={[]}
+          violations={[]}
+          lateCheckOuts={[
+            {
+              bookingId: 'b9',
+              staffName: 'Grace L.',
+              photoUrl: null,
+              eventTitle: 'Gala Dinner',
+              venueName: 'The Dorchester',
+              roleName: 'Waiting Staff',
+              startsAt: '2026-09-23T11:00:00Z',
+              endsAt: '2026-09-23T15:00:00Z',
+              checkInAt: '2026-09-23T11:00:00Z',
+              checkOutAt: '2026-09-23T16:15:00Z',
+              finishByOffice: false,
+              minutesPastEnd: 75,
+              verifiedAt: null,
+              verifiedByName: null,
+              note: null,
+            },
+          ]}
+        />,
+      );
+      expect(html).toContain('Signed out late — verify with the worker · last 14 days');
+      expect(html).toContain('Grace L.');
+      expect(html).toContain('1 h 15 min past the end');
+    });
+
+    it('shows no list when there is nothing to verify', () => {
+      expect(renderToStaticMarkup(<MonitorScreen rows={[]} violations={[]} />)).not.toContain(
+        'last 14 days',
+      );
+    });
+  });
+
   describe('§1.8 zones, read from Athens', () => {
     it('shows the Due pill in the viewer’s own zone with no suffix, beside the UK window', () => {
       const html = mounted(

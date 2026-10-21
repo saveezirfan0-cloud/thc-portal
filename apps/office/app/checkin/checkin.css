@@ -111,3 +111,12 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12);
 }
+
+/* ADR-0184: the line under a late sign-out's pill, with its Verify button.
+   Text only — the red stays on the pill (§9.5). */
+.tbl .sub.late-out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-6);
+}

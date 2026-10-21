@@ -128,6 +128,24 @@ describe('invoice words (ADR-0176)', () => {
     expect(invoiceTerms(7)).toBe('Payable Within 7 Days from Date of Invoice');
   });
 
+  it('prints an overrun as its own line: same worker and rate, from the end to the finish (ADR-0184)', () => {
+    const overrun: InvoiceLineData = {
+      ...line('2026-10-17', 'EYAD ABOU KUFA', '22:00', '23:15', 0, 1.25),
+      kind: 'overrun',
+    };
+    expect(invoiceRows([overrun])[0]).toEqual([
+      '17/10/2026',
+      'EYAD ABOU KUFA',
+      'Overrun – Food Waiting Staff',
+      '22:00',
+      '23:15',
+      '—',
+      '1.25',
+      '£18.98',
+      '£23.73',
+    ]);
+  });
+
   it('names the file after the number, the client and the PO', () => {
     expect(invoiceFileName(EXAMPLE)).toBe(
       'Invoice 4000 – Mandarin Oriental Hyde Park – PO 714981.pdf',

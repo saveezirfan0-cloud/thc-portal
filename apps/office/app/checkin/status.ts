@@ -35,11 +35,43 @@ export function statusLabel(
 export type PillTone = 'green' | 'amber' | 'coral' | 'neutral';
 
 /**
- * §9.5's colours. A checked-out row is neutral unless the recorded finish
- * was more than 15 minutes late, which turns it red for the manager to
- * verify — RULE-01 still caps the pay at the scheduled end either way.
+ * ADR-0184. A recorded finish more than 15 minutes past the section's end is
+ * a late sign-out: paid and charged to that finish, the time past the end
+ * its own line on the client's invoice, and flagged for the office to
+ * verify with the worker. Until somebody has, the row needs attention.
+ * Nothing about pay or invoicing waits for it.
  */
-export function statusTone(row: Pick<MonitorRow, 'status' | 'lateCheckOut'>): PillTone {
+export function lateCheckOutToVerify(
+  row: Pick<MonitorRow, 'status' | 'lateCheckOut' | 'lateCheckOutVerifiedAt'>,
+): boolean {
+  return row.status === 'checked_out' && row.lateCheckOut && !row.lateCheckOutVerifiedAt;
+}
+
+/** The words under the red pill (ADR-0184). */
+export const LATE_CHECK_OUT_LABEL = 'Signed out late — verify with the worker';
+
+/** Whole minutes from the scheduled end to the recorded finish. */
+export function minutesPastEnd(endsAt: string, checkOutAt: string): number {
+  return Math.round((new Date(checkOutAt).getTime() - new Date(endsAt).getTime()) / 60_000);
+}
+
+/** "1 h 15 min past the end", "45 min past the end". */
+export function pastEndText(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${[h ? `${h} h` : '', m ? `${m} min` : ''].filter(Boolean).join(' ') || '0 min'} past the end`;
+}
+
+/**
+ * §9.5's colours. A checked-out row is neutral unless the recorded finish
+ * was more than 15 minutes late, which turns it red until the office has
+ * verified it with the worker. The shift is paid and charged to that
+ * finish either way (ADR-0184); the red is for the conversation, not the
+ * money.
+ */
+export function statusTone(
+  row: Pick<MonitorRow, 'status' | 'lateCheckOut' | 'lateCheckOutVerifiedAt'>,
+): PillTone {
   switch (row.status) {
     case 'on_shift':
       return 'green';
@@ -51,7 +83,7 @@ export function statusTone(row: Pick<MonitorRow, 'status' | 'lateCheckOut'>): Pi
     case 'not_checked_in':
       return 'coral';
     case 'checked_out':
-      return row.lateCheckOut ? 'coral' : 'neutral';
+      return lateCheckOutToVerify(row) ? 'coral' : 'neutral';
   }
 }
 
@@ -61,7 +93,7 @@ export function needsAttention(row: MonitorRow): boolean {
     row.status === 'not_checked_in' ||
     row.status === 'no_check_out' ||
     row.status === 'off_site' ||
-    (row.status === 'checked_out' && row.lateCheckOut)
+    lateCheckOutToVerify(row)
   );
 }
 

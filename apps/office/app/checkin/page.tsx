@@ -25,7 +25,8 @@ export default async function Page({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const log = parseLogQuery(await searchParams);
-  const { rows, violations, unresolvedCount, hasMore, problem } = await loadMonitor(log);
+  const { rows, violations, unresolvedCount, hasMore, lateCheckOuts, problem } =
+    await loadMonitor(log);
 
   return (
     <OfficeShell
@@ -40,7 +41,13 @@ export default async function Page({
       }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
-      <MonitorScreen rows={rows} violations={violations} log={log} hasMore={hasMore} />
+      <MonitorScreen
+        rows={rows}
+        violations={violations}
+        log={log}
+        hasMore={hasMore}
+        lateCheckOuts={lateCheckOuts}
+      />
     </OfficeShell>
   );
 }

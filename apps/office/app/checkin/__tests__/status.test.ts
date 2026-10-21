@@ -7,7 +7,10 @@ import {
   missingWorkers,
   needsActualFinish,
   needsAttention,
+  pastEndText,
   reclassifiesToLate,
+  lateCheckOutToVerify,
+  minutesPastEnd,
   statusTone,
 } from '../status';
 import type { MonitorRow, MonitorStatus } from '../types';
@@ -147,5 +150,33 @@ describe("the check-in stamp's second line (checkin.html)", () => {
 
   it('is nothing without a check-in', () => {
     expect(at(null)).toBeNull();
+  });
+});
+
+describe('ADR-0184 signed out late', () => {
+  const late = row({
+    status: 'checked_out',
+    lateCheckOut: true,
+    checkOutAt: '2026-06-14T23:45:00Z',
+  });
+
+  it('is red and needs attention until the office verifies it with the worker', () => {
+    expect(lateCheckOutToVerify(late)).toBe(true);
+    expect(statusTone(late)).toBe('coral');
+    expect(needsAttention(late)).toBe(true);
+  });
+
+  it('goes back to neutral once verified, and leaves the attention filter', () => {
+    const verified = { ...late, lateCheckOutVerifiedAt: '2026-06-15T09:00:00Z' };
+    expect(lateCheckOutToVerify(verified)).toBe(false);
+    expect(statusTone(verified)).toBe('neutral');
+    expect(needsAttention(verified)).toBe(false);
+  });
+
+  it('says how far past the end the sign-out was', () => {
+    expect(minutesPastEnd(late.endsAt, late.checkOutAt!)).toBe(75);
+    expect(pastEndText(75)).toBe('1 h 15 min past the end');
+    expect(pastEndText(45)).toBe('45 min past the end');
+    expect(pastEndText(120)).toBe('2 h past the end');
   });
 });

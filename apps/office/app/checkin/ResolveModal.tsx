@@ -29,8 +29,9 @@ import type { ViolationRow } from './types';
  * The finish time is validated on the SERVER (`resolve_violation`), and the
  * dialog stays open with whatever it refused — before the check-in, or in
  * the future. There is deliberately no upper bound against the scheduled
- * end: a worker may genuinely have finished later, and RULE-01 caps the
- * payable amount there regardless.
+ * end: a worker may genuinely have finished later, and a finish more than
+ * 15 minutes past the end is paid and charged to it, the time past the end
+ * on its own invoice line, like any late sign-out (ADR-0184).
  *
  * Two zones on one window (§1.8). Detected, Checked in and Checked out are
  * ACTUAL stamps, so they show the manager's own zone only — "your time",
@@ -203,7 +204,7 @@ export function ResolveModal({
                 onPartialChange={setFinishPartial}
                 hint={
                   wantsFinish
-                    ? 'Becomes the shift’s check-out, and pay is worked out from it. The four-hour floor applies again once this is resolved.'
+                    ? 'Becomes the shift’s check-out, and pay is worked out from it — more than 15 minutes past the end, paid and charged to this time. The four-hour floor applies again once this is resolved.'
                     : 'Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later.'
                 }
               />

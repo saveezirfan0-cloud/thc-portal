@@ -12,7 +12,12 @@ interface Recorded {
 }
 
 const recorded: Recorded[] = [];
-const rowsFor = vi.hoisted(() => ({ violations: [] as unknown[], monitor: [] as unknown[] }));
+const rowsFor = vi.hoisted(() => ({
+  violations: [] as unknown[],
+  monitor: [] as unknown[],
+  late: [] as unknown[],
+  rpc: [] as unknown[][],
+}));
 
 function builder(table: string) {
   const rec: Recorded = { table, calls: [] };
@@ -35,7 +40,15 @@ function builder(table: string) {
 }
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
-vi.mock('@thc/db/server', () => ({ createClient: () => ({ from: (t: string) => builder(t) }) }));
+vi.mock('@thc/db/server', () => ({
+  createClient: () => ({
+    from: (t: string) => builder(t),
+    rpc: (fn: string, args: unknown) => {
+      rowsFor.rpc.push([fn, args]);
+      return Promise.resolve({ data: rowsFor.late, error: null });
+    },
+  }),
+}));
 vi.mock('../../_lib/photos', () => ({ signStaffPhotos: async () => new Map() }));
 
 const { loadMonitor } = await import('../data');
@@ -54,6 +67,8 @@ beforeEach(() => {
   recorded.length = 0;
   rowsFor.violations = [];
   rowsFor.monitor = [];
+  rowsFor.late = [];
+  rowsFor.rpc = [];
   process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://supabase.test';
   process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = 'anon';
 });
@@ -132,5 +147,62 @@ describe('the monitor read carries the location flag (20261012121200)', () => {
     rowsFor.monitor = [monitorRow({})];
     const data = await loadMonitor();
     expect(data.rows[0]?.locationSuspect).toBe(false);
+  });
+});
+
+describe('the late sign-outs to verify (ADR-0184)', () => {
+  it('asks for the last fortnight, unverified only, and reads each row', async () => {
+    rowsFor.late = [
+      {
+        booking_id: 'b9',
+        staff_name: 'Grace L.',
+        photo_path: null,
+        event_title: 'Gala Dinner',
+        venue_name: 'The Dorchester',
+        role_name: 'Waiting Staff',
+        starts_at: '2026-10-20T11:00:00Z',
+        ends_at: '2026-10-20T15:00:00Z',
+        check_in_at: '2026-10-20T11:00:00Z',
+        check_out_at: '2026-10-20T16:15:00Z',
+        finish_by_office: false,
+        minutes_past_end: 75,
+        verified_at: null,
+        verified_by_name: null,
+        note: null,
+      },
+    ];
+    const data = await loadMonitor();
+    expect(rowsFor.rpc).toEqual([['late_check_outs', { p_days: 14, p_include_verified: false }]]);
+    expect(data.lateCheckOuts).toEqual([
+      expect.objectContaining({
+        bookingId: 'b9',
+        staffName: 'Grace L.',
+        photoUrl: null,
+        checkOutAt: '2026-10-20T16:15:00Z',
+        minutesPastEnd: 75,
+        finishByOffice: false,
+        verifiedAt: null,
+      }),
+    ]);
+  });
+
+  it('reads the verification off the monitor row', async () => {
+    rowsFor.monitor = [
+      {
+        booking_id: 'b1',
+        status: 'checked_out',
+        late_check_out: true,
+        late_check_out_verified_at: '2026-10-21T09:00:00Z',
+        late_check_out_verified_by_name: 'Sam S.',
+        late_check_out_note: 'Client asked them to stay',
+      },
+    ];
+    const data = await loadMonitor();
+    expect(data.rows[0]).toMatchObject({
+      lateCheckOut: true,
+      lateCheckOutVerifiedAt: '2026-10-21T09:00:00Z',
+      lateCheckOutVerifiedByName: 'Sam S.',
+      lateCheckOutNote: 'Client asked them to stay',
+    });
   });
 });

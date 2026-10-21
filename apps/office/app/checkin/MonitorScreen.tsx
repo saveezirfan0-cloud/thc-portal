@@ -20,9 +20,16 @@ import { type LogQuery, logQueryHref, logTime } from './log';
 import { MonitorTable } from './MonitorTable';
 import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
-import { VIOLATION_LABEL, missingWorkers, needsAttention } from './status';
+import { VerifyLateModal } from './VerifyLateModal';
+import {
+  LATE_CHECK_OUT_LABEL,
+  VIOLATION_LABEL,
+  missingWorkers,
+  needsAttention,
+  pastEndText,
+} from './status';
 import { violationRowProps } from './violationRow';
-import type { MonitorRow, ViolationRow } from './types';
+import type { LateCheckOutRow, LateCheckOutTarget, MonitorRow, ViolationRow } from './types';
 
 /**
  * /checkin — the §9.5 live monitor.
@@ -39,17 +46,25 @@ export function MonitorScreen({
   violations,
   log = { showResolved: false, page: 1 },
   hasMore = false,
+  lateCheckOuts = [],
 }: {
   rows: MonitorRow[];
   /** One page of the log, already filtered by the query (audit D50). */
   violations: ViolationRow[];
   log?: LogQuery;
   hasMore?: boolean;
+  /**
+   * ADR-0184: late sign-outs of the last fortnight still to verify with
+   * the worker — the board shows only today's, and a late night's is
+   * usually followed up the next day.
+   */
+  lateCheckOuts?: LateCheckOutRow[];
 }) {
   const router = useRouter();
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [eventFilter, setEventFilter] = useState('all');
   const [open, setOpen] = useState<ViolationRow | null>(null);
+  const [verifying, setVerifying] = useState<LateCheckOutTarget | null>(null);
   const showResolved = log.showResolved;
 
   useEffect(() => {
@@ -129,8 +144,26 @@ export function MonitorScreen({
           </div>
         }
       >
-        <MonitorTable rows={visible} />
+        <MonitorTable
+          rows={visible}
+          onVerify={(row) =>
+            row.checkOutAt
+              ? setVerifying({
+                  bookingId: row.bookingId,
+                  staffName: row.staffName,
+                  eventTitle: row.eventTitle,
+                  roleName: row.roleName,
+                  endsAt: row.endsAt,
+                  checkOutAt: row.checkOutAt,
+                })
+              : undefined
+          }
+        />
       </Panel>
+
+      {lateCheckOuts.length > 0 ? (
+        <LateCheckOutPanel rows={lateCheckOuts} onVerify={setVerifying} />
+      ) : null}
 
       <Panel
         title="Violation log"
@@ -224,7 +257,73 @@ export function MonitorScreen({
       </Panel>
 
       {open ? <ResolveModal violation={open} onClose={() => setOpen(null)} /> : null}
+      {verifying ? <VerifyLateModal target={verifying} onClose={() => setVerifying(null)} /> : null}
     </div>
+  );
+}
+
+/**
+ * ADR-0184 · "Signed out late" — every sign-out more than 15 minutes past
+ * its section's end in the last fortnight that nobody has verified with
+ * the worker yet, newest first. It holds nothing (pay, payroll and the
+ * invoice already run to the sign-out); it is the office's to-do list for
+ * the conversation THC asked for. Coral stays on the pill: the rows here
+ * carry text only.
+ */
+function LateCheckOutPanel({
+  rows,
+  onVerify,
+}: {
+  rows: LateCheckOutRow[];
+  onVerify: (target: LateCheckOutTarget) => void;
+}) {
+  const zone = useViewerZone();
+  const format = useTimeFormat();
+  return (
+    <Panel title={`${LATE_CHECK_OUT_LABEL} · last 14 days`} flush>
+      <TableScroll label="Signed out late" minWidth="40rem">
+        <table className="tbl card-rows">
+          <thead>
+            <tr>
+              <th className="col-l">Staff</th>
+              <th>Event</th>
+              <th className="col-m">Signed out</th>
+              <th className="cell-actions" aria-label="Verify" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.bookingId}>
+                <td className="cell-title">
+                  <div className="person">
+                    <Avatar name={r.staffName} src={r.photoUrl ?? undefined} size="sm" />
+                    <div className="n">{r.staffName}</div>
+                  </div>
+                </td>
+                <td data-label="Event">
+                  {r.eventTitle}
+                  <span className="sub">
+                    {r.venueName} · {r.roleName}
+                  </span>
+                </td>
+                <td data-label="Signed out" className="mono sm">
+                  {formatDateTimeIn(new Date(r.checkOutAt), zone, format)}
+                  <span className="sub">
+                    {pastEndText(r.minutesPastEnd)}
+                    {r.finishByOffice ? ' · finish entered by the office' : ''}
+                  </span>
+                </td>
+                <td className="right-align cell-actions">
+                  <Button size="sm" onClick={() => onVerify(r)}>
+                    Verify
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScroll>
+    </Panel>
   );
 }
 

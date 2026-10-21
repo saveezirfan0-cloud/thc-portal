@@ -54,6 +54,19 @@ describe('§5.1 the check-out confirmation', () => {
     expect(e.payableMin).toBe(370);
   });
 
+  it('pays a sign-out up to 15 minutes late to the scheduled end', () => {
+    const e = shiftEarnings({ ...base, checkOutAt: '2026-06-14T22:45:00Z' })!;
+    expect(e.payableMin).toBe(390);
+    expect(e.overrunMin).toBe(0);
+  });
+
+  it('pays a sign-out more than 15 minutes late to the sign-out (ADR-0184)', () => {
+    const e = shiftEarnings({ ...base, checkOutAt: '2026-06-14T23:45:00Z' })!;
+    expect(e.payableMin).toBe(390 + 75);
+    expect(e.overrunMin).toBe(75);
+    expect(formatMoney(e.totalPence)).toBe('£108.50');
+  });
+
   it('holds no holiday figure at all — the worker sees the base rate only (§9.8)', () => {
     const e = shiftEarnings(base)!;
     expect(e).not.toHaveProperty('holidayPence');
@@ -135,13 +148,25 @@ describe('breaks outside the paid window (§5.2b, audit D49)', () => {
     expect(shiftEarnings(shift)!.payableMin).toBe(380);
   });
 
-  it('a break after the scheduled end is not deducted either', () => {
+  it('a break after the scheduled end is not deducted inside the 15-minute grace', () => {
+    const shift = {
+      ...base,
+      checkOutAt: '2026-06-14T22:44:00Z',
+      breaks: [{ id: '1', startedAt: '2026-06-14T22:35:00Z', endedAt: '2026-06-14T22:42:00Z' }],
+    };
+    expect(paidBreakMinutes(shift)).toBe(0);
+  });
+
+  it('a break during a paid overrun is deducted, from the shift, not the overrun (ADR-0184)', () => {
     const shift = {
       ...base,
       checkOutAt: '2026-06-14T23:00:00Z',
       breaks: [{ id: '1', startedAt: '2026-06-14T22:35:00Z', endedAt: '2026-06-14T22:50:00Z' }],
     };
-    expect(paidBreakMinutes(shift)).toBe(0);
+    expect(paidBreakMinutes(shift)).toBe(15);
+    const e = shiftEarnings(shift)!;
+    expect(e.payableMin).toBe(390 + 30 - 15);
+    expect(e.overrunMin).toBe(30);
   });
 
   it('the live timer still pauses for every break, clipped or not', () => {
