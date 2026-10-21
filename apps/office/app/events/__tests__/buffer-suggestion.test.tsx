@@ -41,6 +41,7 @@ const DRAFT: EventDraft = {
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  securityCleared: false,
   duplicateOf: null,
   roles: [],
 };
@@ -58,6 +59,7 @@ const saved = (buffer: number, headcount = 12, start = '17:00'): SavedEvent => (
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  securityCleared: false,
   cancelledAt: null,
   seriesDays: [],
   sections: [

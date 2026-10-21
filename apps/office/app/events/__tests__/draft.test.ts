@@ -59,6 +59,7 @@ function event(over: Partial<EventDraft> = {}): EventDraft {
     notes: '',
     autoAssign: true,
     requiredLanguages: ['English'],
+    securityCleared: false,
     duplicateOf: null,
     roles: [role()],
     ...over,
@@ -313,6 +314,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
     notes: 'Service lift at the rear',
     autoAssign: false,
     requiredLanguages: ['English', 'Spanish'],
+    securityCleared: false,
     cancelledAt: null,
     seriesDays: [],
     sections: [
@@ -385,6 +387,17 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
       const draft = draftFromSaved(saved, dressCodes, as);
       expect(draft.requiredLanguages).toEqual(['English', 'Spanish']);
       expect(draft.requiredLanguages).not.toBe(saved.requiredLanguages);
+    }
+  });
+
+  // ADR-0184: Security cleared is the client's ask for the event, so a
+  // duplicate keeps it, and an event saved without it reopens unticked.
+  it('edit and duplicate both keep Security cleared', () => {
+    for (const as of ['edit', 'duplicate'] as const) {
+      expect(
+        draftFromSaved({ ...saved, securityCleared: true }, dressCodes, as).securityCleared,
+      ).toBe(true);
+      expect(draftFromSaved(saved, dressCodes, as).securityCleared).toBe(false);
     }
   });
 

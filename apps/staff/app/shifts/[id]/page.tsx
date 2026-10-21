@@ -3,7 +3,14 @@ import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { StaffShell } from '../../_components/StaffShell';
-import { loadBookings, loadShiftRequirements, openInvites, shiftsBadge } from '../../data';
+import {
+  loadBookings,
+  loadSecurityClearedBookings,
+  loadShiftRequirements,
+  openInvites,
+  shiftsBadge,
+} from '../../data';
+import { SecurityCleared } from '../../_components/SecurityCleared';
 import { ShiftRequirements } from '../../_components/ShiftRequirements';
 import { readProfile } from '../../profile/data';
 import { loadShift, supabaseConfigured } from './data';
@@ -58,6 +65,7 @@ export default async function Page({
     me,
     { rows: offers, problem: offerProblem },
     { rows: requirements },
+    { rows: securityCleared },
   ] = await Promise.all([
     loadShift(id),
     loadBookings(),
@@ -65,6 +73,8 @@ export default async function Page({
     loadBookingOffers(),
     // ADR-0110: the client's quiz and kit message for this shift.
     loadShiftRequirements(),
+    // ADR-0184: "bring your passport or driving licence" on a security-cleared event.
+    loadSecurityClearedBookings(),
   ]);
   const requirement = requirements.find((row) => row.bookingId === id) ?? null;
 
@@ -92,6 +102,7 @@ export default async function Page({
         ? {}
         : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
+      {shift.status === 'confirmed' && securityCleared.includes(id) ? <SecurityCleared /> : null}
       {requirement && shift.status === 'confirmed' ? (
         <ShiftRequirements requirement={requirement} />
       ) : null}

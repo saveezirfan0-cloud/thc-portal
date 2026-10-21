@@ -2833,6 +2833,7 @@ export type Database = {
           pays_buffer: boolean;
           po_number: string | null;
           required_languages: string[];
+          security_cleared: boolean;
           series_id: string | null;
           title: string;
           venue_address: string;
@@ -2862,6 +2863,7 @@ export type Database = {
           pays_buffer: boolean;
           po_number?: string | null;
           required_languages?: string[];
+          security_cleared?: boolean;
           series_id?: string | null;
           title: string;
           venue_address: string;
@@ -2889,6 +2891,7 @@ export type Database = {
           pays_buffer?: boolean;
           po_number?: string | null;
           required_languages?: string[];
+          security_cleared?: boolean;
           series_id?: string | null;
           title?: string;
           venue_address?: string;
@@ -14618,6 +14621,7 @@ export type Database = {
         Returns: Json;
       };
       staff_save_languages: { Args: { p_languages: string[] }; Returns: Json };
+      staff_security_cleared_bookings: { Args: Record<PropertyKey, never>; Returns: string[] };
       staff_set_ni_number: { Args: { p_ni: string }; Returns: Json };
       staff_set_photo: { Args: { p_path: string }; Returns: Json };
       staff_shift_detail: {

@@ -907,6 +907,26 @@ export const TEMPLATES = {
     timing: 'on the failed last attempt, once',
   },
 
+  // ────────────────────────────────────────────────────────────────────────
+  // SECURITY-CLEARED EVENTS (ADR-0184, product owner 21.10.2026) — an event
+  // whose Shift Builder box "Security cleared" is ticked needs each worker
+  // to bring a passport or driving licence. SC1 tells them the moment they
+  // are confirmed (and, if the box is ticked later, the moment it is, for
+  // the people already confirmed). `SC` code, as `CR` and `DR` are, so it
+  // cannot collide with an N- or E-number THC assigns to §8 later. Key
+  // `SC1:booking:<id>`: once per booking, however often the box is ticked.
+  // ────────────────────────────────────────────────────────────────────────
+  SC1: {
+    code: 'SC1',
+    channel: 'push',
+    title: 'Bring ID to your shift',
+    body: '{event} · {dateTime} is a security-cleared event. Please bring your passport or driving licence with you.',
+    trigger:
+      'A booking is confirmed on an event marked Security cleared, or the box is ticked on an event that already has confirmed staff (bookings_security_cleared_notice, events_security_cleared_notice). Not in §8: ADR-0184',
+    timing: 'the moment the booking is confirmed; once per booking',
+    deepLink: '/shifts/{bookingId}',
+  },
+
   OM1: {
     code: 'OM1',
     channel: 'push',
@@ -1263,6 +1283,13 @@ export const CLIENT_REQUIREMENT_CODES = [
   'CR2',
   'CR3',
 ] as const satisfies readonly TemplateCode[];
+
+/**
+ * Security-cleared event codes (ADR-0184): SC1, a worker confirmed on an
+ * event marked Security cleared is told to bring a passport or driving
+ * licence. Not §8's.
+ */
+export const SECURITY_CLEARANCE_CODES = ['SC1'] as const satisfies readonly TemplateCode[];
 
 /**
  * Office messages: a push whose body the manager writes — OM1 to an event's

@@ -138,6 +138,7 @@ function edit(end = '23:30') {
     notes: '',
     autoAssign: true,
     requiredLanguages: ['English'],
+    securityCleared: false,
     roles: SECTIONS.map((s) => ({
       id: s.id,
       roleId: 'role-1',

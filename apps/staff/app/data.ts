@@ -228,6 +228,22 @@ export function toShiftRequirements(data: unknown): ShiftRequirementRow[] {
   }));
 }
 
+/**
+ * ADR-0184: the caller's confirmed bookings on a security-cleared event, from
+ * `staff_security_cleared_bookings()` — the shift screen's "bring your
+ * passport or driving licence" note. A failed read is not shown to the
+ * worker: the note is a reminder of what the SC1 push already said, and a
+ * shift screen that would not open for want of it would cost a No-show.
+ */
+export const loadSecurityClearedBookings = cache(async (): Promise<Loaded<string>> => {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
+  const supabase = staffDb(await cookies());
+  const { data, error } = await supabase.rpc('staff_security_cleared_bookings');
+  if (error)
+    return { rows: [], problem: error.message || 'staff_security_cleared_bookings failed' };
+  return { rows: ((data ?? []) as string[]).filter((id) => typeof id === 'string'), problem: null };
+});
+
 /** The requirements by booking, for the cards. */
 export function requirementsByBooking(
   rows: ShiftRequirementRow[],

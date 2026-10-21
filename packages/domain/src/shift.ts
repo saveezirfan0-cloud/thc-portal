@@ -172,6 +172,8 @@ export const SILENT_FIELDS = [
   'required_gender',
   // ADR-0080: the same, for the languages an event needs.
   'required_languages',
+  // ADR-0184: asks the booked to bring ID; the shift itself does not move.
+  'security_cleared',
   // ADR-0117: steers who is invited next; nobody booked is re-asked or removed.
   'same_staff_all_days',
   'title',

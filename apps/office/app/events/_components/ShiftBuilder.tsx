@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   Alert,
   Button,
+  Checkbox,
   Chip,
   Input,
   Note,
@@ -52,6 +53,7 @@ import {
   pastDateIssue,
   resolveRole,
   roleChanges,
+  securityClearedToTell,
   seriesContextFor,
 } from '../draft';
 import type { ClientOption, ReferenceData, SavedEvent } from '../data';
@@ -98,6 +100,7 @@ function toInput(draft: EventDraft, id: string | null, ratesVisible: boolean): E
     notes: draft.notes,
     autoAssign: draft.autoAssign,
     requiredLanguages: draft.requiredLanguages,
+    securityCleared: draft.securityCleared,
     duplicateOf: draft.duplicateOf,
     roles: draft.roles.map((role) => ({
       id: role.id,
@@ -204,6 +207,10 @@ export function ShiftBuilder({
   const languagesChanged =
     mode === 'edit' && languagesAdded.some((language) => !savedLanguages.includes(language));
   const bookedTotal = Object.values(booked).reduce((sum, n) => sum + n, 0);
+  // ADR-0184: ticking Security cleared on a saved event tells everyone already
+  // confirmed on it to bring ID, so say how many before the office saves.
+  const confirmedTotal = Object.values(confirmed).reduce((sum, n) => sum + n, 0);
+  const securityTold = securityClearedToTell(initial, draft, confirmedTotal);
   const buffer = draft.roles.reduce((sum, role) => sum + role.buffer, 0);
 
   const forecast = useMemo(
@@ -643,6 +650,31 @@ export function ShiftBuilder({
                 else on the event board.
               </Alert>
             ) : null}
+            {/* ADR-0184: a tick box, not a gate. Nobody is refused a booking for
+                it and check-in is unchanged; each worker confirmed on the event
+                is pushed SC1 and sees the note on their shift. */}
+            <div className="field">
+              <Checkbox
+                checked={draft.securityCleared}
+                disabled={readOnly}
+                onChange={(securityCleared) => setDraft((c) => ({ ...c, securityCleared }))}
+              >
+                <b>Security cleared event</b> — staff must bring a passport or driving licence
+              </Checkbox>
+              <span className="hint">
+                Each worker is told to bring it when they are confirmed on the event, and the
+                reminder shows on their shift.
+              </span>
+            </div>
+            {securityTold > 0 ? (
+              <Alert tone="cyan">
+                <b>
+                  {securityTold} confirmed {securityTold === 1 ? 'worker is' : 'workers are'} told
+                  when you save.
+                </b>{' '}
+                They get a notification to bring a passport or driving licence.
+              </Alert>
+            ) : null}
             <div className="f2">
               <Input
                 label="On-site contact"
@@ -708,8 +740,8 @@ export function ShiftBuilder({
               </div>
               <div>
                 <span className="muted">○</span> Headcount · buffer ·{' '}
-                {ratesVisible ? 'charge rate · ' : ''}PO Number · notes · languages → applied
-                silently.
+                {ratesVisible ? 'charge rate · ' : ''}PO Number · notes · languages · security
+                cleared → applied silently.
               </div>
             </div>
           </Panel>

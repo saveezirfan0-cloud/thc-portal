@@ -35,6 +35,7 @@ const DRAFT: EventDraft = {
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  securityCleared: false,
   duplicateOf: null,
   roles: [],
 };
