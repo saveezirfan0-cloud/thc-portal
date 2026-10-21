@@ -3,21 +3,24 @@
 --       to the actual finish — ADR-0184,
 --       20261022200000_overrun_paid_to_actual_finish.sql
 --
--- THC (21.10.2026) in its own times, a 12:00–16:00 role section:
---   16:10 → paid and charged to 16:00 (the 15-minute grace);
---   17:15 → paid and charged to 17:15, 75 minutes of overrun, flagged
---           "Signed out late" for the office to verify with the worker;
+-- THC (21.10.2026) in its own times, a 12:00–16:00 role section (here
+-- S–E, a four-hour section that ended seven hours ago, so after the
+-- rule's 21.10.2026 cutoff whenever this runs):
+--   16:10 (E+10) → paid and charged to 16:00 (the 15-minute grace);
+--   17:15 (E+75) → paid and charged to 17:15, 75 minutes of overrun,
+--           flagged "Signed out late" for the office to verify;
 --   pressed off site → the last on-site fix, the same rule;
---   a No check-out resolved with an 18:00 finish → paid to 18:00.
+--   a No check-out resolved with an 18:00 finish (E+2h) → paid to 18:00;
+--   a finish typed six hours late → paid only to end + 4 h;
+--   a section that ended before the cutoff (Nov 2024) → paid to its end.
 -- The overrun is its own invoice line at the same charge rate; the
 -- invoice and the log add up; nothing waits for the office's Verify.
 --
--- November 2024 (GMT: UK = UTC). As in 909, invoicing_config()'s go-live
--- floor is lowered to 2024 inside this transaction only. Client A,
--- charge £22.97/h, pay £14.00/h.
+-- As in 909, invoicing_config()'s go-live floor is lowered (to 2026-01-01)
+-- inside this transaction only. Client A, charge £22.97/h, pay £14.00/h.
 -- =====================================================================
 begin;
-select plan(57);
+select plan(60);
 \ir _shared/fixtures.psql
 
 \set r_wait   '92100000-0000-4000-8000-000000000001'
@@ -28,6 +31,8 @@ select plan(57);
 \set w5       '92110000-0000-4000-8000-000000000005'
 \set w6_uid   '92130000-0000-4000-8000-000000000006'
 \set w6       '92110000-0000-4000-8000-000000000006'
+\set w7       '92110000-0000-4000-8000-000000000007'
+\set w8       '92110000-0000-4000-8000-000000000008'
 \set sched_uid  '92120000-0000-4000-8000-000000000001'
 \set viewer_uid '92120000-0000-4000-8000-000000000002'
 
@@ -47,20 +52,26 @@ insert into staff (id, user_id, employee_id, first_name, last_name, email, phone
   (:'w3', null,      92103, 'Cy',   'Cole',  'o-w3@rls.test', '+447700992103', date '1995-07-03', 'compliant'),
   (:'w4', null,      92104, 'Di',   'Dunn',  'o-w4@rls.test', '+447700992104', date '1994-08-04', 'compliant'),
   (:'w5', null,      92105, 'Ed',   'Eyre',  'o-w5@rls.test', '+447700992105', date '1993-09-05', 'compliant'),
-  (:'w6', :'w6_uid', 92106, 'Fay',  'Field', 'o-w6@rls.test', '+447700992106', date '1992-10-06', 'compliant');
+  (:'w6', :'w6_uid', 92106, 'Fay',  'Field', 'o-w6@rls.test', '+447700992106', date '1992-10-06', 'compliant'),
+  (:'w7', null,      92107, 'Gus',  'Gray',  'o-w7@rls.test', '+447700992107', date '1991-11-07', 'compliant'),
+  (:'w8', null,      92108, 'Hal',  'Hart',  'o-w8@rls.test', '+447700992108', date '1990-12-08', 'compliant');
 
--- Go-live lowered to 2024 for this transaction only (see 909).
-update settings set value = value || jsonb_build_object('first_event_date', '2024-01-01')
+-- Go-live lowered to 2026-01-01 for this transaction only (see 909).
+update settings set value = value || jsonb_build_object('first_event_date', '2026-01-01')
  where key = 'invoicing';
 do $$
 begin
-  execute replace(pg_get_functiondef('public.invoicing_config()'::regprocedure), '2026-10-26', '2024-01-01');
+  execute replace(pg_get_functiondef('public.invoicing_config()'::regprocedure), '2026-10-26', '2026-01-01');
 end $$;
+
+-- S–E: the role section, four hours that ended seven hours ago.
+create temp table t as select now() - interval '11 hours' as s, now() - interval '7 hours' as e,
+                             ((now() - interval '11 hours') at time zone 'Europe/London')::date as d;
 
 create temp table ev (name text primary key, event_id uuid);
 create temp table sh (name text primary key, shift_id uuid);
 create temp table bk (name text primary key, id uuid);
-grant select on ev, sh, bk to authenticated, anon, service_role;
+grant select on ev, sh, bk, t to authenticated, anon, service_role;
 
 create function pg_temp.event(p_name text, p_date date, p_pays_breaks boolean default false)
 returns uuid language plpgsql as $$
@@ -99,30 +110,42 @@ begin
   return v_booking;
 end $$;
 
--- Tue 12 Nov 2024: one event, one 12:00–16:00 section, no violation anywhere.
-select pg_temp.event('Tue', date '2024-11-12');
-select pg_temp.section('main',  (select event_id from ev where name = 'Tue'),
-                       '2024-11-12 12:00+00', '2024-11-12 16:00+00');
+-- "Tue": one event, one S–E section, no violation anywhere.
+select pg_temp.event('Tue', (select d from t));
+select pg_temp.section('main',  (select event_id from ev where name = 'Tue'), (select s from t), (select e from t));
 select pg_temp.worked('b1610', (select shift_id from sh where name = 'main'), :'w1',
-                      '2024-11-12 12:00+00', '2024-11-12 16:10+00');
+                      (select s from t), (select e + interval '10 minutes' from t));
 select pg_temp.worked('b1715', (select shift_id from sh where name = 'main'), :'w2',
-                      '2024-11-12 12:00+00', '2024-11-12 17:15+00');
+                      (select s from t), (select e + interval '75 minutes' from t));
 select pg_temp.worked('brk',   (select shift_id from sh where name = 'main'), :'w3',
-                      '2024-11-12 12:00+00', '2024-11-12 17:15+00');
+                      (select s from t), (select e + interval '75 minutes' from t));
 insert into breaks (booking_id, started_at, ended_at)
-  select id, '2024-11-12 13:00+00', '2024-11-12 13:30+00' from bk where name = 'brk';
--- Let in at 14:30 (a manager's Get back), out at 16:45: 135 minutes worked.
+  select id, (select s + interval '1 hour' from t), (select s + interval '90 minutes' from t)
+    from bk where name = 'brk';
+-- Let in at E−90 (a manager's Get back), out at E+45: 135 minutes worked.
 select pg_temp.worked('floor', (select shift_id from sh where name = 'main'), :'w4',
-                      '2024-11-12 14:30+00', '2024-11-12 16:45+00');
+                      (select e - interval '90 minutes' from t), (select e + interval '45 minutes' from t));
 
--- Wed 13 Nov 2024: never checked out; the office enters an 18:00 finish.
-select pg_temp.event('Wed', date '2024-11-13');
-select pg_temp.section('wed', (select event_id from ev where name = 'Wed'),
-                       '2024-11-13 12:00+00', '2024-11-13 16:00+00');
-select pg_temp.worked('nco', (select shift_id from sh where name = 'wed'), :'w5',
-                      '2024-11-13 12:00+00', null);
+-- "Wed": never checked out; the office enters E+2h (the 18:00 finish).
+select pg_temp.event('Wed', (select d from t));
+select pg_temp.section('wed', (select event_id from ev where name = 'Wed'), (select s from t), (select e from t));
+select pg_temp.worked('nco', (select shift_id from sh where name = 'wed'), :'w5', (select s from t), null);
 insert into violations (staff_id, booking_id, type)
   select :'w5', id, 'no_checkout' from bk where name = 'nco';
+
+-- "Thu": never checked out; the office types a finish six hours late.
+select pg_temp.event('Thu', (select d from t));
+select pg_temp.section('thu', (select event_id from ev where name = 'Thu'), (select s from t), (select e from t));
+select pg_temp.worked('typo', (select shift_id from sh where name = 'thu'), :'w7', (select s from t), null);
+insert into violations (staff_id, booking_id, type)
+  select :'w7', id, 'no_checkout' from bk where name = 'typo';
+
+-- Before the cutoff: 12:00–16:00 on 12 Nov 2024, signed out at 17:15.
+select pg_temp.event('Old', date '2024-11-12');
+select pg_temp.section('old', (select event_id from ev where name = 'Old'),
+                       '2024-11-12 12:00+00', '2024-11-12 16:00+00');
+select pg_temp.worked('old', (select shift_id from sh where name = 'old'), :'w8',
+                      '2024-11-12 12:00+00', '2024-11-12 17:15+00');
 
 -- Today: a section that ended an hour ago, the worker pressing off site.
 select pg_temp.event('Today', (now() at time zone 'Europe/London')::date);
@@ -145,7 +168,7 @@ create function pg_temp.as_user(p_uid uuid) returns void language sql as $$
 $$;
 
 -- =====================================================================
--- 1-12 · The pay window
+-- 1-15 · The pay window
 -- =====================================================================
 select is((pg_temp.pay('b1610') ->> 'payableMin')::int, 240,
   '16:10 on a 16:00 end is paid to 16:00');
@@ -171,21 +194,31 @@ select is((select row(l.worked_min, l.payable_min, l.floor_applied, l.overrun_mi
 select is((pg_temp.pay('nco') ->> 'status'), 'undetermined',
   'a No check-out with no finish is still undetermined (RULE-02)');
 
--- The office enters 18:00 for the No check-out.
+-- The office enters 18:00 (E+2h) for the No check-out, and E+6h for the typo.
 select pg_temp.as_user(:'admin_uid');
 set local role authenticated;
 select lives_ok($$ select resolve_violation(
     (select v.id from violations v where v.booking_id = (select id from bk where name = 'nco')),
-    'Phoned the worker: finished at 18:00', '2024-11-13 18:00+00', null) $$,
+    'Phoned the worker: finished at 18:00', (select e + interval '2 hours' from t), null) $$,
   'a manager resolves the No check-out with an 18:00 finish');
+select lives_ok($$ select resolve_violation(
+    (select v.id from violations v where v.booking_id = (select id from bk where name = 'typo')),
+    'Finish typed six hours late', (select e + interval '6 hours' from t), null) $$,
+  'a finish six hours past the end is still accepted (no upper bound, §9.5)');
 reset role;
+select is(pg_temp.pay('typo') - 'status' - 'workedMin' - 'floorApplied' - 'lateCheckOutFlag',
+  '{"payableMin": 480, "overrunMin": 240}'::jsonb,
+  'but it is paid only to end + 4 h: 240 minutes of overrun, not 360');
+select is(pg_temp.pay('old') - 'status' - 'workedMin' - 'floorApplied',
+  '{"payableMin": 240, "overrunMin": 0, "lateCheckOutFlag": true}'::jsonb,
+  'a section that ended before 21.10.2026 (UK) is still paid to its scheduled end: no history is re-priced');
 select is(pg_temp.pay('nco') - 'status' - 'workedMin' - 'floorApplied' - 'lateCheckOutFlag',
   '{"payableMin": 360, "overrunMin": 120}'::jsonb,
   'the manager-entered 18:00 finish is the check-out: paid to 18:00, 120 minutes of overrun');
 select is((select l.status from pg_temp.line('nco') l), 'settled', 'and the line is settled for payroll');
 
 -- =====================================================================
--- 13-19 · Pressed off site: the last on-site fix, the same rule
+-- 16-22 · Pressed off site: the last on-site fix, the same rule
 -- =====================================================================
 select pg_temp.as_user(:'w6_uid');
 set local role authenticated;
@@ -214,11 +247,11 @@ select is((select minutes_past_end from late_check_outs() where booking_id = (se
 reset role;
 
 -- =====================================================================
--- 20-23 · Nothing waits for Verify: payroll and invoice readiness
+-- 23-26 · Nothing waits for Verify: payroll and invoice readiness
 -- =====================================================================
 select pg_temp.as_user(:'admin_uid');
 set local role authenticated;
-select is((select row(status, payable_min, in_export)::text from payroll_report('2024-11-11', '2024-11-17')
+select is((select row(status, payable_min, in_export)::text from payroll_report((select d - 1 from t), (select d + 1 from t))
             where booking_id = (select id from bk where name = 'b1715')),
   '(settled,315,t)', 'an unverified late sign-out is settled and in the payroll export');
 reset role;
@@ -236,7 +269,7 @@ select is(invoice_event_fingerprint((select event_id from ev where name = 'Tue')
   'verifying changes nothing an invoice sign-off vouches for');
 
 -- =====================================================================
--- 24-37 · Verify: who may, and what it records
+-- 27-40 · Verify: who may, and what it records
 -- =====================================================================
 select ok(not has_function_privilege('anon', 'public.verify_late_check_out(uuid,text)', 'execute'),
   'anon cannot call Verify');
@@ -296,11 +329,11 @@ select is((select row(actor, data ->> 'note', (data ->> 'minutesPastEnd')::int):
   'each Verify is audited with the note and the minutes past the end');
 
 -- =====================================================================
--- 38-51 · The invoice: the overrun is its own line
+-- 41-54 · The invoice: the overrun is its own line
 -- =====================================================================
 create temp table inv as
-  select invoice_claim(g.group_key, '2024-11-13 10:05+00') as id
-    from _invoice_groups('2024-11-13 10:05+00') g
+  select invoice_claim(g.group_key, now() + interval '2 days') as id
+    from _invoice_groups(now() + interval '2 days') g
    where (select event_id from ev where name = 'Tue') = any (g.event_ids);
 select isnt((select id from inv), null, 'the Tuesday invoice is issued without anybody verifying');
 
@@ -314,8 +347,7 @@ select is((select string_agg(who || ':' || kind, ',' order by sort) from il),
   'each overrun line sits straight after its shift''s own line');
 select is((select row(payable_min, rate, amount, break_min, starts_at, ends_at)::text from il
             where who = 'b1715' and kind = 'overrun'),
-  row(75, 22.97::numeric(8,2), 28.71::numeric(12,2), 0,
-      '2024-11-12 16:00+00'::timestamptz, '2024-11-12 17:15+00'::timestamptz)::text,
+  (select row(75, 22.97::numeric(8,2), 28.71::numeric(12,2), 0, e, e + interval '75 minutes')::text from t),
   'the overrun: 16:00 to 17:15, 75 minutes at the same charge rate, no break');
 select is((select row(payable_min, amount)::text from il where who = 'b1715' and kind = 'worked'),
   '(240,91.88)', 'the shift''s own line keeps 12:00–16:00: 240 minutes, 91.88');
@@ -348,7 +380,7 @@ select is((select x ->> 'kind'
   'overrun', 'the document carries the overrun line''s kind');
 
 -- =====================================================================
--- 52-57 · The invoicing CSV splits the overrun the same way
+-- 55-60 · The invoicing CSV splits the overrun the same way
 -- =====================================================================
 -- Wednesday: one resolved No check-out, so it waits for the ADR-0172
 -- sign-off; signed off, its CSV rows are the shift and its overrun. The
@@ -356,24 +388,23 @@ select is((select x ->> 'kind'
 -- go-live), so go-live goes back to 26 Oct 2026 first.
 do $$
 begin
-  execute replace(pg_get_functiondef('public.invoicing_config()'::regprocedure), '2024-01-01', '2026-10-26');
+  execute replace(pg_get_functiondef('public.invoicing_config()'::regprocedure), '2026-01-01', '2026-10-26');
 end $$;
 select pg_temp.as_user(:'admin_uid');
 set local role authenticated;
 select lives_ok($$ select sign_off_event_invoice(
     (select event_id from ev where name = 'Wed'), 'Finish confirmed with the worker',
-    (select i.fingerprint from invoice_events('2024-11-13', '2024-11-13') i
+    (select i.fingerprint from invoice_events((select d from t), (select d from t)) i
       where i.event_id = (select event_id from ev where name = 'Wed'))) $$,
   'the Wednesday event is signed off for invoicing');
 create temp table csv as
-  select * from invoice_export_rows('2024-11-13', '2024-11-13',
+  select * from invoice_export_rows((select d from t), (select d from t),
                                     (select event_id from ev where name = 'Wed'));
 reset role;
 select is((select string_agg(kind || ':' || payable_min, ',') from csv),
   'worked:240,overrun:120', 'the CSV has the shift''s own row, then its overrun');
 select is((select row(starts_at, ends_at, charge_rate, invoicing)::text from csv where kind = 'overrun'),
-  row('2024-11-13 16:00+00'::timestamptz, '2024-11-13 18:00+00'::timestamptz, 22.97::numeric,
-      round(120 * 22.97 / 60.0, 2))::text,
+  (select row(e, e + interval '2 hours', 22.97::numeric, round(120 * 22.97 / 60.0, 2))::text from t),
   'the overrun row runs from the scheduled end to the entered finish at the same charge rate');
 select is((select sum(invoicing) from csv), (select l.invoicing from pg_temp.line('nco') l),
   'and the rows add up to the shift''s charge');

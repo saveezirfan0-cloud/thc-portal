@@ -32,9 +32,11 @@ select plan(
 -- 1 · the shared vectors
 --
 -- Offsets are minutes from the role section's scheduled start, so neither
--- side has to agree on a calendar. 14:00–22:00 UK on 14 June 2026 (BST).
+-- side has to agree on a calendar. 13:00–21:00 UK on 14 November 2026
+-- (GMT), after ADR-0184's cutoff; a pay or break vector may name its own
+-- `startsAt` instant to sit on the other side of it.
 -- ---------------------------------------------------------------------
-create temporary view vbase as select timestamptz '2026-06-14 13:00:00+00' as base;
+create temporary view vbase as select timestamptz '2026-11-14 13:00:00+00' as base;
 
 create function pg_temp.mins(p_base timestamptz, p_json jsonb, p_key text) returns timestamptz
 language sql immutable as $$
@@ -93,7 +95,8 @@ select is(
     c.input->>'noCheckOut'),
   c.expect,
   'pay · ' || c.name
-) from vec_pay c, vbase v;
+) from vec_pay c,
+  lateral (select coalesce((c.input->>'startsAt')::timestamptz, b.base) as base from vbase b) v;
 
 select is(
   turned_away_minutes(v.base, pg_temp.mins(v.base, c.input, 'attemptMinFromStart')),
@@ -114,7 +117,8 @@ select is(
      from jsonb_array_elements(c.input->'breaks') br),
   (c.expect->>'unpaidBreakMin')::int,
   'breaks · ' || c.name
-) from vec_breaks c, vbase v;
+) from vec_breaks c,
+  lateral (select coalesce((c.input->>'startsAt')::timestamptz, b.base) as base from vbase b) v;
 
 -- ---------------------------------------------------------------------
 -- 2 · the RPCs end to end

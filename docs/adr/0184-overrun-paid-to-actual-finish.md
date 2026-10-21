@@ -7,8 +7,8 @@ in `CLAUDE.md` · **Builds on:** ADR-0095 (a late check-in is paid from the actu
 ADR-0035 (D5 Left early, D15 stale fix), ADR-0172 / ADR-0176 (ready to invoice, invoices and the
 sign-in log) · **Asked by:** THC's owner, 21.10.2026
 
-`supabase/migrations/20261022200000_overrun_paid_to_actual_finish.sql` · pgTAP `921` (and `070`,
-`892` follow) · `packages/domain/src/pay.ts`, `pay.vectors.json` ·
+`supabase/migrations/20261022200000_overrun_paid_to_actual_finish.sql`,
+`20261022200100_overrun_capped_and_dated.sql` · pgTAP `921` (and `070`, `140`, `892` follow) · `packages/domain/src/pay.ts`, `pay.vectors.json` ·
 `packages/pdf/src/invoice.ts`, `signInLog.ts`, `csv.ts` · `apps/office/app/checkin/`
 (`status.ts`, `MonitorTable.tsx`, `MonitorScreen.tsx`, `VerifyLateModal.tsx`, `actions.ts`,
 `data.ts`) · `apps/staff/app/shifts/[id]/earnings.ts`, `FullScreens.tsx`
@@ -33,10 +33,26 @@ minute period between 16:00 and 16:15 (pay and charge is to 16:00 is correct)".
    where RULE-02's No check-out takes over unchanged — is paid **and** charged to the **actual
    recorded finish**: the on-site press, or the last on-site fix when pressed off site
    (`check_out_decision`, unchanged). A finish the office enters resolving a No check-out is the
-   check-out too, so the same rule applies to it (no upper bound, as before: the manager is
-   entering when the worker really left). Same hourly pay rate and same client charge rate;
+   check-out too, so the same rule applies to it. **The paid end is capped at the scheduled end
+   + 4 h** (`NO_CHECK_OUT_AFTER_MIN`): THC's rule is for sign-outs "between 16:15 and 20:00",
+   a worker's own press cannot be later (check-out locks), and a finish the office types —
+   resolving a No check-out, or a No-show's "Get back" with a finish — still has no upper
+   bound in §9.5, so a typo would otherwise be paid and invoiced in full. Such a finish is still
+   accepted and recorded; the finish field's hint says time more than 4 hours after the
+   scheduled end is not paid. Same hourly pay rate and same client charge rate;
    holiday 12.07 % is still broken out, never blended. `payable_minutes()` /
-   `payableMinutes()` return the minutes past the end as **`overrunMin`**.
+   `payableMinutes()` return the minutes paid past the end as **`overrunMin`** (at most 240).
+
+   **Effective date — no history is re-priced.** The rule applies only to role sections whose
+   **scheduled end is on or after 21 October 2026, 00:00 Europe/London** (= 2026-10-20
+   23:00:00+00). An earlier section keeps the rule it was worked under: paid to the scheduled
+   end however late the check-out (its `overrunMin` is 0; the §9.5 red flag is the clock and is
+   unchanged). The cutoff is one named constant on each side — `OVERRUN_PAID_FROM` in
+   `packages/domain/src/pay.ts`, and the literal `timestamptz '2026-10-20 23:00:00+00'` in
+   `payable_minutes()` / `break_window_minutes()` (20261022200100, commented to here) — and
+   `pay.vectors.json` holds both to it with a vector on each side (the vectors' base date
+   moved to 14 November 2026 so the rest exercise the rule as it stands). `late_check_outs()`
+   leaves out sections before the cutoff.
 2. **RULE-14's four-hour floor** applies to the total, unchanged (Left early and an unresolved
    No check-out still block it). On the invoice, the floor's top-up sits on the shift's own line.
 3. **Breaks.** The paid window now runs to the actual finish on an overrun, so a break taken
@@ -88,9 +104,12 @@ minute period between 16:00 and 16:15 (pay and charge is to 16:00 is correct)".
 - Every surface that prices a shift follows from `payable_minutes()`: `payable_shifts_v`,
   `report_payroll_lines_v` (payroll, BG-08, finance), `staff_earnings()`,
   `staff_shift_history_v`, `check_out()`'s answer.
-- Forward-only, applied to every shift not yet exported: a shift already in a payroll export
-  whose payable minutes now differ shows RULE-06's existing "changed since export" warning — it
-  is never corrected retroactively. An event's ready-to-invoice sign-off whose lines change goes
-  back to review through its fingerprint, as for any change. Issued invoices are immutable.
+- Forward-only and dated (1): nothing that ended before 21.10.2026 00:00 UK is re-priced, so
+  no payroll export, ready-to-invoice sign-off or invoice of an earlier shift changes. Issued
+  invoices are immutable in any case.
+- Left as they are for now (raised with the owner): RULE-20's weekly cap does not count
+  overrun hours; ready-to-invoice's review lines show the shift's total, not the split; the
+  main/overrun split can differ by a penny from pricing each part on its own (the main line
+  takes the remainder so the two always add up to the shift's charge).
 - The scope's 16:15 example ("checked out at 16:15 for a 16:00 finish → paid to 16:00") is
   unchanged and still in the vectors.

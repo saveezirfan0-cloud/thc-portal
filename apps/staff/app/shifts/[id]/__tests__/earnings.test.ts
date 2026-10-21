@@ -38,6 +38,16 @@ const base: ShiftDetail = {
   turnedAwayPayMin: null,
 };
 
+/** The same shift after ADR-0184's cutoff (sections ending on or after 21.10.2026 UK). */
+const nov: ShiftDetail = {
+  ...base,
+  startsAt: '2026-11-14T16:00:00Z',
+  endsAt: '2026-11-14T22:30:00Z',
+  checkInAt: '2026-11-14T15:52:00Z',
+  checkOutAt: '2026-11-14T22:32:00Z',
+  eventDate: '2026-11-14',
+};
+
 describe('§5.1 the check-out confirmation', () => {
   it('pays the scheduled window when the worker arrived early and left on time', () => {
     const e = shiftEarnings(base)!;
@@ -55,16 +65,23 @@ describe('§5.1 the check-out confirmation', () => {
   });
 
   it('pays a sign-out up to 15 minutes late to the scheduled end', () => {
-    const e = shiftEarnings({ ...base, checkOutAt: '2026-06-14T22:45:00Z' })!;
+    const e = shiftEarnings({ ...nov, checkOutAt: '2026-11-14T22:45:00Z' })!;
     expect(e.payableMin).toBe(390);
     expect(e.overrunMin).toBe(0);
   });
 
   it('pays a sign-out more than 15 minutes late to the sign-out (ADR-0184)', () => {
-    const e = shiftEarnings({ ...base, checkOutAt: '2026-06-14T23:45:00Z' })!;
+    const e = shiftEarnings({ ...nov, checkOutAt: '2026-11-14T23:45:00Z' })!;
     expect(e.payableMin).toBe(390 + 75);
     expect(e.overrunMin).toBe(75);
     expect(formatMoney(e.totalPence)).toBe('£108.50');
+  });
+
+  it('but not past end + 4 h, nor on a shift that ended before 21.10.2026 (ADR-0184)', () => {
+    expect(shiftEarnings({ ...nov, checkOutAt: '2026-11-15T05:00:00Z' })!.overrunMin).toBe(240);
+    const old = shiftEarnings({ ...base, checkOutAt: '2026-06-14T23:45:00Z' })!;
+    expect(old.payableMin).toBe(390);
+    expect(old.overrunMin).toBe(0);
   });
 
   it('holds no holiday figure at all — the worker sees the base rate only (§9.8)', () => {
@@ -159,9 +176,9 @@ describe('breaks outside the paid window (§5.2b, audit D49)', () => {
 
   it('a break during a paid overrun is deducted, from the shift, not the overrun (ADR-0184)', () => {
     const shift = {
-      ...base,
-      checkOutAt: '2026-06-14T23:00:00Z',
-      breaks: [{ id: '1', startedAt: '2026-06-14T22:35:00Z', endedAt: '2026-06-14T22:50:00Z' }],
+      ...nov,
+      checkOutAt: '2026-11-14T23:00:00Z',
+      breaks: [{ id: '1', startedAt: '2026-11-14T22:35:00Z', endedAt: '2026-11-14T22:50:00Z' }],
     };
     expect(paidBreakMinutes(shift)).toBe(15);
     const e = shiftEarnings(shift)!;

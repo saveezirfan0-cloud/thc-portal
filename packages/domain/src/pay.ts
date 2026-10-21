@@ -43,6 +43,10 @@
  *        same hourly pay and charge rates, its own line on the client's
  *        invoice, and a "Signed out late" flag the office verifies with the
  *        worker afterwards. The flag never holds payroll or the invoice.
+ *        The paid end is capped at end+4 h (a manager-entered finish later
+ *        than that is not paid beyond it), and the rule applies only to
+ *        sections ending on or after `OVERRUN_PAID_FROM` (21.10.2026 UK);
+ *        earlier ones keep "paid to the scheduled end".
  *    A check-in at or after the scheduled end intersects nothing and stays
  *    undetermined: the overrun extends a shift that reached its end, it
  *    never makes one.
@@ -454,7 +458,8 @@ export interface PayResult {
   /**
    * ADR-0184. Of `payableMin`, the minutes past the scheduled end: the
    * clock time from the end to the actual finish when the check-out was
-   * more than 15 minutes late, else 0. Its own line on the invoice.
+   * more than 15 minutes late — at most 4 hours, and 0 for a section that
+   * ended before `OVERRUN_PAID_FROM` — else 0. Its own line on the invoice.
    * Unpaid breaks come off the main part first; only if they exceed it
    * (a break during the overrun longer than the rest of the shift) does
    * the remainder come off the overrun, so it never exceeds `workedMin`.
@@ -483,12 +488,35 @@ export function isLateCheckOut(shift: ShiftWindow, checkOutAt: Date): boolean {
 }
 
 /**
+ * ADR-0184's effective date. The paid-to-the-actual-finish rule applies to
+ * role sections whose scheduled END is at or after 21 October 2026, 00:00
+ * Europe/London (= 2026-10-20T23:00:00Z, BST). Earlier sections keep the
+ * rule they were worked under — paid to the scheduled end however late the
+ * check-out — so no history is re-priced. SQL repeats this literal in
+ * `payable_minutes()` and `break_window_minutes()` (20261022200100).
+ */
+export const OVERRUN_PAID_FROM = new Date('2026-10-20T23:00:00Z');
+
+/** ADR-0184: the overrun rule applies to this section (its end is on or after the cutoff). */
+export function overrunRuleApplies(shift: ShiftWindow): boolean {
+  return shift.endsAt.getTime() >= OVERRUN_PAID_FROM.getTime();
+}
+
+/**
  * When the paid clock stops (ADR-0184). Before the end, the check-out; from
  * the end to end+15, the scheduled end (the grace pays to the end, not the
- * press); more than 15 minutes past it, the actual recorded finish.
+ * press); more than 15 minutes past it, the actual recorded finish — but
+ * never more than `NO_CHECK_OUT_AFTER_MIN` (4 h) past the end, where RULE-02
+ * takes over: THC's rule covers sign-outs "between 16:15 and 20:00", and a
+ * finish a manager types later than that (a typo, or a real one) is not
+ * paid beyond it. A section that ended before `OVERRUN_PAID_FROM` is paid to
+ * its scheduled end, as it was when it was worked.
  */
 export function effectiveEnd(shift: ShiftWindow, checkOutAt: Date): Date {
-  if (isLateCheckOut(shift, checkOutAt)) return checkOutAt;
+  if (isLateCheckOut(shift, checkOutAt) && overrunRuleApplies(shift)) {
+    const cap = addMinutes(shift.endsAt, NO_CHECK_OUT_AFTER_MIN);
+    return checkOutAt < cap ? checkOutAt : cap;
+  }
   return checkOutAt < shift.endsAt ? checkOutAt : shift.endsAt;
 }
 
@@ -547,8 +575,11 @@ export function payableMinutes(input: PayInput): PayResult {
   // ADR-0184. The overrun is the clock time past the scheduled end, whole
   // minutes. Breaks are taken off the main part; the overrun gives way only
   // when they are longer than all of it, so main + overrun = worked.
+  // The flag is the clock (§9.5); the overrun is what is paid past the end:
+  // the capped paid end, and nothing for a section before the cutoff.
   const late = isLateCheckOut(shift, checkOutAt);
-  const overrun = late ? Math.min(worked, Math.round(minutesBetween(shift.endsAt, checkOutAt))) : 0;
+  const overrun =
+    to > shift.endsAt ? Math.min(worked, Math.round(minutesBetween(shift.endsAt, to))) : 0;
 
   return {
     status: 'settled',

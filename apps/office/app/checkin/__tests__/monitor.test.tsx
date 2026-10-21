@@ -38,6 +38,7 @@ function mounted(node: ReactNode): string {
   return html;
 }
 const { ResolveModal } = await import('../ResolveModal');
+const { VerifyLateModal } = await import('../VerifyLateModal');
 
 const VIOLATION: ViolationRow = {
   id: 'v1',
@@ -242,6 +243,34 @@ describe('/checkin (§9.5)', () => {
       expect(html).toContain('09:05 UK');
       expect(html).toContain('20:30 UK');
       expect(html).toContain('Resolved by Gisela M.');
+    });
+
+    it('in the Verify window: the scheduled end is UK with "your time" under it, the sign-out your time (ADR-0184)', () => {
+      const html = renderToStaticMarkup(
+        <VerifyLateModal
+          target={{
+            bookingId: 'b1',
+            staffName: 'Chloe D.',
+            eventTitle: 'Conference Day 2',
+            roleName: 'Bar Staff',
+            endsAt: '2026-09-24T19:00:00Z',
+            checkOutAt: '2026-09-24T20:15:00Z',
+          }}
+          onClose={() => {}}
+        />,
+      );
+      // 19:00Z is 20:00 UK and 22:00 in Athens; the sign-out 20:15Z is 23:15 there.
+      expect(html).toMatch(/20:00 UK time<span class="l2">[^<]*22:00 your time<\/span>/);
+      expect(html).toContain('23:15 your time');
+      expect(html).toContain('1 h 15 min past the end');
+      expect(html).not.toContain('paid up to 4 h');
+    });
+
+    it('tells the manager a finish past end + 4 h is not paid beyond it', () => {
+      const html = renderToStaticMarkup(
+        <ResolveModal violation={{ ...VIOLATION, type: 'no_checkout' }} onClose={() => {}} />,
+      );
+      expect(html).toContain('Time more than 4 hours after the scheduled end is not paid.');
     });
 
     it('labels the finish input UK time because everything else on the window is not', () => {

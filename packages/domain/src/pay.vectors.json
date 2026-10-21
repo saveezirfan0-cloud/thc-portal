@@ -477,7 +477,10 @@
       "ADR-0184 (THC, 21.10.2026): a check-out at or before end+15 is paid to the scheduled",
       "end; one MORE than 15 minutes past it is paid to the actual finish, and overrunMin is",
       "the clock time past the end (breaks come off the main part first). The four-hour",
-      "floor applies to the total. A check-in at or after the end stays undetermined."
+      "floor applies to the total. A check-in at or after the end stays undetermined.",
+      "The paid end is capped at end + 4 h, and the rule applies only to sections whose",
+      "scheduled end is on or after 2026-10-20T23:00:00Z (21.10.2026 00:00 UK); earlier",
+      "ones keep 'paid to the scheduled end'. startsAt (an instant) overrides the base."
     ],
     "defaults": {
       "shiftMin": 480,
@@ -894,6 +897,54 @@
           "lateCheckOutFlag": false,
           "overrunMin": null
         }
+      },
+      {
+        "name": "a finish exactly four hours late is paid to it (ADR-0184)",
+        "input": { "checkOutMinFromStart": 720, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 720,
+          "workedMin": 720,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 240
+        }
+      },
+      {
+        "name": "a finish entered six hours late is paid only to end + 4 h (ADR-0184)",
+        "input": { "checkOutMinFromStart": 840, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 720,
+          "workedMin": 720,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 240
+        }
+      },
+      {
+        "name": "a section ending before 21.10.2026 (UK) is still paid to its scheduled end",
+        "input": { "startsAt": "2026-10-20T14:59:00Z", "checkOutMinFromStart": 555 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 0
+        }
+      },
+      {
+        "name": "a section ending at 00:00 UK on 21.10.2026 is paid to the actual finish",
+        "input": { "startsAt": "2026-10-20T15:00:00Z", "checkOutMinFromStart": 555 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 555,
+          "workedMin": 555,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 75
+        }
       }
     ]
   },
@@ -961,7 +1012,8 @@
       "recorded check-out, or now for a shift still running. A break with no end runs",
       "to the finish. Each break is rounded to whole minutes, then summed. The paid end is",
       "the scheduled end, or the finish itself when it is more than 15 minutes past the",
-      "end (ADR-0184): a break during a paid overrun is deducted like any other."
+      "end (ADR-0184, capped at end + 4 h, sections ending on or after 21.10.2026 UK):",
+      "a break during a paid overrun is deducted like any other."
     ],
     "defaults": {
       "shiftMin": 480,
@@ -1070,6 +1122,30 @@
         "input": { "breaks": [] },
         "expect": {
           "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "a break after the end of a section before 21.10.2026 (UK) costs nothing",
+        "input": {
+          "startsAt": "2026-10-20T14:59:00Z",
+          "finishMinFromStart": 540,
+          "breaks": [[490, 520]]
+        },
+        "expect": {
+          "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "a break past end + 4 h costs nothing: it was never paid (ADR-0184)",
+        "input": {
+          "finishMinFromStart": 840,
+          "breaks": [
+            [700, 740],
+            [760, 790]
+          ]
+        },
+        "expect": {
+          "unpaidBreakMin": 20
         }
       }
     ]

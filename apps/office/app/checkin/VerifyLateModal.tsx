@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { Alert, Button, Modal, Note, Textarea, useTimeFormat } from '@thc/ui';
-import { UK_ZONE, formatDateTimeIn, formatTimeIn, viewerZone } from '@thc/domain';
+import {
+  NO_CHECK_OUT_AFTER_MIN,
+  UK_ZONE,
+  formatDateTimeIn,
+  needsDualZone,
+  viewerZone,
+} from '@thc/domain';
 import { verifyLateCheckOut } from './actions';
 import { minutesPastEnd, pastEndText } from './status';
 import type { LateCheckOutTarget } from './types';
@@ -20,7 +26,8 @@ export const VERIFY_NOTE_MAX = 500;
  * told. It is not an approval: payroll, ready-to-invoice and the invoice
  * never wait for it, which is why the copy says so.
  *
- * Times (§1.8): the scheduled end is a SCHEDULED time, so UK; the sign-out
+ * Times (§1.8): the scheduled end is a SCHEDULED time, so UK with a "your
+ * time" second line when the reader's zone differs; the sign-out
  * is an ACTUAL stamp, so the manager's own zone; when it was verified is an
  * audit stamp, UK.
  */
@@ -37,6 +44,7 @@ export function VerifyLateModal({
   const format = useTimeFormat();
   // Mounted on a click: the reader's zone is already the browser's.
   const zone = viewerZone();
+  const dual = needsDualZone(zone);
   const verified = Boolean(target.verifiedAt);
   const past = minutesPastEnd(target.endsAt, target.checkOutAt);
   const trimmed = note.trim();
@@ -63,8 +71,15 @@ export function VerifyLateModal({
         <div className="kvs">
           <div className="kv">
             <span className="k">Scheduled end</span>
-            <span className="v mono">
-              {formatTimeIn(new Date(target.endsAt), UK_ZONE, format)} UK
+            {/* A SCHEDULED time (§1.8): UK, and the reader's own zone
+                underneath when it differs — as the monitor's Window. */}
+            <span className="v mono win2">
+              {formatDateTimeIn(new Date(target.endsAt), UK_ZONE, format)} UK time
+              {dual ? (
+                <span className="l2">
+                  {formatDateTimeIn(new Date(target.endsAt), zone, format)} your time
+                </span>
+              ) : null}
             </span>
           </div>
           <div className="kv">
@@ -75,7 +90,10 @@ export function VerifyLateModal({
           </div>
           <div className="kv">
             <span className="k">Overrun</span>
-            <span className="v">{pastEndText(past)}</span>
+            <span className="v">
+              {pastEndText(past)}
+              {past > NO_CHECK_OUT_AFTER_MIN ? ' · paid up to 4 h past the end' : ''}
+            </span>
           </div>
         </div>
 
