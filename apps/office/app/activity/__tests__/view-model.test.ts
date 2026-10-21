@@ -109,6 +109,8 @@ describe('activity rows', () => {
     for (const action of [
       'client.created',
       'client.updated',
+      'client.archived',
+      'client.restored',
       'client.rate_added',
       'client.rate_changed',
       'client.rate_removed',

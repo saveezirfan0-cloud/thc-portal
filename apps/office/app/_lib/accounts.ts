@@ -179,6 +179,9 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   // Release audit D-M1 (20261014093200): every Back Office edit.
   'client.created': 'Created client',
   'client.updated': 'Edited client',
+  // ADR-0185.
+  'client.archived': 'Archived client',
+  'client.restored': 'Restored client',
   'client.rate_added': 'Added a role to the rate card',
   'client.rate_changed': 'Changed the rate card',
   'client.rate_removed': 'Removed a role from the rate card',

@@ -89,6 +89,8 @@ function refusal(error: {
   return explainDbError(error, {
     codes: {
       read_only: 'Your login is read-only, so this cannot be changed.',
+      client_archived:
+        'That client is archived, so no new event can be built for it. Restore the client on its card first.',
       event_started_editing_locked: 'This event has started. Editing is locked.',
       late_section_starts_in_past: LATE_SECTION_MESSAGE,
       // shift_times_rota_guard: new times re-checked for everyone booked.

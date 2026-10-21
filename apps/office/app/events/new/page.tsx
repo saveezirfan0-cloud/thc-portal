@@ -71,7 +71,10 @@ export default async function Page({
   // /events/new?client=<id>. The id is only honoured if it names a client in
   // the reference list — anything else is an empty picker, as without it —
   // and the on-site contact pre-fills exactly as picking the client would.
-  const preselected = preselectClient(reference.clients, params['client']);
+  const preselected = preselectClient(
+    reference.clients.filter((c) => !c.archived),
+    params['client'],
+  );
 
   const dressCodesFor = (roleId: string) =>
     reference.clients.find((c) => c.id === source?.clientId)?.rateCard[roleId]?.dressCodes ?? [];

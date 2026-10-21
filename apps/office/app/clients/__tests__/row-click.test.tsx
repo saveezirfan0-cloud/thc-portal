@@ -30,6 +30,7 @@ const CLIENT: Client = {
   created_at: '2026-10-05T10:00:00Z',
   created_by: null,
   created_by_name: null,
+  archived_at: null,
 };
 
 describe('a client row opens the card (clients.html tr.clickable)', () => {

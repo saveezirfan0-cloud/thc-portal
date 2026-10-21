@@ -43,6 +43,8 @@ export interface ClientsScreenProps {
 type Sort = 'name' | 'events' | 'margin' | 'newest' | 'oldest';
 type PolicyFilter = 'all' | 'paid' | 'unpaid';
 type BufferFilter = 'all' | 'paid' | 'strict';
+/** ADR-0185: archived clients are hidden unless asked for. */
+type StatusFilter = 'active' | 'archived' | 'all';
 
 /** The Rate-card-role filter's value for clients with an empty rate card. */
 const NO_RATE_CARD = '\u0000none';
@@ -58,6 +60,7 @@ const DEFAULT_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 const SORTS: readonly Sort[] = ['name', 'events', 'margin', 'newest', 'oldest'];
 const POLICIES: readonly PolicyFilter[] = ['all', 'paid', 'unpaid'];
 const BUFFERS: readonly BufferFilter[] = ['all', 'paid', 'strict'];
+const STATUSES: readonly StatusFilter[] = ['active', 'archived', 'all'];
 
 /**
  * The directory's columns, declared once (ADR-0139). Client stays first;
@@ -83,6 +86,7 @@ const QUERY = {
   sort: 'name',
   breaks: 'all',
   buffer: 'all',
+  status: 'active',
   role: '',
   by: '',
   from: '',
@@ -112,6 +116,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   const pageSize = sizeOf(url.size, PAGE_SIZES, DEFAULT_PAGE_SIZE);
   const breaks = oneOf(url.breaks, POLICIES, 'all');
   const buffer = oneOf(url.buffer, BUFFERS, 'all');
+  const status = oneOf(url.status, STATUSES, 'active');
   const role = url.role;
   const added: AddedFilter = useMemo(
     () => ({ by: url.by, from: url.from, to: url.to }),
@@ -127,17 +132,35 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
   );
   const hasEmptyRateCard = clients.some((client) => client.rate_card_roles.length === 0);
 
+  const archivedCount = clients.filter((client) => client.archived_at !== null).length;
+  const activeCount = clients.length - archivedCount;
+
   const filtersActive =
-    breaks !== 'all' || buffer !== 'all' || role !== '' || addedFilterActive(added);
+    breaks !== 'all' ||
+    buffer !== 'all' ||
+    status !== 'active' ||
+    role !== '' ||
+    addedFilterActive(added);
 
   // Every filter change goes back to the first page: the pager would
   // otherwise be left past the end of a shorter list.
   const clearFilters = () =>
-    setUrl({ breaks: 'all', buffer: 'all', role: '', by: '', from: '', to: '', page: '1' });
+    setUrl({
+      breaks: 'all',
+      buffer: 'all',
+      status: 'active',
+      role: '',
+      by: '',
+      from: '',
+      to: '',
+      page: '1',
+    });
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const matched = clients.filter((client) => {
+      if (status === 'active' && client.archived_at !== null) return false;
+      if (status === 'archived' && client.archived_at === null) return false;
       if (
         needle &&
         !client.name.toLowerCase().includes(needle) &&
@@ -167,7 +190,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       sorted.sort((a, b) => (b.avg_margin_pct ?? -1) - (a.avg_margin_pct ?? -1));
     } else sorted.sort((a, b) => a.name.localeCompare(b.name));
     return sorted;
-  }, [clients, query, breaks, buffer, role, added, sort]);
+  }, [clients, query, breaks, buffer, status, role, added, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pages - 1);
@@ -198,9 +221,10 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       crumbs={
         <>
           <b>
-            {clients.length} {clients.length === 1 ? 'client' : 'clients'}
+            {activeCount} {activeCount === 1 ? 'client' : 'clients'}
           </b>{' '}
-          · rate cards and dress codes live on each client&rsquo;s card
+          {archivedCount > 0 ? <>· {archivedCount} archived </> : null}· rate cards and dress codes
+          live on each client&rsquo;s card
         </>
       }
       actions={
@@ -247,6 +271,16 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       </div>
 
       <div className="toolbar filters" role="group" aria-label="Client filters">
+        <Select
+          value={status}
+          onChange={(event) => setUrl({ status: event.target.value, page: '1' })}
+          aria-label="Filter by active or archived"
+          style={{ width: 160 }}
+        >
+          <option value="active">Show: active</option>
+          <option value="archived">Show: archived</option>
+          <option value="all">Show: all</option>
+        </Select>
         <Select
           value={breaks}
           onChange={(event) => setUrl({ breaks: event.target.value, page: '1' })}
@@ -302,16 +336,24 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
               <h3>
                 {clients.length === 0
                   ? 'No clients yet'
-                  : filtersActive
-                    ? 'No client matches those filters'
-                    : 'No client matches that search'}
+                  : status === 'archived' && archivedCount === 0
+                    ? 'No archived clients'
+                    : filtersActive
+                      ? 'No client matches those filters'
+                      : activeCount === 0
+                        ? 'Every client is archived'
+                        : 'No client matches that search'}
               </h3>
               <p>
                 {clients.length === 0
                   ? 'A client has to exist before an event can be built for it.'
-                  : filtersActive
-                    ? 'Loosen a filter, or clear them to see every client.'
-                    : 'Search runs over the client name, the contact and the contact emails.'}
+                  : status === 'archived' && archivedCount === 0
+                    ? 'Archive a client from its card when you stop working with it.'
+                    : activeCount === 0 && !filtersActive
+                      ? 'Choose Show: all to see them, or restore one from its card.'
+                      : filtersActive
+                        ? 'Loosen a filter, or clear them to see every client.'
+                        : 'Search runs over the client name, the contact and the contact emails.'}
               </p>
             </EmptyState>
           ) : (
@@ -336,6 +378,7 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
                           <Link href={`/clients/${client.id}`} className="client-name">
                             {client.name}
                           </Link>
+                          {client.archived_at !== null ? <Chip>Archived</Chip> : null}
                           <span className="sub">{client.staff_contact_point}</span>
                         </td>
                       ),
@@ -433,8 +476,9 @@ export function ClientsScreen({ clients, problem, ratesVisible = true }: Clients
       </Panel>
 
       <Note>
-        A client record can be edited at any time but <b>never deleted</b>. Charge rates and dress
-        codes are per client, per role — set on the client card, nowhere else.
+        A client record can be edited at any time but <b>never deleted</b> — archive one you no
+        longer work with and it leaves this list, nothing lost. Charge rates and dress codes are per
+        client, per role — set on the client card, nowhere else.
       </Note>
 
       {editing !== null ? (

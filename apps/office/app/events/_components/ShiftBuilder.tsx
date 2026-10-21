@@ -417,11 +417,15 @@ export function ShiftBuilder({
                 hint="Loads this client's rate card, dress codes, on-site contact and policies."
               >
                 <option value="">Choose…</option>
-                {reference.clients.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
+                {/* ADR-0185: no new event for an archived client; one already picked stays. */}
+                {reference.clients
+                  .filter((option) => !option.archived || option.id === draft.clientId)
+                  .map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                      {option.archived ? ' (archived)' : ''}
+                    </option>
+                  ))}
               </Select>
               <Select
                 label={

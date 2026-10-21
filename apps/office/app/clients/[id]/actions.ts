@@ -52,6 +52,8 @@ const CARD_WORDING = {
     unknown_qualification: 'That qualification no longer exists. Refresh the page.',
     quiz_not_found: 'That quiz no longer exists. Refresh the page.',
     unknown_worker_request: 'That request no longer exists. Refresh the page.',
+    client_has_upcoming_events:
+      'This client still has an event today or later. Finish or cancel those first, then archive it.',
   },
   log: '[client card]',
 };
@@ -180,6 +182,20 @@ export async function setDoNotReturn(
  */
 export async function setNameBadges(clientId: string, on: boolean): Promise<ActionResult> {
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
+}
+
+/**
+ * ADR-0185: archive a client so it stops showing as active. Nothing is
+ * removed; the database refuses while an event today or later is not
+ * cancelled, and writes the change to the client's History.
+ */
+export async function archiveClient(clientId: string): Promise<ActionResult> {
+  return callRpc('archive_client', { p_client: clientId }, clientId);
+}
+
+/** ADR-0185: bring an archived client back to the active list. */
+export async function restoreClient(clientId: string): Promise<ActionResult> {
+  return callRpc('restore_client', { p_client: clientId }, clientId);
 }
 
 /** ADR-0135 §3: one of the two line-up emails to this client, on or off (audited). */

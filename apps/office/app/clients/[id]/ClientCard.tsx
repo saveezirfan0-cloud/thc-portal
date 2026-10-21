@@ -6,6 +6,7 @@ import { OfficeShell } from '../../_components/OfficeShell';
 import { ClientCrumbs, NewEventForClient } from './chrome';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
+import { ArchiveClient } from './ArchiveClient';
 import { ClientEvents } from './ClientEvents';
 import { Invoicing } from './Invoicing';
 import { LineupEmails } from './LineupEmails';
@@ -57,11 +58,14 @@ export function ClientCard({
 }) {
   const client = data.client as Client;
   const [editing, setEditing] = useState(false);
+  const stillToCome = data.events.filter(
+    (row) => row.status === 'upcoming' || row.status === 'ongoing',
+  ).length;
   const eventsTile = (
     <KpiTile
       label="Events"
       value={client.event_count}
-      description={`${data.events.filter((row) => row.status === 'upcoming' || row.status === 'ongoing').length} still to come`}
+      description={`${stillToCome} still to come`}
     />
   );
 
@@ -80,9 +84,27 @@ export function ClientCard({
                 Edit
               </Button>
               <span className="muted xs">no Delete — a client record is only ever edited</span>
+              {client.archived_at === null ? (
+                <ArchiveClient
+                  clientId={client.id}
+                  name={client.name}
+                  archivedAt={null}
+                  upcoming={stillToCome}
+                  canWrite={canWrite}
+                />
+              ) : null}
             </>
           }
         >
+          {client.archived_at !== null ? (
+            <ArchiveClient
+              clientId={client.id}
+              name={client.name}
+              archivedAt={client.archived_at}
+              upcoming={stillToCome}
+              canWrite={canWrite}
+            />
+          ) : null}
           <div className="grid c3">
             <div className="kv" style={{ gridColumn: 'span 2' }}>
               <span className="k">Client name</span>

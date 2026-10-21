@@ -46,6 +46,12 @@ export interface ClientOption {
   contactEmails: string[];
   paysBreaks: boolean;
   paysBuffer: boolean;
+  /**
+   * ADR-0185: archived clients stay in the list (the events filter and an
+   * existing event still name them) but the Shift Builder does not offer
+   * them for a new event.
+   */
+  archived: boolean;
   /** Charge rate and dress codes per role, from this client's rate card (§9.7). */
   rateCard: Record<string, { chargeRate: number; dressCodes: string[] }>;
 }
@@ -84,6 +90,7 @@ interface ClientRow {
   contact_emails: string[] | null;
   pays_breaks: boolean;
   pays_buffer: boolean;
+  archived_at: string | null;
 }
 interface RateCardRow {
   client_id: string;
@@ -128,7 +135,9 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     await Promise.all([
       supabase
         .from('clients')
-        .select('id, name, staff_contact_point, contact_emails, pays_breaks, pays_buffer')
+        .select(
+          'id, name, staff_contact_point, contact_emails, pays_breaks, pays_buffer, archived_at',
+        )
         .order('name'),
       supabase.from('client_rate_cards').select('client_id, role_id, dress_codes'),
       supabase
@@ -192,6 +201,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       contactEmails: c.contact_emails ?? [],
       paysBreaks: c.pays_breaks,
       paysBuffer: c.pays_buffer,
+      archived: c.archived_at !== null,
       rateCard: cardsByClient.get(c.id) ?? {},
     })),
     venues: ((venues.data ?? []) as VenueRow[]).map((v) => ({
