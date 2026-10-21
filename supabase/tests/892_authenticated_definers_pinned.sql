@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 202 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email), docs/14 §4 — so a new one fails here BY
+-- 203 functions on 22.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -194,6 +194,7 @@ select bag_eq(
             ('set_staff_pay_rate(uuid,numeric)'),
             ('set_staff_payroll_id(uuid,text)'),
             ('set_staff_scheduling(uuid,boolean,boolean)'),
+            ('set_term_letter_periods(uuid,daterange[])'),
             ('sign_contract(text,boolean)'),
             ('sign_off_event_invoice(uuid,text,text)'),
             ('sign_wtr_optout(text,integer,uuid)'),

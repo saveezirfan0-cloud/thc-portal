@@ -169,6 +169,12 @@ describe('what Verify opens, on /compliance and the profile alike', () => {
     expect(verifyStep(row({ item_type: 'passport' }))).toBe('verify');
   });
 
+  it('opens the holiday periods on every term letter, whatever the route (ADR-0178)', () => {
+    expect(verifyStep(row({ item_type: 'university_term_dates_letter', rtw_branch: null }))).toBe(
+      'confirm',
+    );
+  });
+
   it('keeps the date step for right-to-work documents — the condition rides along in it', () => {
     expect(verifyStep(row({ item_type: 'visa_document', rtw_branch: 'work_visa' }))).toBe(
       'confirm_date',
