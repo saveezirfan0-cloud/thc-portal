@@ -325,6 +325,17 @@ export interface InvoiceLine {
   floor_applied: boolean;
   charge_rate: number | string;
   invoicing: number | string | null;
+  /**
+   * ADR-0184 (20261023110000): of `payable_min` / `invoicing`, the paid
+   * time past the scheduled end — its own "Overrun" line on the client's
+   * invoice. Optional so an older database reads as none.
+   */
+  overrun_min?: number | null;
+  overrun_invoicing?: number | string | null;
+  /** Signed out more than 15 minutes past the end (§9.5's flag). */
+  late_check_out?: boolean;
+  /** The office has verified the late sign-out with the worker. */
+  late_check_out_verified?: boolean;
 }
 
 /** One violation on an event (`invoice_event_violations`). */

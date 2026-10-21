@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, Button, Pill, TableScroll, useTimeFormat } from '@thc/ui';
-import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
+import { UK_ZONE, formatTimeIn, needsDualZone, overWeeklyLimitText } from '@thc/domain';
 import {
   LATE_CHECK_OUT_LABEL,
   arrivalLine,
@@ -134,6 +134,9 @@ export function MonitorTable({
                     {row.lateCheckOutVerifiedByName ? ` by ${row.lateCheckOutVerifiedByName}` : ''}
                   </span>
                 ) : null}
+                {row.status === 'checked_out' && row.lateCheckOut ? (
+                  <WeeklyLimitFlag hours={row.weekHours} cap={row.weekCapHours} />
+                ) : null}
               </td>
             </tr>
           ))}
@@ -141,4 +144,24 @@ export function MonitorTable({
       </table>
     </TableScroll>
   );
+}
+
+/**
+ * RULE-20 with ADR-0184: the paid overrun counts against the weekly cap, so
+ * a late sign-out can take a worker past it. Amber, beside the late line —
+ * the red stays on the status pill (§9.5).
+ */
+export function WeeklyLimitFlag({
+  hours,
+  cap,
+}: {
+  hours: number | null | undefined;
+  cap: number | null | undefined;
+}) {
+  const text = overWeeklyLimitText(hours, cap);
+  return text ? (
+    <span className="sub">
+      <Pill tone="amber">{text}</Pill>
+    </span>
+  ) : null;
 }

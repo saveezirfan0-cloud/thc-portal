@@ -19,6 +19,7 @@ import {
   employeeId,
   formatUkStamp,
   hours,
+  invoiceLineParts,
   invoiceEventExportHref,
   invoiceEmailState,
   invoicePdfHref,
@@ -312,8 +313,48 @@ function ViolationRow({ v }: { v: InvoiceViolation }) {
   );
 }
 
+/**
+ * One shift, as the client's invoice draws it: its own line, and — signed
+ * out more than 15 minutes late — an "Overrun – <role>" line under it from
+ * the scheduled end to the paid end, at the same rate (ADR-0184). The
+ * Check out cell says it was signed out late, and whether the office has
+ * verified that with the worker; neither holds the invoice.
+ */
 function LineRow({ line }: { line: InvoiceLine }) {
   const pending = line.status === 'pending';
+  const parts = invoiceLineParts(line);
+  return (
+    <>
+      <ShiftRow line={line} pending={pending} parts={parts} />
+      {parts.overrun && !pending ? (
+        <tr className="rp-overrun">
+          <td />
+          <td>Overrun – {line.role_name}</td>
+          <td>
+            <ScheduledWindow startsAt={parts.overrun.startsAt} endsAt={parts.overrun.endsAt} />
+          </td>
+          <td colSpan={2} className="muted">
+            Past the scheduled end · its own invoice line
+          </td>
+          <td className="money">—</td>
+          <td className="money">{hours(parts.overrun.minutes)}</td>
+          <td className="money">{pounds(line.charge_rate)}</td>
+          <td className="money">{pounds(parts.overrun.amount)}</td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+function ShiftRow({
+  line,
+  pending,
+  parts,
+}: {
+  line: InvoiceLine;
+  pending: boolean;
+  parts: ReturnType<typeof invoiceLineParts>;
+}) {
   return (
     <tr className={pending ? 'rp-pending' : undefined}>
       <td>
@@ -339,6 +380,15 @@ function LineRow({ line }: { line: InvoiceLine }) {
                 <Pill tone="coral">No check-out · unresolved</Pill>
               </div>
             ) : null}
+            {line.late_check_out ? (
+              <div>
+                <Pill tone={line.late_check_out_verified ? 'neutral' : 'amber'}>
+                  {line.late_check_out_verified
+                    ? 'Signed out late · verified'
+                    : 'Signed out late · not verified'}
+                </Pill>
+              </div>
+            ) : null}
           </td>
         </>
       ) : (
@@ -349,9 +399,9 @@ function LineRow({ line }: { line: InvoiceLine }) {
       <td className="money">
         {line.unpaid_break_min > 0 ? breakLabel(line.unpaid_break_min) : '—'}
       </td>
-      <td className="money">{pending ? 'Pending' : hours(line.payable_min)}</td>
+      <td className="money">{pending ? 'Pending' : hours(parts.mainMin)}</td>
       <td className="money">{pounds(line.charge_rate)}</td>
-      <td className="money">{pending ? '—' : pounds(line.invoicing)}</td>
+      <td className="money">{pending ? '—' : pounds(parts.mainAmount)}</td>
     </tr>
   );
 }

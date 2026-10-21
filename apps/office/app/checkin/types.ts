@@ -39,6 +39,13 @@ export interface MonitorRow {
   lateCheckOutVerifiedByName?: string | null;
   lateCheckOutNote?: string | null;
   /**
+   * RULE-20 with ADR-0184, on a late sign-out only: the hours counted
+   * against the worker's weekly cap for the section's Mon–Sun week (paid
+   * overrun included), and the cap. Null when not late, or no cap.
+   */
+  weekHours?: number | null;
+  weekCapHours?: number | null;
+  /**
    * `check_logs.location_suspect` (20261012121200): the arrival's fix had no
    * accuracy, one wider than the geofence, or sat on the venue's centre (a
    * pasted coordinate), or an on-site check-out fix did. A flag for the
@@ -102,6 +109,9 @@ export interface LateCheckOutRow {
   verifiedAt: string | null;
   verifiedByName: string | null;
   note: string | null;
+  /** RULE-20: the week's counted hours (overrun included) and the cap. */
+  weekHours: number | null;
+  weekCapHours: number | null;
 }
 
 /** What the Verify window needs, from a monitor row or the list. */
@@ -115,4 +125,6 @@ export interface LateCheckOutTarget {
   verifiedAt?: string | null;
   verifiedByName?: string | null;
   note?: string | null;
+  weekHours?: number | null;
+  weekCapHours?: number | null;
 }

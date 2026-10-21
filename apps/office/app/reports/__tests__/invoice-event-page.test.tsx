@@ -237,6 +237,52 @@ describe('/reports/invoicing/:eventId', () => {
     expect(html).not.toContain('sign-off:');
   });
 
+  it('shows an overrun as its own line under the shift, priced from its own minutes (ADR-0184)', async () => {
+    // £17.35/h, 465 minutes of which 75 past the end: 112.78 + 21.69.
+    state.detail = {
+      ...state.detail,
+      lines: [
+        line({
+          ends_at: '2026-10-14T22:00:00Z',
+          check_out_at: '2026-10-14T23:15:00Z',
+          payable_min: 465,
+          charge_rate: '17.35',
+          invoicing: '134.47',
+          overrun_min: 75,
+          overrun_invoicing: '21.69',
+          late_check_out: true,
+          late_check_out_verified: false,
+        }),
+      ],
+    };
+    const html = await render();
+    expect(html).toContain('Overrun – Waiting Staff');
+    expect(html).toContain('window:2026-10-14T22:00:00Z');
+    expect(html).toContain('>6.50<');
+    expect(html).toContain('£112.78');
+    expect(html).toContain('>1.25<');
+    expect(html).toContain('£21.69');
+    expect(html).toContain('Signed out late · not verified');
+  });
+
+  it('a verified late sign-out says so', async () => {
+    state.detail = {
+      ...state.detail,
+      lines: [
+        line({
+          check_out_at: '2026-10-14T22:45:00Z',
+          payable_min: 285,
+          invoicing: '109.11',
+          overrun_min: 45,
+          overrun_invoicing: '17.23',
+          late_check_out: true,
+          late_check_out_verified: true,
+        }),
+      ],
+    };
+    expect(await render()).toContain('Signed out late · verified');
+  });
+
   it('an unknown event is not found', async () => {
     state.detail = { problem: null, event: null, lines: [], violations: [] };
     await expect(render()).rejects.toThrow('NOT_FOUND');

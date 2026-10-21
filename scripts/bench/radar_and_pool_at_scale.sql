@@ -15,7 +15,11 @@
 --     invitations and Radar applications, a few self-cancels, some sections
 --     full;
 --   * 60 open pool shift offers on confirmed bookings, every fourth with
---     every qualified worker already told (wave 1 exhausted by notices).
+--     every qualified worker already told (wave 1 exhausted by notices);
+--   * ADR-0184: 2,000 shifts already FINISHED this Mon–Sun week, after the
+--     overrun rule's 21.10.2026 cutoff (40 sections today × 50 workers),
+--     a third signed out 30–120 minutes late, some with an unpaid break —
+--     what every weekly-hours sum (RULE-20) now reads check_logs for.
 -- and reports, from a temp table at the end:
 --   * Radar as three staff users (many roles + qualified everywhere; two
 --     roles, few qualifications; a new starter), whole list and — where the
@@ -28,7 +32,9 @@
 --   * the wave-1 checks: offer_wave1_exhausted per offer (take_offered_shift
 --     asks it once) and radar_wave1_exhausted per section;
 --   * where the database has it (ADR-0170), one worker against every open
---     section in one call (auto_assign_worker_pool).
+--     section in one call (auto_assign_worker_pool);
+--   * the office reads that sum the week: staff_directory_v (the full
+--     list), late_check_outs() and today's checkin_monitor_v, as an admin.
 --
 -- usage (local cluster, after migrations + seed; never against production):
 --   psql -X -v ON_ERROR_STOP=1 -f scripts/bench/radar_and_pool_at_scale.sql
@@ -231,7 +237,43 @@ create temp table bench_offers as
 select so.id from shift_offers so join bench_offer_src x on x.booking_id = so.booking_id;
 grant all on bench_offers to public;
 
+-- ---- ADR-0184: finished shifts this week, a third signed out late ---------
+-- Sections end 20 minutes to 3 hours ago (never before the cutoff), six
+-- hours long; half the events do not pay breaks.
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer)
+select md5('bench-today-' || k)::uuid, md5('bench-client-' || (1 + k % 10))::uuid, v.id, v.name, v.address, v.location, 150,
+       'Bench Today ' || k, (now() at time zone 'Europe/London')::date, k % 2 = 1, true
+  from generate_series(1, 40) k
+  join venues v on v.id = md5('bench-venue-' || (1 + k % 30))::uuid;
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate,
+                                allocation_per_hour)
+select md5('bench-today-section-' || k)::uuid, md5('bench-today-' || k)::uuid, md5('bench-role-' || (1 + k % 6))::uuid,
+       x.ends - interval '6 hours', x.ends, 50, 0, 25, 14, 3
+  from generate_series(1, 40) k
+ cross join lateral (select greatest(now() - interval '20 minutes' - (k % 6) * interval '30 minutes',
+                                     timestamptz '2026-10-20 23:00:00+00' + interval '6 hours') as ends) x;
+create temp table bench_finished as
+select md5('bench-today-booking-' || k || '-' || i)::uuid as id, md5('bench-today-section-' || k)::uuid as shift_id,
+       w.id as staff_id, i % 3 = 0 as late, k % 2 = 0 as unpaid_breaks, 30 + (k * 7 + i) % 91 as late_min
+  from generate_series(1, 40) k cross join generate_series(1, 50) i
+  join bench_staff w on w.rn = 4 + (k * 50 + i) % 997;
+insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, created_at)
+select f.id, f.shift_id, f.staff_id, 'worked', 'auto', now() - interval '3 days', now() - interval '4 days'
+  from bench_finished f
+on conflict do nothing;
+insert into check_logs (booking_id, attempted_at, outcome, check_in_at, check_out_at, check_out_pressed_at, check_out_on_site)
+select f.id, sr.starts_at, 'checked_in', sr.starts_at,
+       sr.ends_at + case when f.late then make_interval(mins => f.late_min) else interval '5 minutes' end,
+       sr.ends_at + case when f.late then make_interval(mins => f.late_min) else interval '5 minutes' end, true
+  from bench_finished f join bookings b on b.id = f.id join shift_requirements sr on sr.id = f.shift_id;
+insert into breaks (booking_id, started_at, ended_at)
+select f.id, sr.starts_at + interval '3 hours', sr.starts_at + interval '3 hours 30 minutes'
+  from bench_finished f join bookings b on b.id = f.id join shift_requirements sr on sr.id = f.shift_id
+ where f.unpaid_breaks;
+
 set local session_replication_role = origin;
+analyze check_logs; analyze breaks;
 analyze shift_offers; analyze shift_offer_notices;
 analyze staff; analyze staff_roles; analyze client_qualifications; analyze events;
 analyze shift_requirements; analyze bookings; analyze violations;
@@ -348,6 +390,49 @@ begin
     insert into bench_clock (what, n, ms) values ('one worker, every open section: auto_assign_worker_pool', n, extract(epoch from clock_timestamp() - t) * 1000);
   end loop;
 end $$;
+
+-- The office reads that sum the week (RULE-20 with ADR-0184), as an admin.
+select set_config('request.jwt.claims', json_build_object('sub', md5('bench-admin')::uuid, 'role', 'authenticated')::text, true);
+set local role authenticated;
+do $$
+declare t timestamptz; n int; i int;
+begin
+  for i in 1..3 loop
+    t := clock_timestamp();
+    -- Every column, as /staff reads it (a bare count(*) lets the planner
+    -- skip the week's sums).
+    select count(*) into n from staff_directory_v d where hashtext(d::text) is not null;
+    insert into bench_clock (what, n, ms) values ('office: staff_directory_v (full list)', n, extract(epoch from clock_timestamp() - t) * 1000);
+    t := clock_timestamp();
+    select count(*) into n from late_check_outs();
+    insert into bench_clock (what, n, ms) values ('office: late_check_outs()', n, extract(epoch from clock_timestamp() - t) * 1000);
+    t := clock_timestamp();
+    select count(*) into n from checkin_monitor_v m
+     where hashtext(m::text) is not null and m.starts_at < ((now() at time zone 'Europe/London')::date + 1)::timestamp at time zone 'Europe/London'
+       and m.ends_at > ((now() at time zone 'Europe/London')::date)::timestamp at time zone 'Europe/London';
+    insert into bench_clock (what, n, ms) values ('office: checkin_monitor_v (today)', n, extract(epoch from clock_timestamp() - t) * 1000);
+    -- What /checkin adds, where the database has it (20261023110100): the
+    -- week against the cap of the day's late rows and the list's, in one call.
+    if to_regprocedure('public.late_check_out_weeks(uuid[])') is not null then
+      -- The ids as the loader has them: from the rows it already read
+      -- (filtering the view on late_check_out is its own, older, slow plan).
+      create temp table if not exists bench_late_ids as
+        select x.booking_id from (
+          select m.* from checkin_monitor_v m
+           where m.starts_at < ((now() at time zone 'Europe/London')::date + 1)::timestamp at time zone 'Europe/London'
+             and m.ends_at > ((now() at time zone 'Europe/London')::date)::timestamp at time zone 'Europe/London'
+          offset 0) x
+         where x.status = 'checked_out' and x.late_check_out
+        union
+        select l.booking_id from late_check_outs() l;
+      t := clock_timestamp();
+      execute 'select count(*) from late_check_out_weeks(array(select booking_id from bench_late_ids))' into n;
+      insert into bench_clock (what, n, ms) values ('office: late_check_out_weeks (today''s late rows + the list)', n, extract(epoch from clock_timestamp() - t) * 1000);
+    end if;
+  end loop;
+end $$;
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 select what, count(*) as calls, round(avg(n)) as avg_rows,
        round(avg(ms), 1) as avg_ms, round(percentile_cont(0.5) within group (order by ms)::numeric, 1) as p50_ms,

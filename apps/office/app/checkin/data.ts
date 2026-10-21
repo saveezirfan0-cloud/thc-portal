@@ -46,6 +46,10 @@ interface LateCheckOutsRpc {
     fn: 'late_check_outs',
     args: { p_days: number; p_include_verified: boolean },
   ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
+  rpc(
+    fn: 'late_check_out_weeks',
+    args: { p_bookings: string[] },
+  ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
 
 /** `late_check_outs()` rows, before the photo path is signed. */
@@ -68,7 +72,14 @@ export function readLateCheckOuts(data: unknown): UnsignedLateCheckOut[] {
     verifiedAt: (r.verified_at as string | null) ?? null,
     verifiedByName: (r.verified_by_name as string | null) ?? null,
     note: (r.note as string | null) ?? null,
+    weekHours: numberOrNull(r.week_hours),
+    weekCapHours: numberOrNull(r.week_cap_hours),
   }));
+}
+
+/** A numeric column (PostgREST sends numeric as a string) or null. */
+function numberOrNull(v: unknown): number | null {
+  return v === null || v === undefined || v === '' ? null : Number(v);
 }
 
 /** The session client, as `createClient` returns it. */
@@ -274,15 +285,49 @@ export async function loadMonitor(
     lateCheckOutVerifiedAt: (r.late_check_out_verified_at as string | null) ?? null,
     lateCheckOutVerifiedByName: (r.late_check_out_verified_by_name as string | null) ?? null,
     lateCheckOutNote: (r.late_check_out_note as string | null) ?? null,
+    // The week against the cap is read below, for the late rows only.
+    weekHours: null as number | null,
+    weekCapHours: null as number | null,
     // 20261012121200 appended it to the view; absent (an older database)
     // reads as not flagged.
     locationSuspect: r.location_suspect === true,
     status: r.status as MonitorStatus,
   }));
 
+  const lateRows = late.error ? [] : readLateCheckOuts(late.data);
+
+  // RULE-20 with ADR-0184: the week against the cap for today's late
+  // sign-outs and the fortnight's list, in ONE set-based read
+  // (late_check_out_weeks, 20261023110100) — not a sum per row. A failed
+  // read leaves the warning off; it never hides the board.
+  const lateIds = [
+    ...new Set([
+      ...unsigned
+        .filter((r) => r.status === 'checked_out' && r.lateCheckOut)
+        .map((r) => r.bookingId),
+      ...lateRows.map((r) => r.bookingId),
+    ]),
+  ];
+  if (lateIds.length > 0) {
+    const weeks = await (supabase as unknown as LateCheckOutsRpc).rpc('late_check_out_weeks', {
+      p_bookings: lateIds,
+    });
+    if (!weeks.error) {
+      const byId = new Map(
+        ((weeks.data ?? []) as Record<string, unknown>[]).map((w) => [w.booking_id as string, w]),
+      );
+      for (const row of [...unsigned, ...lateRows]) {
+        const w = byId.get(row.bookingId);
+        if (w) {
+          row.weekHours = numberOrNull(w.week_hours);
+          row.weekCapHours = numberOrNull(w.week_cap_hours);
+        }
+      }
+    }
+  }
+
   // `photo_path` is a key in the private `photos` bucket, not a URL — the
   // browser cannot fetch it. Both tables' paths are signed in one batch.
-  const lateRows = late.error ? [] : readLateCheckOuts(late.data);
   const urls = await signStaffPhotos([
     ...unsigned.map((r) => r.photoPath),
     ...violations.rows.map((v) => v.photoPath),

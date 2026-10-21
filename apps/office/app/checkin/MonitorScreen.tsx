@@ -17,7 +17,7 @@ import {
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
 import { type LogQuery, logQueryHref, logTime } from './log';
-import { MonitorTable } from './MonitorTable';
+import { MonitorTable, WeeklyLimitFlag } from './MonitorTable';
 import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
 import { VerifyLateModal } from './VerifyLateModal';
@@ -155,6 +155,8 @@ export function MonitorScreen({
                   roleName: row.roleName,
                   endsAt: row.endsAt,
                   checkOutAt: row.checkOutAt,
+                  weekHours: row.weekHours ?? null,
+                  weekCapHours: row.weekCapHours ?? null,
                 })
               : undefined
           }
@@ -312,6 +314,7 @@ function LateCheckOutPanel({
                     {pastEndText(r.minutesPastEnd)}
                     {r.finishByOffice ? ' · finish entered by the office' : ''}
                   </span>
+                  <WeeklyLimitFlag hours={r.weekHours} cap={r.weekCapHours} />
                 </td>
                 <td className="right-align cell-actions">
                   <Button size="sm" onClick={() => onVerify(r)}>

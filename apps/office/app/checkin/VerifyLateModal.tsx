@@ -7,6 +7,7 @@ import {
   UK_ZONE,
   formatDateTimeIn,
   needsDualZone,
+  overWeeklyLimitText,
   viewerZone,
 } from '@thc/domain';
 import { verifyLateCheckOut } from './actions';
@@ -45,6 +46,7 @@ export function VerifyLateModal({
   // Mounted on a click: the reader's zone is already the browser's.
   const zone = viewerZone();
   const dual = needsDualZone(zone);
+  const overLimit = overWeeklyLimitText(target.weekHours, target.weekCapHours);
   const verified = Boolean(target.verifiedAt);
   const past = minutesPastEnd(target.endsAt, target.checkOutAt);
   const trimmed = note.trim();
@@ -96,6 +98,13 @@ export function VerifyLateModal({
             </span>
           </div>
         </div>
+
+        {overLimit ? (
+          <Alert tone="amber">
+            {overLimit} — the overrun counts toward this worker’s hours for the week. Check their
+            other bookings this week.
+          </Alert>
+        ) : null}
 
         <Note>
           Paid and charged to the sign-out: the time past the scheduled end is its own line on the

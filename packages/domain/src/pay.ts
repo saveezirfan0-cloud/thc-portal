@@ -592,6 +592,50 @@ export function payableMinutes(input: PayInput): PayResult {
 }
 
 /**
+ * RULE-20 and ADR-0184: the paid overrun minutes a shift adds to the hours
+ * counted against the worker's weekly cap. The cap is "booked" hours — each
+ * counted booking's SCHEDULED length — so a shift signed out more than 15
+ * minutes late adds what was actually paid past its end: `overrunMin`
+ * (capped at end + 4 h, nothing before `OVERRUN_PAID_FROM`). A shift whose
+ * pay is not settled — no recorded finish, or a No check-out still open —
+ * adds nothing until it is. SQL's `cap_overrun_minutes()` repeats this; the
+ * `capOverrun` vectors hold both to it, and `weekly_booked_hours()` and the
+ * auto-assign pool sum it per Mon–Sun week.
+ */
+export function capOverrunMinutes(input: PayInput): number {
+  if (input.noCheckOut === 'unresolved' || input.checkOutAt === null) return 0;
+  return (
+    payableMinutes({ ...input, leftEarlyViolation: false, noCheckOut: 'none' }).overrunMin ?? 0
+  );
+}
+
+/**
+ * "21 h 15", "20 h" — hours as the office reads a weekly limit. Whole
+ * minutes, rounded.
+ */
+export function formatCapHours(hours: number): string {
+  const total = Math.round(hours * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
+}
+
+/**
+ * ADR-0184: "Over weekly limit: 21 h 15 of 20 h" when the hours counted
+ * against the cap for a Mon–Sun week — overrun included — are past the
+ * worker's calculated cap; null when they are not, or there is no cap.
+ */
+export function overWeeklyLimitText(
+  weekHours: number | null | undefined,
+  capHours: number | null | undefined,
+): string | null {
+  if (weekHours === null || weekHours === undefined) return null;
+  if (capHours === null || capHours === undefined) return null;
+  if (weekHours <= capHours) return null;
+  return `Over weekly limit: ${formatCapHours(weekHours)} of ${formatCapHours(capHours)}`;
+}
+
+/**
  * Holiday pay is always broken out at 12.07% and never blended into the rate
  * (§9.8, §9.9). Returned separately so no caller can accidentally add them —
  * and the worker's own screens only ever read `basePence` (§5.1).
