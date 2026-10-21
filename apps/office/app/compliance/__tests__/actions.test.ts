@@ -20,7 +20,7 @@ vi.mock('@thc/db/admin', () => ({ createAdminClient }));
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
 
-const { rejectDocument, verifyDocument } = await import('../actions');
+const { rejectDocument, setTermLetterPeriods, verifyDocument } = await import('../actions');
 
 beforeEach(() => {
   rpc.mockReset();
@@ -87,5 +87,49 @@ describe('rejectDocument', () => {
       ok: false,
       message: 'Only the office can review documents.',
     });
+  });
+});
+
+describe('term letter holiday periods (ADR-0178)', () => {
+  it('Verify sends the periods the reviewer confirmed, hand-added ones included, as half-open ranges', async () => {
+    rpc.mockResolvedValue({ data: {}, error: null });
+    await verifyDocument('t1', {
+      termPeriods: [
+        { from: '2026-12-13', to: '2027-01-10' },
+        { from: '2027-03-27', to: '2027-04-25' },
+      ],
+    });
+    expect(rpc).toHaveBeenCalledWith('compliance_verify_document', {
+      p_doc: 't1',
+      p_term_dates: ['[2026-12-13,2027-01-11)', '[2027-03-27,2027-04-26)'],
+    });
+  });
+
+  it('Verify refuses a period with a missing date before reaching the database', async () => {
+    const result = await verifyDocument('t1', { termPeriods: [{ from: '2026-12-13', to: '' }] });
+    expect(result).toEqual({ ok: false, message: 'Period 1 needs both dates.' });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('a verified letter’s periods are replaced through set_term_letter_periods on the session client', async () => {
+    rpc.mockResolvedValue({ data: { expiresOn: '2027-04-25' }, error: null });
+    const result = await setTermLetterPeriods('t2', [{ from: '2027-03-27', to: '2027-04-25' }]);
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('set_term_letter_periods', {
+      p_doc: 't2',
+      p_term_dates: ['[2027-03-27,2027-04-26)'],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.message).toMatch(/expires 25\.04\.2027/);
+  });
+
+  it('says in words when the periods would leave the letter expired', async () => {
+    rpc.mockResolvedValue({
+      data: null,
+      error: { message: 'term_periods_expire_letter: 2026-10-01' },
+    });
+    const result = await setTermLetterPeriods('t2', [{ from: '2026-09-01', to: '2026-09-30' }]);
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/would leave the letter expired/);
   });
 });
