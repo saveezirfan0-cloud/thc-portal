@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { isEditLocked, ukRoleWindow } from '@thc/domain';
-import { updateEvent } from '../../actions';
+import { isEditLocked, ukRoleWindow, ukToday } from '@thc/domain';
+import { addRolesAfterStart, updateEvent } from '../../actions';
 import { loadEvent, loadReferenceData } from '../../data';
 import { OfficeShell } from '../../../_components/OfficeShell';
 import { currentOfficeRole } from '../../../_components/officeUser';
@@ -22,7 +22,9 @@ export const metadata = { title: 'Edit event · THC Back Office' };
  *
  * Every field is editable the same way as at creation, up to the event's
  * start. From the derived start onwards — and therefore for every past event
- * — the form is locked and the work moves to the event board (§3.2).
+ * — the form is locked and the work moves to the event board (§3.2). On the
+ * event's own day a started event still takes a NEW role section that starts
+ * later than now (ADR-0177); nothing already saved moves.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +42,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const initial = draftFromSaved(event, dressCodesFor, 'edit');
 
   const locked = isEditLocked(event.sections.map((s) => ukRoleWindow(event.date, s.start, s.end)));
+  const canAddRoles = locked && !event.cancelledAt && event.date >= ukToday();
 
   const confirmed = Object.fromEntries(event.sections.map((s) => [s.id, s.confirmed]));
   const booked = Object.fromEntries(event.sections.map((s) => [s.id, s.booked]));
@@ -65,8 +68,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         booked={booked}
         held={held}
         locked={locked}
+        canAddRoles={canAddRoles}
         ratesVisible={ratesVisible}
-        save={updateEvent}
+        save={locked ? addRolesAfterStart : updateEvent}
       />
     </OfficeShell>
   );
