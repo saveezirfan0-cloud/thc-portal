@@ -124,6 +124,22 @@ export function isEditLocked(sections: RoleSectionWindow[], now: Date = new Date
   return window !== null && now >= window.startsAt;
 }
 
+/**
+ * ADR-0177, a deliberate change to §3.2. A started event still takes a NEW
+ * role section — the client's same-day "one more person from 12:30" — as
+ * long as that section starts later than now. Nothing already built moves:
+ * the saved sections and the event's own fields stay under the lock.
+ */
+export function canAddSectionAfterStart(
+  section: RoleSectionWindow,
+  now: Date = new Date(),
+): boolean {
+  return section.startsAt > now;
+}
+
+export const LATE_SECTION_MESSAGE =
+  'This event has started. A role added now must start later than the current time (UK).';
+
 // ---------------------------------------------------------------------
 // §3.5 — which edits ask the booked staff to re-confirm
 // ---------------------------------------------------------------------

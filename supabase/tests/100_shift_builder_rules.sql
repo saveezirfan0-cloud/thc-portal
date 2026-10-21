@@ -18,7 +18,7 @@
 -- `supabase start` give you. Everything below rolls back.
 -- =====================================================================
 begin;
-select plan(19);
+select plan(21);
 \ir _shared/fixtures.psql
 
 -- A Europe/London wall-clock time, stored as timestamptz — the same helper
@@ -227,6 +227,19 @@ select throws_ok(
       where event_id = '6f000000-0000-4000-8000-000000000003' and starts_at < now() $$,
   'P0001', 'event_started_editing_locked',
   '§3.2 and cannot change a section once the event''s derived window has started — the lock is held in the database, not only on the screen');
+-- ADR-0177: a started event still takes a NEW section that starts later
+-- than now (20261022140000) — and only such a one.
+select lives_ok(
+  $$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate, allocation_per_hour)
+     select '6f000000-0000-4000-8000-000000000003', r.id, now() + interval '1 hour', now() + interval '5 hours', 1, 0, 26.83, 16.00, 1
+       from roles r where r.name = 'Host' $$,
+  'ADR-0177 a manager adds a new role to a started event when it starts later than now');
+select throws_ok(
+  $$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate, allocation_per_hour)
+     select '6f000000-0000-4000-8000-000000000003', r.id, now() - interval '1 hour', now() + interval '3 hours', 1, 0, 26.83, 16.00, 1
+       from roles r where r.name = 'Host' $$,
+  'P0001', 'late_section_starts_in_past',
+  'ADR-0177 but not one that has already started');
 reset role;
 
 select * from finish();

@@ -16,6 +16,7 @@ import {
   isNotifiedOnCancel,
   orderSections,
   requiredLanguagesLabel,
+  ukToday,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { AutoRefresh } from '../../_components/AutoRefresh';
@@ -138,12 +139,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       timezone={<ViewerZone />}
       actions={
         <span className="row" style={{ gap: 8 }}>
-          {/* Editing is allowed only up to the event's start (§3.2). */}
-          {locked || status === 'cancelled' ? null : (
+          {/* Editing is allowed only up to the event's start (§3.2); on the
+              day, a started event still takes a new role (ADR-0177). */}
+          {status === 'cancelled' ? null : !locked ? (
             <Link className="btn sm" href={`/events/${event.id}/edit`}>
               Edit
             </Link>
-          )}
+          ) : event.date >= ukToday() ? (
+            <Link className="btn sm" href={`/events/${event.id}/edit`}>
+              + Add role
+            </Link>
+          ) : null}
           {/* §3.2: multi-day = separate events via Duplicate — roles, not staff. */}
           <Link className="btn sm" href={`/events/new?from=${event.id}`}>
             Duplicate
