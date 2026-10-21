@@ -87,6 +87,7 @@ const INPUT = {
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  securityCleared: false,
   roles: [
     {
       id: null,

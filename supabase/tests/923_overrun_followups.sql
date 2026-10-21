@@ -1,5 +1,5 @@
 -- =====================================================================
--- 922 · ADR-0184 follow-ups — 20261022200200_overrun_followups.sql
+-- 923 · ADR-0184 follow-ups — 20261023110000_overrun_followups.sql
 --
 --   1 · RULE-20: the paid overrun counts against the weekly cap
 --       (weekly_booked_hours, the rota guard, the auto-assign pool,

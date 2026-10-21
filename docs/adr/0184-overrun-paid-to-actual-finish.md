@@ -8,9 +8,9 @@ ADR-0035 (D5 Left early, D15 stale fix), ADR-0172 / ADR-0176 (ready to invoice, 
 sign-in log) · **Asked by:** THC's owner, 21.10.2026
 
 `supabase/migrations/20261022200000_overrun_paid_to_actual_finish.sql`,
-`20261022200100_overrun_capped_and_dated.sql`, `20261022200200_overrun_followups.sql`,
-`20261022200300_overrun_set_based.sql` · pgTAP
-`921`, `922` (and `010`, `070`, `140`, `892` follow) · `packages/domain/src/pay.ts`, `pay.vectors.json` ·
+`20261022200100_overrun_capped_and_dated.sql`, `20261023110000_overrun_followups.sql`,
+`20261023110100_overrun_set_based.sql` · pgTAP
+`921`, `923` (and `010`, `070`, `140`, `892` follow) · `packages/domain/src/pay.ts`, `pay.vectors.json` ·
 `packages/pdf/src/invoice.ts`, `signInLog.ts`, `csv.ts` · `apps/office/app/checkin/`
 (`status.ts`, `MonitorTable.tsx`, `MonitorScreen.tsx`, `VerifyLateModal.tsx`, `actions.ts`,
 `data.ts`) · `apps/staff/app/shifts/[id]/earnings.ts`, `FullScreens.tsx`
@@ -114,8 +114,8 @@ minute period between 16:00 and 16:15 (pay and charge is to 16:00 is correct)".
 
 ## Follow-ups (THC's owner, 21.10.2026)
 
-Four points first left for later, decided the same day (`20261022200200`, made set-based in
-`20261022200300`; pgTAP `922`):
+Four points first left for later, decided the same day (`20261023110000`, made set-based in
+`20261023110100`; pgTAP `923`):
 
 1. **RULE-20 counts the paid overrun.** The weekly cap is judged on booked hours — each counted
    booking's scheduled length. A shift signed out late now adds its paid overrun
@@ -126,7 +126,7 @@ Four points first left for later, decided the same day (`20261022200200`, made s
    (ADR-0117), the auto-assign pool (`auto_assign_candidates_pool_pairs()`, so
    `auto_assign_worker_gate()` and the lists) and `staff_directory_v` (its booked and worked
    hours this week, and `staff_profile_v` / `student_visa_v` on it). Each sum reads the
-   overrun **once, as a set** (`20261022200300`, after QA measured the first, per-booking
+   overrun **once, as a set** (`20261023110100`, after QA measured the first, per-booking
    version at up to 10× slower): `booking_overruns(ids)` returns the paid overrun of the given
    bookings in one statement — their accepted check-in rows, the unpaid breaks of those signed
    out late, `cap_overrun_minutes()` on those only — and each sum passes only its bookings

@@ -411,7 +411,7 @@ begin
      where hashtext(m::text) is not null and m.starts_at < ((now() at time zone 'Europe/London')::date + 1)::timestamp at time zone 'Europe/London'
        and m.ends_at > ((now() at time zone 'Europe/London')::date)::timestamp at time zone 'Europe/London';
     insert into bench_clock (what, n, ms) values ('office: checkin_monitor_v (today)', n, extract(epoch from clock_timestamp() - t) * 1000);
-    -- What /checkin adds, where the database has it (20261022200300): the
+    -- What /checkin adds, where the database has it (20261023110100): the
     -- week against the cap of the day's late rows and the list's, in one call.
     if to_regprocedure('public.late_check_out_weeks(uuid[])') is not null then
       -- The ids as the loader has them: from the rows it already read

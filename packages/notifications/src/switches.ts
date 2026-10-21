@@ -299,6 +299,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         warning:
           'Workers are not reminded what to bring; the message still shows on the shift until they confirm it.',
       },
+      {
+        code: 'SC1',
+        label: 'Bring ID to a security-cleared event',
+        when: 'A worker is confirmed on an event marked Security cleared',
+        warning:
+          'Workers are not told to bring a passport or driving licence; the note still shows on the shift.',
+      },
       { code: 'RC3', label: 'Change not made', when: 'The office declines a profile change' },
       {
         code: 'RC5',

@@ -1,7 +1,7 @@
 -- =====================================================================
--- 20261022200300 · ADR-0184 follow-ups, QA: the weekly overrun, set-based
+-- 20261023110100 · ADR-0184 follow-ups, QA: the weekly overrun, set-based
 --
--- 20261022200200 added each booking's paid overrun to the RULE-20 weekly
+-- 20261023110000 added each booking's paid overrun to the RULE-20 weekly
 -- sums through booking_overrun_hours(booking, ends_at): one query per
 -- already-finished booking in the week, run under RLS for an office
 -- caller. With ~2,000 finished shifts in a week (scripts/bench/
@@ -17,7 +17,7 @@
 -- more than 15 minutes late, and cap_overrun_minutes() on those rows only.
 -- Each caller passes only its bookings whose section ended on or after
 -- ADR-0184's cutoff and at least 15 minutes ago, and LEFT JOINs the result.
--- Same figures as before (supabase/tests/922), no per-row function doing
+-- Same figures as before (supabase/tests/923), no per-row function doing
 -- its own queries. booking_overrun_hours() is dropped.
 --
 -- Also: the overrun invoice line (and CSV row) ends at the scheduled end
@@ -219,7 +219,7 @@ declare
       from week_src w
      where';
   b1 text := '  -- RULE-20 with ADR-0184: the paid overrun of the weeks'' finished
-  -- bookings, read once for the whole call (20261022200300).
+  -- bookings, read once for the whole call (20261023110100).
   week_ov as (
     select o.booking_id, o.overrun_min
       from booking_overruns(array(
@@ -236,7 +236,7 @@ declare
      where';
 begin
   if (length(v_def) - length(replace(v_def, a1, ''))) / length(a1) <> 1 then
-    raise exception '20261022200300: auto_assign_candidates_pool_pairs - expected one match of the week sum';
+    raise exception '20261023110100: auto_assign_candidates_pool_pairs - expected one match of the week sum';
   end if;
   execute replace(v_def, a1, b1);
 end $$;
@@ -259,9 +259,9 @@ declare
                           WHERE so.ends_at >= GREATEST('2026-10-20 23:00:00+00'::timestamp with time zone, (cap_week_start((now() AT TIME ZONE 'Europe/London'::text)::date)::timestamp without time zone - '1 day'::interval) AT TIME ZONE 'UTC'::text) AND so.ends_at <= (now() - '00:15:00'::interval))) ov ON ov.booking_id = b.id\1WHERE (sr.starts_at AT TIME ZONE 'Europe/London'::text)::date >= cap_week_start$sql$;
 begin
   select count(*) into v_n from regexp_matches(v_def, p1, 'g');
-  if v_n <> 2 then raise exception '20261022200300: staff_directory_v - pattern 1 matched % times', v_n; end if;
+  if v_n <> 2 then raise exception '20261023110100: staff_directory_v - pattern 1 matched % times', v_n; end if;
   select count(*) into v_n from regexp_matches(v_def, p2, 'g');
-  if v_n <> 2 then raise exception '20261022200300: staff_directory_v - pattern 2 matched % times', v_n; end if;
+  if v_n <> 2 then raise exception '20261023110100: staff_directory_v - pattern 2 matched % times', v_n; end if;
   execute 'create or replace view public.staff_directory_v with (security_invoker = true) as '
           || regexp_replace(regexp_replace(v_def, p1, r1, 'g'), p2, r2, 'g');
 end $$;
@@ -283,7 +283,7 @@ begin
                            'public.invoice_export_rows(date, date, uuid)'::regprocedure] loop
     v_def := pg_get_functiondef(f);
     if (length(v_def) - length(replace(v_def, a, ''))) / length(a) <> 1 then
-      raise exception '20261022200300: % - expected one overrun line end', f;
+      raise exception '20261023110100: % - expected one overrun line end', f;
     end if;
     execute replace(v_def, a, b);
   end loop;
@@ -456,7 +456,7 @@ declare
 begin
   select count(*) into v_n from regexp_matches(v_mon, p, 'g');
   if v_n <> 1 then
-    raise exception '20261022200300: checkin_monitor_v - expected one match of the week columns, found %', v_n;
+    raise exception '20261023110100: checkin_monitor_v - expected one match of the week columns, found %', v_n;
   end if;
   drop view public.dashboard_kpis_v;
   drop view public.checkin_monitor_v;

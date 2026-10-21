@@ -62,6 +62,8 @@ vi.mock('../../../profile/data', () => ({
 vi.mock('../../../profile/photos', () => ({ signOwnPhoto: async () => null }));
 
 const shift = vi.fn<() => Promise<ShiftDetail | null>>();
+/** The booking ids `staff_security_cleared_bookings()` returns (ADR-0185). */
+let securityCleared: string[] = [];
 /** Set to make `staff_shift_detail()` fail (audit D18). */
 let shiftFails = false;
 vi.mock('../data', () => ({
@@ -73,6 +75,8 @@ vi.mock('../../../data', () => ({
   loadBookings: async () => ({ rows: [], problem: null }),
   // ADR-0110: no quiz and no kit message on the shifts under test.
   loadShiftRequirements: async () => ({ rows: [], problem: null }),
+  // ADR-0185: the bookings on a security-cleared event; none unless a test sets it.
+  loadSecurityClearedBookings: async () => ({ rows: securityCleared, problem: null }),
   openInvites: () => [],
   shiftsBadge: () => 0,
 }));
@@ -165,6 +169,33 @@ beforeEach(() => {
   profileFails = false;
   shiftFails = false;
   offersFail = false;
+  securityCleared = [];
+});
+
+describe('ADR-0185 a security-cleared event asks the worker to bring ID', () => {
+  it('says so at the top of a confirmed shift on a cleared event', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail());
+    securityCleared = ['b1'];
+    const html = await render();
+    expect(html).toContain('data-testid="bring-id"');
+    expect(html).toContain('passport or driving licence');
+  });
+
+  it('says nothing on a shift that is not on a cleared event', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail());
+    const html = await render();
+    expect(html).not.toContain('bring-id');
+    expect(html).not.toContain('passport or driving licence');
+  });
+
+  it('does not put it on the hold screen', async () => {
+    profile.mockResolvedValue(worker({ status: 'blocked', blockKind: 'manual' }));
+    shift.mockResolvedValue(detail());
+    securityCleared = ['b1'];
+    expect(await render()).not.toContain('bring-id');
+  });
 });
 
 describe('§10.1 the app lock stands in front of the shift screen', () => {

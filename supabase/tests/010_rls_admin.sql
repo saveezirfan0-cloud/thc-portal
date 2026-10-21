@@ -87,7 +87,7 @@ with u as (update compliance_docs set review_status = 'rejected' where id = :'do
 -- only through the review functions, which check who may.
 select throws_ok(format($$ update criminal_declarations set review_status = 'verified' where id = %L $$, :'decl_a'),
   '42501', null, 'admin reads criminal declarations but never writes them directly');
--- ADR-0184 follow-up (20261022200200): check_logs is written only through
+-- ADR-0184 follow-up (20261023110000): check_logs is written only through
 -- the check-in / check-out / correction functions, never directly.
 select throws_ok(format($$ update check_logs set on_site_verified = true where id = %L $$, :'checklog_a'),
   '42501', 'not_permitted', 'admin reads check logs but never writes them directly');

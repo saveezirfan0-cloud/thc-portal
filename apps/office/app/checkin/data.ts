@@ -298,7 +298,7 @@ export async function loadMonitor(
 
   // RULE-20 with ADR-0184: the week against the cap for today's late
   // sign-outs and the fortnight's list, in ONE set-based read
-  // (late_check_out_weeks, 20261022200300) — not a sum per row. A failed
+  // (late_check_out_weeks, 20261023110100) — not a sum per row. A failed
   // read leaves the warning off; it never hides the board.
   const lateIds = [
     ...new Set([

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 20261022200200 · ADR-0184 follow-ups (THC's owner, 21.10.2026)
+-- 20261023110000 · ADR-0184 follow-ups (THC's owner, 21.10.2026)
 --
 -- The four items 20261022200100 left for later, done now:
 --
@@ -126,7 +126,7 @@ begin
      length('select sr.starts_at, sr.ends_at, b.status, b.cancelled_at, b.cancel_cause') <> 1
      or (length(v_def) - length(replace(v_def, 'coalesce(sum(extract(epoch from (w.ends_at - w.starts_at)) / 3600.0), 0)::numeric', ''))) /
         length('coalesce(sum(extract(epoch from (w.ends_at - w.starts_at)) / 3600.0), 0)::numeric') <> 1 then
-    raise exception '20261022200200: weekly_booked_hours - fragments not found exactly once';
+    raise exception '20261023110000: weekly_booked_hours - fragments not found exactly once';
   end if;
   v_def := replace(v_def, 'select sr.starts_at, sr.ends_at, b.status, b.cancelled_at, b.cancel_cause',
                           'select b.id as booking_id, sr.starts_at, sr.ends_at, b.status, b.cancelled_at, b.cancel_cause');
@@ -139,7 +139,7 @@ begin
   v_def := pg_get_functiondef('public.weekly_booked_hours_except(uuid, date, uuid)'::regprocedure);
   if (length(v_def) - length(replace(v_def, 'coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric', ''))) /
      length('coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric') <> 1 then
-    raise exception '20261022200200: weekly_booked_hours_except - sum not found exactly once';
+    raise exception '20261023110000: weekly_booked_hours_except - sum not found exactly once';
   end if;
   execute replace(v_def, 'coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric',
                          'coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0
@@ -149,7 +149,7 @@ begin
   v_def := pg_get_functiondef('public.series_hours_blocked(uuid, uuid)'::regprocedure);
   if (length(v_def) - length(replace(v_def, 'coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric', ''))) /
      length('coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric') <> 1 then
-    raise exception '20261022200200: series_hours_blocked - sum not found exactly once';
+    raise exception '20261023110000: series_hours_blocked - sum not found exactly once';
   end if;
   execute replace(v_def, 'coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0), 0)::numeric',
                          'coalesce(sum(extract(epoch from (sr.ends_at - sr.starts_at)) / 3600.0
@@ -174,7 +174,7 @@ declare
 begin
   foreach f in array array[a1, a2, a3, a4] loop
     if (length(v_def) - length(replace(v_def, f, ''))) / length(f) <> 1 then
-      raise exception '20261022200200: auto_assign_candidates_pool_pairs - expected one match of: %', f;
+      raise exception '20261023110000: auto_assign_candidates_pool_pairs - expected one match of: %', f;
     end if;
   end loop;
   execute replace(replace(replace(replace(v_def, a1, b1), a2, b2), a3, b3), a4, b4);
@@ -195,11 +195,11 @@ declare
 begin
   -- Both laterals (booked, worked) carry the booking id.
   select count(*) into v_n from regexp_matches(v_def, p1, 'g');
-  if v_n <> 2 then raise exception '20261022200200: staff_directory_v - pattern 1 matched % times', v_n; end if;
+  if v_n <> 2 then raise exception '20261023110000: staff_directory_v - pattern 1 matched % times', v_n; end if;
   select count(*) into v_n from regexp_matches(v_def, p2, 'g');
-  if v_n <> 1 then raise exception '20261022200200: staff_directory_v - pattern 2 matched % times', v_n; end if;
+  if v_n <> 1 then raise exception '20261023110000: staff_directory_v - pattern 2 matched % times', v_n; end if;
   select count(*) into v_n from regexp_matches(v_def, p3, 'g');
-  if v_n <> 1 then raise exception '20261022200200: staff_directory_v - pattern 3 matched % times', v_n; end if;
+  if v_n <> 1 then raise exception '20261023110000: staff_directory_v - pattern 3 matched % times', v_n; end if;
   execute 'create or replace view public.staff_directory_v with (security_invoker = true) as '
           || regexp_replace(regexp_replace(regexp_replace(v_def, p1, r1, 'g'), p2, r2), p3, r3);
 end $$;
@@ -216,7 +216,7 @@ declare
 begin
   select count(*) into v_n from regexp_matches(v_def, p1, 'g');
   if v_n <> 1 then
-    raise exception '20261022200200: report_payroll_lines_v - expected one match of the invoicing price, found %', v_n;
+    raise exception '20261023110000: report_payroll_lines_v - expected one match of the invoicing price, found %', v_n;
   end if;
   execute 'create or replace view public.report_payroll_lines_v with (security_barrier = true) as '
           || regexp_replace(v_def, p1, r1);
@@ -230,7 +230,7 @@ comment on view public.report_payroll_lines_v is
 -- The overrun line ends where the pay does: the actual finish, or end + 4 h
 -- for a finish entered later than that (20261022200100). Not quite "always
 -- its minutes": when breaks are longer than the shift's main part the
--- overrun gives way, so 20261022200300 ends it at the scheduled end plus
+-- overrun gives way, so 20261023110100 ends it at the scheduled end plus
 -- its own minutes instead — the rule the office's review uses.
 do $$
 declare
@@ -243,7 +243,7 @@ begin
                            'public.invoice_export_rows(date, date, uuid)'::regprocedure] loop
     v_def := pg_get_functiondef(f);
     if (length(v_def) - length(replace(v_def, a, ''))) / length(a) <> 1 then
-      raise exception '20261022200200: % - expected one overrun line', f;
+      raise exception '20261023110000: % - expected one overrun line', f;
     end if;
     execute replace(v_def, a, b);
   end loop;
@@ -415,7 +415,7 @@ declare
 begin
   select count(*) into v_n from regexp_matches(v_def, p1, 'g');
   if v_n <> 1 then
-    raise exception '20261022200200: checkin_monitor_v - expected one match of the last column, found %', v_n;
+    raise exception '20261023110000: checkin_monitor_v - expected one match of the last column, found %', v_n;
   end if;
   execute 'create or replace view public.checkin_monitor_v with (security_invoker = true) as '
           || regexp_replace(v_def, p1, r1);

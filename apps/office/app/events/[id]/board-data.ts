@@ -182,6 +182,8 @@ export interface BoardEvent {
   autoAssign: boolean;
   /** ADR-0080: English plus any language the client asked for. */
   requiredLanguages: string[];
+  /** ADR-0185: staff were told to bring a passport or driving licence. */
+  securityCleared: boolean;
   /**
    * ADR-0117: "Day 2 of 3" when this event is one day of a multi-day job
    * (`events.series_id`) with other live days; null when it stands alone.
@@ -302,7 +304,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
     supabase
       .from('events')
       .select(
-        'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, series_id, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
+        'id, title, event_date, client_id, venue_name, venue_address, po_number, notes, onsite_contact, auto_assign, required_languages, security_cleared, series_id, pays_breaks, pays_buffer, cancelled_at, cancel_reason, payroll_exported_at, document_recipients',
       )
       .eq('id', eventId)
       .maybeSingle(),
@@ -638,6 +640,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       onsiteContact: (event['onsite_contact'] as string) ?? '',
       autoAssign: Boolean(event['auto_assign']),
       requiredLanguages: normaliseLanguages(event['required_languages'] as string[] | null),
+      securityCleared: event['security_cleared'] === true,
       seriesLabel,
       paysBreaks: Boolean(event['pays_breaks']),
       paysBuffer: Boolean(event['pays_buffer']),

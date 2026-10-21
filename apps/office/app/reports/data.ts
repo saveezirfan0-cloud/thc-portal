@@ -326,7 +326,7 @@ export interface InvoiceLine {
   charge_rate: number | string;
   invoicing: number | string | null;
   /**
-   * ADR-0184 (20261022200200): of `payable_min` / `invoicing`, the paid
+   * ADR-0184 (20261023110000): of `payable_min` / `invoicing`, the paid
    * time past the scheduled end — its own "Overrun" line on the client's
    * invoice. Optional so an older database reads as none.
    */

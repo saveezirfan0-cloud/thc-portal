@@ -129,6 +129,7 @@ const DRAFT: EventDraft = {
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  securityCleared: false,
   duplicateOf: null,
   roles: [],
 };
@@ -144,6 +145,7 @@ const saved = (over: Partial<SavedEvent> = {}): SavedEvent => ({
   notes: '',
   autoAssign: true,
   requiredLanguages: ['English'],
+  securityCleared: false,
   cancelledAt: null,
   seriesDays: [],
   sections: [
@@ -305,6 +307,7 @@ describe('saving a Duplicate (createEvent)', () => {
     notes: '',
     autoAssign: true,
     requiredLanguages: ['English'],
+    securityCleared: false,
     duplicateOf,
     roles: [
       {
