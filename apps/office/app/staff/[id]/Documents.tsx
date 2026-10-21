@@ -28,6 +28,7 @@ import {
   withLatestCheck,
 } from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
+import { VerifiedLetterActions, currentTermLetterOf } from '../../compliance/VerifiedLetterActions';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { DobClaimNote } from '../../_components/DobClaimNote';
 import { RejectSelfie } from '../../_components/RejectSelfie';
@@ -139,6 +140,7 @@ export function Documents({
   reviewQueue = [],
   reviewQueueProblem = null,
   dobClaims = [],
+  canWithdrawApproval = false,
 }: {
   profile: ProfileRow;
   documents: DocumentRow[];
@@ -150,6 +152,8 @@ export function Documents({
   reviewQueueProblem?: string | null;
   /** ADR-0070: dates of birth entered with pending share codes. */
   dobClaims?: DobClaim[];
+  /** ADR-0183: "Withdraw approval" on a verified completion letter — any login that may write. */
+  canWithdrawApproval?: boolean;
 }) {
   const router = useRouter();
   const format = useTimeFormat();
@@ -171,6 +175,7 @@ export function Documents({
   // as Reset to candidate sets it), and the old one joins the history.
   const liveDeclarations = declarations.filter(isLiveDeclaration);
   const supersededDeclarations = declarations.filter((row) => !isLiveDeclaration(row));
+  const currentTermLetter = currentTermLetterOf(live);
 
   const download = (docId: string, which: 'file' | 'report') => {
     setProblem(null);
@@ -302,6 +307,12 @@ export function Documents({
                     <Pill tone="amber">compare NI number</Pill>
                   ) : null}
                   {reviewButtons(queue.get(row.id))}
+                  <VerifiedLetterActions
+                    doc={row}
+                    currentTermLetter={currentTermLetter}
+                    canWithdraw={canWithdrawApproval && !reviewClosed}
+                    name={profile.display_name}
+                  />
                   {downloads(row)}
                   {!reviewClosed &&
                   canAttachReport(row, checks.get(row.id) ?? null, rtwCheckEnabled) ? (

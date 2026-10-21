@@ -128,6 +128,12 @@ export interface QueueRow {
   rtw_check_term_limit?: number | null;
   /** A gov.uk report already on the share code document (D31). */
   gov_report_path?: string | null;
+  /**
+   * ADR-0183: NOT a column of the queue view — merged in from staff by id on
+   * a term letter row: the holiday ranges on file now, from the worker's
+   * previous letter, which verifying this one replaces.
+   */
+  staff_term_dates?: string[] | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';
