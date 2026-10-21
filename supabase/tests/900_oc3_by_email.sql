@@ -11,9 +11,13 @@
 --      part-way carries on the count.
 --   D. The board sees the channel, and a failed email.
 --   E. OC4 is bulk, like OC3.
+--   F. (ADR-0186, 20261023120000) A candidate who HAS a device is emailed
+--      too: OC4 on its own key beside the OC3 push, so the ladder counts
+--      the day once; nothing without a good link, and never to an address
+--      that is not the login's.
 -- =====================================================================
 begin;
-select plan(24);
+select plan(29);
 \ir _shared/fixtures.psql
 
 \set c_off  '90000000-0000-4000-8000-000000000001'
@@ -75,6 +79,8 @@ select is((select array[template, channel::text] from notification_outbox
   array['OC3', 'push'],
   'a link that is not <origin>/onboarding is no link: the OC3 push, as before');
 select is((select (r ->> 'oc4')::int from r1), 0, 'and nothing is emailed');
+select is((select count(*)::int from notification_outbox where key like 'OC4:staff:90000000-%'), 0,
+  'F: without a good link nobody is emailed either, device or not');
 
 -- =====================================================================
 -- B, C · day two, with the app link
@@ -95,12 +101,23 @@ select is((select array[template, channel::text] from notification_outbox
             where key like 'OC3:staff:' || :'c_mis' || ':%:2'),
   array['OC3', 'push'],
   'staff.email is not the address they sign in with: never emailed, the push as before');
-select is((select array[(r ->> 'oc3')::int, (r ->> 'oc4')::int] from r2), array[2, 1],
-  'the job counts the pushes and the emails apart');
+select is((select array[(r ->> 'oc3')::int, (r ->> 'oc4')::int, (r ->> 'oc4_also')::int] from r2), array[2, 1, 1],
+  'the job counts the pushes, the emails that replace one, and the emails beside one apart');
+select is((select array[template, channel::text, recipient_emails[1], payload ->> 'variant',
+                        payload ->> 'name', payload ->> 'step', payload ->> 'link', payload ->> 'pushOn']
+             from notification_outbox where key like 'OC4:staff:' || :'c_on' || ':%:2'),
+  array['OC4', 'email', 'owen@oc4.test', 'second', 'Owen', 'your home address', :'app', '1'],
+  'F: a device with notifications on is emailed as well as pushed, on OC4''s own key, flagged pushOn');
+select is((select payload ->> 'pushOn' from notification_outbox where key like 'OC3:staff:' || :'c_off' || ':%:2'),
+  '0', 'F: the email that replaces a push says pushOn 0');
+select is((select count(*)::int from notification_outbox where key like 'OC4:staff:' || :'c_mis' || ':%'), 0,
+  'F: staff.email is not the address they sign in with: no email beside the push either');
 
 create temporary table r2b as select onboarding_chasers('2026-09-03 12:00+01', :'app') as r;
-select is((select array[(r ->> 'oc3')::int, (r ->> 'oc4')::int] from r2b), array[0, 0],
+select is((select array[(r ->> 'oc3')::int, (r ->> 'oc4')::int, (r ->> 'oc4_also')::int] from r2b), array[0, 0, 0],
   'run again: nothing is sent twice');
+select is((select count(*)::int from notification_outbox where key like 'OC4:staff:' || :'c_on' || ':%'), 1,
+  'F: and the email beside the push is not queued twice');
 select is((select count(*)::int from notification_outbox
             where key like 'OC3:staff:' || :'c_off' || ':%' and template in ('OC3', 'OC4')), 2,
   'one reminder per rung, whichever way it went');
@@ -114,8 +131,8 @@ select is((select array[rungs_sent::text, last_channel, last_failed::text]
              from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_off'),
   array['2', 'email', 'false'],
   'the office sees two app reminders, the latest emailed');
-select is((select last_channel from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_on'),
-  'push', 'and a pushed one as pushed');
+select is((select array[rungs_sent::text, last_channel] from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_on'),
+  array['2', 'push'], 'and a pushed one as pushed, the email beside it not counted as a rung of its own');
 reset role;
 
 update notification_outbox set failed_at = '2026-09-03 12:05+01', error = 'bounced'

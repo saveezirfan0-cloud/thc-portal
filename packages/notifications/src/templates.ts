@@ -1073,8 +1073,13 @@ export const TEMPLATES = {
   // rung for rung, to a signed-up candidate with no device that has
   // notifications on, who would otherwise get nothing. It shares OC3's
   // ladder and keys (`OC3:staff:<id>:<epoch>:<n>`), so each day is one
-  // reminder by one channel. `{link}` is `<STAFF_APP_URL>/onboarding`,
-  // checked by onboarding_chasers(); `{step}` is OC3's words.
+  // reminder by one channel. Since ADR-0186 (owner request 21.10.2026) a
+  // candidate who does have a device gets it too, as well as the push, on
+  // its own key (`OC4:staff:<id>:<epoch>:<n>`), and every rung says how to do
+  // the step: `{howTo}` is `onboardingHowTo(step)`. `{link}` is
+  // `<STAFF_APP_URL>/onboarding`, checked by onboarding_chasers(); `{step}`
+  // is OC3's words; `{channelNote}` says why it is an email (the row's
+  // `pushOn`), both filled in outbox.ts, never from the row.
   OC4: {
     code: 'OC4',
     channel: 'email',
@@ -1083,21 +1088,20 @@ export const TEMPLATES = {
     variants: {
       first: {
         title: 'Pick up where you left off with your onboarding',
-        body: "Hi {name},\n\nYou've started onboarding with The Hospitality Company. Next up: {step}.\n\nOpen the THC Staff App to carry on:\n{link}\n\nWe're emailing you because notifications aren't turned on in the app. Turn them on under Notifications in the app and we'll remind you there instead.",
+        body: "Hi {name},\n\nYou've started onboarding with The Hospitality Company. Next up: {step}.\n\nHere's what to do:\n{howTo}\n\nOpen the THC Staff App to carry on:\n{link}\n\n{channelNote}",
       },
       second: {
         title: "You're nearly there: finish your onboarding",
-        body: "Hi {name},\n\nJust a reminder that your onboarding with The Hospitality Company isn't finished. Still to do: {step}. Finish onboarding to start picking up shifts:\n{link}\n\nWe're emailing you because notifications aren't turned on in the app.",
+        body: "Hi {name},\n\nJust a reminder that your onboarding with The Hospitality Company isn't finished. Still to do: {step}.\n\nHere's what to do:\n{howTo}\n\nFinish onboarding to start picking up shifts:\n{link}\n\n{channelNote}",
       },
       repeat: {
         title: 'Reminder: your onboarding is waiting',
-        body: "Hi {name},\n\nYour onboarding with The Hospitality Company is still waiting. Still to do: {step}. We can't offer you shifts until onboarding is finished:\n{link}\n\nNeed a hand? Reply to this email.",
+        body: "Hi {name},\n\nYour onboarding with The Hospitality Company is still waiting. Still to do: {step}. We can't offer you shifts until onboarding is finished.\n\nHere's what to do:\n{howTo}\n\nOpen the THC Staff App to carry on:\n{link}\n\nStuck, or need a hand? Reply to this email.",
       },
     },
     trigger:
-      'An OC3 that is due for a signed-up candidate with no push subscription on any device (onboarding_chasers, 20261021120000). Not in §8: an addition to scope v1.6, ADR-0071 and ADR-0169',
-    timing:
-      'in place of OC3, daily from a day after their last progress, until they move on; 10:00–18:00 UK',
+      'An OC3 that is due for a signed-up candidate (onboarding_chasers): in place of the push when no device has notifications on (ADR-0169, 20261021120000), and as well as it when one has (ADR-0186, 20261023120000). Not in §8: an addition to scope v1.6, ADR-0071, ADR-0169 and ADR-0186',
+    timing: 'daily from a day after their last progress, until they move on; 10:00–18:00 UK',
   },
 
   // The daily reminder to THC's own staff who were invited onto the new app
@@ -1376,6 +1380,91 @@ export function outboxKey(
   variant?: string,
 ): string {
   return variant === undefined ? `${code}:${subject}:${id}` : `${code}:${subject}:${id}:${variant}`;
+}
+
+/**
+ * What to do on each wizard step, in the words the step itself uses (the
+ * Staff App's `apps/staff/app/onboarding/_components`), keyed by the same
+ * step words onboarding_chaser_candidates() writes into `step` and OC3
+ * pushes. OC4 sends them as a numbered list (ADR-0186). The list is the
+ * register's, not the row's: a payload only names the step.
+ */
+export const ONBOARDING_STEP_HOWTO: Readonly<Record<string, readonly string[]>> = {
+  'your right-to-work details': [
+    'Choose the option that describes you: UK or Irish citizen, EU settled or pre-settled status, work visa, international student, dependant or other visa, or Home Office check.',
+    'If the app asks for a share code, get it at gov.uk/prove-right-to-work and enter it. Have your passport or ID to hand.',
+  ],
+  'your home address': [
+    'Enter your home address and postcode. We use it to work out how far each venue is from you, so closer shifts rank higher.',
+  ],
+  'your profile selfie': [
+    'Take a clear photo of your face against a plain background, with no hat or sunglasses.',
+    'It becomes your photo across the system, so the office and our clients will see it, and it is locked once saved.',
+  ],
+  'uploading your documents': [
+    'Upload a photo or PDF of each document the app lists for you (PDF, JPG, PNG or HEIC, up to 10 MB each).',
+    'Make sure every document is clear and fully readable, then submit them for the office to check.',
+  ],
+  're-uploading a rejected document': [
+    "The office couldn't accept one of your documents. Open Documents in the app to see why.",
+    'Upload a clearer or correct version of it.',
+  ],
+  'the Health & Safety induction': [
+    'Read every slide of the induction in the app, one after another.',
+    'The Health & Safety quiz that follows is based on it.',
+  ],
+  'the Health & Safety quiz': [
+    'Take the quiz in the app. You need 80% to pass, and you get 3 attempts in all.',
+    'If you are not sure of an answer, go back over the induction slides first.',
+  ],
+  'the HMRC New Starter Checklist': [
+    'Complete the checklist in the app. We need it to give you the right tax code.',
+    'If you have a P45, keep it to hand and read the figures off it.',
+  ],
+  'your two references': [
+    'Give two referees who are not relatives: an employer, university tutor, lecturer, teacher, course leader, volunteering supervisor or coach all count.',
+    'We need a phone number and an email address for each of them.',
+  ],
+  'your bank & payroll details': [
+    'Enter a UK bank account in your own name: the account holder, sort code and account number.',
+    'The app asks for the password you set up, to keep your pay safe. If you have forgotten it, use "Forgot password" on the sign-in screen.',
+    'You are paid by bank transfer on the Friday after the week you worked (Monday to Sunday weeks).',
+  ],
+  'signing your contract': [
+    'Read your contract all the way through.',
+    'Tick "I agree" to sign it. One short "How it works" screen is all that is left after that.',
+  ],
+};
+
+/**
+ * OC4's `{howTo}`: the step's list, numbered, after the first line every
+ * step shares. A step the register does not know gets that line and the
+ * nudge to follow the app, so an email is never sent with a hole in it.
+ */
+export function onboardingHowTo(step: string | undefined): string {
+  const lines = [
+    'Open the THC Staff App and sign in with this email address.',
+    ...((step !== undefined && Object.prototype.hasOwnProperty.call(ONBOARDING_STEP_HOWTO, step)
+      ? ONBOARDING_STEP_HOWTO[step]
+      : undefined) ?? ['Carry on with the step the app shows you.']),
+  ];
+  return lines.map((line, i) => `${i + 1}. ${line}`).join('\n');
+}
+
+/**
+ * OC4's `{channelNote}` (first and second rungs): why the reminder is an
+ * email. `pushOn` is the row's own flag, '1' when the candidate also gets
+ * the push, anything else (including a row queued before ADR-0186) when
+ * notifications are off. The repeat rung carries none.
+ */
+export function onboardingChannelNote(
+  pushOn: string | undefined,
+  variant: string | undefined,
+): string {
+  if (pushOn === '1') return "You'll get a reminder in the app as well, until you've finished.";
+  return variant === 'first'
+    ? "We're emailing you because notifications aren't turned on in the app. Turn them on under Notifications in the app and we'll remind you there instead."
+    : "We're emailing you because notifications aren't turned on in the app.";
 }
 
 export function render(text: string, values: Record<string, string>): string {

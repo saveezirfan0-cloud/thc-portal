@@ -205,7 +205,7 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       {
         code: 'OC4',
         label: 'Onboarding reminder by email',
-        when: 'Daily, in place of the app reminder, while a signed-up candidate has notifications off',
+        when: 'Daily, the app reminder by email with how to do the step: in place of the push when notifications are off, beside it when they are on',
         warning:
           'Candidates with notifications off are not reminded at all; the board says so in amber.',
       },

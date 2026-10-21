@@ -19,6 +19,8 @@ import {
   PORTAL_LINK_CODES,
   TEMPLATES,
   body,
+  onboardingChannelNote,
+  onboardingHowTo,
   render,
   title,
   withInterviewLink,
@@ -174,6 +176,16 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
     ...(row.payload ?? {}),
     ...axlr8Values(options.now ?? new Date()),
   };
+
+  // ADR-0186: OC4 says how to do the step, and why it is an email. Both are
+  // ours, never the row's: the payload names only the step and `pushOn`.
+  if (row.template === 'OC4') {
+    values = {
+      ...values,
+      howTo: onboardingHowTo(values.step),
+      channelNote: onboardingChannelNote(values.pushOn, values.variant),
+    };
+  }
 
   // ADR-0135 §3: the customer's link is built here, never taken from the
   // row — an event id the database wrote, under the configured origin.
