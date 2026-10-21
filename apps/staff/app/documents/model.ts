@@ -303,7 +303,15 @@ function rowFor(
       tone: 'rejected',
       icon: '✕',
       meta: officeOnly
-        ? `Not accepted · ${reason} · the office will be in touch`
+        ? `Not accepted · ${reason} · ${
+            // ADR-0182: a rejected renewal leaves the result before it in force.
+            counted &&
+            counted.id !== current.id &&
+            counted.expiresOn &&
+            documentState(counted, today, data.termLetterApplies) !== 'expired'
+              ? `your current Home Office check stays valid until ${formatDay(counted.expiresOn)}`
+              : 'the office will be in touch'
+          }`
         : `Re-upload · ${reason}`,
       metaTone: 'coral',
       pill: null,

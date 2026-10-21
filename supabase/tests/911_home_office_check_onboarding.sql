@@ -13,12 +13,14 @@
 --   4. the quiz gate stays shut until the office has attached the result
 --      and verified it with a date, then opens — no share-code blocker;
 --   5. the cap is a non-student's and canRoster stops at the date (and
---      without one).
+--      without one);
+--   6. a result the office attached before the candidate submitted is kept:
+--      re-saving step 1 on the same branch and submitting add no empty row.
 --
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(48);
+select plan(57);
 \ir _shared/fixtures.psql
 
 \set amira     '91110000-0000-4000-8000-000000000001'
@@ -26,17 +28,22 @@ select plan(48);
 \set kofi      '91110000-0000-4000-8000-000000000002'
 \set kofi_uid  '91120000-0000-4000-8000-000000000002'
 \set worker    '91110000-0000-4000-8000-000000000003'
+\set nadia     '91110000-0000-4000-8000-000000000004'
+\set nadia_uid '91120000-0000-4000-8000-000000000004'
 
 insert into auth.users (id, email) values
   (:'amira_uid', 'amira@home-office.test'),
-  (:'kofi_uid',  'kofi@home-office.test');
+  (:'kofi_uid',  'kofi@home-office.test'),
+  (:'nadia_uid', 'nadia@home-office.test');
 insert into profiles (id, role, full_name) values
   (:'amira_uid', 'staff', 'Amira Haddad'),
-  (:'kofi_uid',  'staff', 'Kofi Mensah');
+  (:'kofi_uid',  'staff', 'Kofi Mensah'),
+  (:'nadia_uid', 'staff', 'Nadia Yusuf');
 
 insert into staff (id, user_id, first_name, last_name, email, phone, dob, status) values
   (:'amira', :'amira_uid', 'Amira', 'Haddad', 'amira@home-office.test', '+447700991101', date '1996-03-12', 'documents'),
-  (:'kofi',  :'kofi_uid',  'Kofi',  'Mensah', 'kofi@home-office.test',  '+447700991102', date '1993-07-21', 'documents');
+  (:'kofi',  :'kofi_uid',  'Kofi',  'Mensah', 'kofi@home-office.test',  '+447700991102', date '1993-07-21', 'documents'),
+  (:'nadia', :'nadia_uid', 'Nadia', 'Yusuf',  'nadia@home-office.test', '+447700991104', date '1998-11-02', 'documents');
 
 insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status, rtw_branch,
                    right_to_work_until) values
@@ -45,7 +52,8 @@ insert into staff (id, employee_id, first_name, last_name, email, phone, dob, st
 
 insert into storage.objects (bucket_id, name, metadata) values
   ('documents', :'amira' || '/home-office-check-result/ecs.pdf', '{"mimetype":"application/pdf","size":180000}'),
-  ('documents', :'amira' || '/passport/1.jpg',                   '{"mimetype":"image/jpeg","size":200000}');
+  ('documents', :'amira' || '/passport/1.jpg',                   '{"mimetype":"image/jpeg","size":200000}'),
+  ('documents', :'nadia' || '/home-office-check-result/early.pdf', '{"mimetype":"application/pdf","size":180000}');
 
 -- =====================================================================
 -- 1 · The reference
@@ -62,6 +70,10 @@ select ok(not is_valid_home_office_ref('A123'), 'too short');
 select ok(not is_valid_home_office_ref(repeat('A1', 16)), 'too long (over 30)');
 select ok(not is_valid_home_office_ref('ABC#12345'), 'only letters, digits, spaces, / and -');
 select ok(not is_valid_home_office_ref(null), 'blank is not a reference');
+select is(normalise_home_office_ref(E'ABC\u00a0123456'), 'ABC 123456',
+  'a no-break space pasted from a PDF is a space');
+select ok(is_valid_home_office_ref(E'\u202fU1234567\u00a0/\u2009001\u3000'),
+  'every Unicode space counts as one — as normaliseHomeOfficeRef() reads it');
 
 -- =====================================================================
 -- 2 · Step 1
@@ -180,6 +192,12 @@ select throws_ok(
 select throws_ok(
   format($$ select compliance_verify_home_office_check(%L, %L::date, %L::date) $$, :'ecs_doc', :'approved', :'approved'),
   'P0001', 'until_before_approved', 'a typed right-to-work date must fall after the date approved');
+select throws_ok(
+  format($$ select compliance_verify_home_office_check(%L, %L::date, %L::date + 400) $$, :'ecs_doc', :'approved', :'approved'),
+  'P0001', 'until_too_far', 'and no more than a year after it — 2099 is a typo');
+select throws_ok(
+  format($$ select compliance_verify_home_office_check(%L, date '1999-12-31') $$, :'ecs_doc'),
+  '22023', 'approved_on_implausible', 'a date approved before 2000 is refused on its own');
 select is(
   compliance_verify_home_office_check(:'ecs_doc', :'approved'::date) ->> 'confirmedUntil',
   :'until', 'Verify with the date approved: the right to work runs six months from it');
@@ -213,6 +231,33 @@ select ok(can_roster_staff(:'amira', :'until'::date), 'rostered up to the date t
 select ok(not can_roster_staff(:'amira', :'until'::date + 1), 'never past it');
 select ok(not can_roster_staff(:'worker', date '2026-11-02'),
   'a worker on this branch with no right-to-work date at all cannot be rostered');
+
+-- =====================================================================
+-- 6 · A result attached before the candidate submitted is kept
+-- =====================================================================
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"91120000-0000-4000-8000-000000000004","role":"authenticated"}';
+select lives_ok(
+  $$ select onboarding_save_right_to_work('home_office_check', date '1998-11-02', null, null, null, null, false, 'NY1234567') $$,
+  'Nadia picks the Home Office check');
+reset role;
+update onboarding_progress set address_at = now(), selfie_at = now() where staff_id = :'nadia';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is(office_attach_home_office_check(:'nadia', :'nadia' || '/home-office-check-result/early.pdf') ->> 'mode',
+  'new', 'the office already has her result and attaches it before she submits');
+set local "request.jwt.claims" = '{"sub":"91120000-0000-4000-8000-000000000004","role":"authenticated"}';
+select lives_ok(
+  $$ select onboarding_save_right_to_work('home_office_check', date '1998-11-02', null, null, null, null, false, 'NY1234567') $$,
+  'she saves step 1 again, on the same branch');
+select lives_ok($$ select onboarding_submit_documents(false, null, null) $$, 'and submits');
+reset role;
+select results_eq(
+  format($$ select review_status::text, file_path is not null, share_code
+              from compliance_docs where staff_id = %L order by uploaded_at $$, :'nadia'),
+  $$ values ('pending'::text, true, 'NY1234567'::text) $$,
+  'one row: the attached result, still pending — step 1 did not supersede it and submit added no empty row');
 
 select * from finish();
 rollback;

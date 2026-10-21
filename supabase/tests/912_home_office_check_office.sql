@@ -9,16 +9,21 @@
 --      moves the right-to-work date; a rejected result sends no "Re-upload";
 --   3. the worker can never file this type, nor a share code on this branch;
 --   4. expiry: no N1–N3 to the worker (they cannot obtain it), CL4 to the
---      office with the route in words, and N4 + the block on the day;
---   5. the Change dialog moves a worker onto and off the branch, and the
---      evidence follows; the reference never outlives the branch;
+--      office with the route in words, and N4 — in its "the office is
+--      renewing it" variant — with the block on the day; a renewal rejected
+--      while the older result is in date does not block or unroster them;
+--   5. the Change dialog moves a worker onto and off the branch with the
+--      reference (required, checked, editable), and the evidence follows;
+--      the reference never outlives the branch;
 --   6. RLS: the office sees every result and the reference; a worker their
---      own rows only and never the reference; a client nothing.
+--      own result rows only, and cannot read the reference from the tables
+--      (they see the one they typed in their own onboarding state, as with
+--      a share code — 911); a client nothing.
 --
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(45);
+select plan(54);
 \ir _shared/fixtures.psql
 
 \set hamid     '91210000-0000-4000-8000-000000000001'
@@ -170,6 +175,10 @@ reset role;
 select is((select count(*)::int from notification_outbox
             where template = 'N8' and recipient_staff_id = :'hamid'), 0,
   'no "Document rejected — Re-upload" push: the worker cannot obtain this document');
+select is((select count(*)::int from compliance_blockers(:'hamid')), 0,
+  'the rejected renewal is no blocker while the result before it is verified and in date');
+select ok(can_roster_staff(:'hamid', current_date + 1), 'and they can still be rostered on it');
+select is((select status::text from staff where id = :'hamid'), 'compliant', 'still compliant');
 
 -- =====================================================================
 -- 3 · Never the worker's to file
@@ -191,8 +200,8 @@ select is((select count(*)::int from notification_outbox where key = 'N1:doc:' |
   'no N1 "Update your …" to a worker whose Home Office result expires in 20 days');
 select is((select count(*)::int from notification_outbox where key = 'N1:doc:' || :'v_share'), 1,
   'the ladder still runs for a share code expiring the same day');
-select is((select count(*)::int from notification_outbox where key = 'N4:doc:' || :'o_doc'), 1,
-  'on the day: N4, as for any document');
+select is((select payload ->> 'variant' from notification_outbox where key = 'N4:doc:' || :'o_doc'),
+  'home_office', 'on the day: N4, in its variant that says the office is renewing it');
 select results_eq(
   format($$ select status::text, block_kind::text from staff where id = %L $$, :'omar'),
   $$ values ('blocked'::text, 'auto_document'::text) $$,
@@ -210,8 +219,14 @@ select is((select payload ->> 'route' from notification_outbox
 -- =====================================================================
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
-select is(record_right_to_work_change(:'val', 'home_office_check', null) ->> 'evidenceSuperseded', '1',
+select throws_ok($$ select record_right_to_work_change('91210000-0000-4000-8000-000000000004', 'home_office_check', null) $$,
+  'P0001', 'home_office_ref_required', 'onto the branch, the office gives the Home Office reference');
+select throws_ok($$ select record_right_to_work_change('91210000-0000-4000-8000-000000000004', 'home_office_check', null, null, 'X1') $$,
+  'P0001', 'bad_home_office_ref', 'checked like the worker''s own');
+select is(record_right_to_work_change(:'val', 'home_office_check', null, null, E'arc\u00a0778899') ->> 'evidenceSuperseded', '1',
   'moving a worker onto the branch supersedes their share code report');
+select is((select home_office_ref from staff_identity_v where staff_id = :'val'), 'ARC 778899',
+  'the reference is stored, normalised, for the office''s Employer Checking Service form');
 reset role;
 select results_eq(
   format($$ select rtw_branch::text, right_to_work_until, (select review_status::text from compliance_docs where id = %L)
@@ -224,6 +239,17 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 select is(office_attach_home_office_check(:'val', :'val' || '/home-office-check-result/ecs.pdf') ->> 'mode',
   'new', 'the office attaches their Home Office result');
+select lives_ok($$ select record_right_to_work_change('91210000-0000-4000-8000-000000000004', 'home_office_check', null, null, 'ARC 778890') $$,
+  'the office corrects the reference, staying on the branch');
+reset role;
+select is((select share_code from compliance_docs
+            where staff_id = :'val' and doc_type = 'home_office_check_result' and review_status = 'pending'),
+  'ARC 778890', 'the result waiting for review carries the corrected reference');
+select is((select (data ->> 'homeOfficeRefChanged')::boolean from audit_log
+            where action = 'rtw.changed' and data ->> 'staffId' = :'val' order by at desc, id desc limit 1),
+  true, 'audited as changed — whether, never what');
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 select is(record_right_to_work_change(:'val', 'work_visa', null, 'W111AA2BB') ->> 'evidenceSuperseded', '1',
   'moving them off the branch again supersedes the result');
 reset role;

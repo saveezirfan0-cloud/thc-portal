@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  homeOfficeCheckLatest,
   homeOfficeCheckUntil,
   homeOfficeRefError,
   isValidHomeOfficeRef,
@@ -16,6 +17,13 @@ describe('the Home Office reference', () => {
     expect(normaliseHomeOfficeRef('  abc 123456 ')).toBe('ABC 123456');
     expect(normaliseHomeOfficeRef('u1234567 /  001')).toBe('U1234567 / 001');
     expect(normaliseHomeOfficeRef(null)).toBe('');
+  });
+
+  it('reads every Unicode space a phone or PDF pastes as a space (pgTAP 911 runs these in SQL)', () => {
+    expect(normaliseHomeOfficeRef('ABC\u00a0123456')).toBe('ABC 123456');
+    expect(normaliseHomeOfficeRef('\u202fU1234567\u00a0/\u2009001\u3000')).toBe('U1234567 / 001');
+    expect(isValidHomeOfficeRef('ABC\u00a0123456')).toBe(true);
+    expect(normaliseHomeOfficeRef('\ufeffABC123456')).toBe('ABC123456');
   });
 
   it.each([
@@ -56,6 +64,11 @@ describe('the six months of a Home Office check result', () => {
     ['2026-02-28', '2026-08-28'],
   ])('approved %s → right to work until %s', (approved, until) => {
     expect(homeOfficeCheckUntil(approved)).toBe(until);
+  });
+
+  it('the latest end date the office may type is a year on, clamped the same way', () => {
+    expect(homeOfficeCheckLatest('2026-10-21')).toBe('2027-10-21');
+    expect(homeOfficeCheckLatest('2028-02-29')).toBe('2029-02-28');
   });
 
   it('is null for a date that does not exist', () => {

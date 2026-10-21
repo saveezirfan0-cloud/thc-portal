@@ -74,7 +74,11 @@
 -- (pg_get_functiondef), changed by literal patterns that must match an
 -- exact number of times or the migration stops — the pattern of
 -- 20261019192000 (docs/10 §3b), so no gate added since the file a body
--- was last written in is lost. Owners, grants and comments stay with each
+-- was last written in is lost. Numbered 20261022190100 so it applies after
+-- the other branches built alongside it (20261022150000–180000: term dates,
+-- office copy, declarations, buffer); if one of those restated a body this
+-- file patches, the patch runs on that body, and a pattern that no longer
+-- matches stops the migration with its label rather than dropping a gate. Owners, grants and comments stay with each
 -- function (same oid), except onboarding_save_right_to_work(), whose
 -- signature gains p_home_office_ref and is re-granted below.
 -- =====================================================================
@@ -106,11 +110,15 @@ language sql
 immutable
 set search_path = public, extensions
 as $$
-  select nullif(upper(regexp_replace(btrim(coalesce(p_ref, '')), '\s+', ' ', 'g')), '')
+  -- Every Unicode space a phone or a PDF can paste (no-break, narrow
+  -- no-break, figure, ideographic, the BOM …) counts as a space, as JavaScript's
+  -- \s does in normaliseHomeOfficeRef().
+  select nullif(upper(btrim(regexp_replace(coalesce(p_ref, ''),
+           '[\s\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+', ' ', 'g'))), '')
 $$;
 
 comment on function public.normalise_home_office_ref(text) is
-  'ADR-0182: a Home Office reference as stored — trimmed, inner spaces collapsed to one, upper case; null when blank.';
+  'ADR-0182: a Home Office reference as stored — every Unicode space (no-break included) read as a space, trimmed, inner runs collapsed to one, upper case; null when blank. normaliseHomeOfficeRef() in packages/domain.';
 
 create or replace function public.is_valid_home_office_ref(p_ref text)
 returns boolean
@@ -374,12 +382,24 @@ begin
   execute v_def;
 
   -- The ladder: N1–N3 say "Update your …"; the office renews this one and
-  -- is told by CL4. N4 and the block on the day are unchanged.
+  -- is told by CL4. N4 and the block on the day still happen, N4 in its
+  -- home_office variant ("The office is renewing it"), not "please update".
   v_def := pg_get_functiondef('public.compliance_daily(timestamp with time zone)'::regprocedure);
   v_def := pg_temp.hoc_sub(v_def,
     '      from _due where days_left between ',
     '      from _due where doc_type <> ''home_office_check_result'' and days_left between ',
     3, 'compliance_daily N1-N3');
+  v_def := pg_temp.hoc_sub(v_def,
+    E'    select ''N4:doc:'' || doc_id, ''push'', ''N4'', staff_id,\n'
+    || E'           jsonb_build_object(''document'', doc_label(doc_type),\n'
+    || E'                              ''date'', to_char(expires_on, ''DD Mon YYYY''))\n',
+    E'    select ''N4:doc:'' || doc_id, ''push'', ''N4'', staff_id,\n'
+    || E'           jsonb_build_object(''document'', doc_label(doc_type),\n'
+    || E'                              ''date'', to_char(expires_on, ''DD Mon YYYY''))\n'
+    || E'           || case when doc_type = ''home_office_check_result''\n'
+    || E'                   then jsonb_build_object(''variant'', ''home_office'')\n'
+    || E'                   else ''{}''::jsonb end\n',
+    1, 'compliance_daily N4 variant');
   execute v_def;
 
   -- CL4 names the route in words.
@@ -416,6 +436,21 @@ begin
     $p$s.rtw_branch is not null and s.rtw_branch <> 'uk_irish')$p$,
     $p$s.rtw_branch is not null and s.rtw_branch not in ('uk_irish', 'home_office_check'))$p$,
     1, 'submit_document_upload share code branch');
+  execute v_def;
+
+  -- §4.3's re-check: a Home Office renewal waiting for review, or rejected,
+  -- is no blocker while the result before it is verified and in date — the
+  -- worker cannot fix it, and that result still is their right to work.
+  v_def := pg_get_functiondef('public.compliance_blockers(uuid,date)'::regprocedure);
+  v_def := pg_temp.hoc_sub(v_def,
+    E'   where d.status <> ''verified''\n     and d.doc_type <> ''university_completion_letter''\n',
+    E'   where d.status <> ''verified''\n     and d.doc_type <> ''university_completion_letter''\n'
+    || E'     -- ADR-0182 (20261022190100)\n'
+    || E'     and not (d.doc_type = ''home_office_check_result''\n'
+    || E'              and exists (select 1 from current_verified_docs(p_staff) v\n'
+    || E'                           where v.doc_type = ''home_office_check_result''\n'
+    || E'                             and v.expires_on > p_on))\n',
+    1, 'compliance_blockers renewal');
   execute v_def;
 
   v_def := pg_get_functiondef('public.onboarding_reenter_share_code(text,date)'::regprocedure);
@@ -474,12 +509,20 @@ begin
     E'  -- ADR-0182: no share code on the Home Office check branch. The row is\n'
     || E'  -- the office''s place in the queue until it attaches the result the\n'
     || E'  -- Employer Checking Service emails back; it carries the reference.\n'
+    || E'  -- A result the office has already attached (pending with its file, or\n'
+    || E'  -- verified) is kept as it is: no second, empty row beside it.\n'
     || E'  if s.rtw_branch = ''home_office_check'' then\n'
-    || E'    update compliance_docs set review_status = ''superseded''\n'
-    || E'     where staff_id = s.id and doc_type = ''home_office_check_result''\n'
-    || E'       and review_status = ''pending'' and file_path is null;\n'
-    || E'    insert into compliance_docs (staff_id, doc_type, share_code, review_status, uploaded_at)\n'
-    || E'    values (s.id, ''home_office_check_result'', s.home_office_ref, ''pending'', clock_timestamp());\n'
+    || E'    if not exists (select 1 from current_compliance_docs(s.id) c\n'
+    || E'                     join compliance_docs r on r.id = c.doc_id\n'
+    || E'                    where c.doc_type = ''home_office_check_result''\n'
+    || E'                      and (c.status = ''verified''\n'
+    || E'                           or (c.status = ''pending'' and r.file_path is not null))) then\n'
+    || E'      update compliance_docs set review_status = ''superseded''\n'
+    || E'       where staff_id = s.id and doc_type = ''home_office_check_result''\n'
+    || E'         and review_status = ''pending'' and file_path is null;\n'
+    || E'      insert into compliance_docs (staff_id, doc_type, share_code, review_status, uploaded_at)\n'
+    || E'      values (s.id, ''home_office_check_result'', s.home_office_ref, ''pending'', clock_timestamp());\n'
+    || E'    end if;\n'
     || E'  elsif s.rtw_branch <> ''uk_irish'' then\n'
     || E'    update compliance_docs set review_status = ''superseded''\n'
     || E'     where staff_id = s.id and doc_type = ''share_code_report'' and review_status = ''pending'';\n',
@@ -535,6 +578,12 @@ begin
     E'         share_code = v_code,\n         home_office_ref = v_ref\n   where id = s.id;\n',
     1, 'onboarding_save_right_to_work update');
   v_def := pg_temp.hoc_sub(v_def,
+    E'       and doc_type <> ''share_code_report''\n',
+    E'       and doc_type <> ''share_code_report''\n'
+    || E'       -- ADR-0182: the office''s Home Office result stays while the branch does.\n'
+    || E'       and not (doc_type = ''home_office_check_result'' and v_branch = ''home_office_check'')\n',
+    1, 'onboarding_save_right_to_work sweep');
+  v_def := pg_temp.hoc_sub(v_def,
     $p$'shareCode', v_code, 'uploadsDropped', v_dropped,$p$,
     $p$'shareCode', v_code, 'homeOfficeRef', v_ref, 'uploadsDropped', v_dropped,$p$,
     1, 'onboarding_save_right_to_work result');
@@ -552,17 +601,43 @@ grant execute on function public.onboarding_save_right_to_work(text, date, text,
   to authenticated, service_role;
 
 -- ---------------------------------------------------------------------
--- 5 · The office's Change dialog: the evidence follows the branch.
+-- 5 · The office's Change dialog: the evidence follows the branch, and on
+--     this branch it takes (or edits) the Home Office reference the
+--     Employer Checking Service form needs. The signature gains
+--     p_home_office_ref, so the function is dropped and re-created from
+--     its live body and granted as before.
 -- ---------------------------------------------------------------------
 do $$
 declare
-  v_def text;
+  v_def     text;
+  v_comment text := obj_description(
+    'public.record_right_to_work_change(uuid,rtw_branch,date,text)'::regprocedure, 'pg_proc');
 begin
   v_def := pg_get_functiondef('public.record_right_to_work_change(uuid,rtw_branch,date,text)'::regprocedure);
   v_def := pg_temp.hoc_sub(v_def,
+    'p_until date, p_share_code text DEFAULT NULL::text)',
+    'p_until date, p_share_code text DEFAULT NULL::text, p_home_office_ref text DEFAULT NULL::text)',
+    1, 'record_right_to_work_change signature');
+  v_def := pg_temp.hoc_sub(v_def,
     E'  s          staff;\nbegin\n',
-    E'  s          staff;\n  v_superseded int := 0;\nbegin\n',
+    E'  s          staff;\n  v_superseded int := 0;\n  v_ref text;\nbegin\n',
     1, 'record_right_to_work_change declare');
+  v_def := pg_temp.hoc_sub(v_def,
+    E'  update staff\n     set rtw_branch = p_branch,\n',
+    E'  -- ADR-0182: required on the Home Office check branch — typed now, or\n'
+    || E'  -- already on file for a worker who is on it.\n'
+    || E'  if p_branch = ''home_office_check'' then\n'
+    || E'    v_ref := coalesce(normalise_home_office_ref(p_home_office_ref),\n'
+    || E'                      case when s.rtw_branch = ''home_office_check'' then s.home_office_ref end);\n'
+    || E'    if v_ref is null then\n'
+    || E'      raise exception ''home_office_ref_required'' using errcode = ''P0001'';\n'
+    || E'    end if;\n'
+    || E'    if not is_valid_home_office_ref(v_ref) then\n'
+    || E'      raise exception ''bad_home_office_ref'' using errcode = ''P0001'';\n'
+    || E'    end if;\n'
+    || E'  end if;\n\n'
+    || E'  update staff\n     set rtw_branch = p_branch,\n         home_office_ref = v_ref,\n',
+    1, 'record_right_to_work_change reference');
   v_def := pg_temp.hoc_sub(v_def,
     E'  insert into audit_log (at, actor, action, entity, entity_id, data)\n  values (now(), v_reviewer, ''rtw.changed''',
     E'  -- ADR-0182: onto the Home Office check branch, the share code report\n'
@@ -580,11 +655,20 @@ begin
     || E'       and doc_type = ''home_office_check_result'';\n'
     || E'    get diagnostics v_superseded = row_count;\n'
     || E'  end if;\n\n'
+    || E'  -- A corrected reference reaches the result still waiting for review.\n'
+    || E'  if v_ref is distinct from s.home_office_ref and v_ref is not null then\n'
+    || E'    update compliance_docs set share_code = v_ref\n'
+    || E'     where staff_id = p_staff and doc_type = ''home_office_check_result''\n'
+    || E'       and review_status = ''pending'';\n'
+    || E'  end if;\n\n'
     || E'  insert into audit_log (at, actor, action, entity, entity_id, data)\n  values (now(), v_reviewer, ''rtw.changed''',
     1, 'record_right_to_work_change supersede');
   v_def := pg_temp.hoc_sub(v_def,
     $p$'actorName', (select full_name from profiles where id = v_reviewer))));$p$,
     $p$'evidenceSuperseded', nullif(v_superseded, 0),
+            -- Whether, never what: the reference is an identity fact.
+            'homeOfficeRefChanged', case when v_ref is distinct from s.home_office_ref
+                                          and v_ref is not null then true end,
             'actorName', (select full_name from profiles where id = v_reviewer))));$p$,
     1, 'record_right_to_work_change audit');
   v_def := pg_temp.hoc_sub(v_def,
@@ -592,8 +676,18 @@ begin
     $p$return jsonb_build_object('ok', true, 'branch', p_branch::text, 'until', p_until,
                             'evidenceSuperseded', v_superseded,$p$,
     1, 'record_right_to_work_change result');
+
+  drop function public.record_right_to_work_change(uuid, rtw_branch, date, text);
   execute v_def;
+  execute format('comment on function public.record_right_to_work_change(uuid,rtw_branch,date,text,text) is %L',
+    coalesce(v_comment || ' ', '')
+    || 'ADR-0182 (20261022190100): onto the home_office_check branch the share code report and visa / status documents are superseded, off it the Home Office results; on that branch p_home_office_ref (is_valid_home_office_ref) is required unless one is on file, and a new one is copied onto a result still pending.');
 end $$;
+
+revoke all on function public.record_right_to_work_change(uuid, rtw_branch, date, text, text)
+  from public, anon;
+grant execute on function public.record_right_to_work_change(uuid, rtw_branch, date, text, text)
+  to authenticated, service_role;
 
 -- ---------------------------------------------------------------------
 -- 6 · The office attaches the result.
@@ -735,8 +829,11 @@ begin
   if p_approved_on is null then
     raise exception 'approved_on_required' using errcode = 'P0001';
   end if;
-  if not isfinite(p_approved_on) or p_approved_on > v_today or p_approved_on < date '2000-01-01' then
+  if not isfinite(p_approved_on) or p_approved_on > v_today then
     raise exception 'approved_on_invalid' using errcode = '22023';
+  end if;
+  if p_approved_on < date '2000-01-01' then
+    raise exception 'approved_on_implausible' using errcode = '22023';
   end if;
   if p_right_to_work_until is not null and not isfinite(p_right_to_work_until) then
     -- "No time limit" is only ever an EU settled share code's.
@@ -749,6 +846,11 @@ begin
   if v_until <= p_approved_on then
     raise exception 'until_before_approved' using errcode = 'P0001';
   end if;
+  -- The office may extend the six months when a result says so, but not
+  -- past a year: 2099 is a typo, not a Home Office decision.
+  if v_until > (p_approved_on + interval '12 months')::date then
+    raise exception 'until_too_far' using errcode = 'P0001';
+  end if;
 
   update compliance_docs set home_office_approved_on = p_approved_on where id = d.id;
 
@@ -760,7 +862,7 @@ begin
 end $$;
 
 comment on function public.compliance_verify_home_office_check(uuid, date, date) is
-  'ADR-0182: Verify a Home Office Employer Checking Service result. The reviewer gives the date approved printed on it (stored as home_office_approved_on; not in the future); the right-to-work-until is that date + 6 months (THC, 22.10.2026: "valid for 6 months from the date it was approved") unless the reviewer types another, and must fall after it. Then the one Verify path (compliance_verify_document_as). Reviewer only (assert_reviewer).';
+  'ADR-0182: Verify a Home Office Employer Checking Service result. The reviewer gives the date approved printed on it (stored as home_office_approved_on; not in the future); the right-to-work-until is that date + 6 months (THC, 22.10.2026: "valid for 6 months from the date it was approved") unless the reviewer types another, which must fall after it and no more than 12 months after it. Then the one Verify path (compliance_verify_document_as). Reviewer only (assert_reviewer).';
 
 revoke all on function public.compliance_verify_home_office_check(uuid, date, date) from public, anon;
 grant execute on function public.compliance_verify_home_office_check(uuid, date, date) to authenticated, service_role;

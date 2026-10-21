@@ -86,6 +86,11 @@ const MESSAGES: [RegExp, string][] = [
   [/^home_office_result_missing/, 'Attach the Home Office check result before verifying it.'],
   [/^approved_on_required/, 'Enter the date approved, as it is printed on the Home Office result.'],
   [/^approved_on_invalid/, 'The date approved cannot be in the future.'],
+  [/^approved_on_implausible/, 'Check the date approved — it is before 2000.'],
+  [
+    /^until_too_far/,
+    'The right to work can run at most a year from the date approved — check the date.',
+  ],
   [
     /^until_before_approved/,
     'The right-to-work date must be after the date the Home Office approved the result.',

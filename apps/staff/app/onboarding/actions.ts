@@ -4,7 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { isDocType, uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
+import {
+  isDocType,
+  normaliseHomeOfficeRef,
+  uploadError,
+  uploadKind,
+  UPLOAD_MAX_BYTES,
+  UPLOAD_MIME,
+} from '@thc/domain';
 import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import {
@@ -98,7 +105,9 @@ export async function saveRightToWork(input: {
     p_visa_expiry: null,
     p_uk_doc_choice: input.ukChoice,
     p_wtr_optout: input.wtrOptOut,
-    p_home_office_ref: input.homeOfficeRef?.trim() || null,
+    // The form's own normalising, so a reference pasted with a no-break
+    // space is the one the database checks (normalise_home_office_ref()).
+    p_home_office_ref: normaliseHomeOfficeRef(input.homeOfficeRef) || null,
   });
 }
 

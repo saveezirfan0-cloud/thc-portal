@@ -60,6 +60,9 @@ describe('the Verify dialog’s rule', () => {
     expect(homeOfficeVerifyProblem('2026-10-20', '', today)).toMatch(/right to work until/);
     expect(homeOfficeVerifyProblem('2026-10-20', '2026-10-20', today)).toMatch(/after the date/);
     expect(homeOfficeVerifyProblem('2026-01-10', '2026-07-10', today)).toMatch(/run out/);
+    expect(homeOfficeVerifyProblem('1999-12-31', '2000-06-30', today)).toMatch(/before 2000/);
+    expect(homeOfficeVerifyProblem('2026-10-20', '2099-01-01', today)).toMatch(/at most a year/);
+    expect(homeOfficeVerifyProblem('2026-10-20', '2027-10-20', today)).toBeNull();
     expect(homeOfficeVerifyProblem('2026-10-20', '2027-04-20', today)).toBeNull();
   });
 });
@@ -125,5 +128,7 @@ describe('the upload', () => {
     );
     expect(reviewErrorMessage('approved_on_required')).toMatch(/date approved/);
     expect(reviewErrorMessage('until_before_approved')).toMatch(/after the date/);
+    expect(reviewErrorMessage('approved_on_implausible')).toMatch(/before 2000/);
+    expect(reviewErrorMessage('until_too_far')).toMatch(/at most a year/);
   });
 });

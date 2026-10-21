@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Modal, Note, Select, UkDateField } from '@thc/ui';
+import { Alert, Button, Input, Modal, Note, Select, UkDateField } from '@thc/ui';
+import { homeOfficeRefError, normaliseHomeOfficeRef } from '@thc/domain';
 import { RTW_LABEL } from '../staff';
 import { changeRtwBranch } from './actions';
 
@@ -32,6 +33,7 @@ export function RtwBranchChange({
   name,
   branch,
   until,
+  homeOfficeRef = null,
   allowed,
 }: {
   staffId: string;
@@ -40,6 +42,8 @@ export function RtwBranchChange({
   branch: string | null;
   /** `yyyy-mm-dd` on file, if any. */
   until: string | null;
+  /** ADR-0182: the Home Office reference on file (staff_identity_v), on that route. */
+  homeOfficeRef?: string | null;
   /** `officeCan(role, 'identity')`, false on a removed profile. */
   allowed: boolean;
 }) {
@@ -47,6 +51,7 @@ export function RtwBranchChange({
   const [open, setOpen] = useState(false);
   const [next, setNext] = useState<string>(branch ?? '');
   const [date, setDate] = useState(until ?? '');
+  const [ref, setRef] = useState(homeOfficeRef ?? '');
   const [failure, setFailure] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -56,6 +61,7 @@ export function RtwBranchChange({
   const openDialog = () => {
     setNext(branch ?? '');
     setDate(until ?? '');
+    setRef(homeOfficeRef ?? '');
     setFailure(null);
     setOpen(true);
   };
@@ -64,9 +70,13 @@ export function RtwBranchChange({
     setFailure(null);
   };
 
-  const unchanged = next === (branch ?? '') && date === (until ?? '');
   const settled = next === 'eu_settled';
   const homeOffice = next === 'home_office_check';
+  const refChanged =
+    homeOffice && normaliseHomeOfficeRef(ref) !== normaliseHomeOfficeRef(homeOfficeRef);
+  const unchanged = next === (branch ?? '') && date === (until ?? '') && !refChanged;
+  // Required on this route, with the worker's own step 1 rule.
+  const refProblem = homeOffice ? homeOfficeRefError(ref) : null;
 
   const save = () => {
     setFailure(null);
@@ -75,6 +85,7 @@ export function RtwBranchChange({
         staffId,
         next,
         next === 'uk_irish' ? null : date || null,
+        homeOffice ? normaliseHomeOfficeRef(ref) : null,
       );
       if (!result.ok) {
         setFailure(result.message);
@@ -107,7 +118,11 @@ export function RtwBranchChange({
             <Button tone="ghost" onClick={close}>
               Cancel
             </Button>
-            <Button tone="primary" disabled={pending || !next || unchanged} onClick={save}>
+            <Button
+              tone="primary"
+              disabled={pending || !next || unchanged || refProblem !== null}
+              onClick={save}
+            >
               {pending ? 'Saving…' : 'Save'}
             </Button>
           </>
@@ -127,6 +142,22 @@ export function RtwBranchChange({
               </option>
             ))}
           </Select>
+          {homeOffice ? (
+            <Input
+              label={
+                <>
+                  Home Office reference <span className="coral">*</span>
+                </>
+              }
+              mono
+              autoComplete="off"
+              placeholder="e.g. ABC123456"
+              value={ref}
+              onChange={(event) => setRef(event.target.value)}
+              error={ref.trim() !== '' && refProblem ? refProblem : undefined}
+              hint="The ARC number or Home Office application reference, for the Employer Checking Service form."
+            />
+          ) : null}
           {next === 'uk_irish' ? null : (
             <UkDateField
               label="Right to work until"

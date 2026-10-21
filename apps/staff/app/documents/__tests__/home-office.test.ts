@@ -99,6 +99,33 @@ describe('the Home Office check result — never the worker’s to upload', () =
     expect(row(view.rows).action).toBeNull();
   });
 
+  it('a rejected renewal says the current result still stands', () => {
+    const view = buildDocumentsView(
+      data({
+        rtwBranch: 'home_office_check',
+        documents: [
+          result({
+            id: 'renewal',
+            reviewStatus: 'rejected',
+            rejectionReason: 'Wrong person',
+            isCurrent: true,
+            isCountedVerified: false,
+          }),
+          result({
+            id: 'old',
+            isCurrent: false,
+            isCountedVerified: true,
+            expiresOn: '2027-01-10',
+          }),
+        ],
+      }),
+    );
+    expect(row(view.rows).meta).toBe(
+      'Not accepted · “Wrong person” · your current Home Office check stays valid until 10.01.2027',
+    );
+    expect(row(view.rows).action).toBeNull();
+  });
+
   it('missing: the office adds it — no Upload', () => {
     const view = buildDocumentsView(
       data({

@@ -30,9 +30,16 @@ export const HOME_OFFICE_REF_SQL_PATTERN = '^[A-Z0-9][A-Z0-9 /-]{4,28}[A-Z0-9]$'
 
 const HOME_OFFICE_REF_PATTERN = new RegExp(HOME_OFFICE_REF_SQL_PATTERN);
 
-/** "  abc 123456 " → "ABC 123456". The form the database stores. */
+/**
+ * "  abc 123456 " → "ABC 123456". The form the database stores. JavaScript's
+ * `\s` takes every Unicode space — a no-break space pasted from a PDF
+ * included — and `normalise_home_office_ref()` lists the same set.
+ */
+export const HOME_OFFICE_REF_SPACES_SQL =
+  '[\\s\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]+';
+
 export function normaliseHomeOfficeRef(raw: string | null | undefined): string {
-  return (raw ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+  return (raw ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
 export function isValidHomeOfficeRef(raw: string | null | undefined): boolean {
@@ -55,6 +62,13 @@ export function homeOfficeRefError(raw: string | null | undefined): string | nul
 export const HOME_OFFICE_CHECK_MONTHS = 6;
 
 /**
+ * The office may type a later end date when a result says so — but not more
+ * than a year after the date approved (`until_too_far` in SQL): 2099 is a
+ * typo, not a Home Office decision.
+ */
+export const HOME_OFFICE_CHECK_MAX_MONTHS = 12;
+
+/**
  * The right-to-work-until a Home Office check result gives by default: six
  * months from the date approved printed on it — the same day of the month,
  * clamped to the end of a shorter month (31.08.2026 → 28.02.2027), which is
@@ -63,6 +77,16 @@ export const HOME_OFFICE_CHECK_MONTHS = 6;
  * same vectors there. Null for anything that is not a real ISO date.
  */
 export function homeOfficeCheckUntil(approvedIso: string): string | null {
+  return addMonthsClamped(approvedIso, HOME_OFFICE_CHECK_MONTHS);
+}
+
+/** The latest right-to-work-until the office may type: a year from the date approved. */
+export function homeOfficeCheckLatest(approvedIso: string): string | null {
+  return addMonthsClamped(approvedIso, HOME_OFFICE_CHECK_MAX_MONTHS);
+}
+
+/** `date + interval 'N months'` as PostgreSQL computes it: clamped to the month's end. */
+export function addMonthsClamped(approvedIso: string, months: number): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(approvedIso);
   if (!m) return null;
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
@@ -70,7 +94,7 @@ export function homeOfficeCheckUntil(approvedIso: string): string | null {
   if (check.getUTCFullYear() !== y || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d) {
     return null;
   }
-  const total = mo - 1 + HOME_OFFICE_CHECK_MONTHS;
+  const total = mo - 1 + months;
   const ty = y + Math.floor(total / 12);
   const tm = total % 12;
   const lastDay = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();

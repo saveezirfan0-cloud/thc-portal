@@ -221,13 +221,36 @@ export function p45Availability(
  * reason is a conviction under review — §10.7's copy is factual, not
  * punitive, and never repeats the declaration back at them.
  */
+/**
+ * ADR-0182: the Home Office check result is the office's to renew — the worker
+ * cannot obtain it — so it is never counted as something to upload.
+ */
+export const HOME_OFFICE_BLOCKERS = [
+  'document_expired:home_office_check_result',
+  'document_unverified:home_office_check_result',
+] as const;
+
+/** Every blocker is the Home Office check result: nothing for the worker to upload. */
+export function onlyHomeOfficeBlockers(blockers: readonly string[]): boolean {
+  return (
+    blockers.length > 0 &&
+    blockers.every((b) => (HOME_OFFICE_BLOCKERS as readonly string[]).includes(b))
+  );
+}
+
+export const HOME_OFFICE_RENEWING =
+  'Your Home Office check has run out — the office is renewing it. There’s nothing for you to upload; shifts open again as soon as they’ve recorded the new result.';
+
 export function describeBlockers(blockers: readonly string[]): string | null {
   if (blockers.length === 0) return null;
   if (blockers.includes('conviction_unreviewed')) {
     return 'We’ve paused your upcoming shifts while the office reviews your declaration, and we’ll be in touch.';
   }
-  const expired = blockers.filter((b) => b.startsWith('document_expired:')).length;
-  const unverified = blockers.filter((b) => b.startsWith('document_unverified:')).length;
+  if (onlyHomeOfficeBlockers(blockers)) return HOME_OFFICE_RENEWING;
+  const homeOffice = blockers.some((b) => (HOME_OFFICE_BLOCKERS as readonly string[]).includes(b));
+  const own = blockers.filter((b) => !(HOME_OFFICE_BLOCKERS as readonly string[]).includes(b));
+  const expired = own.filter((b) => b.startsWith('document_expired:')).length;
+  const unverified = own.filter((b) => b.startsWith('document_unverified:')).length;
   const parts: string[] = [];
   if (expired > 0) parts.push(`${expired} expired ${expired === 1 ? 'document' : 'documents'}`);
   if (unverified > 0) {
@@ -236,5 +259,6 @@ export function describeBlockers(blockers: readonly string[]): string | null {
     );
   }
   if (parts.length === 0) return 'Your documents need attention.';
-  return `${parts.join(' and ')}. Upload a valid document; once the office verifies it — and everything else is in date — you’re unblocked automatically.`;
+  const renewing = homeOffice ? ' The office is renewing your Home Office check.' : '';
+  return `${parts.join(' and ')}. Upload a valid document; once the office verifies it — and everything else is in date — you’re unblocked automatically.${renewing}`;
 }

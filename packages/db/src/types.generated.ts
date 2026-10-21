@@ -11956,10 +11956,6 @@ export type Database = {
         };
         Returns: Json;
       };
-      compliance_verify_home_office_check: {
-        Args: { p_approved_on: string; p_doc: string; p_right_to_work_until?: string };
-        Returns: Json;
-      };
       compliance_verify_document_as: {
         Args: {
           p_doc: string;
@@ -11968,6 +11964,10 @@ export type Database = {
           p_right_to_work_until?: string;
           p_term_dates?: unknown[];
         };
+        Returns: Json;
+      };
+      compliance_verify_home_office_check: {
+        Args: { p_approved_on: string; p_doc: string; p_right_to_work_until?: string };
         Returns: Json;
       };
       confirm_on_day: { Args: { p_booking: string }; Returns: Json };
@@ -12409,6 +12409,7 @@ export type Database = {
         Args: { p_q1: boolean; p_q2: boolean; p_q3: boolean };
         Returns: Database['public']['Enums']['hmrc_statement'];
       };
+      home_office_check_until: { Args: { p_approved_on: string }; Returns: string };
       install_bar_menu_quiz: { Args: { p_client: string }; Returns: string };
       install_housekeeping_schedules: {
         Args: Record<PropertyKey, never>;
@@ -12473,6 +12474,7 @@ export type Database = {
         Args: { p_hhmm: string; p_now: string; p_window?: string };
         Returns: boolean;
       };
+      is_valid_home_office_ref: { Args: { p_ref: string }; Returns: boolean };
       is_valid_share_code: { Args: { p: string }; Returns: boolean };
       issue_employee_id: {
         Args: { p_first: string; p_last: string; p_staff: string };
@@ -12673,6 +12675,7 @@ export type Database = {
           town: string;
         }[];
       };
+      normalise_home_office_ref: { Args: { p_ref: string }; Returns: string };
       normalise_languages: {
         Args: { p_languages: string[] };
         Returns: string[];
@@ -12734,6 +12737,10 @@ export type Database = {
         Returns: {
           offer_id: string;
         }[];
+      };
+      office_attach_home_office_check: {
+        Args: { p_path: string; p_staff: string };
+        Returns: Json;
       };
       office_base_url: { Args: Record<PropertyKey, never>; Returns: string };
       office_can: { Args: { p_perm: string }; Returns: boolean };
@@ -12843,10 +12850,6 @@ export type Database = {
           series_last_start: string;
           starts_at: string;
         }[];
-      };
-      office_attach_home_office_check: {
-        Args: { p_path: string; p_staff: string };
-        Returns: Json;
       };
       office_submit_completion_letter: {
         Args: {
@@ -13483,6 +13486,7 @@ export type Database = {
       record_right_to_work_change: {
         Args: {
           p_branch: Database['public']['Enums']['rtw_branch'];
+          p_home_office_ref?: string;
           p_share_code?: string;
           p_staff: string;
           p_until: string;

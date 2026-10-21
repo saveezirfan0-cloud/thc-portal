@@ -1,3 +1,5 @@
+import { homeOfficeCheckLatest } from '@thc/domain';
+
 /**
  * The right-to-work date a reviewer confirms when verifying a visa
  * document, a status document or a share code report (§2.5, §2.6,
@@ -92,8 +94,13 @@ export function homeOfficeVerifyProblem(
   const iso = /^\d{4}-\d{2}-\d{2}$/;
   if (!iso.test(approvedOn)) return 'Enter the date approved on the Home Office result.';
   if (approvedOn > today) return 'The date approved cannot be in the future.';
+  if (approvedOn < '2000-01-01') return 'Check the date approved — it is before 2000.';
   if (!iso.test(until)) return 'Confirm the right to work until.';
   if (until <= approvedOn) return 'The right to work must end after the date approved.';
+  const latest = homeOfficeCheckLatest(approvedOn);
+  if (latest && until > latest) {
+    return 'The right to work can run at most a year from the date approved — check the date.';
+  }
   if (until <= today) return 'This result has already run out — it cannot be verified.';
   return null;
 }

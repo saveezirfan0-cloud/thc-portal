@@ -202,6 +202,17 @@ export function Overview({
                 <span className="mono">{profile.share_code}</span>
               </>
             ) : null}
+            {/* ADR-0182: what the Employer Checking Service form needs. */}
+            {profile.rtw_branch === 'home_office_check' ? (
+              profile.home_office_ref ? (
+                <>
+                  {' · Home Office reference '}
+                  <span className="mono">{profile.home_office_ref}</span>
+                </>
+              ) : (
+                <span className="amber"> · no Home Office reference — add it with Change</span>
+              )
+            ) : null}
             {profile.right_to_work_until ? (
               <>
                 {' '}
@@ -213,6 +224,7 @@ export function Overview({
               name={profile.display_name}
               branch={profile.rtw_branch}
               until={profile.right_to_work_until}
+              homeOfficeRef={profile.home_office_ref ?? null}
               allowed={canCorrectDob && !profile.removed}
             />
           </span>

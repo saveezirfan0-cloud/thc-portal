@@ -132,6 +132,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     changeRequests,
     payRate,
     payFloorPence,
+    identity,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -247,6 +248,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .maybeSingle<PersonalPayRate>(),
     // ADR-0137: no personal rate below today's National Living Wage.
     loadPayFloorPence(supabase),
+    // ADR-0182: the Home Office reference, admin-only, for the Employer
+    // Checking Service form. A failed read shows none, nothing more.
+    supabase
+      .from('staff_identity_v')
+      .select('home_office_ref')
+      .eq('staff_id', id)
+      .maybeSingle<{ home_office_ref: string | null }>(),
   ]);
 
   const error =
@@ -267,7 +275,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
   const photoUrl = photoPath ? ((await signStaffPhotos([photoPath])).get(photoPath) ?? null) : null;
 
   return {
-    profile: profile.data ? { ...profile.data, photo_url: photoUrl } : null,
+    profile: profile.data
+      ? {
+          ...profile.data,
+          photo_url: photoUrl,
+          home_office_ref: identity.error ? null : (identity.data?.home_office_ref ?? null),
+        }
+      : null,
     documents: documents.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
