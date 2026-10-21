@@ -106,6 +106,7 @@ async function Profile({ id, role }: { id: string; role: OfficeRole | null }) {
       canEditPayrollId={finance && officeCan(role, 'write')}
       showPayRate={finance}
       canEditPayRate={finance && officeCan(role, 'write')}
+      canEditTermPeriods={officeCan(role, 'write')}
       canMessage={canMessageWorker(data.profile.status, officeCan(role, 'write'))}
     />
   );

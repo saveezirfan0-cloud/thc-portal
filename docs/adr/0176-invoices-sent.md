@@ -203,3 +203,53 @@ invoice carries the log".
   - The office's Send / Download Completed Timesheet buttons (§11.4) are unchanged, as is the
     D2 machinery. The same setting turns it back on.
   - The "Consequences" line above about two emails at 10:00 no longer holds.
+
+## Amendment, 21.10.2026: compulsory invoicing contact; D1 asks for nothing back
+
+THC: "Remove it now that times are GPS-verified" (D1's request to fill in, sign and return the
+sheet), and "Can 'invoicing contact' be a compulsory field when a new client is created. A lot
+of clients have multiple email address the invoice needs to be sent to. As a fallback if there
+is no invoice email address, this should be sent to the main contact."
+
+- **D1 asks for nothing back.** The 16:00 Allocation Timesheet email no longer asks the
+  manager on site to fill in finish times, sign the sheet and email it back. In its place:
+  "There's nothing for your manager on site to fill in or sign on the day. Each person records
+  when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll
+  receive those timings with our invoice for the event." It names no time: a multi-day job on
+  one PO is invoiced after its last day, and an invoice held for review waits. The reply
+  button reads "Reply to this email" (`packages/notifications/src/documents.ts`). The D1 PDF
+  itself is unchanged.
+- **A new client is created with its invoicing contact** (`20261022130000`).
+  - `create_client()` takes the invoice emails, the accounts contact name and the billing
+    address. It refuses a client with no invoice email (`invoice_email_required`).
+  - The name and the address stay optional: an empty name puts the main contact under
+    "Invoice to".
+  - The seven-argument `create_client()` is dropped, so no RPC caller can skip the rule. A
+    direct table insert is not checked, as for every other §9.7 rule; the office only creates
+    clients through `create_client()`.
+  - New client shows an **Invoicing** group with "Use the contact emails" for a client whose
+    invoice goes to the main contact's addresses.
+  - Edit does not show the group: once the client exists, the card's Invoicing panel owns these
+    fields, finance only.
+  - The creating INSERT may carry them: whoever may add a client may say where its invoices go.
+    Changing them afterwards is still finance only (`clients_invoice_details_guard`).
+  - `client.created` records them.
+- **Up to ten invoice emails** (was five), the same ceiling as the contact emails (ADR-0087):
+  `clients_invoice_emails_max`, `set_client_invoice_details()`, the card's panel and the form.
+- **A real CC** (THC, with its billing contacts list's "Invoice To" and "Invoice CC" columns:
+  "keep a real CC").
+  - `clients.invoice_cc_emails`, up to ten, is set on New client and on the card's panel.
+  - The INV1 email goes To the invoice emails (else the contact emails) and CC this list, less
+    any address already in To.
+  - `queue_invoice_email()` and `resend_invoice_email()` put the list in `payload.cc` and record
+    it on `invoices.cc_recipients`. The drain hands it to Resend as `cc`.
+  - `set_client_invoice_details()` takes `p_cc_emails`, and one normaliser,
+    `_invoice_email_list()`, checks both lists.
+- **THC's list is loaded once, by hand.** THC's billing contacts spreadsheet is imported with a
+  one-off SQL script, run in the Supabase SQL editor. Contact emails, including private
+  individuals' addresses, are not put in the repository. Clients already on the system get the
+  invoicing details; clients not yet on it are created with a placeholder phone and on-site
+  contact for the office to complete.
+- **The fallback is unchanged.** A client with no invoice email is invoiced at its contact
+  emails, the main contact's addresses. That covers every client created before this rule. The
+  card's hint now says "Empty: invoices go to the main contact — the allocation emails above".

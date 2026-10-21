@@ -1,0 +1,47 @@
+/* A term letter's holiday periods as editable rows (ADR-0178): the Compliance
+   Verify dialog and "Edit holiday periods". Mirrors the candidate screen's
+   .period rows (onboarding.css). */
+.hp-row {
+  display: grid;
+  /* # · From · → · To · Source · remove */
+  grid-template-columns: 24px 150px 20px 150px 1fr 60px;
+  gap: var(--sp-8);
+  align-items: center;
+  padding: var(--sp-8) var(--sp-10);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 12.5px;
+}
+.hp-row + .hp-row {
+  border-top: 0;
+}
+.hp-row.head {
+  background: transparent;
+  border: 0;
+  padding: 0 var(--sp-10) var(--sp-4);
+}
+.hp-row .input {
+  height: 30px;
+  font-size: var(--fs-12);
+}
+.hp-row .ukd {
+  min-width: 0;
+}
+.hp-rm {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-11);
+  text-decoration: underline;
+}
+/* The two dates stay on one line; the list scrolls sideways on a phone. */
+@media (max-width: 760px) {
+  .hp-list {
+    overflow-x: auto;
+  }
+  .hp-row {
+    min-width: 480px;
+  }
+}

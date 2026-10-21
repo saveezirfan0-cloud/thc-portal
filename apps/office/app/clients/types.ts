@@ -36,6 +36,22 @@ export interface ClientDraft {
   contact_emails: string[];
   pays_breaks: boolean;
   pays_buffer: boolean;
+  /**
+   * New client only (ADR-0176, THC 21.10.2026): where its invoices go. At
+   * least one invoice email is compulsory; once the client exists these
+   * are the card's Invoicing panel's, finance only.
+   */
+  invoicing?: NewClientInvoicing;
+}
+
+export interface NewClientInvoicing {
+  invoice_emails: string[];
+  /** Optional: copied on the invoice email. */
+  invoice_cc_emails: string[];
+  /** Optional: empty puts the main contact under "Invoice to". */
+  accounts_contact_name: string;
+  /** Optional. */
+  billing_address: string;
 }
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
