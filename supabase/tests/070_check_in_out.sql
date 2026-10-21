@@ -25,6 +25,7 @@ select plan(
   + (select count(*)::int from vec_pay)
   + (select count(*)::int from vec_turn_away)
   + (select count(*)::int from vec_breaks)
+  + (select count(*)::int from vec_cap_overrun)
   + 35
 );
 
@@ -118,6 +119,20 @@ select is(
   (c.expect->>'unpaidBreakMin')::int,
   'breaks · ' || c.name
 ) from vec_breaks c,
+  lateral (select coalesce((c.input->>'startsAt')::timestamptz, b.base) as base from vbase b) v;
+
+-- RULE-20 / ADR-0184: the paid overrun a shift adds to the weekly cap.
+select is(
+  cap_overrun_minutes(
+    v.base,
+    v.base + (c.input->>'shiftMin')::int * interval '1 minute',
+    pg_temp.mins(v.base, c.input, 'checkInMinFromStart'),
+    pg_temp.mins(v.base, c.input, 'checkOutMinFromStart'),
+    (c.input->>'unpaidBreakMin')::int,
+    c.input->>'noCheckOut'),
+  (c.expect->>'overrunMin')::int,
+  'cap overrun · ' || c.name
+) from vec_cap_overrun c,
   lateral (select coalesce((c.input->>'startsAt')::timestamptz, b.base) as base from vbase b) v;
 
 -- ---------------------------------------------------------------------

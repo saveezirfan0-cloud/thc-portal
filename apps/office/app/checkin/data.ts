@@ -68,7 +68,14 @@ export function readLateCheckOuts(data: unknown): UnsignedLateCheckOut[] {
     verifiedAt: (r.verified_at as string | null) ?? null,
     verifiedByName: (r.verified_by_name as string | null) ?? null,
     note: (r.note as string | null) ?? null,
+    weekHours: numberOrNull(r.week_hours),
+    weekCapHours: numberOrNull(r.week_cap_hours),
   }));
+}
+
+/** A numeric column (PostgREST sends numeric as a string) or null. */
+function numberOrNull(v: unknown): number | null {
+  return v === null || v === undefined || v === '' ? null : Number(v);
 }
 
 /** The session client, as `createClient` returns it. */
@@ -274,6 +281,9 @@ export async function loadMonitor(
     lateCheckOutVerifiedAt: (r.late_check_out_verified_at as string | null) ?? null,
     lateCheckOutVerifiedByName: (r.late_check_out_verified_by_name as string | null) ?? null,
     lateCheckOutNote: (r.late_check_out_note as string | null) ?? null,
+    // 20261022200200: the week against the cap, on a late sign-out only.
+    weekHours: numberOrNull(r.week_hours),
+    weekCapHours: numberOrNull(r.week_cap_hours),
     // 20261012121200 appended it to the view; absent (an older database)
     // reads as not flagged.
     locationSuspect: r.location_suspect === true,

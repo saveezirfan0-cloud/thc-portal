@@ -117,3 +117,13 @@ insert into vec_breaks (name, input, expect) values
   ('no breaks, nothing deducted', '{"shiftMin":480,"checkInMinFromStart":0,"finishMinFromStart":480,"breaks":[]}'::jsonb, '{"unpaidBreakMin":0}'::jsonb),
   ('a break after the end of a section before 21.10.2026 (UK) costs nothing', '{"shiftMin":480,"checkInMinFromStart":0,"finishMinFromStart":540,"startsAt":"2026-10-20T14:59:00Z","breaks":[[490,520]]}'::jsonb, '{"unpaidBreakMin":0}'::jsonb),
   ('a break past end + 4 h costs nothing: it was never paid (ADR-0184)', '{"shiftMin":480,"checkInMinFromStart":0,"finishMinFromStart":840,"breaks":[[700,740],[760,790]]}'::jsonb, '{"unpaidBreakMin":20}'::jsonb);
+
+create temporary table vec_cap_overrun (name text, input jsonb, expect jsonb) on commit drop;
+insert into vec_cap_overrun (name, input, expect) values
+  ('inside the 15-minute grace adds nothing to the week', '{"shiftMin":480,"checkInMinFromStart":0,"unpaidBreakMin":0,"noCheckOut":"none","checkOutMinFromStart":495}'::jsonb, '{"overrunMin":0}'::jsonb),
+  ('a sign-out 75 minutes late adds 75 minutes to the week', '{"shiftMin":480,"checkInMinFromStart":0,"unpaidBreakMin":0,"noCheckOut":"none","checkOutMinFromStart":555}'::jsonb, '{"overrunMin":75}'::jsonb),
+  ('a finish typed six hours late adds only the four paid hours', '{"shiftMin":480,"checkInMinFromStart":0,"unpaidBreakMin":0,"noCheckOut":"resolved","checkOutMinFromStart":840}'::jsonb, '{"overrunMin":240}'::jsonb),
+  ('no recorded finish adds nothing', '{"shiftMin":480,"checkInMinFromStart":0,"unpaidBreakMin":0,"noCheckOut":"none","checkOutMinFromStart":null}'::jsonb, '{"overrunMin":0}'::jsonb),
+  ('a No check-out still open adds nothing until it is resolved', '{"shiftMin":480,"checkInMinFromStart":0,"unpaidBreakMin":0,"noCheckOut":"unresolved","checkOutMinFromStart":600}'::jsonb, '{"overrunMin":0}'::jsonb),
+  ('a section ending before 21.10.2026 (UK) adds nothing', '{"shiftMin":480,"checkInMinFromStart":0,"unpaidBreakMin":0,"noCheckOut":"none","startsAt":"2026-10-20T14:59:00Z","checkOutMinFromStart":555}'::jsonb, '{"overrunMin":0}'::jsonb),
+  ('breaks longer than the main part leave only what was paid', '{"shiftMin":240,"checkInMinFromStart":0,"unpaidBreakMin":270,"noCheckOut":"none","checkOutMinFromStart":300}'::jsonb, '{"overrunMin":30}'::jsonb);

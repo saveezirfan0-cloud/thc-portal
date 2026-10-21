@@ -138,8 +138,16 @@ describe('/checkin (§9.5)', () => {
       expect(html).toMatch(/<span class="pill coral"[^>]*>Checked out/);
       expect(html).toContain('Signed out late — verify with the worker');
       expect(html).toContain('>Verify<');
+      expect(html).not.toContain('Over weekly limit');
       // Nothing on the screen says the pay stops at the end any more.
       expect(html).not.toMatch(/scheduled end/i);
+    });
+
+    it('warns on the board when the overrun takes the worker past their weekly limit', () => {
+      const html = renderToStaticMarkup(
+        <MonitorScreen rows={[{ ...LATE, weekHours: 49, weekCapHours: 48 }]} violations={[]} />,
+      );
+      expect(html).toContain('Over weekly limit: 49 h of 48 h');
     });
 
     it('once verified, the pill is neutral and the line says who verified it', () => {
@@ -182,6 +190,8 @@ describe('/checkin (§9.5)', () => {
               verifiedAt: null,
               verifiedByName: null,
               note: null,
+              weekHours: 21.25,
+              weekCapHours: 20,
             },
           ]}
         />,
@@ -189,6 +199,8 @@ describe('/checkin (§9.5)', () => {
       expect(html).toContain('Signed out late — verify with the worker · last 14 days');
       expect(html).toContain('Grace L.');
       expect(html).toContain('1 h 15 min past the end');
+      // RULE-20: the paid overrun took her past her weekly limit.
+      expect(html).toContain('Over weekly limit: 21 h 15 of 20 h');
     });
 
     it('shows no list when there is nothing to verify', () => {
@@ -264,6 +276,26 @@ describe('/checkin (§9.5)', () => {
       expect(html).toContain('23:15 your time');
       expect(html).toContain('1 h 15 min past the end');
       expect(html).not.toContain('paid up to 4 h');
+      expect(html).not.toContain('Over weekly limit');
+    });
+
+    it('warns in the Verify window when the overrun took the worker past their weekly limit', () => {
+      const html = renderToStaticMarkup(
+        <VerifyLateModal
+          target={{
+            bookingId: 'b1',
+            staffName: 'Chloe D.',
+            eventTitle: 'Conference Day 2',
+            roleName: 'Bar Staff',
+            endsAt: '2026-09-24T19:00:00Z',
+            checkOutAt: '2026-09-24T20:15:00Z',
+            weekHours: 21.25,
+            weekCapHours: 20,
+          }}
+          onClose={() => {}}
+        />,
+      );
+      expect(html).toContain('Over weekly limit: 21 h 15 of 20 h');
     });
 
     it('tells the manager a finish past end + 4 h is not paid beyond it', () => {

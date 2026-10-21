@@ -466,6 +466,41 @@ export function hoursKpi(minutes: number | null | undefined): string {
   }).format((minutes ?? 0) / 60);
 }
 
+/**
+ * ADR-0184: one shift line as the client's invoice draws it — the shift,
+ * and, for one signed out more than 15 minutes late, its own "Overrun"
+ * line from the scheduled end to the paid end at the same rate. The
+ * database prices both parts (`invoicing` = main + overrun, each its
+ * minutes × rate); this only splits them for display.
+ */
+export interface InvoiceLineParts {
+  mainMin: number | null;
+  mainAmount: number | null;
+  overrun: { minutes: number; amount: number; startsAt: string; endsAt: string } | null;
+}
+
+export function invoiceLineParts(line: {
+  payable_min: number | null;
+  invoicing: number | string | null;
+  ends_at: string;
+  overrun_min?: number | null;
+  overrun_invoicing?: number | string | null;
+}): InvoiceLineParts {
+  const overMin = line.overrun_min ?? 0;
+  const total = line.invoicing === null ? null : num(line.invoicing);
+  if (overMin <= 0 || line.payable_min === null || total === null) {
+    return { mainMin: line.payable_min, mainAmount: total, overrun: null };
+  }
+  const overAmount = num(line.overrun_invoicing);
+  const endsAt = new Date(new Date(line.ends_at).getTime() + overMin * 60_000).toISOString();
+  return {
+    mainMin: line.payable_min - overMin,
+    // Pence, so the two parts add back to the shift's figure exactly.
+    mainAmount: Math.round(total * 100 - overAmount * 100) / 100,
+    overrun: { minutes: overMin, amount: overAmount, startsAt: line.ends_at, endsAt },
+  };
+}
+
 export function breakLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
 }

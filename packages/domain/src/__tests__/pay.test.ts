@@ -3,6 +3,9 @@ import vectors from '../pay.vectors.json' with { type: 'json' };
 import {
   HOLIDAY_RATE,
   addMinutes,
+  capOverrunMinutes,
+  formatCapHours,
+  overWeeklyLimitText,
   checkInDecision,
   checkOutDecision,
   effectiveEnd,
@@ -144,6 +147,30 @@ describe('RULE-01/02/14 pay window (shared vectors)', () => {
         noCheckOut: input.noCheckOut,
       }),
     ).toEqual(expected);
+  });
+});
+
+describe('RULE-20 · paid overrun counted against the weekly cap (shared vectors, ADR-0184)', () => {
+  it.each(merged<PayVector>(vectors.capOverrun))('$name', ({ input, expect: expected }) => {
+    const base = baseOf(input);
+    expect(
+      capOverrunMinutes({
+        shift: shiftOf(input.shiftMin, base),
+        checkInAt: at(input.checkInMinFromStart, base),
+        checkOutAt:
+          input.checkOutMinFromStart === null ? null : at(input.checkOutMinFromStart, base),
+        unpaidBreakMin: input.unpaidBreakMin,
+        noCheckOut: input.noCheckOut,
+      }),
+    ).toBe(expected.overrunMin);
+  });
+
+  it('words a week past the limit as the office reads it', () => {
+    expect(overWeeklyLimitText(21.25, 20)).toBe('Over weekly limit: 21 h 15 of 20 h');
+    expect(overWeeklyLimitText(49, 48)).toBe('Over weekly limit: 49 h of 48 h');
+    expect(overWeeklyLimitText(20, 20)).toBeNull();
+    expect(overWeeklyLimitText(30, null)).toBeNull();
+    expect(formatCapHours(10.0833)).toBe('10 h 05');
   });
 });
 

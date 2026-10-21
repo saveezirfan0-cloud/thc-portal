@@ -1151,6 +1151,58 @@
     ]
   },
 
+  "capOverrun": {
+    "$comment": [
+      "cap_overrun_minutes / capOverrunMinutes, RULE-20 with ADR-0184: the paid overrun",
+      "minutes a shift adds to the hours counted against the weekly cap (on top of its",
+      "scheduled length). payable_minutes' overrunMin when the pay is settled; nothing",
+      "with no recorded finish or a No check-out still open. Same inputs as pay."
+    ],
+    "defaults": {
+      "shiftMin": 480,
+      "checkInMinFromStart": 0,
+      "unpaidBreakMin": 0,
+      "noCheckOut": "none"
+    },
+    "cases": [
+      {
+        "name": "inside the 15-minute grace adds nothing to the week",
+        "input": { "checkOutMinFromStart": 495 },
+        "expect": { "overrunMin": 0 }
+      },
+      {
+        "name": "a sign-out 75 minutes late adds 75 minutes to the week",
+        "input": { "checkOutMinFromStart": 555 },
+        "expect": { "overrunMin": 75 }
+      },
+      {
+        "name": "a finish typed six hours late adds only the four paid hours",
+        "input": { "checkOutMinFromStart": 840, "noCheckOut": "resolved" },
+        "expect": { "overrunMin": 240 }
+      },
+      {
+        "name": "no recorded finish adds nothing",
+        "input": { "checkOutMinFromStart": null },
+        "expect": { "overrunMin": 0 }
+      },
+      {
+        "name": "a No check-out still open adds nothing until it is resolved",
+        "input": { "checkOutMinFromStart": 600, "noCheckOut": "unresolved" },
+        "expect": { "overrunMin": 0 }
+      },
+      {
+        "name": "a section ending before 21.10.2026 (UK) adds nothing",
+        "input": { "startsAt": "2026-10-20T14:59:00Z", "checkOutMinFromStart": 555 },
+        "expect": { "overrunMin": 0 }
+      },
+      {
+        "name": "breaks longer than the main part leave only what was paid",
+        "input": { "shiftMin": 240, "checkOutMinFromStart": 300, "unpaidBreakMin": 270 },
+        "expect": { "overrunMin": 30 }
+      }
+    ]
+  },
+
   "showRate": {
     "$comment": [
       "showRate / staff_show_rate, §6 show-rate (BG-03, RULE-14, §9.5). Percent 0–100,",
