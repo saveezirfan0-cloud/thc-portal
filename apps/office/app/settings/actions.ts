@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { type BufferSuggestionRule, bufferRuleProblem } from '@thc/domain';
 import { isSwitchableCode } from '@thc/notifications';
 import { READ_ONLY_MESSAGE } from '../_lib/sessionRole';
 import { settingsDb } from './db';
@@ -171,6 +172,24 @@ export async function saveRotaGuardMode(mode: RotaGuardMode): Promise<ActionResu
   const saved = await put('rota_guard_mode', mode);
   if (saved.ok) revalidatePath('/compliance');
   return saved;
+}
+
+/**
+ * ADR-0181: the suggested buffer ("overs") the Shift Builder pre-fills on a
+ * new role section. Exactly the four keys are written, whatever else the
+ * caller sent; the database's guard refuses any other shape. A change
+ * applies to role sections added from then on — a saved buffer is never
+ * rewritten by it.
+ */
+export async function saveBufferSuggestion(rule: BufferSuggestionRule): Promise<ActionResult> {
+  const invalid = bufferRuleProblem(rule);
+  if (invalid) return { ok: false, message: invalid };
+  return put('buffer_suggestion', {
+    enabled: rule.enabled,
+    per: rule.per,
+    rounding: rule.rounding,
+    minimum: rule.minimum,
+  });
 }
 
 /**

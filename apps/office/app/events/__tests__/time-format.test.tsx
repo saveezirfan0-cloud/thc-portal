@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { type TimeFormat, ukRoleWindow } from '@thc/domain';
+import { DEFAULT_BUFFER_RULE, type TimeFormat, ukRoleWindow } from '@thc/domain';
 import { TimeFormatProvider } from '@thc/ui';
 
 /**
@@ -39,7 +39,7 @@ const DRAFT: EventDraft = {
   roles: [],
 };
 
-const REFERENCE = { clients: [], venues: [], roles: [] };
+const REFERENCE = { clients: [], venues: [], roles: [], bufferRule: DEFAULT_BUFFER_RULE };
 
 function builder(format: TimeFormat, initial: EventDraft = DRAFT): string {
   return renderToStaticMarkup(

@@ -1,5 +1,12 @@
 import { cookies } from 'next/headers';
-import { type SeriesMember, UK_ZONE, formatTimeIn, normaliseLanguages } from '@thc/domain';
+import {
+  type BufferSuggestionRule,
+  type SeriesMember,
+  UK_ZONE,
+  formatTimeIn,
+  normaliseLanguages,
+  readBufferRule,
+} from '@thc/domain';
 import { readAllPages } from '@thc/db/paged';
 import type { PageReply } from '@thc/db/paged';
 import { eventsDb, supabaseConfigured } from './db';
@@ -56,6 +63,12 @@ export interface ReferenceData {
   clients: ClientOption[];
   venues: VenueOption[];
   roles: RoleOption[];
+  /**
+   * ADR-0181: the suggested-buffer rule (`settings.buffer_suggestion`), or
+   * THC's default (one for every five, rounded down) when the row is
+   * missing or unreadable.
+   */
+  bufferRule: BufferSuggestionRule;
   /** Set when this environment has no Supabase project wired up yet. */
   unavailable?: string;
 }
@@ -99,28 +112,37 @@ interface RoleRateRow {
 
 export async function loadReferenceData(): Promise<ReferenceData> {
   if (!supabaseConfigured()) {
-    return { clients: [], venues: [], roles: [], unavailable: NO_SUPABASE };
+    return {
+      clients: [],
+      venues: [],
+      roles: [],
+      bufferRule: readBufferRule(null),
+      unavailable: NO_SUPABASE,
+    };
   }
 
   const supabase = eventsDb(await cookies());
 
-  const [clients, rateCards, venues, venueTypes, roles, charges, payRates] = await Promise.all([
-    supabase
-      .from('clients')
-      .select('id, name, staff_contact_point, contact_emails, pays_breaks, pays_buffer')
-      .order('name'),
-    supabase.from('client_rate_cards').select('client_id, role_id, dress_codes'),
-    supabase
-      .from('venues')
-      .select('id, name, address, venue_type, geofence_radius_m')
-      .is('deleted_at', null)
-      .order('name'),
-    supabase.from('venue_types').select('key, label'),
-    supabase.from('roles').select('id, name').order('name'),
-    // ADR-0061: empty for an office role without finance.
-    supabase.from('rate_card_rates_v').select('client_id, role_id, charge_rate'),
-    supabase.from('role_rates_v').select('role_id, pay_rate'),
-  ]);
+  const [clients, rateCards, venues, venueTypes, roles, charges, payRates, bufferRow] =
+    await Promise.all([
+      supabase
+        .from('clients')
+        .select('id, name, staff_contact_point, contact_emails, pays_breaks, pays_buffer')
+        .order('name'),
+      supabase.from('client_rate_cards').select('client_id, role_id, dress_codes'),
+      supabase
+        .from('venues')
+        .select('id, name, address, venue_type, geofence_radius_m')
+        .is('deleted_at', null)
+        .order('name'),
+      supabase.from('venue_types').select('key, label'),
+      supabase.from('roles').select('id, name').order('name'),
+      // ADR-0061: empty for an office role without finance.
+      supabase.from('rate_card_rates_v').select('client_id, role_id, charge_rate'),
+      supabase.from('role_rates_v').select('role_id, pay_rate'),
+      // ADR-0181: every office role reads settings (only writes need an owner).
+      supabase.from('settings').select('value').eq('key', 'buffer_suggestion').maybeSingle(),
+    ]);
 
   // A failed read is reported, not rendered as "no clients" — the builder
   // would otherwise offer an empty picker with no explanation.
@@ -132,6 +154,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       clients: [],
       venues: [],
       roles: [],
+      bufferRule: readBufferRule(null),
       unavailable: readProblem(failed, 'Clients, venues and roles could not be loaded'),
     };
   }
@@ -183,6 +206,12 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       name: r.name,
       payRate: payOf.get(r.id) ?? 0,
     })),
+    // A failed read of the one setting is not worth refusing the builder
+    // for: the suggestion falls back to the default, and the manager can
+    // always type the buffer.
+    bufferRule: readBufferRule(
+      bufferRow.error ? null : (bufferRow.data as { value: unknown } | null)?.value,
+    ),
   };
 }
 

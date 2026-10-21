@@ -41,6 +41,7 @@ function role(over: Partial<RoleDraft> = {}): RoleDraft {
     sameStaffAllDays: false,
     allocationPerHour: 14,
     allocationTouched: false,
+    bufferTouched: true,
     ...over,
   };
 }

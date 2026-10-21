@@ -9,6 +9,7 @@
  */
 
 import {
+  type BufferSuggestionRule,
   type EditableField,
   type ReconfirmField,
   type RoleSectionDraft,
@@ -20,6 +21,7 @@ import {
   isEditLocked,
   reconfirmingChanges,
   seriesPosition,
+  suggestBuffer,
   ukRoleWindow,
   validateRoleSection,
 } from '@thc/domain';
@@ -87,6 +89,13 @@ export interface RoleDraft {
    * headcount and buffer. §3.4 makes the default editable, not sticky.
    */
   allocationTouched: boolean;
+  /**
+   * ADR-0181: once the manager types a buffer it stops following the
+   * suggested one ("1 for every 5"). A section opened from a saved event —
+   * edited or duplicated — starts touched: a saved buffer is never changed
+   * by the suggestion.
+   */
+  bufferTouched: boolean;
 }
 
 export interface EventDraft {
@@ -121,10 +130,18 @@ let keySeq = 0;
 
 /**
  * A new role section, pre-filled with the event's current window (§3.2), then
- * edited independently. Allocation starts at headcount + buffer (§3.4).
+ * edited independently. The buffer starts at the suggestion for one person
+ * (ADR-0181; 0 under the default rule, or with the rule off) and allocation
+ * at headcount + buffer (§3.4).
  */
-export function newRoleDraft(draft: EventDraft, roleId: string, payRate = 0): RoleDraft {
+export function newRoleDraft(
+  draft: EventDraft,
+  roleId: string,
+  payRate = 0,
+  bufferRule: BufferSuggestionRule | null = null,
+): RoleDraft {
   keySeq += 1;
+  const buffer = suggestBuffer(1, bufferRule) ?? 0;
   return {
     key: `role-${keySeq}`,
     id: null,
@@ -132,7 +149,7 @@ export function newRoleDraft(draft: EventDraft, roleId: string, payRate = 0): Ro
     start: draft.overallStart,
     end: draft.overallEnd,
     headcount: 1,
-    buffer: 0,
+    buffer,
     chargeRate: 0,
     payRate,
     dressCode: '',
@@ -140,22 +157,55 @@ export function newRoleDraft(draft: EventDraft, roleId: string, payRate = 0): Ro
     autoAssign: draft.autoAssign,
     requiredGender: null,
     sameStaffAllDays: false,
-    allocationPerHour: defaultAllocationPerHour(1, 0),
+    allocationPerHour: defaultAllocationPerHour(1, buffer),
     allocationTouched: false,
+    bufferTouched: false,
   };
 }
 
 /**
- * Applies one edit to a role section, keeping the allocation default in step
- * with headcount and buffer until the manager overrides it.
+ * Applies one edit to a role section.
+ *
+ *   * The buffer follows the suggestion as the headcount changes until the
+ *     manager types one (ADR-0181). With no rule, or the rule off, nothing
+ *     follows and the buffer is only what was typed.
+ *   * The allocation default then follows headcount and buffer until the
+ *     manager overrides it (§3.4).
  */
-export function editRole(role: RoleDraft, patch: Partial<RoleDraft>): RoleDraft {
+export function editRole(
+  role: RoleDraft,
+  patch: Partial<RoleDraft>,
+  bufferRule: BufferSuggestionRule | null = null,
+): RoleDraft {
   const next = { ...role, ...patch };
+  if (patch.buffer !== undefined && patch.bufferTouched === undefined) next.bufferTouched = true;
+  if (!next.bufferTouched) {
+    const suggested = suggestBuffer(next.headcount, bufferRule);
+    if (suggested !== null) next.buffer = suggested;
+  }
   if (patch.allocationPerHour !== undefined) next.allocationTouched = true;
   else if (!next.allocationTouched) {
     next.allocationPerHour = defaultAllocationPerHour(next.headcount, next.buffer);
   }
   return next;
+}
+
+/**
+ * The edit "Use suggestion (N)" makes, or null when there is nothing to
+ * suggest or the buffer already is the suggestion.
+ *
+ * On a section not saved yet (new, or a Duplicate's copy) it hands the
+ * buffer back to the suggestion, which then follows the headcount again. On
+ * a saved section it only sets the number: the manager chose it, and a saved
+ * buffer never moves on its own afterwards (ADR-0181).
+ */
+export function bufferSuggestionPatch(
+  role: RoleDraft,
+  bufferRule: BufferSuggestionRule | null,
+): Partial<RoleDraft> | null {
+  const suggested = suggestBuffer(role.headcount, bufferRule);
+  if (suggested === null || suggested === role.buffer) return null;
+  return role.id === null ? { bufferTouched: false } : { buffer: suggested };
 }
 
 /** True once the date and both times are complete enough to resolve. */
@@ -326,6 +376,9 @@ export function draftFromSaved(
       // Whatever is stored is the manager's choice; the default never
       // overwrites it on reopening (§3.4).
       allocationTouched: true,
+      // ADR-0181: the same for the buffer, and a Duplicate keeps the copied
+      // one — the suggestion never rewrites a saved number.
+      bufferTouched: true,
     };
   });
 

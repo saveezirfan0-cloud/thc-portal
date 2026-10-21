@@ -26,6 +26,7 @@ const role: RoleDraft = {
   sameStaffAllDays: false,
   allocationPerHour: 5,
   allocationTouched: false,
+  bufferTouched: true,
 };
 
 function render(booked: number, boardHref?: string, held: number = booked) {

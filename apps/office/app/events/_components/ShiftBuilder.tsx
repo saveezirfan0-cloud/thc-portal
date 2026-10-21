@@ -212,7 +212,9 @@ export function ShiftBuilder({
   function patchRole(key: string, patch: Partial<RoleDraft>) {
     setDraft((current) => ({
       ...current,
-      roles: current.roles.map((role) => (role.key === key ? editRole(role, patch) : role)),
+      roles: current.roles.map((role) =>
+        role.key === key ? editRole(role, patch, reference.bufferRule) : role,
+      ),
     }));
   }
 
@@ -254,7 +256,10 @@ export function ShiftBuilder({
   }
 
   function addRole() {
-    setDraft((current) => ({ ...current, roles: [...current.roles, newRoleDraft(current, '')] }));
+    setDraft((current) => ({
+      ...current,
+      roles: [...current.roles, newRoleDraft(current, '', 0, reference.bufferRule)],
+    }));
   }
 
   /**
@@ -569,6 +574,7 @@ export function ShiftBuilder({
                 held={role.id ? (held[role.id] ?? 0) : 0}
                 locked={readOnly}
                 series={seriesContext}
+                bufferRule={reference.bufferRule}
                 {...(saved?.id ? { boardHref: `/events/${saved.id}` } : {})}
                 onChange={(patch) =>
                   patch.roleId !== undefined

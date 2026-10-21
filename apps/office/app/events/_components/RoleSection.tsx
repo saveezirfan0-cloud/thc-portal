@@ -4,11 +4,13 @@ import { useId, useState } from 'react';
 import Link from 'next/link';
 import { Alert, Button, Input, Pill, Select, TimeField, useTimeFormat } from '@thc/ui';
 import {
+  type BufferSuggestionRule,
   type EditableField,
   ROLE_SECTION_MESSAGE,
   type RoleSectionIssue,
   clockLabel,
   defaultAllocationPerHour,
+  describeBufferRule,
   finalHourlyPence,
   formatAllocationPair,
   formatConfirmationTarget,
@@ -17,6 +19,7 @@ import {
   SERIES_LABEL,
   reconfirmingChanges,
   sectionHours,
+  suggestBuffer,
   ukInputLabel,
 } from '@thc/domain';
 import { Switch } from './Switch';
@@ -24,6 +27,7 @@ import {
   DRESS_CODE_OTHER,
   REQUIRED_GENDER_LABEL,
   type RoleDraft,
+  bufferSuggestionPatch,
   isResolvable,
   type SeriesContext,
   resolveRole,
@@ -80,6 +84,11 @@ export interface RoleSectionProps {
   boardHref?: string;
   /** ADR-0061: false for an office role without finance — no rate fields, no margin. */
   ratesVisible: boolean;
+  /**
+   * ADR-0181: the suggested-buffer rule from /settings. Absent or switched
+   * off, the Buffer field has no suggestion and nothing follows.
+   */
+  bufferRule?: BufferSuggestionRule | null;
   onChange: (patch: Partial<RoleDraft>) => void;
   onRemove: () => void;
 }
@@ -101,6 +110,7 @@ export function RoleSection({
   series,
   boardHref,
   ratesVisible,
+  bufferRule = null,
   onChange,
   onRemove,
 }: RoleSectionProps) {
@@ -122,6 +132,10 @@ export function RoleSection({
   const fieldId = useId();
   const cardRate = client?.rateCard[role.roleId]?.chargeRate;
   const chargeFromCard = mode === 'new' && !chargeOverride && cardRate !== undefined;
+
+  // ADR-0181: the suggestion, and the edit "Use suggestion" would make.
+  const suggestedBuffer = bufferRule ? suggestBuffer(role.headcount, bufferRule) : null;
+  const suggestionPatch = bufferSuggestionPatch(role, bufferRule);
 
   const issueFor = (field: RoleSectionIssue) => (issues.includes(field) ? field : null);
   const lengthIssue = issueFor('below_minimum_hours') ?? issueFor('end_before_start');
@@ -268,7 +282,27 @@ export function RoleSection({
             {...(issues.includes('negative_buffer')
               ? { error: ROLE_SECTION_MESSAGE.negative_buffer }
               : {
-                  hint: `absolute, not % · shown as ${formatAllocationPair(role.headcount, role.buffer)}`,
+                  hint:
+                    bufferRule && suggestedBuffer !== null ? (
+                      <>
+                        Suggested: {suggestedBuffer} ({describeBufferRule(bufferRule)}) · shown as{' '}
+                        {formatAllocationPair(role.headcount, role.buffer)}
+                        {suggestionPatch ? (
+                          <>
+                            {' · '}
+                            <button
+                              type="button"
+                              className="linkish"
+                              onClick={() => onChange(suggestionPatch)}
+                            >
+                              Use suggestion ({suggestedBuffer})
+                            </button>
+                          </>
+                        ) : null}
+                      </>
+                    ) : (
+                      `absolute, not % · shown as ${formatAllocationPair(role.headcount, role.buffer)}`
+                    ),
                 })}
           />
 

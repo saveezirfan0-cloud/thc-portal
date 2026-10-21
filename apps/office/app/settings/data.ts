@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readBufferRule } from '@thc/domain';
 import { TEMPLATES, switchedOff } from '@thc/notifications';
 import { readInvoicing, readWeights, validateSessionHours } from './validate';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
@@ -60,6 +61,7 @@ export async function loadSettings(): Promise<SettingsData> {
     escalationRadiusMiles: 3,
     venueTypes: [],
     rotaGuardMode: 'block',
+    bufferSuggestion: readBufferRule(null),
     notificationsOff: [],
     clientPortalPhone: '',
     officeTwoStepRequired: true,
@@ -116,6 +118,8 @@ export async function loadSettings(): Promise<SettingsData> {
     venueTypes: venueTypes.data ?? [],
     // rota_guard_mode() fails closed; so does the screen.
     rotaGuardMode: byKey.get('rota_guard_mode') === 'warn' ? 'warn' : 'block',
+    // ADR-0181: the Shift Builder's reading — the default when missing or malformed.
+    bufferSuggestion: readBufferRule(byKey.get('buffer_suggestion')),
     // Read by the same rule as notification_switched_on(): only a JSON false is off.
     notificationsOff: switchedOff(byKey.get('notification_switches')),
     // client_portal_contact_v reads only a JSON string, so does the screen.

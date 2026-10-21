@@ -30,6 +30,7 @@ import {
 } from '@thc/ui';
 import { ukInputLabel } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
+import { BufferSuggestionBlock } from './BufferSuggestionBlock';
 import { NotificationsTab } from './NotificationsTab';
 import {
   saveAutoAssignNumbers,
@@ -170,6 +171,7 @@ export function SettingsScreen({
             gapMinutes={data.bookedElsewhereGapMinutes}
             escalationMiles={data.escalationRadiusMiles}
           />
+          <BufferSuggestionBlock rule={data.bufferSuggestion} />
           <RotaGuardBlock mode={data.rotaGuardMode} />
           <WilloBlock
             map={data.willo}
@@ -210,7 +212,7 @@ const SaveSlot = createContext<{
  * the page's save bar while it has unsaved edits. The button is the same
  * element either way — only its place on the screen changes.
  */
-function SaveAction({
+export function SaveAction({
   id,
   title,
   dirty,
@@ -237,7 +239,7 @@ function useMarkDirty(id: string, title: string, dirty: boolean) {
 }
 
 /** One block's save button, its pending state and its one line of feedback. */
-function useSave() {
+export function useSave() {
   const router = useRouter();
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -266,7 +268,7 @@ function useSave() {
  * as the first thing in the body. Every block here needs it: the values are
  * unrecognisable without the rule behind them.
  */
-function Block({
+export function Block({
   title,
   sub,
   actions,
@@ -300,7 +302,7 @@ function sameValue(a: unknown, b: unknown): boolean {
  * the first field marked invalid in the block, or to this line, and puts
  * the keyboard there.
  */
-function Feedback({ note, error }: { note: string | null; error: string | null }) {
+export function Feedback({ note, error }: { note: string | null; error: string | null }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!error) return;

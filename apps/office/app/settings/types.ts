@@ -9,6 +9,8 @@
  * from, so this screen edits that table rather than shadowing it.
  */
 
+import type { BufferSuggestionRule } from '@thc/domain';
+
 export interface ScoringWeights {
   show_rate: number;
   rating: number;
@@ -80,6 +82,11 @@ export interface SettingsData {
    * are always refused (20260923100200_rota_guard.sql).
    */
   rotaGuardMode: RotaGuardMode;
+  /**
+   * ADR-0181: the suggested buffer the Shift Builder pre-fills
+   * (`settings.buffer_suggestion`), defaulted like the builder reads it.
+   */
+  bufferSuggestion: BufferSuggestionRule;
   /**
    * ADR-0083: the register codes switched off on the Notifications tab
    * (`settings.notification_switches`). Everything else is on.
