@@ -357,6 +357,7 @@ export function Documents({
                           superseded: false,
                           source: row.source,
                           staffStatus: profile.status,
+                          blockKind: profile.block_kind,
                           displayName: profile.display_name,
                           rejectionReason: row.review_note ?? null,
                         }}

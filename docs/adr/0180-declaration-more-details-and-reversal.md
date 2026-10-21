@@ -153,3 +153,46 @@ an unsent DR1 goes with the person through `remove_worker()`'s outbox scrub.
    wants those workers to answer from the app, the hold screen would need a link — the database
    already refuses it, deliberately.
 3. Whether reading the declaration details should also be limited to the named reviewers (§4).
+
+## Update — QA review of ab61e6d7 (`20261022170300_declaration_review_hardening.sql`)
+
+1. **No direct write (B1).** 0001's `admin_all` on `criminal_declarations` is FOR ALL, and
+   Supabase grants `authenticated` table DML, so any office session — named or not — could
+   PATCH `review_status` and have the triggers unblock a worker and push N15, past every check
+   in §4. Nothing in `apps/`, `packages/` or `supabase/functions/` writes the table, so the
+   office now reads it (`admin_read`, select only) and INSERT / UPDATE / DELETE / TRUNCATE are
+   revoked from `anon` and `authenticated`. Every write is a definer function (they run as the
+   owner); the service role and migrations keep theirs. `010_rls_admin` ("admin writes
+   criminal declarations") and the first block of `671` (which ran the trigger's checks as an
+   office session) are updated deliberately: the office's write is now refused outright, and
+   the trigger's rules are held as the table owner — the role those functions run as.
+   `001_rls_guard` is unchanged (the policy is still an `admin_` one).
+2. **No free text in the log (B2).** `declaration.rejection_reversed` carried the note and the
+   rejection's reason — review-note text that `/activity` prints and exports and
+   `remove_worker()` does not scrub. It now carries `rejectedBy`, `rejectedAt`, `reversedBy`,
+   `reversedAt`, `liftedHold`; the texts stay on the row, which a removal clears. The other rows
+   this ADR writes never carried free text. The removal trigger also strips `note`,
+   `rejectionReason`, `reason`, `message`, `details` from a declaration's audit rows.
+3. **A reversal lifts only the hold it can prove (B3).** `criminal_declaration_reviewed()` now
+   stamps `rejection_hold_at` on the declaration when its rejection actually turns the review
+   block into a manual one. A reversal lifts a manual block only for an **in-employment**
+   rejection, only with that stamp, only if the block is still manual with that reason, and only
+   if nobody has blocked, unblocked or reset the worker since (`block_manual` / `unblock` /
+   `reset_to_candidate` in the audit log). It never makes the block `conviction_review`: what
+   can still hold them is a document, so it becomes an automatic document block and the flip's
+   ordinary re-check (`unblock_if_compliant`, N15) lifts it when nothing does. A manager's own
+   block — same words or not — stays.
+4. **Ask only someone who can answer (N1).** `compliance_request_declaration_details()` refuses
+   `cannot_answer_from_app` (a manual hold, a candidate past documents, a leaver); the dialog
+   reads "This person can’t answer from the app right now — call them.", and the button is not
+   drawn for a manual hold.
+5. **Copy by where the person is now (N2)**, not by the declaration's source.
+6. **`/users` keeps the fallback honest (N3).** Only a working, writing holder counts (as
+   `can_review_criminal_records()`); a switched-off login cannot be named (`login_disabled`)
+   and reads "switched off, not counted"; a login demoted to viewer loses the permission,
+   audited `account.criminal_records_revoked` with `because: became_viewer` — owners then
+   decide again.
+7. **The office hears of an answer (N5).** Every in-employment update sends E9 — the existing
+   office email, without the text, listing what was released ("(none)" for a worker already
+   paused). A candidate's update goes to Needs review only, as their first declaration did;
+   whether THC wants an email for that too is an open question.

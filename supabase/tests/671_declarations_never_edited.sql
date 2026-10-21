@@ -9,11 +9,17 @@
 -- delete is the cascade from a deleted staff row.
 -- =====================================================================
 begin;
-select plan(12);
+select plan(13);
 \ir _shared/fixtures.psql
 
+-- Since ADR-0180 (20261022170300) an office session writes nothing here at
+-- all — every write is a definer function — so the trigger's rules are
+-- held below as the table owner, which is the role those functions run as.
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
+select throws_ok(format($$ update criminal_declarations set review_status = 'verified' where id = %L $$, :'decl_a'),
+  '42501', null, 'an office session cannot write a declaration directly (ADR-0180)');
+reset role;
 select throws_ok(format($$ update criminal_declarations set answer = true where id = %L $$, :'decl_a'),
   'P0001', 'declaration_never_edited', '§1.5 the answer is never edited');
 select throws_ok(format($$ update criminal_declarations set details = 'rewritten' where id = %L $$, :'decl_a'),
@@ -30,7 +36,6 @@ select lives_ok(format($$ update criminal_declarations set superseded = true whe
   'and so is superseded (Reset to candidate, §2.12)');
 select throws_ok(format($$ delete from criminal_declarations where id = %L $$, :'decl_b'),
   'P0001', 'declaration_never_deleted', 'a declaration is never deleted from the office');
-reset role;
 
 select throws_ok(format($$ update criminal_declarations set details = 'owner edit' where id = %L $$, :'decl_b'),
   'P0001', 'declaration_never_edited', 'not even by the table owner: the rule is on the row, not on a role');

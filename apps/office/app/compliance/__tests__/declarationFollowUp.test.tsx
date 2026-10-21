@@ -71,6 +71,22 @@ describe('DeclarationFollowUp', () => {
     expect(renderToStaticMarkup(<DeclarationFollowUp target={target()} readOnly />)).toBe('');
   });
 
+  it('does not offer Ask to someone who cannot answer from the app (a manual hold)', () => {
+    const html = renderToStaticMarkup(
+      <DeclarationFollowUp
+        target={target({ staffStatus: 'blocked', blockKind: 'manual', source: 'in_employment' })}
+      />,
+    );
+    expect(html).toBe('');
+    expect(
+      renderToStaticMarkup(
+        <DeclarationFollowUp
+          target={target({ staffStatus: 'compliant', blockKind: null, source: 'onboarding' })}
+        />,
+      ),
+    ).toContain('Ask for more details');
+  });
+
   it('draws nothing for an office user who may not decide criminal declarations', () => {
     reviewer = false;
     expect(renderToStaticMarkup(<DeclarationFollowUp target={target()} />)).toBe('');
@@ -143,6 +159,10 @@ describe('requestDeclarationDetails', () => {
     expect((await requestDeclarationDetails('c1', 'x')).message).toMatch(/already been asked/);
     rpc.mockResolvedValue({ data: null, error: { message: 'read_only' } });
     expect((await requestDeclarationDetails('c1', 'x')).message).toMatch(/view this but not/);
+    rpc.mockResolvedValue({ data: null, error: { message: 'cannot_answer_from_app: blocked' } });
+    expect((await requestDeclarationDetails('c1', 'x')).message).toBe(
+      'This person can’t answer from the app right now — call them.',
+    );
   });
 });
 

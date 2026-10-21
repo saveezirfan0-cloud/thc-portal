@@ -83,8 +83,10 @@ with u as (update bookings set status = 'worked' where id = :'booking_a' returni
   select is((select count(*)::int from u), 1, 'admin writes bookings');
 with u as (update compliance_docs set review_status = 'rejected' where id = :'doc_a' returning 1)
   select is((select count(*)::int from u), 1, 'admin writes compliance docs');
-with u as (update criminal_declarations set review_status = 'verified' where id = :'decl_a' returning 1)
-  select is((select count(*)::int from u), 1, 'admin writes criminal declarations');
+-- ADR-0180 (20261022170300): the office reads declarations and decides them
+-- only through the review functions, which check who may.
+select throws_ok(format($$ update criminal_declarations set review_status = 'verified' where id = %L $$, :'decl_a'),
+  '42501', null, 'admin reads criminal declarations but never writes them directly');
 with u as (update check_logs set on_site_verified = true where id = :'checklog_a' returning 1)
   select is((select count(*)::int from u), 1, 'admin writes check logs');
 with u as (update breaks set ended_at = now() where id = :'break_a' returning 1)

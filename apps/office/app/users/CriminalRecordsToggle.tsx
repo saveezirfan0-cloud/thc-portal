@@ -13,6 +13,20 @@ import type { AccountRow } from './data';
  * do. The whole of /users is the owners', and the database refuses anyone
  * else. Not offered on a viewer, who changes nothing.
  */
+/**
+ * Whether this login counts as someone who decides criminal declarations —
+ * the same rule as can_review_criminal_records(): named, working (not
+ * switched off) and not a viewer. While nobody counts, owners decide.
+ */
+export function countsAsReviewer(account: AccountRow): boolean {
+  return (
+    Boolean(account.reviews_criminal_records) &&
+    !account.disabled &&
+    account.role === 'admin' &&
+    account.office_role !== 'viewer'
+  );
+}
+
 export function CriminalRecordsToggle({
   account,
   anyoneNamed,
@@ -27,7 +41,8 @@ export function CriminalRecordsToggle({
   const [pending, start] = useTransition();
   const on = Boolean(account.reviews_criminal_records);
   if (account.role !== 'admin') return null;
-  if (!on && account.office_role === 'viewer') return null;
+  // The database names neither a viewer nor a switched-off login.
+  if (!on && (account.office_role === 'viewer' || account.disabled)) return null;
 
   const save = () => {
     setProblem(null);
@@ -44,7 +59,13 @@ export function CriminalRecordsToggle({
 
   return (
     <>
-      {on ? <Pill tone="purple">Reviews criminal records</Pill> : null}{' '}
+      {on ? (
+        <Pill tone={countsAsReviewer(account) ? 'purple' : 'neutral'}>
+          {countsAsReviewer(account)
+            ? 'Reviews criminal records'
+            : 'Reviews criminal records · switched off, not counted'}
+        </Pill>
+      ) : null}{' '}
       <Button size="sm" tone="ghost" onClick={() => setAsking(true)}>
         {on ? 'Stop criminal record reviews' : 'Allow criminal record reviews'}
       </Button>

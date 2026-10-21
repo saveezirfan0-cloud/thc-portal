@@ -374,6 +374,7 @@ function QueueLine({
                 superseded: false,
                 source: row.declaration_source ?? 'onboarding',
                 staffStatus: row.status,
+                blockKind: row.block_kind,
                 displayName: row.display_name,
               }}
               disabled={busy}

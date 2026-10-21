@@ -144,7 +144,8 @@ const DECLARATION_TEMPLATES = {
     deepLink: '/documents/declare',
     deepLinkOptions: ['/documents/declare', '/onboarding'],
     action: 'Update declaration',
-    // One per declaration: a request on the updated one replaces the first.
+    // Tagged per declaration (`DR1:{declarationId}`): a request about a
+    // later, updated declaration is a notification of its own.
     tag: 'DR1:{declarationId}',
   },
 } as const satisfies Record<string, Template>;

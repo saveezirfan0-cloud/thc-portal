@@ -18,7 +18,7 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
 
 const { setCriminalRecordsReviewer } = await import('../criminalRecordsActions');
-const { CriminalRecordsToggle } = await import('../CriminalRecordsToggle');
+const { CriminalRecordsToggle, countsAsReviewer } = await import('../CriminalRecordsToggle');
 
 const account = (over: Partial<AccountRow> = {}): AccountRow => ({
   id: 'u1',
@@ -77,6 +77,28 @@ describe('CriminalRecordsToggle', () => {
     );
     expect(html).toContain('Reviews criminal records');
     expect(html).toContain('Stop criminal record reviews');
+  });
+
+  it('counts only a working, writing holder — as the database does', () => {
+    expect(countsAsReviewer(account({ reviews_criminal_records: true }))).toBe(true);
+    expect(countsAsReviewer(account({ reviews_criminal_records: true, disabled: true }))).toBe(
+      false,
+    );
+    expect(
+      countsAsReviewer(account({ reviews_criminal_records: true, office_role: 'viewer' })),
+    ).toBe(false);
+    const html = renderToStaticMarkup(
+      <CriminalRecordsToggle
+        account={account({ reviews_criminal_records: true, disabled: true })}
+        anyoneNamed={false}
+      />,
+    );
+    expect(html).toContain('switched off, not counted');
+    expect(
+      renderToStaticMarkup(
+        <CriminalRecordsToggle account={account({ disabled: true })} anyoneNamed={false} />,
+      ),
+    ).toBe('');
   });
 
   it('is not offered on a viewer, nor on a client or worker login', () => {

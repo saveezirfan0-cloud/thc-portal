@@ -26,9 +26,12 @@
 --   K  a worker who is already staff, with a rejected declaration from
 --      onboarding: Reverse rejection, and Update your declaration (which
 --      pauses their shifts, as any declaration from the app does)
+--   L  QA review (20261022170300): no direct write by any office session,
+--      no free text in the audit log, a reversal lifts only the hold it
+--      can prove, and /users keeps the fallback honest
 -- =====================================================================
 begin;
-select plan(112);
+select plan(133);
 \ir _shared/fixtures.psql
 
 \set cara      '91500000-0000-4000-8000-000000000001'
@@ -53,6 +56,12 @@ select plan(112);
 \set d_lee     '91520000-0000-4000-8000-000000000008'
 \set d_perm    '91520000-0000-4000-8000-000000000009'
 \set b_lee     '91530000-0000-4000-8000-000000000008'
+\set pat       '91500000-0000-4000-8000-000000000009'
+\set quin      '91500000-0000-4000-8000-00000000000a'
+\set ray       '91500000-0000-4000-8000-00000000000b'
+\set sky       '91500000-0000-4000-8000-00000000000c'
+\set d_pat     '91520000-0000-4000-8000-00000000000a'
+\set d_quin    '91520000-0000-4000-8000-00000000000b'
 \set d_cara    '91520000-0000-4000-8000-000000000001'
 \set d_rob     '91520000-0000-4000-8000-000000000002'
 \set d_rhea    '91520000-0000-4000-8000-000000000003'
@@ -249,10 +258,10 @@ select is((select row(review_status::text, reviewed_by::text, review_note, rever
   'verified by the one who reversed it, with their note; the rejection''s reason kept beside it');
 select is((select status::text from staff where id = :'rhea'), 'quiz',
   'the conviction_rejected blocker is gone and onboarding_advance_if_ready moved her on');
-select is((select row(data ->> 'note', data ->> 'rejectionReason', actor::text)::text from audit_log
+select is((select row(data ->> 'rejectedBy', data ->> 'reversedBy', actor::text)::text from audit_log
             where action = 'declaration.rejection_reversed' and entity_id = :'d_rhea'),
-  row('Reviewed by Sam and Richard, cleared to work', 'Not enough detail', :'scheduler')::text,
-  'audited, with the rejection it reverses');
+  row(:'admin_uid', :'scheduler', :'scheduler')::text,
+  'audited — who rejected it and who reversed it, never the texts');
 select throws_ok(format('select compliance_reverse_declaration_rejection(%L, %L)', :'d_rhea', 'again'),
   'P0001', 'not_rejected: verified', 'a reversal is not repeated');
 
@@ -295,8 +304,8 @@ select is((select row(s.status::text, s.block_kind::text,
                       (select count(*)::int from notification_outbox where template = 'E9'
                           and payload ->> 'employeeId' = '91504'))::text
              from staff s where s.id = :'wes'),
-  row('blocked', 'conviction_review', 1)::text,
-  'still paused, and no second E9: an update releases nothing');
+  row('blocked', 'conviction_review', 2)::text,
+  'still paused; the office hears of the answer by E9, as of any declaration from the app');
 select lives_ok(format('select compliance_verify_declaration(%L)', :'d_wes2'), 'the office verifies it');
 select is((select status::text from staff where id = :'wes'), 'compliant', 'the re-check lifts the block');
 select ok(exists (select 1 from notification_outbox where key = 'N15:declaration:' || :'d_wes2'),
@@ -378,7 +387,7 @@ select is(my_declaration_update() ->> 'status', 'verified',
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 select ok((select count(*) from staff_declarations_v
             where worker_message is not null or reversed_rejection_reason is not null) >= 4,
-  'the office reads the messages and reversed rejections through admin_all');
+  'the office reads the messages and reversed rejections through admin_read');
 reset role;
 
 select ok(not has_function_privilege('anon', 'public.compliance_request_declaration_details(uuid,text)', 'execute')
@@ -449,8 +458,15 @@ select throws_ok(format('select compliance_verify_declaration(%L)', :'d_perm'),
 
 select set_config('request.jwt.claims', json_build_object('sub', :'manager')::text, true);
 select ok(can_review_criminal_records(), 'the named manager may decide');
-select lives_ok(format('select compliance_request_declaration_details(%L, %L)', :'d_perm', 'Which court?'),
-  'and asks for more details');
+select throws_ok(format('select compliance_request_declaration_details(%L, %L)', :'d_perm', 'Which court?'),
+  'P0001', 'cannot_answer_from_app: blocked',
+  'but not ask someone on a manual hold for details: they cannot answer from the app — the office calls them');
+insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status, rtw_branch) values
+  (:'pat', 91509, 'Pat', 'Staff', 'pat@decl915.test', '+447700915009', date '1990-01-01', 'compliant', 'uk_irish');
+insert into criminal_declarations (id, staff_id, source, answer, details) values
+  (:'d_pat', :'pat', 'onboarding', true, 'Old matter');
+select lives_ok(format('select compliance_request_declaration_details(%L, %L)', :'d_pat', 'Which court?'),
+  'and asks a compliant worker for more details');
 
 -- The named one switched off: nobody working holds it, so owners decide again.
 update auth.users set banned_until = now() + interval '100 years' where id = :'manager';
@@ -519,6 +535,106 @@ select is((select row(s.status::text,
                       exists (select 1 from notification_outbox where key = 'N15:declaration:' || :'d_lee2'))::text
              from staff s where s.id = :'lee'),
   row('compliant', true)::text, 'Lee is unblocked and told his shifts are open again');
+
+-- =====================================================================
+-- L · QA review: the doors, the log, the provenance, the fallback
+-- =====================================================================
+-- B1 · no office session writes the table, named or not.
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'scheduler', 'role', 'authenticated')::text, true);
+select throws_ok(format($$ update criminal_declarations set review_status = 'verified' where id = %L $$, :'d_perm'),
+  '42501', null, 'a manager or scheduler who is not named cannot PATCH a declaration verified');
+select throws_ok(format($$ insert into criminal_declarations (staff_id, source, answer) values (%L, 'in_employment', false) $$, :'max'),
+  '42501', null, 'nor insert one');
+select throws_ok(format($$ delete from criminal_declarations where id = %L $$, :'d_perm'),
+  '42501', null, 'nor delete one');
+select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);
+select throws_ok(format($$ update criminal_declarations set review_status = 'rejected', review_note = 'x' where id = %L $$, :'d_perm'),
+  '42501', null, 'and even a named reviewer decides only through the functions');
+select throws_ok(format($$ update criminal_declarations set superseded = true where id = %L $$, :'d_perm'),
+  '42501', null, 'nor marks one superseded');
+select ok(exists (select 1 from staff_declarations_v where id = :'d_perm'),
+  'the office still reads every declaration');
+reset role;
+select is((select review_status::text from criminal_declarations where id = :'d_perm'), 'pending',
+  'and the declaration is untouched');
+
+-- B2 · the reversal's audit row says who and when, never the texts.
+select ok((select not (data ?| array['note', 'rejectionReason', 'reason', 'message'])
+                  and data ? 'reversedBy' and data ? 'rejectedBy'
+             from audit_log where action = 'declaration.rejection_reversed' and entity_id = :'d_ivy'),
+  'declaration.rejection_reversed carries no note and no rejection reason');
+select ok(not exists (select 1 from audit_log
+                       where entity = 'criminal_declaration'
+                         and data ?| array['note', 'rejectionReason', 'reason', 'message', 'details']),
+  'no declaration audit row this file wrote carries free text');
+insert into audit_log (actor, action, entity, entity_id, data)
+values (:'admin_uid', 'declaration.rejection_reversed', 'criminal_declaration', :'d_ivy',
+        jsonb_build_object('staffId', :'ivy', 'note', 'Spoke to Ivy about the theft', 'rejectionReason', 'Theft'));
+select set_config('request.jwt.claims', '', true);
+select remove_worker(:'ivy');
+select ok(not exists (select 1 from audit_log
+                       where entity = 'criminal_declaration' and data ->> 'staffId' = :'ivy'
+                         and data ?| array['note', 'rejectionReason']),
+  'and a GDPR removal strips any that ever did');
+
+-- B3 · the rejection's own hold, proven — not a block with the same words.
+select set_config('request.jwt.claims', json_build_object('sub', :'manager')::text, true);
+select is((select rejection_hold_at is not null from criminal_declarations where id = :'d_ivy'), true,
+  'an in-employment rejection that made the hold is stamped with it');
+insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status, rtw_branch) values
+  (:'quin', 91510, 'Quin', 'Staff', 'quin@decl915.test', '+447700915010', date '1990-01-01', 'compliant', 'uk_irish'),
+  (:'ray',  91511, 'Ray',  'Staff', 'ray@decl915.test',  '+447700915011', date '1990-01-01', 'compliant', 'uk_irish'),
+  (:'sky',  91512, 'Sky',  'Staff', 'sky@decl915.test',  '+447700915012', date '1990-01-01', 'compliant', 'uk_irish');
+insert into criminal_declarations (id, staff_id, source, answer, details) values
+  (:'d_quin', :'quin', 'onboarding', true, 'Old matter');
+select compliance_reject_declaration(:'d_quin', 'Need the sentence');
+select block_worker_manually(:'quin', 'Need the sentence');
+select r ->> 'liftedHold' as quin_lift, coalesce(r ->> 'stillBlockedFor', '') as quin_for
+  from (select compliance_reverse_declaration_rejection(:'d_quin', 'Cleared') r) x \gset
+select is((select row(:'quin_lift', s.status::text, s.block_kind::text, s.block_reason)::text
+             from staff s where s.id = :'quin'),
+  row('false', 'blocked', 'manual', 'Need the sentence')::text,
+  'an onboarding rejection on staff never lifts a manager''s block, even one with the same words');
+
+select (declare_conviction(:'ray', 'Matter, 2026', null, now()) ->> 'declarationId') as d_ray \gset
+select compliance_reject_declaration(:'d_ray', 'Not enough detail');
+select unblock_worker(:'ray');
+select block_worker_manually(:'ray', 'Not enough detail');
+select r ->> 'liftedHold' as ray_lift, coalesce(r ->> 'stillBlockedFor', '') as ray_for
+  from (select compliance_reverse_declaration_rejection(:'d_ray', 'Cleared') r) x \gset
+select is((select row(:'ray_lift', s.status::text, s.block_kind::text)::text
+             from staff s where s.id = :'ray'),
+  row('false', 'blocked', 'manual')::text,
+  'nor one a manager put back after unblocking them, words and all: the hold is no longer the rejection''s');
+
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, expiry_date)
+values (:'sky', 'passport', 'sky/passport.pdf', 'verified', (now() at time zone 'Europe/London')::date - 1);
+select (declare_conviction(:'sky', 'Matter, 2026', null, now()) ->> 'declarationId') as d_sky \gset
+select compliance_reject_declaration(:'d_sky', 'Not enough detail');
+select r ->> 'liftedHold' as sky_lift, coalesce(r ->> 'stillBlockedFor', '') as sky_for
+  from (select compliance_reverse_declaration_rejection(:'d_sky', 'Cleared') r) x \gset
+select is((select row(:'sky_lift', :'sky_for', s.status::text, s.block_kind::text)::text
+             from staff s where s.id = :'sky'),
+  row('true', 'documents', 'blocked', 'auto_document')::text,
+  'the rejection''s own hold is lifted, and what still holds them is the expired passport — never a false "under review"');
+
+-- N3 · /users keeps the fallback honest.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
+select throws_ok(format('select compliance_reverse_declaration_rejection(%L, %L)', :'d_perm', 'x'),
+  '42501', 'not_criminal_records_reviewer', 'while someone is named, an owner who is not cannot Reverse either');
+update auth.users set banned_until = now() + interval '100 years' where id = :'scheduler';
+select throws_ok(format('select admin_set_criminal_records_reviewer(%L, true)', :'scheduler'),
+  'P0001', 'login_disabled', 'a switched-off login cannot be named');
+update auth.users set banned_until = null where id = :'scheduler';
+select lives_ok(format('select admin_set_office_role(%L, %L)', :'manager', 'viewer'),
+  'the owner makes Richard a viewer');
+select is((select reviews_criminal_records from profiles where id = :'manager'), false,
+  'a viewer loses the permission');
+select ok(exists (select 1 from audit_log where action = 'account.criminal_records_revoked'
+                   and entity_id = :'manager' and data ->> 'because' = 'became_viewer'),
+  'and the log says so');
+select ok(can_review_criminal_records(), 'with nobody named any more, owners decide again');
 
 select * from finish();
 rollback;

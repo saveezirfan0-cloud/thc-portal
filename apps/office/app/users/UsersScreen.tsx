@@ -46,7 +46,7 @@ import {
   setLoginDisabled,
 } from './actions';
 import type { AccountRow, UsersPageData } from './data';
-import { CriminalRecordsToggle } from './CriminalRecordsToggle';
+import { CriminalRecordsToggle, countsAsReviewer } from './CriminalRecordsToggle';
 import { inviteMailto } from './invite';
 import '../account/account.css';
 
@@ -221,7 +221,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                     tab={tab}
                     columns={columns}
                     self={account.id === data.selfId}
-                    anyoneNamed={data.accounts.some((a) => a.reviews_criminal_records)}
+                    anyoneNamed={data.accounts.some(countsAsReviewer)}
                     onSwitch={() => setSwitching(account)}
                     onChangeRole={() => setReroling(account)}
                     onResetTwoStep={() => setResetting(account)}

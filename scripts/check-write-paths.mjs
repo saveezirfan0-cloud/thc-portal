@@ -48,6 +48,9 @@ const OWNED_BY_RPC = [
   'staff_pay_rates',
   // ADR-0076: load_payroll_codes() and the Employee ID issue path are the only writers.
   'payroll_codes',
+  // ADR-0180 (20261022170300): the office reads declarations; every write is a
+  // definer function that checks who may decide one.
+  'criminal_declarations',
 ];
 
 const sources = globSync(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'], {

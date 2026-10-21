@@ -20,6 +20,7 @@ const REFUSALS: Record<string, string> = {
   viewer_cannot_review:
     'A viewer cannot be allowed to review criminal records: their role changes nothing. Change their role first.',
   not_office_login: 'Only a Back Office login can review criminal records.',
+  login_disabled: 'This login is switched off. Switch it on first.',
 };
 
 export async function setCriminalRecordsReviewer(

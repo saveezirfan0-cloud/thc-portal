@@ -8,6 +8,7 @@ import {
   CRIMINAL_RECORDS_READ_ONLY,
   DECLARATION_MESSAGE_MAX,
   REVERSAL_NOTE_MAX,
+  canUpdateDeclaration,
   declarationReviewActions,
 } from '@thc/domain';
 import type { DeclarationReviewStatus, StaffStatus } from '@thc/domain';
@@ -42,10 +43,25 @@ export interface DeclarationTarget {
   source: 'onboarding' | 'in_employment';
   /** The person's status now (a Rejected or Removed person has nothing to review). */
   staffStatus: string;
+  /**
+   * Their block now, when the screen has it: someone who cannot answer from
+   * the app (a manual hold) is not offered Ask for more details — the
+   * database refuses it too (cannot_answer_from_app).
+   */
+  blockKind?: 'auto_document' | 'manual' | 'conviction_review' | null;
   displayName: string;
   /** The rejection being reversed, shown in the dialog. Office-only. */
   rejectionReason?: string | null;
 }
+
+const CANDIDATE_STATUSES: ReadonlySet<string> = new Set([
+  'interview_requested',
+  'interview_completed',
+  'documents',
+  'quiz',
+  'additional_info',
+  'contract',
+]);
 
 export function DeclarationFollowUp({
   target,
@@ -66,7 +82,23 @@ export function DeclarationFollowUp({
   const [busy, start] = useTransition();
 
   const reviewer = useCriminalRecordsReviewer();
-  const actions = declarationReviewActions(target, target.staffStatus as StaffStatus);
+  const base = declarationReviewActions(target, target.staffStatus as StaffStatus);
+  const actions = {
+    ...base,
+    askForDetails:
+      base.askForDetails &&
+      (target.blockKind === undefined ||
+        canUpdateDeclaration({
+          status: target.staffStatus as StaffStatus,
+          blockKind: target.blockKind,
+          latest: {
+            answer: true,
+            source: target.source,
+            status: 'details_requested',
+            superseded: false,
+          },
+        })),
+  };
   if (reviewer !== true || readOnly || (!actions.askForDetails && !actions.reverse)) return null;
 
   const close = () => {
@@ -92,7 +124,10 @@ export function DeclarationFollowUp({
     });
   };
 
-  const inEmployment = target.source === 'in_employment';
+  // The copy follows where the person is NOW, not where the declaration
+  // came from: staff may carry a declaration made at onboarding.
+  const candidate = CANDIDATE_STATUSES.has(target.staffStatus);
+  const paused = target.staffStatus === 'blocked';
   const max = open === 'ask' ? DECLARATION_MESSAGE_MAX : REVERSAL_NOTE_MAX;
 
   return (
@@ -149,7 +184,7 @@ export function DeclarationFollowUp({
       >
         <div className="sm">
           {target.displayName} · Criminal Record declaration ·{' '}
-          {inEmployment ? 'declared from the app' : 'onboarding'}
+          {target.source === 'in_employment' ? 'declared from the app' : 'declared at onboarding'}
         </div>
         {open === 'ask' ? (
           <>
@@ -167,9 +202,11 @@ export function DeclarationFollowUp({
               hint="Sent to them word for word as a notification, and shown where they update their declaration. It can appear on their lock screen, so don’t repeat what they declared."
             />
             <Note>
-              {inEmployment
-                ? 'Their shifts stay paused while they answer. Their updated declaration comes back to Needs review; this one is kept on record, read-only.'
-                : 'Onboarding stays paused until their updated declaration is verified. It comes back to Needs review; this one is kept on record, read-only.'}
+              {candidate
+                ? 'Onboarding stays paused until their updated declaration is verified. It comes back to Needs review; this one is kept on record, read-only.'
+                : paused
+                  ? 'Their shifts stay paused while they answer. Their updated declaration comes back to Needs review; this one is kept on record, read-only.'
+                  : 'When they answer, their upcoming shifts are paused until the office verifies it, as for any declaration from the app. It comes back to Needs review; this one is kept on record, read-only.'}
             </Note>
           </>
         ) : (
@@ -191,9 +228,11 @@ export function DeclarationFollowUp({
               hint="Kept on the record with your name and the time, beside the rejection. The worker is not shown it."
             />
             <Note>
-              {inEmployment
-                ? 'The declaration becomes verified. The block the rejection put on them is lifted and the full compliance check runs: if everything else is in order they are unblocked and told their shifts are open again. A block a manager added for another reason stays.'
-                : 'The declaration becomes verified. If nothing else is outstanding they move on to the quiz by themselves.'}
+              {candidate
+                ? 'The declaration becomes verified. If nothing else is outstanding they move on to the quiz by themselves.'
+                : paused
+                  ? 'The declaration becomes verified. If they are on the hold this rejection put on them, it is lifted and the full compliance check runs: if everything else is in order they are unblocked and told their shifts are open again. A block a manager added for anything else stays.'
+                  : 'The declaration becomes verified. Nothing else on their profile changes.'}
             </Note>
           </>
         )}

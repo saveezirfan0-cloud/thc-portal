@@ -47,6 +47,7 @@ const REFUSALS: [RegExp, string][] = [
     'The worker has already sent an updated declaration — review that one instead.',
   ],
   [/^read_only/, 'Your office role can view this but not change it.'],
+  [/^cannot_answer_from_app/, 'This person can’t answer from the app right now — call them.'],
   [/^not_criminal_records_reviewer/, CRIMINAL_RECORDS_READ_ONLY],
 ];
 
