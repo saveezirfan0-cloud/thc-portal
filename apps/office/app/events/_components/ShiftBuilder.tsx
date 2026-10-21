@@ -18,7 +18,9 @@ import {
   useUnsavedChanges,
 } from '@thc/ui';
 import {
+  LATE_SECTION_MESSAGE,
   UK_ZONE,
+  canAddSectionAfterStart,
   clockLabel,
   extraLanguages,
   forecastEvent,
@@ -66,8 +68,14 @@ export interface ShiftBuilderProps {
   booked: Record<string, number>;
   /** Of `booked`, confirmed or worked — what keeps Remove off (ADR-0160). */
   held: Record<string, number>;
-  /** §3.2: the event has started, so nothing can be changed. */
+  /** §3.2: the event has started, so nothing already saved can be changed. */
   locked: boolean;
+  /**
+   * ADR-0177: the event has started but is not cancelled or over for the
+   * day, so a NEW role section starting later than now may still be added.
+   * Saved sections and the event's own fields stay locked.
+   */
+  canAddRoles?: boolean;
   /**
    * ADR-0061: may the viewer see pay and charge rates (`office_can('finance')`)?
    * False for a scheduler: no rate, charge, margin or forecast money is
@@ -126,6 +134,7 @@ export function ShiftBuilder({
   booked,
   held,
   locked,
+  canAddRoles = false,
   ratesVisible,
   save,
 }: ShiftBuilderProps) {
@@ -142,15 +151,28 @@ export function ShiftBuilder({
   const window = useMemo(() => draftWindow(draft), [draft]);
   const cancelled = Boolean(saved?.cancelledAt);
   const readOnly = locked || cancelled;
+  // ADR-0177: a started event that still takes new role sections.
+  const addOnly = readOnly && canAddRoles && !cancelled;
+  const addedRoles = draft.roles.filter((role) => !role.id);
+  const lateIssue =
+    addOnly &&
+    addedRoles.some(
+      (role) =>
+        isResolvable(draft.date, role) && !canAddSectionAfterStart(resolveRole(role, draft.date)),
+    )
+      ? LATE_SECTION_MESSAGE
+      : null;
   // Release audit: a NEW event dated before today was accepted, and its
   // board then refused every invite. Editing an existing past event is
   // the locked state above, unchanged.
   const pastDate = mode === 'new' ? pastDateIssue(draft.date, ukToday()) : null;
-  const saveable = canSave(draft) && !readOnly && pastDate === null;
+  const saveable = addOnly
+    ? addedRoles.length > 0 && canSave(draft) && lateIssue === null
+    : canSave(draft) && !readOnly && pastDate === null;
   // The save bar says "Unsaved changes" once the form differs from what it
   // opened with, and the guard below holds a way out while it does.
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
-  const guard = useUnsavedChanges(dirty && !readOnly && !pending, {
+  const guard = useUnsavedChanges(dirty && (!readOnly || addOnly) && !pending, {
     message:
       mode === 'new'
         ? 'The event you are building has not been saved. Leave and it is lost.'
@@ -337,9 +359,19 @@ export function ShiftBuilder({
                 : 'its scheduled start'}
               .
             </b>{' '}
-            Once the event has started, and for any past event, no field can be changed. What is
-            still possible is on the event board: Withdraw, No show / Get back, Cancel event, Send /
-            Download documents.
+            {addOnly ? (
+              <>
+                What is already saved cannot be changed, but you can still <b>add a new role</b>{' '}
+                that starts later than now — for a client&rsquo;s same-day request. Use{' '}
+                <b>+ Add role</b> below, then save.
+              </>
+            ) : (
+              <>
+                Once the event has started, and for any past event, no field can be changed. What is
+                still possible is on the event board: Withdraw, No show / Get back, Cancel event,
+                Send / Download documents.
+              </>
+            )}
           </Alert>
         ) : null}
 
@@ -537,7 +569,7 @@ export function ShiftBuilder({
               <span className="muted sm">
                 one section per role, each with its own start and end
               </span>
-              <Button size="sm" onClick={addRole} disabled={readOnly}>
+              <Button size="sm" onClick={addRole} disabled={readOnly && !addOnly}>
                 + Add role
               </Button>
             </>
@@ -567,7 +599,7 @@ export function ShiftBuilder({
                 ratesVisible={ratesVisible}
                 booked={role.id ? (booked[role.id] ?? 0) : 0}
                 held={role.id ? (held[role.id] ?? 0) : 0}
-                locked={readOnly}
+                locked={readOnly && !(addOnly && !role.id)}
                 series={seriesContext}
                 {...(saved?.id ? { boardHref: `/events/${saved.id}` } : {})}
                 onChange={(patch) =>
@@ -718,7 +750,7 @@ export function ShiftBuilder({
           </Panel>
         ) : null}
 
-        {readOnly ? (
+        {readOnly && !addOnly ? (
           <div className="stack tight">
             <Link className="btn primary lg block keep" href={`/events/${saved?.id ?? ''}`}>
               Open event board →
@@ -737,9 +769,9 @@ export function ShiftBuilder({
           a long form, instead of waiting at the end of the side column
           (below the fold on a phone, several screens down). Same buttons,
           same rules, same handler. */}
-      {readOnly ? null : (
+      {readOnly && !addOnly ? null : (
         <SaveBar
-          label="Save event"
+          label={addOnly ? 'Add role' : 'Save event'}
           dirty={dirty}
           status={pending ? 'Saving…' : undefined}
           hint={
@@ -749,7 +781,11 @@ export function ShiftBuilder({
                   ? issues.event.join(' · ')
                   : pastDate
                     ? pastDate
-                    : 'Save is disabled while a role section fails validation.'}
+                    : lateIssue
+                      ? lateIssue
+                      : addOnly && addedRoles.length === 0
+                        ? 'Add a role to save.'
+                        : 'Save is disabled while a role section fails validation.'}
               </span>
             ) : undefined
           }
@@ -758,7 +794,7 @@ export function ShiftBuilder({
             Cancel
           </Link>
           <Button tone="primary" disabled={!saveable || pending} onClick={onSave}>
-            {pending ? 'Saving…' : 'Save event'}
+            {pending ? 'Saving…' : addOnly ? 'Save new role' : 'Save event'}
           </Button>
         </SaveBar>
       )}
