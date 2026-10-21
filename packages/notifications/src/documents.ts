@@ -127,21 +127,18 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}{updateTag}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nThere's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with our invoice for the event. Any questions, just reply to this email.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
         "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}",
-      stepsLead: 'On the day, please ask your manager on site to:',
-      steps: [
-        "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
-        'print and sign their name at the bottom,',
-        'email the signed sheet back to us — just reply to this email.',
-      ],
-      closing: 'Any questions, you can reach us the same way.',
+      // THC, 21.10.2026: the times are GPS-verified, so the client no longer
+      // fills in, signs or returns the sheet (ADR-0176 amendment).
+      closing:
+        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with our invoice for the event. Any questions, just reply to this email.",
       attachmentNote: 'Allocation Timesheet · attached',
       badgesNote: 'Name badges · {nameBadges} to print',
-      replyButton: 'Reply with the signed sheet',
+      replyButton: 'Reply to this email',
     },
     trigger: '"Send allocation sheet" on the Back Office event page (§11.4)',
     timing: 'on the press — any time, including mid-event (§11.3)',
@@ -214,6 +211,28 @@ export interface EmailWithAttachments extends EmailMessage {
    */
   bcc?: readonly string[];
   attachments: Attachment[];
+  /**
+   * Copied on the email (ADR-0176, THC 21.10.2026: INV1's "Invoice CC"
+   * addresses), from the row's `payload.cc`. Absent when there are none.
+   */
+  cc?: readonly string[];
+}
+
+/** `payload.cc`: a JSON array of addresses (the database's own text form). */
+function parseCc(raw: unknown, code: DocumentEmailCode): string[] {
+  if (raw === undefined || raw === null || raw === '') return [];
+  let list: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      list = JSON.parse(raw);
+    } catch {
+      throw new UnsendableRow(`${code}: cc is not JSON`);
+    }
+  }
+  if (!Array.isArray(list) || list.some((a) => typeof a !== 'string' || !a.includes('@'))) {
+    throw new UnsendableRow(`${code}: cc is not a list of addresses`);
+  }
+  return list as string[];
 }
 
 function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
@@ -475,11 +494,12 @@ export function documentMessageFor(
   const inTo = new Set(to.map((address) => address.trim().toLowerCase()));
   const bcc = parseBcc(rawBcc, code).filter((address) => !inTo.has(address));
   const attachments = parseAttachments(payload.attachments, code);
+  const cc = parseCc(payload.cc, code).filter((address) => !to.includes(address));
   const values = derivedValues(
     code,
     Object.fromEntries(
       Object.entries(payload)
-        .filter(([key]) => key !== 'attachments')
+        .filter(([key]) => key !== 'attachments' && key !== 'cc')
         .map(([key, value]) => [key, value === null || value === undefined ? '' : String(value)]),
     ),
   );
@@ -496,5 +516,6 @@ export function documentMessageFor(
     html: documentHtml(code, values, subject, text, attachments, replyTo),
     ...(bcc.length > 0 ? { bcc } : {}),
     attachments,
+    ...(cc.length > 0 ? { cc } : {}),
   };
 }

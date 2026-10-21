@@ -5,6 +5,7 @@ import {
   RECONFIRM_FIELDS,
   SILENT_FIELDS,
   defaultAllocationPerHour,
+  canAddSectionAfterStart,
   derivedEventWindow,
   forecastEvent,
   formatHours,
@@ -175,6 +176,19 @@ describe('editing is locked once the event has started (§3.2)', () => {
 
   it('never locks an event with no roles yet', () => {
     expect(isEditLocked([], ukInstant('2030-01-01', '09:00'))).toBe(false);
+  });
+});
+
+describe('a role added to a started event (ADR-0177)', () => {
+  const late = ukRoleWindow('2026-10-21', '12:30', '16:30');
+
+  it('is allowed while it has not started', () => {
+    expect(canAddSectionAfterStart(late, ukInstant('2026-10-21', '11:51'))).toBe(true);
+  });
+
+  it('is refused from its own start onwards', () => {
+    expect(canAddSectionAfterStart(late, ukInstant('2026-10-21', '12:30'))).toBe(false);
+    expect(canAddSectionAfterStart(late, ukInstant('2026-10-21', '13:00'))).toBe(false);
   });
 });
 

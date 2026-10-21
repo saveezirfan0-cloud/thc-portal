@@ -40,7 +40,12 @@ const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
   nameBadges: false,
   lineupEmails: { confirmed: true, changed: true },
-  invoicing: { accountsContactName: null, invoiceEmails: [], billingAddress: null },
+  invoicing: {
+    accountsContactName: null,
+    invoiceEmails: [],
+    invoiceCcEmails: [],
+    billingAddress: null,
+  },
   rateCard: [],
   dressCodeLibrary: [],
   qualified: [],
@@ -150,7 +155,7 @@ export async function loadClientCard(
       .from('clients')
       .select(
         'name_badges, lineup_confirmed_emails, lineup_changed_emails, ' +
-          'accounts_contact_name, invoice_emails, billing_address',
+          'accounts_contact_name, invoice_emails, invoice_cc_emails, billing_address',
       )
       .eq('id', id)
       .maybeSingle<{
@@ -159,6 +164,7 @@ export async function loadClientCard(
         lineup_changed_emails: boolean | null;
         accounts_contact_name: string | null;
         invoice_emails: string[] | null;
+        invoice_cc_emails: string[] | null;
         billing_address: string | null;
       }>(),
     ratesVisible
@@ -266,6 +272,7 @@ export async function loadClientCard(
     invoicing: {
       accountsContactName: badges.data?.accounts_contact_name ?? null,
       invoiceEmails: badges.data?.invoice_emails ?? [],
+      invoiceCcEmails: badges.data?.invoice_cc_emails ?? [],
       billingAddress: badges.data?.billing_address ?? null,
     },
     rateCard: rateCard.data ?? [],

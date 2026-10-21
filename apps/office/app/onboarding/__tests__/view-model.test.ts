@@ -572,6 +572,36 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
     );
   });
 
+  it('reads docs_missing only on the cards loadBoard fetches it for (DOCS_COLUMN_FILTER)', () => {
+    // data.ts computes docs_missing only for status `documents` and for a
+    // rejection from `documents`; every other card carries null. Wherever
+    // else a card can land, its lines must not depend on it.
+    let checked = 0;
+    for (const status of EVERY_STATUS) {
+      for (const rejected_from of [null, ...EVERY_STATUS]) {
+        for (const docs_total of [0, 2]) {
+          if (status === 'documents' || (status === 'rejected' && rejected_from === 'documents')) {
+            continue;
+          }
+          const row = candidate({
+            status,
+            rejected_from,
+            docs_total,
+            rtw_branch: 'uk_irish',
+            docs_missing: ['passport', 'ni_evidence'],
+          });
+          const column = columnFor(row);
+          if (!column) continue;
+          checked += 1;
+          expect(cardLines(row, column, NOW)).toEqual(
+            cardLines({ ...row, docs_missing: null }, column, NOW),
+          );
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   it('lists every quiz attempt in order on the quiz-failed card (§2.9)', () => {
     const row = candidate({
       status: 'rejected',

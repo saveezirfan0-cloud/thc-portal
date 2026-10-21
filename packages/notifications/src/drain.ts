@@ -327,6 +327,7 @@ async function sendEmail(
     {
       from: sender.from,
       to: message.to,
+      ...(document?.cc && document.cc.length > 0 ? { cc: document.cc } : {}),
       subject: message.subject,
       text: message.body,
       html: message.html,

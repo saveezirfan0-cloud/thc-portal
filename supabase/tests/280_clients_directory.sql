@@ -105,7 +105,7 @@ select lives_ok(
   $$ select create_client('  Claridge''s  ', '  Helena Ashworth  ', ' +44 20 7629 8860 ',
                           '  Banqueting office, staff entrance  ',
                           array['  h.ashworth@claridges.example  ', 'banqueting@claridges.example'],
-                          false, true) $$,
+                          false, true, array['accounts@invoice.test']) $$,
   'admin creates a client');
 select is((select name from clients where contact_name = 'Helena Ashworth'), 'Claridge''s',
   'create_client trims the name');
@@ -123,31 +123,31 @@ select is((select created_by_name from clients_directory_v where contact_name = 
 
 -- Every field on the form is mandatory (§9.7).
 select throws_ok(
-  $$ select create_client('  ', 'A', '1', 'P', array['a@b.co'], true, true) $$,
+  $$ select create_client('  ', 'A', '1', 'P', array['a@b.co'], true, true, array['accounts@invoice.test']) $$,
   '23514', null, 'a client cannot be created without a name');
 select throws_ok(
-  $$ select create_client('N', 'A', '1', '   ', array['a@b.co'], true, true) $$,
+  $$ select create_client('N', 'A', '1', '   ', array['a@b.co'], true, true, array['accounts@invoice.test']) $$,
   '23514', null, 'nor without a staff contact point — it pre-fills every event (§3.2)');
 select throws_ok(
-  $$ select create_client('N', 'A', '1', 'P', '{}'::text[], true, true) $$,
+  $$ select create_client('N', 'A', '1', 'P', '{}'::text[], true, true, array['accounts@invoice.test']) $$,
   '23514', null, 'nor with no contact email: the allocation sheet has nowhere to go');
 select throws_ok(
-  $$ select create_client('N', 'A', '1', 'P', array['not-an-address'], true, true) $$,
+  $$ select create_client('N', 'A', '1', 'P', array['not-an-address'], true, true, array['accounts@invoice.test']) $$,
   '23514', null, 'nor with an address that is not one');
 select throws_ok(
-  $$ select create_client('N', 'A', '1', 'P', array['a@b.co'], null, true) $$,
+  $$ select create_client('N', 'A', '1', 'P', array['a@b.co'], null, true, array['accounts@invoice.test']) $$,
   '23514', null, 'neither policy has a "not set" state (§9.7)');
 
 -- Up to ten contact emails (ADR-0087).
 select lives_ok(
   $$ select create_client('Ten Emails Ltd', 'T', '020 7946 0000', 'P',
        array['a1@b.co','a2@b.co','a3@b.co','a4@b.co','a5@b.co','a6@b.co','a7@b.co','a8@b.co','a9@b.co','a10@b.co'],
-       true, false) $$,
+       true, false, array['accounts@invoice.test']) $$,
   'a client can have ten contact emails');
 select throws_ok(
   $$ select create_client('Eleven Emails Ltd', 'T', '1', 'P',
        array['a1@b.co','a2@b.co','a3@b.co','a4@b.co','a5@b.co','a6@b.co','a7@b.co','a8@b.co','a9@b.co','a10@b.co','a11@b.co'],
-       true, false) $$,
+       true, false, array['accounts@invoice.test']) $$,
   '23514', null, 'but not eleven');
 
 select lives_ok(

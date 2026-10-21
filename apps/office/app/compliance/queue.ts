@@ -473,7 +473,11 @@ export function verifyStep(row: QueueRow): VerifyStep {
   }
   if (
     row.kind === 'document' &&
-    (row.item_type === 'ni_evidence' || conditionFieldFor(row.item_type, row.rtw_branch))
+    (row.item_type === 'ni_evidence' ||
+      // ADR-0178: the holiday periods are confirmed, and any the AI missed
+      // added, before a term letter is verified.
+      row.item_type === 'university_term_dates_letter' ||
+      conditionFieldFor(row.item_type, row.rtw_branch))
   ) {
     return 'confirm';
   }

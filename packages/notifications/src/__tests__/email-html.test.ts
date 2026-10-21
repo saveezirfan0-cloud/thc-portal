@@ -704,12 +704,7 @@ describe('D1 — the Allocation Timesheet, before the event', () => {
         '',
         "Please find attached the Allocation Timesheet for the Gala Dinner on Friday 19 September 2026. It lists the 17 staff booked to work, with each person's role and scheduled start and finish times. Your PO number 4471-A is on the sheet.",
         '',
-        'On the day, please ask your manager on site to:',
-        "1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
-        '2. print and sign their name at the bottom,',
-        '3. email the signed sheet back to us — just reply to this email.',
-        '',
-        'Any questions, you can reach us the same way.',
+        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with our invoice for the event. Any questions, just reply to this email.",
         '',
         'Best regards,',
         'The Hospitality Company',
@@ -726,7 +721,7 @@ describe('D1 — the Allocation Timesheet, before the event', () => {
     expect(m.html).not.toMatch(BEFORE_THE_EVENT);
   });
 
-  it('lays out the intro, facts, steps, file card, reply button and sign-off', () => {
+  it('lays out the intro, facts, GPS note, file card, reply button and sign-off', () => {
     const { html } = documentMessageFor(d1());
     expectEmailSafe(html);
     const seen = visibleText(html);
@@ -742,24 +737,28 @@ describe('D1 — the Allocation Timesheet, before the event', () => {
     }
     expect(html).toContain('>Scheduled</td>');
     expect(html).toContain('Chef 07:00 – 15:00<br>Waiting Staff 17:00 – 23:30');
-    expect(seen).toContain('On the day, please ask your manager on site to:');
-    expect(seen).toContain('print and sign their name at the bottom,');
+    // THC, 21.10.2026: nothing to fill in, sign or send back (ADR-0176).
+    expect(seen).toContain(
+      "There's nothing for your manager on site to fill in or sign on the day.",
+    );
+    expect(seen).toContain('verified by GPS at the venue');
+    expect(seen).not.toMatch(/print and sign|signed sheet|email the signed/i);
+    expect(html).not.toContain('<ol');
     expect(seen).toContain('Leonardo Hotel St Pauls – Gala Dinner.pdf');
     expect(seen).toContain('Allocation Timesheet · attached');
     expect(html).toContain(
       `href="mailto:timesheets@thehospitalitycompany.co.uk?subject=${encodeURIComponent('Re: Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)')}"`,
     );
-    expect(html).toContain('>Reply with the signed sheet</a>');
+    expect(html).toContain('>Reply to this email</a>');
     expect(seen).toContain('Best regards, The Hospitality Company');
     expect(html).toContain('>timesheets@thehospitalitycompany.co.uk</a> · ');
   });
 
-  it('keeps every sentence of the HTML’s own copy (intro, steps, closing) in the text too', () => {
+  it('keeps every sentence of the HTML’s own copy (intro, closing) in the text too', () => {
     const m = documentMessageFor(d1());
     const copy = DOCUMENT_EMAILS.D1.html;
-    for (const sentence of [copy.stepsLead, ...copy.steps, copy.closing]) {
-      expect(m.body).toContain(sentence);
-    }
+    expect('steps' in copy).toBe(false);
+    expect(m.body).toContain(copy.closing);
     const d2copy = DOCUMENT_EMAILS.D2.html;
     const d2body = documentMessageFor(d2()).body;
     expect(d2body).toContain(d2copy.closing);
