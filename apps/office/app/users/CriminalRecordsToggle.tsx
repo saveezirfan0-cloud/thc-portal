@@ -27,6 +27,21 @@ export function countsAsReviewer(account: AccountRow): boolean {
   );
 }
 
+/**
+ * The badge beside a named login's office role; the Allow / Stop button
+ * lives with the row's other actions (CriminalRecordsToggle).
+ */
+export function CriminalRecordsBadge({ account }: { account: AccountRow }) {
+  if (account.role !== 'admin' || !account.reviews_criminal_records) return null;
+  return (
+    <Pill tone={countsAsReviewer(account) ? 'purple' : 'neutral'}>
+      {countsAsReviewer(account)
+        ? 'Reviews criminal records'
+        : 'Reviews criminal records · switched off, not counted'}
+    </Pill>
+  );
+}
+
 export function CriminalRecordsToggle({
   account,
   anyoneNamed,
@@ -59,13 +74,6 @@ export function CriminalRecordsToggle({
 
   return (
     <>
-      {on ? (
-        <Pill tone={countsAsReviewer(account) ? 'purple' : 'neutral'}>
-          {countsAsReviewer(account)
-            ? 'Reviews criminal records'
-            : 'Reviews criminal records · switched off, not counted'}
-        </Pill>
-      ) : null}{' '}
       <Button size="sm" tone="ghost" onClick={() => setAsking(true)}>
         {on ? 'Stop criminal record reviews' : 'Allow criminal record reviews'}
       </Button>

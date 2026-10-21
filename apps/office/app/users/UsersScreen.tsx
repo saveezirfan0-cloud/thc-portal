@@ -46,7 +46,11 @@ import {
   setLoginDisabled,
 } from './actions';
 import type { AccountRow, UsersPageData } from './data';
-import { CriminalRecordsToggle, countsAsReviewer } from './CriminalRecordsToggle';
+import {
+  CriminalRecordsBadge,
+  CriminalRecordsToggle,
+  countsAsReviewer,
+} from './CriminalRecordsToggle';
 import { inviteMailto } from './invite';
 import '../account/account.css';
 
@@ -368,9 +372,9 @@ function UserRow({
           '—'
         )}
         {/* ADR-0180: who decides criminal declarations. */}
-        {tab === 'admin' ? (
+        {tab === 'admin' && account.reviews_criminal_records ? (
           <span className="sub">
-            <CriminalRecordsToggle account={account} anyoneNamed={anyoneNamed} />
+            <CriminalRecordsBadge account={account} />
           </span>
         ) : null}
       </td>
@@ -410,6 +414,10 @@ function UserRow({
               <Button size="sm" tone="ghost" onClick={onChangeRole}>
                 Change role
               </Button>
+            ) : null}
+            {/* ADR-0180: the Allow / Stop for deciding criminal declarations. */}
+            {tab === 'admin' ? (
+              <CriminalRecordsToggle account={account} anyoneNamed={anyoneNamed} />
             ) : null}
             {/* ADR-0060: only where there is a verified factor to reset, and
                 never your own row — that is My profile, with a code. */}

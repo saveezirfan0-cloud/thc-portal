@@ -18,7 +18,8 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
 
 const { setCriminalRecordsReviewer } = await import('../criminalRecordsActions');
-const { CriminalRecordsToggle, countsAsReviewer } = await import('../CriminalRecordsToggle');
+const { CriminalRecordsBadge, CriminalRecordsToggle, countsAsReviewer } =
+  await import('../CriminalRecordsToggle');
 
 const account = (over: Partial<AccountRow> = {}): AccountRow => ({
   id: 'u1',
@@ -75,8 +76,13 @@ describe('CriminalRecordsToggle', () => {
     const html = renderToStaticMarkup(
       <CriminalRecordsToggle account={account({ reviews_criminal_records: true })} anyoneNamed />,
     );
-    expect(html).toContain('Reviews criminal records');
     expect(html).toContain('Stop criminal record reviews');
+    expect(
+      renderToStaticMarkup(
+        <CriminalRecordsBadge account={account({ reviews_criminal_records: true })} />,
+      ),
+    ).toContain('Reviews criminal records');
+    expect(renderToStaticMarkup(<CriminalRecordsBadge account={account()} />)).toBe('');
   });
 
   it('counts only a working, writing holder — as the database does', () => {
@@ -88,9 +94,8 @@ describe('CriminalRecordsToggle', () => {
       countsAsReviewer(account({ reviews_criminal_records: true, office_role: 'viewer' })),
     ).toBe(false);
     const html = renderToStaticMarkup(
-      <CriminalRecordsToggle
+      <CriminalRecordsBadge
         account={account({ reviews_criminal_records: true, disabled: true })}
-        anyoneNamed={false}
       />,
     );
     expect(html).toContain('switched off, not counted');
