@@ -10,7 +10,8 @@ import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { visaLimitProblem, visaLimitValue } from './conditions';
-import { type Period, periodToRange, periodsProblem } from '../onboarding/view-model';
+import { type Period, periodToRange } from '../onboarding/view-model';
+import { termDatesPayloadProblem } from './termDates';
 import type { ActionResult } from './types';
 
 /**
@@ -67,6 +68,11 @@ export interface VerifyDates {
    * the ranges on the row are confirmed as read.
    */
   termPeriods?: Period[] | null;
+  /**
+   * ADR-0183: the office ticked "This letter shows no holidays" — required
+   * with an empty `termPeriods`, which limits the worker to term time all year.
+   */
+  noHolidays?: boolean;
 }
 
 /**
@@ -92,7 +98,7 @@ export async function verifyDocument(
     if (problem) return { ok: false, message: problem };
   }
   if (dates.termPeriods) {
-    const problem = periodsProblem(dates.termPeriods);
+    const problem = termDatesPayloadProblem(dates.termPeriods, dates.noHolidays);
     if (problem) return { ok: false, message: problem };
   }
   const args: RpcArguments = { p_doc: docId };
@@ -120,20 +126,23 @@ export async function verifyDocument(
 export async function setTermLetterPeriods(
   docId: string,
   periods: Period[],
+  noHolidays = false,
 ): Promise<ActionResult> {
-  const problem = periodsProblem(periods);
+  // ADR-0183: as at Verify — complete, real, at most a year each, and none
+  // at all only when the office ticked that the letter shows none.
+  const problem = termDatesPayloadProblem(periods, noHolidays);
   if (problem) return { ok: false, message: problem };
   const result = await call('set_term_letter_periods', {
     p_doc: docId,
     p_term_dates: periods.map(periodToRange),
   });
   if (isFailure(result)) return result;
-  const data = (result.data ?? {}) as { expiresOn?: string | null };
+  const data = (result.data ?? {}) as { expiresOn?: string | null; unblocked?: boolean };
   return {
     ok: true,
     message: `Holiday periods saved. The weekly limit follows them from now${
       data.expiresOn ? `; the letter expires ${ukDate(data.expiresOn)}` : ''
-    }.`,
+    }.${data.unblocked ? ' The expiry block is lifted — everything else is in order.' : ''}`,
   };
 }
 

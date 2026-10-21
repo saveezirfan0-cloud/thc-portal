@@ -183,7 +183,13 @@ export function canCancelBooking(status: string): boolean {
 export class IllegalTransitionError extends Error {
   constructor(
     readonly machine:
-      'staff' | 'booking' | 'rtw_check' | 'change_request' | 'shift_offer' | 'invoice',
+      | 'staff'
+      | 'booking'
+      | 'rtw_check'
+      | 'change_request'
+      | 'shift_offer'
+      | 'invoice'
+      | 'document_review',
     readonly from: string,
     readonly to: string,
   ) {
@@ -234,6 +240,70 @@ export function canTransitionRtwCheck(from: RtwCheckStatus, to: RtwCheckStatus):
 
 export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatus): void {
   if (!canTransitionRtwCheck(from, to)) throw new IllegalTransitionError('rtw_check', from, to);
+}
+
+/**
+ * A document's review state (`compliance_docs.review_status`, ADR-0183).
+ * The database holds the same edges in `document_review_transition_allowed()`
+ * (20261022155100) and refuses any other move of a verified completion
+ * letter in `completion_letter_state_guard`; pgTAP 918 holds the edges.
+ *
+ *   pending → verified      Verify (§4.1), or a completion letter approved
+ *   pending → rejected      Reject with a reason — N8, Re-upload
+ *   pending → superseded    a newer upload, a reset (§2.12), a graduate's
+ *                           term letter no longer needed (ADR-0112)
+ *   verified → superseded   a reset, a newer letter — or a completion
+ *                           letter's approval withdrawn (ADR-0183), which is
+ *                           not a rejection: the worker is not told to re-upload
+ *   verified → rejected     NI evidence only: the NI number does not match (D43)
+ *   rejected → superseded   a reset
+ *
+ * Nothing goes back to `pending`, and `superseded` is terminal: a decision
+ * on the evidence of a previous period is history.
+ */
+export const DOCUMENT_REVIEW_STATUSES = ['pending', 'verified', 'rejected', 'superseded'] as const;
+
+export type DocumentReviewStatus = (typeof DOCUMENT_REVIEW_STATUSES)[number];
+
+export const DOCUMENT_REVIEW_TRANSITIONS: Readonly<
+  Record<DocumentReviewStatus, readonly DocumentReviewStatus[]>
+> = {
+  pending: ['verified', 'rejected', 'superseded'],
+  verified: ['superseded', 'rejected'],
+  rejected: ['superseded'],
+  superseded: [],
+};
+
+export function canTransitionDocumentReview(
+  docType: string,
+  from: DocumentReviewStatus,
+  to: DocumentReviewStatus,
+): boolean {
+  if (from === to) return true;
+  if (from === 'verified' && to === 'rejected') return docType === 'ni_evidence';
+  return DOCUMENT_REVIEW_TRANSITIONS[from].includes(to);
+}
+
+export function assertDocumentReviewTransition(
+  docType: string,
+  from: DocumentReviewStatus,
+  to: DocumentReviewStatus,
+): void {
+  if (!canTransitionDocumentReview(docType, from, to)) {
+    throw new IllegalTransitionError('document_review', from, to);
+  }
+}
+
+/**
+ * Withdrawing a completion letter's approval (ADR-0183): `verified →
+ * superseded`, with a reason, by `compliance_withdraw_completion_approval()`.
+ */
+export function withdrawnCompletionStatus(from: DocumentReviewStatus): DocumentReviewStatus {
+  assertDocumentReviewTransition('university_completion_letter', from, 'superseded');
+  if (from !== 'verified') {
+    throw new IllegalTransitionError('document_review', from, 'superseded');
+  }
+  return 'superseded';
 }
 
 /**
