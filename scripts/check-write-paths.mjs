@@ -51,6 +51,9 @@ const OWNED_BY_RPC = [
   // ADR-0180 (20261022170300): the office reads declarations; every write is a
   // definer function that checks who may decide one.
   'criminal_declarations',
+  // ADR-0184 (20261022200200): check_in / check_out / resolve_violation /
+  // verify_late_check_out are the only writers; a trigger refuses the rest.
+  'check_logs',
 ];
 
 const sources = globSync(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'], {

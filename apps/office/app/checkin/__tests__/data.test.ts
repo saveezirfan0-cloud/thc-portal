@@ -16,6 +16,7 @@ const rowsFor = vi.hoisted(() => ({
   violations: [] as unknown[],
   monitor: [] as unknown[],
   late: [] as unknown[],
+  weeks: [] as unknown[],
   rpc: [] as unknown[][],
 }));
 
@@ -45,7 +46,10 @@ vi.mock('@thc/db/server', () => ({
     from: (t: string) => builder(t),
     rpc: (fn: string, args: unknown) => {
       rowsFor.rpc.push([fn, args]);
-      return Promise.resolve({ data: rowsFor.late, error: null });
+      return Promise.resolve({
+        data: fn === 'late_check_out_weeks' ? rowsFor.weeks : rowsFor.late,
+        error: null,
+      });
     },
   }),
 }));
@@ -68,6 +72,7 @@ beforeEach(() => {
   rowsFor.violations = [];
   rowsFor.monitor = [];
   rowsFor.late = [];
+  rowsFor.weeks = [];
   rowsFor.rpc = [];
   process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://supabase.test';
   process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = 'anon';
@@ -172,7 +177,10 @@ describe('the late sign-outs to verify (ADR-0184)', () => {
       },
     ];
     const data = await loadMonitor();
-    expect(rowsFor.rpc).toEqual([['late_check_outs', { p_days: 14, p_include_verified: false }]]);
+    expect(rowsFor.rpc).toEqual([
+      ['late_check_outs', { p_days: 14, p_include_verified: false }],
+      ['late_check_out_weeks', { p_bookings: ['b9'] }],
+    ]);
     expect(data.lateCheckOuts).toEqual([
       expect.objectContaining({
         bookingId: 'b9',
@@ -184,6 +192,21 @@ describe('the late sign-outs to verify (ADR-0184)', () => {
         verifiedAt: null,
       }),
     ]);
+  });
+
+  it('reads the week against the cap for the late rows only, in one call', async () => {
+    rowsFor.monitor = [
+      { booking_id: 'late', status: 'checked_out', late_check_out: true },
+      { booking_id: 'ontime', status: 'checked_out', late_check_out: false },
+    ];
+    rowsFor.weeks = [{ booking_id: 'late', week_hours: '21.25', week_cap_hours: 20 }];
+    const data = await loadMonitor();
+    expect(rowsFor.rpc).toContainEqual(['late_check_out_weeks', { p_bookings: ['late'] }]);
+    expect(data.rows.find((r) => r.bookingId === 'late')).toMatchObject({
+      weekHours: 21.25,
+      weekCapHours: 20,
+    });
+    expect(data.rows.find((r) => r.bookingId === 'ontime')?.weekHours).toBeNull();
   });
 
   it('reads the verification off the monitor row', async () => {

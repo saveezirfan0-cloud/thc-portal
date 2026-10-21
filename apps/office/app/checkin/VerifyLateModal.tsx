@@ -46,6 +46,7 @@ export function VerifyLateModal({
   // Mounted on a click: the reader's zone is already the browser's.
   const zone = viewerZone();
   const dual = needsDualZone(zone);
+  const overLimit = overWeeklyLimitText(target.weekHours, target.weekCapHours);
   const verified = Boolean(target.verifiedAt);
   const past = minutesPastEnd(target.endsAt, target.checkOutAt);
   const trimmed = note.trim();
@@ -98,10 +99,10 @@ export function VerifyLateModal({
           </div>
         </div>
 
-        {overWeeklyLimitText(target.weekHours, target.weekCapHours) ? (
+        {overLimit ? (
           <Alert tone="amber">
-            {overWeeklyLimitText(target.weekHours, target.weekCapHours)} — the overrun counts toward
-            this worker’s hours for the week. Check their other bookings this week.
+            {overLimit} — the overrun counts toward this worker’s hours for the week. Check their
+            other bookings this week.
           </Alert>
         ) : null}
 

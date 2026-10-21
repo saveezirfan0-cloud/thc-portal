@@ -17,7 +17,7 @@
 -- shifts of the worker's Mon–Sun week sit on the week's other days.
 -- =====================================================================
 begin;
-select plan(41);
+select plan(46);
 \ir _shared/fixtures.psql
 
 \set r_wait     '92200000-0000-4000-8000-000000000001'
@@ -137,7 +137,7 @@ create function pg_temp.as_user(p_uid uuid) returns void language sql as $$
 $$;
 
 -- =====================================================================
--- 1-12 · RULE-20 counts the paid overrun
+-- 1-17 · RULE-20 counts the paid overrun
 -- =====================================================================
 select is(weekly_booked_hours(:'wa', (select d from t)), 44.0::numeric,
   'before Ada signs out, her week counts 44 scheduled hours');
@@ -145,13 +145,19 @@ select is((select verdict from (select rota_guard_verdict(:'wa', (select shift_i
   'ok', 'and a 4-hour shift that week still fits her 48 h');
 select is((select gate from auto_assign_worker_gate((select shift_id from sh where name = 'extra'), :'wa')),
   null, 'the auto-assign pool lets her through too');
+select pg_temp.as_user(:'admin_uid');
+set local role authenticated;
+select is((select gate from auto_assign_candidates((select shift_id from sh where name = 'extra'), false)
+            where staff_id = :'wa'),
+  null, 'and so does the board''s agency-wide pool');
+reset role;
 
 -- Ada signs out 75 minutes late (the finish recorded, as check_out() writes it).
 update check_logs set check_out_at = (select e + interval '75 minutes' from t)
  where booking_id = (select id from bk where name = 'a_late');
 
-select is(booking_overrun_hours((select id from bk where name = 'a_late'), (select e from t)), 1.25::numeric,
-  'her paid overrun is 1 h 15');
+select is((select overrun_min from booking_overruns(array[(select id from bk where name = 'a_late')])), 75,
+  'her paid overrun is 1 h 15, read as a set (booking_overruns)');
 select is(weekly_booked_hours(:'wa', (select d from t)), 45.25::numeric,
   'and counts against her week: 45 h 15');
 select is(weekly_booked_hours_except(:'wa', (select d from t), (select shift_id from sh where name = 'extra')),
@@ -160,6 +166,29 @@ select is((select verdict from (select rota_guard_verdict(:'wa', (select shift_i
   'block', 'so the 4-hour shift that week no longer fits (45 h 15 + 4 h > 48 h)');
 select is((select gate from auto_assign_worker_gate((select shift_id from sh where name = 'extra'), :'wa')),
   'hours_limit', 'and the auto-assign pool gates her on hours');
+select pg_temp.as_user(:'admin_uid');
+set local role authenticated;
+select is((select gate from auto_assign_candidates((select shift_id from sh where name = 'extra'), false)
+            where staff_id = :'wa'),
+  'hours_limit', 'the board''s agency-wide pool counts the overrun too');
+reset role;
+set local role service_role;
+select is((select gate from auto_assign_candidates((select shift_id from sh where name = 'extra'), false)
+            where staff_id = :'wa'),
+  'hours_limit', 'and so does the hourly round''s (service role)');
+reset role;
+
+-- Sections that cannot carry a paid overrun are not read: one that ended
+-- ten minutes ago (a finish recorded 20 minutes after its end, as a job
+-- might), and one before ADR-0184's cutoff.
+select pg_temp.book('recent', pg_temp.section('recent', now() - interval '4 hours 10 minutes', now() - interval '10 minutes'),
+                    :'wt', now() - interval '4 hours 10 minutes', now() + interval '10 minutes');
+select pg_temp.book('old', pg_temp.section('old', '2026-10-20 14:00+00', '2026-10-20 18:00+00'),
+                    :'wt', '2026-10-20 14:00+00', '2026-10-20 19:15+00');
+select is((select count(*)::int from booking_overruns(array[(select id from bk where name = 'recent')])), 0,
+  'a section that ended less than 15 minutes ago has no paid overrun yet');
+select is((select count(*)::int from booking_overruns(array[(select id from bk where name = 'old')])), 0,
+  'nor does one that ended before 21.10.2026 (UK)');
 select is((select weekly_booked_hours from staff_directory_v where id = :'wa'),
   round(weekly_booked_hours(:'wa', (now() at time zone 'Europe/London')::date), 2)::numeric,
   'the staff directory''s "this week" counts the same way');
@@ -169,16 +198,15 @@ select is(cap_overrun_minutes((select s from t), (select e from t), (select s fr
 
 select pg_temp.as_user(:'admin_uid');
 set local role authenticated;
-select is((select row(week_hours, week_cap_hours)::text from late_check_outs()
-            where booking_id = (select id from bk where name = 'b_late')),
-  '(49.25,48)', 'the office''s list carries Ben''s week: 49 h 15 counted against 48 h');
-select is((select row(week_hours, week_cap_hours)::text from checkin_monitor_v
-            where booking_id = (select id from bk where name = 'b_late')),
-  '(49.25,48)', 'and so does the monitor row');
+select is((select count(*)::int from late_check_outs() where booking_id = (select id from bk where name = 'b_late')),
+  1, 'Ben''s late sign-out is on the office''s list');
+select is((select row(week_hours, week_cap_hours)::text
+             from late_check_out_weeks(array[(select id from bk where name = 'b_late')])),
+  '(49.25,48)', 'and /checkin''s one read for the list''s and the monitor''s late rows gives his week: 49 h 15 counted against 48 h');
 reset role;
 
 -- =====================================================================
--- 13-20 · Each line priced from its own minutes
+-- 18-25 · Each line priced from its own minutes
 -- =====================================================================
 -- £17.35/h, a 6.5-hour section ending at E, signed out at E+75.
 select pg_temp.book('round', pg_temp.section('round', (select e - interval '390 minutes' from t), (select e from t), 17.35),
@@ -217,7 +245,7 @@ select is((select payable_min from invoices where id = (select id from inv)), 46
   'the hours are unchanged');
 
 -- =====================================================================
--- 21-23 · An overrun line ends at the paid end
+-- 26-28 · An overrun line ends at the paid end
 -- =====================================================================
 select pg_temp.book('typo', pg_temp.section('typo', (select s from t), (select e from t)), :'wt',
                     (select s from t), null);
@@ -246,7 +274,7 @@ select is((select manager_finish_at from check_logs where booking_id = (select i
   (select e + interval '6 hours' from t), 'the entered finish is still recorded as typed');
 
 -- =====================================================================
--- 24-41 · check_logs refuses direct writes; every function path works
+-- 29-46 · check_logs refuses direct writes; every function path works
 -- =====================================================================
 select ok((select prosecdef from pg_proc where oid = 'public.resolve_violation(uuid,text,timestamptz,timestamptz)'::regprocedure),
   'resolve_violation is SECURITY DEFINER');

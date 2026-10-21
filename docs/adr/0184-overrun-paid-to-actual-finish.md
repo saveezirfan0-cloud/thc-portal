@@ -8,7 +8,8 @@ ADR-0035 (D5 Left early, D15 stale fix), ADR-0172 / ADR-0176 (ready to invoice, 
 sign-in log) · **Asked by:** THC's owner, 21.10.2026
 
 `supabase/migrations/20261022200000_overrun_paid_to_actual_finish.sql`,
-`20261022200100_overrun_capped_and_dated.sql`, `20261022200200_overrun_followups.sql` · pgTAP
+`20261022200100_overrun_capped_and_dated.sql`, `20261022200200_overrun_followups.sql`,
+`20261022200300_overrun_set_based.sql` · pgTAP
 `921`, `922` (and `010`, `070`, `140`, `892` follow) · `packages/domain/src/pay.ts`, `pay.vectors.json` ·
 `packages/pdf/src/invoice.ts`, `signInLog.ts`, `csv.ts` · `apps/office/app/checkin/`
 (`status.ts`, `MonitorTable.tsx`, `MonitorScreen.tsx`, `VerifyLateModal.tsx`, `actions.ts`,
@@ -113,7 +114,8 @@ minute period between 16:00 and 16:15 (pay and charge is to 16:00 is correct)".
 
 ## Follow-ups (THC's owner, 21.10.2026)
 
-Four points first left for later, decided the same day (`20261022200200`, pgTAP `922`):
+Four points first left for later, decided the same day (`20261022200200`, made set-based in
+`20261022200300`; pgTAP `922`):
 
 1. **RULE-20 counts the paid overrun.** The weekly cap is judged on booked hours — each counted
    booking's scheduled length. A shift signed out late now adds its paid overrun
@@ -123,23 +125,31 @@ Four points first left for later, decided the same day (`20261022200200`, pgTAP 
    open shifts), `weekly_booked_hours_except()` (the rota guard), `series_hours_blocked()`
    (ADR-0117), the auto-assign pool (`auto_assign_candidates_pool_pairs()`, so
    `auto_assign_worker_gate()` and the lists) and `staff_directory_v` (its booked and worked
-   hours this week, and `staff_profile_v` / `student_visa_v` on it). One booking's figure is
-   `booking_overrun_hours(booking, ends_at)`, which answers without a read for any section
-   before the cutoff or not yet 15 minutes past its end — every future booking a cap check
-   reads — so the pool's cost is one indexed `check_logs` probe per past counted booking.
+   hours this week, and `staff_profile_v` / `student_visa_v` on it). Each sum reads the
+   overrun **once, as a set** (`20261022200300`, after QA measured the first, per-booking
+   version at up to 10× slower): `booking_overruns(ids)` returns the paid overrun of the given
+   bookings in one statement — their accepted check-in rows, the unpaid breaks of those signed
+   out late, `cap_overrun_minutes()` on those only — and each sum passes only its bookings
+   whose section ended on or after the cutoff and at least 15 minutes ago, and LEFT JOINs the
+   result (an empty set returns without a read). `scripts/bench/radar_and_pool_at_scale.sql`
+   seeds 2,000 shifts finished this week, a third signed out late; every read it times is back
+   within about 1.2× of the figures before this follow-up.
    Nothing is refused after the fact: a late sign-out that takes a worker over the cap is
    **flagged**, "Over weekly limit: 21 h 15 of 20 h" (amber) on the `/checkin` row, the
-   "Signed out late" list and the Verify window, from `late_check_outs()` /
-   `checkin_monitor_v`'s `week_hours` and `week_cap_hours` (the hours counted against the cap
-   for the section's Mon–Sun week, overrun included — booked hours, as the cap itself counts
-   them). Later bookings that week are judged against the real hours.
+   "Signed out late" list and the Verify window, from `late_check_out_weeks(ids)`: the hours
+   counted against the cap for each booking's Mon–Sun week, overrun included — booked hours,
+   as the cap itself counts them — and the cap, for a set of bookings in one read. `/checkin`
+   asks it once for the monitor's late rows and the list's rows together (neither
+   `checkin_monitor_v` nor `late_check_outs()` computes it per row). Later bookings that week
+   are judged against the real hours.
 2. **Each invoice line is its own minutes × rate.** A shift's `invoicing` in
    `report_payroll_lines_v` is now round(main minutes × rate / 60, 2) + round(overrun minutes ×
    rate / 60, 2), so both invoice lines are priced on their own and still add up to the shift;
    ready to invoice, the invoice net, the CSV and the financial report all sum that figure.
    £17.35/h, 465 minutes of which 75 overrun: £112.78 + £21.69 = £134.47 (one price would have
    been £134.46). Pay stays one figure: payroll never shows the split. The overrun line ends at
-   the paid end (the actual finish, or end + 4 h for a later finish entered by the office).
+   the scheduled end plus its own minutes — the actual finish, or end + 4 h for a later finish
+   entered by the office — on the invoice, the CSV and the office's review alike.
 3. **The office's review shows the split.** `invoice_event_lines()` returns `overrun_min`,
    `overrun_invoicing`, `late_check_out` and `late_check_out_verified`;
    `/reports/invoicing/:eventId` draws "Overrun – <role>" under the shift, from the scheduled

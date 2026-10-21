@@ -228,8 +228,10 @@ comment on view public.report_payroll_lines_v is
   'One row per shift that can carry money (§9.9): worked, turned away, no-show (0) and §3.3 same-day cancellations (full scheduled hours). Pay from payable_shifts_v only; base and holiday priced separately; pending has no figure. Pending = the pay is undetermined OR a No check-out on the booking is unresolved, including one raised on a stale fix with a recorded finish (ADR-0174). overrun_min / overrun_invoicing: of payable_min / invoicing, the part past the scheduled end of a shift signed out more than 15 minutes late (ADR-0184) — the invoice''s separate Overrun line. invoicing = the main minutes priced + the overrun minutes priced, each rounded on its own, so each invoice line is its minutes × rate. Owner-rights and granted to nobody: read through the report functions.';
 
 -- The overrun line ends where the pay does: the actual finish, or end + 4 h
--- for a finish entered later than that (20261022200100), so its Start–End
--- always reads as its minutes.
+-- for a finish entered later than that (20261022200100). Not quite "always
+-- its minutes": when breaks are longer than the shift's main part the
+-- overrun gives way, so 20261022200300 ends it at the scheduled end plus
+-- its own minutes instead — the rule the office's review uses.
 do $$
 declare
   a text := 'select 2, ''overrun'', l.ends_at, l.check_out_at, 0, l.overrun_min, l.overrun_invoicing';
