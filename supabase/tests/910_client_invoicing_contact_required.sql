@@ -7,7 +7,7 @@
 -- no invoice email is invoiced at the main contact's.
 -- =====================================================================
 begin;
-select plan(25);
+select plan(26);
 \ir _shared/fixtures.psql
 
 \set sched_uid '91020000-0000-4000-8000-000000000001'
@@ -96,6 +96,8 @@ select lives_ok($$ select create_client('Sched Added Ltd', 'S', '020 7946 0000',
   'whoever may add a client may say where its invoices go');
 select throws_ok(format($$ update clients set invoice_emails = array['me@sched.test'] where id = %L $$, :'savoy'),
   '42501', 'not_permitted', 'but a scheduler still cannot change them afterwards');
+select throws_ok(format($$ update clients set invoice_cc_emails = array['me@sched.test'] where id = %L $$, :'savoy'),
+  '42501', 'not_permitted', 'nor the CC list');
 select throws_ok(format($$ select set_client_invoice_details(%L, 'x', array['me@sched.test'], null) $$, :'savoy'),
   '42501', 'not_permitted', 'nor through the card''s panel');
 reset role;

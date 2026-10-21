@@ -35,8 +35,7 @@ const notAnEmail = (email: string) =>
 
 const WORDING = {
   codes: {
-    not_permitted:
-      'Your login cannot change invoicing details. Ask an owner, a manager or a scheduler.',
+    not_permitted: 'Your login cannot change invoicing details. Ask an owner or a manager.',
     too_many_invoice_emails: `Up to ${MAX_INVOICE_EMAILS} invoice emails and ${MAX_INVOICE_EMAILS} CC emails. Remove one before adding another.`,
     unknown_client: 'That client no longer exists. Refresh the page.',
   },

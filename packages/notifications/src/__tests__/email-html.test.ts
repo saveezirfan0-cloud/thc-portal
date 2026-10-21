@@ -704,7 +704,7 @@ describe('D1 — the Allocation Timesheet, before the event', () => {
         '',
         "Please find attached the Allocation Timesheet for the Gala Dinner on Friday 19 September 2026. It lists the 17 staff booked to work, with each person's role and scheduled start and finish times. Your PO number 4471-A is on the sheet.",
         '',
-        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with the invoice at 10:00 the morning after the event. Any questions, just reply to this email.",
+        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with our invoice for the event. Any questions, just reply to this email.",
         '',
         'Best regards,',
         'The Hospitality Company',

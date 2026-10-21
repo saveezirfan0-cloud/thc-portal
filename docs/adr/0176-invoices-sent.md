@@ -215,7 +215,8 @@ is no invoice email address, this should be sent to the main contact."
   manager on site to fill in finish times, sign the sheet and email it back. In its place:
   "There's nothing for your manager on site to fill in or sign on the day. Each person records
   when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll
-  receive those timings with the invoice at 10:00 the morning after the event." The reply
+  receive those timings with our invoice for the event." It names no time: a multi-day job on
+  one PO is invoiced after its last day, and an invoice held for review waits. The reply
   button reads "Reply to this email" (`packages/notifications/src/documents.ts`). The D1 PDF
   itself is unchanged.
 - **A new client is created with its invoicing contact** (`20261022130000`).
@@ -223,7 +224,9 @@ is no invoice email address, this should be sent to the main contact."
     address. It refuses a client with no invoice email (`invoice_email_required`).
   - The name and the address stay optional: an empty name puts the main contact under
     "Invoice to".
-  - The seven-argument `create_client()` is dropped, so no caller can skip the rule.
+  - The seven-argument `create_client()` is dropped, so no RPC caller can skip the rule. A
+    direct table insert is not checked, as for every other §9.7 rule; the office only creates
+    clients through `create_client()`.
   - New client shows an **Invoicing** group with "Use the contact emails" for a client whose
     invoice goes to the main contact's addresses.
   - Edit does not show the group: once the client exists, the card's Invoicing panel owns these

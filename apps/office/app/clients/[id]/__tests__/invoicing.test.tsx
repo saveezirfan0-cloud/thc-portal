@@ -99,7 +99,7 @@ describe('setInvoiceDetails (ADR-0176)', () => {
     [{ code: '42501', message: 'admins_only' }, NOT_ALLOWED],
     [
       { code: '42501', message: 'not_permitted', details: 'write' },
-      'Your login cannot change invoicing details. Ask an owner, a manager or a scheduler.',
+      'Your login cannot change invoicing details. Ask an owner or a manager.',
     ],
     [
       { code: '22023', message: 'too_many_invoice_emails' },

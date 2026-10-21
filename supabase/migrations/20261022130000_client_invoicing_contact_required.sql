@@ -273,13 +273,24 @@ declare
   a2 text := 'update invoices set outbox_key = v_key, recipients = v_to,';
   b2 text := 'update invoices set outbox_key = v_key, recipients = v_to,
                       cc_recipients = _invoice_cc(i.client_id, v_to),';
+  -- Send again's audit row and answer name who was copied too.
+  a3 text := '''recipients'', to_jsonb(v_to)));
+  return jsonb_build_object(''key'', v_key, ''recipients'', to_jsonb(v_to));';
+  b3 text := '''recipients'', to_jsonb(v_to),
+                             ''cc'', to_jsonb(_invoice_cc(i.client_id, v_to))));
+  return jsonb_build_object(''key'', v_key, ''recipients'', to_jsonb(v_to),
+                            ''cc'', to_jsonb(_invoice_cc(i.client_id, v_to)));';
 begin
   if (length(v_def) - length(replace(v_def, a1, ''))) / length(a1) <> 1
-     or (length(v_def) - length(replace(v_def, a2, ''))) / length(a2) <> 1 then
+     or (length(v_def) - length(replace(v_def, a2, ''))) / length(a2) <> 1
+     or (length(v_def) - length(replace(v_def, a3, ''))) / length(a3) <> 1 then
     raise exception '20261022130000: resend_invoice_email — expected one match of each fragment';
   end if;
-  execute replace(replace(v_def, a1, b1), a2, b2);
+  execute replace(replace(replace(v_def, a1, b1), a2, b2), a3, b3);
 end $$;
+
+comment on function public.resend_invoice_email(uuid) is
+  'ADR-0176: Send again — a new INV1 row (key INV1:<number>:<n>), its payload rebuilt from the invoice, to the client card''s current invoice emails (else contact emails) and CC its current CC emails (less To); refused while the last email is still pending; audited as invoice.resent with both lists. On an invoice the job gave up on (24 attempts) it is Try again: attempts back to 0, audited as invoice.retried. Finance callers that may write.';
 
 comment on function public.queue_invoice_email(uuid) is
   'ADR-0176: the INV1 email for an issued invoice, keyed INV1:<number>, to the snapshotted recipients and CC the client''s invoice_cc_emails (less To; payload.cc, invoices.cc_recipients), with the invoice PDF and the sign-in and sign-out log attached. Service role.';

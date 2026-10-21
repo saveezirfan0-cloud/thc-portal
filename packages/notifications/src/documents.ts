@@ -125,7 +125,7 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}{updateTag}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nThere's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with the invoice at 10:00 the morning after the event. Any questions, just reply to this email.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{bufferLine}{poLine}{badgeLine}{updateLine}\n\nThere's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with our invoice for the event. Any questions, just reply to this email.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
@@ -133,7 +133,7 @@ export const DOCUMENT_EMAILS = {
       // THC, 21.10.2026: the times are GPS-verified, so the client no longer
       // fills in, signs or returns the sheet (ADR-0176 amendment).
       closing:
-        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with the invoice at 10:00 the morning after the event. Any questions, just reply to this email.",
+        "There's nothing for your manager on site to fill in or sign on the day. Each person records when they arrive and leave in the THC Staff App, verified by GPS at the venue, and you'll receive those timings with our invoice for the event. Any questions, just reply to this email.",
       attachmentNote: 'Allocation Timesheet · attached',
       badgesNote: 'Name badges · {nameBadges} to print',
       replyButton: 'Reply to this email',

@@ -352,19 +352,17 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
             onDraftChange={setInvoiceDraft}
             max={MAX_INVOICE_EMAILS}
             noun="invoice emails"
-            hint="The invoice and the sign-in and sign-out log go to every address here, at 10:00 the morning after the event."
+            hint="The invoice and the sign-in and sign-out log go to every address here."
             error={tried ? fieldErrors.invoice_emails : undefined}
             onProblem={setError}
           />
-          <div className="field">
-            {pendingEmails.length > 0 ? (
-              <div className="row">
-                <Button size="sm" onClick={useContactEmails}>
-                  Use the contact emails
-                </Button>
-              </div>
-            ) : null}
-          </div>
+          {pendingEmails.length > 0 ? (
+            <div className="row">
+              <Button size="sm" onClick={useContactEmails}>
+                Use the contact emails
+              </Button>
+            </div>
+          ) : null}
           <EmailChipsField
             id="client-invoice-cc"
             label={

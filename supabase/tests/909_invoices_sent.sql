@@ -347,8 +347,8 @@ select lives_ok($$ select set_client_invoice_details('aaaaaaaa-0000-4000-8000-00
                      array['accounts@client.test', 'pjordan@client.test'], '66 Knightsbridge, London SW1X 7LA',
                      array[' Finance@Client.test ', 'pjordan@client.test']) $$,
   'finance adds a CC email; the one already in To is dropped');
-select is(resend_invoice_email((select id from inv where name = 'po77')) ->> 'key', 'INV1:4000:2',
-  'Send again queues a new email for the same invoice');
+select is(resend_invoice_email((select id from inv where name = 'po77')) -> 'cc', '["finance@client.test"]'::jsonb,
+  'Send again queues a new email for the same invoice, and says who it copies');
 reset role;
 select is((select invoice_cc_emails from clients where id = 'aaaaaaaa-0000-4000-8000-000000000001'),
   array['finance@client.test'], 'the client keeps the CC list, lower-cased, less To');
