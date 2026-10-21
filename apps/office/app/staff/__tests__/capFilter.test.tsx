@@ -133,6 +133,13 @@ describe('the Student visa view filters by cap (wireframe)', () => {
     expect(names('blocked')).toEqual(['Ben Blocked']);
   });
 
+  it('links every student to their profile (§9.6)', () => {
+    const html = renderToStaticMarkup(<StudentVisaView students={ALL} query="" />);
+    for (const row of ALL) {
+      expect(html).toContain(`href="/staff/${row.id}"`);
+    }
+  });
+
   it('files each student under exactly one cap', () => {
     const band = (weekly_cap_band: StudentRow['weekly_cap_band'], extra = {}) => ({
       status: 'compliant' as const,
