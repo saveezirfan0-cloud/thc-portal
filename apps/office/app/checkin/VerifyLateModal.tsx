@@ -101,7 +101,7 @@ export function VerifyLateModal({
         {overWeeklyLimitText(target.weekHours, target.weekCapHours) ? (
           <Alert tone="amber">
             {overWeeklyLimitText(target.weekHours, target.weekCapHours)} — the overrun counts toward
-            this worker’s hours for the week (RULE-20). Check their other bookings this week.
+            this worker’s hours for the week. Check their other bookings this week.
           </Alert>
         ) : null}
 
