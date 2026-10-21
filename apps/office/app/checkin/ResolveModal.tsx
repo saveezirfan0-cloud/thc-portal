@@ -19,6 +19,13 @@ import { VIOLATION_LABEL, needsActualFinish, reclassifiesToLate } from './status
 import type { ViolationRow } from './types';
 
 /**
+ * ADR-0184: a finish later than end + 4 h is accepted and recorded (§9.5
+ * puts no upper bound on it), but `payable_minutes()` pays nothing past
+ * end + 4 h — say so, so a typo does not look paid.
+ */
+export const FINISH_CAP_HINT = 'Time more than 4 hours after the scheduled end is not paid.';
+
+/**
  * The violation detail window (§9.5), which doubles as the audit trail.
  *
  * The note is mandatory for every type and is never write-only: resolving
@@ -29,8 +36,10 @@ import type { ViolationRow } from './types';
  * The finish time is validated on the SERVER (`resolve_violation`), and the
  * dialog stays open with whatever it refused — before the check-in, or in
  * the future. There is deliberately no upper bound against the scheduled
- * end: a worker may genuinely have finished later, and RULE-01 caps the
- * payable amount there regardless.
+ * end: a worker may genuinely have finished later, and a finish more than
+ * 15 minutes past the end is paid and charged to it, the time past the end
+ * on its own invoice line, like any late sign-out — up to end + 4 h, past
+ * which nothing is paid (ADR-0184; the hint says so).
  *
  * Two zones on one window (§1.8). Detected, Checked in and Checked out are
  * ACTUAL stamps, so they show the manager's own zone only — "your time",
@@ -203,8 +212,8 @@ export function ResolveModal({
                 onPartialChange={setFinishPartial}
                 hint={
                   wantsFinish
-                    ? 'Becomes the shift’s check-out, and pay is worked out from it. The four-hour floor applies again once this is resolved.'
-                    : 'Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later.'
+                    ? `Becomes the shift’s check-out, and pay is worked out from it — more than 15 minutes past the end, paid and charged to this time. ${FINISH_CAP_HINT} The four-hour floor applies again once this is resolved.`
+                    : `Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later. ${FINISH_CAP_HINT}`
                 }
               />
             ) : null}

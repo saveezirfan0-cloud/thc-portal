@@ -473,7 +473,14 @@
       "and no manager-entered finish: the payable time is UNDETERMINED, never a",
       "silent default to the scheduled finish. An EMPTY intersection is undetermined",
       "for the same reason: RULE-14's floor is for a worker who actually checked in",
-      "and worked the shift, and RULE-02 makes the zero-length case a violation."
+      "and worked the shift, and RULE-02 makes the zero-length case a violation.",
+      "ADR-0184 (THC, 21.10.2026): a check-out at or before end+15 is paid to the scheduled",
+      "end; one MORE than 15 minutes past it is paid to the actual finish, and overrunMin is",
+      "the clock time past the end (breaks come off the main part first). The four-hour",
+      "floor applies to the total. A check-in at or after the end stays undetermined.",
+      "The paid end is capped at end + 4 h, and the rule applies only to sections whose",
+      "scheduled end is on or after 2026-10-20T23:00:00Z (21.10.2026 00:00 UK); earlier",
+      "ones keep 'paid to the scheduled end'. startsAt (an instant) overrides the base."
     ],
     "defaults": {
       "shiftMin": 480,
@@ -491,7 +498,8 @@
           "payableMin": 480,
           "workedMin": 480,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -502,7 +510,8 @@
           "payableMin": 460,
           "workedMin": 460,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -513,7 +522,8 @@
           "payableMin": 479,
           "workedMin": 479,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -524,7 +534,8 @@
           "payableMin": 451,
           "workedMin": 451,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -535,7 +546,8 @@
           "payableMin": 240,
           "workedMin": 220,
           "floorApplied": true,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -546,7 +558,8 @@
           "payableMin": 435,
           "workedMin": 435,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -557,7 +570,8 @@
           "payableMin": 420,
           "workedMin": 420,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -568,29 +582,32 @@
           "payableMin": 480,
           "workedMin": 480,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
-        "name": "past 15 minutes the monitor flags it and the money is unchanged",
+        "name": "past 15 minutes it is paid to the actual finish and flagged (ADR-0184)",
         "input": { "checkOutMinFromStart": 500 },
         "expect": {
           "status": "settled",
-          "payableMin": 480,
-          "workedMin": 480,
+          "payableMin": 500,
+          "workedMin": 500,
           "floorApplied": false,
-          "lateCheckOutFlag": true
+          "lateCheckOutFlag": true,
+          "overrunMin": 20
         }
       },
       {
-        "name": "three hours late still pays only to the scheduled end",
+        "name": "three hours late is paid to the actual finish, all three hours overrun (ADR-0184)",
         "input": { "checkOutMinFromStart": 660 },
         "expect": {
           "status": "settled",
-          "payableMin": 480,
-          "workedMin": 480,
+          "payableMin": 660,
+          "workedMin": 660,
           "floorApplied": false,
-          "lateCheckOutFlag": true
+          "lateCheckOutFlag": true,
+          "overrunMin": 180
         }
       },
       {
@@ -601,7 +618,8 @@
           "payableMin": 460,
           "workedMin": 460,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -612,7 +630,8 @@
           "payableMin": null,
           "workedMin": null,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": null
         }
       },
       {
@@ -623,7 +642,8 @@
           "payableMin": 450,
           "workedMin": 450,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -634,7 +654,8 @@
           "payableMin": 240,
           "workedMin": 120,
           "floorApplied": true,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -645,7 +666,8 @@
           "payableMin": 120,
           "workedMin": 120,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -656,7 +678,8 @@
           "payableMin": 120,
           "workedMin": 120,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -667,7 +690,8 @@
           "payableMin": 240,
           "workedMin": 120,
           "floorApplied": true,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -678,7 +702,8 @@
           "payableMin": 480,
           "workedMin": 480,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -689,7 +714,8 @@
           "payableMin": 240,
           "workedMin": 210,
           "floorApplied": true,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
         }
       },
       {
@@ -700,7 +726,8 @@
           "payableMin": null,
           "workedMin": null,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": null
         }
       },
       {
@@ -711,7 +738,8 @@
           "payableMin": null,
           "workedMin": null,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": null
         }
       },
       {
@@ -722,7 +750,8 @@
           "payableMin": null,
           "workedMin": null,
           "floorApplied": false,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": null
         }
       },
       {
@@ -733,7 +762,188 @@
           "payableMin": 240,
           "workedMin": 1,
           "floorApplied": true,
-          "lateCheckOutFlag": false
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
+        }
+      },
+      {
+        "name": "16:10 on a 16:00 end is paid and charged to 16:00 (ADR-0184)",
+        "input": { "checkOutMinFromStart": 490 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
+        }
+      },
+      {
+        "name": "one minute past the grace is paid to the actual finish (ADR-0184)",
+        "input": { "checkOutMinFromStart": 496 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 496,
+          "workedMin": 496,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 16
+        }
+      },
+      {
+        "name": "17:15 on a 16:00 end is paid to 17:15: 75 minutes overrun (ADR-0184)",
+        "input": { "checkOutMinFromStart": 555 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 555,
+          "workedMin": 555,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 75
+        }
+      },
+      {
+        "name": "a late arrival who overruns is paid from the arrival to the actual finish",
+        "input": { "checkInMinFromStart": 20, "checkOutMinFromStart": 555 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 535,
+          "workedMin": 535,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 75
+        }
+      },
+      {
+        "name": "unpaid breaks come off the main part, never the overrun",
+        "input": { "checkOutMinFromStart": 555, "unpaidBreakMin": 30 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 525,
+          "workedMin": 525,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 75
+        }
+      },
+      {
+        "name": "breaks longer than the main part eat into the overrun only for the excess",
+        "input": { "shiftMin": 240, "checkOutMinFromStart": 300, "unpaidBreakMin": 270 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 30,
+          "floorApplied": true,
+          "lateCheckOutFlag": true,
+          "overrunMin": 30
+        }
+      },
+      {
+        "name": "a manager-entered finish past the grace is paid to it (resolved No check-out)",
+        "input": { "checkOutMinFromStart": 600, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 600,
+          "workedMin": 600,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 120
+        }
+      },
+      {
+        "name": "a short shift that overruns is still floored to four hours on the total (RULE-14)",
+        "input": { "shiftMin": 120, "checkOutMinFromStart": 195 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 195,
+          "floorApplied": true,
+          "lateCheckOutFlag": true,
+          "overrunMin": 75
+        }
+      },
+      {
+        "name": "an overrun that takes a short shift past four hours needs no floor",
+        "input": { "shiftMin": 180, "checkOutMinFromStart": 270 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 270,
+          "workedMin": 270,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 90
+        }
+      },
+      {
+        "name": "an unresolved No check-out with a late finish still blocks the floor",
+        "input": { "shiftMin": 120, "checkOutMinFromStart": 180, "noCheckOut": "unresolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 180,
+          "workedMin": 180,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 60
+        }
+      },
+      {
+        "name": "a check-in after the end with a late check-out still intersects nothing",
+        "input": { "checkInMinFromStart": 480, "checkOutMinFromStart": 600 },
+        "expect": {
+          "status": "undetermined",
+          "payableMin": null,
+          "workedMin": null,
+          "floorApplied": false,
+          "lateCheckOutFlag": false,
+          "overrunMin": null
+        }
+      },
+      {
+        "name": "a finish exactly four hours late is paid to it (ADR-0184)",
+        "input": { "checkOutMinFromStart": 720, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 720,
+          "workedMin": 720,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 240
+        }
+      },
+      {
+        "name": "a finish entered six hours late is paid only to end + 4 h (ADR-0184)",
+        "input": { "checkOutMinFromStart": 840, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 720,
+          "workedMin": 720,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 240
+        }
+      },
+      {
+        "name": "a section ending before 21.10.2026 (UK) is still paid to its scheduled end",
+        "input": { "startsAt": "2026-10-20T14:59:00Z", "checkOutMinFromStart": 555 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 0
+        }
+      },
+      {
+        "name": "a section ending at 00:00 UK on 21.10.2026 is paid to the actual finish",
+        "input": { "startsAt": "2026-10-20T15:00:00Z", "checkOutMinFromStart": 555 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 555,
+          "workedMin": 555,
+          "floorApplied": false,
+          "lateCheckOutFlag": true,
+          "overrunMin": 75
         }
       }
     ]
@@ -796,11 +1006,14 @@
   "breaks": {
     "$comment": [
       "break_window_minutes / unpaid_break_minutes, §5.2b and audit D49. Every break is",
-      "clipped to the paid window [max(check-in, start), min(finish, end)] before it is",
+      "clipped to the paid window [max(check-in, start), paid end] before it is",
       "deducted: RULE-01 never paid minutes outside it, so taking them again as a break",
       "would take them twice. finishMinFromStart is the manager-entered finish, the",
       "recorded check-out, or now for a shift still running. A break with no end runs",
-      "to the finish. Each break is rounded to whole minutes, then summed."
+      "to the finish. Each break is rounded to whole minutes, then summed. The paid end is",
+      "the scheduled end, or the finish itself when it is more than 15 minutes past the",
+      "end (ADR-0184, capped at end + 4 h, sections ending on or after 21.10.2026 UK):",
+      "a break during a paid overrun is deducted like any other."
     ],
     "defaults": {
       "shiftMin": 480,
@@ -849,17 +1062,31 @@
         }
       },
       {
-        "name": "a break after the scheduled end costs nothing",
-        "input": { "finishMinFromStart": 540, "breaks": [[490, 520]] },
+        "name": "a break after the scheduled end costs nothing inside the 15-minute grace",
+        "input": { "finishMinFromStart": 495, "breaks": [[482, 490]] },
         "expect": {
           "unpaidBreakMin": 0
         }
       },
       {
-        "name": "a break straddling the end is clipped to the end",
-        "input": { "finishMinFromStart": 540, "breaks": [[470, 500]] },
+        "name": "a break during a paid overrun is deducted (ADR-0184)",
+        "input": { "finishMinFromStart": 540, "breaks": [[490, 520]] },
+        "expect": {
+          "unpaidBreakMin": 30
+        }
+      },
+      {
+        "name": "a break straddling the end is clipped to the end inside the grace",
+        "input": { "finishMinFromStart": 495, "breaks": [[470, 490]] },
         "expect": {
           "unpaidBreakMin": 10
+        }
+      },
+      {
+        "name": "a break straddling the end of an overrun shift is deducted in full",
+        "input": { "finishMinFromStart": 540, "breaks": [[470, 500]] },
+        "expect": {
+          "unpaidBreakMin": 30
         }
       },
       {
@@ -870,10 +1097,17 @@
         }
       },
       {
-        "name": "a break still running is clipped to the end as well",
-        "input": { "finishMinFromStart": 600, "breaks": [[460, null]] },
+        "name": "a break still running is clipped to the end inside the grace",
+        "input": { "finishMinFromStart": 490, "breaks": [[460, null]] },
         "expect": {
           "unpaidBreakMin": 20
+        }
+      },
+      {
+        "name": "a break still running at a late finish runs to that finish (ADR-0184)",
+        "input": { "finishMinFromStart": 600, "breaks": [[460, null]] },
+        "expect": {
+          "unpaidBreakMin": 140
         }
       },
       {
@@ -888,6 +1122,30 @@
         "input": { "breaks": [] },
         "expect": {
           "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "a break after the end of a section before 21.10.2026 (UK) costs nothing",
+        "input": {
+          "startsAt": "2026-10-20T14:59:00Z",
+          "finishMinFromStart": 540,
+          "breaks": [[490, 520]]
+        },
+        "expect": {
+          "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "a break past end + 4 h costs nothing: it was never paid (ADR-0184)",
+        "input": {
+          "finishMinFromStart": 840,
+          "breaks": [
+            [700, 740],
+            [760, 790]
+          ]
+        },
+        "expect": {
+          "unpaidBreakMin": 20
         }
       }
     ]

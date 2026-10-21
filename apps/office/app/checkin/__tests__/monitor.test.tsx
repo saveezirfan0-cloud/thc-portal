@@ -38,6 +38,7 @@ function mounted(node: ReactNode): string {
   return html;
 }
 const { ResolveModal } = await import('../ResolveModal');
+const { VerifyLateModal } = await import('../VerifyLateModal');
 
 const VIOLATION: ViolationRow = {
   id: 'v1',
@@ -124,6 +125,79 @@ describe('/checkin (§9.5)', () => {
     expect(html).toContain('<tr class="violation clickable" tabindex="0"');
   });
 
+  describe('ADR-0184 signed out late', () => {
+    const LATE: MonitorRow = {
+      ...ROW,
+      checkOutAt: '2026-09-24T20:15:00Z',
+      lateCheckOut: true,
+      status: 'checked_out',
+    };
+
+    it('keeps the red pill and asks the office to verify, with a Verify button', () => {
+      const html = renderToStaticMarkup(<MonitorScreen rows={[LATE]} violations={[]} />);
+      expect(html).toMatch(/<span class="pill coral"[^>]*>Checked out/);
+      expect(html).toContain('Signed out late — verify with the worker');
+      expect(html).toContain('>Verify<');
+      // Nothing on the screen says the pay stops at the end any more.
+      expect(html).not.toMatch(/scheduled end/i);
+    });
+
+    it('once verified, the pill is neutral and the line says who verified it', () => {
+      const html = renderToStaticMarkup(
+        <MonitorScreen
+          rows={[
+            {
+              ...LATE,
+              lateCheckOutVerifiedAt: '2026-09-25T08:00:00Z',
+              lateCheckOutVerifiedByName: 'Sam S.',
+            },
+          ]}
+          violations={[]}
+        />,
+      );
+      expect(html).toContain('<span class="pill">Checked out 21:15</span>');
+      expect(html).toContain('Signed out late · verified by Sam S.');
+      expect(html).not.toContain('>Verify<');
+    });
+
+    it('lists the fortnight’s late sign-outs still to verify', () => {
+      const html = renderToStaticMarkup(
+        <MonitorScreen
+          rows={[]}
+          violations={[]}
+          lateCheckOuts={[
+            {
+              bookingId: 'b9',
+              staffName: 'Grace L.',
+              photoUrl: null,
+              eventTitle: 'Gala Dinner',
+              venueName: 'The Dorchester',
+              roleName: 'Waiting Staff',
+              startsAt: '2026-09-23T11:00:00Z',
+              endsAt: '2026-09-23T15:00:00Z',
+              checkInAt: '2026-09-23T11:00:00Z',
+              checkOutAt: '2026-09-23T16:15:00Z',
+              finishByOffice: false,
+              minutesPastEnd: 75,
+              verifiedAt: null,
+              verifiedByName: null,
+              note: null,
+            },
+          ]}
+        />,
+      );
+      expect(html).toContain('Signed out late — verify with the worker · last 14 days');
+      expect(html).toContain('Grace L.');
+      expect(html).toContain('1 h 15 min past the end');
+    });
+
+    it('shows no list when there is nothing to verify', () => {
+      expect(renderToStaticMarkup(<MonitorScreen rows={[]} violations={[]} />)).not.toContain(
+        'last 14 days',
+      );
+    });
+  });
+
   describe('§1.8 zones, read from Athens', () => {
     it('shows the Due pill in the viewer’s own zone with no suffix, beside the UK window', () => {
       const html = mounted(
@@ -169,6 +243,34 @@ describe('/checkin (§9.5)', () => {
       expect(html).toContain('09:05 UK');
       expect(html).toContain('20:30 UK');
       expect(html).toContain('Resolved by Gisela M.');
+    });
+
+    it('in the Verify window: the scheduled end is UK with "your time" under it, the sign-out your time (ADR-0184)', () => {
+      const html = renderToStaticMarkup(
+        <VerifyLateModal
+          target={{
+            bookingId: 'b1',
+            staffName: 'Chloe D.',
+            eventTitle: 'Conference Day 2',
+            roleName: 'Bar Staff',
+            endsAt: '2026-09-24T19:00:00Z',
+            checkOutAt: '2026-09-24T20:15:00Z',
+          }}
+          onClose={() => {}}
+        />,
+      );
+      // 19:00Z is 20:00 UK and 22:00 in Athens; the sign-out 20:15Z is 23:15 there.
+      expect(html).toMatch(/20:00 UK time<span class="l2">[^<]*22:00 your time<\/span>/);
+      expect(html).toContain('23:15 your time');
+      expect(html).toContain('1 h 15 min past the end');
+      expect(html).not.toContain('paid up to 4 h');
+    });
+
+    it('tells the manager a finish past end + 4 h is not paid beyond it', () => {
+      const html = renderToStaticMarkup(
+        <ResolveModal violation={{ ...VIOLATION, type: 'no_checkout' }} onClose={() => {}} />,
+      );
+      expect(html).toContain('Time more than 4 hours after the scheduled end is not paid.');
     });
 
     it('labels the finish input UK time because everything else on the window is not', () => {

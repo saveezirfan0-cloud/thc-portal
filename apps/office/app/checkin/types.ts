@@ -29,7 +29,15 @@ export interface MonitorRow {
   /** NULL — not 0 — where the client pays for breaks (§9.5). */
   breaksCount: number | null;
   lastBreakAt: string | null;
+  /**
+   * The recorded finish is more than 15 minutes past the section's end:
+   * paid and charged to it, flagged "Signed out late" (ADR-0184).
+   */
   lateCheckOut: boolean;
+  /** ADR-0184: when the office verified the late sign-out with the worker; null until then. */
+  lateCheckOutVerifiedAt?: string | null;
+  lateCheckOutVerifiedByName?: string | null;
+  lateCheckOutNote?: string | null;
   /**
    * `check_logs.location_suspect` (20261012121200): the arrival's fix had no
    * accuracy, one wider than the geofence, or sat on the venue's centre (a
@@ -71,4 +79,40 @@ export interface ViolationRow {
    * still renders; the window composes it the same way when it is absent.
    */
   flaggedAs?: string;
+}
+
+/**
+ * One late sign-out still to verify (ADR-0184), from `late_check_outs()`:
+ * any section that ended in the last fortnight, not just today's board.
+ */
+export interface LateCheckOutRow {
+  bookingId: string;
+  staffName: string;
+  photoUrl: string | null;
+  eventTitle: string;
+  venueName: string;
+  roleName: string;
+  startsAt: string;
+  endsAt: string;
+  checkInAt: string | null;
+  checkOutAt: string;
+  /** The finish was entered by the office resolving a No check-out. */
+  finishByOffice: boolean;
+  minutesPastEnd: number;
+  verifiedAt: string | null;
+  verifiedByName: string | null;
+  note: string | null;
+}
+
+/** What the Verify window needs, from a monitor row or the list. */
+export interface LateCheckOutTarget {
+  bookingId: string;
+  staffName: string;
+  eventTitle: string;
+  roleName: string;
+  endsAt: string;
+  checkOutAt: string;
+  verifiedAt?: string | null;
+  verifiedByName?: string | null;
+  note?: string | null;
 }

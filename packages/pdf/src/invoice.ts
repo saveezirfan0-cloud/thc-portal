@@ -10,6 +10,12 @@
  * database issued them (`invoice_document_data`, 20261022100000); this file
  * only writes them down — in UK dates and 24-hour UK times, like every
  * document the product prints (§1.8).
+ *
+ * A shift signed out more than 15 minutes after its scheduled end is paid
+ * and charged to the actual finish (ADR-0184), and the time past the end
+ * arrives as a line of its own, kind `overrun`, straight after the shift's
+ * line: the same worker and charge rate, Start = the scheduled end, End =
+ * the actual finish. It prints as "Overrun – <role>" so the client sees it.
  */
 
 import { UK_ZONE } from './format.ts';
@@ -25,9 +31,12 @@ export interface InvoiceLineData {
   payableMin: number;
   rate: number | string;
   amount: number | string;
+  /** worked · cancelled_on_day · overrun (ADR-0184). */
   kind: string;
   /** The sign-in / sign-out log's facts, as issued (20261022110000). */
   eventId?: string;
+  /** The booking the line charges; an overrun line shares its shift's (ADR-0184). */
+  bookingId?: string;
   checkInAt?: string | null;
   checkOutAt?: string | null;
   late?: boolean;
@@ -154,12 +163,23 @@ export function invoiceFileName(
   return `Invoice ${data.number} – ${safe(data.billTo.name)}${po}.pdf`;
 }
 
-/** One printed row per shift, in the order the database issued them. */
+/** ADR-0184: the line kind for the time past a shift's scheduled end. */
+export const OVERRUN_KIND = 'overrun';
+
+/** The ROLE cell: the role, or "Overrun – <role>" on an overrun line (ADR-0184). */
+export function invoiceRole(l: Pick<InvoiceLineData, 'role' | 'kind'>): string {
+  return l.kind === OVERRUN_KIND ? `Overrun – ${l.role}` : l.role;
+}
+
+/**
+ * One printed row per line, in the order the database issued them: one per
+ * shift, and an overrun line straight after a shift signed out late.
+ */
 export function invoiceRows(lines: readonly InvoiceLineData[]): string[][] {
   return lines.map((l) => [
     invoiceDate(l.date),
     l.staffName,
-    l.role,
+    invoiceRole(l),
     invoiceTime(l.startsAt),
     invoiceTime(l.endsAt),
     invoiceBreak(l.breakMin),

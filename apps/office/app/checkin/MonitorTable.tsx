@@ -1,8 +1,15 @@
 'use client';
 
-import { Avatar, Pill, TableScroll, useTimeFormat } from '@thc/ui';
+import { Avatar, Button, Pill, TableScroll, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
-import { arrivalLine, statusLabel, breaksCell, statusTone } from './status';
+import {
+  LATE_CHECK_OUT_LABEL,
+  arrivalLine,
+  lateCheckOutToVerify,
+  statusLabel,
+  breaksCell,
+  statusTone,
+} from './status';
 import type { MonitorRow } from './types';
 import { useViewerZone } from './useViewerZone';
 
@@ -25,8 +32,20 @@ import { useViewerZone } from './useViewerZone';
  * render of this client component `Intl` is the server's zone (UTC on
  * Vercel), which streamed UTC stamps and forced a hydration re-render
  * (audit D41). First paint is UK; the reader's zone arrives on mount.
+ *
+ * A checked-out row signed out more than 15 minutes late keeps §9.5's red
+ * pill, with "Signed out late — verify with the worker" and a Verify
+ * button under it until the office has (ADR-0184); then the pill goes
+ * back to neutral and the line says who verified it.
  */
-export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
+export function MonitorTable({
+  rows,
+  onVerify,
+}: {
+  rows: MonitorRow[];
+  /** Opens the Verify window for a late sign-out (ADR-0184). */
+  onVerify?: (row: MonitorRow) => void;
+}) {
   const zone = useViewerZone();
   const format = useTimeFormat();
   const dual = needsDualZone(zone);
@@ -100,6 +119,21 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
               </td>
               <td data-label="Status">
                 <Pill tone={statusTone(row)}>{statusLabel(row, local)}</Pill>
+                {lateCheckOutToVerify(row) ? (
+                  <span className="sub late-out">
+                    {LATE_CHECK_OUT_LABEL}
+                    {onVerify ? (
+                      <Button size="sm" onClick={() => onVerify(row)}>
+                        Verify
+                      </Button>
+                    ) : null}
+                  </span>
+                ) : row.status === 'checked_out' && row.lateCheckOut ? (
+                  <span className="sub">
+                    Signed out late · verified
+                    {row.lateCheckOutVerifiedByName ? ` by ${row.lateCheckOutVerifiedByName}` : ''}
+                  </span>
+                ) : null}
               </td>
             </tr>
           ))}

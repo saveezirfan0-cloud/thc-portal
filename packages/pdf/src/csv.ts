@@ -336,7 +336,12 @@ export interface InvoiceCsvRow {
   ends_at: string;
   check_in_at: string | null;
   check_out_at: string | null;
-  /** worked · cancelled_on_day — `invoice_export_rows` sends nothing else. */
+  /**
+   * worked · cancelled_on_day · overrun — `invoice_export_rows` sends
+   * nothing else. An overrun row (ADR-0184) follows its shift's row: the
+   * time from the scheduled end (`starts_at`) to the actual finish
+   * (`ends_at`) of a shift signed out more than 15 minutes late.
+   */
   kind: string;
   unpaid_break_min: number | null;
   payable_min: number | null;
@@ -384,10 +389,14 @@ export function invoiceCsvRows(rows: readonly InvoiceCsvRow[]): string[][] {
       textCell(row.po_number),
       employeeIdLabel(row.employee_id),
       textCell(row.staff_name),
-      textCell(row.role_name),
+      textCell(row.kind === 'overrun' ? `Overrun – ${row.role_name}` : row.role_name),
       `${ukTime(row.starts_at)}–${ukTime(row.ends_at)}`,
-      row.kind === 'cancelled_on_day' ? 'Event cancelled on the day' : ukTime(row.check_in_at),
-      row.kind === 'worked' ? ukTime(row.check_out_at) : '',
+      row.kind === 'cancelled_on_day'
+        ? 'Event cancelled on the day'
+        : row.kind === 'overrun'
+          ? ''
+          : ukTime(row.check_in_at),
+      row.kind === 'worked' || row.kind === 'overrun' ? ukTime(row.check_out_at) : '',
       clockMinutes(row.unpaid_break_min ?? 0),
       decimalHours(row.payable_min),
       money(row.charge_rate),

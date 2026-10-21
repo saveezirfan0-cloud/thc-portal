@@ -222,7 +222,7 @@ select throws_ok(
 select lives_ok(
   format('select resolve_violation(%L, %L, %L)', :'v_nocheckout', 'Left at 23:10, confirmed with the venue.',
          (now() + interval '0 minutes')::text),
-  '§9.5 a finish time after the scheduled end is accepted — RULE-01 caps the pay, not the clock'
+  '§9.5 a finish time after the scheduled end is accepted — the pay stops at end + 4 h (ADR-0184), the clock is not refused'
 );
 select is(
   (select manager_finish_at from check_logs where booking_id = :'bk_worker'),
