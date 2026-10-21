@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { reviewErrorMessage } from './messages';
 import { supabaseConfigured } from './data';
+import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { termDatesPayload, termDatesPayloadProblem } from './termDates';
 import type { Period } from './termDates';
 import type { ActionResult } from './types';
@@ -33,7 +34,18 @@ interface RpcClient {
 
 async function call(fn: string, args: RpcArguments): Promise<{ data: unknown } | ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const session = createClient(await cookies());
+  // A read-only login (ADR-0060) is told so before anything is sent; the
+  // database refuses it anyway (office_read_only, assert_letter_editor).
+  if (!(await officeMayWrite(session))) {
+    return {
+      ok: false,
+      message: (await sessionIsAdmin(session))
+        ? READ_ONLY_MESSAGE
+        : reviewErrorMessage('not_authorised'),
+    };
+  }
+  const supabase = session as unknown as RpcClient;
   const { data, error } = await supabase.rpc(fn, args);
   if (error) return { ok: false, message: reviewErrorMessage(error.message) };
   revalidatePath('/compliance');
@@ -101,11 +113,12 @@ export async function withdrawCompletionApproval(
     p_reason: reason.trim(),
   });
   if ('ok' in result) return result;
-  const data = (result.data ?? {}) as { termLetterId?: string | null };
+  const data = (result.data ?? {}) as { termLetterId?: string | null; withdrawnCount?: number };
+  const count = (data.withdrawnCount ?? 1) > 1 ? ` (${data.withdrawnCount} approved letters)` : '';
   return {
     ok: true,
     message: data.termLetterId
-      ? 'Approval withdrawn. Their term letter decides the weekly limit again — check its dates are right.'
-      : 'Approval withdrawn. There is no current term letter on file: ask the worker to upload one.',
+      ? `Approval withdrawn${count}. Their term letter decides the weekly limit again — check its dates are right.`
+      : `Approval withdrawn${count}. There is no current term letter on file: ask the worker to upload one.`,
   };
 }

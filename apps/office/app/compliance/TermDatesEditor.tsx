@@ -2,6 +2,7 @@
 
 import { Button, Note, UkDateField } from '@thc/ui';
 import {
+  LETTER_RENEWAL_LINE,
   NO_HOLIDAYS_TICK,
   blankPeriod,
   letterExpiry,
@@ -150,6 +151,9 @@ export function TermDatesEditor({
       {problem ? null : (
         <div className="sm">
           <b>{expiry.text}</b>
+          {/* ADR-0103 stands: on that day the letter has expired and the
+              worker is blocked until a new one is verified (ADR-0178). */}
+          {expiry.problem ? null : <span className="muted"> {LETTER_RENEWAL_LINE}</span>}
           {expiry.problem ? (
             <div className="coral" role="alert">
               {expiry.problem}

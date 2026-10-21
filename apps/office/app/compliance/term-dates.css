@@ -10,13 +10,14 @@
 .term-period {
   display: grid;
   /* # · Period · From · → · To · Source · remove (candidate.html) */
+  /* Track widths are layout, not tokens: the two date boxes, the badge. */
   grid-template-columns: 24px 1fr 150px 20px 150px 104px 60px;
   gap: var(--sp-8);
   align-items: center;
   padding: var(--sp-8) var(--sp-10);
   border: 1px solid var(--line);
   background: var(--bg);
-  font-size: 12.5px;
+  font-size: var(--fs-13);
 }
 .term-period + .term-period {
   border-top: 0;
@@ -27,7 +28,7 @@
   padding: 0 var(--sp-10) var(--sp-4);
 }
 .term-period .input {
-  height: 30px;
+  height: calc(var(--input-h) - var(--sp-10));
   font-size: var(--fs-12);
 }
 .term-period .ukd {

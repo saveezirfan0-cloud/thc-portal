@@ -11,7 +11,8 @@ enter them when we verify the letter?"
 `apps/office/app/onboarding/CandidateScreen.tsx` (uses the same editor), `actions.ts` ·
 `VerifiedLetterActions.tsx`, `letterActions.ts` · `packages/domain/src/state.ts`
 (`DOCUMENT_REVIEW_TRANSITIONS`) · `supabase/migrations/20261022150000_term_letter_periods_checked_on_verify.sql`,
-`20261022150100_correct_term_dates_and_withdraw_completion.sql` · pgTAP `913`, `918` (and `892`
+`20261022150100_correct_term_dates_and_withdraw_completion.sql`,
+`20261022150200_one_current_completion_letter.sql` · pgTAP `913`, `918` (and `892`
 follows)
 
 ## Context
@@ -75,20 +76,45 @@ from Monday 18/01/2027 — not 20 h all autumn.
      the ranges, so they follow; the ladder's *receipts* are outbox keys
      (`N1..N4:doc:<id>`), so when the expiry moves the unsent rungs for the old date are
      deleted and the sent ones re-keyed (`…:until:<old expiry>:<id>`) — kept as history, no
-     longer blocking the rungs for the new date. An expiry block comes off through
+     longer blocking the rungs for the new date. A rung the outbox drain has already claimed
+     (attempts bumped, its lease still running) is in flight: it is re-keyed with the sent
+     ones, never deleted from under the runner (20261022150200). A correction that leaves the
+     last day where it was touches no receipt. An expiry block comes off through
      `unblock_if_compliant` (never a manual one).
+     **After a correction that moves the expiry, the Radar's N1–N4 columns show no reminders
+     for that letter** until the rungs for the new date go out: the Radar reads the receipts by
+     their plain keys. The reminders already sent are still in the outbox (Notifications
+     inbox) under their re-keyed names.
    - **Withdraw approval** on a verified completion letter, with a required reason:
-     `compliance_withdraw_completion_approval()` moves it to **superseded** — the state a reset
-     already gives a verified letter (held, never current) — rather than *rejected*, which
+     `compliance_withdraw_completion_approval()` moves **every** verified completion letter of
+     the worker to **superseded** (a worker approved twice before 20261022150200 is withdrawn
+     in one go, and the audit lists them), and approving a completion letter now supersedes an
+     earlier verified one, so there is one current completion letter, as for any evidence.
+     Superseded is the state a reset already gives a verified letter (held, never current),
+     chosen over *rejected*, which
      means "re-upload" (N8) everywhere a worker or the office reads it. The reason is kept on
      the row; the evidence trail records `completion_letter.superseded` and
      `completion_letter.approval_withdrawn` (what it undid, and that the right to work was
      kept). `graduated_at` and `course_completion_date` are cleared; `right_to_work_until` is
      not touched. `term_letter_applies()` is then true again, and because the approval only
      ever superseded *pending or rejected* term letters (ADR-0112), the latest verified term
-     letter is the current one again by construction. An unsent CL2 is dropped. No N8.
+     letter is the current one again by construction. An unsent CL2 is dropped (not one the
+     drain has already claimed — that one is in flight). No N8.
    - Both queue **N14** at once when the worker's band for this week changes — the same key,
      payload and `cap_band_notices` receipt as `compliance_daily()`, so 05:00 never repeats it.
+     Withdrawing and then correcting can change the band twice, so twice the worker is told;
+     **correcting the term dates first sends one N14.** The Withdraw dialog says so when the
+     current term letter has no holiday periods or this week is not a holiday on it, with a
+     "Correct term dates first" button that opens that dialog.
+   - **The expiry stands (ADR-0103, confirmed by the product owner on THC's reply).** A
+     corrected letter expires on its last printed day like any other: in the example,
+     17/01/2027. The worker gets N1–N3 before it and is blocked by the daily job on that day
+     unless a new letter has been verified, which lifts the block through the re-check. That
+     is intended, not a side effect of the correction. Wherever the expiry line is shown —
+     Verify, Correct term dates, the candidate screen — it is followed by "The worker will need
+     to upload their next letter by then." pgTAP 918 holds the whole sequence: blocked on
+     17/01/2027, rosterable at 20 h for the week of 18/01/2027 once the next letter (Easter
+     2027) is verified.
    - The review states are now a machine: `DOCUMENT_REVIEW_TRANSITIONS` in `state.ts` and
      `document_review_transition_allowed()` in SQL (pending → verified / rejected /
      superseded; verified → superseded; verified → rejected for NI evidence only, the D43
@@ -97,16 +123,13 @@ from Monday 18/01/2027 — not 20 h all autumn.
 
 ## Not done, on purpose
 
-- **Where the edit came from is not stored.** The Source badge is the screen's comparison of
-  each row with what the AI read, as on the candidate screen; `compliance_docs.term_dates`
-  holds only the confirmed ranges, and the AI's own read stays in `ai_extracted`. Recording
-  "edited by" per period would need a new column; the reviewer and time of the Verify are
-  already on the row.
+- **Where the edit came from is not stored per period.** The Source badge is the screen's
+  comparison of each row with what the AI read (on Verify) or what was on file (on Correct);
+  `compliance_docs.term_dates` holds only the confirmed ranges, the AI's own read stays in
+  `ai_extracted`, and a correction's audit row holds the before and after. Recording "edited
+  by" per period would need a new column.
 - **No live cap preview per week** in the dialog: the cap line on the profile and candidate
   screen is the calculated one, and the dialog says what the periods mean in words.
-
-- **No "edited by" per period.** The Source badge compares each row with what was on file;
-  the audit row holds the before and after.
 - **A pending term letter superseded at approval stays superseded.** If the worker had no
   verified term letter, withdrawing the approval leaves none current: the screen says so ("ask
   the worker to upload one") and the usual missing/expired rules apply.

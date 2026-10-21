@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal, Note, Textarea, toast } from '@thc/ui';
 import { correctTermDates, withdrawCompletionApproval } from './letterActions';
 import { ukDate, ukDay } from './queue';
+import { resolveTermState } from '@thc/domain';
 import { periodsEdited, periodsFromLetter, termLetterVerifyProblem } from './termDates';
 import type { TermPeriod } from './termDates';
 import { TermDatesEditor } from './TermDatesEditor';
@@ -33,20 +34,34 @@ export interface DecidedLetter {
 }
 
 /** The worker's current verified term letter: the latest verified one (current_verified_docs). */
-export function currentTermLetterId(documents: readonly DecidedLetter[]): string | null {
+export function currentTermLetterOf<T extends DecidedLetter>(documents: readonly T[]): T | null {
   const verified = documents
     .filter((d) => d.doc_type === 'university_term_dates_letter' && d.review_status === 'verified')
     .sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at) || a.id.localeCompare(b.id));
-  return verified[0]?.id ?? null;
+  return verified[0] ?? null;
+}
+
+/**
+ * Whether withdrawing an approval NOW would put the worker on the term-time
+ * limit from their current term letter — no letter, no holiday periods on
+ * it, or this week is not wholly a holiday on it. Then the office corrects
+ * the dates first: withdrawing and then correcting changes the limit twice,
+ * and each change tells the worker (N14).
+ */
+export function correctTermDatesFirst(termLetter: DecidedLetter | null, today: string): boolean {
+  if (!termLetter) return false;
+  const ranges = periodsFromLetter(termLetter.term_dates);
+  if (ranges.length === 0) return true;
+  return resolveTermState(ranges, today) !== 'holiday';
 }
 
 /** Which correction this letter offers, if any. */
 export function letterCorrection(
   doc: DecidedLetter,
-  currentTermLetter: string | null,
+  currentTermLetter: DecidedLetter | null,
 ): 'term_dates' | 'withdraw' | null {
   if (doc.review_status !== 'verified') return null;
-  if (doc.doc_type === 'university_term_dates_letter' && doc.id === currentTermLetter) {
+  if (doc.doc_type === 'university_term_dates_letter' && doc.id === currentTermLetter?.id) {
     return 'term_dates';
   }
   if (doc.doc_type === 'university_completion_letter') return 'withdraw';
@@ -59,11 +74,14 @@ export function VerifiedLetterActions({
   canCorrect,
 }: {
   doc: DecidedLetter;
-  currentTermLetter: string | null;
+  /** The worker's current verified term letter (`currentTermLetterOf`). */
+  currentTermLetter: DecidedLetter | null;
   canCorrect: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  // Which dialog: this letter's own, or — from Withdraw — the term letter's.
+  const [open, setOpen] = useState<'term_dates' | 'withdraw' | null>(null);
+  const today = useMemo(() => ukDay(new Date()), []);
   const [busy, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const kind = letterCorrection(doc, currentTermLetter);
@@ -77,37 +95,44 @@ export function VerifiedLetterActions({
         setProblem(result.message);
         return;
       }
-      setOpen(false);
+      setOpen(null);
       toast(result.message ?? 'Saved.', { tone: 'green' });
       router.refresh();
     });
   };
   const close = () => {
     setProblem(null);
-    setOpen(false);
+    setOpen(null);
   };
+  const termLetter = kind === 'term_dates' ? doc : currentTermLetter;
 
   return (
     <>
-      <Button size="sm" tone="ghost" disabled={busy} onClick={() => setOpen(true)}>
+      <Button size="sm" tone="ghost" disabled={busy} onClick={() => setOpen(kind)}>
         {kind === 'term_dates' ? 'Correct term dates' : 'Withdraw approval'}
       </Button>
-      {open && kind === 'term_dates' ? (
+      {open === 'term_dates' && termLetter ? (
         <CorrectTermDatesModal
-          doc={doc}
+          doc={termLetter}
           busy={busy}
           problem={problem}
           onClose={close}
           onSave={(periods, note, noHolidays) =>
-            run(() => correctTermDates(doc.id, periods, note, noHolidays))
+            run(() => correctTermDates(termLetter.id, periods, note, noHolidays))
           }
         />
       ) : null}
-      {open && kind === 'withdraw' ? (
+      {open === 'withdraw' ? (
         <WithdrawApprovalModal
           doc={doc}
           busy={busy}
           problem={problem}
+          correctFirst={correctTermDatesFirst(currentTermLetter, today)}
+          noTermLetter={!currentTermLetter}
+          onCorrectFirst={() => {
+            setProblem(null);
+            setOpen('term_dates');
+          }}
           onClose={close}
           onWithdraw={(reason) => run(() => withdrawCompletionApproval(doc.id, reason))}
         />
@@ -210,12 +235,19 @@ function WithdrawApprovalModal({
   doc,
   busy,
   problem,
+  correctFirst,
+  noTermLetter,
+  onCorrectFirst,
   onClose,
   onWithdraw,
 }: {
   doc: DecidedLetter;
   busy: boolean;
   problem: string | null;
+  /** The term letter's dates would put them on the term-time limit today (`correctTermDatesFirst`). */
+  correctFirst: boolean;
+  noTermLetter: boolean;
+  onCorrectFirst: () => void;
   onClose: () => void;
   onWithdraw: (reason: string) => void;
 }) {
@@ -250,6 +282,22 @@ function WithdrawApprovalModal({
         hours a week in term time (10 below degree level), 48 in holidays — and its reminders start
         again. Their right-to-work date does not change.
       </Note>
+      {correctFirst ? (
+        <Note tone="neutral">
+          Their term letter shows no holiday this week, so withdrawing puts them on the term-time
+          limit straight away. If its dates are wrong, correct the term dates first, so the worker
+          is only told once about their new limit.{' '}
+          <Button size="sm" onClick={onCorrectFirst}>
+            Correct term dates first
+          </Button>
+        </Note>
+      ) : null}
+      {noTermLetter ? (
+        <Note tone="neutral">
+          There is no verified term letter on file. After withdrawing, ask the worker to upload
+          their current University Term Dates Letter.
+        </Note>
+      ) : null}
       <div className="muted sm">
         The letter is kept as history, with your reason. The worker is not sent a rejection; if
         their weekly limit changes this week, they are told their new limit as usual.

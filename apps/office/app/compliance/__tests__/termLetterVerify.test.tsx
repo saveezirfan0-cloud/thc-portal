@@ -115,6 +115,8 @@ describe('the term letter Verify dialog', () => {
     expect(field('Period 1 from').value).toBe('16/08/2026');
     expect(field('Period 1 to').value).toBe('10/01/2027');
     expect(text).toContain('Letter expires 10.01.2027 (last date on the letter)');
+    // ADR-0103 stands: on that day the letter has expired (ADR-0178).
+    expect(text).toContain('The worker will need to upload their next letter by then.');
     expect(text).toContain('Course is below degree level');
     expect(button('Verify').disabled).toBe(false);
   });

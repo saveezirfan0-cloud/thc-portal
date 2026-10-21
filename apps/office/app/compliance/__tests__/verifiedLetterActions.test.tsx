@@ -16,7 +16,7 @@ vi.mock('../letterActions', () => ({
 }));
 
 const actions = await import('../letterActions');
-const { VerifiedLetterActions, currentTermLetterId, letterCorrection } =
+const { VerifiedLetterActions, correctTermDatesFirst, currentTermLetterOf, letterCorrection } =
   await import('../VerifiedLetterActions');
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -96,8 +96,8 @@ async function click(el: HTMLElement) {
 
 describe('which decided letter offers what', () => {
   it('the current verified term letter is the latest verified one; only it is corrected', () => {
-    const current = currentTermLetterId([OLD_TERM, TERM, COMPLETION]);
-    expect(current).toBe('t2');
+    const current = currentTermLetterOf([OLD_TERM, TERM, COMPLETION]);
+    expect(current?.id).toBe('t2');
     expect(letterCorrection(TERM, current)).toBe('term_dates');
     expect(letterCorrection(OLD_TERM, current)).toBeNull();
     expect(letterCorrection(COMPLETION, current)).toBe('withdraw');
@@ -106,14 +106,14 @@ describe('which decided letter offers what', () => {
   });
 
   it('nothing for a role that may not', () => {
-    render(<VerifiedLetterActions doc={TERM} currentTermLetter="t2" canCorrect={false} />);
+    render(<VerifiedLetterActions doc={TERM} currentTermLetter={TERM} canCorrect={false} />);
     expect(container.textContent).toBe('');
   });
 });
 
 describe('Correct term dates', () => {
   it('the office enters the holiday the AI missed, with a note', async () => {
-    render(<VerifiedLetterActions doc={TERM} currentTermLetter="t2" canCorrect />);
+    render(<VerifiedLetterActions doc={TERM} currentTermLetter={TERM} canCorrect />);
     await click(button('Correct term dates'));
     const save = button('Save corrected dates', dialog());
     expect(save.disabled).toBe(true);
@@ -122,6 +122,10 @@ describe('Correct term dates', () => {
     type(field('Period 1 to') as HTMLInputElement, '17/01/2027');
     expect(dialog().textContent).toContain('added by hand');
     expect(dialog().textContent).toContain('Letter expires 17.01.2027 (last date on the letter)');
+    // ADR-0103 stands: the letter runs out on its last date.
+    expect(dialog().textContent).toContain(
+      'The worker will need to upload their next letter by then.',
+    );
     expect(save.disabled).toBe(true);
     type(field('Why are the dates being corrected?'), 'Course restarts 18/01/2027');
     expect(save.disabled).toBe(false);
@@ -138,7 +142,7 @@ describe('Correct term dates', () => {
     render(
       <VerifiedLetterActions
         doc={{ ...TERM, term_dates: ['[2026-12-19,2027-01-11)'] }}
-        currentTermLetter="t2"
+        currentTermLetter={TERM}
         canCorrect
       />,
     );
@@ -151,7 +155,7 @@ describe('Correct term dates', () => {
 
 describe('Withdraw approval', () => {
   it('needs a reason, says what it does, and sends it', async () => {
-    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter="t2" canCorrect />);
+    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter={TERM} canCorrect />);
     await click(button('Withdraw approval'));
     const text = dialog().textContent ?? '';
     expect(text).toContain('the letter gave 15.08.2026');
@@ -165,5 +169,39 @@ describe('Withdraw approval', () => {
       'c1',
       'Course resumes 18/01/2027 — not completed',
     );
+  });
+
+  it('says to correct the term dates first when withdrawing would put them on term time today', async () => {
+    // Today, 21/10/2026, is in no holiday on a letter with no dates.
+    expect(correctTermDatesFirst(TERM, '2026-10-21')).toBe(true);
+    const holiday = { ...TERM, term_dates: ['[2026-08-16,2027-01-18)'] };
+    expect(correctTermDatesFirst(holiday, '2026-10-21')).toBe(false);
+    expect(correctTermDatesFirst(holiday, '2027-01-18')).toBe(true);
+    expect(correctTermDatesFirst(null, '2026-10-21')).toBe(false);
+
+    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter={TERM} canCorrect />);
+    await click(button('Withdraw approval'));
+    expect(dialog().textContent).toContain(
+      'correct the term dates first, so the worker is only told once about their new limit',
+    );
+    await click(button('Correct term dates first', dialog()));
+    expect(button('Save corrected dates', dialog())).toBeTruthy();
+  });
+
+  it('no hint with the holiday already on file; a note when there is no term letter at all', async () => {
+    render(
+      <VerifiedLetterActions
+        doc={COMPLETION}
+        currentTermLetter={{ ...TERM, term_dates: ['[2026-08-16,2027-01-18)'] }}
+        canCorrect
+      />,
+    );
+    await click(button('Withdraw approval'));
+    expect(dialog().textContent).not.toContain('Correct term dates first');
+    act(() => root.unmount());
+    root = createRoot(container);
+    render(<VerifiedLetterActions doc={COMPLETION} currentTermLetter={null} canCorrect />);
+    await click(button('Withdraw approval'));
+    expect(dialog().textContent).toContain('There is no verified term letter on file.');
   });
 });

@@ -108,6 +108,13 @@ export function termPeriodsProblem(periods: readonly Period[]): string | null {
 export const NO_HOLIDAYS_TICK =
   'This letter shows no holidays. The worker will be limited to 20 hours a week (10 below degree level) all year.';
 
+/**
+ * Said beside the expiry: on that day the letter has expired and, like any
+ * expired document, the worker is blocked until a new one is verified
+ * (ADR-0103, which the product owner confirmed stands — ADR-0178).
+ */
+export const LETTER_RENEWAL_LINE = 'The worker will need to upload their next letter by then.';
+
 export const NO_HOLIDAYS_REQUIRED =
   'Tick to confirm the letter shows no holidays, or add the periods it shows.';
 

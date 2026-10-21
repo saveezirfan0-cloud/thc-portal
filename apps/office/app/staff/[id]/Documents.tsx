@@ -26,7 +26,7 @@ import {
   withLatestCheck,
 } from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
-import { VerifiedLetterActions, currentTermLetterId } from '../../compliance/VerifiedLetterActions';
+import { VerifiedLetterActions, currentTermLetterOf } from '../../compliance/VerifiedLetterActions';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { DobClaimNote } from '../../_components/DobClaimNote';
 import { RejectSelfie } from '../../_components/RejectSelfie';
@@ -168,7 +168,7 @@ export function Documents({
   const superseded = sorted.filter((row) => row.superseded);
   const liveDeclarations = declarations.filter((row) => row.review_status !== 'superseded');
   const supersededDeclarations = declarations.filter((row) => row.review_status === 'superseded');
-  const currentTermLetter = currentTermLetterId(live);
+  const currentTermLetter = currentTermLetterOf(live);
 
   const download = (docId: string, which: 'file' | 'report') => {
     setProblem(null);

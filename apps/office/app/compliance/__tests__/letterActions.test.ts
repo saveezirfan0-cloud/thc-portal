@@ -5,8 +5,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * session, so the database names who did it and refuses anyone who is not
  * an owner or a manager.
  */
+/** The letter RPCs; office_can('write') answers `mayWrite` first. */
 const rpc = vi.fn();
-const createClient = vi.fn(() => ({ rpc }));
+let mayWrite = true;
+const session = {
+  rpc: (fn: string, args?: unknown) =>
+    fn === 'office_can'
+      ? Promise.resolve({ data: mayWrite, error: null })
+      : fn === 'current_app_role'
+        ? Promise.resolve({ data: 'admin', error: null })
+        : rpc(fn, args),
+};
+const createClient = vi.fn(() => session);
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -21,6 +31,22 @@ const PRABIN = { from: '2026-08-16', to: '2027-01-17' };
 
 beforeEach(() => {
   rpc.mockReset();
+  mayWrite = true;
+});
+
+describe('a read-only login', () => {
+  it('is told so before anything is sent', async () => {
+    mayWrite = false;
+    expect(await correctTermDates('t1', [PRABIN], 'x')).toEqual({
+      ok: false,
+      message: 'Your login is read-only, so this cannot be changed.',
+    });
+    expect(await withdrawCompletionApproval('c1', 'x')).toEqual({
+      ok: false,
+      message: 'Your login is read-only, so this cannot be changed.',
+    });
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });
 
 describe('correctTermDates', () => {
@@ -87,6 +113,13 @@ describe('withdrawCompletionApproval', () => {
       p_reason: 'Course resumes 18/01/2027 — not completed',
     });
     expect(result.ok && result.message).toMatch(/term letter decides the weekly limit again/);
+  });
+
+  it('says how many approvals went, when a worker had two', async () => {
+    rpc.mockResolvedValue({ data: { termLetterId: 't1', withdrawnCount: 2 }, error: null });
+    expect((await withdrawCompletionApproval('c1', 'x')).message).toMatch(
+      /^Approval withdrawn \(2 approved letters\)\./,
+    );
   });
 
   it('says so when there is no current term letter to fall back on', async () => {

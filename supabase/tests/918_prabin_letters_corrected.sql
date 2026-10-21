@@ -26,7 +26,7 @@
 -- running after January. Every row is rolled back.
 -- =====================================================================
 begin;
-select plan(47);
+select plan(66);
 \ir _shared/fixtures.psql
 
 \set prabin    'c9180000-0000-4000-8000-00000000000a'
@@ -80,6 +80,9 @@ values ('CL2:doc:' || :'completion', 'push', 'CL2', :'prabin', '{"variant":"date
 insert into notification_outbox (key, channel, template, recipient_staff_id, payload, sent_at) values
   ('N1:doc:' || :'term', 'push', 'N1', :'prabin', '{}', now() - interval '1 day'),
   ('N2:doc:' || :'term', 'push', 'N2', :'prabin', '{}', null);
+-- …and one the drain has claimed this minute (attempts bumped, leased ahead).
+insert into notification_outbox (key, channel, template, recipient_staff_id, payload, attempts, send_after)
+values ('N3:doc:' || :'term', 'push', 'N3', :'prabin', '{}', 1, now() + interval '5 minutes');
 
 select (case when current_date < date '2027-01-10'
              then array['[2026-08-16,2027-01-18)'::daterange]
@@ -238,9 +241,13 @@ select is(
   :'expires_on'::date,
   'C: the letter now expires on its last printed day (17/01/2027), not the calendar-year fallback');
 select ok(
-  not exists (select 1 from notification_outbox where key in ('N1:doc:' || :'term', 'N2:doc:' || :'term'))
+  not exists (select 1 from notification_outbox
+               where key in ('N1:doc:' || :'term', 'N2:doc:' || :'term', 'N3:doc:' || :'term'))
   and exists (select 1 from notification_outbox where key like 'N1:doc:' || :'term' || ':until:%' and sent_at is not null),
   'C: the ladder for the old expiry is cleared — the sent rung kept under another key, the queued one dropped');
+select ok(exists (select 1 from notification_outbox
+                   where key like 'N3:doc:' || :'term' || ':until:%' and attempts = 1 and sent_at is null),
+  'C: a rung the drain had already claimed is re-keyed, never deleted from under it');
 select results_eq(
   format($$ select actor, data->>'note', data->'from', data->'to', (data->>'expiresAfter')::date
               from audit_log where action = 'term_letter.dates_corrected' and entity_id = %L $$, :'term'),
@@ -268,6 +275,154 @@ create temporary table t_daily on commit drop as select compliance_daily(now()) 
 select is((select count(*)::int from notification_outbox where template = 'N14' and recipient_staff_id = :'prabin'),
   :n14_before,
   'D: the daily run adds nothing for him — the receipt was already current');
+
+-- =====================================================================
+-- E · The 17/01/2027 expiry stands (ADR-0103): blocked on the day, and
+--     a new letter makes him rosterable again
+-- =====================================================================
+create temporary table t_block on commit drop as
+select compliance_daily((:'expires_on' || ' 05:02')::timestamp at time zone 'Europe/London') as counts;
+select results_eq(
+  format($$ select status::text, block_kind::text from staff where id = %L $$, :'prabin'),
+  $$ values ('blocked', 'auto_document') $$,
+  'E: on the letter''s last printed day the daily job blocks him — the letter has expired');
+select ok(exists (select 1 from notification_outbox where key = 'N4:doc:' || :'term'),
+  'E: and tells him so (N4)');
+
+\set term_next 'c9181000-0000-4000-8000-0000000000e1'
+insert into compliance_docs (id, staff_id, doc_type, uploaded_at, review_status, file_path, term_dates)
+values (:'term_next', :'prabin', 'university_term_dates_letter', now(), 'pending',
+        'documents/918/next.pdf', '{}');
+set local role authenticated;
+-- The next letter: Easter 2027, and a summer holiday relative to today so
+-- the Verify is never refused as expired. Neither touches 18–24/01/2027.
+select lives_ok(
+  format('select compliance_verify_document(%L, null, %L::daterange[])', :'term_next',
+         array['[2027-03-27,2027-04-12)'::daterange, daterange(current_date + 400, current_date + 430)]),
+  'E: the office verifies his next letter');
+reset role;
+select is((select status::text from staff where id = :'prabin'), 'compliant',
+  'E: the re-check lifts the expiry block — he can be rostered again');
+select is(weekly_cap_hours(:'prabin', date '2027-01-18'), 20,
+  'E: at 20 h for the week of Monday 18/01/2027, term time on the new letter');
+
+-- =====================================================================
+-- F · One current completion letter, and a withdrawal that takes them all
+-- =====================================================================
+\set legacy    'c9180000-0000-4000-8000-00000000000c'
+\set leg_a     'c9181000-0000-4000-8000-0000000000f1'
+\set leg_b     'c9181000-0000-4000-8000-0000000000f2'
+\set other_new 'c9181000-0000-4000-8000-0000000000f3'
+
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, wtr_optout,
+                   term_dates, graduated_at, course_completion_date, right_to_work_until) values
+  (:'legacy', 'Legacy', 'Two', 'legacy@918.test', '+447700991803', date '2001-01-01', 'compliant',
+   'international_student', false, '{}', date '2026-09-01', date '2026-08-15', date '2028-01-31');
+-- Approved twice before 20261022150200, and no term letter on file.
+insert into compliance_docs (id, staff_id, doc_type, uploaded_at, review_status, file_path,
+                             reviewed_by, reviewed_at, completion_date, confirmed_visa_expiry) values
+  (:'leg_a', :'legacy', 'university_completion_letter', now() - interval '40 days', 'verified',
+   'documents/918/leg_a.pdf', :'admin_uid', now() - interval '39 days', date '2026-08-15', date '2028-01-31'),
+  (:'leg_b', :'legacy', 'university_completion_letter', now() - interval '20 days', 'verified',
+   'documents/918/leg_b.pdf', :'admin_uid', now() - interval '19 days', date '2026-08-15', date '2028-01-31'),
+  (:'other_new', :'other', 'university_completion_letter', now() - interval '1 day', 'pending',
+   'documents/918/other_new.pdf', null, null, null, null);
+insert into notification_outbox (key, channel, template, recipient_staff_id, payload, attempts, send_after) values
+  ('CL2:doc:' || :'leg_a', 'push', 'CL2', :'legacy', '{}', 1, now() + interval '5 minutes'),
+  ('CL2:doc:' || :'leg_b', 'push', 'CL2', :'legacy', '{}', 0, now());
+
+set local role authenticated;
+select lives_ok(
+  format('select approve_completion_letter(%L, %L, %L)', :'other_new', '2026-08-15', '2028-01-31'),
+  'F: approving a second completion letter for a worker');
+reset role;
+select results_eq(
+  format($$ select id::text, review_status::text from compliance_docs
+             where staff_id = %L and doc_type = 'university_completion_letter' order by uploaded_at $$, :'other'),
+  format($$ values (%L, 'superseded'), (%L, 'verified') $$, :'other_cl', :'other_new'),
+  'F: supersedes the earlier approved one — one current completion letter');
+select ok(exists (select 1 from audit_log where action = 'completion_letter.superseded' and entity_id = :'other_cl'),
+  'F: and the evidence trail says so');
+
+set local role authenticated;
+create temporary table t_legacy on commit drop as
+select compliance_withdraw_completion_approval(:'leg_b', 'Course resumes 18/01/2027 — not completed') as r;
+reset role;
+select is((select count(*)::int from compliance_docs
+            where staff_id = :'legacy' and doc_type = 'university_completion_letter' and review_status = 'superseded'),
+  2, 'F: a worker approved twice is withdrawn in one go — both letters superseded');
+select results_eq(
+  $$ select (r->>'withdrawnCount')::int, r->>'termLetterId' from t_legacy $$,
+  $$ values (2, null::text) $$,
+  'F: the answer counts them, and says there is no term letter to fall back on');
+select is((select graduated_at from staff where id = :'legacy'), null::date,
+  'F: the graduation is undone');
+select results_eq(
+  format($$ select key from notification_outbox where key in (%L, %L) $$,
+         'CL2:doc:' || :'leg_a', 'CL2:doc:' || :'leg_b'),
+  format($$ values (%L) $$, 'CL2:doc:' || :'leg_a'),
+  'F: the unsent CL2 is dropped, the one the drain had claimed is left in flight');
+
+-- =====================================================================
+-- G · A correction lifts an expiry block, not a manual one; the same
+--     expiry leaves the ladder alone
+-- =====================================================================
+\set w_exp  'c9180000-0000-4000-8000-00000000001d'
+\set w_man  'c9180000-0000-4000-8000-00000000001e'
+\set w_same 'c9180000-0000-4000-8000-00000000001f'
+\set d_exp  'c9181000-0000-4000-8000-0000000000a1'
+\set d_man  'c9181000-0000-4000-8000-0000000000a2'
+\set d_same 'c9181000-0000-4000-8000-0000000000a3'
+
+insert into staff (id, first_name, last_name, email, phone, dob, status, block_kind, block_reason,
+                   rtw_branch, wtr_optout, term_dates) values
+  (:'w_exp',  'Exp',  'Ired', 'exp@918.test',  '+447700991804', date '2001-01-01', 'blocked', 'auto_document',
+   'Document expired: University Term Dates Letter', 'international_student', false,
+   array[daterange(current_date - 60, current_date)]),
+  (:'w_man',  'Man',  'Ual',  'man@918.test',  '+447700991805', date '2001-01-01', 'blocked', 'manual',
+   'No-show twice', 'international_student', false, array[daterange(current_date + 10, current_date + 40)]),
+  (:'w_same', 'Same', 'Day',  'same@918.test', '+447700991806', date '2001-01-01', 'compliant', null, null,
+   'international_student', false,
+   array[daterange(current_date + 10, current_date + 40), daterange(current_date + 100, current_date + 130)]);
+insert into compliance_docs (id, staff_id, doc_type, uploaded_at, review_status, file_path, term_dates,
+                             reviewed_by, reviewed_at) values
+  -- Its last printed day was yesterday: expired, and he was blocked for it.
+  (:'d_exp',  :'w_exp',  'university_term_dates_letter', now() - interval '90 days', 'verified',
+   'documents/918/exp.pdf', array[daterange(current_date - 60, current_date)], :'admin_uid', now() - interval '89 days'),
+  (:'d_man',  :'w_man',  'university_term_dates_letter', now() - interval '30 days', 'verified',
+   'documents/918/man.pdf', array[daterange(current_date + 10, current_date + 40)], :'admin_uid', now() - interval '29 days'),
+  (:'d_same', :'w_same', 'university_term_dates_letter', now() - interval '30 days', 'verified',
+   'documents/918/same.pdf',
+   array[daterange(current_date + 10, current_date + 40), daterange(current_date + 100, current_date + 130)],
+   :'admin_uid', now() - interval '29 days');
+insert into notification_outbox (key, channel, template, recipient_staff_id, payload, sent_at)
+values ('N1:doc:' || :'d_same', 'push', 'N1', :'w_same', '{}', now() - interval '1 day');
+
+set local role authenticated;
+select lives_ok(
+  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'d_exp',
+         array[daterange(current_date - 60, current_date + 200)], 'The letter runs to the summer'),
+  'G: correcting an expired letter''s dates to the ones it really shows');
+select lives_ok(
+  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'d_man',
+         array[daterange(current_date + 12, current_date + 40)], 'Holiday starts two days later'),
+  'G: correcting a manually blocked worker''s letter');
+select lives_ok(
+  format('select compliance_correct_term_dates(%L, %L::daterange[], %L)', :'d_same',
+         array[daterange(current_date + 12, current_date + 40), daterange(current_date + 100, current_date + 130)],
+         'First holiday starts two days later'),
+  'G: correcting a period that is not the last one');
+reset role;
+select results_eq(
+  format($$ select status::text, block_kind::text from staff where id = %L $$, :'w_exp'),
+  $$ values ('compliant', null::text) $$,
+  'G: the expiry block comes off through the re-check');
+select results_eq(
+  format($$ select status::text, block_kind::text from staff where id = %L $$, :'w_man'),
+  $$ values ('blocked', 'manual') $$,
+  'G: a manual block is left for a manager to lift');
+select ok(exists (select 1 from notification_outbox where key = 'N1:doc:' || :'d_same'),
+  'G: the same last day — the ladder''s receipts are left as they are');
 
 select * from finish();
 rollback;

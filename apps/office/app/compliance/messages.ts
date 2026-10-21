@@ -67,10 +67,6 @@ const MESSAGES: [RegExp, string][] = [
     'This letter is not verified, so there is nothing to withdraw or correct.',
   ],
   [
-    /^another_completion_letter_verified/,
-    'Another completion letter is also verified for this worker — refresh the page and check which one to withdraw.',
-  ],
-  [
     /^illegal_review_transition/,
     'A verified completion letter can only be withdrawn, not put back under review or rejected.',
   ],

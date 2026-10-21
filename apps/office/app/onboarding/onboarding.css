@@ -243,56 +243,12 @@
   border-color: var(--coral-line);
 }
 
-.period {
-  display: grid;
-  /* # · Period · From · → · To · Source · remove (candidate.html) */
-  grid-template-columns: 24px 1fr 150px 20px 150px 96px 60px;
-  gap: var(--sp-8);
-  align-items: center;
-  padding: var(--sp-8) var(--sp-10);
-  border: 1px solid var(--line);
-  background: var(--bg);
-  font-size: 12.5px;
-}
-.period + .period {
-  border-top: 0;
-}
-/* Seven fixed tracks are wider than a phone. The list scrolls sideways
-   rather than folding, so a period's two dates stay on one line (§1.2). */
-@media (max-width: 760px) {
-  .periods {
-    overflow-x: auto;
-  }
-  .period {
-    min-width: 560px;
-  }
-}
-.period.head {
-  background: transparent;
-  border: 0;
-  padding: 0 var(--sp-10) var(--sp-4);
-}
-.period .input {
-  height: 30px;
-  font-size: var(--fs-12);
-}
 /* Typed UK dates (UkDateField, ADR-0140) at the width the native date box
-   had: a period's two ends, a document's expiry, Right to work until. */
-.period .ukd {
-  min-width: 0;
-}
+   had: a document's expiry, Right to work until. The term letter's period
+   rows are compliance/term-dates.css (ADR-0178). */
 .ukd.rtw-until .input,
 .ukd.doc-expiry .input {
   width: 8.5rem;
-}
-.period .rm {
-  background: none;
-  border: 0;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--fs-11);
-  text-decoration: underline;
 }
 
 /* Compact toggle chips: names flow and wrap at their own width, so ~30 roles

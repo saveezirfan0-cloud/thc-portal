@@ -82,7 +82,7 @@ import { ukDay } from '../compliance/queue';
 import { periodsFromLetter, termLetterVerifyProblem } from '../compliance/termDates';
 import type { TermPeriod } from '../compliance/termDates';
 import { TermDatesEditor } from '../compliance/TermDatesEditor';
-import { VerifiedLetterActions, currentTermLetterId } from '../compliance/VerifiedLetterActions';
+import { VerifiedLetterActions, currentTermLetterOf } from '../compliance/VerifiedLetterActions';
 import {
   canAttachReport,
   canUploadCompletionLetter,
@@ -249,7 +249,7 @@ export function CandidateScreen({
     // Looking back at a finished phase never offers its actions again.
     readOnly: readOnly || past,
     canCorrectLetters,
-    currentTermLetter: currentTermLetterId(data.documents),
+    currentTermLetter: currentTermLetterOf(data.documents.filter((d) => !d.superseded)),
     qualificationsLocked: row.status === 'rejected',
     busy,
     staffId: row.id,
@@ -1287,7 +1287,7 @@ interface DocHandlers {
   /** ADR-0178: "Correct term dates" / "Withdraw approval" on a decided letter. */
   canCorrectLetters?: boolean;
   /** The current verified term letter — the only one whose dates are corrected. */
-  currentTermLetter?: string | null;
+  currentTermLetter?: CandidateDocument | null;
 }
 
 function docMeta(doc: CandidateDocument, niNumber: string | null, format?: TimeFormat): ReactNode {
