@@ -245,7 +245,7 @@ export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatu
 /**
  * A document's review state (`compliance_docs.review_status`, ADR-0183).
  * The database holds the same edges in `document_review_transition_allowed()`
- * (20261022150100) and refuses any other move of a verified completion
+ * (20261022155100) and refuses any other move of a verified completion
  * letter in `completion_letter_state_guard`; pgTAP 918 holds the edges.
  *
  *   pending → verified      Verify (§4.1), or a completion letter approved

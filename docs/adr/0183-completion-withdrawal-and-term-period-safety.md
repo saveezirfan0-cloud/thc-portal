@@ -7,10 +7,10 @@ graduate's pending term letter is superseded), ADR-0060 (the viewer writes nothi
 by:** THC, 21.10.2026 — the student in ADR-0178's example is already Staff, with *both* his term
 letter and his completion letter verified, and the course restarts on 18/01/2027
 
-`supabase/migrations/20261022150000_term_letter_periods_checked_on_verify.sql`,
-`20261022150100_withdraw_completion_approval.sql`,
-`20261022150200_one_current_completion_letter.sql`,
-`20261022150300_term_letter_periods_ladder_and_cap_notice.sql` · pgTAP `913`, `918` (and `892`
+`supabase/migrations/20261022155000_term_letter_periods_checked_on_verify.sql`,
+`20261022155100_withdraw_completion_approval.sql`,
+`20261022155200_one_current_completion_letter.sql`,
+`20261022155300_term_letter_periods_ladder_and_cap_notice.sql` · pgTAP `913`, `918` (and `892`
 follows) · `apps/office/app/compliance/VerifiedLetterActions.tsx`, `letterActions.ts`,
 `TermLetterOutcome.tsx`, `termDates.ts`, `termDatesData.ts` · ADR-0178's `ReviewDialogs.tsx`
 (Verify dialog), `_components/TermPeriods.tsx` (`EditTermPeriods`) and
@@ -66,8 +66,8 @@ the old one.
      all year." Both server actions refuse an empty list without it. (Not in the database: the
      RPCs keep their signatures, which ADR-0178's tests and the extractor's callers pin.)
    - **A period over a year is refused** (366 days, both ends counted): on screen, in the
-     actions, on the flip to verified (trigger, 20261022150000) and in
-     `set_term_letter_periods()` (20261022150300) — `term_dates_implausible`.
+     actions, on the flip to verified (trigger, 20261022155000) and in
+     `set_term_letter_periods()` (20261022155300) — `term_dates_implausible`.
    - **The expiry, live**: "Letter expires 17.01.2027 (last date on the letter)" or "(no dates
      on the letter — calendar-year fallback)", then "The worker will need to upload their next
      letter by then." Dates that have already run out keep Verify / Save shut.

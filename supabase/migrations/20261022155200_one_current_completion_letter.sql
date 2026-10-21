@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261022150200 · one current completion letter (ADR-0183)
+-- Migration 20261022155200 · one current completion letter (ADR-0183)
 --
 -- approve_completion_letter(), restated from its latest body
 -- (20261012110000) with ONE addition: approving a completion letter
@@ -74,7 +74,7 @@ begin
        and review_status in ('pending', 'rejected');
   end if;
 
-  -- 20261022150200 (ADR-0183): one current completion letter, as for any
+  -- 20261022155200 (ADR-0183): one current completion letter, as for any
   -- evidence — an earlier approved one is superseded (kept, read-only,
   -- audited as completion_letter.superseded), so a later Withdraw has one
   -- letter to withdraw, not two.
@@ -130,5 +130,5 @@ begin
 end $$;
 
 comment on function public.approve_completion_letter(uuid, date, date) is
-  'Completion letter requirement §2.2. The reviewer confirms the completion date and the visa expiry; the worker''s course_completion_date and graduated_at are written (the cap follows from RULE-20, from the completion date, never backdated) and right_to_work_until becomes the earlier of the two expiries. Once the term letter stops applying, a pending or rejected one is superseded (ADR-0112). An earlier verified completion letter of the same worker is superseded: one current letter (ADR-0183, 20261022150200). Queues CL2 with the new cap and effective date, or the visa_first variant when the right to work ends first (§7).';
+  'Completion letter requirement §2.2. The reviewer confirms the completion date and the visa expiry; the worker''s course_completion_date and graduated_at are written (the cap follows from RULE-20, from the completion date, never backdated) and right_to_work_until becomes the earlier of the two expiries. Once the term letter stops applying, a pending or rejected one is superseded (ADR-0112). An earlier verified completion letter of the same worker is superseded: one current letter (ADR-0183, 20261022155200). Queues CL2 with the new cap and effective date, or the visa_first variant when the right to work ends first (§7).';
 

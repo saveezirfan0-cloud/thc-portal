@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261022150300 · correcting a verified term letter's periods
+-- Migration 20261022155300 · correcting a verified term letter's periods
 --                            moves its reminders and says the new limit
 --                            once (ADR-0183, building on ADR-0178)
 --
@@ -17,10 +17,10 @@
 --       A rung the outbox drain has claimed (outbox_row_leased) is in flight:
 --       re-keyed, never deleted. The same last day touches no receipt.
 --   2 · N14 at once when the worker's band for this week changes
---       (cap_band_notify_now, 20261022150100): the same key, payload and
+--       (cap_band_notify_now, 20261022155100): the same key, payload and
 --       receipt as compliance_daily, so it is sent once.
 --   3 · A period longer than a year is refused (term_dates_implausible,
---       term_letter_periods_problem, 20261022150000), as on Verify.
+--       term_letter_periods_problem, 20261022155000), as on Verify.
 --   And an expiry block the old ranges caused comes off through the §4.3
 --   re-check (unblock_if_compliant) — never a manual one. The function
 --   still refuses to leave the letter expired, so this only ever lifts.
@@ -67,7 +67,7 @@ begin
   if exists (select 1 from unnest(v_ranges) r where isempty(r) or lower_inf(r) or upper_inf(r)) then
     raise exception 'term_dates_invalid' using errcode = '22023';
   end if;
-  -- 20261022150300: a period longer than a year is a typed year.
+  -- 20261022155300: a period longer than a year is a typed year.
   if term_letter_periods_problem(v_ranges) = 'term_dates_implausible' then
     raise exception 'term_dates_implausible: a holiday period on this letter runs for more than a year'
       using errcode = '22023';
@@ -87,7 +87,7 @@ begin
   update compliance_docs set term_dates = v_ranges where id = d.id;
   update staff set term_dates = v_ranges where id = s.id;
 
-  -- 20261022150300: the ladder follows the new expiry (see the header).
+  -- 20261022155300: the ladder follows the new expiry (see the header).
   if v_expires is distinct from v_before then
     with gone as (
       delete from notification_outbox
@@ -117,7 +117,7 @@ begin
             'ladderReset',   v_ladder,
             'actorName',     (select full_name from profiles where id = v_reviewer)));
 
-  -- 20261022150300: an expiry block the old ranges caused comes off through
+  -- 20261022155300: an expiry block the old ranges caused comes off through
   -- the §4.3 re-check; a manual block is a manager's to lift.
   if s.status = 'blocked' then
     v_lifted := unblock_if_compliant(s.id, v_today);

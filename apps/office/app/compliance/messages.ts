@@ -34,7 +34,7 @@ const MESSAGES: [RegExp, string][] = [
   [/^completion_date_required/, 'Confirm the course completion date.'],
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
-  // ADR-0183: a period over a year is a typed year (20261022150000/150300);
+  // ADR-0183: a period over a year is a typed year (20261022155000/155300);
   // Postgres refuses a backwards or unreadable daterange before any body runs.
   [
     /^term_dates_implausible/,

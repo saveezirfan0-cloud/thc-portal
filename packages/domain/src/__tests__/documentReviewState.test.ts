@@ -9,7 +9,7 @@ import {
 
 /**
  * The review state of a document (ADR-0183). The same edges as
- * document_review_transition_allowed() in 20261022150100 — pgTAP 918 asks
+ * document_review_transition_allowed() in 20261022155100 — pgTAP 918 asks
  * the database the cases below.
  */
 describe('document review state machine', () => {

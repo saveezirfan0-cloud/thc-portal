@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261022150100 · withdrawing a completion letter's approval
+-- Migration 20261022155100 · withdrawing a completion letter's approval
 --                            (ADR-0183, building on ADR-0178)
 --
 -- The case that asked for it: a student already on the staff, with BOTH
@@ -16,7 +16,7 @@
 -- 2 · cap_band_notify_now(): compliance_daily()'s N14 step for one worker,
 --     so an office correction tells the worker their new limit at once and
 --     the 05:00 run never repeats it. Also used by set_term_letter_periods
---     (20261022150300).
+--     (20261022155300).
 -- 3 · outbox_row_leased(): an unsent outbox row the drain has claimed is in
 --     flight and is never deleted from under it.
 -- 4 · compliance_withdraw_completion_approval(doc, reason): EVERY verified
@@ -220,7 +220,7 @@ begin
     raise exception 'not_reviewable: %', s.status using errcode = 'P0001';
   end if;
   -- EVERY verified completion letter of this worker goes,
-  -- not only the one pressed — approval keeps one current (20261022150200), but
+  -- not only the one pressed — approval keeps one current (20261022155200), but
   -- a worker approved twice before that carries two, and either alone still
   -- graduates them. Each fires completion_letter_audit
   -- (completion_letter.superseded, with the reason) and the state guard.

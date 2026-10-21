@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 918 · A staff member's verified letters corrected (ADR-0183 on
---       ADR-0178: 20261022150100–150300) — the case THC asked about, end
+--       ADR-0178: 20261022155100–155300) — the case THC asked about, end
 --       to end
 --
 -- Prabin is STAFF. His term letter was verified with no dates (the AI
@@ -204,7 +204,7 @@ set local role authenticated;
 select throws_like(
   format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
          array[daterange(current_date + 30, current_date + 30 + 400)]),
-  '%term_dates_implausible%', 'C: a period longer than a year is refused, as on Verify (20261022150300)');
+  '%term_dates_implausible%', 'C: a period longer than a year is refused, as on Verify (20261022155300)');
 select throws_like(
   format('select set_term_letter_periods(%L, %L::daterange[])', :'term',
          array[daterange(current_date - 60, current_date - 30)]),
@@ -305,7 +305,7 @@ insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_bra
                    term_dates, graduated_at, course_completion_date, right_to_work_until) values
   (:'legacy', 'Legacy', 'Two', 'legacy@918.test', '+447700991803', date '2001-01-01', 'compliant',
    'international_student', false, '{}', date '2026-09-01', date '2026-08-15', date '2028-01-31');
--- Approved twice before 20261022150200, and no term letter on file.
+-- Approved twice before 20261022155200, and no term letter on file.
 insert into compliance_docs (id, staff_id, doc_type, uploaded_at, review_status, file_path,
                              reviewed_by, reviewed_at, completion_date, confirmed_visa_expiry) values
   (:'leg_a', :'legacy', 'university_completion_letter', now() - interval '40 days', 'verified',

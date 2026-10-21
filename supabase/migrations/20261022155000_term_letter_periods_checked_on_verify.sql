@@ -1,10 +1,10 @@
 -- =====================================================================
--- Migration 20261022150000 · a term letter's holiday periods are checked
+-- Migration 20261022155000 · a term letter's holiday periods are checked
 --                            when it is verified (ADR-0183)
 --
 -- Since ADR-0178 the office types the holiday periods on a University
 -- Term Dates Letter at every Verify and corrects them afterwards
--- (set_term_letter_periods, which 20261022150300 holds to the same rule).
+-- (set_term_letter_periods, which 20261022155300 holds to the same rule).
 -- Those periods are
 -- what the weekly cap is calculated from (RULE-20) and the last of them is
 -- the letter's expiry (ADR-0103), so a typo is not cosmetic: 17/01/2072
