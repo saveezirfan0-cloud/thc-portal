@@ -36,13 +36,14 @@ test.describe.configure({ mode: 'serial' });
 
 const PASSWORD = 'Harbour-Lantern-4096';
 
-/** The five §2.5 branches, in the order the screen lists them. */
+/** The five §2.5 branches plus ADR-0182's Home Office check, in the order the screen lists them. */
 const BRANCHES = [
   'UK or Irish citizen',
   'EU / EEA — settled or pre-settled status',
   'Work visa',
   'International student',
   'Dependant or other visa',
+  'Home Office check — asylum or pending application',
 ];
 
 let candidate: Candidate | null = null;
@@ -72,7 +73,7 @@ test('a candidate lands on step 1 of 11, and no later step will open first (§10
   await expect(page.getByText('1/11 · Right to work')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Which describes you?' })).toBeVisible();
 
-  // The five branches, as radios, in the scope's order.
+  // The six branches, as radios, in the screen's order.
   const options = page.getByRole('radiogroup', { name: 'Right to work' }).getByRole('radio');
   await expect(options).toHaveCount(BRANCHES.length);
   for (const [i, title] of BRANCHES.entries()) {
