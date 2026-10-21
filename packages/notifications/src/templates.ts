@@ -121,6 +121,43 @@ const OFFICE_AND_PAYROLL = [
 const OC1_NO_MORE_SHIFTS =
   "Without clicking the link in Willo's email, actually taking the online interview and fully onboarding on the new Staff App, we will be unable to offer you any more shifts going forwards.";
 
+// ────────────────────────────────────────────────────────────────────────
+// DECLARATION REVIEW ADDITION (ADR-0180). `DR` codes, so none can collide
+// with an N- or E-number THC assigns to §8 later. DR1 is the office asking
+// for more detail on a pending Yes criminal declaration instead of
+// rejecting it: queued by compliance_request_declaration_details()
+// (20261022170100), key `DR1:declaration:<id>`, once per declaration (the
+// request closes it; the worker's answer is a new declaration). `{message}`
+// is what the office wrote for the worker — never the details they declared
+// and never the office's own review note. `link` is /onboarding for a
+// candidate, whose answer is on the paused onboarding screen, and
+// /documents/declare for a worker (declaration_update_link() in SQL).
+// Spread into TEMPLATES after N15.
+// ────────────────────────────────────────────────────────────────────────
+const DECLARATION_TEMPLATES = {
+  DR1: {
+    code: 'DR1',
+    channel: 'push',
+    title: 'More detail needed',
+    body: 'We need a bit more detail about your declaration — {message}',
+    trigger:
+      'The office asks for more details on a pending Yes criminal declaration instead of rejecting it (compliance_request_declaration_details). Not in §8: an addition to scope v1.6, ADR-0180',
+    timing: 'on the request, once per declaration',
+    deepLink: '/documents/declare',
+    deepLinkOptions: ['/documents/declare', '/onboarding'],
+    action: 'Update declaration',
+    // Tagged per declaration (`DR1:{declarationId}`): a request about a
+    // later, updated declaration is a notification of its own.
+    tag: 'DR1:{declarationId}',
+  },
+} as const satisfies Record<string, Template>;
+
+/**
+ * The declaration review addition (ADR-0180): DR1, the office asking for
+ * more detail on a criminal declaration. Not §8's.
+ */
+export const DECLARATION_CODES = ['DR1'] as const satisfies readonly TemplateCode[];
+
 export const TEMPLATES = {
   // ────────────────────────────────────────────────────────────────────────
   // PUSH — Staffing App, Web Push in the PWA (§8, §10.5). Device-level: every
@@ -416,6 +453,7 @@ export const TEMPLATES = {
       'On the manager verifying the declaration and the full compliance re-check passing (§4.3)',
     deepLink: '/radar',
   },
+  ...DECLARATION_TEMPLATES,
 
   // ────────────────────────────────────────────────────────────────────────
   // EMAIL — email survives only where the app does not exist yet (before

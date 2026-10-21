@@ -154,10 +154,15 @@ export function blockBanner(profile: {
  * A declaration's review state in words (§9.6). The enum is never printed:
  * nobody reads "superseded" as a decision.
  */
-export function reviewLabel(status: 'pending' | 'verified' | 'rejected' | 'superseded'): string {
+export function reviewLabel(
+  status: 'pending' | 'verified' | 'rejected' | 'superseded' | 'details_requested',
+): string {
   switch (status) {
     case 'pending':
       return 'Under review';
+    // ADR-0180: a declaration sent back to the worker for more details.
+    case 'details_requested':
+      return 'More details asked';
     case 'verified':
       return 'Verified';
     case 'rejected':
@@ -346,12 +351,19 @@ export function isActionable(status: ProfileRow['status']): boolean {
  * itself) the line still carries the stamp. An audit record, so UK time (§1.8).
  */
 export function reviewStamp(
-  status: 'pending' | 'verified' | 'rejected' | 'superseded',
+  status: 'pending' | 'verified' | 'rejected' | 'superseded' | 'details_requested',
   by: string | null,
   at: string,
   format?: TimeFormat,
 ): string {
-  const verb = status === 'verified' ? 'Verified' : status === 'rejected' ? 'Rejected' : 'Reviewed';
+  const verb =
+    status === 'verified'
+      ? 'Verified'
+      : status === 'rejected'
+        ? 'Rejected'
+        : status === 'details_requested'
+          ? 'More details asked'
+          : 'Reviewed';
   return `${verb}${by ? ` by ${by}` : ''} · ${formatUkStamp(at, format)}`;
 }
 

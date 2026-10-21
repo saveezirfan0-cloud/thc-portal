@@ -69,6 +69,8 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   N12: urgent,
   N14: normal,
   N15: normal,
+  // ADR-0180: the office asks for more detail on a criminal declaration.
+  DR1: normal,
   // Emails (§8).
   E1: normal,
   E2: normal,

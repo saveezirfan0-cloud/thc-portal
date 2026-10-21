@@ -84,6 +84,8 @@ export interface DocumentRow {
   rtw_no_time_limit: boolean;
   completion_date: string | null;
   awarding_institution: string | null;
+  /** A term letter's holiday ranges, half-open `daterange` literals (ADR-0183). */
+  term_dates?: string[] | null;
 }
 
 export interface QualificationRow {
@@ -175,10 +177,22 @@ export interface DeclarationRow {
   answer: boolean;
   details: string | null;
   conviction_date: string | null;
-  review_status: ReviewStatus;
+  /** ADR-0180: a declaration (never a document) may also be sent back for more details. */
+  review_status: ReviewStatus | 'details_requested';
   declared_at: string;
   reviewed_at: string | null;
   reviewed_by_name: string | null;
+  // ADR-0180 (staff_declarations_v, 20261022170100); optional so an older read still types.
+  /** Superseded by an update or a Reset to candidate: history, read-only. */
+  superseded?: boolean;
+  /** The office's internal review note — on a rejection, its reason. */
+  review_note?: string | null;
+  /** What the office asked the worker, when it asked for more details. */
+  worker_message?: string | null;
+  replaces_declaration_id?: string | null;
+  reversed_at?: string | null;
+  /** The reason the reversed rejection had. */
+  reversed_rejection_reason?: string | null;
 }
 
 export interface RoleOption {

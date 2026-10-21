@@ -7,6 +7,11 @@ import { explainDbError } from '../_lib/dbError';
  */
 const MESSAGES: [RegExp, string][] = [
   [/^not_authorised/, 'Only the office can review documents.'],
+  // ADR-0180: only named office users decide a criminal declaration.
+  [
+    /^not_criminal_records_reviewer/,
+    'Only office users allowed to review criminal records can decide this.',
+  ],
   [/^reason_required/, 'A rejection needs a reason — the worker is sent it.'],
   [/^not_pending: verified/, 'This has already been verified.'],
   [/^not_pending: rejected/, 'This has already been rejected. The worker re-uploads.'],
@@ -34,6 +39,26 @@ const MESSAGES: [RegExp, string][] = [
   [/^completion_date_required/, 'Confirm the course completion date.'],
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
+  // ADR-0183: a period over a year is a typed year (20261022155000/155300);
+  // Postgres refuses a backwards or unreadable daterange before any body runs.
+  [
+    /^term_dates_implausible/,
+    'A holiday period cannot run for more than a year — check the year of each date.',
+  ],
+  [
+    /range lower bound must be less than or equal to range upper bound/,
+    'A holiday period ends before it starts — check its dates.',
+  ],
+  [/malformed range literal/, 'A holiday period could not be read — enter both of its dates.'],
+  [/date\/time field value out of range/, 'That date is not a real calendar date.'],
+  // Withdrawing a completion letter's approval (ADR-0183).
+  [/^not_a_completion_letter/, 'Only a completion letter’s approval can be withdrawn.'],
+  [/^letter_not_verified/, 'This letter is not verified, so there is no approval to withdraw.'],
+  [/^note_too_long/, 'Keep the reason to 500 characters.'],
+  [
+    /^illegal_review_transition/,
+    'A verified completion letter can only be withdrawn, not put back under review or rejected.',
+  ],
   // set_term_letter_periods (ADR-0178): correcting a verified letter's periods.
   [
     /^term_letter_not_verified/,

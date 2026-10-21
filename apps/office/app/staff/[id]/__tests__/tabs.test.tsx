@@ -7,6 +7,10 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ShiftRow, ViolationRow } 
 // Outside Next there is no router and no server; neither is under test.
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('../../../onboarding/actions', () => ({ documentLink: vi.fn() }));
+// ADR-0180: the signed-in user may decide criminal declarations (the database's answer).
+vi.mock('../../../compliance/useCriminalRecordsReviewer', () => ({
+  useCriminalRecordsReviewer: () => true,
+}));
 vi.mock('../../../compliance/actions', () => ({
   verifyDeclaration: vi.fn(),
   rejectDeclaration: vi.fn(),

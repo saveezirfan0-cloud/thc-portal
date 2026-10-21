@@ -20,6 +20,7 @@ export * from './countries';
 export * from './quiz';
 export * from './onboarding';
 export * from './documents';
+export * from './declaration';
 export * from './password';
 export * from './availability';
 export * from './emergencyContact';

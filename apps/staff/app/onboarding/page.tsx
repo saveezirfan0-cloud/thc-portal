@@ -7,6 +7,7 @@ import { appLock } from '../profile/lock';
 import { signOwnPhoto } from '../profile/photos';
 import { HELP_EMAIL } from '../profile/types';
 import { ReviewHub } from './_components/ReviewHub';
+import { loadDeclarationUpdate } from '../documents/declaration';
 import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
 import { loadMyRtwChecks } from '../_lib/rtwCheck';
 import type { MyRtwChecks } from '../_lib/rtwCheck';
@@ -89,9 +90,11 @@ export default async function Page() {
   // with the office, read the share-code check alongside it rather than
   // after it. Never for a locked worker, whose screen shows no documents.
   const shareDoc = !terminal && phase === 'awaiting_review' ? shareCodeDoc(state) : null;
-  const [photoUrl, checks] = await Promise.all([
+  const [photoUrl, checks, declarationUpdate] = await Promise.all([
     signOwnPhoto(state.photoPath),
     shareDoc ? loadMyRtwChecks() : Promise.resolve<MyRtwChecks>({}),
+    // ADR-0180: what the office asked about the declaration, while paused.
+    !terminal && phase === 'awaiting_review' ? loadDeclarationUpdate() : Promise.resolve(null),
   ]);
   const worker = workerFor(state.firstName, state.lastName, photoUrl);
 
@@ -161,6 +164,8 @@ export default async function Page() {
           homeOfficeDoc={homeOfficeCheckDoc(state)}
           dob={state.dob}
           declaration={state.declaration}
+          declarationUpdate={declarationUpdate}
+          today={new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' })}
           completionLetter={completionLetterDoc(state)}
         />
       </WizardFrame>

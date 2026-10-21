@@ -6,7 +6,8 @@ import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from '../staff/data';
-import { periodToRange, periodsProblem } from './view-model';
+import { periodToRange } from './view-model';
+import { termDatesPayloadProblem } from '../compliance/termDates';
 import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
 import { explainDbError } from '../_lib/dbError';
@@ -396,6 +397,8 @@ export interface VerifyInput {
    */
   expiry?: string | null;
   periods?: Period[] | null;
+  /** The "this letter shows no holidays" tick — required with an empty list (ADR-0183). */
+  noHolidays?: boolean;
 }
 
 export async function verifyDocument(
@@ -405,7 +408,7 @@ export async function verifyDocument(
 ): Promise<ActionResult> {
   const periods = input.periods ?? null;
   if (periods) {
-    const problem = periodsProblem(periods);
+    const problem = termDatesPayloadProblem(periods, input.noHolidays);
     if (problem) return { ok: false, message: problem };
   }
   const args: RpcArguments = { p_doc: docId };

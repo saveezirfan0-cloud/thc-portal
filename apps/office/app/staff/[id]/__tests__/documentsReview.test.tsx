@@ -18,6 +18,10 @@ import type { RtwCheckRow } from '../../../_lib/rtwCheck';
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('../../../onboarding/actions', () => ({ documentLink: vi.fn() }));
+// ADR-0180: the signed-in user may decide criminal declarations (the database's answer).
+vi.mock('../../../compliance/useCriminalRecordsReviewer', () => ({
+  useCriminalRecordsReviewer: () => true,
+}));
 vi.mock('../../../_lib/rtwCheckActions', () => ({
   runRtwCheckAgain: vi.fn(),
   markRtwCheckReviewed: vi.fn(),

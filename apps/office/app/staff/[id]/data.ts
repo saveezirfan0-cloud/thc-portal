@@ -8,6 +8,7 @@ import { loadRtwChecks } from '../../_lib/rtwCheckData';
 import { loadPayFloorPence } from '../../_lib/payFloor';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { QueueRow } from '../../compliance/types';
+import { withStaffTermDates } from '../../compliance/termDatesData';
 import { readChangeRequests } from '../requests/data';
 import type {
   AvailabilityRow,
@@ -180,7 +181,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     supabase
       .from('staff_declarations_v')
       .select(
-        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name',
+        'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, reviewed_by_name, superseded, review_note, worker_message, replaces_declaration_id, reversed_at, reversed_rejection_reason',
       )
       .eq('staff_id', id)
       .order('declared_at')
@@ -288,7 +289,10 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     dobClaims: rtw.dobClaims,
     // A failed read must not take the whole profile down; the tab says why
     // there are no review buttons instead.
-    reviewQueue: reviewQueue.error ? [] : (reviewQueue.data ?? []),
+    // ADR-0183: a term letter's Verify says which holiday dates it replaces.
+    reviewQueue: reviewQueue.error
+      ? []
+      : withStaffTermDates(reviewQueue.data ?? [], () => profile.data?.term_dates ?? null),
     reviewQueueProblem: readProblem(reviewQueue.error),
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],

@@ -79,7 +79,12 @@ export interface OnboardingState {
     tutorialAt: string | null;
   };
   documents: UploadedDoc[];
-  declaration: { answer: boolean; status: DocStatus; declaredAt: string } | null;
+  /** ADR-0180: a declaration may also be sent back for more details. */
+  declaration: {
+    answer: boolean;
+    status: DocStatus | 'details_requested';
+    declaredAt: string;
+  } | null;
   quiz: { attemptNo: number; percent: number; passed: boolean; correct: number; total: number }[];
   hmrc: (HmrcAnswers & { studentLoan: StudentLoanPlan; postgraduateLoan: boolean }) | null;
   references: Referee[];
@@ -155,7 +160,7 @@ export function mapOnboardingState(raw: unknown): OnboardingState | null {
     declaration: decl
       ? {
           answer: bool(decl['answer']),
-          status: decl['status'] as DocStatus,
+          status: decl['status'] as DocStatus | 'details_requested',
           declaredAt: String(decl['declaredAt'] ?? ''),
         }
       : null,

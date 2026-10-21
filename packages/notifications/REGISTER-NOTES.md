@@ -341,3 +341,9 @@ E-number THC assigns to §8 later. They sit in `CLIENT_PORTAL_CODES`; each
 
 CP2 and CP3 are held as unconfigured (no attempt spent) while `CLIENT_PORTAL_URL`
 is unset on `notify-drain` (docs/12), because their button would have no link.
+
+## Declaration review addition (ADR-0180)
+
+| Code | Trigger | What it says | Why |
+| --- | --- | --- | --- |
+| DR1 | The office presses **Ask for more details** on a pending Yes criminal declaration (`compliance_request_declaration_details`, key `DR1:declaration:<id>`) | title "More detail needed", body `We need a bit more detail about your declaration — {message}`, button **Update declaration**, landing on `/onboarding` for a candidate and `/documents/declare` for a worker (`declaration_update_link()`) | §8 has no send for a request: before ADR-0180 the only way to ask was Reject (N8). `{message}` is what the office wrote for the worker — never the declared details and never the internal review note. It can show on a lock screen, which the office's dialog says. **Confirm the wording.** Not sent for an update the worker makes; a compliant worker's update sends E9, as any declaration from the app does |

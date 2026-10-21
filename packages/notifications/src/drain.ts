@@ -332,6 +332,7 @@ async function sendEmail(
       text: message.body,
       html: message.html,
       replyTo: sender.replyTo,
+      ...(document?.bcc && document.bcc.length > 0 ? { bcc: document.bcc } : {}),
       ...(attachments.length > 0 ? { attachments } : {}),
     },
     apiKey,

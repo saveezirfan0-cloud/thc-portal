@@ -123,6 +123,52 @@ describe('term letter holiday periods (ADR-0178)', () => {
     expect(result.message).toMatch(/expires 25\.04\.2027/);
   });
 
+  it('ADR-0183: no periods at all needs the no-holidays tick, at Verify and after', async () => {
+    expect(await verifyDocument('t1', { termPeriods: [] })).toEqual({
+      ok: false,
+      message: 'Tick to confirm the letter shows no holidays, or add the periods it shows.',
+    });
+    expect((await setTermLetterPeriods('t2', [])).ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({ data: {}, error: null });
+    await verifyDocument('t1', { termPeriods: [], noHolidays: true });
+    expect(rpc).toHaveBeenLastCalledWith('compliance_verify_document', {
+      p_doc: 't1',
+      p_term_dates: [],
+    });
+    await setTermLetterPeriods('t2', [], true);
+    expect(rpc).toHaveBeenLastCalledWith('set_term_letter_periods', {
+      p_doc: 't2',
+      p_term_dates: [],
+    });
+  });
+
+  it('ADR-0183: a period over a year is refused before the database, and in words after', async () => {
+    expect(await setTermLetterPeriods('t2', [{ from: '2026-08-16', to: '2072-01-17' }])).toEqual({
+      ok: false,
+      message: 'Period 1 runs for more than a year — check the year of each date.',
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({
+      data: null,
+      error: {
+        message:
+          'term_dates_implausible: a holiday period on this letter runs for more than a year',
+      },
+    });
+    expect(
+      (await verifyDocument('t1', { termPeriods: [{ from: '2026-08-16', to: '2027-01-17' }] }))
+        .message,
+    ).toBe('A holiday period cannot run for more than a year — check the year of each date.');
+  });
+
+  it('ADR-0183: says when a correction lifted an expiry block', async () => {
+    rpc.mockResolvedValue({ data: { expiresOn: '2027-01-17', unblocked: true }, error: null });
+    expect(
+      (await setTermLetterPeriods('t2', [{ from: '2026-08-16', to: '2027-01-17' }])).message,
+    ).toMatch(/expires 17\.01\.2027\. The expiry block is lifted/);
+  });
+
   it('says in words when the periods would leave the letter expired', async () => {
     rpc.mockResolvedValue({
       data: null,

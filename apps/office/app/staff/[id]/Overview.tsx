@@ -77,6 +77,7 @@ export function Overview({
   showPayRate = false,
   canEditPayRate = false,
   termLetterId = null,
+  termLetterUploadedAt = null,
   canEditTermPeriods = false,
 }: {
   profile: ProfileRow;
@@ -125,6 +126,8 @@ export function Overview({
   canEditPayRate?: boolean;
   /** ADR-0178: the worker's verified University Term Dates Letter, if any. */
   termLetterId?: string | null;
+  /** ADR-0183: its upload instant — the calendar-year fallback expiry counts from it. */
+  termLetterUploadedAt?: string | null;
   /** ADR-0178: any office login that may write corrects its holiday periods. */
   canEditTermPeriods?: boolean;
 }) {
@@ -423,6 +426,7 @@ export function Overview({
                 ranges={profile.term_dates}
                 allowed={canEditTermPeriods && !profile.removed}
                 name={profile.display_name}
+                uploadedAt={termLetterUploadedAt ?? new Date().toISOString()}
               />
             ) : null}
             <Pill>read-only · calculated</Pill>

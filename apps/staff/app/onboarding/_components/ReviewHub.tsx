@@ -15,6 +15,8 @@ import type { DocStatus, RequirementRow, UploadedDoc } from '../state';
 import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
 import { ShareCodeSheet } from './ShareCodeSheet';
+import { UpdateDeclarationForm } from '../../documents/_components/UpdateDeclarationForm';
+import type { DeclarationUpdate } from '../../documents/declarationUpdate';
 
 /**
  * After "Submit documents" — wireframes/staff/onboarding-3.html, "Documents
@@ -44,6 +46,12 @@ const STATUS_PILL: Record<
   superseded: { tone: 'neutral', label: 'Replaced' },
 };
 
+/** ADR-0180: the declaration has one more state than a document. */
+const DECLARATION_PILL: Record<
+  DocStatus | 'details_requested',
+  { tone: 'amber' | 'green' | 'coral' | 'neutral'; label: string }
+> = { ...STATUS_PILL, details_requested: { tone: 'amber', label: 'More detail needed' } };
+
 function fmtDay(iso: string | null): string {
   if (!iso) return '';
   return formatDateIn(new Date(iso), UK_ZONE);
@@ -70,6 +78,8 @@ export function ReviewHub({
   homeOfficeDoc = null,
   dob,
   declaration,
+  declarationUpdate = null,
+  today,
   completionLetter,
 }: {
   rows: RequirementRow[];
@@ -82,7 +92,20 @@ export function ReviewHub({
    */
   homeOfficeDoc?: UploadedDoc | null;
   dob: string | null;
-  declaration: { answer: boolean; status: DocStatus; declaredAt: string } | null;
+  declaration: {
+    answer: boolean;
+    status: DocStatus | 'details_requested';
+    declaredAt: string;
+  } | null;
+  /**
+   * ADR-0180 (`my_declaration_update()`): the office sent the declaration back
+   * for more details, or rejected it — and whether the candidate may answer.
+   * When they may, the update form is the first thing on this screen, which
+   * is where N8 and DR1 land.
+   */
+  declarationUpdate?: DeclarationUpdate | null;
+  /** The UK day, for the form's date field. */
+  today?: string;
   /** `completionLetterDoc()`: undefined hides the optional row (not a Student visa). */
   completionLetter?: UploadedDoc | null;
 }) {
@@ -92,10 +115,16 @@ export function ReviewHub({
   const shareState =
     shareDoc?.status === 'pending' ? rtwCheckWorkerState(shareCheck?.status) : null;
   const homeOfficeRejected = homeOfficeDoc?.status === 'rejected';
+  const answering =
+    declarationUpdate?.canUpdate &&
+    (declarationUpdate.status === 'details_requested' || declarationUpdate.status === 'rejected')
+      ? { ...declarationUpdate, status: declarationUpdate.status }
+      : null;
   const rejected =
     rows.some((r) => r.doc?.status === 'rejected') ||
     shareRejected ||
-    declaration?.status === 'rejected';
+    declaration?.status === 'rejected' ||
+    declaration?.status === 'details_requested';
 
   return (
     <>
@@ -110,6 +139,16 @@ export function ReviewHub({
           and we’ll notify you. Steps 5–11 unlock once every document is verified.
         </Alert>
       )}
+
+      {answering ? (
+        <UpdateDeclarationForm
+          status={answering.status}
+          message={answering.message}
+          pausesShifts={false}
+          today={today ?? new Date().toISOString().slice(0, 10)}
+          after="/onboarding"
+        />
+      ) : null}
 
       <div className="mlist wiz-list">
         {rows.map(({ requirement, doc, viaCompletionLetter }) => {
@@ -215,7 +254,13 @@ export function ReviewHub({
         ) : null}
         {declaration ? (
           <div
-            className={`docrow ${declaration.status === 'verified' ? 'verified' : declaration.status}`}
+            className={`docrow ${
+              declaration.status === 'verified'
+                ? 'verified'
+                : declaration.status === 'details_requested'
+                  ? 'rejected'
+                  : declaration.status
+            }`}
           >
             <span className="ico">{declaration.status === 'verified' ? '✓' : '…'}</span>
             <div>
@@ -224,13 +269,19 @@ export function ReviewHub({
                 {declaration.answer
                   ? declaration.status === 'verified'
                     ? 'Reviewed and verified by the office'
-                    : 'Answered “Yes” · with the office for review'
+                    : declaration.status === 'details_requested'
+                      ? 'The office needs more detail — update it above'
+                      : declaration.status === 'rejected'
+                        ? answering
+                          ? 'Not accepted as it was — update it above'
+                          : 'Not accepted — the office will be in touch'
+                        : 'Answered “Yes” · with the office for review'
                   : `Answered “No” · verified automatically ${fmtDay(declaration.declaredAt)}`}
               </div>
             </div>
             <div className="right">
-              <Pill tone={STATUS_PILL[declaration.status].tone}>
-                {STATUS_PILL[declaration.status].label}
+              <Pill tone={DECLARATION_PILL[declaration.status].tone}>
+                {DECLARATION_PILL[declaration.status].label}
               </Pill>
             </div>
           </div>

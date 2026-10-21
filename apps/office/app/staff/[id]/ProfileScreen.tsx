@@ -142,6 +142,14 @@ export function ProfileScreen({
   bare?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
+  // The current verified term letter (ADR-0178, ADR-0183): the newest
+  // verified one — documents arrive newest first.
+  const currentTermLetter = data.documents.find(
+    (d) =>
+      d.doc_type === 'university_term_dates_letter' &&
+      d.review_status === 'verified' &&
+      !d.superseded,
+  );
   const [url, setUrl] = useListQuery(QUERY);
   const tab = oneOf(url.tab, TABS, 'overview');
   const setTab = (next: Tab) => setUrl({ tab: next });
@@ -522,14 +530,8 @@ export function ProfileScreen({
             {...(data.payFloorPence ? { payFloorPence: data.payFloorPence } : {})}
             showPayRate={showPayRate}
             canEditPayRate={canEditPayRate}
-            termLetterId={
-              data.documents.find(
-                (d) =>
-                  d.doc_type === 'university_term_dates_letter' &&
-                  d.review_status === 'verified' &&
-                  !d.superseded,
-              )?.id ?? null
-            }
+            termLetterId={currentTermLetter?.id ?? null}
+            termLetterUploadedAt={currentTermLetter?.uploaded_at ?? null}
             canEditTermPeriods={canEditTermPeriods}
           />
         ) : null}
@@ -550,6 +552,7 @@ export function ProfileScreen({
             dobClaims={data.dobClaims ?? []}
             reviewQueue={data.reviewQueue}
             reviewQueueProblem={data.reviewQueueProblem}
+            canWithdrawApproval={canEditTermPeriods}
           />
         ) : null}
         {tab === 'qualification' ? (

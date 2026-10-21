@@ -68,6 +68,9 @@ const STAFF_CODES: Readonly<Record<string, string>> = {
   unknown_client: 'That client no longer exists. Refresh the page.',
   reason_required: 'A reason is required.',
   not_blocked: 'This worker is not blocked — refresh the page.',
+  // ADR-0180: a rejected criminal declaration's hold is a reviewer's to lift.
+  criminal_records_reviewer_only:
+    'Only office users allowed to review criminal records can lift this — use Reverse rejection.',
   not_resettable: 'Reset to candidate is only possible on a blocked, rejected or inactive record.',
   gdpr_login_not_disabled:
     'The worker’s login could not be switched off, so nothing was removed. Try again, or ask a developer to check the account.',

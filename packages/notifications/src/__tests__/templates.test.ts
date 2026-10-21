@@ -4,6 +4,7 @@ import {
   CHASER_CODES,
   CLIENT_PORTAL_CODES,
   CLIENT_REQUIREMENT_CODES,
+  DECLARATION_CODES,
   MESSAGE_CODES,
   OC1_INTERVIEW_LINK_BLOCK,
   EXTENSION_CODES,
@@ -86,6 +87,9 @@ const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
  */
 const CLIENT_PORTAL_EMAIL_CODES = ['CP1', 'CP2', 'CP3'];
 
+/** The declaration review addition (ADR-0180): the office asks for more detail. */
+const DECLARATION_PUSH_CODES = ['DR1'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -112,6 +116,7 @@ describe('notification register (§8)', () => {
         ...CLIENT_REQUIREMENT_PUSH_CODES,
         ...CLIENT_REQUIREMENT_EMAIL_CODES,
         ...CLIENT_PORTAL_EMAIL_CODES,
+        ...DECLARATION_PUSH_CODES,
       ].sort(),
     );
   });
@@ -174,6 +179,8 @@ describe('notification register (§8)', () => {
       ...CLIENT_REQUIREMENT_EMAIL_CODES,
     ]);
     expect([...CLIENT_PORTAL_CODES]).toEqual(CLIENT_PORTAL_EMAIL_CODES);
+    // ADR-0180: the office asks for more detail on a criminal declaration.
+    expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
     const union = [
       ...SCOPE_CODES,
       ...REQUIREMENT_CODES,
@@ -184,6 +191,7 @@ describe('notification register (§8)', () => {
       ...INVITE_CODES,
       ...CLIENT_REQUIREMENT_CODES,
       ...CLIENT_PORTAL_CODES,
+      ...DECLARATION_CODES,
     ];
     // Disjoint: no code is counted in two lists.
     expect(new Set(union).size).toBe(union.length);
@@ -224,14 +232,31 @@ describe('notification register (§8)', () => {
     }
   });
 
-  it('gives N8, and only N8, the Re-upload button §8 names, opening /documents', () => {
+  it('gives N8, and of §8 only N8, the Re-upload button §8 names, opening /documents', () => {
     // §2.3 / §2.6 / §8: "Document rejected — [reason]" + a Re-upload button.
-    // No other row of the register names a button on the push itself —
-    // N6's "I'm ready" and N7's "Confirm today" live on the /shifts card.
+    // No other row of §8 names a button on the push itself — N6's "I'm
+    // ready" and N7's "Confirm today" live on the /shifts card. DR1
+    // (ADR-0180) is the one addition with a button: the same shape as N8,
+    // asking the worker to answer the office's request.
     expect(template('N8').action).toBe('Re-upload');
     expect(template('N8').deepLink).toBe('/documents');
     const withButton = entries.filter(([, v]) => v.action).map(([k]) => k);
-    expect(withButton).toEqual(['N8']);
+    expect(withButton.sort()).toEqual(['DR1', 'N8']);
+  });
+
+  it('sends DR1 with the office message only, landing where the worker can answer', () => {
+    const dr1 = template('DR1');
+    expect(dr1.channel).toBe('push');
+    expect(dr1.action).toBe('Update declaration');
+    expect(dr1.deepLinkOptions).toEqual(['/documents/declare', '/onboarding']);
+    expect(render(body('DR1'), { message: 'Please tell us the date and the sentence.' })).toBe(
+      'We need a bit more detail about your declaration — Please tell us the date and the sentence.',
+    );
+    // The office's message is the only placeholder: the declared details
+    // and the review note have no slot to land in.
+    expect([...body('DR1').matchAll(/\{(\w+)\}/g)].map((m) => m[1])).toEqual(['message']);
+    expect(render(dr1.tag!, { declarationId: 'd-1' })).toBe('DR1:d-1');
+    expect(outboxKey('DR1', 'declaration', 'd-1')).toBe('DR1:declaration:d-1');
   });
 
   it('marks mandatory exactly the sends §8 calls mandatory', () => {
@@ -402,6 +427,7 @@ describe('§8 copy is verbatim', () => {
       ...INVITE_CODES,
       ...CLIENT_REQUIREMENT_CODES,
       ...CLIENT_PORTAL_CODES,
+      ...DECLARATION_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),

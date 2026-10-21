@@ -23,6 +23,11 @@ export interface AccountRow {
   disabled: boolean;
   /** A verified two-step factor (ADR-0057), which an owner can reset (ADR-0060). */
   two_step: boolean;
+  /**
+   * ADR-0180: named to decide criminal declarations. Not a column of
+   * admin_accounts() — merged in from admin_criminal_records_reviewers().
+   */
+  reviews_criminal_records?: boolean;
 }
 
 export interface UsersPageData {
@@ -44,7 +49,7 @@ export async function loadUsers(): Promise<UsersPageData> {
     };
   }
   const supabase = createClient(await cookies()) as unknown as SupabaseClient;
-  const [{ data: auth }, accounts, clients] = await Promise.all([
+  const [{ data: auth }, accounts, clients, reviewers] = await Promise.all([
     // Display only (it keeps the manager from switching themselves off); the
     // database refuses it regardless. The token was verified by the middleware.
     supabase.auth.getClaims(),
@@ -54,9 +59,17 @@ export async function loadUsers(): Promise<UsersPageData> {
       .select('id, name')
       .order('name')
       .returns<{ id: string; name: string }[]>(),
+    // ADR-0180: who may decide criminal declarations. A failed read shows nobody.
+    supabase.rpc('admin_criminal_records_reviewers'),
   ]);
+  const named = new Set(
+    Array.isArray(reviewers.data) ? (reviewers.data as unknown[]).map(String) : [],
+  );
   return {
-    accounts: (accounts.data ?? []) as AccountRow[],
+    accounts: ((accounts.data ?? []) as AccountRow[]).map((account) => ({
+      ...account,
+      reviews_criminal_records: named.has(account.id),
+    })),
     clients: clients.data ?? [],
     selfId: auth?.claims?.sub ?? null,
     problem: readProblem(accounts.error ?? clients.error),
