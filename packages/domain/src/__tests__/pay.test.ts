@@ -7,6 +7,7 @@ import {
   checkOutDecision,
   effectiveEnd,
   effectiveStart,
+  isLateCheckOut,
   isNoCheckOut,
   pay,
   payableMinutes,
@@ -170,10 +171,82 @@ describe('the pay window itself (RULE-01)', () => {
     expect(effectiveStart(shift, at(45))).toEqual(at(45));
   });
 
-  it('never runs the paid clock past the scheduled end', () => {
+  it('stops the paid clock at the scheduled end inside the 15-minute check-out grace', () => {
     expect(effectiveEnd(shift, at(481))).toEqual(shift.endsAt);
-    expect(effectiveEnd(shift, at(660))).toEqual(shift.endsAt);
+    expect(effectiveEnd(shift, at(495))).toEqual(shift.endsAt);
     expect(effectiveEnd(shift, at(420))).toEqual(at(420));
+  });
+
+  it('runs it to the actual finish more than 15 minutes past the end (ADR-0184)', () => {
+    expect(effectiveEnd(shift, at(496))).toEqual(at(496));
+    expect(effectiveEnd(shift, at(660))).toEqual(at(660));
+    expect(isLateCheckOut(shift, at(495))).toBe(false);
+    expect(isLateCheckOut(shift, at(496))).toBe(true);
+  });
+});
+
+/**
+ * ADR-0184, THC 21.10.2026, in THC's own times: a 16:00 finish. "The 15
+ * minute period between 16:00 and 16:15 (pay and charge is to 16:00 is
+ * correct)"; "for the sign out between 16:15 and 20:00 we need to be able
+ * to pay and charge for the time the staff actually finished their shift."
+ */
+describe('ADR-0184 · a sign-out past end+15 is paid to the actual finish', () => {
+  const start = new Date('2026-10-21T11:00:00Z'); // 12:00 UK (BST)
+  const end = new Date('2026-10-21T15:00:00Z'); // 16:00 UK
+  const shift = { startsAt: start, endsAt: end };
+  const uk = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return new Date(Date.UTC(2026, 9, 21, h! - 1, m!));
+  };
+  const settle = (out: string, extra: Partial<Parameters<typeof payableMinutes>[0]> = {}) =>
+    payableMinutes({ shift, checkInAt: start, checkOutAt: uk(out), ...extra });
+
+  it('16:10 and 16:15 are paid and charged to 16:00', () => {
+    expect(settle('16:10')).toMatchObject({
+      payableMin: 240,
+      overrunMin: 0,
+      lateCheckOutFlag: false,
+    });
+    expect(settle('16:15')).toMatchObject({
+      payableMin: 240,
+      overrunMin: 0,
+      lateCheckOutFlag: false,
+    });
+  });
+
+  it('17:15 is paid and charged to 17:15, the 75 minutes past 16:00 being the overrun', () => {
+    expect(settle('17:15')).toMatchObject({
+      status: 'settled',
+      payableMin: 315,
+      workedMin: 315,
+      overrunMin: 75,
+      lateCheckOutFlag: true,
+    });
+  });
+
+  it('20:00 is paid to 20:00', () => {
+    expect(settle('20:00')).toMatchObject({ payableMin: 480, overrunMin: 240 });
+  });
+
+  it('a manager-entered finish of 18:00 resolving a No check-out is paid to 18:00', () => {
+    expect(settle('18:00', { noCheckOut: 'resolved' })).toMatchObject({
+      payableMin: 360,
+      overrunMin: 120,
+    });
+  });
+
+  it('unpaid breaks come off the main part, so the overrun line stays the clock past 16:00', () => {
+    const r = settle('17:15', { unpaidBreakMin: 30 });
+    expect(r).toMatchObject({ payableMin: 285, overrunMin: 75 });
+    expect(r.payableMin! - r.overrunMin!).toBe(210);
+  });
+
+  it('pays the same hourly rate on the overrun: one figure, holiday broken out', () => {
+    const r = settle('17:15');
+    const money = pay(r.payableMin!, 1400);
+    expect(money.basePence).toBe(Math.round((315 / 60) * 1400));
+    expect(money.holidayPence).toBe(Math.round(money.basePence * HOLIDAY_RATE));
   });
 });
 

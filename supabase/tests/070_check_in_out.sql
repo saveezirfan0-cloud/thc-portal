@@ -305,8 +305,8 @@ select is(
 );
 select is(
   (select (pay->>'payableMin')::int from payable_shifts_v where booking_id = :'book_ontime'),
-  8 * 60,
-  'RULE-01 a late check-out is still paid only to the scheduled end'
+  8 * 60 + 45,
+  'RULE-01 / ADR-0184 a check-out more than 15 minutes late is paid to the actual finish'
 );
 select is(
   check_out(:'book_ontime', 51.5000, -0.1000)->>'decision',
