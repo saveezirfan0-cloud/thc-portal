@@ -298,7 +298,7 @@ export interface ApplicationValues {
   firstName: string;
   /**
    * Optional. Stored with the first name as the one `given names` value
-   * (ADR-0187), so it is joined by `givenNames()` before it is sent.
+   * (ADR-0189), so it is joined by `givenNames()` before it is sent.
    */
   middleName: string;
   lastName: string;
@@ -337,7 +337,7 @@ export function toE164(dialCode: string, mobile: string): string {
 }
 
 /**
- * What each name field says when `nameFault()` refuses it (ADR-0187). The
+ * What each name field says when `nameFault()` refuses it (ADR-0189). The
  * database words the same four reasons for the two things it can be asked
  * about, the first-and-middle names and the surname; these are the form's,
  * one to a field so the message names the thing to fix.
@@ -375,7 +375,7 @@ const NAME_COPY: Record<'firstName' | 'middleName' | 'lastName', Record<NameFaul
 export function validate(values: ApplicationValues, today: Date = todayInUk()): FieldErrors {
   const errors: FieldErrors = {};
 
-  // ADR-0187: the name as printed on the passport, never an initial. The
+  // ADR-0189: the name as printed on the passport, never an initial. The
   // same rule runs again in the server action and, as name_fault(), in
   // submit_application().
   const firstFault = nameFault(values.firstName);

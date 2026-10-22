@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * apply() and the name as printed on the passport (ADR-0187).
+ * apply() and the name as printed on the passport (ADR-0189).
  *
  *   - the server action is the second gate: a form edited to send "M." as the
  *     surname never reaches the database;

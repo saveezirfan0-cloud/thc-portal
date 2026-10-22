@@ -67,7 +67,7 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
-/* A refused reminder (ADR-0187), said beside the row it was for. */
+/* A refused reminder (ADR-0188), said beside the row it was for. */
 .monitor-tbl .nudge-err {
   color: var(--coral-ink);
   max-width: 22rem;

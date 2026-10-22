@@ -6,7 +6,7 @@
  *   emergencyContact.vectors.json  → emergency_contact_vectors.psql (ADR-0044)
  *   changeRequest.vectors.json     → change_request_vectors.psql    (ADR-0045)
  *   shiftOffer.vectors.json        → shift_offer_vectors.psql       (ADR-0046)
- *   legalName.vectors.json         → legal_name_vectors.psql        (ADR-0187)
+ *   legalName.vectors.json         → legal_name_vectors.psql        (ADR-0189)
  *
  * The vectors are the contract between packages/domain and the Postgres
  * functions, triggers and CHECKs that repeat the same rules (pay.ts and
@@ -434,7 +434,7 @@ export function renderShiftOffer(v) {
 
 export function renderLegalName(v) {
   const out = header('legalName.vectors.json', 'supabase/tests/120_apply.sql', [
-    'ADR-0187: name_fault() against the cases nameFault() is held to. `text` is',
+    'ADR-0189: name_fault() against the cases nameFault() is held to. `text` is',
     'what a candidate typed; `fault` is the reason it is not a whole name, or',
     'null. `optional` is the middle-name field, where an empty value is fine.',
   ]);

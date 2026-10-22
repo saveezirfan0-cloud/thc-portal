@@ -1,5 +1,5 @@
 -- =====================================================================
--- ADR-0187 · The office can push a worker to check in or out (§9.5, §8 N9/N9b)
+-- ADR-0188 · The office can push a worker to check in or out (§9.5, §8 N9/N9b)
 --
 -- The Check In / Out monitor has shown for months who is late and who has
 -- not signed out, and the only thing that has ever pushed a worker is the
@@ -142,7 +142,7 @@ begin
 end $$;
 
 comment on function public.nudge_check_in_out(uuid) is
-  'ADR-0187: the office pushes one worker to check in or out from the Check In / Out monitor, with the register''s own copy — N9 "Time to check in" (Due / Not confirmed today / Not checked in, from 30 min before the start), N9 "Don''t forget to check out" (on shift, last 30 min) or N9b (on shift past the end). Admin + office_can(''write''). Refuses with no_push_device, switched_off, sent_recently (5 min), check_in_not_open, check_out_not_due, shift_ended, nothing_to_send. Own key family ''<code>:manual:booking:…'', so it never uses up the clock''s once-only send. Audited as booking.check_in_out_nudged.';
+  'ADR-0188: the office pushes one worker to check in or out from the Check In / Out monitor, with the register''s own copy — N9 "Time to check in" (Due / Not confirmed today / Not checked in, from 30 min before the start), N9 "Don''t forget to check out" (on shift, last 30 min) or N9b (on shift past the end). Admin + office_can(''write''). Refuses with no_push_device, switched_off, sent_recently (5 min), check_in_not_open, check_out_not_due, shift_ended, nothing_to_send. Own key family ''<code>:manual:booking:…'', so it never uses up the clock''s once-only send. Audited as booking.check_in_out_nudged.';
 
 revoke execute on function public.nudge_check_in_out(uuid) from public, anon;
 grant execute on function public.nudge_check_in_out(uuid) to authenticated;
