@@ -1,10 +1,10 @@
-# ADR-0187 · The office can push a worker to check in or out from the Check In / Out monitor
+# ADR-0188 · The office can push a worker to check in or out from the Check In / Out monitor
 
 **Status:** Accepted · 23.10.2026 · **Adds to:** §9.5 (the live monitor), §8 N9 / N9b · **Builds on:**
 ADR-0083 (notification switches), ADR-0158 (send priority), ADR-0184 (the monitor's red flags) · **Asked
 by:** the office, 23.10.2026 — "can we push notify staff on Check In / Out"
 
-`supabase/migrations/20261023130000_nudge_check_in_out.sql` · pgTAP `924`, `892` ·
+`supabase/migrations/20261023140000_nudge_check_in_out.sql` · pgTAP `924`, `892` ·
 `apps/office/app/checkin/` (`status.ts` `nudgeKind`, `MonitorTable.tsx`, `MonitorScreen.tsx`,
 `actions.ts`, `useNow.ts`) · `wireframes/backoffice/checkin.html`
 

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 924 · ADR-0187 — 20261023130000_nudge_check_in_out.sql
+-- 924 · ADR-0188 — 20261023140000_nudge_check_in_out.sql
 --
 -- The Check In / Out monitor's "Remind" button: nudge_check_in_out()
 -- queues the register's own N9 / N9b for one booking, by what the monitor

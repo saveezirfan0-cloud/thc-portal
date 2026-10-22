@@ -97,7 +97,7 @@ export function needsAttention(row: MonitorRow): boolean {
   );
 }
 
-/** What the monitor's Remind button can send (ADR-0187). */
+/** What the monitor's Remind button can send (ADR-0188). */
 export type NudgeKind = 'check-in' | 'check-out' | 'still-on-shift';
 
 /** The window either side of a start / end the register's N9 uses, and the worker's check-in opens by. */
@@ -112,7 +112,7 @@ const NUDGE_OPENS_MIN = 30;
  * ask for: the first is done, the second's button is locked and the office
  * resolves it in the violation log.
  *
- * `nudge_check_in_out()` (20261023130000) decides the same from the same
+ * `nudge_check_in_out()` (20261023140000) decides the same from the same
  * status and refuses otherwise; this only keeps the button off rows that
  * would be refused. Pure on `now` so the board can pass a mount-guarded one.
  */
