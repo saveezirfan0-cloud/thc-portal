@@ -12,6 +12,7 @@ import {
   SegToggle,
   Select,
   TableScroll,
+  toast,
   useTimeFormat,
 } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
@@ -22,6 +23,7 @@ import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
 import { StaffPhone } from './StaffPhone';
 import { VerifyLateModal } from './VerifyLateModal';
+import { nudgeCheckInOut } from './actions';
 import {
   LATE_CHECK_OUT_LABEL,
   VIOLATION_LABEL,
@@ -66,6 +68,9 @@ export function MonitorScreen({
   const [eventFilter, setEventFilter] = useState('all');
   const [open, setOpen] = useState<ViolationRow | null>(null);
   const [verifying, setVerifying] = useState<LateCheckOutTarget | null>(null);
+  // ADR-0187: the booking whose reminder is on its way, and refusals by row.
+  const [nudging, setNudging] = useState<string | null>(null);
+  const [nudgeErrors, setNudgeErrors] = useState<Record<string, string>>({});
   const showResolved = log.showResolved;
 
   useEffect(() => {
@@ -91,6 +96,18 @@ export function MonitorScreen({
       cleanup();
     };
   }, [router]);
+
+  async function nudge(row: MonitorRow) {
+    setNudging(row.bookingId);
+    setNudgeErrors(({ [row.bookingId]: _cleared, ...rest }) => rest);
+    const result = await nudgeCheckInOut(row.bookingId);
+    setNudging(null);
+    if ('error' in result) {
+      setNudgeErrors((errors) => ({ ...errors, [row.bookingId]: result.error }));
+      return;
+    }
+    toast(`Reminder on its way to ${row.staffName}`, { tone: 'green' });
+  }
 
   const events = useMemo(() => {
     const seen = new Map<string, string>();
@@ -147,6 +164,9 @@ export function MonitorScreen({
       >
         <MonitorTable
           rows={visible}
+          onNudge={nudge}
+          nudging={nudging}
+          nudgeErrors={nudgeErrors}
           onVerify={(row) =>
             row.checkOutAt
               ? setVerifying({

@@ -58,10 +58,12 @@
         <h2>Apply to work with us</h2>
         <p class="lead">Two minutes. Straight after you submit, you'll get an email with a link to a short video interview.</p>
       </div>
+      <p class="hint">Enter your name exactly as it appears on your passport.</p>
       <div class="grid c2">
         <div class="field"><span class="label">First name</span><input class="input" placeholder="e.g. Amara"></div>
-        <div class="field"><span class="label">Surname</span><input class="input" placeholder="e.g. Kalu"></div>
+        <div class="field"><span class="label">Middle name(s)</span><input class="input" placeholder="e.g. Chiamaka"><span class="hint">Leave blank if you have none.</span></div>
       </div>
+      <div class="field"><span class="label">Surname</span><input class="input" placeholder="e.g. Kalu"></div>
       <div class="field"><span class="label">Email</span><input class="input" type="email" placeholder="you@example.com"><span class="hint">Your interview link and everything else lands here.</span></div>
       <div class="field">
         <span class="label">Mobile</span>
@@ -96,11 +98,13 @@
         <h2>Apply to work with us</h2>
         <p class="lead">Two minutes. Straight after you submit, you'll get an email with a link to a short video interview.</p>
       </div>
-      <div class="alert coral">Please fix the 2 fields highlighted below.</div>
+      <div class="alert coral">Please fix the 3 fields highlighted below.</div>
+      <p class="hint">Enter your name exactly as it appears on your passport.</p>
       <div class="grid c2">
         <div class="field"><span class="label">First name</span><input class="input" value="Amara"></div>
-        <div class="field"><span class="label">Surname</span><input class="input" value="Kalu"></div>
+        <div class="field"><span class="label">Middle name(s)</span><input class="input" placeholder="e.g. Chiamaka"><span class="hint">Leave blank if you have none.</span></div>
       </div>
+      <div class="field"><span class="label">Surname</span><input class="input err" value="K."><span class="error">Enter your surname in full, as it appears on your passport — not an initial</span></div>
       <div class="field"><span class="label">Email</span><input class="input" type="email" value="amara.kalu@example.com"></div>
       <div class="field">
         <span class="label">Mobile</span>
@@ -159,7 +163,9 @@
           <h2>Apply to work with us</h2>
           <p class="lead">Two minutes. Straight after you submit, you'll get an email with a link to a short video interview.</p>
         </div>
+        <p class="hint">Enter your name exactly as it appears on your passport.</p>
         <div class="field"><span class="label">First name</span><input class="input" placeholder="e.g. Amara"></div>
+        <div class="field"><span class="label">Middle name(s)</span><input class="input" placeholder="e.g. Chiamaka"><span class="hint">Leave blank if you have none.</span></div>
         <div class="field"><span class="label">Surname</span><input class="input" placeholder="e.g. Kalu"></div>
         <div class="field"><span class="label">Email</span><input class="input" type="email" placeholder="you@example.com"></div>
         <div class="field">
@@ -183,12 +189,12 @@
 </div>
 
 <div class="wf-note note"><b>Behaviour notes.</b>
-<b>Fields (§2.1):</b> First name · Surname · Email · Mobile (international country-code picker) · Age (select from 18) · GDPR consent. Public URL, no registration, no login. ·
+<b>Fields (§2.1):</b> First name · Middle name(s), optional · Surname · Email · Mobile (international country-code picker) · Age (select from 18) · GDPR consent. Public URL, no registration, no login. ·
 <b>Age gate (§2.1, §1.7, Appendix A step 1):</b> under 18 is rejected on the spot — coral error on the form, submit disabled — and the server repeats the check, so a tampered form still fails. The select lists 18 upward; a single "Under 18" option exists only so the form can reject honestly instead of hiding the case. ·
 <b>No "Applied" stage (§2.1, §2.7):</b> a valid submission creates the candidate directly in <i>Interview requested</i>; the system creates them in Willo and Willo sends the interview invitation (E1) itself. The kanban card then moves on its own when the interview is completed (§2.4). ·
 <b>Duplicate check (§2.12):</b> on submission the system matches <i>email</i>, and <i>mobile + date of birth</i>, against existing records. A match does not create a second candidate — it is routed to the office as a "returning applicant" entry on the Onboarding screen naming the existing record; the manager presses <i>Reset to candidate</i> or rejects. The applicant sees the ordinary "Check your inbox" screen either way and is never told why a previous record was blocked. A GDPR-removed worker (§1.7) cannot be matched and applies as a genuinely new candidate. ·
 <b>Open point:</b> §2.1 collects <i>Age</i> while §2.12 matches on <i>mobile + DOB</i> — the form has no DOB field, so either DOB is added to /apply or the mobile+DOB match relies on the DOB entered later in the app (§2.5). Flagged for THC. ·
-<b>Consent (§1.7):</b> the GDPR tick-box is mandatory; its timestamp is stored with the record. ·
+<b>Names as on the passport (ADR-0187):</b> the three name fields are the passport's, in full. An initial (a letter on its own, with or without a full stop), any abbreviation with a full stop, digits and symbols are refused with a coral error under the field; hyphens, apostrophes, accents, particles and two-letter names are not, and capitalisation is left as typed. First and middle names are stored together as the one first name. The server and the database repeat the rule. · <b>Consent (§1.7):</b> the GDPR tick-box is mandatory; its timestamp is stored with the record. ·
 <b>Emails:</b> the interview invitation comes from Willo; everything else from admin@thehospitalitycompany.co.uk (§9.12).</div>
 </body>
 </html>

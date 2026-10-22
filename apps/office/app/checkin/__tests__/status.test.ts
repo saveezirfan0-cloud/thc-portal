@@ -11,6 +11,7 @@ import {
   reclassifiesToLate,
   lateCheckOutToVerify,
   minutesPastEnd,
+  nudgeKind,
   statusTone,
 } from '../status';
 import type { MonitorRow, MonitorStatus } from '../types';
@@ -178,5 +179,32 @@ describe('ADR-0184 signed out late', () => {
     expect(pastEndText(75)).toBe('1 h 15 min past the end');
     expect(pastEndText(45)).toBe('45 min past the end');
     expect(pastEndText(120)).toBe('2 h past the end');
+  });
+});
+
+describe('Remind (ADR-0187) — which register push a row is offered', () => {
+  // 16:00–22:30 UTC; "at" is minutes from the start.
+  const at = (m: number) => new Date(new Date('2026-06-14T16:00:00Z').getTime() + m * 60_000);
+
+  it('offers check-in from 30 minutes before the start until the end', () => {
+    for (const status of ['due', 'not_confirmed_today', 'not_checked_in'] as const) {
+      expect(nudgeKind(row({ status }), at(-31))).toBeNull();
+      expect(nudgeKind(row({ status }), at(-30))).toBe('check-in');
+      expect(nudgeKind(row({ status }), at(45))).toBe('check-in');
+      expect(nudgeKind(row({ status }), at(390))).toBeNull();
+    }
+  });
+
+  it('offers check-out in the last 30 minutes, and N9b once the shift has ended', () => {
+    for (const status of ['on_shift', 'off_site'] as const) {
+      expect(nudgeKind(row({ status }), at(300))).toBeNull();
+      expect(nudgeKind(row({ status }), at(360))).toBe('check-out');
+      expect(nudgeKind(row({ status }), at(390))).toBe('still-on-shift');
+    }
+  });
+
+  it('offers nothing once checked out, or when the button has locked (No check-out)', () => {
+    expect(nudgeKind(row({ status: 'checked_out' }), at(400))).toBeNull();
+    expect(nudgeKind(row({ status: 'no_check_out' }), at(700))).toBeNull();
   });
 });

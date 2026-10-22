@@ -67,6 +67,11 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
+/* A refused reminder (ADR-0187), said beside the row it was for. */
+.monitor-tbl .nudge-err {
+  color: var(--coral-ink);
+  max-width: 22rem;
+}
 /* "Location unverified" (check_logs.location_suspect): beside the arrival
    it describes, and onto its own line rather than squeezing the time. */
 .monitor-tbl .stamp .loc-flag {

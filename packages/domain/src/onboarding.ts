@@ -221,7 +221,7 @@ export function requiredDocuments(
           key: 'university_term_dates_letter',
           label: 'University Term Dates Letter',
           accepts: ['university_term_dates_letter'],
-          hint: 'This year’s letter from your university. Graduated? Skip it and upload your Completion Letter instead.',
+          hint: 'This year’s letter from your university, in date — the term dates on it must not have already passed. Graduated? Skip it and upload your Completion Letter instead.',
         },
       ];
   }

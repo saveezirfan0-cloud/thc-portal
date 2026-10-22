@@ -26,6 +26,7 @@ export * from './password';
 export * from './availability';
 export * from './emergencyContact';
 export * from './changeRequest';
+export * from './legalName';
 export * from './dob';
 export * from './shiftOffer';
 export * from './referral';

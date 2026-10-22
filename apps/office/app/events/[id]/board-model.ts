@@ -230,11 +230,11 @@ export function queryPool(entries: readonly PoolEntry[], query: PoolQuery): Pool
     return [...shown].sort((a, b) => a.name.localeCompare(b.name, 'en-GB') || a.rank - b.rank);
   }
   if (query.sort === 'applied') {
-    // Applicants first, oldest application first; the rest in rank order.
+    // Radar applicants (Accept application) first, everyone to Invite below;
+    // each group keeps the engine's rank order.
     return [...shown].sort((a, b) => {
-      if (a.appliedAt && b.appliedAt) return a.appliedAt.localeCompare(b.appliedAt);
-      if (a.appliedAt) return -1;
-      if (b.appliedAt) return 1;
+      if (a.appliedAt && !b.appliedAt) return -1;
+      if (!a.appliedAt && b.appliedAt) return 1;
       return a.rank - b.rank;
     });
   }
