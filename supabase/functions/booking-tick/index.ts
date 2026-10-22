@@ -11,7 +11,12 @@
  * kit message for, until the worker confirms it. Its own function, so the
  * §7 timers are not restated to add it; its counts ride in the same row.
  *
- * Both SQL functions are idempotent — outbox keys for the notifications,
+ * And `late_ready_tick()` (20261024120000, ADR-0196): the "I'm ready" pushes
+ * at 15, 30 and 45 minutes for a worker who accepted after the noon deadline.
+ * Their release at the hour is `release_unready_bookings()`, run by the
+ * auto-staffing cutoff mode, which re-fills the seat in the same run.
+ *
+ * All the SQL functions are idempotent — outbox keys for the notifications,
  * not-exists guards for the violations — which is what makes a job that
  * runs sixty times an hour safe to re-run after a failure.
  */
@@ -24,9 +29,12 @@ Deno.serve((request) =>
     if (error) throw new Error(`booking_tick: ${error.message}`);
     const kit = await db.rpc('client_kit_reminder_tick');
     if (kit.error) throw new Error(`client_kit_reminder_tick: ${kit.error.message}`);
+    const late = await db.rpc('late_ready_tick');
+    if (late.error) throw new Error(`late_ready_tick: ${late.error.message}`);
     return {
       ...((data ?? {}) as Record<string, unknown>),
       ...((kit.data ?? {}) as Record<string, unknown>),
+      ...((late.data ?? {}) as Record<string, unknown>),
     };
   }),
 );

@@ -17,6 +17,9 @@ import {
   readyCutoffApplies,
   readyDeadline,
   readyDeadlinePassed,
+  readyWindowClosed,
+  lateReadyApplies,
+  lateReadyDeadline,
   shiftCard,
   staticScreenCase,
   turnedAwayMessage,
@@ -86,6 +89,61 @@ describe('readyCutoffApplies (§3.5)', () => {
   });
 });
 
+describe('lateReadyApplies / lateReadyDeadline (ADR-0196)', () => {
+  const startsAt = new Date('2026-09-19T17:00:00Z'); // deadline 2026-09-18T11:00Z (BST)
+
+  it('applies from the deadline itself — the mirror of readyCutoffApplies, never both', () => {
+    for (const at of ['2026-09-18T10:59:00Z', '2026-09-18T11:00:00Z', '2026-09-18T14:00:00Z']) {
+      const confirmedAt = new Date(at);
+      expect(lateReadyApplies(confirmedAt, startsAt), at).toBe(
+        !readyCutoffApplies(confirmedAt, startsAt),
+      );
+    }
+    expect(lateReadyApplies(new Date('2026-09-18T11:00:00Z'), startsAt)).toBe(true);
+  });
+
+  it('does not apply to a booking made on the day of the shift (RULE-08)', () => {
+    expect(lateReadyApplies(new Date('2026-09-19T09:00:00Z'), startsAt)).toBe(false);
+  });
+
+  it('does not apply without a confirmedAt', () => {
+    expect(lateReadyApplies(null, startsAt)).toBe(false);
+  });
+
+  it('does not apply when the hour would run into the shift', () => {
+    const early = new Date('2026-09-18T23:10:00Z'); // the shift starts 00:10 BST on the 19th
+    expect(lateReadyApplies(new Date('2026-09-18T22:50:00Z'), early)).toBe(false);
+    expect(lateReadyApplies(new Date('2026-09-18T22:10:00Z'), early)).toBe(true);
+  });
+
+  it('closes an hour after accepting', () => {
+    expect(lateReadyDeadline(new Date('2026-09-18T14:00:00Z')).toISOString()).toBe(
+      '2026-09-18T15:00:00.000Z',
+    );
+  });
+
+  it('follows UK civil days over a clock change: 23:30 GMT on 24 Oct, for the 25th', () => {
+    const start = new Date('2026-10-25T08:00:00Z'); // 08:00 GMT, the day the clocks go back
+    expect(lateReadyApplies(new Date('2026-10-24T22:30:00Z'), start)).toBe(true); // 23:30 BST on the 24th
+  });
+});
+
+describe('readyWindowClosed (ADR-0034 §3, ADR-0196)', () => {
+  const startsAt = new Date('2026-09-19T17:00:00Z');
+
+  it('closes the noon rule at 12:00 UK the day before', () => {
+    const confirmedAt = new Date('2026-09-10T09:00:00Z');
+    expect(readyWindowClosed(confirmedAt, startsAt, new Date('2026-09-18T10:59:00Z'))).toBe(false);
+    expect(readyWindowClosed(confirmedAt, startsAt, new Date('2026-09-18T11:00:00Z'))).toBe(true);
+  });
+
+  it('closes a late acceptance an hour after it, not at the noon that had already passed', () => {
+    const confirmedAt = new Date('2026-09-18T14:00:00Z');
+    expect(readyWindowClosed(confirmedAt, startsAt, new Date('2026-09-18T14:59:00Z'))).toBe(false);
+    expect(readyWindowClosed(confirmedAt, startsAt, new Date('2026-09-18T15:00:00Z'))).toBe(true);
+  });
+});
+
 describe('canCancelShift (RULE-04)', () => {
   const startsAt = new Date('2026-09-19T17:00:00Z');
 
@@ -110,11 +168,37 @@ describe('shiftCard (§10.4, §3.5)', () => {
     expect(shiftCard(booking(), new Date('2026-09-18T08:00:00Z'))).toBe('needs_ready');
   });
 
-  // §3.5 / 20260927140300: the 12:05 cutoff only releases a booking
-  // confirmed before the deadline, so only those are asked.
-  it('does not ask a worker who accepted after 12:00 the day before', () => {
+  // §3.5 / 20260927140300 / ADR-0196: the 12:05 cutoff only releases a booking
+  // confirmed before the deadline; one accepted after it has an hour from
+  // accepting instead, and is asked for exactly that hour.
+  it('asks a worker who accepted after 12:00 the day before — for the hour after they accepted', () => {
     const b = booking({ confirmedAt: new Date('2026-09-18T14:00:00Z') });
+    expect(shiftCard(b, new Date('2026-09-18T14:01:00Z'))).toBe('needs_ready');
+    expect(shiftCard(b, new Date('2026-09-18T14:59:00Z'))).toBe('needs_ready');
     expect(shiftCard(b, new Date('2026-09-18T15:00:00Z'))).toBe('confirmed');
+  });
+
+  it('keeps asking across midnight: the hour for a 23:30 acceptance runs to 00:30 on the shift day', () => {
+    const b = booking({
+      startsAt: new Date('2026-09-19T08:00:00Z'),
+      endsAt: new Date('2026-09-19T14:00:00Z'),
+      confirmedAt: new Date('2026-09-18T22:30:00Z'), // 23:30 BST
+    });
+    expect(shiftCard(b, new Date('2026-09-18T23:10:00Z'))).toBe('needs_ready'); // 00:10 BST, the 19th
+    expect(shiftCard(b, new Date('2026-09-18T23:31:00Z'))).toBe('today');
+  });
+
+  it('stops asking a late acceptance once they press it', () => {
+    const b = booking({
+      confirmedAt: new Date('2026-09-18T14:00:00Z'),
+      dayBeforeConfirmedAt: new Date('2026-09-18T14:20:00Z'),
+    });
+    expect(shiftCard(b, new Date('2026-09-18T14:30:00Z'))).toBe('confirmed');
+  });
+
+  it('does not ask a same-day booking (RULE-08), however recently it was made', () => {
+    const b = booking({ confirmedAt: new Date('2026-09-19T09:00:00Z') });
+    expect(shiftCard(b, new Date('2026-09-19T09:10:00Z'))).toBe('today');
   });
 
   it('still asks one who accepted that morning, before the deadline', () => {

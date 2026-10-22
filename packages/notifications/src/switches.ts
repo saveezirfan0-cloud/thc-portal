@@ -247,6 +247,16 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
         label: 'Removed from tomorrow’s shift',
         when: '12:05 the day before, if not ready',
       },
+      {
+        code: 'LR1',
+        label: 'Press “I’m ready”',
+        when: 'Within an hour of accepting a shift after 12:00 the day before',
+      },
+      {
+        code: 'LR2',
+        label: 'Removed from your shift',
+        when: 'An hour after accepting, if not ready',
+      },
       { code: 'N7', label: 'Confirm today’s shift', when: 'On the day' },
       { code: 'N9', label: 'Your shift today', when: 'Check-in reminders on the day' },
       { code: 'N9b', label: 'You haven’t checked out', when: 'After the shift ends' },

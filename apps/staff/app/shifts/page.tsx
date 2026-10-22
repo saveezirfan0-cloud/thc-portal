@@ -9,8 +9,10 @@ import {
   formatDateIn,
   formatDistance,
   formatTimeIn,
+  lateReadyApplies,
+  lateReadyDeadline,
   openSlots,
-  readyDeadlinePassed,
+  readyWindowClosed,
   sectionHours,
 } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
@@ -400,20 +402,37 @@ function ShiftCardView({
 
       {card === 'needs_ready' ? (
         <>
-          <Alert tone="amber">
-            Confirm by <b>{READY_DEADLINE_UK} (UK time)</b> the day before — or you’ll be removed
-            from this shift.
-          </Alert>
-          {/* Stage 2, `markReady` — the one action "I'm ready" has. Past
-              12:00 the database answers `deadline_passed` (ADR-0034 §3), so
-              the button says so rather than offering a press that can only
-              fail. The moment is `readyDeadlinePassed()` from the domain. */}
+          {/* ADR-0196: accepted after the noon deadline the day before, so the
+              hour runs from accepting, not to 12:00. */}
+          {booking.confirmedAt && lateReadyApplies(booking.confirmedAt, booking.startsAt) ? (
+            <Alert tone="amber">
+              Press “I’m ready” by{' '}
+              <b>
+                {formatTimeIn(lateReadyDeadline(booking.confirmedAt), UK_ZONE, format)} (UK time)
+              </b>{' '}
+              — an hour after you accepted — or you’ll be removed from this shift.
+            </Alert>
+          ) : (
+            <Alert tone="amber">
+              Confirm by <b>{READY_DEADLINE_UK} (UK time)</b> the day before — or you’ll be removed
+              from this shift.
+            </Alert>
+          )}
+          {/* Stage 2, `markReady` — the one action "I'm ready" has. Once its
+              window has closed the database answers `deadline_passed`
+              (ADR-0034 §3, ADR-0196), so the button says so rather than
+              offering a press that can only fail. The moment is
+              `readyWindowClosed()` from the domain. */}
           <ActionButton
             label="I’m ready for tomorrow"
             tone="primary"
             block
-            disabled={readyDeadlinePassed(booking.startsAt, now)}
-            disabledLabel={`The ${READY_DEADLINE_UK} deadline has passed`}
+            disabled={readyWindowClosed(booking.confirmedAt, booking.startsAt, now)}
+            disabledLabel={
+              booking.confirmedAt && lateReadyApplies(booking.confirmedAt, booking.startsAt)
+                ? 'The hour to confirm has passed'
+                : `The ${READY_DEADLINE_UK} deadline has passed`
+            }
             action={markReady.bind(null, booking.bookingId)}
           />
         </>

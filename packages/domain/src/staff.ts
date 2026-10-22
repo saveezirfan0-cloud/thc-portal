@@ -261,6 +261,17 @@ export function shiftCard(booking: StaffBooking, now: Date = new Date()): ShiftC
   // Stage 3 belongs to a booking that is still awaiting the worker. One
   // already `worked` has been checked into, and confirm_on_day refuses it.
   if (booking.status !== 'confirmed') return 'today';
+  // ADR-0196: accepted after the noon deadline the day before, the worker has
+  // an hour from accepting to press "I'm ready". Ahead of the "today" test
+  // because that hour can run past midnight.
+  if (
+    !booking.dayBeforeConfirmedAt &&
+    booking.confirmedAt &&
+    lateReadyApplies(booking.confirmedAt, booking.startsAt) &&
+    now.getTime() < lateReadyDeadline(booking.confirmedAt).getTime()
+  ) {
+    return 'needs_ready';
+  }
   if (civilDate(booking.startsAt) === civilDate(now)) return 'today';
   if (
     !booking.dayBeforeConfirmedAt &&
@@ -299,6 +310,55 @@ export function readyCutoffApplies(confirmedAt: Date | null, startsAt: Date): bo
 /** True once the 12:05 cutoff would have released the booking (§3.5, N6b). */
 export function readyDeadlinePassed(startsAt: Date, now: Date = new Date()): boolean {
   return now.getTime() >= readyDeadline(startsAt).getTime();
+}
+
+/** ADR-0196: the first "I'm ready" push, this long after the worker accepts. */
+export const LATE_READY_FIRST_ASK_MIN = 15;
+/** …then again every this many minutes. */
+export const LATE_READY_REPEAT_MIN = 15;
+/** …and the worker is removed this long after accepting if they have not pressed it. */
+export const LATE_READY_WINDOW_MIN = 60;
+
+/**
+ * Does the one-hour "I'm ready" apply to this booking (ADR-0196)?
+ *
+ * A worker who accepts AFTER the noon deadline for a shift starting on a
+ * LATER UK day never had the chance to press it in time (`readyCutoffApplies`
+ * is false for them), so instead of being left alone they get an hour from
+ * accepting. A booking made on the day of the shift (RULE-08) is still
+ * exempt — "the day before" is the whole point — and so is one made inside
+ * the last hour before the start, which would be released at the shift. The
+ * SQL half is `late_ready_applies()` (20261024120000); the two answer alike.
+ */
+export function lateReadyApplies(confirmedAt: Date | null, startsAt: Date): boolean {
+  if (confirmedAt === null) return false;
+  const at = confirmedAt.getTime();
+  return (
+    at >= readyDeadline(startsAt).getTime() &&
+    civilDate(confirmedAt) < civilDate(startsAt) &&
+    at + LATE_READY_WINDOW_MIN * 60_000 <= startsAt.getTime()
+  );
+}
+
+/** The moment a late-accepted worker is removed if they have not pressed "I'm ready". */
+export function lateReadyDeadline(confirmedAt: Date): Date {
+  return new Date(confirmedAt.getTime() + LATE_READY_WINDOW_MIN * 60_000);
+}
+
+/**
+ * Is "I'm ready" closed for this booking? The database refuses a press at
+ * the same moment (`mark_ready()` → `deadline_passed`), so the button says
+ * so rather than offering one that can only fail.
+ */
+export function readyWindowClosed(
+  confirmedAt: Date | null,
+  startsAt: Date,
+  now: Date = new Date(),
+): boolean {
+  if (confirmedAt !== null && lateReadyApplies(confirmedAt, startsAt)) {
+    return now.getTime() >= lateReadyDeadline(confirmedAt).getTime();
+  }
+  return readyDeadlinePassed(startsAt, now);
 }
 
 /**

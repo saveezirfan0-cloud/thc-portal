@@ -110,7 +110,10 @@ export async function declineInvite(bookingId: string): Promise<ActionResult> {
   return (data as Rpc)?.['ok'] === true ? { ok: true } : { refusal: UNKNOWN };
 }
 
-/** Stage 2 (§3.5): "I'm ready for tomorrow", by 12:00 UK. The hard one. */
+/**
+ * Stage 2 (§3.5): "I'm ready for tomorrow", by 12:00 UK. The hard one. For a
+ * worker who accepted after that noon, within an hour of accepting (ADR-0196).
+ */
 export async function markReady(bookingId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { refusal: NO_SUPABASE };
   const supabase = await db();
@@ -120,8 +123,8 @@ export async function markReady(bookingId: string): Promise<ActionResult> {
   if ((data as Rpc)?.['reason'] === 'deadline_passed')
     return {
       refusal: {
-        title: 'The 12:00 deadline has passed',
-        body: '“I’m ready” closes at 12:00 (UK time) the day before the shift. Check your notifications, or contact the office.',
+        title: 'The deadline has passed',
+        body: '“I’m ready” closes at 12:00 (UK time) the day before the shift — or, if you accepted after that, an hour after you accepted. Check your notifications, or contact the office.',
       },
     };
   return (data as Rpc)?.['ok'] === true

@@ -4,7 +4,10 @@
  *   ?mode=hourly      every hour at :17 — additive invitations for every
  *                     unfilled section whose shift has not started.
  *   ?mode=cutoff      the 12:05 UK deadline — drop confirmed workers who
- *                     never pressed "I'm ready", then re-fill.
+ *                     never pressed "I'm ready", then re-fill. Every 5
+ *                     minutes, all day: it also drops a worker who accepted
+ *                     after that noon and has not pressed it within an
+ *                     hour (ADR-0196).
  *   ?mode=escalation  every 10 minutes — sections already under way and
  *                     still short, ignoring the headcount + buffer cap,
  *                     inviting only within settings.escalation_radius_miles
@@ -85,12 +88,16 @@ Deno.serve((request) =>
 
     // The 12:05 cutoff is registered as an every-5-minute entry because
     // pg_cron is UTC and the deadline is UK wall-clock (§3.5). The run in
-    // the 12:05 UK window releases and re-fills. Every later run until UK
-    // midnight is a retry of it, so a failed 12:05 run is made good five
-    // minutes later instead of never (20260929100000, ADR-0034): it calls
-    // release_unready_bookings(), which is idempotent and never reaches a
-    // shift starting today, and goes on to re-fill only if it released
-    // somebody. Before 12:05 nothing runs.
+    // the 12:05 UK window releases and re-fills. Every other run is a retry
+    // of it, so a failed 12:05 run is made good five minutes later instead of
+    // never (20260929100000, ADR-0034): it calls release_unready_bookings(),
+    // which is idempotent and never reaches a shift starting today under the
+    // noon rule, and goes on to re-fill only if it released somebody.
+    //
+    // It runs at every hour, not just 12:05–midnight, because the same call
+    // releases a worker who accepted after the noon deadline and has not
+    // pressed "I'm ready" within an hour (ADR-0196) — and that hour can end
+    // at any time, including after midnight.
     if (mode === 'cutoff') {
       const ukFrom1205 = async (window: string) => {
         const { data, error } = await db.rpc('is_uk_time', {
@@ -102,9 +109,6 @@ Deno.serve((request) =>
         return data === true;
       };
       if (!(await ukFrom1205('5 minutes'))) {
-        if (!(await ukFrom1205('11 hours 55 minutes'))) {
-          return { mode, skipped: 'before the 12:05 UK cutoff' };
-        }
         const { data: retried, error } = await db.rpc('release_unready_bookings');
         if (error) throw new Error(`release_unready_bookings: ${error.message}`);
         if (!retried) return { mode, retry: true, released: 0 };
