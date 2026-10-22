@@ -8,7 +8,8 @@
  * server" and a form can be edited by whoever is sitting in front of it.
  */
 
-import { isReferralCode, ukToday } from '@thc/domain';
+import { LEGAL_NAME_MAX, givenNames, isReferralCode, nameFault, ukToday } from '@thc/domain';
+import type { NameFault } from '@thc/domain';
 
 /**
  * Date of birth, not an age band — ADR-0008.
@@ -295,6 +296,11 @@ export const DIAL_CODES = [
 
 export interface ApplicationValues {
   firstName: string;
+  /**
+   * Optional. Stored with the first name as the one `given names` value
+   * (ADR-0187), so it is joined by `givenNames()` before it is sent.
+   */
+  middleName: string;
   lastName: string;
   email: string;
   dialCode: string;
@@ -309,6 +315,7 @@ export type FieldErrors = Partial<Record<ApplicationField, string>>;
 
 export const EMPTY_VALUES: ApplicationValues = {
   firstName: '',
+  middleName: '',
   lastName: '',
   email: '',
   dialCode: '+44',
@@ -330,6 +337,37 @@ export function toE164(dialCode: string, mobile: string): string {
 }
 
 /**
+ * What each name field says when `nameFault()` refuses it (ADR-0187). The
+ * database words the same four reasons for the two things it can be asked
+ * about, the first-and-middle names and the surname; these are the form's,
+ * one to a field so the message names the thing to fix.
+ */
+const NAME_CHARACTERS = 'Use letters, spaces, hyphens and apostrophes only';
+const NAME_TOO_LONG = `Keep this to ${LEGAL_NAME_MAX} characters or fewer`;
+const NAME_COPY: Record<'firstName' | 'middleName' | 'lastName', Record<NameFault, string>> = {
+  firstName: {
+    required: 'Enter your first name',
+    initial: 'Enter your first name in full, as it appears on your passport — not an initial',
+    characters: NAME_CHARACTERS,
+    too_long: NAME_TOO_LONG,
+  },
+  middleName: {
+    // Never shown, an empty middle name is fine; here so the table is total.
+    required: 'Enter your middle names, or leave this blank if you have none',
+    initial:
+      'Enter your middle names in full, as they appear on your passport — not initials. Leave this blank if you have none',
+    characters: NAME_CHARACTERS,
+    too_long: 'Your first and middle names together are too long',
+  },
+  lastName: {
+    required: 'Enter your surname',
+    initial: 'Enter your surname in full, as it appears on your passport — not an initial',
+    characters: NAME_CHARACTERS,
+    too_long: NAME_TOO_LONG,
+  },
+};
+
+/**
  * Everything the form and the server both check. Empty object = valid.
  * `today` is the UK civil date the age gate runs against — a parameter so a
  * test can pin the BST midnight hour.
@@ -337,8 +375,22 @@ export function toE164(dialCode: string, mobile: string): string {
 export function validate(values: ApplicationValues, today: Date = todayInUk()): FieldErrors {
   const errors: FieldErrors = {};
 
-  if (!values.firstName.trim()) errors.firstName = 'Enter your first name';
-  if (!values.lastName.trim()) errors.lastName = 'Enter your surname';
+  // ADR-0187: the name as printed on the passport, never an initial. The
+  // same rule runs again in the server action and, as name_fault(), in
+  // submit_application().
+  const firstFault = nameFault(values.firstName);
+  if (firstFault) errors.firstName = NAME_COPY.firstName[firstFault];
+  const middleFault = nameFault(values.middleName, true);
+  if (middleFault) errors.middleName = NAME_COPY.middleName[middleFault];
+  const lastFault = nameFault(values.lastName);
+  if (lastFault) errors.lastName = NAME_COPY.lastName[lastFault];
+  // They are stored as one value, so together they have one limit.
+  if (!firstFault && !middleFault) {
+    const together = givenNames(values.firstName, values.middleName);
+    if (Array.from(together).length > LEGAL_NAME_MAX) {
+      errors.middleName = NAME_COPY.middleName.too_long;
+    }
+  }
 
   const email = values.email.trim();
   if (!email) errors.email = 'Enter your email address';

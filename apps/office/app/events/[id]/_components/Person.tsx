@@ -1,10 +1,15 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { Avatar } from '@thc/ui';
 import { appliedAgo } from '@thc/domain';
 import type { BoardBooking } from '../board-data';
 import type { UnavailableEntry } from '../board-model';
 
-/** A board row's face and name, with its second line (§3.3). */
+/**
+ * A board row's face and name, with its second line (§3.3). The face and the
+ * name open the worker's profile, so the office can go from the event to the
+ * person without searching the directory.
+ */
 export function Person({
   person,
   sub,
@@ -14,16 +19,47 @@ export function Person({
 }) {
   return (
     <>
-      <Avatar
-        name={person.name}
-        src={person.photoUrl ?? undefined}
-        deleted={person.name.startsWith('Deleted account')}
-      />
+      <ProfileLink staffId={person.staffId} name={person.name} tabIndex={-1} aria-hidden>
+        <Avatar
+          name={person.name}
+          src={person.photoUrl ?? undefined}
+          deleted={person.name.startsWith('Deleted account')}
+        />
+      </ProfileLink>
       <div className="who">
-        <div className="n">{person.name}</div>
+        <div className="n">
+          <ProfileLink staffId={person.staffId} name={person.name}>
+            {person.name}
+          </ProfileLink>
+        </div>
         <div className="s">{sub}</div>
       </div>
     </>
+  );
+}
+
+/** A link to a worker's profile in the staff directory. */
+export function ProfileLink({
+  staffId,
+  name,
+  children,
+  ...rest
+}: {
+  staffId: string;
+  name: string;
+  children: ReactNode;
+  tabIndex?: number;
+  'aria-hidden'?: boolean;
+}) {
+  return (
+    <Link
+      href={`/staff/${staffId}`}
+      className="person-link"
+      title={`Open ${name}'s profile`}
+      {...rest}
+    >
+      {children}
+    </Link>
   );
 }
 

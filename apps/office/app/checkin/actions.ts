@@ -29,6 +29,10 @@ interface RpcClient {
     fn: 'verify_late_check_out',
     args: { p_booking: string; p_note: string },
   ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
+  rpc(
+    fn: 'nudge_check_in_out',
+    args: { p_booking: string },
+  ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
 
 /**
@@ -114,6 +118,49 @@ export async function verifyLateCheckOut(bookingId: string, note: string): Promi
   revalidatePath('/checkin');
   return { ok: true };
 }
+
+export type NudgeResult = { error: string } | { ok: true; template: string };
+
+/**
+ * Push one worker to check in or out (ADR-0187). The register's own N9 /
+ * N9b copy, chosen by the monitor's status for the row; `nudge_check_in_out`
+ * holds every rule (who may send, how early, the worker's device, the
+ * Settings switch, once per five minutes) and queues through the outbox.
+ * This carries its refusal back to the row, in the manager's words.
+ */
+export async function nudgeCheckInOut(bookingId: string): Promise<NudgeResult> {
+  if (!supabaseConfigured()) {
+    return {
+      error:
+        'This environment has no Supabase project, so a reminder cannot be sent (docs/04-setup-github-vercel-supabase.md).',
+    };
+  }
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { data, error } = await supabase.rpc('nudge_check_in_out', { p_booking: bookingId });
+  if (error)
+    return {
+      error:
+        NUDGE_REASONS[error.message] ??
+        explainDbError(error, { codes: NUDGE_REASONS, log: '[checkin]' }),
+    };
+  const result = data as { template?: string } | null;
+  return { ok: true, template: result?.template ?? 'N9' };
+}
+
+const NUDGE_REASONS: Record<string, string> = {
+  check_in_not_open: 'Check-in opens 30 minutes before the shift starts. Try again then.',
+  check_out_not_due: 'Check-out reminders start 30 minutes before the shift ends.',
+  shift_ended: 'This shift has ended, so there is nothing left to check in to.',
+  nothing_to_send:
+    'This worker has nothing to be reminded of — they have checked out, or the shift needs resolving below. Refresh the page.',
+  no_push_device:
+    'This worker has not turned on notifications on any device, so a push cannot reach them. Ring them instead.',
+  switched_off: 'This reminder is switched off in Settings → Notifications.',
+  sent_recently: 'They were reminded in the last 5 minutes. Give it a moment.',
+  admins_only: 'Only the office can send a reminder.',
+  not_permitted: 'Your office role can view this screen but not send a reminder.',
+  booking_not_found: 'That shift no longer exists. Refresh the page.',
+};
 
 const VERIFY_REASONS: Record<string, string> = {
   note_required: 'A note is required. Say what the worker told you about finishing late.',
