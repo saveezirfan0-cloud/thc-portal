@@ -106,6 +106,7 @@ export function ApplyForm({
       {state.failure ? <Alert tone="coral">{state.failure}</Alert> : null}
       {banner ? <Alert tone="coral">{banner}</Alert> : null}
 
+      <p className="hint">Enter your name exactly as it appears on your passport.</p>
       <div className="grid c2">
         <Input
           label="First name"
@@ -117,15 +118,25 @@ export function ApplyForm({
           error={errors.firstName}
         />
         <Input
-          label="Surname"
-          name="lastName"
-          placeholder="e.g. Kalu"
-          autoComplete="family-name"
-          value={values.lastName}
-          onChange={(e) => set('lastName', e.target.value)}
-          error={errors.lastName}
+          label="Middle name(s)"
+          name="middleName"
+          placeholder="e.g. Chiamaka"
+          autoComplete="additional-name"
+          hint="Leave blank if you have none."
+          value={values.middleName}
+          onChange={(e) => set('middleName', e.target.value)}
+          error={errors.middleName}
         />
       </div>
+      <Input
+        label="Surname"
+        name="lastName"
+        placeholder="e.g. Kalu"
+        autoComplete="family-name"
+        value={values.lastName}
+        onChange={(e) => set('lastName', e.target.value)}
+        error={errors.lastName}
+      />
 
       <Input
         label="Email"

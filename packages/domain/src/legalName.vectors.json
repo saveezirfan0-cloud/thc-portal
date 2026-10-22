@@ -1,0 +1,97 @@
+{
+  "description": "ADR-0189 a name as printed on the passport. The contract between nameFault() in packages/domain/src/legalName.ts and name_fault() in 20261023130100_legal_names_in_full.sql, which submit_application() calls on the first-and-middle names and on the surname. `fault` is the reason, or null when the text is a whole name. `optional` marks the middle-name field, where nothing at all is fine but an initial is not.",
+  "cases": [
+    { "name": "plain name", "text": "Marc", "optional": false, "fault": null },
+    { "name": "plain surname", "text": "Martinez", "optional": false, "fault": null },
+    {
+      "name": "surname that is an initial and a full stop",
+      "text": "M.",
+      "optional": false,
+      "fault": "initial"
+    },
+    {
+      "name": "surname that is a bare initial",
+      "text": "M",
+      "optional": false,
+      "fault": "initial"
+    },
+    { "name": "lower-case initial", "text": "g.", "optional": false, "fault": "initial" },
+    { "name": "first name that is an initial", "text": "J", "optional": false, "fault": "initial" },
+    {
+      "name": "middle initial among full names",
+      "text": "Marc J Antoni",
+      "optional": false,
+      "fault": "initial"
+    },
+    {
+      "name": "middle name with a full stop",
+      "text": "Marc J. Antoni",
+      "optional": false,
+      "fault": "initial"
+    },
+    {
+      "name": "abbreviation with a full stop",
+      "text": "St. John",
+      "optional": false,
+      "fault": "initial"
+    },
+    { "name": "two initials run together", "text": "J.R.", "optional": false, "fault": "initial" },
+    {
+      "name": "hyphenated name ending in an initial",
+      "text": "Smith-J",
+      "optional": false,
+      "fault": "initial"
+    },
+    { "name": "initial with an accent", "text": "É", "optional": false, "fault": "initial" },
+    { "name": "empty", "text": "", "optional": false, "fault": "required" },
+    { "name": "spaces only", "text": "   ", "optional": false, "fault": "required" },
+    { "name": "empty middle name is fine", "text": "", "optional": true, "fault": null },
+    { "name": "spaces only middle name is fine", "text": "   ", "optional": true, "fault": null },
+    { "name": "middle initial is not fine", "text": "J", "optional": true, "fault": "initial" },
+    { "name": "full middle name", "text": "Antoni", "optional": true, "fault": null },
+    { "name": "two-letter name", "text": "Li", "optional": false, "fault": null },
+    { "name": "two-letter surname", "text": "Ng", "optional": false, "fault": null },
+    { "name": "hyphenated", "text": "Anne-Marie", "optional": false, "fault": null },
+    { "name": "apostrophe", "text": "O'Neil", "optional": false, "fault": null },
+    { "name": "typographic apostrophe", "text": "O’Neil", "optional": false, "fault": null },
+    { "name": "apostrophe after a particle", "text": "D'Souza", "optional": false, "fault": null },
+    { "name": "accents", "text": "Zoë Müller", "optional": false, "fault": null },
+    { "name": "accented, decomposed", "text": "Zoë", "optional": false, "fault": null },
+    { "name": "particles", "text": "van der Berg", "optional": false, "fault": null },
+    { "name": "several given names", "text": "Marc Antoni", "optional": false, "fault": null },
+    { "name": "capitalisation is left alone", "text": "carlos", "optional": false, "fault": null },
+    {
+      "name": "capitalisation is left alone, upper",
+      "text": "MARTINEZ",
+      "optional": false,
+      "fault": null
+    },
+    {
+      "name": "surrounding spaces are trimmed",
+      "text": "  Marc  ",
+      "optional": false,
+      "fault": null
+    },
+    { "name": "digit", "text": "Marc2", "optional": false, "fault": "characters" },
+    { "name": "symbol", "text": "Marc@", "optional": false, "fault": "characters" },
+    { "name": "starts with a hyphen", "text": "-Marc", "optional": false, "fault": "characters" },
+    {
+      "name": "starts with an apostrophe",
+      "text": "'Marc",
+      "optional": false,
+      "fault": "characters"
+    },
+    {
+      "name": "exactly 100 characters",
+      "text": "Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghij",
+      "optional": false,
+      "fault": null
+    },
+    {
+      "name": "one over the limit",
+      "text": "Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghijk",
+      "optional": false,
+      "fault": "too_long"
+    }
+  ]
+}

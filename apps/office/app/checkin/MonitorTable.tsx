@@ -4,13 +4,17 @@ import { Avatar, Button, Pill, TableScroll, useTimeFormat } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone, overWeeklyLimitText } from '@thc/domain';
 import {
   LATE_CHECK_OUT_LABEL,
+  NUDGE_LABEL,
   arrivalLine,
   lateCheckOutToVerify,
+  nudgeKind,
   statusLabel,
   breaksCell,
   statusTone,
 } from './status';
+import { StaffPhone } from './StaffPhone';
 import type { MonitorRow } from './types';
+import { useNow } from './useNow';
 import { useViewerZone } from './useViewerZone';
 
 /**
@@ -33,6 +37,11 @@ import { useViewerZone } from './useViewerZone';
  * Vercel), which streamed UTC stamps and forced a hydration re-render
  * (audit D41). First paint is UK; the reader's zone arrives on mount.
  *
+ * Remind (ADR-0188) sits under the pill of a worker who has not checked in
+ * (from 30 minutes before the start) or has not checked out (from 30 minutes
+ * before the end): one press queues the register's own N9 / N9b push. It is
+ * a control, not a status, so it carries no colour of its own.
+ *
  * A checked-out row signed out more than 15 minutes late keeps §9.5's red
  * pill, with "Signed out late — verify with the worker" and a Verify
  * button under it until the office has (ADR-0184); then the pill goes
@@ -41,11 +50,21 @@ import { useViewerZone } from './useViewerZone';
 export function MonitorTable({
   rows,
   onVerify,
+  onNudge,
+  nudging = null,
+  nudgeErrors = {},
 }: {
   rows: MonitorRow[];
   /** Opens the Verify window for a late sign-out (ADR-0184). */
   onVerify?: (row: MonitorRow) => void;
+  /** Pushes the worker to check in or out (ADR-0188). */
+  onNudge?: (row: MonitorRow) => void;
+  /** The booking whose reminder is on its way. */
+  nudging?: string | null;
+  /** A refused reminder's reason, beside the row it was for. */
+  nudgeErrors?: Record<string, string>;
 }) {
+  const now = useNow();
   const zone = useViewerZone();
   const format = useTimeFormat();
   const dual = needsDualZone(zone);
@@ -76,70 +95,93 @@ export function MonitorTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.bookingId}>
-              <td className="cell-title">
-                <div className="person">
-                  <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
-                  <div>
-                    <div className="n">{row.staffName}</div>
-                    <div className="s">{row.roleName}</div>
+          {rows.map((row) => {
+            const nudge = onNudge && now ? nudgeKind(row, now) : null;
+            return (
+              <tr key={row.bookingId}>
+                <td className="cell-title">
+                  <div className="person">
+                    <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
+                    <div>
+                      <div className="n">{row.staffName}</div>
+                      <div className="s">{row.roleName}</div>
+                      <StaffPhone phone={row.phone} />
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td data-label="Event">
-                <b>{row.eventTitle}</b>
-              </td>
-              <td data-label="Window">
-                <span className="win2">
-                  {uk(row.startsAt)} – {uk(row.endsAt)} UK time
-                  {dual ? (
-                    <span className="l2">
-                      {local(row.startsAt)} – {local(row.endsAt)} your time
-                    </span>
-                  ) : null}
-                </span>
-              </td>
-              <td data-label="Check-in" className="stamp">
-                {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
-                {row.checkInAt && row.locationSuspect ? (
-                  <Pill
-                    tone="amber"
-                    className="loc-flag"
-                    title="The phone's location for this arrival was missing its accuracy, too vague for the geofence, or exactly on the venue's pin. The check-in stands; check with the worker if it matters."
-                  >
-                    Location unverified
-                  </Pill>
-                ) : null}
-                {/* checkin.html's second line: on site, and how late. */}
-                {row.checkInAt ? <span className="sub">{arrivalLine(row)}</span> : null}
-              </td>
-              <td data-label="Breaks" className="mono sm">
-                {breaksCell(row, local)}
-              </td>
-              <td data-label="Status">
-                <Pill tone={statusTone(row)}>{statusLabel(row, local)}</Pill>
-                {lateCheckOutToVerify(row) ? (
-                  <span className="sub late-out">
-                    {LATE_CHECK_OUT_LABEL}
-                    {onVerify ? (
-                      <Button size="sm" onClick={() => onVerify(row)}>
-                        Verify
-                      </Button>
+                </td>
+                <td data-label="Event">
+                  <b>{row.eventTitle}</b>
+                </td>
+                <td data-label="Window">
+                  <span className="win2">
+                    {uk(row.startsAt)} – {uk(row.endsAt)} UK time
+                    {dual ? (
+                      <span className="l2">
+                        {local(row.startsAt)} – {local(row.endsAt)} your time
+                      </span>
                     ) : null}
                   </span>
-                ) : row.status === 'checked_out' && row.lateCheckOut ? (
-                  <span className="sub">
-                    Signed out late · verified
-                    {row.lateCheckOutVerifiedByName ? ` by ${row.lateCheckOutVerifiedByName}` : ''}
-                  </span>
-                ) : null}
-                {row.status === 'checked_out' && row.lateCheckOut ? (
-                  <WeeklyLimitFlag hours={row.weekHours} cap={row.weekCapHours} />
-                ) : null}
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td data-label="Check-in" className="stamp">
+                  {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
+                  {row.checkInAt && row.locationSuspect ? (
+                    <Pill
+                      tone="amber"
+                      className="loc-flag"
+                      title="The phone's location for this arrival was missing its accuracy, too vague for the geofence, or exactly on the venue's pin. The check-in stands; check with the worker if it matters."
+                    >
+                      Location unverified
+                    </Pill>
+                  ) : null}
+                  {/* checkin.html's second line: on site, and how late. */}
+                  {row.checkInAt ? <span className="sub">{arrivalLine(row)}</span> : null}
+                </td>
+                <td data-label="Breaks" className="mono sm">
+                  {breaksCell(row, local)}
+                </td>
+                <td data-label="Status">
+                  <Pill tone={statusTone(row)}>{statusLabel(row, local)}</Pill>
+                  {lateCheckOutToVerify(row) ? (
+                    <span className="sub late-out">
+                      {LATE_CHECK_OUT_LABEL}
+                      {onVerify ? (
+                        <Button size="sm" onClick={() => onVerify(row)}>
+                          Verify
+                        </Button>
+                      ) : null}
+                    </span>
+                  ) : row.status === 'checked_out' && row.lateCheckOut ? (
+                    <span className="sub">
+                      Signed out late · verified
+                      {row.lateCheckOutVerifiedByName
+                        ? ` by ${row.lateCheckOutVerifiedByName}`
+                        : ''}
+                    </span>
+                  ) : null}
+                  {row.status === 'checked_out' && row.lateCheckOut ? (
+                    <WeeklyLimitFlag hours={row.weekHours} cap={row.weekCapHours} />
+                  ) : null}
+                  {/* ADR-0188: the register's N9 / N9b, on the manager's press. */}
+                  {onNudge && nudge ? (
+                    <span className="sub">
+                      <Button
+                        size="sm"
+                        disabled={nudging === row.bookingId}
+                        onClick={() => onNudge(row)}
+                      >
+                        {nudging === row.bookingId ? 'Sending…' : NUDGE_LABEL[nudge]}
+                      </Button>
+                    </span>
+                  ) : null}
+                  {nudgeErrors[row.bookingId] ? (
+                    <span className="sub nudge-err" role="alert">
+                      {nudgeErrors[row.bookingId]}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </TableScroll>

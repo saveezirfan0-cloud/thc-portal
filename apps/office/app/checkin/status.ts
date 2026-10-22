@@ -97,6 +97,53 @@ export function needsAttention(row: MonitorRow): boolean {
   );
 }
 
+/** What the monitor's Remind button can send (ADR-0188). */
+export type NudgeKind = 'check-in' | 'check-out' | 'still-on-shift';
+
+/** The window either side of a start / end the register's N9 uses, and the worker's check-in opens by. */
+const NUDGE_OPENS_MIN = 30;
+
+/**
+ * Whether the Remind button is offered on a row, and which register push it
+ * sends: N9 "Time to check in" (Due, Not confirmed today, Not checked in —
+ * from 30 minutes before the start, until the end), N9 "Don't forget to check
+ * out" (on shift, last 30 minutes), N9b "You haven't checked out of {event}"
+ * (on shift past the end). A checked-out or No check-out row has nothing to
+ * ask for: the first is done, the second's button is locked and the office
+ * resolves it in the violation log.
+ *
+ * `nudge_check_in_out()` (20261023130000) decides the same from the same
+ * status and refuses otherwise; this only keeps the button off rows that
+ * would be refused. Pure on `now` so the board can pass a mount-guarded one.
+ */
+export function nudgeKind(
+  row: Pick<MonitorRow, 'status' | 'startsAt' | 'endsAt'>,
+  now: Date,
+): NudgeKind | null {
+  const at = now.getTime();
+  const start = new Date(row.startsAt).getTime();
+  const end = new Date(row.endsAt).getTime();
+  const window = NUDGE_OPENS_MIN * 60_000;
+  switch (row.status) {
+    case 'due':
+    case 'not_confirmed_today':
+    case 'not_checked_in':
+      return at >= start - window && at < end ? 'check-in' : null;
+    case 'on_shift':
+    case 'off_site':
+      if (at >= end) return 'still-on-shift';
+      return at >= end - window ? 'check-out' : null;
+    default:
+      return null;
+  }
+}
+
+export const NUDGE_LABEL: Record<NudgeKind, string> = {
+  'check-in': 'Remind to check in',
+  'check-out': 'Remind to check out',
+  'still-on-shift': 'Remind to check out',
+};
+
 /**
  * §9.5's "−1 worker" flag: the event is short because somebody has not
  * checked in and the clock has already passed the 30-minute alert.
