@@ -235,17 +235,19 @@ function PoolRow({
           manager can invite them again. A person-decided end (declined,
           withdrawn, released at 12:05) is never re-invited by auto-assign. */}
       {entry.endedLabel ? (
-        <span
-          className="muted xs"
-          title={
-            entry.autoInvitable
-              ? 'Auto-assign may invite them again.'
-              : 'Only a manual invitation reaches them: auto-assign does not re-invite after a decision.'
-          }
-        >
-          earlier: {entry.endedLabel}
-          {entry.autoInvitable ? '' : ' · manual only'}
-        </span>
+        <>
+          <Pill
+            tone={entry.endedCause === 'declined' ? 'coral' : 'amber'}
+            title={
+              entry.autoInvitable
+                ? 'Auto-assign may invite them again.'
+                : 'Only a manual invitation reaches them: auto-assign does not re-invite after a decision.'
+            }
+          >
+            {entry.endedCause === 'declined' ? 'Declined earlier' : `Earlier: ${entry.endedLabel}`}
+          </Pill>
+          {entry.autoInvitable ? null : <span className="muted xs">manual invite only</span>}
+        </>
       ) : null}
       <div className="factors">
         {factorChips(entry).map((chip) => (
@@ -278,6 +280,7 @@ function PoolRow({
             shiftId={shiftId}
             staffId={entry.staffId}
             name={entry.name}
+            again={entry.endedLabel !== null}
           />
         )}
       </div>
@@ -290,11 +293,14 @@ function InviteButton({
   shiftId,
   staffId,
   name,
+  again,
 }: {
   eventId: string;
   shiftId: string;
   staffId: string;
   name: string;
+  /** An earlier booking on this section ended: say so on the button. */
+  again: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -319,9 +325,9 @@ function InviteButton({
         tone="outline"
         disabled={pending}
         onClick={invite}
-        aria-label={`Invite ${name}`}
+        aria-label={again ? `Invite ${name} again` : `Invite ${name}`}
       >
-        {pending ? 'Inviting…' : 'Invite'}
+        {pending ? 'Inviting…' : again ? 'Invite again' : 'Invite'}
       </Button>
     </>
   );
