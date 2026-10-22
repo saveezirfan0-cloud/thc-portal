@@ -138,3 +138,13 @@
   color: var(--cyan-ink);
   text-decoration: underline;
 }
+
+/* The worker's name opens their profile: text until it is pointed at. */
+.tbl .staff-link {
+  color: inherit;
+  text-decoration: none;
+}
+.tbl .staff-link:hover {
+  color: var(--cyan-ink);
+  text-decoration: underline;
+}
