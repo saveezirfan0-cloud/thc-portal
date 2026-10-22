@@ -30,7 +30,7 @@ function staffOrigin(): string {
 /**
  * /onboarding/reminders — the daily reminders that chase a candidate through
  * onboarding (ADR-0071, ADR-0169, ADR-0186), their numbers, and a View of
- * each as it is sent (ADR-0187). A static segment under /onboarding, so
+ * each as it is sent (ADR-0193). A static segment under /onboarding, so
  * Next.js serves it ahead of `/onboarding/[id]`.
  */
 export default async function Page() {

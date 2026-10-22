@@ -1,6 +1,6 @@
 -- =====================================================================
--- 924 · /onboarding/reminders: the daily onboarding reminder emails and
---       their numbers (20261023130000, ADR-0187)
+-- 926 · /onboarding/reminders: the daily onboarding reminder emails and
+--       their numbers (20261023160000, ADR-0193)
 --
 --   A. Who can read it: any office login, the viewer included; not a
 --      worker, not the public.

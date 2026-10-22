@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  MESSAGE_AUDIENCES,
   canMessageLineUp,
   messageLength,
   messagePeople,
@@ -152,6 +153,37 @@ describe('messageLineUp', () => {
     expect(result).toEqual({
       error: 'Nobody has an open invitation for that — there is nobody to message.',
     });
+  });
+
+  it('sends the narrower audiences through as typed', async () => {
+    for (const audience of ['confirmed', 'checked_in'] as const) {
+      state.rpc.mockResolvedValueOnce({
+        data: { ok: true, sent: 4, withoutPush: [], messageId: 'm-1' },
+        error: null,
+      });
+      await messageLineUp('evt-1', { sectionId: null, audience, message: 'x' });
+      expect(state.rpc).toHaveBeenLastCalledWith(
+        'send_event_message',
+        expect.objectContaining({ p_audience: audience }),
+      );
+    }
+  });
+
+  it('says who is missing when the narrower audience is empty, and points to the wider one', () => {
+    expect(messageRefusal('nobody_to_message', 'confirmed')).toMatch(/still to check in/);
+    expect(messageRefusal('nobody_to_message', 'confirmed')).toMatch(/All confirmed staff/);
+    expect(messageRefusal('nobody_to_message', 'checked_in')).toMatch(/checked in/);
+    expect(messageRefusal('nobody_to_message', 'checked_in')).toMatch(/All confirmed staff/);
+  });
+
+  it('offers the confirmed-only and checked-in-only choices, with "booked" still the first', () => {
+    expect(MESSAGE_AUDIENCES.map((a) => a.value)).toEqual([
+      'booked',
+      'confirmed',
+      'checked_in',
+      'invited',
+      'booked_and_invited',
+    ]);
   });
 
   it('refuses a signed-in account that is not the office', async () => {

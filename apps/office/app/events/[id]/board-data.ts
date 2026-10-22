@@ -217,7 +217,11 @@ interface StaffRow {
   removed_at: string | null;
   employee_id: number | null;
   photo_path: string | null;
+  phone: string | null;
 }
+
+/** What `namePeople` needs of a worker: the selfie path and the phone, with the name. */
+const STAFF_COLUMNS = 'id, first_name, last_name, removed_at, employee_id, photo_path, phone';
 
 /**
  * PostgREST carries `in.(…)` in the URL, and a role's pool can reach most
@@ -468,14 +472,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
 
   const bookingIds = bookings.map((b) => b['id'] as string);
   const [staffRes, staffRoleRes, qualRes, violationRes, checkLogRes] = await Promise.all([
-    selectIn<StaffRow>(
-      supabase,
-      'staff',
-      'id, first_name, last_name, removed_at, employee_id, photo_path',
-      'id',
-      staffIds,
-      ['id'],
-    ),
+    selectIn<StaffRow>(supabase, 'staff', STAFF_COLUMNS, 'id', staffIds, ['id']),
     selectIn<{ staff_id: string; role_id: string }>(
       supabase,
       'staff_roles',
@@ -723,7 +720,8 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
  * removed worker), the roles they hold, and the selfie. The selfie is a key
  * in the private `photos` bucket, not a URL: one batched signing (reused
  * across refreshes, _lib/photos.ts), and an unsigned path leaves that row on
- * initials. A removed worker shows no face, whatever the column still holds.
+ * initials. A removed worker shows no face and no phone, whatever the columns
+ * still hold.
  */
 async function namePeople(
   staff: readonly StaffRow[],
@@ -751,6 +749,8 @@ async function namePeople(
         }),
         roles: (rolesByStaff.get(s.id) ?? []).sort(),
         photoUrl: photoUrls.get(facePath(s) ?? '') ?? null,
+        // §1.7 retires a removed worker's number, whatever the column holds.
+        phone: s.removed_at === null ? s.phone : null,
       },
     ]),
   );
@@ -847,14 +847,7 @@ export async function loadSectionPools(
     ),
   ];
   const [staffRes, staffRoleRes] = await Promise.all([
-    selectIn<StaffRow>(
-      supabase,
-      'staff',
-      'id, first_name, last_name, removed_at, employee_id, photo_path',
-      'id',
-      unnamed,
-      ['id'],
-    ),
+    selectIn<StaffRow>(supabase, 'staff', STAFF_COLUMNS, 'id', unnamed, ['id']),
     selectIn<{ staff_id: string; role_id: string }>(
       supabase,
       'staff_roles',

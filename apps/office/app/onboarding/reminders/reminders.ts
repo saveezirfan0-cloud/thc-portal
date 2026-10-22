@@ -1,5 +1,5 @@
 /**
- * /onboarding/reminders (ADR-0187): the daily emails that chase a candidate
+ * /onboarding/reminders (ADR-0193): the daily emails that chase a candidate
  * who has stopped part-way through onboarding (ADR-0071, ADR-0169,
  * ADR-0186), and the numbers `onboarding_email_report()` gives beside them.
  * The words are never copied here: `previews.ts` renders each from the

@@ -8,15 +8,16 @@
 --      event, an event that is over, nobody to message. None of them
 --      queues anything.
 --   3. Recipients come from the bookings, by audience: booked (confirmed
---      and worked), invited only, or both; never applied, closed or
---      cancelled. One push per
+--      and worked), confirmed only (not checked in yet), checked in only,
+--      invited only, or confirmed, worked and invited; never applied,
+--      closed or cancelled. One push per
 --      worker even across two sections, deep-linked to their first one.
 --   4. The payload is the values map OM1 asks for, and the text is kept
 --      as typed (trimmed). Two sends are two messages.
 --   5. The answer names the recipients with no push subscription.
 -- =====================================================================
 begin;
-select plan(33);
+select plan(39);
 \ir _shared/fixtures.psql
 
 \set ev  '75800000-0000-4000-8000-000000000001'
@@ -203,6 +204,32 @@ select is((select data ->> 'audience' from audit_log
   'invited', 'the history records who it was for');
 
 -- ---------------------------------------------------------------------
+-- 3d · Confirmed and checked in, on their own (20261023140000)
+-- ---------------------------------------------------------------------
+select is(send_event_message(:'ev', null, 'confirmed', 'Where are you? Doors open at once') - 'messageId',
+  jsonb_build_object('ok', true, 'sent', 1, 'withoutPush', '[]'::jsonb),
+  'confirmed only: the one worker who has not checked in');
+select is((select array_agg(recipient_staff_id)
+             from notification_outbox where template = 'OM1'
+              and payload ->> 'message' = 'Where are you? Doors open at once'),
+  array[:'w1'::uuid],
+  'not the checked-in worker, the invitee, the applicant or the closed invitation');
+select is(send_event_message(:'ev', null, 'checked_in', 'Thanks for arriving — brief at the bar') - 'messageId',
+  jsonb_build_object('ok', true, 'sent', 1, 'withoutPush', jsonb_build_array('Chec Kedin')),
+  'checked in only: the worked worker, named because they have notifications off');
+select is((select array_agg(recipient_staff_id)
+             from notification_outbox where template = 'OM1'
+              and payload ->> 'message' = 'Thanks for arriving — brief at the bar'),
+  array[:'w2'::uuid],
+  'not the two confirmed bookings');
+select is(send_event_message(:'ev', :'s2', 'checked_in', 'Anyone?'),
+  jsonb_build_object('ok', false, 'reason', 'nobody_to_message'),
+  'a section nobody has checked in to has nobody to message');
+select is((select data ->> 'audience' from audit_log
+            where action = 'event.message_sent' and data ->> 'message' = 'Where are you? Doors open at once'),
+  'confirmed', 'the history records the narrower audience');
+
+-- ---------------------------------------------------------------------
 -- 2b · Nobody left to message
 -- ---------------------------------------------------------------------
 reset role;
@@ -215,7 +242,7 @@ select is(send_event_message(:'ev', :'s2', 'booked', 'Anyone?'),
 select is(send_event_message(:'ev', null, 'invited', 'Anyone?'),
   jsonb_build_object('ok', false, 'reason', 'nobody_to_message'),
   'with the invitation withdrawn there is no invitee left to message');
-select is((select count(*)::int from notification_outbox where template = 'OM1'), 5, 'and queued nothing');
+select is((select count(*)::int from notification_outbox where template = 'OM1'), 7, 'and queued nothing');
 
 select * from finish();
 rollback;

@@ -14,6 +14,7 @@ import {
 } from '../board-model';
 import { inviteWorker } from '../actions';
 import { ApplicationActions } from './ApplicationActions';
+import { PersonPhone, ProfileLink } from './Person';
 import { StaffRoles } from './StaffRoles';
 
 /** Rows drawn before "Show all" — a role's pool can hold most of the workforce. */
@@ -62,7 +63,7 @@ export function PotentialPool({
 }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<PoolFilter>('all');
-  const [sort, setSort] = useState<PoolSort>('score');
+  const [sort, setSort] = useState<PoolSort>('applied');
   const [showAll, setShowAll] = useState(false);
 
   const shown = useMemo(() => queryPool(entries, { q, filter, sort }), [entries, q, filter, sort]);
@@ -99,8 +100,8 @@ export function PotentialPool({
             value={sort}
             onChange={(event) => setSort(event.target.value as PoolSort)}
           >
-            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="applied">Sort: applied first</option>
+            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="name">Sort: name</option>
           </select>
         </span>
@@ -208,13 +209,20 @@ function PoolRow({
   return (
     <div className={`prow${waveBreak ? ' wave-break' : ''}`}>
       <span className="rank">{entry.rank}</span>
-      <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
+      <ProfileLink staffId={entry.staffId} name={entry.name} tabIndex={-1} aria-hidden>
+        <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
+      </ProfileLink>
       <div className="who">
-        <div className="n">{entry.name}</div>
+        <div className="n">
+          <ProfileLink staffId={entry.staffId} name={entry.name}>
+            {entry.name}
+          </ProfileLink>
+        </div>
         <div className="s">
           <StaffRoles name={entry.name} roles={entry.roles} roleName={roleName} />
         </div>
       </div>
+      <PersonPhone phone={entry.phone} />
       {entry.qualified ? (
         <Pill tone="cyan">
           Qualified — {clientName} · {roleName}
@@ -227,17 +235,19 @@ function PoolRow({
           manager can invite them again. A person-decided end (declined,
           withdrawn, released at 12:05) is never re-invited by auto-assign. */}
       {entry.endedLabel ? (
-        <span
-          className="muted xs"
-          title={
-            entry.autoInvitable
-              ? 'Auto-assign may invite them again.'
-              : 'Only a manual invitation reaches them: auto-assign does not re-invite after a decision.'
-          }
-        >
-          earlier: {entry.endedLabel}
-          {entry.autoInvitable ? '' : ' · manual only'}
-        </span>
+        <>
+          <Pill
+            tone={entry.endedCause === 'declined' ? 'coral' : 'amber'}
+            title={
+              entry.autoInvitable
+                ? 'Auto-assign may invite them again.'
+                : 'Only a manual invitation reaches them: auto-assign does not re-invite after a decision.'
+            }
+          >
+            {entry.endedCause === 'declined' ? 'Declined earlier' : `Earlier: ${entry.endedLabel}`}
+          </Pill>
+          {entry.autoInvitable ? null : <span className="muted xs">manual invite only</span>}
+        </>
       ) : null}
       <div className="factors">
         {factorChips(entry).map((chip) => (
@@ -270,6 +280,7 @@ function PoolRow({
             shiftId={shiftId}
             staffId={entry.staffId}
             name={entry.name}
+            again={entry.endedLabel !== null}
           />
         )}
       </div>
@@ -282,11 +293,14 @@ function InviteButton({
   shiftId,
   staffId,
   name,
+  again,
 }: {
   eventId: string;
   shiftId: string;
   staffId: string;
   name: string;
+  /** An earlier booking on this section ended: say so on the button. */
+  again: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -311,9 +325,9 @@ function InviteButton({
         tone="outline"
         disabled={pending}
         onClick={invite}
-        aria-label={`Invite ${name}`}
+        aria-label={again ? `Invite ${name} again` : `Invite ${name}`}
       >
-        {pending ? 'Inviting…' : 'Invite'}
+        {pending ? 'Inviting…' : again ? 'Invite again' : 'Invite'}
       </Button>
     </>
   );

@@ -1,0 +1,60 @@
+-- =====================================================================
+-- GENERATED FILE — do not edit.
+--
+-- Source: packages/domain/src/legalName.vectors.json
+-- Regenerate: pnpm --filter @thc/domain gen:vectors
+--
+-- ADR-0189: name_fault() against the cases nameFault() is held to. `text` is
+-- what a candidate typed; `fault` is the reason it is not a whole name, or
+-- null. `optional` is the middle-name field, where an empty value is fine.
+-- Included with \ir from supabase/tests/120_apply.sql; the .psql
+-- extension keeps pg_prove from running it as a test of its own.
+-- =====================================================================
+
+create temporary table legal_name_vectors (
+  name text primary key,
+  text text not null,
+  optional boolean not null,
+  fault text
+) on commit drop;
+
+insert into legal_name_vectors values
+  ('plain name', 'Marc', false, null),
+  ('plain surname', 'Martinez', false, null),
+  ('surname that is an initial and a full stop', 'M.', false, 'initial'),
+  ('surname that is a bare initial', 'M', false, 'initial'),
+  ('lower-case initial', 'g.', false, 'initial'),
+  ('first name that is an initial', 'J', false, 'initial'),
+  ('middle initial among full names', 'Marc J Antoni', false, 'initial'),
+  ('middle name with a full stop', 'Marc J. Antoni', false, 'initial'),
+  ('abbreviation with a full stop', 'St. John', false, 'initial'),
+  ('two initials run together', 'J.R.', false, 'initial'),
+  ('hyphenated name ending in an initial', 'Smith-J', false, 'initial'),
+  ('initial with an accent', 'É', false, 'initial'),
+  ('empty', '', false, 'required'),
+  ('spaces only', '   ', false, 'required'),
+  ('empty middle name is fine', '', true, null),
+  ('spaces only middle name is fine', '   ', true, null),
+  ('middle initial is not fine', 'J', true, 'initial'),
+  ('full middle name', 'Antoni', true, null),
+  ('two-letter name', 'Li', false, null),
+  ('two-letter surname', 'Ng', false, null),
+  ('hyphenated', 'Anne-Marie', false, null),
+  ('apostrophe', 'O''Neil', false, null),
+  ('typographic apostrophe', 'O’Neil', false, null),
+  ('apostrophe after a particle', 'D''Souza', false, null),
+  ('accents', 'Zoë Müller', false, null),
+  ('accented, decomposed', 'Zoë', false, null),
+  ('particles', 'van der Berg', false, null),
+  ('several given names', 'Marc Antoni', false, null),
+  ('capitalisation is left alone', 'carlos', false, null),
+  ('capitalisation is left alone, upper', 'MARTINEZ', false, null),
+  ('surrounding spaces are trimmed', '  Marc  ', false, null),
+  ('digit', 'Marc2', false, 'characters'),
+  ('symbol', 'Marc@', false, 'characters'),
+  ('starts with a hyphen', '-Marc', false, 'characters'),
+  ('starts with an apostrophe', '''Marc', false, 'characters'),
+  ('exactly 100 characters', 'Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghij', false, null),
+  ('one over the limit', 'Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghi Abcdefghijk', false, 'too_long');
+
+\set legal_name_count 37

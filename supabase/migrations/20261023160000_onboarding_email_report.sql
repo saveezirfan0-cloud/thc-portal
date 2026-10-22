@@ -1,6 +1,6 @@
 -- =====================================================================
 -- /onboarding/reminders: the daily onboarding reminder emails, and how
--- many of each have gone (ADR-0187; owner request, 22.10.2026)
+-- many of each have gone (ADR-0193; owner request, 22.10.2026)
 --
 -- After ADR-0186 every candidate stuck on a move of their own is emailed
 -- daily until they progress: the interview (OC1), the account set-up
@@ -30,7 +30,7 @@
 -- Counts only: no address, link or payload leaves this function. OC2's
 -- rows carry a live activation link (ADR-0060); this reads none of it.
 -- Office logins only, the viewer included: it reads, it changes nothing.
--- pgTAP: supabase/tests/924_onboarding_email_report.sql.
+-- pgTAP: supabase/tests/926_onboarding_email_report.sql.
 -- =====================================================================
 
 create or replace function public.onboarding_email_report(p_now timestamptz default now())
@@ -134,7 +134,7 @@ begin
 end $$;
 
 comment on function public.onboarding_email_report(timestamptz) is
-  'ADR-0187, /onboarding/reminders: per track (interview, activation, app) the candidates being reminded, reminded today (UK), Stalled and with a failed latest reminder, the app track''s devices and wizard steps; per email (OC1, OC2, OC3, OC4 first/second/repeat, OC1 existing_*) sent today, sent in all, failed, waiting, people reached, last sent and next due; the OC4 emails sent beside a push; whether each code is switched on. Counts only. Office logins only.';
+  'ADR-0193, /onboarding/reminders: per track (interview, activation, app) the candidates being reminded, reminded today (UK), Stalled and with a failed latest reminder, the app track''s devices and wizard steps; per email (OC1, OC2, OC3, OC4 first/second/repeat, OC1 existing_*) sent today, sent in all, failed, waiting, people reached, last sent and next due; the OC4 emails sent beside a push; whether each code is switched on. Counts only. Office logins only.';
 
 revoke all on function public.onboarding_email_report(timestamptz) from public, anon;
 grant execute on function public.onboarding_email_report(timestamptz) to authenticated;

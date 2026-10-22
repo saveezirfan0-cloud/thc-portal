@@ -1,7 +1,7 @@
 import { Skeleton, SkeletonKpis, SkeletonPanel, SkeletonScreen } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 
-/** /onboarding/reminders (ADR-0187) while the numbers are read. */
+/** /onboarding/reminders (ADR-0193) while the numbers are read. */
 export default function Loading() {
   return (
     <OfficeShell

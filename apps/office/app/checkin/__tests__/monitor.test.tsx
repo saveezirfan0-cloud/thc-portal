@@ -9,7 +9,14 @@ import type { MonitorRow, ViolationRow } from '../types';
 // Outside Next there is no router, no server and no Supabase; none is under test.
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock('@thc/db/browser', () => ({ createClient: vi.fn() }));
-vi.mock('../actions', () => ({ resolveViolation: vi.fn() }));
+const nudgeCheckInOut = vi.fn();
+const staffActions = vi.hoisted(() => ({ messageStaff: vi.fn() }));
+vi.mock('../../staff/messageActions', () => staffActions);
+vi.mock('../actions', () => ({
+  resolveViolation: vi.fn(),
+  verifyLateCheckOut: vi.fn(),
+  nudgeCheckInOut: (...args: unknown[]) => nudgeCheckInOut(...args),
+}));
 
 // A manager reading from Athens (UTC+3 in September; the UK is UTC+1), so
 // every §1.8 rule below has a two-hour gap to show up in.
@@ -311,6 +318,105 @@ describe('/checkin (§9.5)', () => {
       );
       expect(html).toContain('Actual finish (UK time)');
       expect(html).toContain('no check-out recorded');
+    });
+  });
+
+  describe('Remind (ADR-0188)', () => {
+    const minutes = (n: number) => new Date(Date.now() + n * 60_000).toISOString();
+    const notDue = {
+      ...ROW,
+      checkInAt: null,
+      status: 'not_checked_in' as const,
+      startsAt: minutes(-5),
+      endsAt: minutes(235),
+    };
+
+    it('offers it on a worker who has not checked in, once the app is mounted', () => {
+      // First paint (the server render) has no clock, so no button to flash in.
+      expect(renderToStaticMarkup(<MonitorScreen rows={[notDue]} violations={[]} />)).not.toContain(
+        'Remind to check in',
+      );
+      expect(mounted(<MonitorScreen rows={[notDue]} violations={[]} />)).toContain(
+        'Remind to check in',
+      );
+    });
+
+    it('does not offer it on a finished or still-early row', () => {
+      const html = mounted(
+        <MonitorScreen
+          rows={[
+            { ...ROW, bookingId: 'b2', checkOutAt: minutes(-1), status: 'checked_out' },
+            { ...ROW, bookingId: 'b3', startsAt: minutes(-60), endsAt: minutes(180) },
+          ]}
+          violations={[]}
+        />,
+      );
+      expect(html).not.toContain('Remind to');
+    });
+
+    it('sends the booking and says why when the office refuses', async () => {
+      nudgeCheckInOut.mockResolvedValue({ error: 'They were reminded in the last 5 minutes.' });
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      act(() => root.render(<MonitorScreen rows={[notDue]} violations={[]} />));
+      const button = [...container.querySelectorAll('button')].find((b) =>
+        b.textContent?.includes('Remind to check in'),
+      );
+      await act(async () => {
+        button?.click();
+      });
+      expect(nudgeCheckInOut).toHaveBeenCalledWith('b1');
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+        'reminded in the last 5 minutes',
+      );
+      act(() => root.unmount());
+      container.remove();
+    });
+  });
+
+  describe('Send push (ADR-0190)', () => {
+    it('writes the manager’s own words to that one worker, whatever the row says', async () => {
+      staffActions.messageStaff.mockResolvedValue({
+        ok: true,
+        summary: 'Sent to 1 person.',
+        everyoneReached: true,
+      });
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      // A checked-out row: no Remind, but the manager can still say something.
+      act(() =>
+        root.render(
+          <MonitorScreen
+            rows={[{ ...ROW, checkOutAt: '2026-09-24T19:00:00Z', status: 'checked_out' }]}
+            violations={[]}
+          />,
+        ),
+      );
+      const open = [...container.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Send push',
+      );
+      expect(open).toBeDefined();
+      act(() => open!.click());
+
+      const textarea = document.querySelector('textarea')!;
+      act(() => {
+        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
+        set.call(textarea, 'We are at the side door');
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      const sends = [...document.querySelectorAll('button')].filter(
+        (b) => b.textContent === 'Send push',
+      );
+      await act(async () => sends[sends.length - 1]!.click());
+
+      expect(staffActions.messageStaff).toHaveBeenCalledWith(['s1'], 'We are at the side door');
+      expect(document.body.textContent).toContain('Sent to 1 person.');
+      act(() => root.unmount());
+      container.remove();
     });
   });
 });

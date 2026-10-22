@@ -6,7 +6,7 @@ import { parseOnboardingEmailReport } from './reminders';
 import type { OnboardingEmailReport } from './reminders';
 
 /**
- * The read behind /onboarding/reminders (ADR-0187): one call to
+ * The read behind /onboarding/reminders (ADR-0193): one call to
  * `onboarding_email_report()`, office logins only. If it fails the page still
  * shows and previews every reminder, and says why the numbers are missing.
  */

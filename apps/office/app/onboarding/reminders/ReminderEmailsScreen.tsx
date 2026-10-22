@@ -31,7 +31,7 @@ import './reminders.css';
 const TRACKS: readonly ReminderTrack[] = ['interview', 'activation', 'app'];
 
 /**
- * /onboarding/reminders (ADR-0187): who is being chased through onboarding,
+ * /onboarding/reminders (ADR-0193): who is being chased through onboarding,
  * which reminders have gone to them, and a View of each exactly as it is sent.
  * The numbers are `onboarding_email_report()`'s; the words are the register's.
  */

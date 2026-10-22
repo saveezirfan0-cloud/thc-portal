@@ -14,7 +14,7 @@ import {
 } from '../reminders';
 
 /**
- * ADR-0187 · /onboarding/reminders: each reminder rendered from the register
+ * ADR-0193 · /onboarding/reminders: each reminder rendered from the register
  * as it is sent, the numbers beside it, read defensively.
  */
 

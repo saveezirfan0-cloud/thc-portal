@@ -4,7 +4,7 @@ import { inlineLogoAttachment } from '@thc/notifications/email-logo';
 import { REMINDER_EMAILS, withPushId } from './reminders';
 
 /**
- * The reminders on /onboarding/reminders (ADR-0187), rendered on the server
+ * The reminders on /onboarding/reminders (ADR-0193), rendered on the server
  * from the register exactly as the drain sends them (messageFor), so what
  * the office reads is what candidates get. Server only: the page passes the
  * finished HTML down, and the register never reaches the browser bundle.
