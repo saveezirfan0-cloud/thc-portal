@@ -14,6 +14,7 @@ import {
 } from '../board-model';
 import { inviteWorker } from '../actions';
 import { ApplicationActions } from './ApplicationActions';
+import { ProfileLink } from './Person';
 import { StaffRoles } from './StaffRoles';
 
 /** Rows drawn before "Show all" — a role's pool can hold most of the workforce. */
@@ -208,9 +209,15 @@ function PoolRow({
   return (
     <div className={`prow${waveBreak ? ' wave-break' : ''}`}>
       <span className="rank">{entry.rank}</span>
-      <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
+      <ProfileLink staffId={entry.staffId} name={entry.name} tabIndex={-1} aria-hidden>
+        <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
+      </ProfileLink>
       <div className="who">
-        <div className="n">{entry.name}</div>
+        <div className="n">
+          <ProfileLink staffId={entry.staffId} name={entry.name}>
+            {entry.name}
+          </ProfileLink>
+        </div>
         <div className="s">
           <StaffRoles name={entry.name} roles={entry.roles} roleName={roleName} />
         </div>
