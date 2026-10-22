@@ -1,11 +1,16 @@
 import Link from 'next/link';
 import { Alert, ColumnChooserFor, Panel } from '@thc/ui';
-import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
+import { monthGrid, periodLabel, periodRange, todayInUk, weekDays } from './calendar';
 import { loadClientNames, loadEventsInRange, loadShiftRecords } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentTimeFormat } from '../_lib/timeFormat';
 import { AutoRefresh } from '../_components/AutoRefresh';
 import { EventToolbar, hrefFor } from './_components/EventToolbar';
+import {
+  RememberSchedulingView,
+  schedulingReturnHref,
+  schedulingReturnLabel,
+} from './_components/BackToScheduling';
 import {
   DayView,
   EVENT_LIST_COLUMNS,
@@ -106,6 +111,11 @@ export default async function Page({
             Every 15 s re-ran the period's reads for each open tab
             (go-live audit 17.10.2026, B2). */}
         <AutoRefresh everyMs={60_000} />
+        {/* ADR-0195: the event board's "Back to …" returns to exactly this. */}
+        <RememberSchedulingView
+          href={schedulingReturnHref(hrefFor(query), date, today)}
+          label={schedulingReturnLabel(view, periodLabel(view, date))}
+        />
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
         {/* A failed read is said out loud, never drawn as an empty period. */}
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
