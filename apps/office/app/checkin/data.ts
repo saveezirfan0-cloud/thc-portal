@@ -88,6 +88,7 @@ type SessionClient = ReturnType<typeof createClient>;
 
 const VIOLATION_COLUMNS = `id, booking_id, type, detected_at, minutes_late, resolved, resolved_at,
   resolution_note, actual_finish_at,
+  staff_id,
   staff:staff_id ( first_name, last_name, photo_path, phone, removed_at, employee_id ),
   resolver:resolved_by ( full_name ),
   booking:booking_id (
@@ -157,6 +158,7 @@ async function queryViolations(
     return {
       id: v.id,
       bookingId: v.booking_id,
+      staffId: v.staff_id ?? undefined,
       staffName: staff?.removed_at
         ? `Deleted account #${staff.employee_id}`
         : `${staff?.first_name ?? ''} ${staff?.last_name ?? ''}`.trim(),
@@ -345,6 +347,7 @@ export async function loadMonitor(
   for (const row of unsigned) row.phone = phones?.get(row.staffId);
   for (const row of lateRows) {
     const staffId = bookingStaff?.get(row.bookingId);
+    row.staffId = staffId;
     row.phone = phones && staffId ? phones.get(staffId) : undefined;
   }
 

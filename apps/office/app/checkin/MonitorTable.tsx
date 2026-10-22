@@ -12,6 +12,7 @@ import {
   breaksCell,
   statusTone,
 } from './status';
+import { StaffName } from './StaffName';
 import { StaffPhone } from './StaffPhone';
 import type { MonitorRow } from './types';
 import { useNow } from './useNow';
@@ -103,7 +104,9 @@ export function MonitorTable({
                   <div className="person">
                     <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
                     <div>
-                      <div className="n">{row.staffName}</div>
+                      <div className="n">
+                        <StaffName staffId={row.staffId} name={row.staffName} />
+                      </div>
                       <div className="s">{row.roleName}</div>
                       <StaffPhone phone={row.phone} />
                     </div>

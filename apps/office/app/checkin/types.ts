@@ -65,6 +65,8 @@ export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' 
 export interface ViolationRow {
   id: string;
   bookingId: string;
+  /** Links the name to /staff/:id; absent on a row built elsewhere. */
+  staffId?: string;
   staffName: string;
   /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
   photoUrl: string | null;
@@ -104,6 +106,8 @@ export interface ViolationRow {
  */
 export interface LateCheckOutRow {
   bookingId: string;
+  /** Read from the booking (phones.ts); absent if that read failed. */
+  staffId?: string;
   staffName: string;
   photoUrl: string | null;
   /**
