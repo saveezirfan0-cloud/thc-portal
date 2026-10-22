@@ -231,6 +231,15 @@ export const TEMPLATES = {
     // screen (wireframes: staff-app shifts vs shift-detail), so the push
     // opens where the worker can act on it.
     deepLink: '/shifts',
+    // ADR-0196: a worker who confirmed after the noon deadline has the hour
+    // from confirming instead. Sent by late_ready_tick() with variant "late";
+    // every other N6 reads §8's body.
+    variants: {
+      late: {
+        title: "Press I'm ready within the hour",
+        body: "Press I'm ready by {dueBy} — or you'll be removed from your shift tomorrow",
+      },
+    },
   },
   N6b: {
     code: 'N6b',
@@ -240,6 +249,12 @@ export const TEMPLATES = {
     trigger: 'Automatically dropped for missing the day-before deadline',
     timing: 'at the moment of the automatic 12:05 cutoff (confirmed 01.09.2026)',
     deepLink: '/shifts',
+    // ADR-0196: the release of a late confirmer, an hour after confirming.
+    variants: {
+      late: {
+        body: "You have been removed from your shift tomorrow as we did not receive your 'I'm ready' within an hour of your confirmation",
+      },
+    },
   },
   N7: {
     code: 'N7',

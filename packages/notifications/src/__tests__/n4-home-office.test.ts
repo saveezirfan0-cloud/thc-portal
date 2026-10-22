@@ -45,3 +45,41 @@ describe('N4 · the Home Office check variant', () => {
     expect(() => body('N9')).toThrow(/needs a variant/);
   });
 });
+
+/**
+ * N6 and N6b for a worker who confirmed after the noon deadline (ADR-0196):
+ * the hour from confirming, not "12:00". Every other row reads §8 word for
+ * word, with no variant.
+ */
+describe('N6 / N6b · the late confirmer variant', () => {
+  const row = (template: string, payload: Record<string, string>): OutboxRow => ({
+    ...n4({}),
+    key: `${template}:booking:1`,
+    template,
+    payload,
+  });
+
+  it('N6 with no variant is still §8: 12:00 today', () => {
+    expect(body('N6')).toBe(
+      "Confirm tomorrow's shift by 12:00 today — or you'll be removed from it",
+    );
+  });
+
+  it('the late N6 names the time the hour ends, never 12:00', () => {
+    const message = messageFor(row('N6', { variant: 'late', dueBy: '19:09' }));
+    expect(message.kind === 'push' && message.body).toBe(
+      "Press I'm ready by 19:09 — or you'll be removed from your shift tomorrow",
+    );
+    expect(message.kind === 'push' && message.title).toBe("Press I'm ready within the hour");
+    expect(message.kind === 'push' && message.url).toBe('/shifts');
+  });
+
+  it('N6b with no variant is §8, and the late one says an hour, not the 12:00 deadline', () => {
+    expect(body('N6b')).toMatch(/12:00 deadline/);
+    const message = messageFor(row('N6b', { variant: 'late' }));
+    expect(message.kind === 'push' && message.body).toMatch(/within an hour of your confirmation/);
+    expect(message.kind === 'push' && message.body).not.toMatch(/12:00/);
+    // The heading is the register's own.
+    expect(message.kind === 'push' && message.title).toBe("Removed from tomorrow's shift");
+  });
+});
