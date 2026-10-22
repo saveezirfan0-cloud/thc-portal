@@ -2,6 +2,7 @@
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { givenNames } from '@thc/domain';
 import { callerKey } from './caller';
 import {
   APPLY_UNAVAILABLE,
@@ -18,6 +19,7 @@ import type { ApplicationValues, ApplySource, ApplyState } from './form';
 function read(formData: FormData): ApplicationValues {
   return {
     firstName: String(formData.get('firstName') ?? ''),
+    middleName: String(formData.get('middleName') ?? ''),
     lastName: String(formData.get('lastName') ?? ''),
     email: String(formData.get('email') ?? ''),
     dialCode: String(formData.get('dialCode') ?? '+44'),
@@ -138,7 +140,8 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
 
   const answer = await submit(
     {
-      p_first_name: values.firstName.trim(),
+      // ADR-0187: the passport's given names, stored as one value.
+      p_first_name: givenNames(values.firstName, values.middleName),
       p_last_name: values.lastName.trim(),
       p_email: email,
       p_phone: toE164(values.dialCode, values.mobile),

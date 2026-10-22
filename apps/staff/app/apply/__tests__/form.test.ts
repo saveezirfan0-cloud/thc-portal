@@ -290,6 +290,65 @@ describe('validate (§2.1, §1.7)', () => {
     expect(validate(values({ lastName: '' })).lastName).toBe('Enter your surname');
   });
 
+  // ADR-0187: the name as printed on the passport. "Marc M." is what the
+  // office was reading beside a photo; nothing downstream can match it.
+  describe('names as on the passport (ADR-0187)', () => {
+    it('refuses a surname that is an initial, with or without the full stop', () => {
+      const surname = 'Enter your surname in full, as it appears on your passport — not an initial';
+      expect(validate(values({ lastName: 'M.' })).lastName).toBe(surname);
+      expect(validate(values({ lastName: 'g' })).lastName).toBe(surname);
+    });
+
+    it('refuses a first name that is an initial', () => {
+      expect(validate(values({ firstName: 'J.' })).firstName).toBe(
+        'Enter your first name in full, as it appears on your passport — not an initial',
+      );
+    });
+
+    it('refuses a middle initial, but takes a middle name or none at all', () => {
+      expect(validate(values({ middleName: 'J' })).middleName).toMatch(/not initials/);
+      expect(validate(values({ middleName: 'Antoni' })).middleName).toBeUndefined();
+      expect(validate(values({ middleName: '' })).middleName).toBeUndefined();
+      expect(validate(values({ middleName: '   ' })).middleName).toBeUndefined();
+    });
+
+    it('refuses digits and symbols', () => {
+      expect(validate(values({ lastName: 'Kalu2' })).lastName).toBe(
+        'Use letters, spaces, hyphens and apostrophes only',
+      );
+    });
+
+    it('takes every name a passport can print: hyphens, apostrophes, accents, particles', () => {
+      for (const lastName of [
+        'Anne-Marie Smith',
+        "O'Neil",
+        'O’Neil',
+        'Müller',
+        'van der Berg',
+        'Ng',
+      ]) {
+        expect(validate(values({ lastName })).lastName, lastName).toBeUndefined();
+      }
+    });
+
+    it('leaves the capitalisation as the person typed it', () => {
+      expect(validate(values({ firstName: 'carlos', lastName: 'GARCIA' }))).toEqual({});
+    });
+
+    it('limits the first and middle names together, because they are stored as one', () => {
+      const long = 'Abcdefghi '.repeat(5).trim(); // 49 characters
+      expect(validate(values({ firstName: long, middleName: long })).middleName).toBeUndefined();
+      expect(validate(values({ firstName: `${long} ${long}`, middleName: long })).middleName).toBe(
+        'Your first and middle names together are too long',
+      );
+    });
+
+    it('says the same about each field it refuses, once', () => {
+      const errors = validate(values({ firstName: 'M.', middleName: 'J', lastName: 'G.' }));
+      expect(Object.keys(errors).sort()).toEqual(['firstName', 'lastName', 'middleName']);
+    });
+  });
+
   it('distinguishes a missing email from a malformed one', () => {
     expect(validate(values({ email: '' })).email).toBe('Enter your email address');
     expect(validate(values({ email: 'not-an-email' })).email).toBe('Check your email address');
