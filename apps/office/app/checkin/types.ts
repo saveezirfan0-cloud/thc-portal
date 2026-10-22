@@ -19,6 +19,11 @@ export interface MonitorRow {
   staffName: string;
   /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
   photoUrl: string | null;
+  /**
+   * The worker's mobile, a `tel:` link under the name. Null for a removed
+   * worker (§1.7) or none on record; absent when the numbers could not be read.
+   */
+  phone?: string | null;
   /** The ROLE SECTION's window (RULE-18), never the event's. */
   startsAt: string;
   endsAt: string;
@@ -60,9 +65,12 @@ export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' 
 export interface ViolationRow {
   id: string;
   bookingId: string;
+  /** Links the name to /staff/:id; absent on a row built elsewhere. */
+  staffId?: string;
   staffName: string;
   /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
   photoUrl: string | null;
+  phone?: string | null;
   eventTitle: string;
   venueName: string;
   roleName: string;
@@ -94,8 +102,11 @@ export interface ViolationRow {
  */
 export interface LateCheckOutRow {
   bookingId: string;
+  /** Links the name to /staff/:id; read from the booking, absent if that read failed. */
+  staffId?: string;
   staffName: string;
   photoUrl: string | null;
+  phone?: string | null;
   eventTitle: string;
   venueName: string;
   roleName: string;

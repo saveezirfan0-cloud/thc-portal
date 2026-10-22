@@ -125,3 +125,19 @@
   align-items: center;
   gap: var(--sp-6);
 }
+
+/* The worker's name opens their profile; the number rings them (§9.5, §9.6).
+   Both read as text until pointed at, like the Staff directory's. */
+.tbl .staff-link {
+  color: inherit;
+  text-decoration: none;
+}
+.tbl .staff-link:hover,
+.tbl .staff-phone:hover {
+  color: var(--cyan-ink);
+  text-decoration: underline;
+}
+.tbl .staff-phone {
+  color: inherit;
+  text-decoration: none;
+}
