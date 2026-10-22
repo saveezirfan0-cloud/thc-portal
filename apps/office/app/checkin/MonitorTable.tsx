@@ -42,7 +42,7 @@ import { useViewerZone } from './useViewerZone';
  * before the end): one press queues the register's own N9 / N9b push. It is
  * a control, not a status, so it carries no colour of its own.
  *
- * Send push (ADR-0188) sits beside Remind on every row: a free-text push to that
+ * Send push (ADR-0190) sits beside Remind on every row: a free-text push to that
  * worker in the office's own words (the same dialog as the Staff directory
  * and a profile), for what no fixed reminder says — "we're at the side door".
  *
@@ -175,7 +175,7 @@ export function MonitorTable({
                         {nudging === row.bookingId ? 'Sending…' : NUDGE_LABEL[nudge]}
                       </Button>
                     ) : null}
-                    {/* ADR-0188: the manager's own words, whatever the row says (OM2). */}
+                    {/* ADR-0190: the manager's own words, whatever the row says (OM2). */}
                     <SendPush
                       recipients={[{ id: row.staffId, name: row.staffName }]}
                       tone="ghost"

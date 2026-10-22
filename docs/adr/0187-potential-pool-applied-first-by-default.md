@@ -1,4 +1,4 @@
-# ADR-0190 · The Potential pool opens with Radar applicants first
+# ADR-0187 · The Potential pool opens with Radar applicants first
 
 **Status:** Accepted (owner request, 22.10.2026). Refines scope v1.6 §3.3 ("the manager can sort/filter the pool by application status; the pool's existing ranking and search stay intact").
 

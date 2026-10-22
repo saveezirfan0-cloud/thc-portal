@@ -376,7 +376,7 @@ describe('/checkin (§9.5)', () => {
     });
   });
 
-  describe('Send push (ADR-0188)', () => {
+  describe('Send push (ADR-0190)', () => {
     it('writes the manager’s own words to that one worker, whatever the row says', async () => {
       staffActions.messageStaff.mockResolvedValue({
         ok: true,
