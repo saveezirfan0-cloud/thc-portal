@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Input, Pill, Radio, RadioGroup, SegToggle, Textarea } from '@thc/ui';
-import { formatFileSize, formatShareCode } from '@thc/domain';
+import { formatFileSize, formatShareCode, termLetterExpired } from '@thc/domain';
 import type { DocRequirement } from '@thc/domain';
 import { submitDocuments } from '../actions';
 import { allUploaded, docIcon } from '../state';
@@ -131,45 +131,61 @@ export function DocumentsStep({
       ) : null}
 
       <div className="mlist wiz-list">
-        {shown.map(({ requirement, doc, viaCompletionLetter }) => (
-          <div className={`docrow ${doc ? 'pending' : ''}`} key={requirement.key}>
-            <span className="ico">{viaCompletionLetter ? '—' : docIcon(doc)}</span>
-            <div>
-              <div className="t">{requirement.label}</div>
-              <div className="m">
-                {viaCompletionLetter
-                  ? doc?.status === 'verified'
-                    ? 'Not needed — your Completion Letter below covers it'
-                    : 'Covered by your Completion Letter below once the office approves it'
-                  : doc
-                    ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
-                        .filter(Boolean)
-                        .join(' · ')
-                    : `Missing · ${requirement.hint ?? ''}`}
+        {shown.map(({ requirement, doc, viaCompletionLetter }) => {
+          // §4.2: the reader has already found every date on the letter in the past.
+          const outOfDate =
+            !viaCompletionLetter &&
+            doc?.docType === 'university_term_dates_letter' &&
+            doc.status !== 'rejected' &&
+            termLetterExpired(today, doc.termDates);
+          return (
+            <div className={`docrow ${doc ? 'pending' : ''}`} key={requirement.key}>
+              <span className="ico">{viaCompletionLetter ? '—' : docIcon(doc)}</span>
+              <div>
+                <div className="t">{requirement.label}</div>
+                <div className="m">
+                  {viaCompletionLetter
+                    ? doc?.status === 'verified'
+                      ? 'Not needed — your Completion Letter below covers it'
+                      : 'Covered by your Completion Letter below once the office approves it'
+                    : doc
+                      ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : `Missing · ${requirement.hint ?? ''}`}
+                  {outOfDate ? (
+                    <div className="coral">
+                      This letter is out of date — the term dates on it have already passed. Please
+                      upload this year’s letter instead.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="right">
+                {viaCompletionLetter ? (
+                  <Pill>{doc?.status === 'verified' ? 'Not needed' : 'Once approved'}</Pill>
+                ) : doc ? (
+                  <>
+                    <Pill tone={outOfDate ? 'coral' : 'amber'}>
+                      {outOfDate ? 'Out of date' : 'Uploaded'}
+                    </Pill>
+                    <button
+                      type="button"
+                      className="linkbtn xs"
+                      onClick={() => setSheet(requirement)}
+                    >
+                      Replace
+                    </button>
+                  </>
+                ) : (
+                  <Button tone="primary" size="sm" onClick={() => setSheet(requirement)}>
+                    Upload
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="right">
-              {viaCompletionLetter ? (
-                <Pill>{doc?.status === 'verified' ? 'Not needed' : 'Once approved'}</Pill>
-              ) : doc ? (
-                <>
-                  <Pill tone="amber">Uploaded</Pill>
-                  <button
-                    type="button"
-                    className="linkbtn xs"
-                    onClick={() => setSheet(requirement)}
-                  >
-                    Replace
-                  </button>
-                </>
-              ) : (
-                <Button tone="primary" size="sm" onClick={() => setSheet(requirement)}>
-                  Upload
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {shareCode ? (
           <div className="docrow verified">
             <span className="ico">✓</span>

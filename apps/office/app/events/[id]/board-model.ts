@@ -46,6 +46,12 @@ export interface BoardPersonName {
    * there is none or it could not be signed — `Avatar` then draws initials.
    */
   photoUrl?: string | null;
+  /**
+   * The worker's mobile, E.164, so the office can ring them from the row.
+   * null: none on record, or the worker was removed (§1.7). Absent only on
+   * the "Deleted account" stand-in for someone the read did not name.
+   */
+  phone?: string | null;
 }
 
 /**
@@ -93,6 +99,8 @@ export interface PoolEntry extends BoardPersonName {
    * are here, and whether a round would reach them.
    */
   endedLabel: string | null;
+  /** The booking's cancel cause ('declined', 'office_withdraw', …), for the badge's tone. */
+  endedCause: string | null;
   /** False for a person-decided end: only the manager's Invite reopens it. */
   autoInvitable: boolean;
 }
@@ -191,6 +199,7 @@ export function buildPool(
       appliedAt: application ? (application.appliedAt ?? application.createdAt) : null,
       applicationId: application?.bookingId ?? null,
       endedLabel: end ? (CAUSE_COPY[end.cancelCause ?? '']?.label ?? UNKNOWN_CAUSE.label) : null,
+      endedCause: end ? (end.cancelCause ?? '') : null,
       autoInvitable: roundMayInvite(row),
     };
   });
@@ -224,11 +233,11 @@ export function queryPool(entries: readonly PoolEntry[], query: PoolQuery): Pool
     return [...shown].sort((a, b) => a.name.localeCompare(b.name, 'en-GB') || a.rank - b.rank);
   }
   if (query.sort === 'applied') {
-    // Applicants first, oldest application first; the rest in rank order.
+    // Radar applicants (Accept application) first, everyone to Invite below;
+    // each group keeps the engine's rank order.
     return [...shown].sort((a, b) => {
-      if (a.appliedAt && b.appliedAt) return a.appliedAt.localeCompare(b.appliedAt);
-      if (a.appliedAt) return -1;
-      if (b.appliedAt) return 1;
+      if (a.appliedAt && !b.appliedAt) return -1;
+      if (!a.appliedAt && b.appliedAt) return 1;
       return a.rank - b.rank;
     });
   }
@@ -762,10 +771,18 @@ export const MESSAGE_MAX = 300;
  * `p_audience` (20261001211000). The database maps each to booking
  * statuses; the page never sends a list of workers.
  */
-export type MessageAudience = 'booked' | 'invited' | 'booked_and_invited';
+export type MessageAudience =
+  'booked' | 'confirmed' | 'checked_in' | 'invited' | 'booked_and_invited';
 
+/**
+ * A check-in moves a booking from confirmed to worked, so `confirmed` is
+ * the people who have not arrived yet and `checked_in` the people on site;
+ * `booked` is both (20261023140000).
+ */
 export const MESSAGE_AUDIENCES: ReadonlyArray<{ value: MessageAudience; label: string }> = [
-  { value: 'booked', label: 'Confirmed and checked-in staff' },
+  { value: 'booked', label: 'All confirmed staff — checked in or not' },
+  { value: 'confirmed', label: 'Confirmed only — not checked in yet' },
+  { value: 'checked_in', label: 'Checked-in staff only' },
   { value: 'invited', label: 'Invited only — people who have not accepted yet' },
   { value: 'booked_and_invited', label: 'Confirmed, checked-in and invited' },
 ];
@@ -829,6 +846,10 @@ export function messageRefusal(reason: string, audience: MessageAudience = 'book
     return `${copy} Choose "Invited only" under Who to reach the people who have not answered.`;
   if (audience === 'invited')
     return 'Nobody has an open invitation for that — there is nobody to message.';
+  if (audience === 'confirmed')
+    return 'Nobody confirmed is still to check in for that — there is nobody to message. Choose "All confirmed staff" under Who to include people who have arrived.';
+  if (audience === 'checked_in')
+    return 'Nobody has checked in for that yet — there is nobody to message. Choose "All confirmed staff" under Who to reach people who have not arrived.';
   return copy;
 }
 

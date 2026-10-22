@@ -119,7 +119,7 @@ check (confirmed ≥ headcount + buffer only) is unchanged.
   510 and `acceptApplication.test.ts` (N10c at headcount + buffer),
   `board-model.test.ts` (ended bookings in Unavailable).
 - The event board lists reopenable ended bookings in the Potential pool with
-  "earlier: Declined · manual only", and keeps only non-reopenable ones in
+  "earlier: Declined · manual only" (superseded by ADR-0192), and keeps only non-reopenable ones in
   Unavailable.
 - `autoAssign.ts` is imported by the Deno Edge Function, so every module on its
   import path names its `.ts` file; `bookingReopenableBy` lives in the

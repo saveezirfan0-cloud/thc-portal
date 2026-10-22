@@ -125,6 +125,13 @@ export function UploadSheet({
       <div className="xs muted">
         PDF, JPG, PNG or HEIC · up to 10 MB · all pages of a multi-page letter, please.
       </div>
+      {docType === 'university_term_dates_letter' ? (
+        <Alert tone="cyan">
+          <b>Your letter must be in date.</b> The term dates printed on it must not have already
+          passed — an out-of-date letter can’t be accepted, so upload the one for the current
+          academic year.
+        </Alert>
+      ) : null}
       {pending ? <Alert tone="cyan">Uploading…</Alert> : null}
       {error ? <Alert tone="coral">{error}</Alert> : null}
       <Button tone="ghost" block onClick={onClose} disabled={pending}>

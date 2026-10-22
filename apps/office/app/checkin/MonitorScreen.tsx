@@ -12,6 +12,7 @@ import {
   SegToggle,
   Select,
   TableScroll,
+  toast,
   useTimeFormat,
 } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
@@ -20,7 +21,10 @@ import { type LogQuery, logQueryHref, logTime } from './log';
 import { MonitorTable, WeeklyLimitFlag } from './MonitorTable';
 import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
+import { StaffName } from './StaffName';
+import { StaffPhone } from './StaffPhone';
 import { VerifyLateModal } from './VerifyLateModal';
+import { nudgeCheckInOut } from './actions';
 import {
   LATE_CHECK_OUT_LABEL,
   VIOLATION_LABEL,
@@ -65,6 +69,9 @@ export function MonitorScreen({
   const [eventFilter, setEventFilter] = useState('all');
   const [open, setOpen] = useState<ViolationRow | null>(null);
   const [verifying, setVerifying] = useState<LateCheckOutTarget | null>(null);
+  // ADR-0188: the booking whose reminder is on its way, and refusals by row.
+  const [nudging, setNudging] = useState<string | null>(null);
+  const [nudgeErrors, setNudgeErrors] = useState<Record<string, string>>({});
   const showResolved = log.showResolved;
 
   useEffect(() => {
@@ -90,6 +97,18 @@ export function MonitorScreen({
       cleanup();
     };
   }, [router]);
+
+  async function nudge(row: MonitorRow) {
+    setNudging(row.bookingId);
+    setNudgeErrors(({ [row.bookingId]: _cleared, ...rest }) => rest);
+    const result = await nudgeCheckInOut(row.bookingId);
+    setNudging(null);
+    if ('error' in result) {
+      setNudgeErrors((errors) => ({ ...errors, [row.bookingId]: result.error }));
+      return;
+    }
+    toast(`Reminder on its way to ${row.staffName}`, { tone: 'green' });
+  }
 
   const events = useMemo(() => {
     const seen = new Map<string, string>();
@@ -146,6 +165,9 @@ export function MonitorScreen({
       >
         <MonitorTable
           rows={visible}
+          onNudge={nudge}
+          nudging={nudging}
+          nudgeErrors={nudgeErrors}
           onVerify={(row) =>
             row.checkOutAt
               ? setVerifying({
@@ -205,7 +227,12 @@ export function MonitorScreen({
                     <td className="cell-title">
                       <div className="person">
                         <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
-                        <div className="n">{v.staffName}</div>
+                        <div>
+                          <div className="n">
+                            <StaffName staffId={v.staffId} name={v.staffName} />
+                          </div>
+                          <StaffPhone phone={v.phone} />
+                        </div>
                       </div>
                     </td>
                     <td data-label="Event">
@@ -299,7 +326,12 @@ function LateCheckOutPanel({
                 <td className="cell-title">
                   <div className="person">
                     <Avatar name={r.staffName} src={r.photoUrl ?? undefined} size="sm" />
-                    <div className="n">{r.staffName}</div>
+                    <div>
+                      <div className="n">
+                        <StaffName staffId={r.staffId} name={r.staffName} />
+                      </div>
+                      <StaffPhone phone={r.phone} />
+                    </div>
                   </div>
                 </td>
                 <td data-label="Event">

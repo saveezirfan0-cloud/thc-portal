@@ -16,6 +16,7 @@ import {
   TileGrid,
   toast,
 } from '@thc/ui';
+import { ageOn, ukToday } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { ProfileCrumbs } from './chrome';
 import { RecordHistory } from '../../_components/history/RecordHistory';
@@ -269,6 +270,12 @@ export function ProfileScreen({
               <span>
                 Weekly limit <b>{capWhy}</b>
               </span>
+              {/* Age is derived from the date of birth on file, as of today in the UK. */}
+              {profile.dob ? (
+                <span>
+                  Age <b>{ageOn(profile.dob.slice(0, 10), ukToday())}</b>
+                </span>
+              ) : null}
               <span>
                 Joined <b>{formatUkDate(profile.joined_at)}</b>
               </span>

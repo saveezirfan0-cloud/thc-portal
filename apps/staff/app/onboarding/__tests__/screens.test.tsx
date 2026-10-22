@@ -359,6 +359,52 @@ describe('4/11 Documents', () => {
     expect(footer(html)).toEqual({ label: 'Submit documents', disabled: true });
   });
 
+  it('tells the candidate up front the term letter must be in date', () => {
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(state)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+      />,
+    );
+    expect(html).toContain('in date — the term dates on it must not have already passed');
+  });
+
+  it('flags an uploaded term letter whose dates have all passed, and keeps Replace', () => {
+    const letter = (to: string) =>
+      mapOnboardingState({
+        ...rawState,
+        documents: [
+          ...((rawState as { documents?: unknown[] }).documents ?? []),
+          {
+            id: 'doc-term',
+            docType: 'university_term_dates_letter',
+            status: 'pending',
+            fileName: 'UCL_term_dates.pdf',
+            fileSize: 340_000,
+            uploadedAt: '2026-09-22T10:00:00Z',
+            termDates: [{ from: '2025-12-13', to }],
+          },
+        ],
+      })!;
+    const render = (st: ReturnType<typeof letter>) =>
+      renderToStaticMarkup(
+        <DocumentsStep
+          branchTitle="International student"
+          rows={requirementRows(st)}
+          shareCode="W123AB4CD"
+          today={TODAY}
+        />,
+      );
+    const stale = render(letter('2026-01-06'));
+    expect(stale).toContain('This letter is out of date');
+    expect(stale).toContain('Out of date');
+    expect(stale).toContain('Replace');
+    // A letter with a holiday still to come is current: no warning.
+    expect(render(letter('2026-12-20'))).not.toContain('out of date');
+  });
+
   it('a Student-visa candidate who has not said whether the course is finished is asked, and shown no letter (ADR-0187)', () => {
     const html = renderToStaticMarkup(
       <DocumentsStep
