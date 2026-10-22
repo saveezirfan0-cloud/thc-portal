@@ -81,6 +81,7 @@ const STAFF = POOL.map((row, n) => ({
   removed_at: null,
   employee_id: n,
   photo_path: null,
+  phone: null,
 }));
 // The client's whole qualification set: far more than the board needs.
 const QUALS = [
