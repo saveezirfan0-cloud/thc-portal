@@ -66,7 +66,7 @@ begin
       from c where c.track = 'app' group by c.step_no, c.step
   ), o as (
     select x.template || ':' || (x.payload ->> 'variant')                  as id,
-           coalesce(x.recipient_emails[1], x.recipient_staff_id::text)     as who,
+           coalesce(x.recipient_staff_id::text, lower(btrim(x.recipient_emails[1]))) as who,
            x.sent_at, x.failed_at, x.send_after,
            uk_local(x.sent_at)::date                                       as sent_day,
            x.template, x.payload ->> 'pushOn'                              as push_on
@@ -137,4 +137,4 @@ comment on function public.onboarding_email_report(timestamptz) is
   'ADR-0187, /onboarding/reminders: per track (interview, activation, app) the candidates being reminded, reminded today (UK), Stalled and with a failed latest reminder, the app track''s devices and wizard steps; per email (OC1, OC2, OC3, OC4 first/second/repeat, OC1 existing_*) sent today, sent in all, failed, waiting, people reached, last sent and next due; the OC4 emails sent beside a push; whether each code is switched on. Counts only. Office logins only.';
 
 revoke all on function public.onboarding_email_report(timestamptz) from public, anon;
-grant execute on function public.onboarding_email_report(timestamptz) to authenticated, service_role;
+grant execute on function public.onboarding_email_report(timestamptz) to authenticated;

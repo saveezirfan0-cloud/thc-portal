@@ -1,7 +1,7 @@
 import { messageFor } from '@thc/notifications';
 import { LOGO_CONTENT_ID } from '@thc/notifications/email-html';
 import { inlineLogoAttachment } from '@thc/notifications/email-logo';
-import { REMINDER_EMAILS } from './reminders';
+import { REMINDER_EMAILS, withPushId } from './reminders';
 
 /**
  * The reminders on /onboarding/reminders (ADR-0187), rendered on the server
@@ -45,7 +45,7 @@ export function reminderPreviews(
   links: PreviewLinks,
   logoDataUrl: string = LOGO_DATA_URL,
 ): ReminderPreview[] {
-  return REMINDER_EMAILS.map((email) => {
+  const render = (email: (typeof REMINDER_EMAILS)[number], pushOn: '0' | '1', id: string) => {
     const message = messageFor({
       id: 0,
       key: `preview:${email.id}`,
@@ -57,7 +57,7 @@ export function reminderPreviews(
         name: SAMPLE_NAME,
         variant: email.variant,
         step: SAMPLE_STEP,
-        pushOn: '0',
+        pushOn,
         link: email.template === 'OC2' ? links.activationLink : links.appLink,
         installLink: links.installLink,
       },
@@ -65,7 +65,7 @@ export function reminderPreviews(
     });
     if (message.kind === 'push') {
       return {
-        id: email.id,
+        id,
         subject: message.title,
         html: null,
         text: `${message.title}\n\n${message.body}`,
@@ -73,10 +73,15 @@ export function reminderPreviews(
     }
     if (message.kind !== 'email') throw new Error(`${email.id} is neither an email nor a push`);
     return {
-      id: email.id,
+      id,
       subject: message.subject,
       html: message.html.replaceAll(`cid:${LOGO_CONTENT_ID}`, logoDataUrl),
       text: message.body,
     };
-  });
+  };
+  return REMINDER_EMAILS.flatMap((email) => [
+    render(email, '0', email.id),
+    // The app email reads differently beside a push (ADR-0186): both are sent.
+    ...(email.template === 'OC4' ? [render(email, '1', withPushId(email.id))] : []),
+  ]);
 }

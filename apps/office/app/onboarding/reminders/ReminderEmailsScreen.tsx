@@ -23,6 +23,7 @@ import {
   countsFor,
   sentTodayTotal,
   stageTotals,
+  withPushId,
 } from './reminders';
 import type { OnboardingEmailReport, ReminderEmail, ReminderTrack } from './reminders';
 import './reminders.css';
@@ -48,6 +49,8 @@ export function ReminderEmailsScreen({
   const byId = new Map(previews.map((p) => [p.id, p]));
   const email = REMINDER_EMAILS.find((e) => e.id === open) ?? null;
   const preview = open ? (byId.get(open) ?? null) : null;
+  // An OC4 also reads differently for a candidate who has the push too.
+  const alt = open ? (byId.get(withPushId(open)) ?? null) : null;
   const totals = report ? stageTotals(report) : null;
   const n = (v: number) => v.toLocaleString('en-GB');
 
@@ -98,6 +101,12 @@ export function ReminderEmailsScreen({
           </TileGrid>
 
           <Panel title="Where they are stuck">
+            {totals.waiting === 0 ? (
+              <p className="muted sm">
+                Nobody is being reminded right now: every candidate is either waiting on the office
+                or has moved on.
+              </p>
+            ) : null}
             <TableScroll label="Candidates being reminded" minWidth="44rem">
               <table className="tbl rem-stages">
                 <thead>
@@ -147,7 +156,9 @@ export function ReminderEmailsScreen({
             ) : null}
             {totals.stalled > 0 ? (
               <p className="sm">
-                <Link href="/onboarding?attention=stalled">Show the stalled candidates ↗</Link>
+                <Link href="/onboarding?attention=stalled">
+                  Show stalled candidates and failed reminders on the board ↗
+                </Link>
               </p>
             ) : null}
           </Panel>
@@ -203,7 +214,13 @@ export function ReminderEmailsScreen({
           </table>
         </TableScroll>
       </Panel>
-      <PreviewDialog email={email} preview={preview} onClose={() => setOpen(null)} />
+      <PreviewDialog
+        key={open ?? 'closed'}
+        email={email}
+        preview={preview}
+        alt={alt}
+        onClose={() => setOpen(null)}
+      />
     </>
   );
 }
@@ -263,14 +280,19 @@ function Row({
 /** One reminder, as the candidate sees it: the HTML in a sandboxed frame, or the plain text. */
 function PreviewDialog({
   email,
-  preview,
+  preview: base,
+  alt,
   onClose,
 }: {
   email: ReminderEmail | null;
   preview: ReminderPreview | null;
+  /** The same reminder as it reads beside a push, when it differs (OC4). */
+  alt: ReminderPreview | null;
   onClose: () => void;
 }) {
   const [view, setView] = useState<'html' | 'text'>('html');
+  const [device, setDevice] = useState<'off' | 'on'>('off');
+  const preview = device === 'on' && alt ? alt : base;
   return (
     <Modal
       open={email !== null && preview !== null}
@@ -295,6 +317,20 @@ function PreviewDialog({
             <dt>When</dt>
             <dd>{email.when}</dd>
           </dl>
+          {alt ? (
+            <div className="rem-view">
+              <SegToggle
+                small
+                aria-label="Show the email as it reads for a candidate whose notifications are"
+                value={device}
+                onChange={setDevice}
+                options={[
+                  { value: 'off', label: 'Notifications off' },
+                  { value: 'on', label: 'Notifications on' },
+                ]}
+              />
+            </div>
+          ) : null}
           {preview.html ? (
             <>
               <div className="rem-view">

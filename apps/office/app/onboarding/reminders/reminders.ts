@@ -116,6 +116,9 @@ export const REMINDER_EMAILS: readonly ReminderEmail[] = [
   ...rungs('OC4', 'app', 'App reminder · email with instructions', IN_THE_APP, 'email'),
 ];
 
+/** The id of an OC4 preview as it reads for a candidate who also gets the push (ADR-0186). */
+export const withPushId = (id: string): string => `${id}+push`;
+
 /** The wizard-step overview, in the words the reminders use. */
 export const TRACK_LABEL: Readonly<Record<ReminderTrack, string>> = {
   interview: 'Waiting on their video interview',

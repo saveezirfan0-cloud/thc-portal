@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { TEMPLATES } from '@thc/notifications';
@@ -6,6 +6,7 @@ import { ReminderEmailsScreen } from '../ReminderEmailsScreen';
 import { LOGO_DATA_URL, SAMPLE_NAME, reminderPreviews } from '../previews';
 import {
   REMINDER_EMAILS,
+  withPushId,
   countsFor,
   parseOnboardingEmailReport,
   sentTodayTotal,
@@ -63,13 +64,17 @@ const REPORT = parseOnboardingEmailReport({
 
 describe('the reminders listed', () => {
   it('are the fifteen onboarding_email_report() counts, in its order', () => {
-    const sql = readFileSync(
-      new URL(
-        '../../../../../../supabase/migrations/20261023130000_onboarding_email_report.sql',
-        import.meta.url,
-      ),
-      'utf8',
-    );
+    const dir = new URL('../../../../../../supabase/migrations/', import.meta.url);
+    const latest = readdirSync(dir)
+      .filter(
+        (f) =>
+          /ids\(id, n\) as/.test(readFileSync(new URL(f, dir), 'utf8')) &&
+          /onboarding_email_report/.test(readFileSync(new URL(f, dir), 'utf8')),
+      )
+      .sort()
+      .pop();
+    expect(latest, 'a migration that defines onboarding_email_report').toBeDefined();
+    const sql = readFileSync(new URL(latest!, dir), 'utf8');
     const ids = [
       ...sql.slice(sql.indexOf('ids(id, n) as')).matchAll(/\('(OC\d:[a-z_]+)', \d+\)/g),
     ].map((m) => m[1]);
@@ -90,7 +95,10 @@ describe('reminderPreviews', () => {
   const byId = new Map(previews.map((p) => [p.id, p]));
 
   it('renders every reminder, by id, with nothing left unfilled', () => {
-    expect(previews.map((p) => p.id)).toEqual(REMINDER_EMAILS.map((e) => e.id));
+    // Each reminder, and OC4 a second time as it reads beside a push.
+    expect(previews.map((p) => p.id)).toEqual(
+      REMINDER_EMAILS.flatMap((e) => (e.template === 'OC4' ? [e.id, withPushId(e.id)] : [e.id])),
+    );
     for (const p of previews) {
       expect(p.text, p.id).not.toMatch(/\{\w+\}/);
       expect(p.subject, p.id).not.toMatch(/\{\w+\}/);
@@ -119,6 +127,22 @@ describe('reminderPreviews', () => {
     expect(oc4.text).toContain('2. Give two referees who are not relatives');
     expect(oc4.text).toContain(LINKS.appLink);
     expect(byId.get('OC2:first')!.text).toContain(LINKS.activationLink);
+  });
+});
+
+describe('OC4 as it reads for a candidate with and without notifications', () => {
+  const byId = new Map(reminderPreviews(LINKS).map((p) => [p.id, p]));
+
+  it('says why it is an email only when notifications are off (ADR-0186)', () => {
+    for (const rung of ['first', 'second']) {
+      const off = byId.get(`OC4:${rung}`)!.text;
+      const on = byId.get(withPushId(`OC4:${rung}`))!.text;
+      expect(off, rung).toContain("notifications aren't turned on in the app");
+      expect(on, rung).toContain("You'll get a reminder in the app as well");
+      expect(on, rung).not.toContain("notifications aren't turned on");
+    }
+    // The repeat rung carries no note either way: the two are the same email.
+    expect(byId.get('OC4:repeat')!.text).toBe(byId.get(withPushId('OC4:repeat'))!.text);
   });
 });
 
@@ -172,6 +196,21 @@ describe('ReminderEmailsScreen', () => {
     expect(html).toContain('6 with notifications on · 32 without');
     expect(html).toContain('your home address');
     expect(html).toContain('/onboarding?attention=stalled');
+  });
+
+  it('offers the with / without notifications reading of an OC4 only when the dialog is open', () => {
+    // The toggle lives in the dialog, which is closed on first render.
+    expect(html).not.toContain('Notifications on');
+  });
+
+  it('says so when nobody is being reminded, and links the board for stalled or failed ones', () => {
+    const none = parseOnboardingEmailReport({ emails: [] });
+    const empty = renderToStaticMarkup(
+      <ReminderEmailsScreen report={none} previews={previews} problem={null} />,
+    );
+    expect(empty).toContain('Nobody is being reminded right now');
+    expect(html).not.toContain('Nobody is being reminded right now');
+    expect(html).toContain('Show stalled candidates and failed reminders on the board');
   });
 
   it('lists every reminder under its group, with its subject and a View', () => {
