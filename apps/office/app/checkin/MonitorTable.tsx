@@ -10,6 +10,7 @@ import {
   breaksCell,
   statusTone,
 } from './status';
+import { StaffPhone } from './StaffPhone';
 import type { MonitorRow } from './types';
 import { useViewerZone } from './useViewerZone';
 
@@ -84,6 +85,7 @@ export function MonitorTable({
                   <div>
                     <div className="n">{row.staffName}</div>
                     <div className="s">{row.roleName}</div>
+                    <StaffPhone phone={row.phone} />
                   </div>
                 </div>
               </td>
