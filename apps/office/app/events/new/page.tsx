@@ -59,11 +59,13 @@ export default async function Page({
   const rawFrom = params['from'];
   const from = (Array.isArray(rawFrom) ? rawFrom[0] : rawFrom) ?? '';
 
-  const [reference, source, officeRole] = await Promise.all([
+  const [everyone, source, officeRole] = await Promise.all([
     loadReferenceData(),
     UUID.test(from) ? loadEvent(from) : Promise.resolve(null),
     currentOfficeRole(),
   ]);
+  // ADR-0195: an archived client is not offered for a new event.
+  const reference = { ...everyone, clients: everyone.clients.filter((c) => !c.archived) };
   // ADR-0061: a scheduler builds sections without seeing a rate; the
   // database gives them the catalogue rates.
   const ratesVisible = officeCan(officeRole, 'finance');

@@ -6,6 +6,7 @@ import { OfficeShell } from '../../_components/OfficeShell';
 import { ClientCrumbs, NewEventForClient } from './chrome';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
+import { ArchiveClient } from './ArchiveClient';
 import { ClientEvents } from './ClientEvents';
 import { Invoicing } from './Invoicing';
 import { LineupEmails } from './LineupEmails';
@@ -68,6 +69,12 @@ export function ClientCard({
   const body = (
     <>
       <div className="stack">
+        {client.archived_at ? (
+          <Alert tone="cyan">
+            This client is archived: it is hidden from the client list and the Shift Builder, and no
+            new event can be built for it. Restore it to book it again.
+          </Alert>
+        ) : null}
         <Panel
           title={
             <>
@@ -79,6 +86,12 @@ export function ClientCard({
               <Button size="sm" onClick={() => setEditing(true)}>
                 Edit
               </Button>
+              <ArchiveClient
+                clientId={client.id}
+                name={client.name}
+                archivedAt={client.archived_at}
+                canWrite={canWrite}
+              />
               <span className="muted xs">no Delete — a client record is only ever edited</span>
             </>
           }
@@ -223,7 +236,7 @@ export function ClientCard({
       activeHref="/clients"
       title="Client"
       crumbs={<ClientCrumbs name={client.name} />}
-      actions={<NewEventForClient clientId={client.id} />}
+      actions={client.archived_at ? null : <NewEventForClient clientId={client.id} />}
     >
       {body}
     </OfficeShell>
