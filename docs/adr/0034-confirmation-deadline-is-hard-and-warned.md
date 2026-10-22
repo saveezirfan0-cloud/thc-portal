@@ -1,6 +1,6 @@
 # ADR-0034 · The 12:00 "I'm ready" deadline is hard, retried and warned; the reminders follow the start
 
-Status: accepted · 29.09.2026 · 20260929100000; amends ADR-0029 §1–3 · raise §3 with THC (docs/15)
+Status: accepted · 29.09.2026 · 20260929100000; amends ADR-0029 §1–3 · raise §3 with THC (docs/15) · §3 gains a late confirmer's one-hour deadline in ADR-0196 (22.10.2026)
 
 ## Context
 
