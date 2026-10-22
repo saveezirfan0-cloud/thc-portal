@@ -1,4 +1,4 @@
-# ADR-0187 · Names are taken in full, as printed on the passport
+# ADR-0189 · Names are taken in full, as printed on the passport
 
 **Status:** Accepted (owner request, 22.10.2026). A deviation from `wireframes/public/apply.html` (a "Middle name(s)" field and the passport hint; the wireframe is updated with it) and an addition to scope v1.6 §2.1, which lists only First name and Surname.
 
@@ -20,7 +20,7 @@ Nothing in the product shortens a name. `display_name` is `first_name || ' ' || 
    It does **not** refuse hyphens, apostrophes (straight or typographic), accents, particles ("van der Berg"), two-letter names ("Li", "Ng"), or any capitalisation, which is left as typed. The form cannot know a passport; it can refuse only what a passport never prints.
 2. **Three fields on `/apply`**: First name, Middle name(s) (optional, "Leave blank if you have none"), Surname, under "Enter your name exactly as it appears on your passport." The labels "First name" and "Surname" are unchanged. An initial in the middle field is refused too.
 3. **Stored as before.** There is no new column. First and middle names are joined (whitespace tidied, nothing else) into the existing `staff.first_name`, the passport's "given names"; `last_name` is the surname. The two limits are therefore one: 100 characters for the first and middle names together.
-4. **Three gates, one rule.** The form and the server action call `nameFault()`; `submit_application()` calls `name_fault(text, boolean)` (migration `20261023130000`), after every existing field rule (so an application wrong in several ways keeps the complaint it always got first) and before the locks. Both are held to `legalName.vectors.json` (37 cases): vitest reads it directly, pgTAP 120 through `legal_name_vectors.psql`, which a vitest test keeps in step with the JSON as for every other vectors file.
+4. **Three gates, one rule.** The form and the server action call `nameFault()`; `submit_application()` calls `name_fault(text, boolean)` (migration `20261023130100`), after every existing field rule (so an application wrong in several ways keeps the complaint it always got first) and before the locks. Both are held to `legalName.vectors.json` (37 cases): vitest reads it directly, pgTAP 120 through `legal_name_vectors.psql`, which a vitest test keeps in step with the JSON as for every other vectors file.
 5. **Copy.** Each refusal names the field ("Enter your surname in full, as it appears on your passport — not an initial"). The database words the same reasons for the two things it can be asked about, and the server action shows its message when it refuses a name the form let through.
 
 ## Consequences

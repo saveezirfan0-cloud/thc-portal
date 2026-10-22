@@ -319,7 +319,7 @@ describe('/checkin (§9.5)', () => {
     });
   });
 
-  describe('Remind (ADR-0187)', () => {
+  describe('Remind (ADR-0188)', () => {
     const minutes = (n: number) => new Date(Date.now() + n * 60_000).toISOString();
     const notDue = {
       ...ROW,

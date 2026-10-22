@@ -68,7 +68,7 @@ export function MonitorScreen({
   const [eventFilter, setEventFilter] = useState('all');
   const [open, setOpen] = useState<ViolationRow | null>(null);
   const [verifying, setVerifying] = useState<LateCheckOutTarget | null>(null);
-  // ADR-0187: the booking whose reminder is on its way, and refusals by row.
+  // ADR-0188: the booking whose reminder is on its way, and refusals by row.
   const [nudging, setNudging] = useState<string | null>(null);
   const [nudgeErrors, setNudgeErrors] = useState<Record<string, string>>({});
   const showResolved = log.showResolved;

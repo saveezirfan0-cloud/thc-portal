@@ -122,7 +122,7 @@ export async function verifyLateCheckOut(bookingId: string, note: string): Promi
 export type NudgeResult = { error: string } | { ok: true; template: string };
 
 /**
- * Push one worker to check in or out (ADR-0187). The register's own N9 /
+ * Push one worker to check in or out (ADR-0188). The register's own N9 /
  * N9b copy, chosen by the monitor's status for the row; `nudge_check_in_out`
  * holds every rule (who may send, how early, the worker's device, the
  * Settings switch, once per five minutes) and queues through the outbox.
