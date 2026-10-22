@@ -99,6 +99,8 @@ export interface PoolEntry extends BoardPersonName {
    * are here, and whether a round would reach them.
    */
   endedLabel: string | null;
+  /** The booking's cancel cause ('declined', 'office_withdraw', …), for the badge's tone. */
+  endedCause: string | null;
   /** False for a person-decided end: only the manager's Invite reopens it. */
   autoInvitable: boolean;
 }
@@ -197,6 +199,7 @@ export function buildPool(
       appliedAt: application ? (application.appliedAt ?? application.createdAt) : null,
       applicationId: application?.bookingId ?? null,
       endedLabel: end ? (CAUSE_COPY[end.cancelCause ?? '']?.label ?? UNKNOWN_CAUSE.label) : null,
+      endedCause: end ? (end.cancelCause ?? '') : null,
       autoInvitable: roundMayInvite(row),
     };
   });

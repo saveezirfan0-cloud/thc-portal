@@ -237,14 +237,14 @@ function PoolRow({
       {entry.endedLabel ? (
         <>
           <Pill
-            tone={entry.endedLabel === 'Declined' ? 'coral' : 'amber'}
+            tone={entry.endedCause === 'declined' ? 'coral' : 'amber'}
             title={
               entry.autoInvitable
                 ? 'Auto-assign may invite them again.'
                 : 'Only a manual invitation reaches them: auto-assign does not re-invite after a decision.'
             }
           >
-            {entry.endedLabel} earlier
+            {entry.endedCause === 'declined' ? 'Declined earlier' : `Earlier: ${entry.endedLabel}`}
           </Pill>
           {entry.autoInvitable ? null : <span className="muted xs">manual invite only</span>}
         </>

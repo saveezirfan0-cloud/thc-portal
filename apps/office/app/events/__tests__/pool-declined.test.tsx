@@ -27,6 +27,7 @@ function entry(over: Partial<PoolEntry>): PoolEntry {
     appliedAt: null,
     applicationId: null,
     endedLabel: null,
+    endedCause: null,
     autoInvitable: true,
     ...over,
   };
@@ -50,7 +51,9 @@ async function render(entries: PoolEntry[]): Promise<string> {
 
 describe('Potential pool · an earlier decline is on the row', () => {
   it('shows Declined as a coral badge, says manual invite only, and offers Invite again', async () => {
-    const html = await render([entry({ endedLabel: 'Declined', autoInvitable: false })]);
+    const html = await render([
+      entry({ endedLabel: 'Declined', endedCause: 'declined', autoInvitable: false }),
+    ]);
     expect(html).toContain('Declined earlier');
     expect(html).toMatch(/class="[^"]*\bcoral\b[^"]*"[^>]*>Declined earlier/);
     expect(html).toContain('manual invite only');
@@ -59,9 +62,41 @@ describe('Potential pool · an earlier decline is on the row', () => {
   });
 
   it('a withdrawn invitation is flagged too, in amber', async () => {
-    const html = await render([entry({ endedLabel: 'Withdrawn' })]);
-    expect(html).toMatch(/class="[^"]*\bamber\b[^"]*"[^>]*>Withdrawn earlier/);
+    const html = await render([entry({ endedLabel: 'Withdrawn', endedCause: 'office_withdraw' })]);
+    expect(html).toMatch(/class="[^"]*\bamber\b[^"]*"[^>]*>Earlier: Withdrawn/);
     expect(html).not.toContain('manual invite only');
+  });
+
+  it('every other ending reads as a phrase, not "<label> earlier"', async () => {
+    const html = await render([
+      entry({
+        endedLabel: 'Released at the cutoff',
+        endedCause: 'ready_cutoff',
+        autoInvitable: false,
+      }),
+    ]);
+    expect(html).toContain('Earlier: Released at the cutoff');
+    expect(html).not.toContain('cutoff earlier');
+  });
+
+  it('the pill explains who can reach them again, from the row itself', async () => {
+    const manual = await render([
+      entry({ endedLabel: 'Declined', endedCause: 'declined', autoInvitable: false }),
+    ]);
+    expect(manual).toContain('Only a manual invitation reaches them');
+    const auto = await render([
+      entry({ endedLabel: 'Withdrawn', endedCause: 'office_withdraw', autoInvitable: true }),
+    ]);
+    expect(auto).toContain('Auto-assign may invite them again.');
+  });
+
+  it('a decline that auto-assign could still reach is flagged all the same', async () => {
+    const html = await render([
+      entry({ endedLabel: 'Declined', endedCause: 'declined', autoInvitable: true }),
+    ]);
+    expect(html).toContain('Declined earlier');
+    expect(html).not.toContain('manual invite only');
+    expect(html).toContain('Invite again');
   });
 
   it('a worker with no earlier booking keeps the plain Invite button and no badge', async () => {

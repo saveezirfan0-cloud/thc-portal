@@ -1,5 +1,5 @@
 -- =====================================================================
--- 925 · close_duplicate_candidate() (20261023140000, ADR-0191)
+-- 925 · close_duplicate_candidate() (20261023150000, ADR-0191)
 --
 --   A. Service role only: no signed-in caller can run it.
 --   B. Pair 1 (a mistyped first application, same date of birth):
@@ -10,11 +10,13 @@
 --      the kept record's date of birth is not touched.
 --   D. Running it again changes nothing; a kept record's own IDs are never
 --      replaced.
+--   F. A stale record the office already rejected by hand still hands its IDs over.
+--   G. SpudBros marking follows (never the THC-shifts switch).
 --   E. Refused: another person, a stale record that is not a candidate, one
 --      with a signed contract, a kept record that is rejected.
 -- =====================================================================
 begin;
-select plan(34);
+select plan(40);
 set local search_path = public, extensions;
 
 \set s_stale '92500000-0000-4000-8000-000000000001'
@@ -28,6 +30,16 @@ set local search_path = public, extensions;
 \set x_sign  '92500000-0000-4000-8000-000000000009'
 \set x_rej   '92500000-0000-4000-8000-00000000000a'
 \set x_live  '92500000-0000-4000-8000-00000000000b'
+\set r_stale '92500000-0000-4000-8000-00000000000c'
+\set r_keep  '92500000-0000-4000-8000-00000000000d'
+\set g_stale '92500000-0000-4000-8000-00000000000e'
+\set g_keep  '92500000-0000-4000-8000-00000000000f'
+\set l_stale '92500000-0000-4000-8000-000000000010'
+\set l_keep  '92500000-0000-4000-8000-000000000011'
+\set u_login '92500000-0000-4000-8000-0000000000a1'
+
+insert into auth.users (id, email, raw_app_meta_data, encrypted_password) values
+  (:'u_login', 'lou@dup925.invalid', '{"role":"staff"}', '');
 
 insert into staff (id, first_name, last_name, email, phone, dob, status, payroll_id, employee_id) values
   -- pair 1: the first application had a mistyped address and phone
@@ -43,7 +55,19 @@ insert into staff (id, first_name, last_name, email, phone, dob, status, payroll
   (:'x_live',  'Cy',    'Comp',       'cy@dup925.invalid',       '+447700925008', date '2000-06-06', 'documents',           null,    null),
   (:'x_sign',  'Cy',    'Comp',       'cy@dup925.invalid',       '+447700925008', date '2000-06-06', 'documents',           null,    null),
   (:'x_comp',  'Cy',    'Comp',       'cy@dup925.invalid',       '+447700925008', date '2000-06-06', 'compliant',           null,    925008),
-  (:'x_rej',   'Cy',    'Comp',       'cy@dup925.invalid',       '+447700925008', date '2000-06-06', 'rejected',            null,    null);
+  (:'x_rej',   'Cy',    'Comp',       'cy@dup925.invalid',       '+447700925008', date '2000-06-06', 'rejected',            null,    null),
+  -- the office already pressed Reject on the stale one
+  (:'r_stale', 'Rae',   'Rejected',   'rae@dup925.invalid',      '+447700925020', date '2001-02-02', 'rejected',            'T925E', null),
+  (:'r_keep',  'Rae',   'Rejected',   'rae@dup925.invalid',      '+447700925021', date '2001-02-02', 'documents',           null,    null),
+  -- a SpudBros stale record and a kept one that is not marked
+  (:'g_stale', 'Gus',   'Group',      'gus@dup925.invalid',      '+447700925022', date '2001-03-03', 'interview_requested', null,    null),
+  (:'g_keep',  'Gus',   'Group',      'gus@dup925.invalid',      '+447700925023', date '2001-03-03', 'documents',           null,    null),
+  -- a stale record that has a login
+  (:'l_stale', 'Lou',   'Login',      'lou@dup925.invalid',      '+447700925024', date '2001-04-04', 'documents',           null,    null),
+  (:'l_keep',  'Lou',   'Login',      'lou@dup925.invalid',      '+447700925025', date '2001-04-04', 'documents',           null,    null);
+
+update staff set spudbros_express = true where id = :'g_stale';
+update staff set user_id = :'u_login' where id = :'l_stale';
 
 update staff set contract_signed_at = now() where id in (:'x_sign', :'x_comp');
 
@@ -51,6 +75,8 @@ insert into notification_outbox (key, channel, template, recipient_staff_id, rec
   ('OC1:staff:92500000-0000-4000-8000-000000000001:1:1', 'email', 'OC1', :'s_stale', array['sia@dup925.invalid'], '{}', now());
 insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload) values
   ('OC1:staff:92500000-0000-4000-8000-000000000001:1:2', 'email', 'OC1', :'s_stale', array['sia@dup925.invalid'], '{}');
+insert into notification_outbox (key, channel, template, recipient_emails, payload) values
+  ('E3:staff:92500000-0000-4000-8000-000000000001:1', 'email', 'E3', array['sia@dup925.invalid'], '{}');
 -- one the drain has claimed this minute (its lease): it must be left alone
 insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload, last_attempt_at, attempts) values
   ('OC1:staff:92500000-0000-4000-8000-000000000001:1:3', 'email', 'OC1', :'s_stale', array['sia@dup925.invalid'], '{}', now(), 1);
@@ -75,9 +101,11 @@ select ok((select payroll_id is null and employee_id is null from staff where id
 select is((select status::text from staff where id = :'s_keep'), 'documents', 'B7 · the live record has not moved stage');
 select is((select count(*)::int from notification_outbox where key like 'E2%:staff:' || :'s_stale' || '%'), 0,
           'B8 · no rejection email was queued');
-select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null and last_attempt_at is null), 0,
-          'B9 · its unsent email is dropped');
-select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null and last_attempt_at is not null), 1,
+select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null and failed_at is null and last_attempt_at is null), 0,
+          'B9 · its unsent email no longer goes out');
+select is((select count(*)::int from notification_outbox where key = 'E3:staff:92500000-0000-4000-8000-000000000001:1' and failed_at is not null and error like 'Not sent%'), 1,
+          'B9c · including one that carries only an address, matched by the id in its key');
+select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null and failed_at is null and last_attempt_at is not null), 1,
           'B9b · but not one the drain has just claimed');
 select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is not null), 1,
           'B10 · the sent record stays');
@@ -108,6 +136,16 @@ select is((select payroll_id from staff where id = :'o_keep'), 'T925D', 'D4 · i
 select is((select employee_id from staff where id = :'o_keep'), 925006, 'D5 · and its own Employee ID');
 select is((select payroll_id from staff where id = :'o_stale'), 'T925C', 'D6 · the stale record keeps the one it could not hand over');
 
+-- F · already rejected by hand ----------------------------------------
+select is((close_duplicate_candidate(:'r_stale', :'r_keep'))->>'payrollIdMoved', 'true',
+          'F1 · a stale record the office already rejected still hands its Payroll ID over');
+select is((select payroll_id from staff where id = :'r_keep'), 'T925E', 'F2 · and the live record holds it');
+
+-- G · the group follows -------------------------------------------------
+select is((close_duplicate_candidate(:'g_stale', :'g_keep'))->>'spudbrosCopied', 'true', 'G1 · SpudBros marking is carried across');
+select ok((select spudbros_express and not thc_shifts_enabled from staff where id = :'g_keep'),
+          'G2 · and the THC-shifts switch stays off');
+
 -- E · refusals ---------------------------------------------------------
 select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-000000000007', '92500000-0000-4000-8000-00000000000b') $$,
                  'P0001', 'not_the_same_person', 'E1 · another person is refused');
@@ -119,6 +157,9 @@ select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-00
                  'P0001', 'keep_not_live: rejected', 'E4 · a rejected record cannot be the one kept');
 select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-000000000001', '92500000-0000-4000-8000-000000000001') $$,
                  'P0001', 'same_record', 'E5 · a record cannot be closed into itself');
+
+select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-000000000010', '92500000-0000-4000-8000-000000000011') $$,
+                 'P0001', 'stale_has_history', 'E7 · a stale record that has a login is refused');
 
 -- the same name alone is not enough: another address AND another date of birth
 update staff set email = 'cy.other@dup925.invalid', dob = date '1999-09-09' where id = '92500000-0000-4000-8000-00000000000b';
