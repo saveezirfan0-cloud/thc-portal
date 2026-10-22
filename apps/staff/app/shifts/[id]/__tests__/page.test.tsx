@@ -71,8 +71,10 @@ vi.mock('../data', () => ({
     shiftFails ? { shift: null, problem: 'timeout' } : { shift: await shift(), problem: null },
   supabaseConfigured: () => true,
 }));
+/** The `staff_bookings()` rows the page finds this shift's card from. */
+let bookingRows: unknown[] = [];
 vi.mock('../../../data', () => ({
-  loadBookings: async () => ({ rows: [], problem: null }),
+  loadBookings: async () => ({ rows: bookingRows, problem: null }),
   // ADR-0110: no quiz and no kit message on the shifts under test.
   loadShiftRequirements: async () => ({ rows: [], problem: null }),
   // ADR-0185: the bookings on a security-cleared event; none unless a test sets it.
@@ -170,6 +172,47 @@ beforeEach(() => {
   shiftFails = false;
   offersFail = false;
   securityCleared = [];
+  bookingRows = [];
+});
+
+describe('§3.5 the shift screen says where "I\'m ready" is', () => {
+  // 22 Oct 11:00 UK; the shift is 23 Oct 17:00 UK, so the card is `needs_ready`.
+  const now = new Date('2026-10-22T10:00:00Z');
+  const startsAt = new Date('2026-10-23T16:00:00Z');
+  const row = (over: Record<string, unknown> = {}) => ({
+    bookingId: 'b1',
+    status: 'confirmed',
+    startsAt,
+    endsAt: new Date('2026-10-23T20:00:00Z'),
+    confirmedAt: new Date('2026-10-21T10:00:00Z'),
+    dayBeforeConfirmedAt: null,
+    onDayConfirmedAt: null,
+    reconfirmRequired: false,
+    cancelCause: null,
+    eventCancelledAt: null,
+    noCheckoutOpen: false,
+    ...over,
+  });
+
+  // The file's own beforeEach (top) fakes Date at 25 Sep; move it for these.
+  beforeEach(() => vi.setSystemTime(now));
+  afterEach(() => vi.setSystemTime(new Date('2026-09-25T13:00:00Z')));
+
+  it('points a worker who still owes "I\'m ready" to the Shifts card', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: startsAt.toISOString() }));
+    bookingRows = [row()];
+    const html = await render();
+    expect(html).toContain('on this shift’s card in');
+    expect(html).toContain('href="/shifts"');
+  });
+
+  it('says nothing once they have pressed it', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: startsAt.toISOString() }));
+    bookingRows = [row({ dayBeforeConfirmedAt: new Date('2026-10-22T09:00:00Z') })];
+    expect(await render()).not.toContain('on this shift’s card in');
+  });
 });
 
 describe('ADR-0185 a security-cleared event asks the worker to bring ID', () => {
