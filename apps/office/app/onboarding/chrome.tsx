@@ -27,6 +27,15 @@ export function ApplyFormLink({ url }: { url: string | null }) {
   ) : null;
 }
 
+/** The daily reminders to candidates, their numbers and the emails themselves (ADR-0187). */
+export function ReminderEmailsLink() {
+  return (
+    <Link className="btn sm" href="/onboarding/reminders">
+      Reminder emails
+    </Link>
+  );
+}
+
 export function CandidateCrumbs({ name }: { name: string }) {
   return (
     <>
