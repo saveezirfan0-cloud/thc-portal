@@ -603,8 +603,10 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
   // the section (the original cancelled / handed_over, the taker's), so
   // both are already named.
   const bookingStaff = new Map(bookings.map((b) => [b['id'] as string, b['staff_id'] as string]));
+  const staffIdOf = (bookingId: string | null) =>
+    (bookingId ? bookingStaff.get(bookingId) : undefined) ?? null;
   const nameOf = (bookingId: string | null) => {
-    const staffId = bookingId ? bookingStaff.get(bookingId) : undefined;
+    const staffId = staffIdOf(bookingId);
     return (staffId && people.get(staffId)?.name) || 'Deleted account';
   };
   const handovers = (shiftId: string): Handover[] =>
@@ -614,6 +616,8 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       .map((o) => ({
         fromName: nameOf(o.booking_id),
         toName: nameOf(o.taken_by_booking_id),
+        fromStaffId: staffIdOf(o.booking_id),
+        toStaffId: staffIdOf(o.taken_by_booking_id),
         at: o.closed_at!,
       }));
 
