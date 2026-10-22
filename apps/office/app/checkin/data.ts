@@ -2,6 +2,7 @@ import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../_lib/photos';
+import { loadBookingStaff, loadPhones } from './phones';
 import { type LogQuery, VIOLATION_PAGE_SIZE, flaggedAs, pageRange, ukDayBounds } from './log';
 import type {
   LateCheckOutRow,
@@ -87,7 +88,7 @@ type SessionClient = ReturnType<typeof createClient>;
 
 const VIOLATION_COLUMNS = `id, booking_id, type, detected_at, minutes_late, resolved, resolved_at,
   resolution_note, actual_finish_at,
-  staff:staff_id ( first_name, last_name, photo_path, removed_at, employee_id ),
+  staff:staff_id ( first_name, last_name, photo_path, phone, removed_at, employee_id ),
   resolver:resolved_by ( full_name ),
   booking:booking_id (
     shift:shift_id (
@@ -160,6 +161,8 @@ async function queryViolations(
         ? `Deleted account #${staff.employee_id}`
         : `${staff?.first_name ?? ''} ${staff?.last_name ?? ''}`.trim(),
       photoPath: staff?.removed_at ? null : (staff?.photo_path ?? null),
+      // §1.7 retires a removed worker's number.
+      phone: staff?.removed_at ? null : (staff?.phone ?? null),
       eventTitle: shift?.event?.title ?? '',
       // §9.5: the server composes the window's "Flagged as" line.
       flaggedAs: flaggedAs(v.type as ViolationType, shift?.event?.title ?? ''),
@@ -285,6 +288,8 @@ export async function loadMonitor(
     lateCheckOutVerifiedAt: (r.late_check_out_verified_at as string | null) ?? null,
     lateCheckOutVerifiedByName: (r.late_check_out_verified_by_name as string | null) ?? null,
     lateCheckOutNote: (r.late_check_out_note as string | null) ?? null,
+    // Read below, off `staff` (phones.ts); undefined until then, and if unreadable.
+    phone: undefined as string | null | undefined,
     // The week against the cap is read below, for the late rows only.
     weekHours: null as number | null,
     weekCapHours: null as number | null,
@@ -324,6 +329,23 @@ export async function loadMonitor(
         }
       }
     }
+  }
+
+  // The phone beside each name (phones.ts): today's rows carry a staff id,
+  // the late sign-out list only a booking, so it is resolved to one first.
+  // A failed read leaves the phone off the rows, never the monitor.
+  const bookingStaff = await loadBookingStaff(
+    supabase,
+    lateRows.map((r) => r.bookingId),
+  );
+  const phones = await loadPhones(supabase, [
+    ...unsigned.map((r) => r.staffId),
+    ...(bookingStaff?.values() ?? []),
+  ]);
+  for (const row of unsigned) row.phone = phones?.get(row.staffId);
+  for (const row of lateRows) {
+    const staffId = bookingStaff?.get(row.bookingId);
+    row.phone = phones && staffId ? phones.get(staffId) : undefined;
   }
 
   // `photo_path` is a key in the private `photos` bucket, not a URL — the

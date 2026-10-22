@@ -46,6 +46,12 @@ export interface BoardPersonName {
    * there is none or it could not be signed — `Avatar` then draws initials.
    */
   photoUrl?: string | null;
+  /**
+   * The worker's mobile, E.164, so the office can ring them from the row.
+   * null: none on record, or the worker was removed (§1.7). Absent only on
+   * the "Deleted account" stand-in for someone the read did not name.
+   */
+  phone?: string | null;
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   breaksCell,
   statusTone,
 } from './status';
+import { StaffPhone } from './StaffPhone';
 import type { MonitorRow } from './types';
 import { useNow } from './useNow';
 import { useViewerZone } from './useViewerZone';
@@ -36,7 +37,7 @@ import { useViewerZone } from './useViewerZone';
  * Vercel), which streamed UTC stamps and forced a hydration re-render
  * (audit D41). First paint is UK; the reader's zone arrives on mount.
  *
- * Remind (ADR-0187) sits under the pill of a worker who has not checked in
+ * Remind (ADR-0188) sits under the pill of a worker who has not checked in
  * (from 30 minutes before the start) or has not checked out (from 30 minutes
  * before the end): one press queues the register's own N9 / N9b push. It is
  * a control, not a status, so it carries no colour of its own.
@@ -56,7 +57,7 @@ export function MonitorTable({
   rows: MonitorRow[];
   /** Opens the Verify window for a late sign-out (ADR-0184). */
   onVerify?: (row: MonitorRow) => void;
-  /** Pushes the worker to check in or out (ADR-0187). */
+  /** Pushes the worker to check in or out (ADR-0188). */
   onNudge?: (row: MonitorRow) => void;
   /** The booking whose reminder is on its way. */
   nudging?: string | null;
@@ -104,6 +105,7 @@ export function MonitorTable({
                     <div>
                       <div className="n">{row.staffName}</div>
                       <div className="s">{row.roleName}</div>
+                      <StaffPhone phone={row.phone} />
                     </div>
                   </div>
                 </td>
@@ -159,7 +161,7 @@ export function MonitorTable({
                   {row.status === 'checked_out' && row.lateCheckOut ? (
                     <WeeklyLimitFlag hours={row.weekHours} cap={row.weekCapHours} />
                   ) : null}
-                  {/* ADR-0187: the register's N9 / N9b, on the manager's press. */}
+                  {/* ADR-0188: the register's N9 / N9b, on the manager's press. */}
                   {onNudge && nudge ? (
                     <span className="sub">
                       <Button

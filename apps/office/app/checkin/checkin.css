@@ -67,7 +67,7 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
-/* A refused reminder (ADR-0187), said beside the row it was for. */
+/* A refused reminder (ADR-0188), said beside the row it was for. */
 .monitor-tbl .nudge-err {
   color: var(--coral-ink);
   max-width: 22rem;
@@ -124,4 +124,17 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-6);
+}
+
+/* The worker's phone under their name: text until it is pointed at. */
+.checkin-phone {
+  white-space: nowrap;
+}
+.checkin-phone a {
+  color: inherit;
+  text-decoration: none;
+}
+.checkin-phone a:hover {
+  color: var(--cyan-ink);
+  text-decoration: underline;
 }

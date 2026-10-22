@@ -1,5 +1,5 @@
 {
-  "description": "ADR-0187 a name as printed on the passport. The contract between nameFault() in packages/domain/src/legalName.ts and name_fault() in 20261023130000_legal_names_in_full.sql, which submit_application() calls on the first-and-middle names and on the surname. `fault` is the reason, or null when the text is a whole name. `optional` marks the middle-name field, where nothing at all is fine but an initial is not.",
+  "description": "ADR-0189 a name as printed on the passport. The contract between nameFault() in packages/domain/src/legalName.ts and name_fault() in 20261023130100_legal_names_in_full.sql, which submit_application() calls on the first-and-middle names and on the surname. `fault` is the reason, or null when the text is a whole name. `optional` marks the middle-name field, where nothing at all is fine but an initial is not.",
   "cases": [
     { "name": "plain name", "text": "Marc", "optional": false, "fault": null },
     { "name": "plain surname", "text": "Martinez", "optional": false, "fault": null },
