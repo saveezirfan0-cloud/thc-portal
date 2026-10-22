@@ -1,4 +1,4 @@
-# ADR-0187 · The Potential pool shows an earlier decline as a badge, and the button says "Invite again"
+# ADR-0190 · The Potential pool shows an earlier decline as a badge, and the button says "Invite again"
 
 **Status:** Accepted (owner request, 22.10.2026). Refines scope §3.3 and §3.6 (D33); a small departure from `wireframes/backoffice/event-board.html`, which draws the earlier ending as plain text.
 
