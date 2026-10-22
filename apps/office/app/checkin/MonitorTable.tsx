@@ -12,6 +12,7 @@ import {
   breaksCell,
   statusTone,
 } from './status';
+import { SendPush } from '../staff/SendPush';
 import { StaffName } from './StaffName';
 import { StaffPhone } from './StaffPhone';
 import type { MonitorRow } from './types';
@@ -42,6 +43,10 @@ import { useViewerZone } from './useViewerZone';
  * (from 30 minutes before the start) or has not checked out (from 30 minutes
  * before the end): one press queues the register's own N9 / N9b push. It is
  * a control, not a status, so it carries no colour of its own.
+ *
+ * Send push (ADR-0190) sits beside Remind on every row: a free-text push to that
+ * worker in the office's own words (the same dialog as the Staff directory
+ * and a profile), for what no fixed reminder says — "we're at the side door".
  *
  * A checked-out row signed out more than 15 minutes late keeps §9.5's red
  * pill, with "Signed out late — verify with the worker" and a Verify
@@ -164,9 +169,9 @@ export function MonitorTable({
                   {row.status === 'checked_out' && row.lateCheckOut ? (
                     <WeeklyLimitFlag hours={row.weekHours} cap={row.weekCapHours} />
                   ) : null}
-                  {/* ADR-0188: the register's N9 / N9b, on the manager's press. */}
-                  {onNudge && nudge ? (
-                    <span className="sub">
+                  <span className="sub row" style={{ gap: 6 }}>
+                    {/* ADR-0188: the register's N9 / N9b, on the manager's press. */}
+                    {onNudge && nudge ? (
                       <Button
                         size="sm"
                         disabled={nudging === row.bookingId}
@@ -174,8 +179,13 @@ export function MonitorTable({
                       >
                         {nudging === row.bookingId ? 'Sending…' : NUDGE_LABEL[nudge]}
                       </Button>
-                    </span>
-                  ) : null}
+                    ) : null}
+                    {/* ADR-0190: the manager's own words, whatever the row says (OM2). */}
+                    <SendPush
+                      recipients={[{ id: row.staffId, name: row.staffName }]}
+                      tone="ghost"
+                    />
+                  </span>
                   {nudgeErrors[row.bookingId] ? (
                     <span className="sub nudge-err" role="alert">
                       {nudgeErrors[row.bookingId]}
