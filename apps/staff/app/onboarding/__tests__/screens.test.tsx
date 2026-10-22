@@ -355,13 +355,11 @@ describe('4/11 Documents', () => {
     expect(html).toContain('Criminal conviction declaration');
     // The note explains the choice before it is made (onboarding-1.html 4/11).
     expect(html).toContain('“No” is recorded as verified straight away');
-    expect(html).toContain(
-      'Upload your University Term Dates Letter — or your Completion Letter if you’ve graduated — to continue',
-    );
+    expect(html).toContain('Upload your University Term Dates Letter to continue');
     expect(footer(html)).toEqual({ label: 'Submit documents', disabled: true });
   });
 
-  it('a Student-visa candidate is offered the optional completion letter; it never blocks Submit', () => {
+  it('a Student-visa candidate who has not said whether the course is finished is asked, and shown no letter (ADR-0187)', () => {
     const html = renderToStaticMarkup(
       <DocumentsStep
         branchTitle="International student"
@@ -371,39 +369,54 @@ describe('4/11 Documents', () => {
         completionLetter={completionLetterDoc(state)}
       />,
     );
-    expect(html).toContain('University completion letter');
-    expect(html).toContain('Finished your course already?');
-    expect(html).toContain('href="/onboarding/completion-letter"');
-    // Still the term letter that holds Submit, not the optional letter.
-    expect(html).toContain(
-      'Upload your University Term Dates Letter — or your Completion Letter if you’ve graduated — to continue',
-    );
-    // Any other branch: no row at all.
+    expect(html).toContain('Have you finished your course?');
+    expect(html).toContain('Still studying');
+    expect(html).toContain('Finished my course');
+    // Neither letter is offered until they answer, so they are not told to upload both.
+    expect(html).not.toContain('Upload your University Term Dates Letter');
+    expect(html).not.toContain('University completion letter');
+    expect(html).not.toContain('/onboarding/completion-letter');
+    expect(html).toContain('Tell us whether you’ve finished your course to continue');
+    // Any other branch: no question, no letter.
     const uk = mapOnboardingState({ ...rawState, rtwBranch: 'uk_irish' })!;
     expect(completionLetterDoc(uk)).toBeUndefined();
-  });
-
-  it('tells a student who has graduated that the Completion Letter is all they need (ADR-0112)', () => {
-    const html = renderToStaticMarkup(
-      <DocumentsStep
-        branchTitle="International student"
-        rows={requirementRows(state)}
-        shareCode="W123AB4CD"
-        today={TODAY}
-        completionLetter={completionLetterDoc(state)}
-      />,
-    );
-    expect(html).toContain('Already graduated?');
-    expect(html).toContain('you don’t need a University Term Dates Letter');
-    // Any other branch: no such note.
-    const uk = mapOnboardingState({ ...rawState, rtwBranch: 'uk_irish' })!;
     const ukHtml = renderToStaticMarkup(
       <DocumentsStep branchTitle="UK" rows={requirementRows(uk)} shareCode={null} today={TODAY} />,
     );
-    expect(ukHtml).not.toContain('Already graduated?');
+    expect(ukHtml).not.toContain('Have you finished your course?');
   });
 
-  it('a graduate with a Completion Letter and no Term Dates Letter can Submit once the declaration is answered', () => {
+  it('a student who is still studying is asked for the Term Dates Letter only', () => {
+    const studying = mapOnboardingState({
+      ...rawState,
+      documents: [
+        ...rawState.documents,
+        {
+          id: 't1',
+          docType: 'university_term_dates_letter',
+          status: 'pending',
+          fileName: 'term.pdf',
+          uploadedAt: '2026-09-19T10:00:00Z',
+        },
+      ],
+    })!;
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(studying)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+        completionLetter={completionLetterDoc(studying)}
+      />,
+    );
+    expect(html).toContain('term.pdf');
+    expect(html).toContain('not a Completion Letter');
+    expect(html).not.toContain('University completion letter');
+    expect(html).not.toContain('/onboarding/completion-letter');
+    expect(html).toContain('Answer the criminal conviction question to continue');
+  });
+
+  it('a graduate is asked for the Completion Letter only — no Term Dates Letter row, nothing to chase (ADR-0112, ADR-0187)', () => {
     const graduate = mapOnboardingState({
       ...rawState,
       documents: [
@@ -426,11 +439,42 @@ describe('4/11 Documents', () => {
         completionLetter={completionLetterDoc(graduate)}
       />,
     );
-    expect(html).toContain('Covered by your Completion Letter below once the office approves it');
+    expect(html).toContain('You only need your Official University Completion Letter');
+    expect(html).toContain('University completion letter');
+    expect(html).toContain('In review');
     expect(html).not.toContain('Upload your University Term Dates Letter');
-    expect(html).not.toContain('Already graduated?');
+    expect(html).not.toContain('Covered by your Completion Letter');
     // Only the declaration is left to answer.
     expect(html).toContain('Answer the criminal conviction question to continue');
+  });
+
+  it('a graduate whose Completion Letter was rejected is asked to upload it again, not a Term Dates Letter', () => {
+    const rejected = mapOnboardingState({
+      ...rawState,
+      documents: [
+        ...rawState.documents,
+        {
+          id: 'c1',
+          docType: 'university_completion_letter',
+          status: 'rejected',
+          rejectionReason: 'Photo is cut off',
+          fileName: 'completion.pdf',
+          uploadedAt: '2026-09-19T10:00:00Z',
+        },
+      ],
+    })!;
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(rejected)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+        completionLetter={completionLetterDoc(rejected)}
+      />,
+    );
+    expect(html).toContain('Upload your University Completion Letter to continue');
+    expect(html).toContain('Photo is cut off');
+    expect(html).not.toContain('Upload your University Term Dates Letter');
   });
 
   it('the review hub shows a completion letter in review', () => {

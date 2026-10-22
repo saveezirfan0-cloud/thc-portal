@@ -240,15 +240,14 @@ select throws_ok(format('select submit_completion_letter(%L, %L, %L)', :'stu' ||
 -- AC3 · approval → 48 from the completion date
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'stu_uid')::text, true);
-select throws_ok(format('select approve_completion_letter(%L, %L, %L)',
+select throws_ok(format('select approve_completion_letter(%L, %L)',
                         (select id from compliance_docs where staff_id = :'stu' and doc_type = 'university_completion_letter'),
-                        :'w'::date + 2, :'w'::date + 400),
+                        :'w'::date + 400),
   '42501', 'not_authorised', '§2.2: a worker cannot approve their own letter');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
-select throws_ok(format('select approve_completion_letter(%L, %L, null)',
-                        (select id from compliance_docs where staff_id = :'stu' and doc_type = 'university_completion_letter'),
-                        :'w'::date + 2),
+select throws_ok(format('select approve_completion_letter(%L, null)',
+                        (select id from compliance_docs where staff_id = :'stu' and doc_type = 'university_completion_letter')),
   'P0001', 'visa_expiry_required', '§2.2: the reviewer must confirm the visa expiry');
 select throws_ok(format('select compliance_verify_document(%L)',
                         (select id from compliance_docs where staff_id = :'stu' and doc_type = 'university_completion_letter')),
@@ -264,7 +263,7 @@ select throws_ok(format($$ update compliance_docs set review_status = 'verified'
 -- recorded. The earlier one stands.
 select is(approve_completion_letter(
             (select id from compliance_docs where staff_id = :'stu' and doc_type = 'university_completion_letter'),
-            :'w'::date + 2, :'w'::date + 999) ->> 'effectiveFrom',
+            :'w'::date + 999) ->> 'effectiveFrom',
   (:'w'::date + 7)::text,
   'AC3: approval takes effect from the first whole week after the completion date');
 select is((weekly_cap_for(:'stu', :'w'::date)).cap_hours, 20,
@@ -301,7 +300,7 @@ select is(submit_completion_letter(:'stu2' || '/completion-letter/l2.jpg', :'w':
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
 select is(approve_completion_letter(
             (select id from compliance_docs where staff_id = :'stu2' and doc_type = 'university_completion_letter'),
-            :'w'::date + 2, :'w'::date + 3) ->> 'releaseBlockedByVisa', 'true',
+            :'w'::date + 3) ->> 'releaseBlockedByVisa', 'true',
   '§7: the visa ends (W+3) before the release starts (W+7) — the expiry takes precedence');
 select is((select payload ->> 'variant' from notification_outbox where template = 'CL2' and recipient_staff_id = :'stu2'),
   'visa_first', '§7: and the worker is told so, rather than promised 48 hours they cannot work');

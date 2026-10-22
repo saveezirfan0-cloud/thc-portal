@@ -83,7 +83,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
     key: 'international_student',
     title: 'International student',
     description:
-      'Passport + share code + your University Term Dates Letter. 20 h/week in term time.',
+      'Passport + share code + your University Term Dates Letter (or your Completion Letter once you’ve finished your course). 20 h/week in term time.',
   },
   {
     key: 'dependant_other',
@@ -221,7 +221,7 @@ export function requiredDocuments(
           key: 'university_term_dates_letter',
           label: 'University Term Dates Letter',
           accepts: ['university_term_dates_letter'],
-          hint: 'This year’s letter from your university. Graduated? Skip it and upload your Completion Letter instead.',
+          hint: 'This year’s letter from your university',
         },
       ];
   }

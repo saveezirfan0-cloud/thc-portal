@@ -16,7 +16,7 @@
 -- address rows by key, never by global count.
 -- =====================================================================
 begin;
-select plan(16);
+select plan(21);
 \ir _shared/fixtures.psql
 
 \set sa 'c7850000-0000-4000-8000-00000000000a'
@@ -113,7 +113,7 @@ select ok(not ('university_term_dates_letter' = any (onboarding_documents_missin
   'E: before approval she is stuck — the rejected term letter holds the gate');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
-select is(approve_completion_letter(:'cg', current_date - 20, current_date + 400) ->> 'approved', 'true',
+select is(approve_completion_letter(:'cg', current_date + 400) ->> 'approved', 'true',
   'E: the office approves her completion letter');
 select is((select review_status::text from compliance_docs where id = :'tg'), 'superseded',
   'E: approving it supersedes her rejected term letter — history kept, nothing deleted');
@@ -137,7 +137,7 @@ insert into compliance_docs (id, staff_id, doc_type, file_path, review_status, c
 values (:'cf', :'sf', 'university_completion_letter', :'sf' || '/completion-letter/c.pdf', 'pending',
         current_date + 30);
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
-select approve_completion_letter(:'cf', current_date + 30, current_date + 400);
+select approve_completion_letter(:'cf', current_date + 400);
 select set_config('request.jwt.claims', '', true);
 
 select is((select review_status::text from compliance_docs where id = :'tf'), 'rejected',
@@ -155,7 +155,7 @@ insert into compliance_docs (id, staff_id, doc_type, file_path, review_status, c
 values (:'ch', :'sh', 'university_completion_letter', :'sh' || '/completion-letter/c.pdf', 'pending',
         current_date - 20);
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
-select approve_completion_letter(:'ch', current_date - 20, current_date + 400);
+select approve_completion_letter(:'ch', current_date + 400);
 select set_config('request.jwt.claims', '', true);
 
 select is((select review_status::text from compliance_docs where id = :'th'), 'verified',
@@ -174,7 +174,7 @@ insert into compliance_docs (id, staff_id, doc_type, file_path, review_status, c
 values ('c7851000-0000-4000-8000-000000000012', :'si', 'university_completion_letter',
         :'si' || '/completion-letter/c.pdf', 'pending', current_date + 30);
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
-select approve_completion_letter('c7851000-0000-4000-8000-000000000012', current_date + 30, current_date + 400);
+select approve_completion_letter('c7851000-0000-4000-8000-000000000012', current_date + 400);
 select set_config('request.jwt.claims', '', true);
 
 select ok('document_unverified:university_completion_letter' = any (onboarding_quiz_blockers(:'si')),
@@ -191,6 +191,40 @@ values (:'sj', 'university_term_dates_letter', :'sj' || '/term/t.pdf', 'rejected
 select ok(not exists (select 1 from compliance_blockers(:'sj') b
                        where b.reason = 'document_unverified:university_term_dates_letter'),
   'I: a leftover term letter no longer blocks someone who has moved off the Student branch (§7, term_letter_applies())');
+
+-- =====================================================================
+-- J · the completion date is never typed (ADR-0187)
+-- =====================================================================
+\set sk 'c7850000-0000-4000-8000-000000000014'
+\set sl 'c7850000-0000-4000-8000-000000000015'
+\set ck 'c7851000-0000-4000-8000-000000000014'
+\set cl 'c7851000-0000-4000-8000-000000000015'
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, share_code,
+                   right_to_work_until) values
+  (:'sk','Grad','K','k@785.test','+447700978511', date '2001-01-01','compliant','international_student','WABCD0010', current_date + 400),
+  (:'sl','Grad','L','l@785.test','+447700978512', date '2001-01-01','compliant','international_student','WABCD0011', current_date + 400);
+-- K: the worker typed one date, the AI read another off the letter. The read wins.
+insert into compliance_docs (id, staff_id, doc_type, file_path, review_status,
+                             completion_date_claimed, completion_date)
+values (:'ck', :'sk', 'university_completion_letter', :'sk' || '/completion-letter/c.pdf', 'pending',
+        current_date - 20, current_date - 30);
+-- L: no date was read and none supplied.
+insert into compliance_docs (id, staff_id, doc_type, file_path, review_status)
+values (:'cl', :'sl', 'university_completion_letter', :'sl' || '/completion-letter/c.pdf', 'pending');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
+select is(completion_letter_date(:'ck') ->> 'date', (current_date - 30)::text,
+  'J: the reviewer is shown the date read off the letter, not the worker''s');
+select is(completion_letter_date(:'ck') ->> 'source', 'letter', 'J: and that it was read off the letter');
+select throws_ok(format('select approve_completion_letter(%L, %L)', :'cl', current_date + 400),
+  'P0001', 'completion_date_unreadable',
+  'J: no read and no supplied date → nothing is approved on a typed guess');
+select approve_completion_letter(:'ck', current_date + 400);
+select set_config('request.jwt.claims', '', true);
+select is((select course_completion_date from staff where id = :'sk'), current_date - 30,
+  'J: approval writes the date from the letter to the worker');
+select is((select completion_date from compliance_docs where id = :'ck'), current_date - 30,
+  'J: and keeps it on the letter');
 
 select * from finish();
 rollback;

@@ -165,7 +165,7 @@ describe('Needs review (§4.1)', () => {
     expect(documentLine(letter)).toBe(
       'Official university email · optional document, International student branch · PNG 88 KB',
     );
-    expect(verifyHint(letter)).toContain('confirm the completion date and visa expiry');
+    expect(verifyHint(letter)).toContain('confirm the visa expiry');
   });
 
   it('lists a share code verified without a right-to-work date, and says why (20260927160000)', () => {

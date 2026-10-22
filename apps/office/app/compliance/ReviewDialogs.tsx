@@ -1,11 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Avatar, Button, Input, Modal, Note, Textarea, UkDateField, useTimeFormat } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Input,
+  Modal,
+  Note,
+  Textarea,
+  UkDateField,
+  useTimeFormat,
+} from '@thc/ui';
 import { homeOfficeCheckUntil, ukToday } from '@thc/domain';
 import {
   approveCompletionLetter,
+  completionLetterDate,
   confirmRtwDate,
   rejectDeclaration,
   rejectDocument,
@@ -14,7 +25,7 @@ import {
   verifyDocument,
   verifyHomeOfficeCheck,
 } from './actions';
-import type { VerifyConditions, VerifyDates } from './actions';
+import type { CompletionLetterDate, VerifyConditions, VerifyDates } from './actions';
 import {
   VISA_LIMIT_HINT,
   belowDegreeHint,
@@ -173,10 +184,10 @@ export function useReviewDialogs({
           row={approving}
           busy={busy(approving.item_id)}
           onClose={() => setApproving(null)}
-          onApprove={(completionDate, visaExpiry) =>
+          onApprove={(visaExpiry) =>
             run(
               approving.item_id,
-              () => approveCompletionLetter(approving.item_id, completionDate, visaExpiry),
+              () => approveCompletionLetter(approving.item_id, visaExpiry),
               () => setApproving(null),
             )
           }
@@ -467,9 +478,11 @@ function RejectModal({
 }
 
 /**
- * Completion letter requirement §2.2: "On approval, the reviewer
- * confirms/enters: the course completion date, and the visa expiry date
- * (should already be on file from the right-to-work check)."
+ * Completion letter requirement §2.2, as ADR-0187 changed it: "On approval,
+ * the reviewer confirms the visa expiry date (should already be on file from
+ * the right-to-work check)". The course completion date is not asked for: the
+ * system enters the one read off the letter (else the one supplied with the
+ * upload), and the dialog only shows it so the reviewer sees what will apply.
  */
 function ApproveModal({
   row,
@@ -480,12 +493,23 @@ function ApproveModal({
   row: QueueRow;
   busy: boolean;
   onClose: () => void;
-  onApprove: (completionDate: string, visaExpiry: string) => void;
+  onApprove: (visaExpiry: string) => void;
 }) {
   const format = useTimeFormat();
-  const [completionDate, setCompletionDate] = useState(row.completion_date_claimed ?? '');
+  const [letterDate, setLetterDate] = useState<CompletionLetterDate | null>(null);
   const [visaExpiry, setVisaExpiry] = useState(row.staff_right_to_work_until ?? '');
   const onFile = row.staff_right_to_work_until;
+  useEffect(() => {
+    let live = true;
+    void completionLetterDate(row.item_id).then((answer) => {
+      if (live) setLetterDate(answer);
+    });
+    return () => {
+      live = false;
+    };
+  }, [row.item_id]);
+  const date = letterDate?.ok ? letterDate.date : null;
+  const claimed = row.completion_date_claimed;
   return (
     <Modal
       open
@@ -499,8 +523,8 @@ function ApproveModal({
           <Button
             tone="green"
             solid
-            disabled={busy || !completionDate || !visaExpiry}
-            onClick={() => onApprove(completionDate, visaExpiry)}
+            disabled={busy || !date || !visaExpiry}
+            onClick={() => onApprove(visaExpiry)}
           >
             Approve
           </Button>
@@ -515,20 +539,31 @@ function ApproveModal({
           uploaded {ukStamp(row.submitted_at, format)}
         </div>
       </div>
-      <UkDateField
-        label={
+      <div className="field">
+        <span className="label">Course completion date</span>
+        {letterDate === null ? (
+          <div className="sm muted">Reading the date…</div>
+        ) : !letterDate.ok ? (
+          <Alert tone="coral">{letterDate.message}</Alert>
+        ) : date ? (
           <>
-            Course completion date on the document <span className="coral">*</span>
+            <div className="sm">
+              <b>{ukDate(date)}</b> ·{' '}
+              {letterDate.source === 'letter' ? 'read from the letter' : 'entered with the upload'}
+            </div>
+            <div className="xs muted">
+              {letterDate.source === 'letter' && claimed && claimed !== date
+                ? `The worker entered ${ukDate(claimed)}; the letter says ${ukDate(date)}, and that is the date used. Reject the letter instead if it looks wrong.`
+                : 'Entered automatically — you do not type it. Reject the letter instead if this does not match the document.'}
+            </div>
           </>
-        }
-        value={completionDate}
-        onChange={setCompletionDate}
-        hint={
-          row.completion_date_claimed
-            ? `The worker entered ${ukDate(row.completion_date_claimed)}. Correct it if the document says otherwise.`
-            : 'The worker did not enter one — read it off the document.'
-        }
-      />
+        ) : (
+          <Alert tone="coral">
+            No completion date could be read from this letter and none was entered with it. Reject
+            it and ask the worker for a clearer copy.
+          </Alert>
+        )}
+      </div>
       <UkDateField
         label={
           <>

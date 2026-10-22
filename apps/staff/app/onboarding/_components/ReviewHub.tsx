@@ -286,7 +286,8 @@ export function ReviewHub({
             </div>
           </div>
         ) : null}
-        {completionLetter !== undefined ? <CompletionLetterOption doc={completionLetter} /> : null}
+        {/* Only a candidate who sent one: a student still studying is not shown it (ADR-0187). */}
+        {completionLetter ? <CompletionLetterOption doc={completionLetter} /> : null}
       </div>
 
       <div className="mcard muted">

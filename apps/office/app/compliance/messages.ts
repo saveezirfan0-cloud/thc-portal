@@ -30,13 +30,21 @@ const MESSAGES: [RegExp, string][] = [
   ],
   [
     /^use_approve_completion_letter/,
-    'A completion letter is approved with its completion date and visa expiry.',
+    'A completion letter is approved with its visa expiry; the completion date is taken from the letter.',
   ],
   [
     /^completion_letter_needs_approval/,
-    'A completion letter needs the completion date and visa expiry confirmed before it is approved.',
+    'A completion letter needs the visa expiry confirmed before it is approved.',
   ],
   [/^completion_date_required/, 'Confirm the course completion date.'],
+  [
+    /^completion_date_unreadable/,
+    'No completion date could be read from this letter and none was entered with it. Reject it and ask the worker for a clearer copy.',
+  ],
+  [
+    /^completion_date_implausible/,
+    'The completion date on this letter does not look right. Reject it and ask the worker for a clearer copy.',
+  ],
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
   // ADR-0183: a period over a year is a typed year (20261022155000/155300);

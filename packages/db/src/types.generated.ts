@@ -11442,7 +11442,6 @@ export type Database = {
       };
       approve_completion_letter: {
         Args: {
-          p_completion_date: string;
           p_doc: string;
           p_visa_expiry: string;
         };
@@ -11901,6 +11900,10 @@ export type Database = {
       completion_effective_from: {
         Args: { p_completion: string; p_verified: string };
         Returns: string;
+      };
+      completion_letter_date: {
+        Args: { p_doc: string };
+        Returns: Json;
       };
       compliance_attach_rtw_report: {
         Args: { p_doc: string; p_path: string };

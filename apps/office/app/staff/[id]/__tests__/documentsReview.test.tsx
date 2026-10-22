@@ -34,6 +34,9 @@ vi.mock('../../../compliance/actions', () => ({
   verifyDocument: vi.fn(ok),
   rejectDocument: vi.fn(ok),
   approveCompletionLetter: vi.fn(ok),
+  completionLetterDate: vi.fn(() =>
+    Promise.resolve({ ok: true as const, date: '2026-07-10', source: 'upload' as const }),
+  ),
   confirmRtwDate: vi.fn(ok),
   verifyDeclaration: vi.fn(ok),
   rejectDeclaration: vi.fn(ok),
@@ -259,7 +262,7 @@ describe('every click lands in /compliance’s own actions', () => {
     expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d2', { expiry: '2027-06-30' });
   });
 
-  it('Verify on a completion letter opens the approval with both dates', async () => {
+  it('Verify on a completion letter opens the approval: the completion date is shown, never typed', async () => {
     render({
       documents: [
         doc({ id: 'd3', doc_type: 'university_completion_letter', doc_label: 'Completion letter' }),
@@ -276,13 +279,41 @@ describe('every click lands in /compliance’s own actions', () => {
     });
     await click(buttons('Verify')[0]);
     expect(dialog().getAttribute('aria-label')).toBe('Approve completion letter');
+    expect(dialog().textContent).toContain('Course completion date');
+    expect(dialog().textContent).toContain('Entered automatically');
+    // Only the visa expiry is a field; the completion date has none.
+    expect(dialog().textContent).toContain('Visa expiry');
+    expect(dialog().textContent).not.toContain('Course completion date on the document');
+    expect(dialog().querySelector('[aria-label*="completion date" i]')).toBeNull();
     await click(buttons('Approve', dialog())[0]);
-    expect(actions.approveCompletionLetter).toHaveBeenCalledExactlyOnceWith(
-      'd3',
-      '2026-07-10',
-      '2028-03-31',
-    );
+    // The completion date is never sent: the database applies the one on the letter.
+    expect(actions.approveCompletionLetter).toHaveBeenCalledExactlyOnceWith('d3', '2028-03-31');
     expect(actions.verifyDocument).not.toHaveBeenCalled();
+  });
+
+  it('a completion letter with no readable date cannot be approved — it is rejected for a clearer copy', async () => {
+    vi.mocked(actions.completionLetterDate).mockResolvedValueOnce({
+      ok: true,
+      date: null,
+      source: null,
+    });
+    render({
+      documents: [
+        doc({ id: 'd3', doc_type: 'university_completion_letter', doc_label: 'Completion letter' }),
+      ],
+      reviewQueue: [
+        queued({
+          item_id: 'd3',
+          item_type: 'university_completion_letter',
+          item_label: 'Completion letter',
+          completion_date_claimed: null,
+          staff_right_to_work_until: '2028-03-31',
+        }),
+      ],
+    });
+    await click(buttons('Verify')[0]);
+    expect(dialog().textContent).toContain('No completion date could be read');
+    expect(buttons('Approve', dialog())[0]!.disabled).toBe(true);
   });
 
   it('Reject needs a worker-facing reason, then sends it (N8)', async () => {

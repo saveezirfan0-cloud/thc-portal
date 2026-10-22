@@ -553,7 +553,7 @@ export function verifyHint(row: QueueRow): string | null {
     return 'gov.uk recommends Reject → the reason is pre-filled; edit it before it goes to the worker (N8)';
   }
   if (row.item_type === 'university_completion_letter') {
-    return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
+    return 'Approve → confirm the visa expiry (the completion date is taken from the letter) → 48 h/week from the completion date, never past the visa';
   }
   if (row.kind === 'document' && row.manual_review_reason === LETTER_EXPIRED) {
     // compliance_verify_document() raises term_letter_expired on this row

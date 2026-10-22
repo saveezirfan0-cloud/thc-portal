@@ -261,19 +261,36 @@ export async function rejectDocument(docId: string, reason: string): Promise<Act
 }
 
 /**
- * Completion letter requirement §2.2: the reviewer confirms the completion
- * date and the visa expiry. Both are required here and again in the database.
+ * The course completion date an approval of this letter will apply, and
+ * where it came from (ADR-0187): read off the letter, else supplied with the
+ * upload. Nobody types it, so the approve dialog only shows it.
+ */
+export type CompletionLetterDate =
+  | { ok: true; date: string | null; source: 'letter' | 'upload' | null }
+  | { ok: false; message: string };
+
+export async function completionLetterDate(docId: string): Promise<CompletionLetterDate> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { data, error } = await supabase.rpc('completion_letter_date', { p_doc: docId });
+  if (error) return { ok: false, message: reviewErrorMessage(error.message) };
+  const answer = (data ?? {}) as { date?: string | null; source?: 'letter' | 'upload' | null };
+  return { ok: true, date: answer.date ?? null, source: answer.source ?? null };
+}
+
+/**
+ * Completion letter requirement §2.2, as ADR-0187 changed it: the reviewer
+ * confirms the visa expiry. The completion date is never typed — the database
+ * applies the one read off the letter — and the visa expiry is required here
+ * and again there.
  */
 export async function approveCompletionLetter(
   docId: string,
-  completionDate: string,
   visaExpiry: string,
 ): Promise<ActionResult> {
-  if (!completionDate) return { ok: false, message: 'Confirm the course completion date.' };
   if (!visaExpiry) return { ok: false, message: 'Confirm the visa expiry date.' };
   const result = await call('approve_completion_letter', {
     p_doc: docId,
-    p_completion_date: completionDate,
     p_visa_expiry: visaExpiry,
   });
   if (isFailure(result)) return result;
@@ -508,7 +525,7 @@ export async function submitOfficeCompletionLetter(
   return {
     ok: true,
     message:
-      'Uploaded. It is waiting in Needs review: approve it there with the completion date and the visa expiry — the weekly limit changes only then.',
+      'Uploaded. It is waiting in Needs review: approve it there with the visa expiry — the completion date is taken from the letter, and the weekly limit changes only then.',
   };
 }
 

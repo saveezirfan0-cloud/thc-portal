@@ -313,14 +313,14 @@ insert into compliance_docs (id, staff_id, doc_type, uploaded_at, review_status,
   (:'leg_b', :'legacy', 'university_completion_letter', now() - interval '20 days', 'verified',
    'documents/918/leg_b.pdf', :'admin_uid', now() - interval '19 days', date '2026-08-15', date '2028-01-31'),
   (:'other_new', :'other', 'university_completion_letter', now() - interval '1 day', 'pending',
-   'documents/918/other_new.pdf', null, null, null, null);
+   'documents/918/other_new.pdf', null, null, date '2026-08-15', null);
 insert into notification_outbox (key, channel, template, recipient_staff_id, payload, attempts, send_after) values
   ('CL2:doc:' || :'leg_a', 'push', 'CL2', :'legacy', '{}', 1, now() + interval '5 minutes'),
   ('CL2:doc:' || :'leg_b', 'push', 'CL2', :'legacy', '{}', 0, now());
 
 set local role authenticated;
 select lives_ok(
-  format('select approve_completion_letter(%L, %L, %L)', :'other_new', '2026-08-15', '2028-01-31'),
+  format('select approve_completion_letter(%L, %L)', :'other_new', '2028-01-31'),
   'F: approving a second completion letter for a worker');
 reset role;
 select results_eq(

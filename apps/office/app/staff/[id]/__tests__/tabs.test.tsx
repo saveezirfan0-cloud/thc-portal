@@ -17,6 +17,9 @@ vi.mock('../../../compliance/actions', () => ({
   verifyDocument: vi.fn(),
   rejectDocument: vi.fn(),
   approveCompletionLetter: vi.fn(),
+  completionLetterDate: vi.fn(() =>
+    Promise.resolve({ ok: true as const, date: '2026-07-10', source: 'upload' as const }),
+  ),
   confirmRtwDate: vi.fn(),
 }));
 vi.mock('../../../checkin/actions', () => ({ resolveViolation: vi.fn() }));

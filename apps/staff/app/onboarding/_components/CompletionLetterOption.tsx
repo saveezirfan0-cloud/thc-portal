@@ -11,9 +11,17 @@ export const ONBOARDING_COMPLETION_HREF = '/onboarding/completion-letter';
  * (`completionLetterDoc()`): step 4's list and the review hub both show it.
  * A student still in term never needs it. A graduate uploads it INSTEAD of
  * the Term Dates Letter (ADR-0112) — `requirementRows()` lets it answer that
- * row — and the office approves it like any document.
+ * row — and the office approves it like any document. Step 4 shows it only
+ * once the candidate has said the course is finished, as the one letter they
+ * are asked for (`required`, ADR-0187).
  */
-export function CompletionLetterOption({ doc }: { doc: UploadedDoc | null }) {
+export function CompletionLetterOption({
+  doc,
+  required = false,
+}: {
+  doc: UploadedDoc | null;
+  required?: boolean;
+}) {
   const status = doc?.status ?? null;
   const meta =
     status === 'pending'
@@ -22,7 +30,9 @@ export function CompletionLetterOption({ doc }: { doc: UploadedDoc | null }) {
         ? 'Approved — your limit rises to 48 h/week from your course completion date.'
         : status === 'rejected'
           ? `Not accepted · “${doc?.rejectionReason ?? 'see the office'}”`
-          : 'Finished your course already? Upload this instead of a Term Dates Letter — you don’t need both — and the office can lift your weekly limit to 48 hours.';
+          : required
+            ? 'Required — upload your completion letter, final transcript or official university email. The office reads the completion date from it; you don’t need a Term Dates Letter.'
+            : 'Finished your course already? Upload this instead of a Term Dates Letter — you don’t need both — and the office can lift your weekly limit to 48 hours.';
   const upload = status === null || status === 'rejected' || status === 'superseded';
 
   return (
