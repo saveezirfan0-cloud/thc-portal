@@ -1,12 +1,12 @@
 /**
- * A name as it is printed on the passport (ADR-0187).
+ * A name as it is printed on the passport (ADR-0189).
  *
  * The right-to-work check, payroll, the sign-in log and every badge match or
  * print this name, and the office reads it on a card beside a photo. A
  * surname typed as "M." or a first name as "J" cannot be matched against
  * anything, so the application form refuses it, the server action refuses it
  * again, and `submit_application()` refuses it a third time through
- * `name_fault()` (migration 20261023130000) — the same rule in the same
+ * `name_fault()` (migration 20261023130100) — the same rule in the same
  * order, held to `legalName.vectors.json` by both suites.
  *
  * What is refused is what cannot be a whole name: an initial (one letter,

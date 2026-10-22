@@ -1,6 +1,6 @@
 -- =====================================================================
--- Migration 20261023130000 · names are taken in full, as on the passport
---                             (ADR-0187)
+-- Migration 20261023130100 · names are taken in full, as on the passport
+--                             (ADR-0189)
 --
 -- /apply took any non-empty text for the surname, so candidates typed
 -- "M." and the office saw "Marc M." beside a photo, which cannot be
@@ -48,7 +48,7 @@ $$
 $$;
 
 comment on function public.name_fault(text, boolean) is
-  'ADR-0187: why a typed name is not a whole name as printed on a passport (required, too_long, initial, characters), or null when it is. p_optional is the middle-name field, where nothing at all is fine. The same rule as nameFault() in packages/domain/src/legalName.ts, held to legalName.vectors.json.';
+  'ADR-0189: why a typed name is not a whole name as printed on a passport (required, too_long, initial, characters), or null when it is. p_optional is the middle-name field, where nothing at all is fine. The same rule as nameFault() in packages/domain/src/legalName.ts, held to legalName.vectors.json.';
 
 create or replace function public.submit_application(
   p_first_name text,
@@ -122,7 +122,7 @@ begin
     raise exception 'You must be 18 or over to apply.' using errcode = '22023';
   end if;
 
-  -- ADR-0187: a name as it is printed on the passport. Here, after every
+  -- ADR-0189: a name as it is printed on the passport. Here, after every
   -- other field rule, so an application wrong in several ways gets the
   -- complaint it always got first; and before the locks, so a refused name
   -- cannot hold one. The form and the server action say the same through
@@ -223,4 +223,4 @@ end
 $$;
 
 comment on function public.submit_application(text, text, text, text, date, boolean) is
-  '§2.1 /apply: validation, the 18+ gate, names in full as on the passport (ADR-0187), the §2.12 duplicate check and the write. Service role only since 20260930120200 (ADR-0024). A match on a record still in the onboarding pipeline is filed as duplicate_candidate (no board card); a match on any other record is a returning_applicant.';
+  '§2.1 /apply: validation, the 18+ gate, names in full as on the passport (ADR-0189), the §2.12 duplicate check and the write. Service role only since 20260930120200 (ADR-0024). A match on a record still in the onboarding pipeline is filed as duplicate_candidate (no board card); a match on any other record is a returning_applicant.';

@@ -4,7 +4,7 @@
 -- Source: packages/domain/src/legalName.vectors.json
 -- Regenerate: pnpm --filter @thc/domain gen:vectors
 --
--- ADR-0187: name_fault() against the cases nameFault() is held to. `text` is
+-- ADR-0189: name_fault() against the cases nameFault() is held to. `text` is
 -- what a candidate typed; `fault` is the reason it is not a whole name, or
 -- null. `optional` is the middle-name field, where an empty value is fine.
 -- Included with \ir from supabase/tests/120_apply.sql; the .psql

@@ -182,7 +182,7 @@ describe('ADR-0184 signed out late', () => {
   });
 });
 
-describe('Remind (ADR-0187) — which register push a row is offered', () => {
+describe('Remind (ADR-0188) — which register push a row is offered', () => {
   // 16:00–22:30 UTC; "at" is minutes from the start.
   const at = (m: number) => new Date(new Date('2026-06-14T16:00:00Z').getTime() + m * 60_000);
 
