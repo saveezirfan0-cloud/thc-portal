@@ -17,6 +17,7 @@ import {
   readyCutoffApplies,
   readyDeadline,
   readyDeadlinePassed,
+  readyNotNeeded,
   shiftCard,
   staticScreenCase,
   turnedAwayMessage,
@@ -83,6 +84,32 @@ describe('readyCutoffApplies (§3.5)', () => {
 
   it('does not apply without a confirmedAt', () => {
     expect(readyCutoffApplies(null, startsAt)).toBe(false);
+  });
+});
+
+describe('readyNotNeeded (RULE-08)', () => {
+  const startsAt = new Date('2026-10-23T16:00:00Z'); // deadline 2026-10-22T11:00Z
+  const late = {
+    status: 'confirmed',
+    confirmedAt: new Date('2026-10-22T18:55:00Z'),
+    startsAt,
+    reconfirmRequired: false,
+  } as const;
+
+  it('is true for a booking confirmed after the deadline, the evening before', () => {
+    expect(readyNotNeeded(late, new Date('2026-10-22T19:10:00Z'))).toBe(true);
+  });
+
+  it('is false when the worker confirmed before the deadline (they are asked)', () => {
+    const early = { ...late, confirmedAt: new Date('2026-10-22T10:00:00Z') };
+    expect(readyNotNeeded(early, new Date('2026-10-22T19:10:00Z'))).toBe(false);
+  });
+
+  it('is false once the shift day has arrived, or for a changed time', () => {
+    expect(readyNotNeeded(late, new Date('2026-10-23T08:00:00Z'))).toBe(false);
+    expect(
+      readyNotNeeded({ ...late, reconfirmRequired: true }, new Date('2026-10-22T19:10:00Z')),
+    ).toBe(false);
   });
 });
 

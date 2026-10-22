@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer, useTimeFormat } from '@thc/ui';
 import {
+  LATE_CONFIRM_NOTE,
   UK_ZONE,
   canCancelShift,
   effectiveStart,
   formatTimeIn,
   needsDualZone,
+  readyNotNeeded,
   viewerZone,
 } from '@thc/domain';
 import { CHECK_IN_FIX, TRACKING_FIX, getFix, watchFix } from '../../../lib/geo';
@@ -540,6 +542,19 @@ export function ShiftScreen({
             Check-in opens {today ? '' : `${ukDay(window_.opens)} `}at <UkTime at={window_.opens} />
             , 30 min before the start, within {shift.geofenceRadiusM} m of the venue.
           </p>
+          {/* RULE-08: confirmed after the 12:00 deadline, so no "I'm ready" —
+              say so, or the worker looks for a button that will never come. */}
+          {readyNotNeeded(
+            {
+              status: shift.status,
+              confirmedAt: shift.confirmedAt ? new Date(shift.confirmedAt) : null,
+              startsAt: new Date(shift.startsAt),
+              reconfirmRequired: false,
+            },
+            now,
+          ) ? (
+            <p className="xs muted">{LATE_CONFIRM_NOTE}</p>
+          ) : null}
           {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}
           {/* ADR-0046: offer it up, or ask the office for cover. Only
               before the shift: once check-in opens it is too late for
