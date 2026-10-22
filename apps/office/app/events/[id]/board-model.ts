@@ -1092,13 +1092,20 @@ export function offerChip(
 export interface Handover {
   fromName: string;
   toName: string;
+  /** Who handed over / took it, for the links to their profiles. Null when unknown. */
+  fromStaffId: string | null;
+  toStaffId: string | null;
   at: string;
 }
 
 /** "Handed over: Grace L. → Tom R. · Tue 23 Sep" — per section, UK date. */
 export function handedOverLine(handover: Handover): string {
-  const day = formatDateIn(new Date(handover.at), UK_ZONE, { weekday: 'short' });
-  return `Handed over: ${handover.fromName} → ${handover.toName} · ${day}`;
+  return `Handed over: ${handover.fromName} → ${handover.toName} · ${handedOverDay(handover)}`;
+}
+
+/** The UK weekday a hand-over closed on — "Tue". */
+export function handedOverDay(handover: Handover): string {
+  return formatDateIn(new Date(handover.at), UK_ZONE, { weekday: 'short' });
 }
 
 const OFFER_OFFICE_REFUSAL_COPY: Readonly<Record<string, string>> = {

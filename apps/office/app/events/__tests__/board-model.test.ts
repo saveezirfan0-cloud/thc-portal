@@ -557,7 +557,13 @@ describe('Cover requests on the board (ADR-0046, amended)', () => {
 
   it('a hand-over is one history line per section, UK date', () => {
     expect(
-      handedOverLine({ fromName: 'Grace L.', toName: 'Tom R.', at: '2026-09-15T23:30:00.000Z' }),
+      handedOverLine({
+        fromName: 'Grace L.',
+        toName: 'Tom R.',
+        fromStaffId: 'a',
+        toStaffId: 'b',
+        at: '2026-09-15T23:30:00.000Z',
+      }),
     ).toBe('Handed over: Grace L. → Tom R. · Wed 16 Sep');
   });
 

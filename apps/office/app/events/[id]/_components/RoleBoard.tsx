@@ -18,18 +18,12 @@ import {
   showsCandidatePools,
 } from '@thc/domain';
 import type { BoardBooking, BoardPeople, BoardSection } from '../board-data';
-import {
-  canToggleAutoAssign,
-  handedOverLine,
-  offerChip,
-  rateLine,
-  roleBlockOpen,
-} from '../board-model';
+import { canToggleAutoAssign, offerChip, rateLine, roleBlockOpen } from '../board-model';
 import { ScheduledWindow } from '../../_components/ScheduledWindow';
 import { AttendancePills, AttendanceStamp } from './Attendance';
 import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
-import { Person, appliedMarker } from './Person';
+import { HandedOver, Person, appliedMarker } from './Person';
 import { RoleBlock } from './RoleBlock';
 import { SectionPools, SectionPoolsSkeleton } from './SectionPools';
 import { REQUIRED_GENDER_LABEL } from '../../draft';
@@ -196,7 +190,7 @@ export function RoleBoard({
             changed only when the booking did, as for a Withdraw and re-fill. */}
         {section.handovers.map((handover) => (
           <div className="prow muted sm" key={`${handover.at}:${handover.toName}`}>
-            {handedOverLine(handover)}
+            <HandedOver handover={handover} />
           </div>
         ))}
         {section.confirmed.length === 0 ? (

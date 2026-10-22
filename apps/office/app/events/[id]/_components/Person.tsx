@@ -4,7 +4,7 @@ import { Avatar } from '@thc/ui';
 import { appliedAgo } from '@thc/domain';
 import { formatPhone } from '../../../staff/[id]/additions';
 import type { BoardBooking } from '../board-data';
-import type { UnavailableEntry } from '../board-model';
+import { type Handover, type UnavailableEntry, handedOverDay } from '../board-model';
 
 /**
  * A board row's face and name, with its second line (§3.3) and the worker's
@@ -58,6 +58,24 @@ export function PersonPhone({ phone }: { phone: string | null | undefined }) {
         </span>
       )}
     </span>
+  );
+}
+
+/** "Handed over: Grace L. → Tom R. · Tue", both names opening their profiles (ADR-0046). */
+export function HandedOver({ handover }: { handover: Handover }) {
+  const who = (staffId: string | null, name: string) =>
+    staffId ? (
+      <ProfileLink staffId={staffId} name={name}>
+        {name}
+      </ProfileLink>
+    ) : (
+      name
+    );
+  return (
+    <>
+      Handed over: {who(handover.fromStaffId, handover.fromName)} →{' '}
+      {who(handover.toStaffId, handover.toName)} · {handedOverDay(handover)}
+    </>
   );
 }
 

@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { BoardBooking } from '../[id]/board-data';
-import { Person } from '../[id]/_components/Person';
+import { HandedOver, Person } from '../[id]/_components/Person';
 
 /**
  * Every worker on the event board — confirmed, invited, applied, unavailable —
@@ -37,5 +37,25 @@ describe('Person', () => {
     expect(host.querySelector('.who .n a')?.textContent).toBe('Marc M.');
     // The face is a mouse shortcut: the name is the one tab stop.
     expect(links[0]?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('links both names on a hand-over line, and only the ones with a profile', () => {
+    act(() =>
+      root.render(
+        <HandedOver
+          handover={{
+            fromName: 'Grace L.',
+            toName: 'Deleted account',
+            fromStaffId: 'staff-1',
+            toStaffId: null,
+            at: '2026-09-15T23:30:00.000Z',
+          }}
+        />,
+      ),
+    );
+
+    expect(host.textContent).toBe('Handed over: Grace L. → Deleted account · Wed 16 Sep');
+    const links = [...host.querySelectorAll('a')];
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/staff/staff-1']);
   });
 });
