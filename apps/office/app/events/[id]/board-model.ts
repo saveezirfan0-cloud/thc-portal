@@ -762,10 +762,22 @@ export const MESSAGE_MAX = 300;
  * `p_audience` (20261001211000). The database maps each to booking
  * statuses; the page never sends a list of workers.
  */
-export type MessageAudience = 'booked' | 'invited' | 'booked_and_invited';
+export type MessageAudience =
+  | 'booked'
+  | 'confirmed'
+  | 'checked_in'
+  | 'invited'
+  | 'booked_and_invited';
 
+/**
+ * A check-in moves a booking from confirmed to worked, so `confirmed` is
+ * the people who have not arrived yet and `checked_in` the people on site;
+ * `booked` is both (20261023130000).
+ */
 export const MESSAGE_AUDIENCES: ReadonlyArray<{ value: MessageAudience; label: string }> = [
-  { value: 'booked', label: 'Confirmed and checked-in staff' },
+  { value: 'booked', label: 'All confirmed staff — checked in or not' },
+  { value: 'confirmed', label: 'Confirmed only — not checked in yet' },
+  { value: 'checked_in', label: 'Checked-in staff only' },
   { value: 'invited', label: 'Invited only — people who have not accepted yet' },
   { value: 'booked_and_invited', label: 'Confirmed, checked-in and invited' },
 ];
@@ -829,6 +841,10 @@ export function messageRefusal(reason: string, audience: MessageAudience = 'book
     return `${copy} Choose "Invited only" under Who to reach the people who have not answered.`;
   if (audience === 'invited')
     return 'Nobody has an open invitation for that — there is nobody to message.';
+  if (audience === 'confirmed')
+    return 'Nobody confirmed is still to check in for that — there is nobody to message. Choose "All confirmed staff" under Who to include people who have arrived.';
+  if (audience === 'checked_in')
+    return 'Nobody has checked in for that yet — there is nobody to message. Choose "All confirmed staff" under Who to reach people who have not arrived.';
   return copy;
 }
 

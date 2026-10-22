@@ -1,6 +1,6 @@
 # ADR-0069 · Message the line-up: a push with the office's own words
 
-**Status:** Accepted (owner request, 28.09.2026). An addition to scope v1.6; §8's register is otherwise unchanged. Amended 29.09.2026: the "Also invited" checkbox became a **Who** choice, so invitees can be messaged on their own (see *Amendment* below).
+**Status:** Accepted (owner request, 28.09.2026). An addition to scope v1.6; §8's register is otherwise unchanged. Amended 29.09.2026: the "Also invited" checkbox became a **Who** choice, so invitees can be messaged on their own (see *Amendment* below). Amended 23.10.2026: **Who** can also pick confirmed staff who have not checked in, or only those who have.
 
 ## Context
 
@@ -13,12 +13,12 @@ Every push in §8 has fixed copy. The office had no way to pass on last-minute i
 **The form:**
 
 - **To:** everyone on the event, or one role (the role name and its UK times).
-- **Who:** *Confirmed and checked-in staff* (the default), *Invited only — people who have not accepted yet*, or *Confirmed, checked-in and invited*. Any choice works with any **To**.
+- **Who:** *All confirmed staff — checked in or not* (the default), *Confirmed only — not checked in yet*, *Checked-in staff only*, *Invited only — people who have not accepted yet*, or *Confirmed, checked-in and invited*. Any choice works with any **To**.
 - **Message:** 1–300 characters. iOS shows about 178 on the lock screen and the rest on a long press.
 
 **Who receives it** is decided by `send_event_message()` (20261001209000, audience from 20261001211000) from the bookings, never from a list the page sends:
 
-- by audience: `booked` = confirmed and worked (checked in); `invited` = invited only; `booked_and_invited` = both. Anything else is refused as `audience_unknown`;
+- by audience: `booked` = confirmed and worked (checked in); `confirmed` = confirmed, not checked in yet; `checked_in` = worked; `invited` = invited only; `booked_and_invited` = confirmed, worked and invited. Anything else is refused as `audience_unknown`;
 - never applied, closed, cancelled or turned away bookings;
 - one push per worker, even when they hold two roles on the event. It links to the role they start first, or to the role that was messaged.
 
@@ -44,6 +44,10 @@ The first version could only add invitees on top of the confirmed line-up, so th
 The owner: "We also need to be able to message individual staff, for example one of the Waiting Staff who is booked on — not all of them." The **To** list now has a group per role, **One person · {role}**, listing that role's confirmed and checked-in workers and then its invitees, marked "(invited)". Picking one messages only them; **Who** is hidden, because it does not apply to a named person.
 
 `send_event_message()` gains `p_booking uuid default null` (20261002102000). The four-argument version is dropped, so there is no overloading. The booking must be on this event (and in the named section, if there is one) and still live: confirmed, checked in or invited. Otherwise it is refused as `booking_not_on_event` or `person_not_booked`. `audit_log` records audience `person` and the booking. pgTAP 762.
+
+## Amendment (23.10.2026): confirmed and checked-in, apart
+
+The owner found no way to message just the confirmed staff. The first choice, "Confirmed and checked-in staff", has always been both groups together (a check-in moves a booking from `confirmed` to `worked`), so reaching people who had not arrived meant messaging those already on site as well. `send_event_message()` gains two audiences (20261023130000): `confirmed` (not checked in yet — the "where are you?" message) and `checked_in`. `booked` keeps its meaning, so existing callers are unchanged, and is relabelled *All confirmed staff — checked in or not*. Empty-audience refusals name the wider choice. pgTAP 758.
 
 ## Not done
 
