@@ -45,7 +45,7 @@ setup)
     libtap-parser-sourcehandler-pgtap-perl skopeo >/dev/null
   # PostgREST: a static binary inside the Docker Hub image (Docker Hub blobs are reachable; GitHub releases are not).
   if [ ! -x "$STACK/bin/postgrest" ]; then
-    skopeo copy --override-os linux --override-arch amd64 docker://docker.io/postgrest/postgrest:v12.2.3 "dir:$STACK/postgrest-img"
+    skopeo copy --override-os linux --override-arch amd64 docker://${PGRST_IMAGE:-docker.io/postgrest/postgrest:v12.2.3} "dir:$STACK/postgrest-img"
     for l in "$STACK"/postgrest-img/*; do tar -tzf "$l" 2>/dev/null | grep -q 'bin/postgrest' && tar -xzf "$l" -C "$STACK"; done
   fi
   # GoTrue: Supabase's own blob CDNs are refused, the Go module proxy is not — build it.
