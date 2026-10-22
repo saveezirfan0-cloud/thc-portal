@@ -42,6 +42,8 @@ export interface RoleOption {
 export interface ClientOption {
   id: string;
   name: string;
+  /** ADR-0195: archived clients are not offered for a new event. */
+  archived: boolean;
   staffContactPoint: string;
   contactEmails: string[];
   paysBreaks: boolean;
@@ -80,6 +82,8 @@ const NO_SUPABASE =
 interface ClientRow {
   id: string;
   name: string;
+  /** ADR-0195: set once the office archived the client. */
+  archived_at: string | null;
   staff_contact_point: string;
   contact_emails: string[] | null;
   pays_breaks: boolean;
@@ -128,7 +132,9 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     await Promise.all([
       supabase
         .from('clients')
-        .select('id, name, staff_contact_point, contact_emails, pays_breaks, pays_buffer')
+        .select(
+          'id, name, archived_at, staff_contact_point, contact_emails, pays_breaks, pays_buffer',
+        )
         .order('name'),
       supabase.from('client_rate_cards').select('client_id, role_id, dress_codes'),
       supabase
@@ -188,6 +194,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     clients: ((clients.data ?? []) as ClientRow[]).map((c) => ({
       id: c.id,
       name: c.name,
+      archived: c.archived_at !== null,
       staffContactPoint: c.staff_contact_point,
       contactEmails: c.contact_emails ?? [],
       paysBreaks: c.pays_breaks,
