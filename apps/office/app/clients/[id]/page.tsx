@@ -55,7 +55,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       activeHref="/clients"
       title="Client"
       crumbs={<ClientCrumbs name={head.client.name} />}
-      actions={<NewEventForClient clientId={head.client.id} />}
+      actions={head.client.archived_at ? null : <NewEventForClient clientId={head.client.id} />}
     >
       <Suspense fallback={<ClientCardSkeleton />}>
         <Card

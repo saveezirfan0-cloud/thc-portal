@@ -12,7 +12,8 @@ import type { ActionResult, ClientDraft } from './types';
  * Writes for /clients (§9.7), through the RPCs in
  * 20260922091447_clients_directory.sql.
  *
- * There is no delete action, and there is no delete function behind one:
+ * There is no delete action, and there is no delete function behind one
+ * (Archive, below, hides a client and removes nothing):
  * §9.7 says a client record cannot be removed from the system, only
  * edited, and `280_clients_directory.sql` asserts the function's absence.
  */
@@ -37,6 +38,8 @@ const CLIENT_WORDING = {
     too_many_invoice_emails: 'Up to 10 invoice emails.',
     invalid_invoice_email:
       'One of the invoice emails is not an email address. Check them and save again.',
+    client_has_upcoming_events:
+      'This client still has events today or later. Cancel or finish them first, then archive the client.',
     invoice_details_too_long:
       'The accounts contact is at most 200 characters and the billing address at most 1,000.',
   },
@@ -91,4 +94,20 @@ export async function updateClientRecord(id: string, draft: ClientDraft): Promis
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
   return callRpc('update_client', { p_id: id, ...args(draft) });
+}
+
+/**
+ * Archive (ADR-0195): the client stops showing as active and is no longer
+ * offered to the Shift Builder. Nothing is removed — §9.7 still holds — and
+ * `restoreClientRecord` undoes it. The database refuses a client with an event
+ * today or later.
+ */
+export async function archiveClientRecord(id: string): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  return callRpc('archive_client', { p_client: id });
+}
+
+export async function restoreClientRecord(id: string): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  return callRpc('restore_client', { p_client: id });
 }

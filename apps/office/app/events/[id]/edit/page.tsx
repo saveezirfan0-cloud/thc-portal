@@ -28,12 +28,18 @@ export const metadata = { title: 'Edit event · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [reference, event, officeRole] = await Promise.all([
+  const [everyone, event, officeRole] = await Promise.all([
     loadReferenceData(),
     loadEvent(id),
     currentOfficeRole(),
   ]);
   if (!event) notFound();
+  // ADR-0195: an archived client is not offered, except the one this event
+  // already belongs to (it stays editable).
+  const reference = {
+    ...everyone,
+    clients: everyone.clients.filter((c) => !c.archived || c.id === event.clientId),
+  };
   // ADR-0061: no rate is shown to, or sent by, an office role without finance.
   const ratesVisible = officeCan(officeRole, 'finance');
 

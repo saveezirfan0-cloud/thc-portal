@@ -30,6 +30,7 @@ const client = (over: Partial<Client>): Client => ({
   created_at: '2026-09-18T10:00:00Z',
   created_by: 'u1',
   created_by_name: 'Gisela M.',
+  archived_at: null,
   ...over,
 });
 
