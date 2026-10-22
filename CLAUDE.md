@@ -4,7 +4,7 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 
 ## Read first
 
-- `docs/scope/scope-of-work-v1.6.txt` — the contract. Every behaviour is decided there. Grep it by section number (e.g. `grep -n "9.5 Check In"`). Where this file and the scope disagree, the scope wins, except the four deliberate changes below.
+- `docs/scope/scope-of-work-v1.6.txt` — the contract. Every behaviour is decided there. Grep it by section number (e.g. `grep -n "9.5 Check In"`). Where this file and the scope disagree, the scope wins, except the five deliberate changes below.
 - `docs/01-architecture.md` — Supabase + Next.js/Vercel + PWA layout; where each rule lives.
 - `docs/08-screen-inventory.md` — every route → wireframe → § → owning bot.
 - `wireframes/` — the visual contract. Open `wireframes/index.html`. A screen is done when it matches its wireframe.
@@ -15,6 +15,7 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 2. Backend is **Supabase** (Postgres + PostGIS, Auth, RLS, Storage, Edge Functions, pg_cron), not Django/DRF. "Django Admin" settings live in the `settings` table + a `/settings` page.
 3. A University Term Dates Letter expires on the **last day printed on it**, not on 31 December (§4.2 as written); reminders count down a month, two weeks and a week from that day, and 31 December is only the fallback for a letter with no readable dates (ADR-0103, superseding ADR-0011). Instruction of the product owner, 07.10.2026.
 4. A check-out **more than 15 minutes** after the role section's scheduled end (also a manager-entered finish resolving a No check-out) is paid **and** charged to the **actual recorded finish**, never past end+4 h, not to the scheduled end (§5.2 RULE-01 as written) — for sections whose scheduled end is on or after 21.10.2026 00:00 UK (`OVERRUN_PAID_FROM`); earlier ones keep the old rule, so no history is re-priced. Up to end+15 still pays and charges to the end. The minutes past the end are the overrun: its own "Overrun" line on the invoice at the same charge rate, folded into the shift's row on the sign-in log. The shift is flagged "Signed out late" for the office to verify with the worker (`verify_late_check_out`, a note on the accepted `check_logs` row) — a flag, never a violation and never a hold on payroll or invoicing; the paid overrun counts toward RULE-20's weekly hours (an "Over weekly limit" warning, never a refusal), each invoice line is its own minutes × rate, and `check_logs` refuses direct writes by API roles (ADR-0184). Instruction of the product owner, 21.10.2026.
+5. A **Left early** is a walk-off unless the client or site manager released the worker. Released (recorded by the office with a contact and note, inside 24 h; the office can override later) it becomes **Completed early**: the four-hour minimum applies to pay **and** charge and it does not count against the worker. Unreleased — pending or past the window — it is paid and charged to the check-out with no minimum, as before. A mid-shift GPS exit with no check-out is a walk-off: the shift closes at the last on-site fix with no manager-typed finish (ADR-0185). Instruction of the product owner, 22.10.2026.
 
 ## Visual direction
 

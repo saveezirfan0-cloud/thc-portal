@@ -13,9 +13,9 @@ import {
   useTimeFormat,
 } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, ukInputLabel, viewerZone } from '@thc/domain';
-import { resolveViolation } from './actions';
+import { releaseEarlyFinish, resolveViolation } from './actions';
 import { flaggedAs } from './log';
-import { VIOLATION_LABEL, needsActualFinish, reclassifiesToLate } from './status';
+import { needsActualFinish, reclassifiesToLate, violationLabel } from './status';
 import type { ViolationRow } from './types';
 
 /**
@@ -111,11 +111,7 @@ export function ResolveModal({
   }
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`${VIOLATION_LABEL[violation.type]} — ${violation.staffName}`}
-    >
+    <Modal open onClose={onClose} title={`${violationLabel(violation)} — ${violation.staffName}`}>
       <div className="stack" style={{ gap: 12 }}>
         <p className="muted sm">
           {violation.eventTitle} · {violation.venueName} · {violation.roleName}
@@ -238,6 +234,23 @@ export function ResolveModal({
           </>
         )}
 
+        {violation.type === 'left_early' && violation.earlyFinish === 'completed_early' ? (
+          <Note tone="green">
+            Completed early — released by {violation.releaseContact ?? 'the office'} (
+            {RELEASE_SOURCE_LABEL[violation.releaseSource ?? ''] ?? 'office'}). The four-hour
+            minimum applies and this does not count against the worker.
+            {violation.releaseNote ? <> “{violation.releaseNote}”</> : null}
+          </Note>
+        ) : null}
+
+        {violation.type === 'left_early' && violation.earlyFinish !== 'completed_early' ? (
+          <ReleaseSection
+            violationId={violation.id}
+            windowClosed={violation.earlyFinish === 'left_early'}
+            onDone={onClose}
+          />
+        ) : null}
+
         <div className="mf">
           <Button tone="ghost" onClick={onClose}>
             {violation.resolved || warning ? 'Close' : 'Cancel'}
@@ -250,6 +263,96 @@ export function ResolveModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+const RELEASE_SOURCE_LABEL: Record<string, string> = {
+  client: 'client',
+  site_manager: 'site manager',
+  office_override: 'office override',
+};
+
+/**
+ * ADR-0185. A Left early is a walk-off unless the client or site manager
+ * confirmed the job was complete and released the worker. Recording that
+ * converts it to Completed early: the four-hour minimum applies to pay and
+ * charge. Without it the shift stays paid and charged to the check-out.
+ */
+function ReleaseSection({
+  violationId,
+  windowClosed,
+  onDone,
+}: {
+  violationId: string;
+  windowClosed: boolean;
+  onDone: () => void;
+}) {
+  const [source, setSource] = useState<'client' | 'site_manager' | 'office_override'>(
+    windowClosed ? 'office_override' : 'client',
+  );
+  const [contact, setContact] = useState('');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const needsContact = source !== 'office_override';
+  const canSubmit = note.trim().length > 0 && (!needsContact || contact.trim().length > 0) && !busy;
+
+  async function release() {
+    setBusy(true);
+    setError(null);
+    const result = await releaseEarlyFinish(violationId, source, contact, note);
+    setBusy(false);
+    if ('error' in result) return setError(result.error);
+    if (result.warning) return setWarning(result.warning);
+    onDone();
+  }
+
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <b className="sm">Job finished early? Record the sign-off</b>
+      <p className="muted sm">
+        If the client or site manager confirmed the job was complete and told the worker to go, mark
+        this Completed early: the four-hour minimum applies to pay and charge and it does not count
+        against the worker.{' '}
+        {windowClosed
+          ? 'The sign-off window has closed, so only an office override can record it.'
+          : 'Without a sign-off inside 24 hours it stands as Left early.'}
+      </p>
+      <label className="field">
+        <span className="label">Released by</span>
+        <select value={source} onChange={(e) => setSource(e.target.value as typeof source)}>
+          {windowClosed ? null : <option value="client">Client</option>}
+          {windowClosed ? null : <option value="site_manager">Site manager</option>}
+          <option value="office_override">Office override</option>
+        </select>
+      </label>
+      {needsContact ? (
+        <label className="field">
+          <span className="label">
+            Name of who released them <span className="coral">*</span>
+          </span>
+          <input value={contact} onChange={(e) => setContact(e.target.value)} />
+        </label>
+      ) : null}
+      <label className="field">
+        <span className="label">
+          Note <span className="coral">*</span>
+        </span>
+        <Textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="e.g. Job complete at 14:10, released by the venue manager by phone."
+        />
+      </label>
+      {error ? <Alert tone="coral">{error}</Alert> : null}
+      {warning ? <Alert tone="amber">{warning}</Alert> : null}
+      <div>
+        <Button tone="primary" disabled={!canSubmit} onClick={release}>
+          {busy ? 'Saving…' : 'Mark Completed early'}
+        </Button>
+      </div>
+    </div>
   );
 }
 

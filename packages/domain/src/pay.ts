@@ -57,8 +57,9 @@
  *    only when a manager enters the actual finish time.
  *
  *  RULE-14 four-hour minimum. A floor on the payable time of someone who
- *    actually worked. A "Left early" violation blocks it whether or not it has
- *    been resolved; a "No check-out" violation blocks it only while it is
+ *    actually worked. An unreleased "Left early" violation blocks it whether
+ *    or not it has been resolved (a released one, "Completed early", does
+ *    not — ADR-0185); a "No check-out" violation blocks it only while it is
  *    unresolved, and resolving it puts the floor back.
  *
  *  RULE-15 buffer turn-away. Past the headcount under a strict buffer policy,
@@ -117,6 +118,30 @@ export const LEFT_EARLY_GRACE_MIN = 15;
  * sent right after check-in.
  */
 export const STALE_FIX_MIN = 30;
+
+/**
+ * ADR-0185. How long the client / site manager has to release a worker whose
+ * check-out was early before it defaults to a walk-off. SQL: the
+ * `left_early_release_window_h` setting (default 24).
+ */
+export const LEFT_EARLY_RELEASE_WINDOW_H = 24;
+
+export type LeftEarlyState = 'pending' | 'left_early' | 'completed_early';
+
+/**
+ * ADR-0185, mirrored by SQL's `left_early_state()`. Released = Completed
+ * early (floor applies, does not count against the worker); otherwise
+ * pending while the window is open and Left early after. Pay prices pending
+ * and Left early identically — only a release moves money.
+ */
+export function leftEarlyState(
+  v: { releasedAt: Date | null; detectedAt: Date },
+  now: Date,
+  windowH: number = LEFT_EARLY_RELEASE_WINDOW_H,
+): LeftEarlyState {
+  if (v.releasedAt !== null) return 'completed_early';
+  return now < addMinutes(v.detectedAt, windowH * 60) ? 'pending' : 'left_early';
+}
 
 export interface ShiftWindow {
   /** Scheduled start of the ROLE SECTION, never the event window (RULE-18). */
@@ -432,7 +457,12 @@ export interface PayInput {
   checkOutAt: Date | null;
   /** Total unpaid break minutes taken inside the shift (§5.2b). */
   unpaidBreakMin?: number;
-  /** A "Left early" violation blocks the floor, resolved or not (RULE-14). */
+  /**
+   * An UNRELEASED "Left early" violation blocks the floor, resolved or not
+   * (RULE-14). One the client or site manager released ("Completed early",
+   * ADR-0185) is not passed here at all — to pay it is no violation, so the
+   * floor applies. Pending and walked-off are the same to pay.
+   */
   leftEarlyViolation?: boolean;
   noCheckOut?: NoCheckOutState;
 }

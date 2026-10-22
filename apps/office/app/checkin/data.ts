@@ -1,4 +1,4 @@
-import { acceptedLog } from '@thc/domain';
+import { acceptedLog, leftEarlyState } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../_lib/photos';
@@ -88,6 +88,7 @@ type SessionClient = ReturnType<typeof createClient>;
 
 const VIOLATION_COLUMNS = `id, booking_id, type, detected_at, minutes_late, resolved, resolved_at,
   resolution_note, actual_finish_at,
+  released_at, release_source, release_contact, release_note,
   staff_id,
   staff:staff_id ( first_name, last_name, photo_path, phone, removed_at, employee_id ),
   resolver:resolved_by ( full_name ),
@@ -174,6 +175,20 @@ async function queryViolations(
       endsAt: shift?.ends_at ?? '',
       type: v.type as ViolationType,
       detectedAt: v.detected_at,
+      // ADR-0185: Left early / Completed early / awaiting the client's sign-off.
+      earlyFinish:
+        v.type === 'left_early'
+          ? leftEarlyState(
+              {
+                releasedAt: v.released_at ? new Date(v.released_at) : null,
+                detectedAt: new Date(v.detected_at),
+              },
+              new Date(),
+            )
+          : undefined,
+      releaseSource: v.release_source ?? null,
+      releaseContact: v.release_contact ?? null,
+      releaseNote: v.release_note ?? null,
       minutesLate: v.minutes_late ?? null,
       resolved: Boolean(v.resolved),
       resolvedAt: v.resolved_at ?? null,

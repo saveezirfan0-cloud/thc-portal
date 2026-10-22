@@ -88,6 +88,16 @@ export interface ViolationRow {
   resolvedByName: string | null;
   resolutionNote: string | null;
   actualFinishAt: string | null;
+  /**
+   * ADR-0185, on a Left early only: `pending` while the client / site
+   * manager may still release the worker, `left_early` once the window has
+   * closed, `completed_early` once released. Optional so a row built
+   * elsewhere still renders as before.
+   */
+  earlyFinish?: 'pending' | 'left_early' | 'completed_early';
+  releaseSource?: string | null;
+  releaseContact?: string | null;
+  releaseNote?: string | null;
   checkInAt: string | null;
   checkOutAt: string | null;
   /** RULE-06: the shift is already in an export, so a change cannot be topped up. */

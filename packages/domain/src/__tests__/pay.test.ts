@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import vectors from '../pay.vectors.json' with { type: 'json' };
 import {
   HOLIDAY_RATE,
+  LEFT_EARLY_RELEASE_WINDOW_H,
+  leftEarlyState,
   addMinutes,
   capOverrunMinutes,
   formatCapHours,
@@ -354,5 +356,34 @@ describe('§6 the show-rate (BG-03, RULE-14, §9.5)', () => {
 
   it('has every case the SQL side replays', () => {
     expect(vectors.showRate.cases.length).toBe(12);
+  });
+});
+
+describe('leftEarlyState (ADR-0185)', () => {
+  const detectedAt = new Date('2026-11-14T14:00:00Z');
+  const at = (h: number) => new Date(detectedAt.getTime() + h * 3_600_000);
+
+  it('is pending inside the sign-off window', () => {
+    expect(leftEarlyState({ releasedAt: null, detectedAt }, at(23.9))).toBe('pending');
+  });
+
+  it('defaults to Left early once the window has closed', () => {
+    expect(leftEarlyState({ releasedAt: null, detectedAt }, at(LEFT_EARLY_RELEASE_WINDOW_H))).toBe(
+      'left_early',
+    );
+  });
+
+  it('is Completed early once released, whenever that was', () => {
+    expect(leftEarlyState({ releasedAt: at(2), detectedAt }, at(100))).toBe('completed_early');
+  });
+
+  it('prices a released early finish at the four-hour floor and a walk-off at the clock', () => {
+    const shift = {
+      startsAt: new Date('2026-11-14T12:00:00Z'),
+      endsAt: new Date('2026-11-14T20:00:00Z'),
+    };
+    const base = { shift, checkInAt: shift.startsAt, checkOutAt: new Date('2026-11-14T14:00:00Z') };
+    expect(payableMinutes({ ...base, leftEarlyViolation: true }).payableMin).toBe(120);
+    expect(payableMinutes({ ...base, leftEarlyViolation: false }).payableMin).toBe(240);
   });
 });

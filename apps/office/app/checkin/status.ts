@@ -199,6 +199,22 @@ export const VIOLATION_LABEL: Record<ViolationType, string> = {
   no_checkout: 'No check-out',
 };
 
+/**
+ * What the log calls a violation (ADR-0185): a Left early the client or site
+ * manager released is "Completed early" — it does not count against the
+ * worker — and one still inside its sign-off window says so.
+ */
+export function violationLabel(v: {
+  type: ViolationType;
+  earlyFinish?: 'pending' | 'left_early' | 'completed_early';
+}): string {
+  if (v.type === 'left_early') {
+    if (v.earlyFinish === 'completed_early') return 'Completed early';
+    if (v.earlyFinish === 'pending') return 'Left early · awaiting sign-off';
+  }
+  return VIOLATION_LABEL[v.type];
+}
+
 /** Only a No check-out needs the manager to supply a finish time (§9.5). */
 export function needsActualFinish(type: ViolationType): boolean {
   return type === 'no_checkout';

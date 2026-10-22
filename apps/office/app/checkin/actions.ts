@@ -26,6 +26,10 @@ interface RpcClient {
     },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   rpc(
+    fn: 'release_early_finish',
+    args: { p_violation: string; p_source: string; p_contact: string | null; p_note: string },
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
     fn: 'verify_late_check_out',
     args: { p_booking: string; p_note: string },
   ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
@@ -86,6 +90,59 @@ export async function resolveViolation(
       }
     : { ok: true };
 }
+
+/**
+ * Record that the client or site manager confirmed the job complete and the
+ * worker released (ADR-0185): the Left early becomes Completed early and the
+ * four-hour minimum applies to pay and charge. `release_early_finish` holds
+ * the rules (a note; a contact for client / site manager; the 24 h window,
+ * after which only the office override works).
+ */
+export async function releaseEarlyFinish(
+  violationId: string,
+  source: 'client' | 'site_manager' | 'office_override',
+  contact: string,
+  note: string,
+): Promise<ResolveResult> {
+  if (!supabaseConfigured()) {
+    return { error: 'This environment has no Supabase project, so nothing can be recorded.' };
+  }
+  const supabase = createClient(await cookies()) as unknown as RpcClient;
+  const { data, error } = await supabase.rpc('release_early_finish', {
+    p_violation: violationId,
+    p_source: source,
+    p_contact: contact.trim() || null,
+    p_note: note,
+  });
+  if (error)
+    return {
+      error:
+        RELEASE_REASONS[error.message] ??
+        explainDbError(error, { codes: REASONS, log: '[checkin]' }),
+    };
+
+  revalidatePath('/checkin');
+  revalidatePath('/events/[id]', 'page');
+  revalidatePath('/staff/[id]', 'page');
+
+  const result = data as { payrollExported?: boolean } | null;
+  return result?.payrollExported
+    ? {
+        ok: true,
+        warning:
+          'This shift has already been included in a payroll export. The four-hour minimum will not be added — please notify Finance to pay it.',
+      }
+    : { ok: true };
+}
+
+const RELEASE_REASONS: Record<string, string> = {
+  note_required: 'Add a note saying who released the worker and how.',
+  release_contact_required: 'Enter the name of the client contact or site manager.',
+  release_window_closed:
+    'The sign-off window has closed, so this stands as Left early. Use “Office override” to record it anyway.',
+  not_left_early: 'Only a Left early can be marked Completed early.',
+  already_released: 'This worker has already been marked Completed early.',
+};
 
 export type VerifyResult = { error: string } | { ok: true };
 

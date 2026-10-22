@@ -27,7 +27,7 @@ import { VerifyLateModal } from './VerifyLateModal';
 import { nudgeCheckInOut } from './actions';
 import {
   LATE_CHECK_OUT_LABEL,
-  VIOLATION_LABEL,
+  violationLabel,
   missingWorkers,
   needsAttention,
   pastEndText,
@@ -242,7 +242,7 @@ export function MonitorScreen({
                       </span>
                     </td>
                     <td data-label="Violation">
-                      <b>{VIOLATION_LABEL[v.type]}</b>
+                      <b>{violationLabel(v)}</b>
                       {v.resolved ? (
                         <>
                           {' '}

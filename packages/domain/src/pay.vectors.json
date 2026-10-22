@@ -659,13 +659,25 @@
         }
       },
       {
-        "name": "a Left early violation blocks the floor, resolved or not",
+        "name": "an UNRELEASED Left early (walked off, or awaiting sign-off) blocks the floor, resolved or not",
         "input": { "checkOutMinFromStart": 120, "leftEarlyViolation": true },
         "expect": {
           "status": "settled",
           "payableMin": 120,
           "workedMin": 120,
           "floorApplied": false,
+          "lateCheckOutFlag": false,
+          "overrunMin": 0
+        }
+      },
+      {
+        "name": "a RELEASED Left early (Completed early, ADR-0185) reaches pay as no violation: the floor applies",
+        "input": { "checkOutMinFromStart": 120, "leftEarlyViolation": false },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 120,
+          "floorApplied": true,
           "lateCheckOutFlag": false,
           "overrunMin": 0
         }

@@ -1,5 +1,6 @@
 'use client';
 
+import { violationLabel } from '../../checkin/status';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -19,7 +20,6 @@ import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
 import { formatUkDate } from '../staff';
 import { useViewerZone } from '../../dashboard/_components/useViewerZone';
 import {
-  VIOLATION_LABEL,
   formatLocalStamp,
   formatLocalTime,
   payableHours,
@@ -232,7 +232,7 @@ export function Shifts({
                         </span>
                       </td>
                       <td data-label="Violation">
-                        <b>{VIOLATION_LABEL[row.type]}</b>
+                        <b>{violationLabel(row)}</b>
                         {row.minutes_late !== null ? (
                           <span className="sub">{row.minutes_late} min</span>
                         ) : null}
