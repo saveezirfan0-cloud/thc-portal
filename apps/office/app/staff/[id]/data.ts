@@ -200,7 +200,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     supabase
       .from('staff')
       .select(
-        'home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled, payroll_id, passport_country',
+        'home_location_stale, gender, languages, spudbros_express, thc_shifts_enabled, payroll_id, passport_country, first_name, last_name',
       )
       .eq('id', id)
       .maybeSingle<{
@@ -211,6 +211,8 @@ export async function loadProfile(id: string): Promise<ProfileData> {
         thc_shifts_enabled: boolean;
         payroll_id: string | null;
         passport_country: string | null;
+        first_name: string;
+        last_name: string;
       }>(),
     // ADR-0098: the Willo interview link stays on the profile after
     // onboarding. The same column the candidate screen reads, built from
@@ -313,6 +315,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
           gender: location.data?.gender ?? null,
           languages: location.data?.languages ?? null,
           passportCountry: location.data?.passport_country ?? null,
+          // ADR-0194: the two halves of the name, for "Correct" on the Overview.
+          firstName: location.data?.first_name ?? null,
+          lastName: location.data?.last_name ?? null,
           ...(location.data
             ? {
                 spudbros: location.data.spudbros_express,

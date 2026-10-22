@@ -518,6 +518,8 @@ export function ProfileScreen({
             gender={data.gender}
             canEditGender={canEditGender}
             passportCountry={data.passportCountry}
+            firstName={data.firstName}
+            lastName={data.lastName}
             canEditPassportCountry={canEditPassportCountry}
             languages={data.languages}
             willoReviewUrl={data.willoReviewUrl}

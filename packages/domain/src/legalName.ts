@@ -59,3 +59,87 @@ export function givenNames(first: string, middle: string): string {
     .filter(Boolean)
     .join(' ');
 }
+
+// ---------------------------------------------------------------------
+// The office's correction of a name already on file (ADR-0194)
+// ---------------------------------------------------------------------
+
+/** The activity log's only account of why a name was changed. */
+export const NAME_CORRECTION_REASON_MIN = 10;
+export const NAME_CORRECTION_REASON_MAX = 300;
+
+export type NameCorrectionRefusal =
+  | `first_${NameFault}`
+  | `last_${NameFault}`
+  | 'unchanged'
+  | 'reason_required'
+  | 'reason_too_short'
+  | 'reason_too_long';
+
+export type NameCorrectionValidation =
+  | { ok: true; first: string; last: string; reason: string }
+  | {
+      ok: false;
+      field: 'first' | 'last' | 'reason';
+      reason: NameCorrectionRefusal;
+    };
+
+/** NFC, trimmed, runs of whitespace as one space — what `office_correct_name()` stores. */
+export function tidyName(raw: string): string {
+  return raw.normalize('NFC').trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * `office_correct_name()`'s own checks, in its order, so the dialog says what
+ * the database would: the first-and-middle names, the surname, "that is the
+ * name already on file", then the reason. The codes are the database's.
+ */
+export function validateNameCorrection(
+  input: { first: string; last: string; reason: string },
+  current?: { first: string; last: string } | null,
+): NameCorrectionValidation {
+  const first = tidyName(input.first);
+  const last = tidyName(input.last);
+  const firstFault = nameFault(first);
+  if (firstFault) return { ok: false, field: 'first', reason: `first_${firstFault}` };
+  const lastFault = nameFault(last);
+  if (lastFault) return { ok: false, field: 'last', reason: `last_${lastFault}` };
+  if (current && current.first === first && current.last === last) {
+    return { ok: false, field: 'first', reason: 'unchanged' };
+  }
+  const reason = input.reason.trim();
+  if (!reason) return { ok: false, field: 'reason', reason: 'reason_required' };
+  const length = Array.from(reason).length;
+  if (length < NAME_CORRECTION_REASON_MIN) {
+    return { ok: false, field: 'reason', reason: 'reason_too_short' };
+  }
+  if (length > NAME_CORRECTION_REASON_MAX) {
+    return { ok: false, field: 'reason', reason: 'reason_too_long' };
+  }
+  return { ok: true, first, last, reason };
+}
+
+const GIVEN = 'first and middle names';
+const part = (what: string, fault: NameFault): string =>
+  ({
+    required: `Enter the ${what} as printed on the passport.`,
+    initial: `Enter the ${what} in full, as printed on the passport — no initials or full stops.`,
+    characters: `The ${what} can only use letters, spaces, hyphens and apostrophes.`,
+    too_long: `The ${what}: ${LEGAL_NAME_MAX} characters at most.`,
+  })[fault];
+
+/** The office's words for each refusal, whether the dialog or the database made it. */
+export const NAME_CORRECTION_MESSAGES: Readonly<Record<NameCorrectionRefusal, string>> = {
+  first_required: part(GIVEN, 'required'),
+  first_initial: part(GIVEN, 'initial'),
+  first_characters: part(GIVEN, 'characters'),
+  first_too_long: part(GIVEN, 'too_long'),
+  last_required: part('surname', 'required'),
+  last_initial: part('surname', 'initial'),
+  last_characters: part('surname', 'characters'),
+  last_too_long: part('surname', 'too_long'),
+  unchanged: 'That is the name already on file.',
+  reason_required: 'Give a reason for the activity log.',
+  reason_too_short: `The reason needs at least ${NAME_CORRECTION_REASON_MIN} characters.`,
+  reason_too_long: `The reason can be at most ${NAME_CORRECTION_REASON_MAX} characters.`,
+};
