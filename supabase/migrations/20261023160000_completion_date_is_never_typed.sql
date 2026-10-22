@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261023130000 · the completion date is never typed (ADR-0187)
+-- Migration 20261023160000 · the completion date is never typed (ADR-0187)
 --
 -- approve_completion_letter(doc, completion_date, visa_expiry) had the
 -- reviewer type the course completion date (requirement §2.2 "confirms /
