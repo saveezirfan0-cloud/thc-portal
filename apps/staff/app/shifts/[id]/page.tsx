@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
+import { readyDueAt } from '@thc/domain';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { StaffShell } from '../../_components/StaffShell';
+import { UkTime } from '../../_components/UkTime';
+import { myShiftCard } from '../model';
 import {
   loadBookings,
   loadSecurityClearedBookings,
@@ -88,6 +91,7 @@ export default async function Page({
     );
   }
   if (!shift) notFound();
+  const booking = bookings.find((b) => b.bookingId === id) ?? null;
 
   // An invitation has its own screen, with Accept and Decline.
   if (shift.status === 'invited') redirect(`/invites/${id}`);
@@ -102,6 +106,16 @@ export default async function Page({
         ? {}
         : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
+      {/* §3.5 stage 2: "I'm ready" lives on the Shifts card, not here. A worker
+          who opened the shift instead of the list must be told where it is. */}
+      {booking && myShiftCard(booking) === 'needs_ready' ? (
+        <Alert tone="amber">
+          Still to do: press <b>“I’m ready”</b> on this shift’s card in{' '}
+          <Link href="/shifts">Shifts</Link> by{' '}
+          <UkTime at={readyDueAt(booking.confirmedAt, booking.startsAt)} /> — or you’ll be removed
+          from it.
+        </Alert>
+      ) : null}
       {shift.status === 'confirmed' && securityCleared.includes(id) ? <SecurityCleared /> : null}
       {requirement && shift.status === 'confirmed' ? (
         <ShiftRequirements requirement={requirement} />
