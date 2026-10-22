@@ -26,12 +26,13 @@
 --   reopen the stale record.
 --
 -- One-off: the two pairs found on 22.10.2026, each guarded so a database
--- without those rows (a fresh `db reset`) does nothing.
---   Sai Jillapelli   74fc8757 (mistyped first application) -> 17bb51c4
---   Bivek Oli        c77d4e46 (first application, birth year 2005)
---                                                          -> ff42c437
---     (the kept record's date of birth, 2004-09-06, is the one on his
---      verified passport; it is not touched).
+-- without those rows (a fresh `db reset`) does nothing, and a pair that has
+-- moved on since (the stale record uploaded a document, the kept one was
+-- rejected) is skipped with a warning rather than stopping the deploy.
+--   Pair 1: a mistyped first application, then a second with the right
+--           address; the second one progressed.
+--   Pair 2: the same address twice with two birth years; the kept record's
+--           is the one on its verified passport, and is not touched.
 -- pgTAP: supabase/tests/925_close_duplicate_candidate.sql.
 -- =====================================================================
 
@@ -75,8 +76,13 @@ begin
     raise exception 'keep_not_live: %', kp.status using errcode = 'P0001';
   end if;
 
-  if not payroll_names_compatible(st.first_name, st.last_name, kp.first_name, kp.last_name)
-     or not (lower(btrim(st.email)) = lower(btrim(kp.email)) or st.dob = kp.dob) then
+  -- payroll_names_compatible() is true when a name is blank, and a NULL in
+  -- the email/date test would read as "not false": both are made definite.
+  if payroll_name_key(st.first_name, st.last_name) is null
+     or payroll_name_key(kp.first_name, kp.last_name) is null
+     or not coalesce(payroll_names_compatible(st.first_name, st.last_name, kp.first_name, kp.last_name), false)
+     or not (coalesce(lower(btrim(st.email)) = lower(btrim(kp.email)), false)
+             or coalesce(st.dob = kp.dob, false)) then
     raise exception 'not_the_same_person' using errcode = 'P0001';
   end if;
 
@@ -111,7 +117,9 @@ begin
   delete from notification_outbox o
    where o.recipient_staff_id = p_stale
      and o.sent_at is null
-     and o.failed_at is null;
+     and o.failed_at is null
+     -- not one the drain has claimed and is sending (its lease is 5 minutes)
+     and (o.last_attempt_at is null or o.last_attempt_at < now() - interval '10 minutes');
   get diagnostics v_dropped = row_count;
 
   insert into audit_log (actor, action, entity, entity_id, data)
@@ -124,6 +132,15 @@ begin
                              'employeeIdMoved', v_emp_moved,
                              'employeeId', case when v_emp_moved then v_emp end,
                              'unsentEmailsDropped', v_dropped));
+
+  if v_pay_moved or v_emp_moved then
+    insert into audit_log (actor, action, entity, entity_id, data)
+    values (p_actor, 'staff.duplicate_merged_in', 'staff', p_keep,
+            jsonb_build_object('staffId', p_keep::text,
+                               'fromStaffId', p_stale::text,
+                               'payrollId', case when v_pay_moved then v_pay end,
+                               'employeeId', case when v_emp_moved then v_emp end));
+  end if;
 
   return jsonb_build_object('staffId', p_stale::text,
                             'keptStaffId', p_keep::text,
@@ -153,7 +170,11 @@ begin
   loop
     if exists (select 1 from staff where id = r.stale and removed_at is null)
        and exists (select 1 from staff where id = r.keep and removed_at is null) then
-      perform public.close_duplicate_candidate(r.stale, r.keep, null);
+      begin
+        perform public.close_duplicate_candidate(r.stale, r.keep, null);
+      exception when sqlstate 'P0001' then
+        raise warning 'close_duplicate_candidate % skipped: %', r.stale, sqlerrm;
+      end;
     end if;
   end loop;
 end $$;

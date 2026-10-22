@@ -2,11 +2,11 @@
 -- 925 · close_duplicate_candidate() (20261023140000, ADR-0191)
 --
 --   A. Service role only: no signed-in caller can run it.
---   B. The Sai case (a mistyped first application, same date of birth):
+--   B. Pair 1 (a mistyped first application, same date of birth):
 --      the Payroll ID and Employee ID move to the live record, the stale
 --      one is rejected without any email, its unsent mail is dropped, the
 --      sent mail stays, and it is audited.
---   C. The Bivek case (same email, a different birth year): closed too, and
+--   C. Pair 2 (same email, a different birth year): closed too, and
 --      the kept record's date of birth is not touched.
 --   D. Running it again changes nothing; a kept record's own IDs are never
 --      replaced.
@@ -14,7 +14,7 @@
 --      with a signed contract, a kept record that is rejected.
 -- =====================================================================
 begin;
-select plan(30);
+select plan(34);
 set local search_path = public, extensions;
 
 \set s_stale '92500000-0000-4000-8000-000000000001'
@@ -30,12 +30,12 @@ set local search_path = public, extensions;
 \set x_live  '92500000-0000-4000-8000-00000000000b'
 
 insert into staff (id, first_name, last_name, email, phone, dob, status, payroll_id, employee_id) values
-  -- Sai: the first application had a mistyped address and phone
-  (:'s_stale', 'Sai',   'Jillapelli', 'sai@dup925.invalid',      '+447700925001', date '2002-03-03', 'interview_requested', 'T925A', 925001),
-  (:'s_keep',  'Sai',   'Jillapelli', 'sai.real@dup925.invalid', '+447700925002', date '2002-03-03', 'documents',           null,    null),
-  -- Bivek: the same address and phone, a different birth year
-  (:'b_stale', 'Bivek', 'Oli',        'bivek@dup925.invalid',    '+447700925003', date '2005-09-06', 'interview_requested', 'T925B', null),
-  (:'b_keep',  'Bivek', 'Oli',        'bivek@dup925.invalid',    '+447700925003', date '2004-09-06', 'quiz',                null,    null),
+  -- pair 1: the first application had a mistyped address and phone
+  (:'s_stale', 'Sia',   'Jillson', 'sia@dup925.invalid',      '+447700925001', date '2002-03-03', 'interview_requested', 'T925A', 925001),
+  (:'s_keep',  'Sia',   'Jillson', 'sia.real@dup925.invalid', '+447700925002', date '2002-03-03', 'documents',           null,    null),
+  -- pair 2: the same address and phone, a different birth year
+  (:'b_stale', 'Bevin', 'Olsen',      'bevin@dup925.invalid',    '+447700925003', date '2005-09-06', 'interview_requested', 'T925B', null),
+  (:'b_keep',  'Bevin', 'Olsen',      'bevin@dup925.invalid',    '+447700925003', date '2004-09-06', 'quiz',                null,    null),
   -- Ola already has her own Payroll ID on the live record
   (:'o_stale', 'Ola',   'Dup',        'ola@dup925.invalid',      '+447700925005', date '2001-01-01', 'interview_requested', 'T925C', 925005),
   (:'o_keep',  'Ola',   'Dup',        'ola@dup925.invalid',      '+447700925006', date '2001-01-01', 'documents',           'T925D', 925006),
@@ -48,9 +48,12 @@ insert into staff (id, first_name, last_name, email, phone, dob, status, payroll
 update staff set contract_signed_at = now() where id in (:'x_sign', :'x_comp');
 
 insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload, sent_at) values
-  ('OC1:staff:92500000-0000-4000-8000-000000000001:1:1', 'email', 'OC1', :'s_stale', array['sai@dup925.invalid'], '{}', now());
+  ('OC1:staff:92500000-0000-4000-8000-000000000001:1:1', 'email', 'OC1', :'s_stale', array['sia@dup925.invalid'], '{}', now());
 insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload) values
-  ('OC1:staff:92500000-0000-4000-8000-000000000001:1:2', 'email', 'OC1', :'s_stale', array['sai@dup925.invalid'], '{}');
+  ('OC1:staff:92500000-0000-4000-8000-000000000001:1:2', 'email', 'OC1', :'s_stale', array['sia@dup925.invalid'], '{}');
+-- one the drain has claimed this minute (its lease): it must be left alone
+insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload, last_attempt_at, attempts) values
+  ('OC1:staff:92500000-0000-4000-8000-000000000001:1:3', 'email', 'OC1', :'s_stale', array['sia@dup925.invalid'], '{}', now(), 1);
 
 -- A · who can run it ---------------------------------------------------
 select ok(has_function_privilege('service_role', 'public.close_duplicate_candidate(uuid,uuid,uuid)', 'execute'),
@@ -72,20 +75,28 @@ select ok((select payroll_id is null and employee_id is null from staff where id
 select is((select status::text from staff where id = :'s_keep'), 'documents', 'B7 · the live record has not moved stage');
 select is((select count(*)::int from notification_outbox where key like 'E2%:staff:' || :'s_stale' || '%'), 0,
           'B8 · no rejection email was queued');
-select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null), 0,
+select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null and last_attempt_at is null), 0,
           'B9 · its unsent email is dropped');
+select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is null and last_attempt_at is not null), 1,
+          'B9b · but not one the drain has just claimed');
 select is((select count(*)::int from notification_outbox where recipient_staff_id = :'s_stale' and sent_at is not null), 1,
           'B10 · the sent record stays');
 select is((select data->>'keptStaffId' from audit_log where action = 'staff.duplicate_closed' and entity_id = :'s_stale'),
           :'s_keep', 'B11 · audited with the kept record');
 
 -- C · Bivek ------------------------------------------------------------
+select is((select count(*)::int from audit_log where action = 'staff.duplicate_merged_in' and entity_id = :'s_keep'), 1,
+          'B12 · the kept record''s own history says it gained the IDs');
+
 select is((close_duplicate_candidate(:'b_stale', :'b_keep'))->>'payrollIdMoved', 'true',
           'C1 · same address, different birth year: closed, ID moved');
 select is((select payroll_id from staff where id = :'b_keep'), 'T925B', 'C2 · the live record holds the Payroll ID');
 select is((select employee_id from staff where id = :'b_keep'), null, 'C3 · no Employee ID was invented');
 select is((select dob from staff where id = :'b_keep'), date '2004-09-06', 'C4 · the kept date of birth is untouched');
 select is((select status::text from staff where id = :'b_keep'), 'quiz', 'C5 · the live record stays at the quiz');
+
+select is((select data->>'fromStaffId' from audit_log where action = 'staff.duplicate_merged_in' and entity_id = :'b_keep'),
+          :'b_stale', 'C6 · and so does the second pair''s');
 
 -- D · again, and a kept record's own IDs -------------------------------
 select is((close_duplicate_candidate(:'s_stale', :'s_keep'))->>'alreadyClosed', 'true', 'D1 · a second run is a no-op');
@@ -108,6 +119,11 @@ select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-00
                  'P0001', 'keep_not_live: rejected', 'E4 · a rejected record cannot be the one kept');
 select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-000000000001', '92500000-0000-4000-8000-000000000001') $$,
                  'P0001', 'same_record', 'E5 · a record cannot be closed into itself');
+
+-- the same name alone is not enough: another address AND another date of birth
+update staff set email = 'cy.other@dup925.invalid', dob = date '1999-09-09' where id = '92500000-0000-4000-8000-00000000000b';
+select throws_ok($$ select close_duplicate_candidate('92500000-0000-4000-8000-00000000000b', '92500000-0000-4000-8000-000000000009') $$,
+                 'P0001', 'not_the_same_person', 'E6 · the same name with another email and another date of birth is refused');
 
 select * from finish();
 rollback;
