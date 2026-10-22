@@ -25,6 +25,7 @@ import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
 import { formatDayLong } from '../calendar';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
+import { BackToScheduling } from '../_components/BackToScheduling';
 import { loadBoard } from './board-data';
 import { currentTimeFormat } from '../../_lib/timeFormat';
 import {
@@ -78,11 +79,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         title="Event board"
         crumbs={
           <>
-            <Link href="/events">Scheduling</Link> / <b>Event board</b>
+            <BackToScheduling variant="crumb" /> / <b>Event board</b>
           </>
         }
       >
-        <Alert tone="coral">{problem}</Alert>
+        <div className="stack">
+          <div className="row">
+            <BackToScheduling />
+          </div>
+          <Alert tone="coral">{problem}</Alert>
+        </div>
       </OfficeShell>
     );
   }
@@ -133,7 +139,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={event.title}
       crumbs={
         <>
-          <Link href="/events">Scheduling</Link> / <b>Event board</b>
+          <BackToScheduling variant="crumb" /> / <b>Event board</b>
         </>
       }
       timezone={<ViewerZone />}
@@ -194,21 +200,27 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             watches. Every 60 s: each refresh recomputes every section's pool
             (go-live audit H2). */}
         <AutoRefresh everyMs={60_000} />
-        {/* ADR-0074: when the two documents go out on their own (or went) —
-            its own read, streamed; the recipients line needs none. */}
-        {status === 'cancelled' ? (
-          <DocumentHints autosendLine="" recipientsLine={recipientsLine} />
-        ) : (
-          <Suspense fallback={<DocumentHints autosendLine="" recipientsLine={recipientsLine} />}>
-            <AutosendHints
-              eventId={event.id}
-              started={status === 'ongoing' || status === 'completed'}
-              ended={status === 'completed'}
-              format={format}
-              recipientsLine={recipientsLine}
-            />
-          </Suspense>
-        )}
+        {/* ADR-0195: back to the Scheduling view this board was opened from
+            (week, month, day or list, its period and filters), on the left of
+            the document hints so the board gains no extra row. */}
+        <div className="row between top wrap">
+          <BackToScheduling />
+          {/* ADR-0074: when the two documents go out on their own (or went) —
+              its own read, streamed; the recipients line needs none. */}
+          {status === 'cancelled' ? (
+            <DocumentHints autosendLine="" recipientsLine={recipientsLine} />
+          ) : (
+            <Suspense fallback={<DocumentHints autosendLine="" recipientsLine={recipientsLine} />}>
+              <AutosendHints
+                eventId={event.id}
+                started={status === 'ongoing' || status === 'completed'}
+                ended={status === 'completed'}
+                format={format}
+                recipientsLine={recipientsLine}
+              />
+            </Suspense>
+          )}
+        </div>
         {status === 'cancelled' ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> {event.cancelReason ? `"${event.cancelReason}" — ` : ''}

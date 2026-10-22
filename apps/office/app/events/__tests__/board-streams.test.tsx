@@ -173,6 +173,8 @@ describe('/events/:id streams the pool behind the line-up', () => {
     state.load = { event: null, problem: 'The event could not be read.' };
     const html = renderToString(await Page({ params: Promise.resolve({ id: 'ev-1' }) }));
     expect(html).toContain('The event could not be read.');
+    // ADR-0195: the way back is offered here too.
+    expect(html).toContain('Back to Scheduling');
   });
 
   it('draws the header and Confirmed while every section’s pool is still out', async () => {
@@ -180,6 +182,8 @@ describe('/events/:id streams the pool behind the line-up', () => {
     const html = renderToString(await Page({ params: Promise.resolve({ id: 'ev-1' }) }));
     expect(html).toContain('<h1>Gala Dinner</h1>');
     expect(html).toContain('Grace L.');
+    // ADR-0195: the board's way back to Scheduling (plain /events until mount).
+    expect(html).toMatch(/<a href="\/events"[^>]*>.*Back to Scheduling/);
     // One boundary per section, each holding its own skeleton (React may
     // try a suspended component more than once, so the count is a floor).
     expect(state.pools).toBeGreaterThanOrEqual(2);
