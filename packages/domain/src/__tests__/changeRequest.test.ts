@@ -112,6 +112,26 @@ describe('validateNameChange', () => {
     else expect(result).toEqual({ ok: true, ...c.expect });
   });
 
+  // ADR-0193: a name request takes the passport rule /apply keeps, so
+  // "Request a change" cannot put an initial back.
+  it.each([
+    [{ first: 'Maria', last: 'L.' }, 'last_initial'],
+    [{ first: 'M', last: 'Lopez' }, 'first_initial'],
+    [{ first: 'Maria J.', last: 'Lopez' }, 'first_initial'],
+    [{ first: 'Maria', last: 'Lopez2' }, 'last_characters'],
+    [{ first: 'Mar@ia', last: 'Lopez' }, 'first_characters'],
+  ] as const)('refuses %j as %s', (input, reason) => {
+    expect(validateNameChange(input, vectors.current)).toEqual({ ok: false, reason });
+  });
+
+  it('answers a blank or too-long name as before, ahead of the passport rule', () => {
+    expect(validateNameChange({ first: ' ', last: 'L.' }).ok).toBe(false);
+    expect(validateNameChange({ first: ' ', last: 'L.' })).toEqual({
+      ok: false,
+      reason: 'first_required',
+    });
+  });
+
   it('without a name on file, nothing is "unchanged"', () => {
     expect(validateNameChange({ first: 'Maria', last: 'Lopez' }).ok).toBe(true);
   });

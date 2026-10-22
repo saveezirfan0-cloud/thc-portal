@@ -111,6 +111,7 @@ import {
 } from '../compliance/EvidenceUploads';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobCorrection } from '../_components/DobCorrection';
+import { NameCorrection } from '../_components/NameCorrection';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { EditTermPeriods, periodsFrom } from '../_components/TermPeriods';
 import { TermLetterOutcome } from '../compliance/TermLetterOutcome';
@@ -673,6 +674,21 @@ function Facts({
       allowed={canCorrectDob && row.status !== 'removed'}
     />
   ) : null;
+  // ADR-0193: the name as the passport prints it, correctable here too.
+  facts.push(
+    <span key="name">
+      Name{' '}
+      <b>
+        {row.first_name} {row.last_name}
+      </b>{' '}
+      <NameCorrection
+        staffId={row.id}
+        first={row.first_name}
+        last={row.last_name}
+        allowed={canCorrectDob && row.status !== 'removed'}
+      />
+    </span>,
+  );
   if (phase <= 1) {
     facts.push(
       <span key="applied">

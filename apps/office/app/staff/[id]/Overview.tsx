@@ -5,6 +5,7 @@ import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
 import { formatUkStamp, reviewLabel, reviewStamp } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
+import { NameCorrection } from '../../_components/NameCorrection';
 import { EditTermPeriods } from '../../_components/TermPeriods';
 import { RtwBranchChange } from './RtwBranchChange';
 import { ReferralsCard } from './ReferralsCard';
@@ -57,6 +58,8 @@ export function Overview({
   gender,
   canEditGender = false,
   passportCountry,
+  firstName,
+  lastName,
   canEditPassportCountry = false,
   languages,
   canEditLanguages = false,
@@ -91,6 +94,9 @@ export function Overview({
   canEditGender?: boolean;
   /** ADR-0159: `staff.passport_country`; undefined when it could not be read. */
   passportCountry?: string | null;
+  /** ADR-0193: the name as two halves, for "Correct"; undefined when unread. */
+  firstName?: string | null;
+  lastName?: string | null;
   /** Any office login that may write (ADR-0159). */
   canEditPassportCountry?: boolean;
   /** ADR-0080: `staff.languages`; null = never asked, undefined = not read. */
@@ -136,6 +142,18 @@ export function Overview({
     <div className="grid c2">
       <Panel title="Contacts &amp; identity">
         <div className="kv">
+          <span className="k">Name</span>
+          <span>
+            {profile.display_name} {/* ADR-0193: the name as the passport prints it, in full. */}
+            {typeof firstName === 'string' && typeof lastName === 'string' ? (
+              <NameCorrection
+                staffId={profile.id}
+                first={firstName}
+                last={lastName}
+                allowed={canCorrectDob && !profile.removed}
+              />
+            ) : null}
+          </span>
           <span className="k">Email</span>
           <span>{value(profile.email)}</span>
           <span className="k">Mobile</span>

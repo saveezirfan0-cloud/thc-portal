@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 219 functions on 23.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0180's compliance_request_declaration_details, compliance_reverse_declaration_rejection, my_declaration_update and update_my_declaration, and can_review_criminal_records, admin_set_criminal_records_reviewer and admin_criminal_records_reviewers + ADR-0183's compliance_withdraw_completion_approval + ADR-0182's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0182 also gave onboarding_save_right_to_work an eighth argument and record_right_to_work_change a fifth; 214 with ADR-0184's verify_late_check_out + ADR-0185's staff_security_cleared_bookings; 216 with ADR-0184's follow-up making resolve_violation a definer, so check_logs can refuse direct writes; 218 with archive_client and restore_client from 20261022210000_archive_clients, already live — branch claude/vigilant-albattani-hyw7tg; 219 with ADR-0188's nudge_check_in_out), docs/14 §4 — so a new one fails here BY
+-- 221 functions on 24.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0180's compliance_request_declaration_details, compliance_reverse_declaration_rejection, my_declaration_update and update_my_declaration, and can_review_criminal_records, admin_set_criminal_records_reviewer and admin_criminal_records_reviewers + ADR-0183's compliance_withdraw_completion_approval + ADR-0182's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0182 also gave onboarding_save_right_to_work an eighth argument and record_right_to_work_change a fifth; 214 with ADR-0184's verify_late_check_out + ADR-0185's staff_security_cleared_bookings; 216 with ADR-0184's follow-up making resolve_violation a definer, so check_logs can refuse direct writes; 218 with archive_client and restore_client from 20261022210000_archive_clients, already live — branch claude/vigilant-albattani-hyw7tg; 219 with ADR-0188's nudge_check_in_out; 221 with ADR-0193's office_correct_name and office_names_to_review), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -120,10 +120,12 @@ select bag_eq(
             ('office_can(text)'),
             ('office_clear_emergency_contact(uuid)'),
             ('office_correct_dob(uuid,date,text)'),
+            ('office_correct_name(uuid,text,text,text)'),
             ('office_decide_profile_change(uuid,boolean,text)'),
             ('office_decline_cover(uuid,text)'),
             ('office_emergency_contact(uuid)'),
             ('office_invite_worker(uuid,uuid)'),
+            ('office_names_to_review()'),
             ('office_open_offer_to_pool(uuid)'),
             ('office_profile_change_requests(uuid,boolean,integer)'),
             ('office_reject_selfie(uuid,text)'),

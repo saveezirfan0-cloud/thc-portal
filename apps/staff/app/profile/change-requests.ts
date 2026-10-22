@@ -130,6 +130,14 @@ export const CHANGE_REASONS: Record<string, string> = {
   last_required: 'Enter your last name.',
   first_too_long: 'Keep your first name to 100 characters.',
   last_too_long: 'Keep your last name to 100 characters.',
+  // ADR-0193: a name as it is printed on the passport (legalName.ts).
+  first_initial:
+    'Enter your first and middle names in full, as they appear on your passport — not initials or abbreviations.',
+  last_initial:
+    'Enter your surname in full, as it appears on your passport — not an initial or an abbreviation.',
+  first_characters:
+    'Your first and middle names can only use letters, spaces, hyphens and apostrophes.',
+  last_characters: 'Your surname can only use letters, spaces, hyphens and apostrophes.',
   unchanged: 'That’s the same as what’s on file now.',
   evidence_required:
     'Add a photo or scan of your evidence — for example a marriage certificate, deed poll, or a passport in the new name.',

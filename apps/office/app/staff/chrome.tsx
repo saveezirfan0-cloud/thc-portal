@@ -73,6 +73,10 @@ export function StaffActions({ requests }: { requests: ReactNode }) {
       <Link href="/staff/roster" className="btn sm ghost">
         Invite list
       </Link>
+      {/* ADR-0193: names that are not yet the passport's. */}
+      <Link href="/staff/names" className="btn sm ghost">
+        Names to review
+      </Link>
     </span>
   );
 }

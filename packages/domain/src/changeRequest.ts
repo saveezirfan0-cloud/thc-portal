@@ -16,6 +16,8 @@
  * (§1.7) — RC4 tells payroll instead.
  */
 
+import { nameFault } from './legalName';
+
 /**
  * `dob` (ADR-0070, 28.09.2026): the date of birth gov.uk matches a share
  * code against. Evidence required, as for a name; approving it has the
@@ -42,6 +44,13 @@ export const NAME_CHANGE_REFUSALS = [
   'last_required',
   'first_too_long',
   'last_too_long',
+  // ADR-0193: a name as printed on the passport (legalName.ts), the same
+  // refusals `office_correct_name()` gives. `required` and `too_long` are
+  // answered above, so only these two can reach here.
+  'first_initial',
+  'last_initial',
+  'first_characters',
+  'last_characters',
   'unchanged',
 ] as const;
 
@@ -74,6 +83,10 @@ export function validateNameChange(
   if (!last) return { ok: false, reason: 'last_required' };
   if (chars(first) > CHANGE_NAME_MAX) return { ok: false, reason: 'first_too_long' };
   if (chars(last) > CHANGE_NAME_MAX) return { ok: false, reason: 'last_too_long' };
+  const firstFault = nameFault(first);
+  if (firstFault) return { ok: false, reason: `first_${firstFault}` };
+  const lastFault = nameFault(last);
+  if (lastFault) return { ok: false, reason: `last_${lastFault}` };
   if (current && current.first.trim() === first && current.last.trim() === last) {
     return { ok: false, reason: 'unchanged' };
   }
