@@ -21,6 +21,7 @@ import { type LogQuery, logQueryHref, logTime } from './log';
 import { MonitorTable, WeeklyLimitFlag } from './MonitorTable';
 import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
+import { StaffPhone } from './StaffPhone';
 import { VerifyLateModal } from './VerifyLateModal';
 import { nudgeCheckInOut } from './actions';
 import {
@@ -225,7 +226,10 @@ export function MonitorScreen({
                     <td className="cell-title">
                       <div className="person">
                         <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
-                        <div className="n">{v.staffName}</div>
+                        <div>
+                          <div className="n">{v.staffName}</div>
+                          <StaffPhone phone={v.phone} />
+                        </div>
                       </div>
                     </td>
                     <td data-label="Event">
@@ -319,7 +323,10 @@ function LateCheckOutPanel({
                 <td className="cell-title">
                   <div className="person">
                     <Avatar name={r.staffName} src={r.photoUrl ?? undefined} size="sm" />
-                    <div className="n">{r.staffName}</div>
+                    <div>
+                      <div className="n">{r.staffName}</div>
+                      <StaffPhone phone={r.phone} />
+                    </div>
                   </div>
                 </td>
                 <td data-label="Event">

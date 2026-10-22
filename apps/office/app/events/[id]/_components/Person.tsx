@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Avatar } from '@thc/ui';
 import { appliedAgo } from '@thc/domain';
+import { formatPhone } from '../../../staff/[id]/additions';
 import type { BoardBooking } from '../board-data';
 import type { UnavailableEntry } from '../board-model';
 
 /**
- * A board row's face and name, with its second line (§3.3). The face and the
- * name open the worker's profile, so the office can go from the event to the
- * person without searching the directory.
+ * A board row's face and name, with its second line (§3.3) and the worker's
+ * phone. The face and the name open the worker's profile, so the office can
+ * go from the event to the person without searching the directory.
  */
 export function Person({
   person,
@@ -34,7 +35,29 @@ export function Person({
         </div>
         <div className="s">{sub}</div>
       </div>
+      <PersonPhone phone={person.phone} />
     </>
+  );
+}
+
+/**
+ * The worker's mobile on a board row, a `tel:` link so the manager can ring
+ * a late or unconfirmed worker without opening their profile. "—" for a
+ * removed worker (§1.7) or none on record; nothing for a worker the read did
+ * not name.
+ */
+export function PersonPhone({ phone }: { phone: string | null | undefined }) {
+  if (phone === undefined) return null;
+  return (
+    <span className="board-phone mono sm">
+      {phone ? (
+        <a href={`tel:${phone.replace(/[^\d+]/g, '')}`}>{formatPhone(phone)}</a>
+      ) : (
+        <span className="muted" title="No phone number on record">
+          —
+        </span>
+      )}
+    </span>
   );
 }
 

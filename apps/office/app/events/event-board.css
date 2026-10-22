@@ -68,6 +68,20 @@
   font-size: 11.5px;
   color: var(--muted);
 }
+/* The worker's phone beside their name: text until it is pointed at, one line. */
+.prow .board-phone {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.prow .board-phone a {
+  color: inherit;
+  text-decoration: none;
+}
+.prow .board-phone a:hover {
+  color: var(--cyan-ink);
+  text-decoration: underline;
+}
 /* "18 roles" under a name — opens the list in a dialog (StaffRoles). */
 .prow .who .roles-more {
   text-decoration: underline dotted;
