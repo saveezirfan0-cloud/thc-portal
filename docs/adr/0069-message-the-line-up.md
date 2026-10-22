@@ -47,7 +47,7 @@ The owner: "We also need to be able to message individual staff, for example one
 
 ## Amendment (23.10.2026): confirmed and checked-in, apart
 
-The owner found no way to message just the confirmed staff. The first choice, "Confirmed and checked-in staff", has always been both groups together (a check-in moves a booking from `confirmed` to `worked`), so reaching people who had not arrived meant messaging those already on site as well. `send_event_message()` gains two audiences (20261023130000): `confirmed` (not checked in yet — the "where are you?" message) and `checked_in`. `booked` keeps its meaning, so existing callers are unchanged, and is relabelled *All confirmed staff — checked in or not*. Empty-audience refusals name the wider choice. pgTAP 758.
+The owner found no way to message just the confirmed staff. The first choice, "Confirmed and checked-in staff", has always been both groups together (a check-in moves a booking from `confirmed` to `worked`), so reaching people who had not arrived meant messaging those already on site as well. `send_event_message()` gains two audiences (20261023140000): `confirmed` (not checked in yet — the "where are you?" message) and `checked_in`. `booked` keeps its meaning, so existing callers are unchanged, and is relabelled *All confirmed staff — checked in or not*. Empty-audience refusals name the wider choice. pgTAP 758.
 
 ## Not done
 

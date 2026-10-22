@@ -769,16 +769,12 @@ export const MESSAGE_MAX = 300;
  * statuses; the page never sends a list of workers.
  */
 export type MessageAudience =
-  | 'booked'
-  | 'confirmed'
-  | 'checked_in'
-  | 'invited'
-  | 'booked_and_invited';
+  'booked' | 'confirmed' | 'checked_in' | 'invited' | 'booked_and_invited';
 
 /**
  * A check-in moves a booking from confirmed to worked, so `confirmed` is
  * the people who have not arrived yet and `checked_in` the people on site;
- * `booked` is both (20261023130000).
+ * `booked` is both (20261023140000).
  */
 export const MESSAGE_AUDIENCES: ReadonlyArray<{ value: MessageAudience; label: string }> = [
   { value: 'booked', label: 'All confirmed staff — checked in or not' },

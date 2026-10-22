@@ -204,7 +204,7 @@ select is((select data ->> 'audience' from audit_log
   'invited', 'the history records who it was for');
 
 -- ---------------------------------------------------------------------
--- 3d · Confirmed and checked in, on their own (20261023130000)
+-- 3d · Confirmed and checked in, on their own (20261023140000)
 -- ---------------------------------------------------------------------
 select is(send_event_message(:'ev', null, 'confirmed', 'Where are you? Doors open at once') - 'messageId',
   jsonb_build_object('ok', true, 'sent', 1, 'withoutPush', '[]'::jsonb),
