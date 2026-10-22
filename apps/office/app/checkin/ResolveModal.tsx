@@ -212,7 +212,7 @@ export function ResolveModal({
                 onPartialChange={setFinishPartial}
                 hint={
                   wantsFinish
-                    ? `Becomes the shift’s check-out, and pay is worked out from it — more than 15 minutes past the end, paid and charged to this time. ${FINISH_CAP_HINT} The four-hour floor applies again once this is resolved.`
+                    ? `Becomes the shift’s check-out, and pay is worked out from it. A finish up to 15 minutes after the scheduled end is paid and charged to the end; a later finish is paid and charged to this time. ${FINISH_CAP_HINT} The four-hour minimum applies again once this is resolved.`
                     : `Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later. ${FINISH_CAP_HINT}`
                 }
               />
