@@ -6,6 +6,7 @@
  *   emergencyContact.vectors.json  → emergency_contact_vectors.psql (ADR-0044)
  *   changeRequest.vectors.json     → change_request_vectors.psql    (ADR-0045)
  *   shiftOffer.vectors.json        → shift_offer_vectors.psql       (ADR-0046)
+ *   legalName.vectors.json         → legal_name_vectors.psql        (ADR-0189)
  *
  * The vectors are the contract between packages/domain and the Postgres
  * functions, triggers and CHECKs that repeat the same rules (pay.ts and
@@ -20,7 +21,7 @@
  *   node gen-vectors-sql.mjs --stdout          pay only (pay.vectors.test.ts)
  *   node gen-vectors-sql.mjs --stdout <name>   one file: availability,
  *                                              emergencyContact, changeRequest,
- *                                              shiftOffer
+ *                                              shiftOffer, legalName
  *   node gen-vectors-sql.mjs --check           fail if any file has drifted
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -431,6 +432,29 @@ export function renderShiftOffer(v) {
   return out.join('\n');
 }
 
+export function renderLegalName(v) {
+  const out = header('legalName.vectors.json', 'supabase/tests/120_apply.sql', [
+    'ADR-0189: name_fault() against the cases nameFault() is held to. `text` is',
+    'what a candidate typed; `fault` is the reason it is not a whole name, or',
+    'null. `optional` is the middle-name field, where an empty value is fine.',
+  ]);
+  out.push(
+    ...table(
+      'legal_name_vectors',
+      [
+        ['name', 'text primary key'],
+        ['text', 'text not null'],
+        ['optional', 'boolean not null'],
+        ['fault', 'text'],
+      ],
+      v.cases.map((c) => [lit(c.name), lit(c.text), lit(c.optional), lit(c.fault)]),
+    ),
+  );
+  out.push(`\\set legal_name_count ${v.cases.length}`);
+  out.push('');
+  return out.join('\n');
+}
+
 /** Every generated file: source JSON, output .psql, renderer. */
 export const TARGETS = {
   pay: { json: VECTORS_PATH, out: OUT_PATH, render },
@@ -453,6 +477,11 @@ export const TARGETS = {
     json: resolve(SRC, 'shiftOffer.vectors.json'),
     out: resolve(SHARED, 'shift_offer_vectors.psql'),
     render: renderShiftOffer,
+  },
+  legalName: {
+    json: resolve(SRC, 'legalName.vectors.json'),
+    out: resolve(SHARED, 'legal_name_vectors.psql'),
+    render: renderLegalName,
   },
 };
 

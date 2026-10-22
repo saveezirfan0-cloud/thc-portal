@@ -206,10 +206,10 @@ describe('search, filter and sort leave the engine’s rank alone (§3.3)', () =
     ]);
   });
 
-  it('sorts applicants first (oldest application first), or by name', () => {
+  it('sorts applicants first, each group in rank order, or by name', () => {
     expect(names(queryPool(pool, { q: '', filter: 'all', sort: 'applied' }))).toEqual([
-      '4:Omar S.',
       '2:Ella F.',
+      '4:Omar S.',
       '1:Priya S.',
       '3:Ben T.',
     ]);

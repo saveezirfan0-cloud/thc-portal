@@ -14,6 +14,7 @@ import {
 } from '../board-model';
 import { inviteWorker } from '../actions';
 import { ApplicationActions } from './ApplicationActions';
+import { PersonPhone, ProfileLink } from './Person';
 import { StaffRoles } from './StaffRoles';
 
 /** Rows drawn before "Show all" — a role's pool can hold most of the workforce. */
@@ -62,7 +63,7 @@ export function PotentialPool({
 }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<PoolFilter>('all');
-  const [sort, setSort] = useState<PoolSort>('score');
+  const [sort, setSort] = useState<PoolSort>('applied');
   const [showAll, setShowAll] = useState(false);
 
   const shown = useMemo(() => queryPool(entries, { q, filter, sort }), [entries, q, filter, sort]);
@@ -99,8 +100,8 @@ export function PotentialPool({
             value={sort}
             onChange={(event) => setSort(event.target.value as PoolSort)}
           >
-            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="applied">Sort: applied first</option>
+            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="name">Sort: name</option>
           </select>
         </span>
@@ -208,13 +209,20 @@ function PoolRow({
   return (
     <div className={`prow${waveBreak ? ' wave-break' : ''}`}>
       <span className="rank">{entry.rank}</span>
-      <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
+      <ProfileLink staffId={entry.staffId} name={entry.name} tabIndex={-1} aria-hidden>
+        <Avatar name={entry.name} src={entry.photoUrl ?? undefined} />
+      </ProfileLink>
       <div className="who">
-        <div className="n">{entry.name}</div>
+        <div className="n">
+          <ProfileLink staffId={entry.staffId} name={entry.name}>
+            {entry.name}
+          </ProfileLink>
+        </div>
         <div className="s">
           <StaffRoles name={entry.name} roles={entry.roles} roleName={roleName} />
         </div>
       </div>
+      <PersonPhone phone={entry.phone} />
       {entry.qualified ? (
         <Pill tone="cyan">
           Qualified — {clientName} · {roleName}

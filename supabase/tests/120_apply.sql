@@ -15,7 +15,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(78);
+select plan(87);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -94,6 +94,56 @@ select throws_ok(
 reset role;
 select is((select count(*)::int from staff where email in ('kid@rls.test','nc@rls.test','x@rls.test')), 0,
   'a rejected application creates nothing at all');
+
+-- ---------------------------------------------------------------------
+-- A name as it is printed on the passport (ADR-0189)
+--
+-- "Marc M." beside a photo cannot be matched against a passport, a share
+-- code or a payroll record. name_fault() is the same rule as nameFault() in
+-- packages/domain, held to the same vectors; submit_application() is the
+-- third gate behind the form and the server action.
+-- ---------------------------------------------------------------------
+\ir _shared/legal_name_vectors.psql
+select is((select count(*)::int from legal_name_vectors), :legal_name_count,
+  'ADR-0189 the vectors file carries every case the domain test runs');
+select is_empty(
+  $$ select name || ' -> ' || coalesce(public.name_fault(text, optional), 'null')
+       from legal_name_vectors
+      where public.name_fault(text, optional) is distinct from fault $$,
+  'ADR-0189 name_fault() gives every shared vector the reason nameFault() gives it');
+
+set local role service_role;
+select throws_ok(
+  $$ select submit_application('Marc','M.','m.initial@names.rls.test','+447010000781', date '1995-05-05', true) $$,
+  '22023', 'Enter your surname in full, as it appears on your passport — not an initial or an abbreviation.',
+  'ADR-0189 a surname that is an initial and a full stop is refused on the server');
+select throws_ok(
+  $$ select submit_application('J','Martinez','j.initial@names.rls.test','+447010000782', date '1995-05-05', true) $$,
+  '22023', 'Enter your first and middle names in full, as they appear on your passport — not initials or abbreviations.',
+  'ADR-0189 a first name that is an initial is refused, and so is an initial among the middle names (they are stored as one value)');
+select throws_ok(
+  $$ select submit_application('Marc','Martinez2','m.digit@names.rls.test','+447010000783', date '1995-05-05', true) $$,
+  '22023', 'Your surname can only use letters, spaces, hyphens and apostrophes, up to 100 characters.',
+  'ADR-0189 digits and symbols are refused');
+select throws_ok(
+  $$ select submit_application('Marc J. Antoni','Martinez','m.stop@names.rls.test','+447010000784', date '1995-05-05', true) $$,
+  '22023', 'Enter your first and middle names in full, as they appear on your passport — not initials or abbreviations.',
+  'ADR-0189 a middle initial with a full stop is refused with the first name');
+-- The name rule comes after every other field rule: an application wrong in
+-- several ways keeps the complaint it always got first.
+select throws_ok(
+  $$ select submit_application('Marc','M.','not-an-email','+447010000785', date '1995-05-05', true) $$,
+  '22023', 'Enter a valid email address.',
+  'ADR-0189 the name rule runs after the email, mobile, consent and date-of-birth rules');
+reset role;
+select is((select count(*)::int from staff where email like '%@names.rls.test'), 0,
+  'ADR-0189 a refused name creates nothing at all');
+
+set local role service_role;
+select submit_application('Zoë Ann','O''Neil-Smith','zoe.oneil@names.rls.test','+447010000789', ((now() at time zone 'Europe/London')::date - interval '30 years')::date, true);
+reset role;
+select is((select first_name || '|' || last_name from staff where email = 'zoe.oneil@names.rls.test'), 'Zoë Ann|O''Neil-Smith',
+  'ADR-0189 hyphens, apostrophes, accents and several given names are stored exactly as typed');
 
 -- ---------------------------------------------------------------------
 -- The duplicate check (§2.12) — one person keeps one record
