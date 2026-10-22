@@ -71,6 +71,8 @@ export default async function Page({
   const rows = filterEventRows(toEventRows(events, new Date(), format), filters);
 
   const totals = periodTotals(rows);
+  // Where an event's "Back" returns to: this view, this period, these filters.
+  const backHref = hrefFor(query);
 
   // The records are all-time and unfiltered: a client filter narrows the
   // rows, not what the business booked that week.
@@ -125,7 +127,7 @@ export default async function Page({
             }
           >
             <div className="panel-b tight">
-              <ListView rows={rows} today={today} />
+              <ListView rows={rows} today={today} backHref={backHref} />
             </div>
             <div
               className="panel-h"
@@ -148,6 +150,7 @@ export default async function Page({
             )}
             today={today}
             dayHref={(iso) => hrefFor({ ...query, view: 'day', date: iso })}
+            backHref={backHref}
           />
         ) : null}
 
@@ -158,10 +161,13 @@ export default async function Page({
             today={today}
             records={news}
             recordDay={recordDay}
+            backHref={backHref}
           />
         ) : null}
 
-        {!problem && view === 'day' ? <DayView rows={rows} records={news} /> : null}
+        {!problem && view === 'day' ? (
+          <DayView rows={rows} records={news} backHref={backHref} />
+        ) : null}
       </div>
     </OfficeShell>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Modal } from '@thc/ui';
 import type { MonthCellModel } from '../view-model';
 import { ChipStatus } from './ChipStatus';
+import { boardHref } from '../_lib/back';
 
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
 
@@ -19,12 +20,15 @@ export function MonthCellEvents({
   model,
   heading,
   dayHref,
+  backHref,
 }: {
   model: MonthCellModel;
   /** "Tue 13 October · 5 ev · 18 open", written on the server. */
   heading: string;
   /** The Day view of this date, offered from inside the popup. */
   dayHref: string | null;
+  /** The diary's own URL, so the board can bring the manager back to it. */
+  backHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { chips, hiddenEvents, hiddenOpen, events } = model;
@@ -49,7 +53,12 @@ export function MonthCellEvents({
           </>
         );
         return chip.href ? (
-          <Link key={chip.key} className={className} href={chip.href} title={chip.tooltip}>
+          <Link
+            key={chip.key}
+            className={className}
+            href={boardHref(chip.href, backHref)}
+            title={chip.tooltip}
+          >
             {body}
           </Link>
         ) : (
@@ -98,7 +107,7 @@ export function MonthCellEvents({
           {events.map((event) => (
             <Link
               key={event.id}
-              href={`/events/${event.id}`}
+              href={boardHref(`/events/${event.id}`, backHref)}
               className={classes(
                 'wchip',
                 event.status === 'cancelled' && 'cancelled',

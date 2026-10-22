@@ -24,6 +24,7 @@ import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
 import { formatDayLong } from '../calendar';
+import { backLabel, safeBackHref } from '../_lib/back';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
 import { currentTimeFormat } from '../../_lib/timeFormat';
@@ -65,8 +66,18 @@ export const metadata = { title: 'Event board · THC Back Office' };
  * inside the one `OfficeShell`. Nothing on the board navigates by query, so
  * no boundary sits under a query-only navigation.
  */
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  // The diary state this board was opened from (`_lib/back.ts`): the week, the
+  // filters. Absent on a bookmark or a link from elsewhere — then plain /events.
+  const back = safeBackHref((await searchParams).back);
+  const scheduling = back ?? '/events';
   // The clock is a cookie read; it starts with the board rather than before it.
   const [format, { event, problem }] = await Promise.all([currentTimeFormat(), loadBoard(id)]);
   // A read that FAILED is not a missing event: say what went wrong instead
@@ -78,7 +89,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         title="Event board"
         crumbs={
           <>
-            <Link href="/events">Scheduling</Link> / <b>Event board</b>
+            <Link href={scheduling}>Scheduling</Link> / <b>Event board</b>
           </>
         }
       >
@@ -133,12 +144,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={event.title}
       crumbs={
         <>
-          <Link href="/events">Scheduling</Link> / <b>Event board</b>
+          <Link href={scheduling}>Scheduling</Link> / <b>Event board</b>
         </>
       }
       timezone={<ViewerZone />}
       actions={
         <span className="row" style={{ gap: 8 }}>
+          {/* Back to the week (or month, day, list, with its filters) the
+              manager came from; the Scheduling tab starts again. */}
+          <Link className="btn sm" href={scheduling}>
+            ← {backLabel(back)}
+          </Link>
           {/* Editing is allowed only up to the event's start (§3.2); on the
               day, a started event still takes a new role (ADR-0177). */}
           {status === 'cancelled' ? null : !locked ? (

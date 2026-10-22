@@ -164,20 +164,26 @@ beforeEach(() => {
 describe('/events/:id streams the pool behind the line-up', () => {
   it('answers an unknown event with notFound() before anything streams', async () => {
     state.load = { event: null, problem: null };
-    await expect(Page({ params: Promise.resolve({ id: 'missing' }) })).rejects.toMatchObject({
+    await expect(
+      Page({ params: Promise.resolve({ id: 'missing' }), searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({
       digest: expect.stringContaining('404'),
     });
   });
 
   it('a failed read is said in the shell, never a 404', async () => {
     state.load = { event: null, problem: 'The event could not be read.' };
-    const html = renderToString(await Page({ params: Promise.resolve({ id: 'ev-1' }) }));
+    const html = renderToString(
+      await Page({ params: Promise.resolve({ id: 'ev-1' }), searchParams: Promise.resolve({}) }),
+    );
     expect(html).toContain('The event could not be read.');
   });
 
   it('draws the header and Confirmed while every section’s pool is still out', async () => {
     state.load = board(2);
-    const html = renderToString(await Page({ params: Promise.resolve({ id: 'ev-1' }) }));
+    const html = renderToString(
+      await Page({ params: Promise.resolve({ id: 'ev-1' }), searchParams: Promise.resolve({}) }),
+    );
     expect(html).toContain('<h1>Gala Dinner</h1>');
     expect(html).toContain('Grace L.');
     // One boundary per section, each holding its own skeleton (React may
@@ -192,7 +198,9 @@ describe('/events/:id streams the pool behind the line-up', () => {
     const cancelled = board(1);
     cancelled.event.cancelledAt = '2099-06-20T10:00:00Z' as unknown as null;
     state.load = cancelled;
-    const html = renderToString(await Page({ params: Promise.resolve({ id: 'ev-1' }) }));
+    const html = renderToString(
+      await Page({ params: Promise.resolve({ id: 'ev-1' }), searchParams: Promise.resolve({}) }),
+    );
     expect(html).toContain('This event is cancelled.');
     expect(state.pools).toBe(0);
     expect(html).not.toContain('candidate pool');

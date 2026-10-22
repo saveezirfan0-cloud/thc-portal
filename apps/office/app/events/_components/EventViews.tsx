@@ -23,6 +23,7 @@ import {
   totalShifts,
 } from '../view-model';
 import { ChipStatus } from './ChipStatus';
+import { boardHref } from '../_lib/back';
 import { MonthCellEvents } from './MonthCellEvents';
 import { RecordFlash } from './RecordFlash';
 import { ScheduledWindow } from './ScheduledWindow';
@@ -87,7 +88,16 @@ export const EVENT_LIST_COLUMNS = [
 ] as const satisfies readonly ColumnDef[];
 type EventListColumn = (typeof EVENT_LIST_COLUMNS)[number]['id'];
 
-export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
+export function ListView({
+  rows,
+  today,
+  backHref,
+}: {
+  rows: EventRow[];
+  today: string;
+  /** The diary's own URL, so the board can bring the manager back to it. */
+  backHref?: string;
+}) {
   if (rows.length === 0) {
     return (
       <Panel>
@@ -161,7 +171,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                           {cancelled ? (
                             <s>{row.title}</s>
                           ) : (
-                            <Link href={`/events/${row.id}`}>
+                            <Link href={boardHref(`/events/${row.id}`, backHref)}>
                               <b>{row.title}</b>
                             </Link>
                           )}
@@ -275,6 +285,7 @@ export function MonthView({
   buckets,
   today,
   dayHref,
+  backHref,
 }: {
   cells: { iso: string; dayOfMonth: number; inMonth: boolean }[];
   buckets: Map<string, DayBucket>;
@@ -284,6 +295,8 @@ export function MonthView({
    * each event is a dot and the whole cell opens its day (events.css).
    */
   dayHref?: (iso: string) => string;
+  /** The diary's own URL, so the board can bring the manager back to it. */
+  backHref?: string;
 }) {
   return (
     <div className="cal">
@@ -329,6 +342,7 @@ export function MonthView({
                     : formatCounter(bucket.count, bucket.open)
                 }`}
                 dayHref={dayHref ? dayHref(cell.iso) : null}
+                backHref={backHref}
               />
             ) : null}
           </div>
@@ -348,6 +362,7 @@ export function WeekView({
   today,
   records = [],
   recordDay = null,
+  backHref,
 }: {
   days: string[];
   buckets: Map<string, DayBucket>;
@@ -356,6 +371,8 @@ export function WeekView({
   records?: RecordNews[];
   /** The busiest day ever booked, when it is one of these seven. */
   recordDay?: string | null;
+  /** The diary's own URL, so the board can bring the manager back to it. */
+  backHref?: string;
 }) {
   const week = days.reduce((sum, iso) => sum + (buckets.get(iso)?.shifts ?? 0), 0);
   const events = days.reduce((sum, iso) => sum + (buckets.get(iso)?.count ?? 0), 0);
@@ -392,7 +409,7 @@ export function WeekView({
                   {record ? <span className="rec"> · record</span> : null}
                 </span>
               </div>
-              <WeekColumnBands rows={bucket?.events ?? []} />
+              <WeekColumnBands rows={bucket?.events ?? []} backHref={backHref} />
             </div>
           );
         })}
@@ -436,7 +453,7 @@ function ShiftTotals({
  * a longer one opens only the bands that still need staff, so the page — not
  * seven inner scroll boxes — is what scrolls, and what is short is on top.
  */
-function WeekColumnBands({ rows }: { rows: EventRow[] }) {
+function WeekColumnBands({ rows, backHref }: { rows: EventRow[]; backHref?: string }) {
   const bands = bandDay(rows);
   const fold = rows.length > WEEK_COLUMN_FOLD_AT;
   return (
@@ -453,7 +470,7 @@ function WeekColumnBands({ rows }: { rows: EventRow[] }) {
           </summary>
           <div className="bl">
             {band.events.map((row) => (
-              <WeekChip key={row.id} row={row} />
+              <WeekChip key={row.id} row={row} backHref={backHref} />
             ))}
           </div>
         </details>
@@ -462,7 +479,7 @@ function WeekColumnBands({ rows }: { rows: EventRow[] }) {
   );
 }
 
-function WeekChip({ row }: { row: EventRow }) {
+function WeekChip({ row, backHref }: { row: EventRow; backHref?: string }) {
   return (
     <Link
       className={classes(
@@ -472,7 +489,7 @@ function WeekChip({ row }: { row: EventRow }) {
         row.status !== 'cancelled' && fillTone(row) === 'green' && 'full',
         isShortStaffed(row) && 'alert',
       )}
-      href={`/events/${row.id}`}
+      href={boardHref(`/events/${row.id}`, backHref)}
     >
       <span className="w">
         {/* The window is one reading and never breaks; the status and the
@@ -493,7 +510,16 @@ function WeekChip({ row }: { row: EventRow }) {
 // Day
 // ---------------------------------------------------------------------
 
-export function DayView({ rows, records = [] }: { rows: EventRow[]; records?: RecordNews[] }) {
+export function DayView({
+  rows,
+  records = [],
+  backHref,
+}: {
+  rows: EventRow[];
+  records?: RecordNews[];
+  /** The diary's own URL, so the board can bring the manager back to it. */
+  backHref?: string;
+}) {
   if (rows.length === 0) {
     return (
       <Panel>
@@ -515,7 +541,7 @@ export function DayView({ rows, records = [] }: { rows: EventRow[]; records?: Re
         return (
           <Link
             key={row.id}
-            href={`/events/${row.id}`}
+            href={boardHref(`/events/${row.id}`, backHref)}
             className={classes('dayrow', row.status === 'cancelled' && 'cancelled')}
           >
             <span className="w">
