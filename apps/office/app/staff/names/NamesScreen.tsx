@@ -24,7 +24,7 @@ export function profileHref(row: Pick<NameToReview, 'staff_id' | 'status'>): str
 }
 
 /**
- * /staff/names (ADR-0193): the office's list of names that are not yet the
+ * /staff/names (ADR-0194): the office's list of names that are not yet the
  * passport's, newest first. "Correct" opens the same dialog as the profile;
  * the name on the Home Office record, where a share-code check found one, is
  * beside it as a guide — never filled in for you.

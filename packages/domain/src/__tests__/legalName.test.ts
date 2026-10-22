@@ -76,7 +76,7 @@ describe('the generated pgTAP vectors', () => {
   });
 });
 
-describe('validateNameCorrection — the office puts a name right (ADR-0193)', () => {
+describe('validateNameCorrection — the office puts a name right (ADR-0194)', () => {
   const current = { first: 'Marc', last: 'M.' };
   const reason = 'Passport checked in the office';
 

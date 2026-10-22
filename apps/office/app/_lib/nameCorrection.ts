@@ -3,7 +3,7 @@ import { explainOfficeError } from './permissions';
 
 /**
  * "Correct" on a name — /staff/:id Overview, /onboarding/:id and the
- * /staff/names list (ADR-0193). Pure: the words for the database's refusals
+ * /staff/names list (ADR-0194). Pure: the words for the database's refusals
  * and for what happened, so the dialog and its tests read the same sentences.
  *
  * The rule is `validateNameCorrection()` in packages/domain, which

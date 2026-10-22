@@ -94,7 +94,7 @@ export function Overview({
   canEditGender?: boolean;
   /** ADR-0159: `staff.passport_country`; undefined when it could not be read. */
   passportCountry?: string | null;
-  /** ADR-0193: the name as two halves, for "Correct"; undefined when unread. */
+  /** ADR-0194: the name as two halves, for "Correct"; undefined when unread. */
   firstName?: string | null;
   lastName?: string | null;
   /** Any office login that may write (ADR-0159). */
@@ -144,7 +144,7 @@ export function Overview({
         <div className="kv">
           <span className="k">Name</span>
           <span>
-            {profile.display_name} {/* ADR-0193: the name as the passport prints it, in full. */}
+            {profile.display_name} {/* ADR-0194: the name as the passport prints it, in full. */}
             {typeof firstName === 'string' && typeof lastName === 'string' ? (
               <NameCorrection
                 staffId={profile.id}

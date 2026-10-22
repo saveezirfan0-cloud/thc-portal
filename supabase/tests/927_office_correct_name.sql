@@ -1,5 +1,5 @@
 -- =====================================================================
--- 926 · The office corrects a name to the passport's (ADR-0193)
+-- 927 · The office corrects a name to the passport's (ADR-0194)
 --   20261024100000_office_correct_name.sql
 --
 --   A. Shape: the two RPCs are authenticated-only definers; the removal

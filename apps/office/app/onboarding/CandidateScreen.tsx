@@ -674,7 +674,7 @@ function Facts({
       allowed={canCorrectDob && row.status !== 'removed'}
     />
   ) : null;
-  // ADR-0193: the name as the passport prints it, correctable here too.
+  // ADR-0194: the name as the passport prints it, correctable here too.
   facts.push(
     <span key="name">
       Name{' '}

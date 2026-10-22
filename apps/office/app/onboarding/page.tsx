@@ -1,7 +1,7 @@
 import { Suspense, cache } from 'react';
 import { OfficeShell } from '../_components/OfficeShell';
 import { staffUrlIsOffice } from '../_lib/staffUrl';
-import { ApplyFormLink, BoardSkeleton, OnboardingCrumbs } from './chrome';
+import { ApplyFormLink, BoardSkeleton, OnboardingCrumbs, ReminderEmailsLink } from './chrome';
 import { loadBoard } from './data';
 import { OnboardingBoard } from './OnboardingBoard';
 import { boardCounts } from './view-model';
@@ -54,7 +54,12 @@ export default function Page() {
           <Crumbs />
         </Suspense>
       }
-      actions={<ApplyFormLink url={url} />}
+      actions={
+        <>
+          <ReminderEmailsLink />
+          <ApplyFormLink url={url} />
+        </>
+      }
     >
       <Suspense fallback={<BoardSkeleton />}>
         <Board applyUrl={url} />

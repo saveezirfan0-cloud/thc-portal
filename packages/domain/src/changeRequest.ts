@@ -44,7 +44,7 @@ export const NAME_CHANGE_REFUSALS = [
   'last_required',
   'first_too_long',
   'last_too_long',
-  // ADR-0193: a name as printed on the passport (legalName.ts), the same
+  // ADR-0194: a name as printed on the passport (legalName.ts), the same
   // refusals `office_correct_name()` gives. `required` and `too_long` are
   // answered above, so only these two can reach here.
   'first_initial',

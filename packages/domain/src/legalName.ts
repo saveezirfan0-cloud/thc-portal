@@ -61,7 +61,7 @@ export function givenNames(first: string, middle: string): string {
 }
 
 // ---------------------------------------------------------------------
-// The office's correction of a name already on file (ADR-0193)
+// The office's correction of a name already on file (ADR-0194)
 // ---------------------------------------------------------------------
 
 /** The activity log's only account of why a name was changed. */

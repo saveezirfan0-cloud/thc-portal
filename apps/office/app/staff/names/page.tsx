@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * /staff/names — workers and candidates whose name is not yet the name the
- * passport prints (ADR-0193): an initial, symbols, or all lower or upper
+ * passport prints (ADR-0194): an initial, symbols, or all lower or upper
  * case. A static segment, so Next.js serves it ahead of `/staff/[id]`.
  */
 export default async function Page() {

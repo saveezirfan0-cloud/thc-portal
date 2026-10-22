@@ -5,7 +5,7 @@ import { supabaseConfigured } from '../data';
 
 /**
  * The list the office works through to bring names on file to the passport
- * (ADR-0193): `office_names_to_review()`, a definer with the admin check in
+ * (ADR-0194): `office_names_to_review()`, a definer with the admin check in
  * its own body, called through the manager's own session.
  */
 export interface NameToReview {

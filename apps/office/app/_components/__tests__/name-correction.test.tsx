@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * "Correct" on a name (ADR-0193) — /staff/:id, /onboarding/:id and
+ * "Correct" on a name (ADR-0194) — /staff/:id, /onboarding/:id and
  * /staff/names.
  *
  *   · only an owner or a manager is offered it (`allowed`, from

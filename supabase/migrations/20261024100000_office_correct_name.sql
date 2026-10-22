@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261024100000 · names already on file are corrected to the
---                             passport (ADR-0193, after ADR-0189)
+--                             passport (ADR-0194, after ADR-0189)
 --
 -- ADR-0189 stopped a new candidate registering as "Marc M.". The ones
 -- already on file stay, and the office had no way to change a name: only a
@@ -37,7 +37,7 @@
 --       initial back. Refusals first_initial | first_characters |
 --       last_initial | last_characters, after the length checks.
 --
--- Forward-only. pgTAP 926.
+-- Forward-only. pgTAP 927.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -133,7 +133,7 @@ begin
 end $$;
 
 comment on function public.office_correct_name(uuid, text, text, text) is
-  'ADR-0193: an owner or manager corrects a worker''s or candidate''s name to what the passport prints (office_can(''identity''); a viewer is read_only, a scheduler not_permitted). Refuses a removed profile (staff_removed), name_fault() on either part (first_|last_ + required|initial|characters|too_long), the name already on file (unchanged) and a reason under 10 or over 300 characters. Writes staff.first_name / last_name, audits staff.name_corrected with the reason and actorName, and sends payroll RC4. No right-to-work re-check (Q13).';
+  'ADR-0194: an owner or manager corrects a worker''s or candidate''s name to what the passport prints (office_can(''identity''); a viewer is read_only, a scheduler not_permitted). Refuses a removed profile (staff_removed), name_fault() on either part (first_|last_ + required|initial|characters|too_long), the name already on file (unchanged) and a reason under 10 or over 300 characters. Writes staff.first_name / last_name, audits staff.name_corrected with the reason and actorName, and sends payroll RC4. No right-to-work re-check (Q13).';
 
 revoke execute on function public.office_correct_name(uuid, text, text, text) from public, anon;
 grant  execute on function public.office_correct_name(uuid, text, text, text) to authenticated;
@@ -189,7 +189,7 @@ begin
 end $$;
 
 comment on function public.office_names_to_review() is
-  'ADR-0193: live workers and candidates whose name is an initial, has a symbol, or is all lower or all upper case (reasons: initial | characters | lower_case | upper_case), newest first, with the name on the Home Office record from the latest share-code check where there is one. Any office login; a worker, a client and anon are refused.';
+  'ADR-0194: live workers and candidates whose name is an initial, has a symbol, or is all lower or all upper case (reasons: initial | characters | lower_case | upper_case), newest first, with the name on the Home Office record from the latest share-code check where there is one. Any office login; a worker, a client and anon are refused.';
 
 revoke execute on function public.office_names_to_review() from public, anon;
 grant  execute on function public.office_names_to_review() to authenticated;
@@ -270,7 +270,7 @@ begin
     if v_last  is null then raise exception 'last_required'  using errcode = 'P0001'; end if;
     if char_length(v_first) > 100 then raise exception 'first_too_long' using errcode = 'P0001'; end if;
     if char_length(v_last)  > 100 then raise exception 'last_too_long'  using errcode = 'P0001'; end if;
-    -- 20261024100000 (ADR-0193): a name as it is printed on the passport, the
+    -- 20261024100000 (ADR-0194): a name as it is printed on the passport, the
     -- rule /apply keeps (name_fault(), nameFault() in packages/domain). Only
     -- 'initial' and 'characters' can reach here: required and too_long are
     -- answered above.
@@ -393,7 +393,7 @@ begin
 end $$;
 
 comment on function public.staff_removed_purge_name_audit() is
-  '§1.7 GDPR removal for office_correct_name() (ADR-0193): overwrites the free-text reason on the worker''s staff.name_corrected audit rows and anonymises the RC4 outbox copy (names -> "Deleted account #id", unsent rows failed gdpr_removed). Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for office_correct_name() (ADR-0194): overwrites the free-text reason on the worker''s staff.name_corrected audit rows and anonymises the RC4 outbox copy (names -> "Deleted account #id", unsent rows failed gdpr_removed). Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_purge_name_audit() from public, anon, authenticated;

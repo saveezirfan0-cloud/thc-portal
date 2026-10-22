@@ -130,7 +130,7 @@ export const CHANGE_REASONS: Record<string, string> = {
   last_required: 'Enter your last name.',
   first_too_long: 'Keep your first name to 100 characters.',
   last_too_long: 'Keep your last name to 100 characters.',
-  // ADR-0193: a name as it is printed on the passport (legalName.ts).
+  // ADR-0194: a name as it is printed on the passport (legalName.ts).
   first_initial:
     'Enter your first and middle names in full, as they appear on your passport — not initials or abbreviations.',
   last_initial:

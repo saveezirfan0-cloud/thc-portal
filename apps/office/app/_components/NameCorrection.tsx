@@ -12,7 +12,7 @@ import {
 import { correctName } from '../_lib/nameCorrectionActions';
 
 /**
- * "Correct" on a name (ADR-0193) — the /staff/:id Overview "Contacts &
+ * "Correct" on a name (ADR-0194) — the /staff/:id Overview "Contacts &
  * identity" card, the /onboarding/:id Application card and each row of
  * /staff/names. Owners and managers only: the caller passes `allowed` from
  * `officeCan(role, 'identity')`, and `office_correct_name()` refuses

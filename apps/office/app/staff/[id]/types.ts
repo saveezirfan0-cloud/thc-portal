@@ -334,7 +334,7 @@ export interface ProfileData {
    * not read.
    */
   passportCountry?: string | null;
-  /** ADR-0193: `staff.first_name` (first and middle names) and `last_name`, undefined when unread. */
+  /** ADR-0194: `staff.first_name` (first and middle names) and `last_name`, undefined when unread. */
   firstName?: string | null;
   lastName?: string | null;
   /**

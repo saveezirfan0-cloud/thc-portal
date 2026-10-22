@@ -8,7 +8,7 @@ import { NAME_CORRECTION_NOTE, nameCorrectionMessage } from './nameCorrection';
 import type { NameCorrectionResult } from './nameCorrection';
 
 /**
- * The office's name correction (ADR-0193).
+ * The office's name correction (ADR-0194).
  *
  * `office_correct_name()` is a definer with every check in its own body —
  * admin, not a viewer (read_only), office_can('identity') so owners and

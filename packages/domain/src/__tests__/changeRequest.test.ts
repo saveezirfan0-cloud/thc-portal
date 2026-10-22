@@ -112,7 +112,7 @@ describe('validateNameChange', () => {
     else expect(result).toEqual({ ok: true, ...c.expect });
   });
 
-  // ADR-0193: a name request takes the passport rule /apply keeps, so
+  // ADR-0194: a name request takes the passport rule /apply keeps, so
   // "Request a change" cannot put an initial back.
   it.each([
     [{ first: 'Maria', last: 'L.' }, 'last_initial'],
