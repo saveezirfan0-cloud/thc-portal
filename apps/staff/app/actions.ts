@@ -120,8 +120,8 @@ export async function markReady(bookingId: string): Promise<ActionResult> {
   if ((data as Rpc)?.['reason'] === 'deadline_passed')
     return {
       refusal: {
-        title: 'The 12:00 deadline has passed',
-        body: '“I’m ready” closes at 12:00 (UK time) the day before the shift. Check your notifications, or contact the office.',
+        title: 'The deadline has passed',
+        body: '“I’m ready” closes at 12:00 (UK time) the day before the shift — or, if you confirmed after that, an hour after you confirmed. Check your notifications, or contact the office.',
       },
     };
   return (data as Rpc)?.['ok'] === true

@@ -9,8 +9,10 @@ import {
   formatDateIn,
   formatDistance,
   formatTimeIn,
+  lateReadyApplies,
   openSlots,
   readyDeadlinePassed,
+  readyDueAt,
   sectionHours,
 } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
@@ -400,20 +402,38 @@ function ShiftCardView({
 
       {card === 'needs_ready' ? (
         <>
-          <Alert tone="amber">
-            Confirm by <b>{READY_DEADLINE_UK} (UK time)</b> the day before — or you’ll be removed
-            from this shift.
-          </Alert>
+          {lateReadyApplies(booking.confirmedAt, booking.startsAt) ? (
+            // ADR-0196: confirmed after the noon deadline — the hour from
+            // confirming, written in the worker's own clock.
+            <Alert tone="amber">
+              Press “I’m ready” by{' '}
+              <b>
+                {formatTimeIn(readyDueAt(booking.confirmedAt, booking.startsAt), UK_ZONE, format)}{' '}
+                (UK time)
+              </b>{' '}
+              — an hour after you confirmed — or you’ll be removed from this shift.
+            </Alert>
+          ) : (
+            <Alert tone="amber">
+              Confirm by <b>{READY_DEADLINE_UK} (UK time)</b> the day before — or you’ll be removed
+              from this shift.
+            </Alert>
+          )}
           {/* Stage 2, `markReady` — the one action "I'm ready" has. Past
-              12:00 the database answers `deadline_passed` (ADR-0034 §3), so
-              the button says so rather than offering a press that can only
-              fail. The moment is `readyDeadlinePassed()` from the domain. */}
+              the deadline the database answers `deadline_passed`
+              (ADR-0034 §3), so the button says so rather than offering a
+              press that can only fail. The moment is `readyDeadlinePassed()`
+              from the domain: 12:00, or a late confirmer's hour. */}
           <ActionButton
             label="I’m ready for tomorrow"
             tone="primary"
             block
-            disabled={readyDeadlinePassed(booking.startsAt, now)}
-            disabledLabel={`The ${READY_DEADLINE_UK} deadline has passed`}
+            disabled={readyDeadlinePassed(booking.startsAt, now, booking.confirmedAt)}
+            disabledLabel={
+              lateReadyApplies(booking.confirmedAt, booking.startsAt)
+                ? 'Your hour to confirm has passed'
+                : `The ${READY_DEADLINE_UK} deadline has passed`
+            }
             action={markReady.bind(null, booking.bookingId)}
           />
         </>
