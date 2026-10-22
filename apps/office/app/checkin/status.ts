@@ -97,7 +97,7 @@ export function needsAttention(row: MonitorRow): boolean {
   );
 }
 
-/** What the monitor's Remind button can send (ADR-0187). */
+/** What the monitor's Remind button can send (ADR-0188). */
 export type NudgeKind = 'check-in' | 'check-out' | 'still-on-shift';
 
 /** The window either side of a start / end the register's N9 uses, and the worker's check-in opens by. */

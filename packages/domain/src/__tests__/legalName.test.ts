@@ -7,8 +7,8 @@ import { LEGAL_NAME_MAX, NAME_FAULTS, givenNames, nameFault } from '../legalName
 import vectors from '../legalName.vectors.json' with { type: 'json' };
 
 /**
- * ADR-0187: a name as it is printed on the passport. nameFault() here and
- * name_fault() in 20261023130000_legal_names_in_full.sql are the same rule,
+ * ADR-0189: a name as it is printed on the passport. nameFault() here and
+ * name_fault() in 20261023130100_legal_names_in_full.sql are the same rule,
  * and both are held to legalName.vectors.json — here, and in pgTAP 120
  * through legal_name_vectors.psql.
  */

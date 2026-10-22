@@ -290,9 +290,9 @@ describe('validate (§2.1, §1.7)', () => {
     expect(validate(values({ lastName: '' })).lastName).toBe('Enter your surname');
   });
 
-  // ADR-0187: the name as printed on the passport. "Marc M." is what the
+  // ADR-0189: the name as printed on the passport. "Marc M." is what the
   // office was reading beside a photo; nothing downstream can match it.
-  describe('names as on the passport (ADR-0187)', () => {
+  describe('names as on the passport (ADR-0189)', () => {
     it('refuses a surname that is an initial, with or without the full stop', () => {
       const surname = 'Enter your surname in full, as it appears on your passport — not an initial';
       expect(validate(values({ lastName: 'M.' })).lastName).toBe(surname);

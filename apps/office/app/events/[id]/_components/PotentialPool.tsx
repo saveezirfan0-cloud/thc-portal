@@ -14,7 +14,7 @@ import {
 } from '../board-model';
 import { inviteWorker } from '../actions';
 import { ApplicationActions } from './ApplicationActions';
-import { ProfileLink } from './Person';
+import { PersonPhone, ProfileLink } from './Person';
 import { StaffRoles } from './StaffRoles';
 
 /** Rows drawn before "Show all" — a role's pool can hold most of the workforce. */
@@ -222,6 +222,7 @@ function PoolRow({
           <StaffRoles name={entry.name} roles={entry.roles} roleName={roleName} />
         </div>
       </div>
+      <PersonPhone phone={entry.phone} />
       {entry.qualified ? (
         <Pill tone="cyan">
           Qualified — {clientName} · {roleName}

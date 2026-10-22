@@ -19,7 +19,6 @@ const rowsFor = vi.hoisted(() => ({
   weeks: [] as unknown[],
   staff: [] as unknown[],
   bookings: [] as unknown[],
-  staffError: false,
   rpc: [] as unknown[][],
 }));
 
@@ -32,14 +31,12 @@ function builder(table: string) {
       : table === 'checkin_monitor_v'
         ? { data: rowsFor.monitor, error: null, count: null }
         : table === 'staff'
-          ? rowsFor.staffError
-            ? { data: null, error: { message: 'denied' }, count: null }
-            : { data: rowsFor.staff, error: null, count: null }
+          ? { data: rowsFor.staff, error: null, count: null }
           : table === 'bookings'
             ? { data: rowsFor.bookings, error: null, count: null }
             : { data: [], error: null, count: null };
   const b: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'in', 'is', 'lt', 'gt', 'order', 'range', 'limit']) {
+  for (const m of ['select', 'eq', 'lt', 'gt', 'in', 'is', 'order', 'range', 'limit']) {
     b[m] = (...args: unknown[]) => {
       rec.calls.push([m, ...args]);
       return b;
@@ -84,7 +81,6 @@ beforeEach(() => {
   rowsFor.weeks = [];
   rowsFor.staff = [];
   rowsFor.bookings = [];
-  rowsFor.staffError = false;
   rowsFor.rpc = [];
   process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://supabase.test';
   process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = 'anon';
@@ -242,48 +238,68 @@ describe('the late sign-outs to verify (ADR-0184)', () => {
   });
 });
 
-describe('the board links each worker and carries their phone', () => {
-  const monitorRow = (staffId: string) => ({
-    booking_id: `b-${staffId}`,
+describe('the worker phone on the monitor rows', () => {
+  const monitorRow = (bookingId: string, staffId: string) => ({
+    booking_id: bookingId,
     staff_id: staffId,
-    status: 'on_shift',
+    event_id: 'e1',
+    starts_at: '2026-10-21T21:00:00Z',
+    ends_at: '2026-10-22T01:00:00Z',
+    status: 'not_checked_in',
   });
 
-  it('puts the phone on the monitor rows, null where there is none or the worker is removed', async () => {
-    rowsFor.monitor = [monitorRow('s1'), monitorRow('s2'), monitorRow('s3')];
-    // A removed worker is filtered out of the read (removed_at is null), so s3 is absent.
-    rowsFor.staff = [
-      { id: 's1', phone: '+447519603667' },
-      { id: 's2', phone: null },
+  it('reads it off staff, never a removed worker number, onto the live rows', async () => {
+    rowsFor.monitor = [monitorRow('b1', 's1'), monitorRow('b2', 's2')];
+    rowsFor.staff = [{ id: 's1', phone: '+447700900123' }];
+    const data = await loadMonitor();
+    const read = recorded.find((r) => r.table === 'staff')!;
+    expect(read.calls).toContainEqual(['select', 'id, phone']);
+    expect(read.calls).toContainEqual(['is', 'removed_at', null]);
+    expect(data.rows.map((r) => r.phone)).toEqual(['+447700900123', null]);
+  });
+
+  it('carries it on the violation log from the staff embed, null for a removed worker', async () => {
+    rowsFor.violations = [
+      {
+        ...violationRow(1),
+        staff: { first_name: 'Omar', last_name: 'S.', phone: '+447700900124' },
+      },
+      {
+        ...violationRow(2),
+        staff: {
+          first_name: 'X',
+          last_name: 'Y',
+          phone: '+447700900125',
+          removed_at: '2026-01-01',
+        },
+      },
     ];
     const data = await loadMonitor();
-    const staffRead = recorded.find((r) => r.table === 'staff')!;
-    expect(staffRead.calls).toContainEqual(['is', 'removed_at', null]);
-    expect(data.rows.map((r) => r.phone)).toEqual(['+447519603667', null, null]);
+    expect(data.violations.map((v) => v.phone)).toEqual(['+447700900124', null]);
   });
 
-  it('leaves the phone unread, not "none", when the read fails', async () => {
-    rowsFor.monitor = [monitorRow('s1')];
-    rowsFor.staffError = true;
-    const data = await loadMonitor();
-    expect(data.rows[0]!.phone).toBeUndefined();
-    expect(data.rows[0]!.staffId).toBe('s1');
-  });
-
-  it('reads the worker id and phone on the violation log', async () => {
-    rowsFor.violations = [{ ...violationRow(1), staff_id: 's7' }];
-    rowsFor.staff = [{ id: 's7', phone: '+447512206030' }];
-    const data = await loadMonitor();
-    expect(data.violations[0]).toMatchObject({ staffId: 's7', phone: '+447512206030' });
-  });
-
-  it('finds the worker of a late sign-out through its booking', async () => {
-    rowsFor.late = [
-      { booking_id: 'b9', staff_name: 'Grace L.', check_out_at: '2026-10-20T16:15:00Z' },
-    ];
+  it('resolves the late sign-out list through its booking, and leaves the phone off if unreadable', async () => {
+    rowsFor.late = [{ booking_id: 'b9', starts_at: 'x', ends_at: 'y', check_out_at: 'z' }];
     rowsFor.bookings = [{ id: 'b9', staff_id: 's9' }];
-    rowsFor.staff = [{ id: 's9', phone: '+447700900123' }];
+    rowsFor.staff = [{ id: 's9', phone: '+447700900126' }];
     const data = await loadMonitor();
-    expect(data.lateCheckOuts[0]).toMatchObject({ staffId: 's9', phone: '+447700900123' });
+    expect(data.lateCheckOuts[0]!.phone).toBe('+447700900126');
+  });
+});
+
+describe('the worker id the names link to (§9.6)', () => {
+  it('carries it on the monitor rows and the violation log', async () => {
+    rowsFor.monitor = [{ booking_id: 'b1', staff_id: 's1', status: 'on_shift' }];
+    rowsFor.violations = [{ ...violationRow(1), staff_id: 's7' }];
+    const data = await loadMonitor();
+    expect(data.rows[0]!.staffId).toBe('s1');
+    expect(data.violations[0]!.staffId).toBe('s7');
+  });
+
+  it('finds the late sign-out worker through its booking', async () => {
+    rowsFor.late = [{ booking_id: 'b9', starts_at: 'x', ends_at: 'y', check_out_at: 'z' }];
+    rowsFor.bookings = [{ id: 'b9', staff_id: 's9' }];
+    const data = await loadMonitor();
+    expect(data.lateCheckOuts[0]!.staffId).toBe('s9');
   });
 });

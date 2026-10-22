@@ -20,8 +20,9 @@ import { createClient } from '@thc/db/browser';
 import { type LogQuery, logQueryHref, logTime } from './log';
 import { MonitorTable, WeeklyLimitFlag } from './MonitorTable';
 import { useViewerZone } from './useViewerZone';
-import { StaffName, StaffPhone } from './StaffContact';
 import { ResolveModal } from './ResolveModal';
+import { StaffName } from './StaffName';
+import { StaffPhone } from './StaffPhone';
 import { VerifyLateModal } from './VerifyLateModal';
 import { nudgeCheckInOut } from './actions';
 import {
@@ -68,7 +69,7 @@ export function MonitorScreen({
   const [eventFilter, setEventFilter] = useState('all');
   const [open, setOpen] = useState<ViolationRow | null>(null);
   const [verifying, setVerifying] = useState<LateCheckOutTarget | null>(null);
-  // ADR-0187: the booking whose reminder is on its way, and refusals by row.
+  // ADR-0188: the booking whose reminder is on its way, and refusals by row.
   const [nudging, setNudging] = useState<string | null>(null);
   const [nudgeErrors, setNudgeErrors] = useState<Record<string, string>>({});
   const showResolved = log.showResolved;

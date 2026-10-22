@@ -20,8 +20,8 @@ export interface MonitorRow {
   /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
   photoUrl: string | null;
   /**
-   * The worker's mobile, a `tel:` link under the name. Null for a removed
-   * worker (§1.7) or none on record; absent when the numbers could not be read.
+   * The worker's mobile, E.164 (phones.ts): null when none is on record or
+   * the worker was removed (§1.7); absent when the numbers could not be read.
    */
   phone?: string | null;
   /** The ROLE SECTION's window (RULE-18), never the event's. */
@@ -70,6 +70,10 @@ export interface ViolationRow {
   staffName: string;
   /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
   photoUrl: string | null;
+  /**
+   * The worker's mobile, E.164 (phones.ts): null when none is on record or
+   * the worker was removed (§1.7); absent when the numbers could not be read.
+   */
   phone?: string | null;
   eventTitle: string;
   venueName: string;
@@ -102,10 +106,14 @@ export interface ViolationRow {
  */
 export interface LateCheckOutRow {
   bookingId: string;
-  /** Links the name to /staff/:id; read from the booking, absent if that read failed. */
+  /** Read from the booking (phones.ts); absent if that read failed. */
   staffId?: string;
   staffName: string;
   photoUrl: string | null;
+  /**
+   * The worker's mobile, E.164 (phones.ts): null when none is on record or
+   * the worker was removed (§1.7); absent when the numbers could not be read.
+   */
   phone?: string | null;
   eventTitle: string;
   venueName: string;

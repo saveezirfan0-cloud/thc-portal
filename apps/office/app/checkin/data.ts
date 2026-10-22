@@ -2,6 +2,7 @@ import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../_lib/photos';
+import { loadBookingStaff, loadPhones } from './phones';
 import { type LogQuery, VIOLATION_PAGE_SIZE, flaggedAs, pageRange, ukDayBounds } from './log';
 import type {
   LateCheckOutRow,
@@ -88,7 +89,7 @@ type SessionClient = ReturnType<typeof createClient>;
 const VIOLATION_COLUMNS = `id, booking_id, type, detected_at, minutes_late, resolved, resolved_at,
   resolution_note, actual_finish_at,
   staff_id,
-  staff:staff_id ( first_name, last_name, photo_path, removed_at, employee_id ),
+  staff:staff_id ( first_name, last_name, photo_path, phone, removed_at, employee_id ),
   resolver:resolved_by ( full_name ),
   booking:booking_id (
     shift:shift_id (
@@ -162,6 +163,8 @@ async function queryViolations(
         ? `Deleted account #${staff.employee_id}`
         : `${staff?.first_name ?? ''} ${staff?.last_name ?? ''}`.trim(),
       photoPath: staff?.removed_at ? null : (staff?.photo_path ?? null),
+      // §1.7 retires a removed worker's number.
+      phone: staff?.removed_at ? null : (staff?.phone ?? null),
       eventTitle: shift?.event?.title ?? '',
       // §9.5: the server composes the window's "Flagged as" line.
       flaggedAs: flaggedAs(v.type as ViolationType, shift?.event?.title ?? ''),
@@ -185,33 +188,6 @@ async function queryViolations(
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return { rows, hasMore, error: null };
-}
-
-/**
- * The workers' mobiles, so the office can ring one from the board. Read off
- * `staff` through admin_all, as /staff does (staff/data.ts): not removed
- * rows only — §1.7 retires a removed worker's number. A failed read returns
- * null, which leaves the line off rather than claiming there is no number.
- */
-async function readPhones(
-  supabase: SessionClient,
-  staffIds: readonly (string | undefined)[],
-): Promise<Map<string, string | null> | null> {
-  const ids = [...new Set(staffIds.filter((id): id is string => Boolean(id)))];
-  const phones = new Map<string, string | null>();
-  // Chunked so the id list stays well inside a URL.
-  for (let i = 0; i < ids.length; i += 100) {
-    const { data, error } = await supabase
-      .from('staff')
-      .select('id, phone')
-      .in('id', ids.slice(i, i + 100))
-      .is('removed_at', null);
-    if (error) return null;
-    for (const row of (data ?? []) as unknown as { id: string; phone: string | null }[]) {
-      phones.set(row.id, row.phone ?? null);
-    }
-  }
-  return phones;
 }
 
 /** Swap each row's storage path for its signed URL (or null → initials). */
@@ -314,6 +290,8 @@ export async function loadMonitor(
     lateCheckOutVerifiedAt: (r.late_check_out_verified_at as string | null) ?? null,
     lateCheckOutVerifiedByName: (r.late_check_out_verified_by_name as string | null) ?? null,
     lateCheckOutNote: (r.late_check_out_note as string | null) ?? null,
+    // Read below, off `staff` (phones.ts); undefined until then, and if unreadable.
+    phone: undefined as string | null | undefined,
     // The week against the cap is read below, for the late rows only.
     weekHours: null as number | null,
     weekCapHours: null as number | null,
@@ -355,6 +333,24 @@ export async function loadMonitor(
     }
   }
 
+  // The phone beside each name (phones.ts): today's rows carry a staff id,
+  // the late sign-out list only a booking, so it is resolved to one first.
+  // A failed read leaves the phone off the rows, never the monitor.
+  const bookingStaff = await loadBookingStaff(
+    supabase,
+    lateRows.map((r) => r.bookingId),
+  );
+  const phones = await loadPhones(supabase, [
+    ...unsigned.map((r) => r.staffId),
+    ...(bookingStaff?.values() ?? []),
+  ]);
+  for (const row of unsigned) row.phone = phones?.get(row.staffId);
+  for (const row of lateRows) {
+    const staffId = bookingStaff?.get(row.bookingId);
+    row.staffId = staffId;
+    row.phone = phones && staffId ? phones.get(staffId) : undefined;
+  }
+
   // `photo_path` is a key in the private `photos` bucket, not a URL — the
   // browser cannot fetch it. Both tables' paths are signed in one batch.
   const urls = await signStaffPhotos([
@@ -363,38 +359,9 @@ export async function loadMonitor(
     ...lateRows.map((r) => r.photoPath),
   ]);
 
-  // The late list comes from an RPC that names no worker id: the booking does.
-  const lateStaff = new Map<string, string>();
-  if (lateRows.length > 0) {
-    const { data } = await supabase
-      .from('bookings')
-      .select('id, staff_id')
-      .in('id', [...new Set(lateRows.map((r) => r.bookingId))]);
-    for (const b of (data ?? []) as unknown as { id: string; staff_id: string }[]) {
-      lateStaff.set(b.id, b.staff_id);
-    }
-  }
-  const phones = await readPhones(supabase, [
-    ...unsigned.map((r) => r.staffId),
-    ...violations.rows.map((v) => v.staffId),
-    ...lateStaff.values(),
-  ]);
-  // Null where the worker is removed or has none; undefined if the read failed.
-  const phoneOf = (staffId: string | undefined) =>
-    phones && staffId ? (phones.get(staffId) ?? null) : undefined;
-
-  const rows: MonitorRow[] = withUrls(unsigned, urls).map((r) => ({
-    ...r,
-    phone: phoneOf(r.staffId),
-  }));
-  const violationRows: ViolationRow[] = withUrls(violations.rows, urls).map((v) => ({
-    ...v,
-    phone: phoneOf(v.staffId),
-  }));
-  const lateCheckOuts: LateCheckOutRow[] = withUrls(lateRows, urls).map((r) => {
-    const staffId = lateStaff.get(r.bookingId);
-    return { ...r, staffId, phone: phoneOf(staffId) };
-  });
+  const rows: MonitorRow[] = withUrls(unsigned, urls);
+  const violationRows: ViolationRow[] = withUrls(violations.rows, urls);
+  const lateCheckOuts: LateCheckOutRow[] = withUrls(lateRows, urls);
 
   // A failed violation read no longer passes silently as "No violations
   // logged": the board still renders, with the reason above it.
