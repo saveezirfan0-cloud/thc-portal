@@ -286,3 +286,20 @@ describe('the worker phone on the monitor rows', () => {
     expect(data.lateCheckOuts[0]!.phone).toBe('+447700900126');
   });
 });
+
+describe('the worker id the names link to (§9.6)', () => {
+  it('carries it on the monitor rows and the violation log', async () => {
+    rowsFor.monitor = [{ booking_id: 'b1', staff_id: 's1', status: 'on_shift' }];
+    rowsFor.violations = [{ ...violationRow(1), staff_id: 's7' }];
+    const data = await loadMonitor();
+    expect(data.rows[0]!.staffId).toBe('s1');
+    expect(data.violations[0]!.staffId).toBe('s7');
+  });
+
+  it('finds the late sign-out worker through its booking', async () => {
+    rowsFor.late = [{ booking_id: 'b9', starts_at: 'x', ends_at: 'y', check_out_at: 'z' }];
+    rowsFor.bookings = [{ id: 'b9', staff_id: 's9' }];
+    const data = await loadMonitor();
+    expect(data.lateCheckOuts[0]!.staffId).toBe('s9');
+  });
+});

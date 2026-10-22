@@ -21,6 +21,7 @@ import { type LogQuery, logQueryHref, logTime } from './log';
 import { MonitorTable, WeeklyLimitFlag } from './MonitorTable';
 import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
+import { StaffName } from './StaffName';
 import { StaffPhone } from './StaffPhone';
 import { VerifyLateModal } from './VerifyLateModal';
 import { nudgeCheckInOut } from './actions';
@@ -227,7 +228,9 @@ export function MonitorScreen({
                       <div className="person">
                         <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
                         <div>
-                          <div className="n">{v.staffName}</div>
+                          <div className="n">
+                            <StaffName staffId={v.staffId} name={v.staffName} />
+                          </div>
                           <StaffPhone phone={v.phone} />
                         </div>
                       </div>
@@ -324,7 +327,9 @@ function LateCheckOutPanel({
                   <div className="person">
                     <Avatar name={r.staffName} src={r.photoUrl ?? undefined} size="sm" />
                     <div>
-                      <div className="n">{r.staffName}</div>
+                      <div className="n">
+                        <StaffName staffId={r.staffId} name={r.staffName} />
+                      </div>
                       <StaffPhone phone={r.phone} />
                     </div>
                   </div>
