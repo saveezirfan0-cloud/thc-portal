@@ -51,7 +51,7 @@ insert into events (id, client_id, venue_id, venue_name, venue_address, venue_lo
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour) values
   (:'tmrw',    :'evt', :'role_id', '2027-02-12 17:00+00', '2027-02-12 23:00+00', 9, 0, 30, 15, 1),
-  (:'early',   :'evt', :'role_id', '2027-02-12 00:30+00', '2027-02-12 04:00+00', 9, 0, 30, 15, 1),
+  (:'early',   :'evt', :'role_id', '2027-02-12 00:30+00', '2027-02-12 05:00+00', 9, 0, 30, 15, 1),
   (:'s_ahead', :'evt', :'role_id', now() + interval '3 days', now() + interval '3 days 4 hours', 9, 0, 30, 15, 1);
 
 insert into staff (id, first_name, last_name, email, phone, dob, status) values
