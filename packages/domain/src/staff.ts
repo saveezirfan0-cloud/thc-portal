@@ -296,33 +296,6 @@ export function readyCutoffApplies(confirmedAt: Date | null, startsAt: Date): bo
   return confirmedAt !== null && confirmedAt.getTime() < readyDeadline(startsAt).getTime();
 }
 
-/**
- * What the app says to a worker who confirmed after the 12:00 deadline and so
- * is never asked for "I'm ready". Without it the shift screen is silent and
- * the worker, who was told of the button, reports it missing.
- */
-export const LATE_CONFIRM_NOTE =
-  'You confirmed after the 12:00 deadline, so there’s no “I’m ready” step for this shift. You’re all set — you’ll be asked to confirm on the day.';
-
-/**
- * Should the "no I'm ready needed" note show (RULE-08)? A live confirmed
- * booking, confirmed at or after the day-before deadline, whose shift has
- * not started its UK day yet — from the day itself the Today card takes over.
- */
-export function readyNotNeeded(
-  booking: Pick<StaffBooking, 'status' | 'confirmedAt' | 'startsAt' | 'reconfirmRequired'>,
-  now: Date = new Date(),
-): boolean {
-  return (
-    booking.status === 'confirmed' &&
-    !booking.reconfirmRequired &&
-    booking.confirmedAt !== null &&
-    !readyCutoffApplies(booking.confirmedAt, booking.startsAt) &&
-    civilDate(booking.startsAt) !== civilDate(now) &&
-    now.getTime() < booking.startsAt.getTime()
-  );
-}
-
 /** True once the 12:05 cutoff would have released the booking (§3.5, N6b). */
 export function readyDeadlinePassed(startsAt: Date, now: Date = new Date()): boolean {
   return now.getTime() >= readyDeadline(startsAt).getTime();

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { Alert, EmptyState, Pill } from '@thc/ui';
 import {
-  LATE_CONFIRM_NOTE,
   READY_DEADLINE_UK,
   STATIC_SCREEN_COPY,
   UK_ZONE,
@@ -12,7 +11,6 @@ import {
   formatTimeIn,
   openSlots,
   readyDeadlinePassed,
-  readyNotNeeded,
   sectionHours,
 } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
@@ -419,10 +417,6 @@ function ShiftCardView({
             action={markReady.bind(null, booking.bookingId)}
           />
         </>
-      ) : null}
-
-      {card === 'confirmed' && readyNotNeeded(booking, now) ? (
-        <p className="m">{LATE_CONFIRM_NOTE}</p>
       ) : null}
 
       {card === 'today' ? <TodayActions booking={booking} now={now} /> : null}
