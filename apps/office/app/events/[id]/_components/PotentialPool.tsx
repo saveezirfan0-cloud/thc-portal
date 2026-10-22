@@ -62,7 +62,7 @@ export function PotentialPool({
 }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<PoolFilter>('all');
-  const [sort, setSort] = useState<PoolSort>('score');
+  const [sort, setSort] = useState<PoolSort>('applied');
   const [showAll, setShowAll] = useState(false);
 
   const shown = useMemo(() => queryPool(entries, { q, filter, sort }), [entries, q, filter, sort]);
@@ -99,8 +99,8 @@ export function PotentialPool({
             value={sort}
             onChange={(event) => setSort(event.target.value as PoolSort)}
           >
-            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="applied">Sort: applied first</option>
+            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="name">Sort: name</option>
           </select>
         </span>
