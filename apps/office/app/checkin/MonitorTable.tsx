@@ -13,6 +13,7 @@ import {
   statusTone,
 } from './status';
 import { SendPush } from '../staff/SendPush';
+import { StaffPhone } from './StaffPhone';
 import type { MonitorRow } from './types';
 import { useNow } from './useNow';
 import { useViewerZone } from './useViewerZone';
@@ -109,6 +110,7 @@ export function MonitorTable({
                     <div>
                       <div className="n">{row.staffName}</div>
                       <div className="s">{row.roleName}</div>
+                      <StaffPhone phone={row.phone} />
                     </div>
                   </div>
                 </td>
