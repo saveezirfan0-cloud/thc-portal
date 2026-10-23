@@ -9,6 +9,10 @@ begin;
 select plan(7);
 \ir _shared/fixtures.psql
 
+-- ADR-0205's default uniform message would ride every booking here too; its own
+-- file (936) covers it, so it is blank for these badge-only counts.
+update settings set value = '""'::jsonb where key = 'default_shift_message';
+
 \set ev_on   '93400000-0000-4000-8000-000000000001'
 \set ev_off  '93400000-0000-4000-8000-000000000002'
 \set sec_on  '93410000-0000-4000-8000-000000000001'
