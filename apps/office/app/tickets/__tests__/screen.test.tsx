@@ -156,6 +156,65 @@ describe('<TicketScreen> — /tickets/:id', () => {
     expect(html).toContain('— Unassigned —');
   });
 
+  it('shows the screenshots and recordings sent with it (ADR-0204)', () => {
+    const html = renderToStaticMarkup(
+      <TicketScreen
+        data={data}
+        canWrite
+        files={[
+          {
+            id: 'f1',
+            kind: 'screenshot',
+            mime: 'image/png',
+            bytes: 120000,
+            file_name: 'Screenshot 1.png',
+            created_at: '2026-10-22T19:24:30Z',
+            url: 'https://files.example/shot.png?token=abc',
+          },
+          {
+            id: 'f2',
+            kind: 'recording',
+            mime: 'video/webm',
+            bytes: 9000000,
+            file_name: 'Recording.webm',
+            created_at: '2026-10-22T19:24:31Z',
+            url: 'https://files.example/rec.webm?token=def',
+          },
+          {
+            id: 'f3',
+            kind: 'video',
+            mime: 'video/mp4',
+            bytes: 2000000,
+            file_name: null,
+            created_at: '2026-10-22T19:24:32Z',
+            url: null,
+          },
+        ]}
+      />,
+    );
+    expect(html).toContain('>Screenshots and recordings</h3>');
+    expect(html).toContain('<img src="https://files.example/shot.png?token=abc"');
+    expect(html).toContain('<video src="https://files.example/rec.webm?token=def" controls=""');
+    expect(html).toContain('117 KB');
+    expect(html).toContain('8.6 MB');
+    expect(html).toContain('could not be linked just now');
+  });
+
+  it('draws no files panel when none were sent', () => {
+    const html = renderToStaticMarkup(<TicketScreen data={data} canWrite />);
+    expect(html).not.toContain('Screenshots and recordings');
+  });
+
+  it('links the full address of the page it was sent from', () => {
+    const html = renderToStaticMarkup(
+      <TicketScreen
+        data={{ ...data, ticket: { ...TICKET, page_path: 'https://office.example/events?week=2' } }}
+        canWrite
+      />,
+    );
+    expect(html).toContain('href="https://office.example/events?week=2"');
+  });
+
   it('draws nothing of the owner’s scope label and time for anyone else', () => {
     const html = renderToStaticMarkup(<TicketScreen data={data} canWrite />);
     expect(html).not.toContain('Scope and time');

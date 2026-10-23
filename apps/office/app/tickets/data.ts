@@ -7,10 +7,18 @@
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@thc/db/server';
+import { createAdminClient } from '@thc/db/admin';
 import { readProblem } from '../_lib/dbError';
 import { PAGE_SIZE, ilikePattern, ticketNumberOf } from './view-model';
 import type { ScopeLabel, TicketQuery, TimeRow, Worker } from './view-model';
-import type { RunningTimer, Ticket, TicketComment, TicketScope, TimeEntry } from './types';
+import type {
+  RunningTimer,
+  Ticket,
+  TicketComment,
+  TicketFile,
+  TicketScope,
+  TimeEntry,
+} from './types';
 
 /**
  * Reads for /tickets (ADR-0202), straight from `tickets` and
@@ -181,6 +189,45 @@ export async function loadTicket(id: string): Promise<TicketPageData> {
       : ((assignees.data ?? []) as { id: string; full_name: string }[]),
     problem: null,
   };
+}
+
+/** How long a signed link to a ticket's file lives. A page is read in minutes. */
+const FILE_URL_TTL_SECONDS = 60 * 60;
+
+/**
+ * The files on a ticket (ADR-0204). The rows are read through the caller's
+ * own session (`ticket_files` is admin_read), so only a Back Office login gets
+ * any; the links are signed with the service key because the bucket has no
+ * Storage policy at all. A path is signed only after a row for it came back,
+ * and a failure to sign leaves the file listed without a link.
+ */
+export async function loadTicketFiles(ticketId: string): Promise<TicketFile[]> {
+  if (!UUID.test(ticketId) || !supabaseConfigured()) return [];
+  const supabase = await client();
+  const { data, error } = await supabase
+    .from('ticket_files')
+    .select('id, path, kind, mime, bytes, file_name, created_at')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  const rows = data as (Omit<TicketFile, 'url'> & { path: string })[];
+  if (rows.length === 0) return [];
+
+  const urls = new Map<string, string>();
+  try {
+    const signed = await createAdminClient()
+      .storage.from('ticket-files')
+      .createSignedUrls(
+        rows.map((row) => row.path),
+        FILE_URL_TTL_SECONDS,
+      );
+    for (const entry of signed.data ?? []) {
+      if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+    }
+  } catch {
+    // No service key here, or Storage is down: the file is listed, not linked.
+  }
+  return rows.map(({ path, ...row }) => ({ ...row, url: urls.get(path) ?? null }));
 }
 
 export interface TrackingData {

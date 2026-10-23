@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * List our Willo webhooks, and switch them to follow EVERY interview
- * (ADR-0202).
+ * (ADR-0203).
  *
  *   WILLO_API_KEY=… node scripts/willo-webhooks.mjs list
  *   WILLO_API_KEY=… node scripts/willo-webhooks.mjs follow-all            # dry run

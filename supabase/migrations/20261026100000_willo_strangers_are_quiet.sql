@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261026100000 · A Willo delivery for somebody we have never
---                            heard of is answered, not audited (ADR-0202,
+--                            heard of is answered, not audited (ADR-0203,
 --                            §2.4)
 --
 -- 23.10.2026: 18 candidates were moved to Documents by hand with "Mark
@@ -22,7 +22,7 @@
 -- audited as a refusal, exactly as before.
 --
 -- Service role only (the willo-webhook Edge Function).
--- pgTAP: supabase/tests/932_willo_stranger.sql.
+-- pgTAP: supabase/tests/933_willo_stranger.sql.
 -- =====================================================================
 
 create or replace function public.willo_stranger(p_email text)
@@ -42,7 +42,7 @@ as $$
 $$;
 
 comment on function public.willo_stranger(text) is
-  'ADR-0202, §2.4: true when a well-formed email belongs to no staff row at all (any status, removed ones included). False for a malformed or missing email, so a delivery we cannot place is still audited. The willo-webhook Edge Function answers a stranger 200 and writes no audit row, which is what lets the webhook follow every Willo interview. Service role only.';
+  'ADR-0203, §2.4: true when a well-formed email belongs to no staff row at all (any status, removed ones included). False for a malformed or missing email, so a delivery we cannot place is still audited. The willo-webhook Edge Function answers a stranger 200 and writes no audit row, which is what lets the webhook follow every Willo interview. Service role only.';
 
 revoke execute on function public.willo_stranger(text) from public, anon, authenticated;
 grant  execute on function public.willo_stranger(text) to service_role;

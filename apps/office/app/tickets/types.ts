@@ -40,7 +40,19 @@ export interface TicketComment {
   created_at: string;
 }
 
-export type ActionResult = { ok: true; ref?: string } | { ok: false; message: string };
+/** `ref` and `id` come back from createTicket: the TK-n reference, and the uuid a file is attached to. */
+export type ActionResult = { ok: true; ref?: string; id?: string } | { ok: false; message: string };
+
+/** A row of `ticket_files` (20261026110000), with a link when one could be signed. */
+export interface TicketFile {
+  id: string;
+  kind: 'screenshot' | 'video' | 'recording';
+  mime: string;
+  bytes: number;
+  file_name: string | null;
+  created_at: string;
+  url: string | null;
+}
 
 /** A row of `ticket_scope`: the owner's internal label. */
 export interface TicketScope {

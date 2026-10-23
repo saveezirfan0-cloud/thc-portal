@@ -294,7 +294,7 @@ async function applyDelivery(
     event: event.eventKey,
   };
   if (!plan) {
-    // The webhook follows every Willo interview (ADR-0202), so most keys
+    // The webhook follows every Willo interview (ADR-0203), so most keys
     // reaching here belong to people who never applied to us. An email no
     // staff row holds is answered and written nowhere; an email we do hold
     // is a person the office may be waiting on, so it is refused and

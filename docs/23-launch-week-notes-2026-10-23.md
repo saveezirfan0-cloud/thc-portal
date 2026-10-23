@@ -21,7 +21,7 @@ the repo.
 | 3 | **Sam sees each item's status and resolution** | §4 |
 | 4 | The same feedback system is **reused on Floe** — so it is built as a package, not as THC screens | §4 |
 | 5 | **Time is tracked through the feedback system** (a time tracker linked to items) | §4 |
-| 6 | **Anyone Sam accepts in Willo must go to Documents** — no exceptions | §3, ADR-0202 |
+| 6 | **Anyone Sam accepts in Willo must go to Documents** — no exceptions | §3, ADR-0203 |
 | 7 | Out-of-scope work to date is **logged and sent to Sam to review**, in-scope fixes separated from new updates | §5 |
 
 Sam thinks onboarding is about 90% done and does not expect much more out-of-scope work.
@@ -52,14 +52,14 @@ ADRs) has two applications, one expired.
    applications" is one row for us and two participants in Willo. Sam marked him complete on 23.10:
    *accepted an old interview link*. He is now at Documents.
 
-**Fix (ADR-0202):** the webhooks follow every interview; a delivery for an email nobody holds is
-answered and not audited (`willo_stranger()`, pgTAP 932) so following everything does not bury the
+**Fix (ADR-0203):** the webhooks follow every interview; a delivery for an email nobody holds is
+answered and not audited (`willo_stranger()`, pgTAP 933) so following everything does not bury the
 real refusals. Needs one action from the owner: `WILLO_API_KEY=… node scripts/willo-webhooks.mjs
 follow-all --apply` (dry run without `--apply`; `list` shows the state).
 
 **Not proven:** that the 18 recorded on a different interview — only Willo's delivery log and
 `node scripts/willo-webhooks.mjs list` can show it. If `list` shows our webhooks already follow all
-interviews, the cause is something else and ADR-0202 is wrong; start from Willo's delivery log.
+interviews, the cause is something else and ADR-0203 is wrong; start from Willo's delivery log.
 
 **Still to do:**
 - [ ] Owner runs the script; confirm with `list`.
@@ -100,34 +100,38 @@ select started_at, counts from job_runs
  where job = 'willo-webhook' and counts->>'code' is not null order by started_at desc;
 ```
 
-## 4 · Feedback inbox
+## 4 · Feedback inbox (the Ticket system)
 
-**Do not build a second one.** PR #337 (branch `claude/zealous-heisenberg-nxlv52`, open, CI blocked)
-already ships a Back Office ticket system: a **Report** button in the top bar (kind, severity,
-summary, details, optional screenshot/recording *link*, page captured), numbered **TK-n** tickets,
-`/tickets` list and thread, status, an email to the owner, three definer RPCs, pgTAP 931.
+Already built and on `main` by the time this was read (PRs #337, #340, #341, ADR-0202, the owner's own
+tickets tool): a **Ticket** button in every Back Office top bar, numbered TK-n tickets, `/tickets` and
+`/tickets/:id` (triage, report, context, resolution, updates), emails to the owner and to the reporter on
+replies and on resolution, voice dictation, and — for the named owner logins only — a scope label and a
+time tracker with a monthly report and CSV. **Do not build a second one.** Checked against the call:
 
-Against the call it is missing:
-
-| Needed | #337 |
+| Needed | State |
 |---|---|
-| Button on every page | Back Office only. Staff App and Client Portal left out (ADR) |
-| Page link captured | yes |
-| Type, summary, details | yes (kind, summary, details) |
-| Voice dictation | no |
-| Screenshot / video / screen recording | a pasted **link** only; "upload" deliberately left out |
-| Sam sees status **and resolution** | status and thread; no explicit resolution |
-| Reusable on Floe | no — THC-specific tables and screens |
-| Time tracker linked to items | no |
+| Button on every page, page link captured | Back Office: yes. The link is now the full address (query string included) and is clickable on the ticket |
+| Type, summary, details | yes (kind, summary, details, plus optional severity) |
+| Voice dictation | yes (browser speech recogniser; Chrome, Edge, Safari) |
+| Screenshot / video / screen recording | **added here (ADR-0204):** attach files, take a screenshot, record the screen; uploaded after the ticket is saved |
+| Sam sees status **and resolution** | yes: status, a Resolution note on the thread, and it is emailed to the reporter. Sam is an owner login, so he also sees the scope label and the time (named in `settings.ticket_tracking_emails`) |
+| Time tracked through it | yes: start/stop timer or manual entry per ticket, labelled Me / Claude, billable flag, monthly report + CSV |
+| Button in the Staff App and Client Portal | **not built.** Deliberate: ~1,000 workers would write straight into the owner's inbox in launch week. Say if Sam wants it, and for which app |
+| Reusable on Floe | not packaged; the checklist below is what to take |
 
-Its ADR is numbered 0199 and main already has 0199–0202: it will need renumbering before it merges.
+**Taking it to Floe.** Nothing in it is THC-specific except these dependencies, which Floe needs an
+equivalent of: `profiles` (+ `office_role`), `current_app_role()`, `assert_office_caller()`,
+`office_read_only_guard()`, `notification_outbox` + the `TK1` template (`packages/notifications`),
+`settings`, `storage_deletions` + the gdpr-purge drain. Copy: migrations `20261025110000_tickets`,
+`20261026090000_ticket_reply_and_tracker_list`, `20261026110000_ticket_files`; `apps/office/app/tickets/`;
+`_components/ReportButton.tsx`, `DictateButton.tsx`, `report-button.css`; `_lib/{dictation,screenCapture,
+signed-upload,sharedState}.ts`; pgTAP 932 and 934. Extracting a shared package is worth doing only once Floe's
+tables are known; guessing them now would just move the THC assumptions into a package.
 
-Plan: extend that system rather than start another — uploads to Storage (screenshot, video, screen
-recording via `getDisplayMedia`), voice dictation (Web Speech API, hidden where unsupported), a
-resolution field shown to the reporter, time entries per ticket with a scope class (in-scope fix / new
-update / support) and an export for the monthly invoice, the button in the Staff App and Client Portal,
-and the widget and schema in a package that Floe can take. `/inbox` is already the outgoing-email log
-and `/feedback` is §9.10's ratings, which is why #337 chose "tickets".
+**Not run in a browser.** Screen capture and recording need a real browser tab and the Supabase Storage
+service; neither exists in the build sandbox. Types, lint, unit tests and the screen render pass; the upload
+path (signed URL → PUT → `attach_ticket_file`) and the recording bar must be tried once on the live site before
+launch: file attach, screenshot, a 20-second recording while clicking to another page, then open the ticket.
 
 ## 5 · Out-of-scope log
 
@@ -138,5 +142,5 @@ the repository; it is added to the log from the developer's own records.
 
 ## 6 · Status of everything else
 
-Unchanged from `docs/14-handover.md` and the open PRs. The open sweep PRs (#277–#285), the UI polish
-PRs and #337 are the launch-week review queue; none are touched here.
+Unchanged from `docs/14-handover.md` and the open PRs. The open sweep PRs (#277–#285) and the UI polish
+PRs are the launch-week review queue; none are touched here.

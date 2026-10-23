@@ -1,4 +1,4 @@
-# ADR-0202 · The Willo webhook follows every interview, and strangers are answered quietly
+# ADR-0203 · The Willo webhook follows every interview, and strangers are answered quietly
 
 Status: accepted · 23.10.2026 · **Amends** ADR-0066 §5 (follow our interview only) and ADR-0148 (refusals)
 
@@ -70,4 +70,4 @@ tools delivery log shows whether anything was sent for them.
   (ADR-0149) the old invitations are no longer needed; the copy is the owner's to change
   (§8 register) and is left alone here.
 - Needs the owner to run the script once with `WILLO_API_KEY`; nothing in the apps reads the key.
-- pgTAP `932_willo_stranger.sql` (11 assertions).
+- pgTAP `933_willo_stranger.sql` (11 assertions).

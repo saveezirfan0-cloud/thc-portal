@@ -83,8 +83,12 @@ export async function createTicket(draft: TicketDraft, page: string): Promise<Ac
   });
   if ('error' in result) return { ok: false, message: result.error };
   revalidatePath('/tickets');
-  const data = result.data as { ref?: unknown } | null;
-  return { ok: true, ...(typeof data?.ref === 'string' ? { ref: data.ref } : {}) };
+  const data = result.data as { ref?: unknown; id?: unknown } | null;
+  return {
+    ok: true,
+    ...(typeof data?.ref === 'string' ? { ref: data.ref } : {}),
+    ...(typeof data?.id === 'string' ? { id: data.id } : {}),
+  };
 }
 
 /** An update on a ticket's thread — a note, email, call, meeting or task; emailed to the owner's list. */

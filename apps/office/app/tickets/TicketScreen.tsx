@@ -8,6 +8,8 @@ import { TicketTracking } from './TicketTracking';
 import { TicketTriage } from './TicketTriage';
 import { TicketUpdates } from './TicketUpdates';
 import type { TicketPageData, TrackingData } from './data';
+import type { TicketFile } from './types';
+import { sizeLabel } from './ticket-files';
 import {
   KIND_SHORT,
   KIND_TONE,
@@ -40,6 +42,7 @@ export function TicketScreen({
   canWrite,
   isOwner = false,
   tracking = NO_TRACKING,
+  files = [],
   format,
 }: {
   data: TicketPageData;
@@ -47,6 +50,8 @@ export function TicketScreen({
   /** An Owner login: the one that may delete a report. */
   isOwner?: boolean;
   tracking?: TrackingData;
+  /** Screenshots, videos and recordings sent with it (ADR-0204). */
+  files?: TicketFile[];
   format?: TimeFormat;
 }) {
   const { ticket, comments } = data;
@@ -123,6 +128,40 @@ export function TicketScreen({
           ) : null}
         </Panel>
 
+        {files.length > 0 ? (
+          <Panel title="Screenshots and recordings">
+            <ul className="tk-files">
+              {files.map((file) => (
+                <li key={file.id}>
+                  {file.url && file.kind === 'screenshot' ? (
+                    <a href={file.url} target="_blank" rel="noopener noreferrer">
+                      <img src={file.url} alt={file.file_name ?? 'Screenshot'} loading="lazy" />
+                    </a>
+                  ) : file.url ? (
+                    <video src={file.url} controls preload="metadata" />
+                  ) : (
+                    <p className="tk-meta">
+                      This file could not be linked just now. Reload to try again.
+                    </p>
+                  )}
+                  <div className="tk-meta">
+                    {file.file_name ?? (file.kind === 'screenshot' ? 'Screenshot' : 'Recording')} ·{' '}
+                    {sizeLabel(file.bytes)}
+                    {file.url ? (
+                      <>
+                        {' · '}
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" download>
+                          Open
+                        </a>
+                      </>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        ) : null}
+
         <Panel title="Context">
           <div className="tk-grid">
             <div>
@@ -137,7 +176,22 @@ export function TicketScreen({
             </div>
             <div>
               <div className="tk-label">Page it happened on</div>
-              {ticket.page_path ? <code className="tk-path">{ticket.page_path}</code> : '—'}
+              {ticket.page_path ? (
+                /^https?:\/\//i.test(ticket.page_path) ? (
+                  <a
+                    className="tk-path"
+                    href={ticket.page_path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <code>{ticket.page_path}</code>
+                  </a>
+                ) : (
+                  <code className="tk-path">{ticket.page_path}</code>
+                )
+              ) : (
+                '—'
+              )}
             </div>
             {ticket.resolved_at ? (
               <div>

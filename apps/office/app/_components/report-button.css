@@ -1,0 +1,71 @@
+/* The Ticket button's attachments and the recording bar (ADR-0204). Tokens only. */
+.tk-attach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-8);
+}
+.tk-attach-file {
+  cursor: pointer;
+}
+.tk-attach-list {
+  list-style: none;
+  margin: 0 0 var(--sp-8);
+  padding: 0;
+  display: grid;
+  gap: var(--sp-4);
+}
+.tk-attach-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-4) var(--sp-8);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  overflow-wrap: anywhere;
+}
+.tk-attach-remove {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--coral-ink);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* A fixed bar while the screen is being recorded: the dialog is closed, so this is the only way to stop. */
+.tk-recording {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-16);
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-8) var(--sp-12);
+  background: var(--card-glass, var(--bg));
+  border: 1px solid var(--coral-line);
+  border-radius: var(--r-card);
+  max-width: calc(100vw - var(--sp-16) * 2);
+}
+.tk-recording-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--coral);
+  animation: tk-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tk-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tk-recording-dot {
+    animation: none;
+  }
+}

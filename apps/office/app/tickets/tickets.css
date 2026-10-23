@@ -280,3 +280,23 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* Files sent with a ticket (ADR-0204). */
+.tk-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-12);
+}
+.tk-files img,
+.tk-files video {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--bg);
+}
