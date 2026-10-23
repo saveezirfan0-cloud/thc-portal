@@ -53,7 +53,7 @@ export function TicketsScreen({
 
   return (
     <OfficeShell
-      activeHref="/tickets"
+      activeHref="/settings"
       title="Tickets"
       crumbs={
         <>

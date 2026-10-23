@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
-import type { MonthReport } from '../data';
+import type { MonthReport, TicketChoice } from '../data';
+import { QuickLogTime } from './QuickLogTime';
 import {
   SCOPE_LABELS,
   SCOPE_SHORT,
@@ -22,13 +23,21 @@ import '../tickets.css';
  * CSV of every entry. Dates are UK days. Timers still running are counted
  * once stopped.
  */
-export function TimeReportScreen({ month, report }: { month: string; report: MonthReport }) {
+export function TimeReportScreen({
+  month,
+  report,
+  choices,
+}: {
+  month: string;
+  report: MonthReport;
+  choices: readonly TicketChoice[];
+}) {
   const summary = summariseTime(report.rows);
   const prev = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   return (
     <OfficeShell
-      activeHref="/tickets"
+      activeHref="/settings"
       title="Time report"
       crumbs={<Link href="/tickets">← All tickets</Link>}
     >
@@ -47,6 +56,8 @@ export function TimeReportScreen({ month, report }: { month: string; report: Mon
         ) : null}
       </div>
 
+      <QuickLogTime choices={choices} />
+
       {report.problem ? <Alert tone="coral">{report.problem}</Alert> : null}
       {report.running > 0 ? (
         <Alert tone="amber">
@@ -56,7 +67,10 @@ export function TimeReportScreen({ month, report }: { month: string; report: Mon
       ) : null}
 
       {report.rows.length === 0 && !report.problem ? (
-        <EmptyState>No time was logged in {monthLabel(month)}.</EmptyState>
+        <EmptyState>
+          No time was logged in {monthLabel(month)}. Log some above, or open a ticket and press
+          Start timer.
+        </EmptyState>
       ) : null}
 
       {report.rows.length > 0 ? (

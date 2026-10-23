@@ -79,6 +79,7 @@ test.afterAll(() => {
   removeLogin(reporterEmail);
 });
 
+const ticketNo = () => sql(`select ticket_no from tickets where title = ${lit(TITLE)}`);
 const ticketId = () => sql(`select id from tickets where title = ${lit(TITLE)}`);
 
 async function dictate(page: Page, button: string, phrase: string) {
@@ -205,7 +206,7 @@ test('the owner labels it, times it, logs time by hand and resolves it', async (
     ),
   ).toBe('claude:1:true,owner:15:true');
 
-  // Settings → Tickets is the way in from Settings, time report included for a tracker.
+  // Settings → Tickets is the way in from Settings (Tickets has no left-menu item), time report included for a tracker.
   await page.goto('/settings?tab=tickets');
   await expect(page.getByRole('link', { name: 'Open the ticket list' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open the time report' })).toBeVisible();
@@ -248,8 +249,23 @@ test('the list shows the label and filters by it; the month report adds up the b
 
   await page.goto('/tickets/time');
   await expect(page.getByRole('heading', { name: 'Time report' })).toBeVisible();
-  await expect(page.getByText('Billable').first()).toBeVisible();
-  await expect(page.getByText(/^TK-\d+ · E2E export button/).first()).toBeVisible();
+  await expect(page.getByText('All time logged').first()).toBeVisible();
+  // (the Log time form's picker lists the same title as an <option>, which is never visible)
+  await expect(
+    page
+      .getByText(/^TK-\d+ · E2E export button/)
+      .and(page.locator(':not(option)'))
+      .first(),
+  ).toBeVisible();
+
+  // Log time without opening the ticket: pick it, say how long, who did it.
+  await page
+    .getByLabel('Ticket', { exact: true })
+    .selectOption({ label: `TK-${ticketNo()} · ${TITLE}` });
+  await page.getByLabel('Time spent').fill('10m');
+  await page.getByLabel('Worked by', { exact: true }).selectOption('owner');
+  await page.getByRole('button', { name: 'Log time' }).click();
+  await expect(page.getByText('Time logged').first()).toBeVisible();
 
   // The CSV carries every entry, the label and who did the work.
   const href = await page.getByRole('link', { name: 'Download CSV' }).getAttribute('href');
@@ -258,9 +274,10 @@ test('the list shows the label and filters by it; the month report adds up the b
     'Date,Ticket,Title,Scope label,Worked by,Minutes,Hours,Billable,Note',
   );
   const mine = csv.split('\r\n').filter((line) => line.includes(TITLE));
-  expect(mine).toHaveLength(2);
+  expect(mine).toHaveLength(3);
   expect(mine.join('\n')).toContain('Addition,Claude,1,0.02,Yes');
   expect(mine.join('\n')).toContain('Addition,Me,15,0.25,Yes,Call about the export');
+  expect(mine.join('\n')).toContain('Addition,Me,10,0.17,Yes');
 });
 
 test('an owner cannot delete a report that has time logged on it', async ({ page }) => {

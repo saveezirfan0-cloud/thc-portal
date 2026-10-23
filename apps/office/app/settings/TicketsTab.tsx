@@ -34,8 +34,8 @@ export function TicketsTab({ tracker }: { tracker: boolean }) {
             </p>
             <p className="hint">
               Internal, only you can see this. The month&rsquo;s time by ticket, who did it (Me or
-              Claude), billable or not, and a CSV for the invoice. Start a timer or log time from
-              any ticket.
+              Claude), billable or not, and a CSV for the invoice. Log time on the report page, or
+              start a timer on any ticket.
             </p>
           </Panel>
         ) : null}

@@ -54,7 +54,7 @@ export function TicketScreen({
 
   if (!ticket) {
     return (
-      <OfficeShell activeHref="/tickets" title="Ticket">
+      <OfficeShell activeHref="/settings" title="Ticket">
         {data.problem ? (
           <Alert tone="coral">{data.problem}</Alert>
         ) : (
@@ -69,7 +69,7 @@ export function TicketScreen({
 
   return (
     <OfficeShell
-      activeHref="/tickets"
+      activeHref="/settings"
       title={ticketRef(ticket.ticket_no)}
       crumbs={<Link href="/tickets">← All tickets</Link>}
     >
