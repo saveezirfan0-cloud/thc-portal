@@ -10,7 +10,7 @@ export const STATUS_LABEL: Record<MonitorStatus, string> = {
   off_site: 'Off-site',
   on_shift: 'On shift',
   not_checked_in: 'Not checked in — 30 min alert',
-  not_confirmed_today: 'Not confirmed today',
+  not_confirmed_today: 'Day-of confirm pending',
   due: 'Due',
 };
 
@@ -105,7 +105,7 @@ const NUDGE_OPENS_MIN = 30;
 
 /**
  * Whether the Remind button is offered on a row, and which register push it
- * sends: N9 "Time to check in" (Due, Not confirmed today, Not checked in —
+ * sends: N9 "Time to check in" (Due, Day-of confirm pending, Not checked in —
  * from 30 minutes before the start, until the end), N9 "Don't forget to check
  * out" (on shift, last 30 minutes), N9b "You haven't checked out of {event}"
  * (on shift past the end). A checked-out or No check-out row has nothing to
