@@ -37,6 +37,7 @@ import {
   withLatestCheck,
 } from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
+import { EditTermPeriods } from '../../_components/TermPeriods';
 import { VerifiedLetterActions, currentTermLetterOf } from '../../compliance/VerifiedLetterActions';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { DobClaimNote } from '../../_components/DobClaimNote';
@@ -332,6 +333,15 @@ export function Documents({
                     canWithdraw={canWithdrawApproval && !reviewClosed}
                     name={profile.display_name}
                   />
+                  {row.id === currentTermLetter?.id && !reviewClosed ? (
+                    <EditTermPeriods
+                      docId={row.id}
+                      ranges={row.term_dates ?? null}
+                      allowed={canWithdrawApproval}
+                      name={profile.display_name}
+                      uploadedAt={row.uploaded_at}
+                    />
+                  ) : null}
                   {downloads(row)}
                   {!reviewClosed &&
                   canAttachReport(row, checks.get(row.id) ?? null, rtwCheckEnabled) ? (
