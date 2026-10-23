@@ -182,6 +182,17 @@ export async function setNameBadges(clientId: string, on: boolean): Promise<Acti
   return callRpc('set_client_name_badges', { p_client: clientId, p_on: on }, clientId);
 }
 
+/**
+ * ADR-0203: leave the client out of invoicing (or put it back). The
+ * database refuses a viewer and writes the change to the client's History.
+ */
+export async function setExcludeFromInvoicing(
+  clientId: string,
+  on: boolean,
+): Promise<ActionResult> {
+  return callRpc('set_client_exclude_from_invoicing', { p_client: clientId, p_on: on }, clientId);
+}
+
 /** ADR-0135 §3: one of the two line-up emails to this client, on or off (audited). */
 export async function setLineupEmails(
   clientId: string,

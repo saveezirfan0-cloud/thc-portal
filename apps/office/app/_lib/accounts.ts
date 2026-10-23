@@ -172,6 +172,7 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'settings.radius_changed': 'Changed default radius',
   // ADR-0081.
   'client.name_badges': 'Switched name badges',
+  'client.exclude_from_invoicing': 'Switched invoicing exclusion',
   // ADR-0135 §2.
   'client.worker_request_handled': 'Marked a Client Portal request handled',
   // ADR-0135 §3.
