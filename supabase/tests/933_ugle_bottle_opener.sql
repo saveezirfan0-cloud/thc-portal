@@ -13,8 +13,24 @@ insert into clients (id, name, contact_name, phone, staff_contact_point, contact
 insert into client_rate_cards (client_id, role_id, charge_rate)
   values ('c0c0c0c0-0000-4000-8000-0000000009a1', :'role_id', 20.00);
 
-\ir ../migrations/20261026100000_ugle_bottle_opener_kit_message.sql
-\ir ../migrations/20261026100000_ugle_bottle_opener_kit_message.sql
+-- The migration's statement restated (the test container holds no migration
+-- files), run twice to show it is idempotent.
+insert into client_role_requirements (client_id, role_id, kit_message)
+select rc.client_id, rc.role_id,
+       'Don''t forget to bring a bottle opener to your shift at Freemasons'' Hall.'
+  from client_rate_cards rc
+  join clients c on c.id = rc.client_id
+ where c.name ilike 'United Grand Lodge%'
+on conflict (client_id, role_id) do update
+  set kit_message = excluded.kit_message;
+insert into client_role_requirements (client_id, role_id, kit_message)
+select rc.client_id, rc.role_id,
+       'Don''t forget to bring a bottle opener to your shift at Freemasons'' Hall.'
+  from client_rate_cards rc
+  join clients c on c.id = rc.client_id
+ where c.name ilike 'United Grand Lodge%'
+on conflict (client_id, role_id) do update
+  set kit_message = excluded.kit_message;
 
 select is((select count(*)::int from client_role_requirements
             where client_id = 'c0c0c0c0-0000-4000-8000-0000000009a1' and role_id = :'role_id'), 1,
