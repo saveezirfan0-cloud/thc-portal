@@ -6,7 +6,7 @@
 -- every RLS policy in it; its own body is the only thing deciding what it
 -- does for whom. 190 · 2e pins the set anon can reach (two functions).
 -- This pins the set `authenticated` can reach — the product's RPC surface,
--- 223 functions on 25.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0180's compliance_request_declaration_details, compliance_reverse_declaration_rejection, my_declaration_update and update_my_declaration, and can_review_criminal_records, admin_set_criminal_records_reviewer and admin_criminal_records_reviewers + ADR-0183's compliance_withdraw_completion_approval + ADR-0182's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0182 also gave onboarding_save_right_to_work an eighth argument and record_right_to_work_change a fifth; 214 with ADR-0184's verify_late_check_out + ADR-0185's staff_security_cleared_bookings; 216 with ADR-0184's follow-up making resolve_violation a definer, so check_logs can refuse direct writes; 218 with archive_client and restore_client from 20261022210000_archive_clients, already live — branch claude/vigilant-albattani-hyw7tg; 219 with ADR-0188's nudge_check_in_out; 220 with ADR-0193's onboarding_email_report, the counts behind /onboarding/reminders; 222 with ADR-0194's office_correct_name and office_names_to_review; 223 with ADR-0201's set_passport_expiry), docs/14 §4 — so a new one fails here BY
+-- 237 functions on 25.10.2026 (189 + ADR-0164's two + main's remove_shift_sections and set_staff_passport_country + ADR-0168's onboarding_grant_quiz_attempts + ADR-0172's five invoice functions + ADR-0176's set_client_invoice_details, invoice_file and resend_invoice_email + ADR-0178's set_term_letter_periods + ADR-0180's compliance_request_declaration_details, compliance_reverse_declaration_rejection, my_declaration_update and update_my_declaration, and can_review_criminal_records, admin_set_criminal_records_reviewer and admin_criminal_records_reviewers + ADR-0183's compliance_withdraw_completion_approval + ADR-0182's office_attach_home_office_check and compliance_verify_home_office_check; ADR-0182 also gave onboarding_save_right_to_work an eighth argument and record_right_to_work_change a fifth; 214 with ADR-0184's verify_late_check_out + ADR-0185's staff_security_cleared_bookings; 216 with ADR-0184's follow-up making resolve_violation a definer, so check_logs can refuse direct writes; 218 with archive_client and restore_client from 20261022210000_archive_clients, already live — branch claude/vigilant-albattani-hyw7tg; 219 with ADR-0188's nudge_check_in_out; 220 with ADR-0193's onboarding_email_report, the counts behind /onboarding/reminders; 222 with ADR-0194's office_correct_name and office_names_to_review; 223 with ADR-0201's set_passport_expiry; 237 with ADR-0202's fourteen ticket functions: create_ticket, add_ticket_comment, update_ticket, assign_ticket, set_ticket_kind, delete_ticket, ticket_assignees, ticket_tracker_allowed, set_ticket_scope, start_ticket_timer, stop_ticket_timer, log_ticket_time, update_ticket_time and delete_ticket_time), docs/14 §4 — so a new one fails here BY
 -- NAME until somebody has read its caller check and added it below in the
 -- same PR. That is the whole point: the list is a review log, not a count.
 --
@@ -41,6 +41,7 @@ select bag_eq(
             ('account_invite_link_ok(text)'),
             ('acknowledge_shift_kit(uuid)'),
             ('add_my_unavailability(date,date,time without time zone,time without time zone,integer)'),
+            ('add_ticket_comment(uuid,text,text)'),
             ('admin_accounts(app_role)'),
             ('admin_activity(integer,bigint,text,uuid,text,timestamp with time zone)'),
             ('admin_activity_facets()'),
@@ -57,6 +58,7 @@ select bag_eq(
             ('archive_client(uuid)'),
             ('assert_reviewer()'),
             ('assert_role_rate_floor(uuid,numeric)'),
+            ('assign_ticket(uuid,uuid)'),
             ('attach_event_document_badges(uuid,text,text,integer)'),
             ('attempt_check_in(uuid,double precision,double precision,double precision)'),
             ('auto_assign_first_round(uuid)'),
@@ -84,10 +86,13 @@ select bag_eq(
             ('compliance_verify_home_office_check(uuid,date,date)'),
             ('compliance_withdraw_completion_approval(uuid,text)'),
             ('confirm_on_day(uuid)'),
+            ('create_ticket(text,text,text,text,text,text)'),
             ('current_app_role()'),
             ('current_client_id()'),
             ('declare_my_conviction(text,date)'),
             ('decline_invite(uuid)'),
+            ('delete_ticket(uuid)'),
+            ('delete_ticket_time(bigint)'),
             ('event_document_data(uuid)'),
             ('finance_report(date,date,text)'),
             ('finish_break(uuid)'),
@@ -103,6 +108,7 @@ select bag_eq(
             ('link_event_series(uuid,uuid)'),
             ('link_invite_roster_entry(uuid,uuid,boolean)'),
             ('load_invite_roster(jsonb)'),
+            ('log_ticket_time(uuid,integer,text,date,text,boolean)'),
             ('mark_client_worker_request_handled(uuid)'),
             ('mark_ready(uuid)'),
             ('minimum_pay_rate()'),
@@ -212,6 +218,8 @@ select bag_eq(
             ('set_staff_payroll_id(uuid,text)'),
             ('set_staff_scheduling(uuid,boolean,boolean)'),
             ('set_term_letter_periods(uuid,daterange[])'),
+            ('set_ticket_kind(uuid,text)'),
+            ('set_ticket_scope(uuid,text,text)'),
             ('sign_contract(text,boolean)'),
             ('sign_off_event_invoice(uuid,text,text)'),
             ('sign_wtr_optout(text,integer,uuid)'),
@@ -240,6 +248,8 @@ select bag_eq(
             ('staff_update_contact(text,text)'),
             ('staff_week_meter(uuid)'),
             ('start_break(uuid)'),
+            ('start_ticket_timer(uuid,text,boolean)'),
+            ('stop_ticket_timer(text)'),
             ('submit_client_feedback(uuid,integer,text)'),
             ('submit_client_quiz_attempt(uuid,jsonb)'),
             ('submit_completion_letter(text,date,text,text,uuid)'),
@@ -249,8 +259,12 @@ select bag_eq(
             ('submit_quiz_attempt(jsonb)'),
             ('submit_share_code_with_dob(text,date,text)'),
             ('take_offered_shift(uuid)'),
+            ('ticket_assignees()'),
+            ('ticket_tracker_allowed()'),
             ('update_my_declaration(text,date)'),
             ('update_my_profile(text,text,text)'),
+            ('update_ticket(uuid,text,text,text,text)'),
+            ('update_ticket_time(bigint,integer,text,date,text,boolean)'),
             ('verify_declaration(uuid,text)'),
             ('verify_document(uuid,date,daterange[],date)'),
             ('verify_late_check_out(uuid,text)'),

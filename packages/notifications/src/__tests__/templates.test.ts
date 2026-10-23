@@ -13,6 +13,7 @@ import {
   SCOPE_CODES,
   SECURITY_CLEARANCE_CODES,
   TEMPLATES,
+  TICKET_CODES,
   body,
   outboxKey,
   render,
@@ -94,6 +95,9 @@ const CLIENT_PORTAL_EMAIL_CODES = ['CP1', 'CP2', 'CP3'];
 /** The declaration review addition (ADR-0180): the office asks for more detail. */
 const DECLARATION_PUSH_CODES = ['DR1'];
 
+/** Tickets (ADR-0202): the office mailbox told of a ticket or an update to one. */
+const TICKET_EMAIL_CODES = ['TK1'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -122,6 +126,7 @@ describe('notification register (§8)', () => {
         ...SECURITY_PUSH_CODES,
         ...CLIENT_PORTAL_EMAIL_CODES,
         ...DECLARATION_PUSH_CODES,
+        ...TICKET_EMAIL_CODES,
       ].sort(),
     );
   });
@@ -157,6 +162,8 @@ describe('notification register (§8)', () => {
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
     for (const code of CLIENT_PORTAL_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
+    for (const code of TICKET_EMAIL_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
   });
 
   it('exports SCOPE_CODES, REQUIREMENT_CODES, EXTENSION_CODES and ADDITION_CODES as exactly the register, between them', () => {
@@ -190,6 +197,8 @@ describe('notification register (§8)', () => {
     expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
     // ADR-0185: a worker confirmed on a security-cleared event is told to bring ID.
     expect([...SECURITY_CLEARANCE_CODES]).toEqual(SECURITY_PUSH_CODES);
+    // ADR-0202: tickets.
+    expect([...TICKET_CODES]).toEqual(TICKET_EMAIL_CODES);
     const union = [
       ...SCOPE_CODES,
       ...REQUIREMENT_CODES,
@@ -202,6 +211,7 @@ describe('notification register (§8)', () => {
       ...CLIENT_PORTAL_CODES,
       ...DECLARATION_CODES,
       ...SECURITY_CLEARANCE_CODES,
+      ...TICKET_CODES,
     ];
     // Disjoint: no code is counted in two lists.
     expect(new Set(union).size).toBe(union.length);
@@ -452,6 +462,7 @@ describe('§8 copy is verbatim', () => {
       ...CLIENT_PORTAL_CODES,
       ...DECLARATION_CODES,
       ...SECURITY_CLEARANCE_CODES,
+      ...TICKET_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),
@@ -544,9 +555,9 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
-  it('are the only codes without a body, with CL2 for the same reason, the OC chasers, one body per rung, and IR1, one per greeting', () => {
+  it('are the only codes without a body, with CL2 for the same reason, the OC chasers, one body per rung, IR1, one per greeting, and TK1, a new ticket or a comment', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
-    expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3', 'OC4', 'IR1']);
+    expect(bodyless).toEqual(['N9', 'N14', 'TK1', 'CL2', 'OC1', 'OC2', 'OC3', 'OC4', 'IR1']);
   });
 
   // The bug these halves exist for. `render` leaves an unmatched
@@ -1529,5 +1540,74 @@ describe('Client Portal additions — CP1–CP3 (ADR-0135)', () => {
     expect(render(title('CP3'), values)).toBe(
       'Line-up changed after your Allocation Timesheet was sent — Autumn Gala · Fri 18 Oct 2026',
     );
+  });
+});
+
+describe('Tickets — TK1 (ADR-0202)', () => {
+  it('says "Not in §8", names the ADR, and sends from admin@', () => {
+    expect(TEMPLATES.TK1.trigger).toMatch(/Not in §8.*ADR-0202/);
+    expect(TEMPLATES.TK1.sender).toBe('admin');
+  });
+
+  it('pins no recipient: the address is settings.ticket_recipients, on the row', () => {
+    expect((TEMPLATES.TK1 as Template).recipients).toBeUndefined();
+  });
+
+  it('has a new and a comment half, each with its own subject', () => {
+    expect(Object.keys(TEMPLATES.TK1.variants)).toEqual(['new', 'comment', 'resolved']);
+    expect(title('TK1', 'new')).toBe('{ref} · {kind}: {title}');
+    expect(title('TK1', 'comment')).toBe('Update on {ref}: {title}');
+    expect(title('TK1', 'resolved')).toBe('{ref} is {status}: {title}');
+  });
+
+  it('asks only for the values create_ticket() and the comment functions write', () => {
+    const asked = (variant: string) =>
+      [
+        ...new Set(
+          [title('TK1', variant), body('TK1', variant)].flatMap((t) =>
+            [...t.matchAll(/\{(\w+)\}/g)].map((m) => m[1]),
+          ),
+        ),
+      ].sort();
+    expect(asked('new')).toEqual(
+      ['details', 'kind', 'link', 'page', 'ref', 'reporter', 'severity', 'title'].sort(),
+    );
+    expect(asked('comment')).toEqual(['comment', 'ref', 'reporter', 'status', 'title'].sort());
+    expect(asked('resolved')).toEqual(['ref', 'reporter', 'resolution', 'status', 'title'].sort());
+  });
+
+  it('renders both halves whole, with no placeholder left', () => {
+    const text = render(body('TK1', 'new'), {
+      reporter: 'Katie Gadsby',
+      ref: 'TK-12',
+      title: 'Kanban card vanishes',
+      kind: 'Bug',
+      severity: 'High',
+      page: '/events',
+      link: '—',
+      details: 'It disappears after a drag.',
+    });
+    expect(text).toContain('TK-12 · Kanban card vanishes');
+    expect(text).not.toMatch(/\{\w+\}/);
+    const update = render(body('TK1', 'comment'), {
+      reporter: 'Gisela M',
+      ref: 'TK-12',
+      title: 'Kanban card vanishes',
+      status: 'In progress',
+      comment: 'Looking into it.',
+    });
+    expect(update).toContain('now In progress');
+    expect(update).not.toMatch(/\{\w+\}/);
+    const resolved = render(body('TK1', 'resolved'), {
+      reporter: 'Katie Gadsby',
+      ref: 'TK-12',
+      title: 'Kanban card vanishes',
+      status: 'Resolved',
+      resolution: 'Fixed in the next release.',
+    });
+    expect(resolved).toMatch(/^Hello Katie Gadsby,/);
+    expect(resolved).toContain('is now Resolved');
+    expect(resolved).toContain('Fixed in the next release.');
+    expect(resolved).not.toMatch(/\{\w+\}/);
   });
 });

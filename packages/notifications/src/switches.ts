@@ -111,6 +111,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
           'The office is not emailed when a client asks for a worker again; the request still shows on the client card.',
       },
       {
+        code: 'TK1',
+        label: 'Ticket logged or updated',
+        when: 'Someone logs a ticket, or comments on one, in the Back Office',
+        warning:
+          'Nobody is emailed when a ticket is logged or updated; they still show on Tickets.',
+      },
+      {
         code: 'RC1',
         label: 'Profile change requested',
         when: 'A worker asks to change name, photo or date of birth',

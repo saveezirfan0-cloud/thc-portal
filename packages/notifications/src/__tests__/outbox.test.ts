@@ -187,6 +187,46 @@ describe('email rows', () => {
     );
   });
 
+  it('sends a ticket (TK1) to the addresses on the row, one subject per variant (ADR-0202)', () => {
+    const details = {
+      ref: 'TK-7',
+      title: 'Kanban card vanishes',
+      reporter: 'Katie Gadsby',
+    };
+    const created = messageFor(
+      email({
+        template: 'TK1',
+        key: 'TK1:ticket:1',
+        recipient_emails: ['saveezirfan@gmail.com'],
+        payload: {
+          ...details,
+          variant: 'new',
+          kind: 'Bug',
+          severity: 'High',
+          page: '/events',
+          link: '—',
+          details: 'It vanishes after a drag.',
+        },
+      }),
+    );
+    expect(created.kind === 'email' && created.to).toEqual(['saveezirfan@gmail.com']);
+    expect(created.kind === 'email' && created.subject).toBe('TK-7 · Bug: Kanban card vanishes');
+    expect(created.kind === 'email' && created.body).toContain('It vanishes after a drag.');
+
+    const comment = messageFor(
+      email({
+        template: 'TK1',
+        key: 'TK1:comment:1',
+        recipient_emails: ['saveezirfan@gmail.com'],
+        payload: { ...details, variant: 'comment', status: 'In progress', comment: 'On it.' },
+      }),
+    );
+    expect(comment.kind === 'email' && comment.subject).toBe(
+      'Update on TK-7: Kanban card vanishes',
+    );
+    expect(comment.kind === 'email' && comment.body).toContain('now In progress');
+  });
+
   it('refuses to send E1, which is Willo’s', () => {
     expect(() => messageFor(email({ template: 'E1', recipient_emails: ['a@b.c'] }))).toThrow(
       /not ours to send/,

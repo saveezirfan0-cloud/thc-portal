@@ -158,6 +158,51 @@ const DECLARATION_TEMPLATES = {
  */
 export const DECLARATION_CODES = ['DR1'] as const satisfies readonly TemplateCode[];
 
+/** Tickets (ADR-0202): TK1, to the addresses in settings.ticket_recipients. Not §8's. */
+export const TICKET_CODES = ['TK1'] as const satisfies readonly TemplateCode[];
+
+/**
+ * TICKETS (ADR-0202). `TK` code. TK1 goes to whoever is named in
+ * `settings.ticket_recipients` (seeded with the product owner's address):
+ * the address is on the outbox row, written by create_ticket() /
+ * add_ticket_comment() / update_ticket() from that setting, never from the
+ * caller — so, as CP2 and CP3, the register pins no recipient. Two
+ * variants: `new` (key `TK1:ticket:<id>`, once per ticket), `comment`
+ * (key `TK1:comment:<comment id>`, once per comment) and `resolved` (key
+ * `TK1:resolved:<comment id>`, to the reporter's own sign-in address when the
+ * ticket is closed with a resolution note). No link: the Back
+ * Office origin is not in the database and a link is never taken from the
+ * caller. Spread into TEMPLATES after DR1.
+ */
+const TICKET_TEMPLATES = {
+  TK1: {
+    code: 'TK1',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Ticket {ref}',
+    variants: {
+      new: {
+        title: '{ref} · {kind}: {title}',
+        body: '{reporter} logged a new ticket in the Back Office.\n\n{ref} · {title}\nType: {kind}\nHow bad: {severity}\nPage: {page}\nRecording: {link}\n\n{details}\n\nOpen Tickets in the Back Office to follow it up, change its status or reply. Every update to this ticket is emailed here too.',
+      },
+      comment: {
+        title: 'Update on {ref}: {title}',
+        body: '{reporter} added an update to {ref} · {title} (now {status}).\n\n{comment}\n\nOpen Tickets in the Back Office to reply or change its status.',
+      },
+      // To the person who reported it, when the office closes the ticket with a
+      // resolution note. Their own sign-in address, read by the database.
+      resolved: {
+        title: '{ref} is {status}: {title}',
+        body: 'Hello {reporter},\n\nYour ticket {ref} · {title} is now {status}.\n\n{resolution}\n\nIf that is not right, add an update to the ticket in the Back Office, or log a new one with the Report button.\n\nThe Hospitality Company',
+      },
+    },
+    trigger:
+      'A Back Office login logs a ticket (create_ticket, variant new), or adds a comment or a note to one (add_ticket_comment / update_ticket, variant comment); the office closes a ticket with a resolution note (update_ticket, variant resolved, to the reporter). Not in §8, and not part of the scope: an internal tool, ADR-0202',
+    timing:
+      'immediately, once per ticket, per comment and per resolution note; at most 20 new tickets an hour per login; new and comment to the addresses in settings.ticket_recipients, resolved to the reporter',
+  },
+} as const satisfies Record<string, Template>;
+
 export const TEMPLATES = {
   // ────────────────────────────────────────────────────────────────────────
   // PUSH — Staffing App, Web Push in the PWA (§8, §10.5). Device-level: every
@@ -476,6 +521,7 @@ export const TEMPLATES = {
     deepLink: '/radar',
   },
   ...DECLARATION_TEMPLATES,
+  ...TICKET_TEMPLATES,
 
   // ────────────────────────────────────────────────────────────────────────
   // EMAIL — email survives only where the app does not exist yet (before

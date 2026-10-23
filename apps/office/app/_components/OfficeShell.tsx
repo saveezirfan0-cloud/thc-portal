@@ -4,6 +4,8 @@ import type { NavItem } from '@thc/ui';
 import { NAV_ICONS } from './navIcons';
 import { OfficeSidebar } from './OfficeSidebar';
 import { ReadOnlyBanner } from './ReadOnlyBanner';
+import { ReportButton } from './ReportButton';
+import { TimerChip } from './TimerChip';
 import { SignedInAs } from './SignedInAs';
 import type { ReactNode } from 'react';
 
@@ -65,6 +67,7 @@ const ITEMS: readonly NavItem[] = [
   { href: '/users', label: 'Users & access', short: 'Users' },
   { href: '/activity', label: 'Activity log', short: 'Activity' },
   { href: '/inbox', label: 'Inbox', short: 'Inbox' },
+  { href: '/tickets', label: 'Tickets', short: 'Tickets' },
   { href: '/account', label: 'My profile', short: 'Profile' },
 ];
 
@@ -155,6 +158,8 @@ export function OfficeShell({
         actions={
           <>
             {actions}
+            <TimerChip />
+            <ReportButton />
             {/* Below 760px the switch moves into the phone menu's More
                 sheet with the sign-out, so the top bar keeps one row. */}
             <span className="hide-phone">
