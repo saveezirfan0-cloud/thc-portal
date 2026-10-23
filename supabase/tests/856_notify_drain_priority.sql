@@ -25,7 +25,7 @@ insert into t_register (code) select unnest(array[
   'OF1', 'OF2', 'OF3', 'OF4', 'OF5', 'OF6',
   'CR1', 'CR2', 'CR3', 'OM1', 'OM2',
   'OC1', 'OC2', 'OC3', 'OC4', 'IR1',
-  'CP1', 'CP2', 'CP3', 'DR1', 'SC1', 'TK1',
+  'CP1', 'CP2', 'CP3', 'DR1', 'SC1', 'TK1', 'CK1',
   'BG08', 'NS1', 'D1', 'D2', 'INV1'
   -- register-codes:end
 ]);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ADDITION_CODES,
   CHASER_CODES,
+  CHECK_REMINDER_CODES,
   CLIENT_PORTAL_CODES,
   CLIENT_REQUIREMENT_CODES,
   DECLARATION_CODES,
@@ -85,6 +86,9 @@ const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
 /** Security-cleared events (ADR-0185): a worker is told to bring ID when confirmed. */
 const SECURITY_PUSH_CODES = ['SC1'];
 
+/** The morning check-in / check-out reminder (ADR-0205). */
+const CHECK_REMINDER_PUSH_CODES = ['CK1'];
+
 /**
  * Client Portal additions (ADR-0135): the office told of a "Request again"
  * (CP1); the customer told their line-up is full (CP2) or changed after the
@@ -124,6 +128,7 @@ describe('notification register (§8)', () => {
         ...CLIENT_REQUIREMENT_PUSH_CODES,
         ...CLIENT_REQUIREMENT_EMAIL_CODES,
         ...SECURITY_PUSH_CODES,
+        ...CHECK_REMINDER_PUSH_CODES,
         ...CLIENT_PORTAL_EMAIL_CODES,
         ...DECLARATION_PUSH_CODES,
         ...TICKET_EMAIL_CODES,
@@ -159,6 +164,8 @@ describe('notification register (§8)', () => {
     for (const code of CLIENT_REQUIREMENT_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
     for (const code of SECURITY_PUSH_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
+    for (const code of CHECK_REMINDER_PUSH_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
     for (const code of CLIENT_PORTAL_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
@@ -197,6 +204,8 @@ describe('notification register (§8)', () => {
     expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
     // ADR-0185: a worker confirmed on a security-cleared event is told to bring ID.
     expect([...SECURITY_CLEARANCE_CODES]).toEqual(SECURITY_PUSH_CODES);
+    // ADR-0205: the morning reminder to check in and out.
+    expect([...CHECK_REMINDER_CODES]).toEqual(CHECK_REMINDER_PUSH_CODES);
     // ADR-0202: tickets.
     expect([...TICKET_CODES]).toEqual(TICKET_EMAIL_CODES);
     const union = [
@@ -211,6 +220,7 @@ describe('notification register (§8)', () => {
       ...CLIENT_PORTAL_CODES,
       ...DECLARATION_CODES,
       ...SECURITY_CLEARANCE_CODES,
+      ...CHECK_REMINDER_CODES,
       ...TICKET_CODES,
     ];
     // Disjoint: no code is counted in two lists.
@@ -275,6 +285,23 @@ describe('notification register (§8)', () => {
     expect(text).toMatch(/passport or driving licence/);
     // Once per booking, however often the box is ticked.
     expect(outboxKey('SC1', 'booking', 'b-1')).toBe('SC1:booking:b-1');
+  });
+
+  it('sends CK1 on the morning of a shift: check in and out, or pay may be delayed', () => {
+    const ck1 = template('CK1');
+    expect(ck1.channel).toBe('push');
+    expect(ck1.trigger).toMatch(/Not in §8: ADR-0205/);
+    expect(ck1.timing).toMatch(/07:00 UK/);
+    expect(ck1.deepLink).toBe('/shifts/{bookingId}');
+    // Not the deep link: CR2 opens the same shift at the same minute.
+    expect(render(ck1.tag!, { bookingId: 'b-1' })).toBe('CK1:b-1');
+    expect([...body('CK1').matchAll(/\{(\w+)\}/g)].map((m) => m[1])).toEqual(['event', 'window']);
+    const text = render(body('CK1'), { event: 'Spring Gala', window: '18:00–23:00' });
+    expect(text).toContain('Spring Gala today (18:00–23:00)');
+    expect(text).toMatch(/check in .* and check out/);
+    expect(text).toMatch(/delay your pay/);
+    // One per worker per UK day.
+    expect(outboxKey('CK1', 'staff', 's-1:2026-10-24')).toBe('CK1:staff:s-1:2026-10-24');
   });
 
   it('sends DR1 with the office message only, landing where the worker can answer', () => {
@@ -462,6 +489,7 @@ describe('§8 copy is verbatim', () => {
       ...CLIENT_PORTAL_CODES,
       ...DECLARATION_CODES,
       ...SECURITY_CLEARANCE_CODES,
+      ...CHECK_REMINDER_CODES,
       ...TICKET_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(

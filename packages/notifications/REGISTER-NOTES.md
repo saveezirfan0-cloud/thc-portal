@@ -352,6 +352,20 @@ The shift screen the push opens carries the same note on a confirmed booking
 (`staff_security_cleared_bookings()`).
 
 
+## Morning check-in / check-out reminder (ADR-0205)
+
+THC's request of 23.10.2026: staff are still getting used to checking in and
+out on the new Staff App, so every worker with a shift is reminded in the
+morning to do both, or their pay may be delayed. On top of N9's two pushes 30
+minutes before the start and the end, not instead of them. It sits in
+`CHECK_REMINDER_CODES`; its `trigger` names ADR-0205 and says "Not in §8".
+Not `mandatory`.
+
+| Code | Channel · to | Title | Body | When · key |
+| --- | --- | --- | --- | --- |
+| CK1 | push · worker → `/shifts/{bookingId}` (tag `CK1:{bookingId}`, so it does not replace CR2) | `Check in and out today` | `You're working {event} today ({window}). Remember to check in on the app when you arrive and check out when you finish — it's how your hours are recorded, and missing either can delay your pay.` | 07:00 UK on the day, or three hours before an earlier start, never before the UK day begins (`kit_reminder_due_at`, CR2's time), until the start; confirmed and not yet checked in (`check_in_out_morning_tick`, every minute with booking-tick) · `CK1:staff:<id>:<UK date>`, one per worker per UK day, naming the earliest shift |
+
+
 ## Client Portal additions (ADR-0135)
 
 The product owner's approval of 14.10.2026 ("Request again / notifications",

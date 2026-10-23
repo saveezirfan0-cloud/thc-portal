@@ -256,6 +256,13 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       },
       { code: 'N7', label: 'Confirm today’s shift', when: 'On the day' },
       { code: 'N9', label: 'Your shift today', when: 'Check-in reminders on the day' },
+      {
+        code: 'CK1',
+        label: 'Check in and out today',
+        when: '07:00 UK on the day of a shift, or 3 hours before an earlier start',
+        warning:
+          'Workers are not reminded in the morning to check in and out; the reminders 30 minutes before the start and the end still go.',
+      },
       { code: 'N9b', label: 'You haven’t checked out', when: 'After the shift ends' },
       { code: 'N13', label: 'Break reminder', when: 'During a shift' },
       { code: 'N10b', label: 'Shift cancelled', when: 'The office cancels a booking' },

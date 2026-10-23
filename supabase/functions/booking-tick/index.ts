@@ -16,6 +16,10 @@
  * confirming to press "I'm ready". Also its own function; its count rides in
  * the same row. The release it leads to is the auto-staffing cutoff run's.
  *
+ * And `check_in_out_morning_tick()` (20261026150000, ADR-0205): the morning
+ * reminder to check in and out (CK1), at 07:00 UK on the day of a shift or
+ * three hours before an earlier start. Its count rides in the same row.
+ *
  * Every SQL function here is idempotent — outbox keys for the notifications,
  * not-exists guards for the violations — which is what makes a job that
  * runs sixty times an hour safe to re-run after a failure.
@@ -31,10 +35,13 @@ Deno.serve((request) =>
     if (kit.error) throw new Error(`client_kit_reminder_tick: ${kit.error.message}`);
     const late = await db.rpc('late_ready_tick');
     if (late.error) throw new Error(`late_ready_tick: ${late.error.message}`);
+    const check = await db.rpc('check_in_out_morning_tick');
+    if (check.error) throw new Error(`check_in_out_morning_tick: ${check.error.message}`);
     return {
       ...((data ?? {}) as Record<string, unknown>),
       ...((kit.data ?? {}) as Record<string, unknown>),
       ...((late.data ?? {}) as Record<string, unknown>),
+      ...((check.data ?? {}) as Record<string, unknown>),
     };
   }),
 );

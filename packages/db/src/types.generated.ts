@@ -11797,6 +11797,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      check_in_out_morning_tick: { Args: { p_now?: string }; Returns: Json };
       check_out: {
         Args: { p_accuracy?: number; p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;
