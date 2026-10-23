@@ -12,6 +12,8 @@ import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessi
 import { visaLimitProblem, visaLimitValue } from './conditions';
 import { type Period, periodToRange } from '../onboarding/view-model';
 import { termDatesPayloadProblem } from './termDates';
+import { passportExpiryMissing } from './passportExpiry';
+import { PASSPORT_EXPIRY_REQUIRED } from './rtw';
 import type { ActionResult } from './types';
 
 /**
@@ -101,6 +103,10 @@ export async function verifyDocument(
     const problem = termDatesPayloadProblem(dates.termPeriods, dates.noHolidays);
     if (problem) return { ok: false, message: problem };
   }
+  // ADR-0201: a passport is never verified without an expiry in place.
+  if (await passportExpiryMissing(docId, dates.expiry)) {
+    return { ok: false, message: PASSPORT_EXPIRY_REQUIRED };
+  }
   const args: RpcArguments = { p_doc: docId };
   if (dates.expiry) args['p_expiry'] = dates.expiry;
   if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
@@ -114,6 +120,24 @@ export async function verifyDocument(
   return verified.ok
     ? { ok: true, message: `${verified.message ?? 'Verified.'}${saved}` }
     : verified;
+}
+
+/**
+ * ADR-0201: put an expiry on a passport that has none — one verified before
+ * the expiry became required, or whose AI read found none. The database
+ * (set_passport_expiry) refuses a past date, a date over 15 years away and
+ * anything that is not a pending or verified passport, and audits the change.
+ */
+export async function setPassportExpiry(docId: string, expiry: string): Promise<ActionResult> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)) {
+    return { ok: false, message: 'Enter the expiry as a full date.' };
+  }
+  const result = await call('set_passport_expiry', { p_doc: docId, p_expiry: expiry });
+  if (isFailure(result)) return result;
+  return {
+    ok: true,
+    message: 'Passport expiry saved. Reminders and the automatic block now follow it.',
+  };
 }
 
 /**

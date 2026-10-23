@@ -67,23 +67,41 @@ export function rtwDateRule(docType: string, branch: string | null): RtwDateRule
 }
 
 /**
- * A passport or national ID card has an expiry the AI reads, but no
- * right-to-work date hangs on it, so the database never requires one. When
- * the read missed it (0% confidence, an unreadable photo) the reviewer types
- * it off the document on Verify — optional, and left blank it is simply not
- * tracked.
+ * A passport's expiry is REQUIRED on Verify (THC, 23.10.2026, ADR-0201): no
+ * candidate progresses without one in place — read by the AI or typed here
+ * off the document — because the daily job reminds and blocks from it
+ * (§4.2, §4.3). No right-to-work date hangs on it, so the database does not
+ * ask; the Back Office does, in the form and again in the action. A national
+ * ID card carries an expiry the same way but is not required (an EU
+ * candidate's alternative to a passport; THC asked about passports only).
  */
-export function identityExpiryField(docType: string): { label: string; hint: string } | null {
-  if (docType !== 'passport' && docType !== 'national_id') return null;
-  return {
-    label: docType === 'passport' ? 'Passport expiry' : 'ID card expiry',
-    hint: 'Optional. Enter it off the document if the AI did not read it — it drives the expiry reminders and the automatic block on the day it expires.',
-  };
+export function identityExpiryField(
+  docType: string,
+): { label: string; hint: string; required: boolean } | null {
+  if (docType === 'passport') {
+    return {
+      label: 'Passport expiry',
+      required: true,
+      hint: 'Required. Read by the AI where it could; otherwise enter it off the passport. It drives the expiry reminders and the automatic block on the day it expires.',
+    };
+  }
+  if (docType === 'national_id') {
+    return {
+      label: 'ID card expiry',
+      required: false,
+      hint: 'Optional. Enter it off the card if the AI did not read it — it drives the expiry reminders and the automatic block on the day it expires.',
+    };
+  }
+  return null;
 }
 
-/** Why an optional identity expiry cannot be sent, or null (blank is fine). */
-export function identityExpiryProblem(date: string): string | null {
-  if (date === '') return null;
+/** What a passport Verify says when no expiry is in place. */
+export const PASSPORT_EXPIRY_REQUIRED =
+  'Enter the passport expiry date before verifying — a passport cannot be verified without one.';
+
+/** Why an identity-document expiry cannot be sent, or null. */
+export function identityExpiryProblem(date: string, required = false): string | null {
+  if (date === '') return required ? PASSPORT_EXPIRY_REQUIRED : null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Enter the expiry as a full date.';
   if (date < '2000-01-01' || date > '2100-12-31') return 'Check the expiry — the year looks wrong.';
   return null;
