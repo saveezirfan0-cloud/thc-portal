@@ -236,8 +236,14 @@ export const TEMPLATES = {
     // every other N6 reads §8's body.
     variants: {
       late: {
-        title: "Press I'm ready within the hour",
-        body: "Press I'm ready by {dueBy} — or you'll be removed from your shift tomorrow",
+        title: "You have 1 hour to press I'm ready",
+        body: "Press I'm ready by {dueBy} (UK time), 1 hour after you confirmed — or you'll be removed from {event}",
+      },
+      // ADR-0197: the reminder at 15, 30 and 45 minutes, and a first warning
+      // that came late. `minutes` carries its unit ("45 minutes").
+      'late-reminder': {
+        title: "{minutes} left to press I'm ready",
+        body: "Press I'm ready for {event} by {dueBy} (UK time) — {minutes} left — or you'll be removed from it",
       },
     },
   },
@@ -252,7 +258,8 @@ export const TEMPLATES = {
     // ADR-0196: the release of a late confirmer, an hour after confirming.
     variants: {
       late: {
-        body: "You have been removed from your shift tomorrow as we did not receive your 'I'm ready' within an hour of your confirmation",
+        title: 'Removed from your shift',
+        body: "You have been removed from {event} · {dateTime} as we did not receive your 'I'm ready' within 1 hour of your confirmation. Your place is being offered to someone else",
       },
     },
   },

@@ -1,6 +1,6 @@
 # ADR-0196 · A worker who confirms after the noon deadline has one hour to press "I'm ready"
 
-**Status:** Accepted (instruction of the product owner, 22.10.2026) · amends ADR-0034 §3–4 and 20260927140300 · a deliberate change to §3.5, **raise with THC**: the scope gives stage 2 one deadline, 12:00 the day before, and says nothing about a worker who confirms after it.
+**Status:** Accepted (instruction of the product owner, 22.10.2026) · amends ADR-0034 §3–4 and 20260927140300 · a deliberate change to §3.5, **raise with THC** · reminders every 15 minutes and the reworded messages are ADR-0197: the scope gives stage 2 one deadline, 12:00 the day before, and says nothing about a worker who confirms after it.
 
 ## Context
 

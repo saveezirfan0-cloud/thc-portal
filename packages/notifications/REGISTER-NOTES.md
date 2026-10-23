@@ -373,3 +373,19 @@ is unset on `notify-drain` (docs/12), because their button would have no link.
 | Code | Trigger | What it says | Why |
 | --- | --- | --- | --- |
 | DR1 | The office presses **Ask for more details** on a pending Yes criminal declaration (`compliance_request_declaration_details`, key `DR1:declaration:<id>`) | title "More detail needed", body `We need a bit more detail about your declaration — {message}`, button **Update declaration**, landing on `/onboarding` for a candidate and `/documents/declare` for a worker (`declaration_update_link()`) | §8 has no send for a request: before ADR-0180 the only way to ask was Reject (N8). `{message}` is what the office wrote for the worker — never the declared details and never the internal review note. It can show on a lock screen, which the office's dialog says. **Confirm the wording.** Not sent for an update the worker makes; a compliant worker's update sends E9, as any declaration from the app does |
+
+
+## Late confirmers (ADR-0196, ADR-0197)
+
+A worker who confirms after the 12:00 day-before deadline has one hour from
+confirming to press "I'm ready". No new code: N6 and N6b gain variants, the
+register's own copy staying untouched for everyone else.
+
+| Code · variant | When · key | Title | Body |
+| --- | --- | --- | --- |
+| N6 · `late` | the first tick after confirming (`late_ready_tick`, every minute with booking-tick) · `late_ready_key()` = the N6 key + `:late:<confirmed epoch>` | `You have 1 hour to press I'm ready` | `Press I'm ready by {dueBy} (UK time), 1 hour after you confirmed — or you'll be removed from {event}` |
+| N6 · `late-reminder` | +15, +30, +45 minutes after confirming, one per quarter-hour; also a first warning that came after the first quarter-hour · `late_ready_step_key()` = the key above + `:1`/`:2`/`:3` | `{minutes} left to press I'm ready` | `Press I'm ready for {event} by {dueBy} (UK time) — {minutes} left — or you'll be removed from it` |
+| N6b · `late` | the release, an hour after confirming (`release_late_unready_bookings`, the auto-staffing cutoff run, every 5 minutes) · `N6b:booking:<id>` | `Removed from your shift` | `You have been removed from {event} · {dateTime} as we did not receive your 'I'm ready' within 1 hour of your confirmation. Your place is being offered to someone else` |
+
+`{minutes}` carries its unit ("45 minutes", "1 minute"); `{dueBy}` is HH:MM UK.
+
