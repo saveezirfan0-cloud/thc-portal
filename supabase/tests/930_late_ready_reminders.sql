@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 930 · A late confirmer is reminded every 15 minutes to press "I'm ready"
---       (§3.5, ADR-0198)
+--       (§3.5, ADR-0200)
 --   20261024130000_late_ready_reminders.sql
 --
 -- Held here, on one worker's hour (confirmed 15:00 the day before a 17:00

@@ -38,6 +38,7 @@ import {
 } from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
 import { VerifiedLetterActions, currentTermLetterOf } from '../../compliance/VerifiedLetterActions';
+import { PassportExpiryFix, passportNeedsExpiry } from '../../compliance/PassportExpiryFix';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { DobClaimNote } from '../../_components/DobClaimNote';
 import { RejectSelfie } from '../../_components/RejectSelfie';
@@ -326,6 +327,9 @@ export function Documents({
                     <Pill tone="amber">compare NI number</Pill>
                   ) : null}
                   {reviewButtons(queue.get(row.id))}
+                  {passportNeedsExpiry(row) ? (
+                    <PassportExpiryFix docId={row.id} disabled={reviewClosed || pending} />
+                  ) : null}
                   <VerifiedLetterActions
                     doc={row}
                     currentTermLetter={currentTermLetter}

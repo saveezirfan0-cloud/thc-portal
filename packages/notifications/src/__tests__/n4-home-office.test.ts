@@ -76,7 +76,7 @@ describe('N6 / N6b · the late confirmer variant', () => {
     expect(message.kind === 'push' && message.url).toBe('/shifts');
   });
 
-  // ADR-0198: every 15 minutes after the first warning, each with the time the
+  // ADR-0200: every 15 minutes after the first warning, each with the time the
   // hour runs out and what is left of it.
   it.each(['45 minutes', '30 minutes', '15 minutes'])(
     'the late reminder with %s left names the time it runs out',

@@ -66,6 +66,47 @@ export function rtwDateRule(docType: string, branch: string | null): RtwDateRule
   return null;
 }
 
+/**
+ * A passport's expiry is REQUIRED on Verify (THC, 23.10.2026, ADR-0201): no
+ * candidate progresses without one in place — read by the AI or typed here
+ * off the document — because the daily job reminds and blocks from it
+ * (§4.2, §4.3). No right-to-work date hangs on it, so the database does not
+ * ask; the Back Office does, in the form and again in the action. A national
+ * ID card carries an expiry the same way but is not required (an EU
+ * candidate's alternative to a passport; THC asked about passports only).
+ */
+export function identityExpiryField(
+  docType: string,
+): { label: string; hint: string; required: boolean } | null {
+  if (docType === 'passport') {
+    return {
+      label: 'Passport expiry',
+      required: true,
+      hint: 'Required. Read by the AI where it could; otherwise enter it off the passport. It drives the expiry reminders and the automatic block on the day it expires.',
+    };
+  }
+  if (docType === 'national_id') {
+    return {
+      label: 'ID card expiry',
+      required: false,
+      hint: 'Optional. Enter it off the card if the AI did not read it — it drives the expiry reminders and the automatic block on the day it expires.',
+    };
+  }
+  return null;
+}
+
+/** What a passport Verify says when no expiry is in place. */
+export const PASSPORT_EXPIRY_REQUIRED =
+  'Enter the passport expiry date before verifying — a passport cannot be verified without one.';
+
+/** Why an identity-document expiry cannot be sent, or null. */
+export function identityExpiryProblem(date: string, required = false): string | null {
+  if (date === '') return required ? PASSPORT_EXPIRY_REQUIRED : null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Enter the expiry as a full date.';
+  if (date < '2000-01-01' || date > '2100-12-31') return 'Check the expiry — the year looks wrong.';
+  return null;
+}
+
 /** Why Verify cannot go ahead yet, in words for the reviewer, or null. */
 export function rtwDateProblem(
   rule: RtwDateRule | null,

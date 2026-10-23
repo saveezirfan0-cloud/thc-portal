@@ -375,7 +375,7 @@ is unset on `notify-drain` (docs/12), because their button would have no link.
 | DR1 | The office presses **Ask for more details** on a pending Yes criminal declaration (`compliance_request_declaration_details`, key `DR1:declaration:<id>`) | title "More detail needed", body `We need a bit more detail about your declaration — {message}`, button **Update declaration**, landing on `/onboarding` for a candidate and `/documents/declare` for a worker (`declaration_update_link()`) | §8 has no send for a request: before ADR-0180 the only way to ask was Reject (N8). `{message}` is what the office wrote for the worker — never the declared details and never the internal review note. It can show on a lock screen, which the office's dialog says. **Confirm the wording.** Not sent for an update the worker makes; a compliant worker's update sends E9, as any declaration from the app does |
 
 
-## Late confirmers (ADR-0196, ADR-0198)
+## Late confirmers (ADR-0196, ADR-0200)
 
 A worker who confirms after the 12:00 day-before deadline has one hour from
 confirming to press "I'm ready". No new code: N6 and N6b gain variants, the

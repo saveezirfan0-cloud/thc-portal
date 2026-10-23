@@ -34,6 +34,8 @@ import {
   verifyHint,
   whoLine,
 } from './queue';
+import { canRescan } from './messages';
+import { RescanButton } from './RescanButton';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { useReviewDialogs } from './ReviewDialogs';
@@ -255,6 +257,11 @@ function QueueLine({
   const actions = actionsFor(row);
   const decisions = (
     <>
+      {row.kind === 'document' && row.file_path && canRescan(row.item_type) ? (
+        <>
+          <RescanButton docId={row.item_id} disabled={busy} />{' '}
+        </>
+      ) : null}
       {verifyAllowed(row) ? (
         <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
           {actions.verify}
