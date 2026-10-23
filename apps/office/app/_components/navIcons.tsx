@@ -119,6 +119,12 @@ export const NAV_ICONS: Readonly<Record<string, ReactNode>> = {
       <path d="M3 7l9 6 9-6" />
     </Icon>
   ),
+  '/tickets': (
+    <Icon>
+      <path d="M4 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h16v-2a2 2 0 0 1 0-4v0a2 2 0 0 0 0-4V6H4z" />
+      <path d="M14 6v12" strokeDasharray="2 3" />
+    </Icon>
+  ),
   '/account': (
     <Icon>
       <circle cx="12" cy="8" r="4" />

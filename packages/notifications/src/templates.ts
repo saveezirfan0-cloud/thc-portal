@@ -158,6 +158,43 @@ const DECLARATION_TEMPLATES = {
  */
 export const DECLARATION_CODES = ['DR1'] as const satisfies readonly TemplateCode[];
 
+/** Tickets (ADR-0198): TK1, to the addresses in settings.ticket_recipients. Not §8's. */
+export const TICKET_CODES = ['TK1'] as const satisfies readonly TemplateCode[];
+
+/**
+ * TICKETS (ADR-0198). `TK` code. TK1 goes to whoever is named in
+ * `settings.ticket_recipients` (seeded with the product owner's address):
+ * the address is on the outbox row, written by create_ticket() /
+ * add_ticket_comment() / update_ticket() from that setting, never from the
+ * caller — so, as CP2 and CP3, the register pins no recipient. Two
+ * variants: `new` (key `TK1:ticket:<id>`, once per ticket) and `comment`
+ * (key `TK1:comment:<comment id>`, once per comment). No link: the Back
+ * Office origin is not in the database and a link is never taken from the
+ * caller. Spread into TEMPLATES after DR1.
+ */
+const TICKET_TEMPLATES = {
+  TK1: {
+    code: 'TK1',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Ticket {ref}',
+    variants: {
+      new: {
+        title: '{ref} · {kind}: {title}',
+        body: '{reporter} logged a new ticket in the Back Office.\n\n{ref} · {title}\nType: {kind}\nHow bad: {severity}\nPage: {page}\nRecording: {link}\n\n{details}\n\nOpen Tickets in the Back Office to follow it up, change its status or reply. Every update to this ticket is emailed here too.',
+      },
+      comment: {
+        title: 'Update on {ref}: {title}',
+        body: '{reporter} added an update to {ref} · {title} (now {status}).\n\n{comment}\n\nOpen Tickets in the Back Office to reply or change its status.',
+      },
+    },
+    trigger:
+      'A Back Office login logs a ticket (create_ticket, variant new), or adds a comment or a note to one (add_ticket_comment / update_ticket, variant comment). Not in §8: an addition to scope v1.6, ADR-0198',
+    timing:
+      'immediately, once per ticket and once per comment; at most 20 new tickets an hour per login; to the addresses in settings.ticket_recipients',
+  },
+} as const satisfies Record<string, Template>;
+
 export const TEMPLATES = {
   // ────────────────────────────────────────────────────────────────────────
   // PUSH — Staffing App, Web Push in the PWA (§8, §10.5). Device-level: every
@@ -469,6 +506,7 @@ export const TEMPLATES = {
     deepLink: '/radar',
   },
   ...DECLARATION_TEMPLATES,
+  ...TICKET_TEMPLATES,
 
   // ────────────────────────────────────────────────────────────────────────
   // EMAIL — email survives only where the app does not exist yet (before
