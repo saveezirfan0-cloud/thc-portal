@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261024120000 · Tickets: the team logs issues, requests and
+-- Migration 20261025110000 · Tickets: the team logs issues, requests and
 --                            updates from the Back Office (ADR-0202)
 --
 -- The test run needs somewhere for the office to say "this is broken",
@@ -1108,7 +1108,7 @@ language sql immutable set search_path = public, extensions as $$
 $$;
 
 comment on function public.notification_priorities() is
-  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176), DR1 20261022170100 (ADR-0180), SC1 20261023100000 (ADR-0185), TK1 20261024120000 (ADR-0202).';
+  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176), DR1 20261022170100 (ADR-0180), SC1 20261023100000 (ADR-0185), TK1 20261025110000 (ADR-0202).';
 
 revoke execute on function public.notification_priorities() from public, anon, authenticated;
 grant execute on function public.notification_priorities() to service_role;

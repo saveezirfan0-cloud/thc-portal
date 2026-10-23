@@ -7,7 +7,7 @@ import type {
   Worker,
 } from './view-model';
 
-/** A row of `tickets` (20261024120000). */
+/** A row of `tickets` (20261025110000). */
 export interface Ticket {
   id: string;
   ticket_no: number;
