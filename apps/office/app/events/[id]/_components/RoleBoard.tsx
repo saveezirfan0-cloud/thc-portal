@@ -9,6 +9,7 @@ import {
   canCancelBooking,
   canMarkNoShow,
   formatAllocationPair,
+  formatDateTimeIn,
   formatHours,
   formatTimeIn,
   openSlots,
@@ -306,13 +307,13 @@ export function RoleBoard({
 function confirmedLine(booking: BoardBooking, roleName: string, format?: TimeFormat): string {
   const parts = [roleName];
   if (booking.confirmedAt) {
-    parts.push(`confirmed ${formatTimeIn(new Date(booking.confirmedAt), UK_ZONE, format)}`);
+    parts.push(`confirmed ${formatDateTimeIn(new Date(booking.confirmedAt), UK_ZONE, format)}`);
   }
   // The day-before "I'm ready" is the one hard deadline (§3.5), so whether it
   // has been pressed is what the manager most needs to see here.
   parts.push(
     booking.dayBeforeConfirmedAt
-      ? `I'm ready ✓ ${formatTimeIn(new Date(booking.dayBeforeConfirmedAt), UK_ZONE, format)}`
+      ? `I'm ready ✓ ${formatDateTimeIn(new Date(booking.dayBeforeConfirmedAt), UK_ZONE, format)}`
       : "I'm ready — not yet",
   );
   if (booking.source === 'self') parts.push('self-applied via Radar');
