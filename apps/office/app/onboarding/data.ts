@@ -561,7 +561,13 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     // §9.6: the clients to qualify the candidate at, and what they already hold.
-    supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
+    // ADR-0195: an archived client cannot be qualified at.
+    supabase
+      .from('clients')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name')
+      .returns<ClientOption[]>(),
     supabase
       .from('staff_client_qualifications_v')
       .select('id, client_id, client_name, role_id, role_name, do_not_return')
