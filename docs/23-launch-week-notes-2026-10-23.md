@@ -110,7 +110,7 @@ time tracker with a monthly report and CSV. **Do not build a second one.** Check
 
 | Needed | State |
 |---|---|
-| Button on every page, page link captured | Back Office: yes. The link is now the full address (query string included) and is clickable on the ticket |
+| Button on every page, page link captured | Back Office: yes. The link is now the path plus query string (`/events?week=2`) and is clickable on the ticket |
 | Type, summary, details | yes (kind, summary, details, plus optional severity) |
 | Voice dictation | yes (browser speech recogniser; Chrome, Edge, Safari) |
 | Screenshot / video / screen recording | **added here (ADR-0204):** attach files, take a screenshot, record the screen; uploaded after the ticket is saved |

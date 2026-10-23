@@ -170,6 +170,7 @@ describe('<TicketScreen> — /tickets/:id', () => {
             file_name: 'Screenshot 1.png',
             created_at: '2026-10-22T19:24:30Z',
             url: 'https://files.example/shot.png?token=abc',
+            restricted: false,
           },
           {
             id: 'f2',
@@ -179,6 +180,7 @@ describe('<TicketScreen> — /tickets/:id', () => {
             file_name: 'Recording.webm',
             created_at: '2026-10-22T19:24:31Z',
             url: 'https://files.example/rec.webm?token=def',
+            restricted: false,
           },
           {
             id: 'f3',
@@ -188,6 +190,17 @@ describe('<TicketScreen> — /tickets/:id', () => {
             file_name: null,
             created_at: '2026-10-22T19:24:32Z',
             url: null,
+            restricted: false,
+          },
+          {
+            id: 'f4',
+            kind: 'screenshot',
+            mime: 'image/png',
+            bytes: 5000,
+            file_name: 'Pay.png',
+            created_at: '2026-10-22T19:24:33Z',
+            url: null,
+            restricted: true,
           },
         ]}
       />,
@@ -198,6 +211,7 @@ describe('<TicketScreen> — /tickets/:id', () => {
     expect(html).toContain('117 KB');
     expect(html).toContain('8.6 MB');
     expect(html).toContain('could not be linked just now');
+    expect(html).toContain('only the person who sent it and finance logins can open it');
   });
 
   it('draws no files panel when none were sent', () => {
@@ -205,14 +219,22 @@ describe('<TicketScreen> — /tickets/:id', () => {
     expect(html).not.toContain('Screenshots and recordings');
   });
 
-  it('links the full address of the page it was sent from', () => {
-    const html = renderToStaticMarkup(
-      <TicketScreen
-        data={{ ...data, ticket: { ...TICKET, page_path: 'https://office.example/events?week=2' } }}
-        canWrite
-      />,
-    );
-    expect(html).toContain('href="https://office.example/events?week=2"');
+  it('links the page it was sent from only when it is a path on this site', () => {
+    const render = (page_path: string) =>
+      renderToStaticMarkup(
+        <TicketScreen data={{ ...data, ticket: { ...TICKET, page_path } }} canWrite />,
+      );
+    expect(render('/events?week=2')).toContain('<a class="tk-path" href="/events?week=2">');
+    // Anything that is not a path on this site is shown, never linked.
+    for (const other of [
+      'https://evil.example/events',
+      '//evil.example/x',
+      'javascript:alert(1)',
+    ]) {
+      const html = render(other);
+      expect(html).not.toContain(`href="${other}"`);
+      expect(html).toContain('<code class="tk-path">');
+    }
   });
 
   it('draws nothing of the owner’s scope label and time for anyone else', () => {

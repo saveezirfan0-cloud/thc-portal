@@ -8,7 +8,7 @@ import { createAdminClient } from '@thc/db/admin';
 import { explainDbError } from '../_lib/dbError';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from './data';
-import { fileProblem, objectPath } from './ticket-files';
+import { FILES_PER_TICKET, fileProblem, objectPath } from './ticket-files';
 import type { FileMeta, TicketFileKind } from './ticket-files';
 
 /**
@@ -89,6 +89,10 @@ export async function startTicketFileUpload(ticketId: string, file: FileMeta): P
   } catch {
     return { ok: false, message: NO_SERVICE_KEY };
   }
+  // An object that was uploaded but never attached has no row, so the five-file
+  // limit is also counted in Storage before another URL is handed out.
+  const { data: held } = await admin.storage.from(BUCKET).list(ticketId, { limit: 10 });
+  if ((held?.length ?? 0) >= FILES_PER_TICKET) return { ok: false, message: NOT_YOURS };
   const { data, error: signError } = await admin.storage.from(BUCKET).createSignedUploadUrl(path);
   if (signError || !data) return { ok: false, message: 'Could not start the upload. Try again.' };
   return { ok: true, path: data.path, signedUrl: data.signedUrl };
@@ -108,7 +112,7 @@ export async function finishTicketFile(
     p_ticket: ticketId,
     p_path: path,
     p_kind: kind,
-    p_name: name.slice(0, 200),
+    p_name: typeof name === 'string' ? name.slice(0, 200) : '',
   });
   if (error) return { ok: false, message: refusal(error) };
   revalidatePath(`/tickets/${ticketId}`);

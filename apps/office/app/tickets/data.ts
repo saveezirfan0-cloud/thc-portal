@@ -9,6 +9,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { readProblem } from '../_lib/dbError';
+import { officeCan } from '../_lib/permissions';
+import type { OfficeRole } from '../_lib/permissions';
 import { PAGE_SIZE, ilikePattern, ticketNumberOf } from './view-model';
 import type { ScopeLabel, TicketQuery, TimeRow, Worker } from './view-model';
 import type {
@@ -200,34 +202,54 @@ const FILE_URL_TTL_SECONDS = 60 * 60;
  * any; the links are signed with the service key because the bucket has no
  * Storage policy at all. A path is signed only after a row for it came back,
  * and a failure to sign leaves the file listed without a link.
+ *
+ * A screenshot can show a screen its viewer may not open (pay, invoices), so a
+ * link is signed only for the person who uploaded the file and for logins that
+ * hold the `finance` permission; anyone else sees the file listed, unlinked.
  */
-export async function loadTicketFiles(ticketId: string): Promise<TicketFile[]> {
+export async function loadTicketFiles(
+  ticketId: string,
+  role: OfficeRole | null | undefined,
+): Promise<TicketFile[]> {
   if (!UUID.test(ticketId) || !supabaseConfigured()) return [];
   const supabase = await client();
   const { data, error } = await supabase
     .from('ticket_files')
-    .select('id, path, kind, mime, bytes, file_name, created_at')
+    .select('id, path, kind, mime, bytes, file_name, created_at, uploaded_by')
     .eq('ticket_id', ticketId)
     .order('created_at', { ascending: true });
   if (error || !data) return [];
-  const rows = data as (Omit<TicketFile, 'url'> & { path: string })[];
+  const rows = data as (Omit<TicketFile, 'url' | 'restricted'> & {
+    path: string;
+    uploaded_by: string | null;
+  })[];
   if (rows.length === 0) return [];
 
+  const finance = officeCan(role, 'finance');
+  const me = finance ? null : ((await supabase.auth.getUser()).data.user?.id ?? null);
+  const openable = rows.filter((row) => finance || (me !== null && row.uploaded_by === me));
+
   const urls = new Map<string, string>();
-  try {
-    const signed = await createAdminClient()
-      .storage.from('ticket-files')
-      .createSignedUrls(
-        rows.map((row) => row.path),
-        FILE_URL_TTL_SECONDS,
-      );
-    for (const entry of signed.data ?? []) {
-      if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+  if (openable.length > 0) {
+    try {
+      const signed = await createAdminClient()
+        .storage.from('ticket-files')
+        .createSignedUrls(
+          openable.map((row) => row.path),
+          FILE_URL_TTL_SECONDS,
+        );
+      for (const entry of signed.data ?? []) {
+        if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+      }
+    } catch {
+      // No service key here, or Storage is down: the file is listed, not linked.
     }
-  } catch {
-    // No service key here, or Storage is down: the file is listed, not linked.
   }
-  return rows.map(({ path, ...row }) => ({ ...row, url: urls.get(path) ?? null }));
+  return rows.map(({ path, uploaded_by, ...row }) => ({
+    ...row,
+    url: urls.get(path) ?? null,
+    restricted: !(finance || (me !== null && uploaded_by === me)),
+  }));
 }
 
 export interface TrackingData {

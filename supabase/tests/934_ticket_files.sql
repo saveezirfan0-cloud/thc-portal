@@ -11,7 +11,7 @@
 --   · deleting a row queues its object for removal.
 -- =====================================================================
 begin;
-select plan(27);
+select plan(38);
 \ir _shared/fixtures.psql
 
 \set filer  '93400000-0000-4000-8000-000000000001'
@@ -134,6 +134,66 @@ select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
   'P0001', 'cannot_attach', 'a viewer attaches nothing');
 
 -- ---------------------------------------------------------------------
+-- A worker and a client reach none of it
+-- ---------------------------------------------------------------------
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from ticket_files), 0, 'a worker reads no file');
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/33333333-3333-4333-8333-333333333333.png'),
+  '42501', 'not_authorised', 'and cannot attach one');
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from ticket_files), 0, 'a client reads no file');
+
+-- ---------------------------------------------------------------------
+-- What the database refuses on the way in
+-- ---------------------------------------------------------------------
+reset role;
+insert into storage.objects (bucket_id, name, metadata) values
+  ('ticket-files', (select r ->> 'id' from made) || '/77777777-7777-4777-8777-777777777777.png',
+   '{"mimetype": "image/png", "size": 0}'::jsonb),
+  ('documents',    (select r ->> 'id' from made) || '/88888888-8888-4888-8888-888888888888.png',
+   '{"mimetype": "image/png", "size": 5}'::jsonb);
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'filer', 'role', 'authenticated')::text, true);
+
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/not-a-uuid.png'),
+  '22023', 'bad_file_path', 'a file name that is not a uuid is refused');
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/' || repeat('-', 36) || '.png'),
+  '22023', 'bad_file_path', 'and so is thirty-six hyphens');
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/11111111-1111-4111-8111-111111111111.png'),
+  '23505', null, 'the same object is not attached twice');
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/77777777-7777-4777-8777-777777777777.png'),
+  '23514', null, 'an empty object is refused by the table');
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/88888888-8888-4888-8888-888888888888.png'),
+  'P0002', 'file_not_found', 'an object of that name in another bucket is not this bucket''s');
+
+-- The filer is demoted to Viewer inside the hour: still the reporter, but
+-- the table refuses the write (ADR-0060).
+reset role;
+update profiles set office_role = 'viewer' where id = :'filer';
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'filer', 'role', 'authenticated')::text, true);
+select throws_ok(format($$ select attach_ticket_file(%L, %L, 'screenshot') $$,
+    (select r ->> 'id' from made),
+    (select r ->> 'id' from made) || '/33333333-3333-4333-8333-333333333333.png'),
+  '42501', 'read_only', 'a filer demoted to Viewer attaches nothing');
+reset role;
+update profiles set office_role = 'manager' where id = :'filer';
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'filer', 'role', 'authenticated')::text, true);
+
+-- ---------------------------------------------------------------------
 -- At most five, and only for an hour
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', :'filer', 'role', 'authenticated')::text, true);
@@ -163,6 +223,16 @@ set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'filer', 'role', 'authenticated')::text, true);
 select is(ticket_file_allowed((select (r ->> 'id')::uuid from made)), false,
   'after an hour even the filer may not add more');
+
+-- An owner deleting the ticket takes the whole folder with it, including an
+-- object that was uploaded but never attached.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select lives_ok(format($$ select delete_ticket(%L) $$, (select r ->> 'id' from made)),
+  'an owner deletes the ticket');
+reset role;
+select is((select count(*)::int from storage_deletions
+            where bucket = 'ticket-files' and prefix and path = (select r ->> 'id' from made) || '/'), 1,
+  'and its folder is queued for removal, attached or not');
 
 select * from finish();
 rollback;

@@ -27,7 +27,8 @@
 --     deleted, which cascades); gdpr-purge drains `storage_deletions`.
 --
 -- A Viewer reports nothing (ADR-0060), so owns no ticket and attaches
--- nothing; the office_read_only trigger covers the table as well.
+-- nothing (cannot_attach); a reporter demoted to Viewer inside the hour is
+-- stopped by the office_read_only trigger on the table.
 -- pgTAP: supabase/tests/934_ticket_files.sql.
 -- =====================================================================
 
@@ -149,7 +150,10 @@ declare
 begin
   perform assert_office_caller();
 
-  if p_ticket is null or not exists (select 1 from tickets where id = p_ticket) then
+  -- The row lock serialises two attaches by the same filer, so the
+  -- five-file count below cannot be beaten by racing calls.
+  perform 1 from tickets where id = p_ticket for update;
+  if not found then
     raise exception 'unknown_ticket' using errcode = 'P0002';
   end if;
   if not ticket_file_allowed(p_ticket) then
@@ -159,7 +163,8 @@ begin
   if v_kind not in ('screenshot', 'video', 'recording') then
     raise exception 'bad_file_kind' using errcode = '22023';
   end if;
-  if coalesce(p_path, '') !~ ('^' || p_ticket::text || '/[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|mov)$') then
+  if coalesce(p_path, '') !~ ('^' || p_ticket::text
+       || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp|gif|mp4|webm|mov)$') then
     raise exception 'bad_file_path' using errcode = '22023';
   end if;
 
@@ -184,7 +189,46 @@ begin
 end $$;
 
 comment on function public.attach_ticket_file(uuid, text, text, text) is
-  'ADR-0204: attach an uploaded screenshot, video or screen recording to a ticket the caller filed in the last hour (at most five). The object must exist in the ticket-files bucket under <ticket id>/; its size and type are read from Storage. Back Office logins only; a Viewer is refused read_only (ADR-0060). Returns the file id.';
+  'ADR-0204: attach an uploaded screenshot, video or screen recording to a ticket the caller filed in the last hour (at most five). The object must exist in the ticket-files bucket under <ticket id>/; its size and type are read from Storage. Back Office logins only. Someone who did not file the ticket is refused cannot_attach; a filer demoted to Viewer inside the hour is refused read_only by the office_read_only trigger (ADR-0060). Returns the file id.';
 
 revoke all on function public.attach_ticket_file(uuid, text, text, text) from public, anon;
 grant execute on function public.attach_ticket_file(uuid, text, text, text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 6 · A deleted ticket takes its folder with it
+--
+-- The per-row trigger above queues every REGISTERED file. An object that was
+-- uploaded but never attached (a sixth file, one refused as empty, one sent
+-- after the hour) has no row, so the whole `<ticket id>/` folder is queued
+-- as a prefix too; gdpr-purge already sweeps prefix rows in any bucket.
+-- Restates delete_ticket from 20261025110000 with that one addition.
+-- ---------------------------------------------------------------------
+create or replace function public.delete_ticket(p_ticket uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform assert_office_caller();
+  if not office_can('users') then
+    raise exception 'not_permitted' using errcode = '42501';
+  end if;
+  if not exists (select 1 from tickets where id = p_ticket) then
+    raise exception 'unknown_ticket' using errcode = 'P0002';
+  end if;
+  if exists (select 1 from ticket_time where ticket_id = p_ticket) then
+    raise exception 'ticket_has_time' using errcode = 'P0001';
+  end if;
+  insert into storage_deletions (bucket, path, prefix)
+  values ('ticket-files', p_ticket::text || '/', true)
+  on conflict (bucket, path) do nothing;
+  delete from tickets where id = p_ticket;
+  return jsonb_build_object('id', p_ticket);
+end $$;
+
+comment on function public.delete_ticket(uuid) is
+  'ADR-0202, ADR-0204: delete a report, its thread and its files (the ticket-files folder is queued for removal). Owners only; refused (ticket_has_time) while any time is logged on it, so a bill can always be traced. Close it instead.';
+
+revoke all on function public.delete_ticket(uuid) from public, anon;
+grant execute on function public.delete_ticket(uuid) to authenticated;

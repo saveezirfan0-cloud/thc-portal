@@ -38,7 +38,9 @@ describe('the Content-Security-Policy', () => {
       supabaseUrl: 'https://dgxtqvalfiisfpbwodew.supabase.co',
     });
     const script = policy.split('; ').find((d) => d.startsWith('script-src ')) ?? '';
-    expect(script).toBe(`script-src 'self' 'nonce-abc123' 'strict-dynamic' ${APPEARANCE_SCRIPT_HASH}`);
+    expect(script).toBe(
+      `script-src 'self' 'nonce-abc123' 'strict-dynamic' ${APPEARANCE_SCRIPT_HASH}`,
+    );
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("base-uri 'self'");
     expect(policy).toContain("frame-ancestors 'none'");
@@ -58,10 +60,17 @@ describe('the Content-Security-Policy', () => {
     expect(policy).toContain(
       "img-src 'self' data: blob: https://api.mapbox.com https://tile.openstreetmap.org https://dgxtqvalfiisfpbwodew.supabase.co",
     );
+    // A ticket's recording plays from the project's Storage (ADR-0204).
+    expect(policy).toContain("media-src 'self' blob: https://dgxtqvalfiisfpbwodew.supabase.co");
   });
 
   it('the Staff App does not load OpenStreetMap tiles; dev adds what next dev needs', () => {
-    const policy = contentSecurityPolicy({ app: 'staff', nonce: 'n', supabaseUrl: undefined, dev: true });
+    const policy = contentSecurityPolicy({
+      app: 'staff',
+      nonce: 'n',
+      supabaseUrl: undefined,
+      dev: true,
+    });
     expect(policy).not.toContain('openstreetmap');
     expect(policy).toContain("'unsafe-eval'");
     expect(policy).toContain("connect-src 'self' ws:");
@@ -101,7 +110,11 @@ describe('violation reports', () => {
       readCspReports([
         {
           type: 'csp-violation',
-          body: { effectiveDirective: 'img-src', blockedURL: 'https://x.example/a.png', documentURL: 'https://o/a' },
+          body: {
+            effectiveDirective: 'img-src',
+            blockedURL: 'https://x.example/a.png',
+            documentURL: 'https://o/a',
+          },
         },
       ])[0]?.directive,
     ).toBe('img-src');

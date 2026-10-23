@@ -141,7 +141,9 @@ export function TicketScreen({
                     <video src={file.url} controls preload="metadata" />
                   ) : (
                     <p className="tk-meta">
-                      This file could not be linked just now. Reload to try again.
+                      {file.restricted
+                        ? 'A screenshot can show pay or other private screens, so only the person who sent it and finance logins can open it.'
+                        : 'This file could not be linked just now. Reload to try again.'}
                     </p>
                   )}
                   <div className="tk-meta">
@@ -177,13 +179,8 @@ export function TicketScreen({
             <div>
               <div className="tk-label">Page it happened on</div>
               {ticket.page_path ? (
-                /^https?:\/\//i.test(ticket.page_path) ? (
-                  <a
-                    className="tk-path"
-                    href={ticket.page_path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                /^\/(?!\/)/.test(ticket.page_path) ? (
+                  <a className="tk-path" href={ticket.page_path}>
                     <code>{ticket.page_path}</code>
                   </a>
                 ) : (

@@ -11,11 +11,11 @@ export const dynamic = 'force-dynamic';
 /** /tickets/:id — one ticket, its thread, triage and, for the tracker, scope and time (ADR-0202). */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [data, tracking, files, user, format] = await Promise.all([
+  const user = await officeUser().catch(() => null);
+  const [data, tracking, files, format] = await Promise.all([
     loadTicket(id),
     loadTracking(id),
-    loadTicketFiles(id),
-    officeUser().catch(() => null),
+    loadTicketFiles(id, user?.officeRole),
     currentTimeFormat(),
   ]);
   // Not found, or an id that is not a uuid: one identical 404.

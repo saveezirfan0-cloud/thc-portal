@@ -51,7 +51,10 @@ export interface TicketFile {
   bytes: number;
   file_name: string | null;
   created_at: string;
+  /** A signed link, when one could be made and this login may open the file. */
   url: string | null;
+  /** True when the login may not open it (it is neither theirs nor a finance login's). */
+  restricted: boolean;
 }
 
 /** A row of `ticket_scope`: the owner's internal label. */

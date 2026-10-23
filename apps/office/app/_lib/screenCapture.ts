@@ -97,30 +97,38 @@ export async function startRecording(
     throw new DOMException('No screen recording', 'NotSupportedError');
   }
   const stream = await media.getDisplayMedia({ video: true, audio: false });
-  const mimeType = recorderType();
-  const recorder = new MediaRecorder(stream, {
-    videoBitsPerSecond: bitsPerSecond,
-    ...(mimeType ? { mimeType } : {}),
-  });
-  const chunks: Blob[] = [];
+  try {
+    const mimeType = recorderType();
+    const recorder = new MediaRecorder(stream, {
+      videoBitsPerSecond: bitsPerSecond,
+      ...(mimeType ? { mimeType } : {}),
+    });
+    const chunks: Blob[] = [];
 
-  const done = new Promise<Blob>((resolve) => {
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-    recorder.onstop = () => {
-      clearTimeout(timer);
-      stream.getTracks().forEach((track) => track.stop());
-      resolve(new Blob(chunks, { type: baseMime(recorder.mimeType || mimeType || 'video/webm') }));
-    };
-  });
+    const done = new Promise<Blob>((resolve) => {
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        clearTimeout(timer);
+        stream.getTracks().forEach((track) => track.stop());
+        resolve(
+          new Blob(chunks, { type: baseMime(recorder.mimeType || mimeType || 'video/webm') }),
+        );
+      };
+    });
 
-  const stop = () => {
-    if (recorder.state !== 'inactive') recorder.stop();
-  };
-  const timer = setTimeout(stop, maxSeconds * 1000);
-  // The browser's own "Stop sharing" ends the track.
-  stream.getVideoTracks()[0]?.addEventListener('ended', stop);
-  recorder.start(1000);
-  return { stop, done };
+    const stop = () => {
+      if (recorder.state !== 'inactive') recorder.stop();
+    };
+    const timer = setTimeout(stop, maxSeconds * 1000);
+    // The browser's own "Stop sharing" ends the track.
+    stream.getVideoTracks()[0]?.addEventListener('ended', stop);
+    recorder.start(1000);
+    return { stop, done };
+  } catch (error) {
+    // Sharing must not stay on if the recorder could not start.
+    stream.getTracks().forEach((track) => track.stop());
+    throw error;
+  }
 }

@@ -99,11 +99,21 @@ export function supabaseOrigins(url: string | undefined): { http: string; ws: st
 const MAPBOX_TILES = 'https://api.mapbox.com';
 const OSM_TILES = 'https://tile.openstreetmap.org';
 
-export function contentSecurityPolicy({ app, nonce, supabaseUrl, dev = false }: CspOptions): string {
+export function contentSecurityPolicy({
+  app,
+  nonce,
+  supabaseUrl,
+  dev = false,
+}: CspOptions): string {
   const supabase = supabaseOrigins(supabaseUrl);
   const img = ["'self'", 'data:', 'blob:', MAPBOX_TILES];
   if (app === 'office') img.push(OSM_TILES);
   if (supabase) img.push(supabase.http);
+  // A ticket's recording is a <video> from the project's Storage (ADR-0204).
+  // Without this, media falls back to default-src and the player is blocked
+  // the day this policy is enforced.
+  const media = ["'self'", 'blob:'];
+  if (supabase) media.push(supabase.http);
   const connect = ["'self'"];
   if (supabase) connect.push(supabase.http, supabase.ws);
   if (dev) connect.push('ws:');
@@ -125,6 +135,7 @@ export function contentSecurityPolicy({ app, nonce, supabaseUrl, dev = false }: 
     ['style-src', ["'self'", "'unsafe-inline'"]],
     ['img-src', img],
     ['font-src', ["'self'", 'data:']],
+    ['media-src', media],
     ['connect-src', connect],
     ['frame-src', ["'self'"]],
     ['worker-src', ["'self'"]],

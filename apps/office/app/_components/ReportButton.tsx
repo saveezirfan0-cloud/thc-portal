@@ -179,10 +179,10 @@ export function ReportButton() {
     setReopen(true);
   };
 
+  // Cancel keeps the draft and its files, as it always kept the draft.
   const close = () => {
     setOpen(false);
     setProblem(null);
-    setFiles(NO_FILES);
   };
 
   const submit = () => {
@@ -203,9 +203,15 @@ export function ReportButton() {
       const sent = result.ref ? `Sent as ${result.ref}.` : 'Sent.';
       const ticketId = result.id;
       const waiting = files;
-      setFiles(NO_FILES);
-      if (waiting.length === 0 || !ticketId) {
+      if (waiting.length === 0) {
         toast(`${sent} Thank you.`, { tone: 'green' });
+        return;
+      }
+      setFiles(NO_FILES);
+      if (!ticketId) {
+        toast(`${sent} The files could not be attached. Add a link on the ticket instead.`, {
+          tone: 'coral',
+        });
         return;
       }
       toast(
@@ -240,7 +246,7 @@ export function ReportButton() {
       <Button
         size="sm"
         onClick={() => {
-          setPage(window.location.href);
+          setPage(window.location.pathname + window.location.search);
           setOpen(true);
         }}
       >
