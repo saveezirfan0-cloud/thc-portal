@@ -1391,7 +1391,7 @@ function DocumentLine({
   // missed it, left blank to verify without one.
   const identityField = identityExpiryField(doc.doc_type);
   const expiryProblem = identityField
-    ? identityExpiryProblem(expiry)
+    ? identityExpiryProblem(expiry, identityField.required)
     : rtwDateProblem(rule, expiry, false);
   // ADR-0183: as in the Verify dialog — none at all ticked, at most a year
   // each, and not a letter whose dates have already run out.
@@ -1440,7 +1440,7 @@ function DocumentLine({
               ) : identityField ? (
                 <UkDateField
                   className="doc-expiry"
-                  label={`${identityField.label} (optional) — confirm against the document`}
+                  label={`${identityField.label}${identityField.required ? ' (required)' : ' (optional)'} — confirm against the document`}
                   labelHidden
                   hint={identityField.hint}
                   value={expiry}

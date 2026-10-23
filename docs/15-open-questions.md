@@ -563,6 +563,18 @@ It catches, it does not prevent. The habit at the top of `docs/13` still matters
 minutes rather than a round number); the guard just means a miss costs a rename on a red
 PR instead of an hour of red `main` for nine sessions.
 
+**A migration dated before the newest one already live is not a collision, and the numbering
+check does not see it** (23.10.2026, ADR-0202). The tickets migration was dated
+`20261024120000` while it was open; `20261025100000` (ADR-0201) merged and deployed first.
+Everything was green on the PR, and on `main` `deploy-database` failed at "list the
+migrations still to apply" with *"Found local migration files to be inserted before the last
+migration on remote database. Rerun the command with --include-all"* — so nothing was
+applied, and every later deploy from `main` would have failed the same way until the file
+was re-dated. The rule: **before you merge, a new migration's timestamp must be later than
+the newest file in `supabase/migrations` on `main` at that moment** (fetch `main`, look,
+rename if it is not). Re-dating is safe only while the migration has not been applied
+anywhere, which is exactly the state this failure leaves it in.
+
 ## O3 · The accounts the build is waiting on
 
 Steps 2 and 3 of `docs/04` still need THC's own accounts, and `docs/12` lists the keys.

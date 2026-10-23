@@ -1,6 +1,7 @@
 import { NotAvailable } from '../_components/NotAvailable';
 import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
+import { loadTrackerFlag } from '../tickets/data';
 import { loadSettings } from './data';
 import { SettingsScreen } from './SettingsScreen';
 import { parseSettingsTab } from './types';
@@ -31,5 +32,5 @@ export default async function Page({
     );
   }
   const tab = parseSettingsTab((await searchParams)['tab']);
-  return <SettingsScreen data={await loadSettings()} tab={tab} />;
+  return <SettingsScreen data={await loadSettings()} tab={tab} tracker={await loadTrackerFlag()} />;
 }

@@ -10,6 +10,8 @@ const rpc = vi.fn();
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+// ADR-0201: the passport-expiry read is covered in passportExpiryAction.test.ts.
+vi.mock('../../compliance/passportExpiry', () => ({ passportExpiryMissing: async () => false }));
 vi.mock('@thc/db/server', () => ({ createClient: vi.fn(() => ({ rpc })) }));
 vi.mock('@thc/db/admin', () => ({ createAdminClient: vi.fn() }));
 
