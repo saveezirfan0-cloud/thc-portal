@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useId, useState, useTransition } from 'react';
 import { Alert, Button, Modal, toast } from '@thc/ui';
 import { createTicket } from '../tickets/actions';
@@ -19,7 +20,7 @@ import { DictateButton } from './DictateButton';
 const BLANK = { kind: 'bug', severity: '', title: '', details: '', link: '' };
 
 /**
- * The top bar's "Report" button (ADR-0202): anyone in the Back Office says
+ * The top bar's "Ticket" button (ADR-0202): anyone in the Back Office says
  * what is broken, what they need or what has changed (a Viewer is refused
  * `read_only` by the database, ADR-0060, as everywhere). It
  * becomes a numbered ticket (TK-12), is emailed to the owner, and is
@@ -73,11 +74,11 @@ export function ReportButton() {
           setOpen(true);
         }}
       >
-        Report
+        Ticket
       </Button>
       <Modal
         open={open}
-        title="Report something"
+        title="New ticket"
         onClose={close}
         dismissible={!pending}
         dirty={dirty}
@@ -198,7 +199,8 @@ export function ReportButton() {
           />
         </div>
         <p className="hint">
-          We send the page you are on ({page}) with your report, and email it to the owner.
+          We send the page you are on ({page}) with it, and email it to the owner. Everything sent
+          is on the <Link href="/tickets">Tickets</Link> page.
         </p>
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
       </Modal>

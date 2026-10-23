@@ -62,6 +62,12 @@ export async function trackerAllowed(
   return !error && data === true;
 }
 
+/** For Settings → Tickets: does this login keep ticket time and billing? */
+export async function loadTrackerFlag(): Promise<boolean> {
+  if (!supabaseConfigured()) return false;
+  return trackerAllowed(await client());
+}
+
 export async function loadTickets(query: TicketQuery): Promise<TicketsPageData> {
   if (!supabaseConfigured()) return { ...EMPTY, problem: NOT_CONFIGURED };
   const supabase = await client();

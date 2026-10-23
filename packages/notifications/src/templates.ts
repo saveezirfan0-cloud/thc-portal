@@ -189,17 +189,23 @@ const TICKET_TEMPLATES = {
         title: 'Update on {ref}: {title}',
         body: '{reporter} added an update to {ref} · {title} (now {status}).\n\n{comment}\n\nOpen Tickets in the Back Office to reply or change its status.',
       },
+      // To the person who reported it, when somebody else adds a comment or a
+      // note to their ticket. Their own sign-in address, read by the database.
+      reply: {
+        title: 'New reply on {ref}: {title}',
+        body: 'Hello {reporter},\n\n{author} added an update to your ticket {ref} · {title} (now {status}).\n\n{comment}\n\nOpen Tickets in the Back Office to reply.\n\nThe Hospitality Company',
+      },
       // To the person who reported it, when the office closes the ticket with a
       // resolution note. Their own sign-in address, read by the database.
       resolved: {
         title: '{ref} is {status}: {title}',
-        body: 'Hello {reporter},\n\nYour ticket {ref} · {title} is now {status}.\n\n{resolution}\n\nIf that is not right, add an update to the ticket in the Back Office, or log a new one with the Report button.\n\nThe Hospitality Company',
+        body: 'Hello {reporter},\n\nYour ticket {ref} · {title} is now {status}.\n\n{resolution}\n\nIf that is not right, add an update to the ticket in the Back Office, or log a new one with the Ticket button.\n\nThe Hospitality Company',
       },
     },
     trigger:
-      'A Back Office login logs a ticket (create_ticket, variant new), or adds a comment or a note to one (add_ticket_comment / update_ticket, variant comment); the office closes a ticket with a resolution note (update_ticket, variant resolved, to the reporter). Not in §8, and not part of the scope: an internal tool, ADR-0202',
+      'A Back Office login logs a ticket (create_ticket, variant new), or adds a comment or a note to one (add_ticket_comment / update_ticket, variant comment, and variant reply to the reporter unless they wrote it); the office closes a ticket with a resolution note (update_ticket, variant resolved, to the reporter). Not in §8, and not part of the scope: an internal tool, ADR-0202',
     timing:
-      'immediately, once per ticket, per comment and per resolution note; at most 20 new tickets an hour per login; new and comment to the addresses in settings.ticket_recipients, resolved to the reporter',
+      'immediately, once per ticket, per comment and per resolution note; at most 20 new tickets an hour per login; new and comment to the addresses in settings.ticket_recipients, reply and resolved to the reporter',
   },
 } as const satisfies Record<string, Template>;
 

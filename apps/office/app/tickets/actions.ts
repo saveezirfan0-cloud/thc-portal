@@ -22,7 +22,7 @@ import {
 import type { ActionResult, RunningTimer } from './types';
 
 /**
- * Writes for the Report button and /tickets (ADR-0202), through the three
+ * Writes for the Ticket button and /tickets (ADR-0202), through the three
  * RPCs in 20261025110000_tickets.sql. They are security definer and check
  * the caller themselves: a Back Office login reports and comments, a Viewer
  * is refused `read_only` (ADR-0060), and so is a status or severity change. Every rule —
@@ -69,7 +69,7 @@ async function call(
   return { data };
 }
 
-/** The Report button: log a ticket. `page` is where the reporter was. */
+/** The Feedback button: log a ticket. `page` is where the reporter was. */
 export async function createTicket(draft: TicketDraft, page: string): Promise<ActionResult> {
   const invalid = validateDraft(draft);
   if (invalid) return { ok: false, message: invalid };

@@ -151,11 +151,11 @@ export interface InvoicingSettings {
   late_payment_note: string;
 }
 
-/** The screen's two tabs; `?tab=notifications` opens the second. */
-export type SettingsTab = 'general' | 'notifications';
+/** The screen's tabs; `?tab=notifications` and `?tab=tickets` open the others. */
+export type SettingsTab = 'general' | 'notifications' | 'tickets';
 
 export function parseSettingsTab(value: unknown): SettingsTab {
-  return value === 'notifications' ? 'notifications' : 'general';
+  return value === 'notifications' || value === 'tickets' ? value : 'general';
 }
 
 export type RotaGuardMode = 'block' | 'warn';
