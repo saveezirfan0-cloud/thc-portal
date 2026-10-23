@@ -187,7 +187,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .order('declared_at')
       .returns<DeclarationRow[]>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
-    supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
+    // ADR-0195: an archived client cannot be qualified at.
+    supabase
+      .from('clients')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name')
+      .returns<ClientOption[]>(),
     managerName(supabase),
     // Resend activation link (20260924110000): only someone who never
     // activated is offered it. A failed read hides the button, nothing more.
