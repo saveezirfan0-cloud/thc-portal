@@ -271,6 +271,30 @@ export interface MonthReport {
 }
 
 /** Every finished time entry worked in a month (UK dates), with its ticket and label. */
+export interface TicketChoice {
+  id: string;
+  no: number;
+  title: string;
+}
+
+/** The latest tickets, for the picker on the time report's Log time form. */
+export async function loadTicketChoices(): Promise<TicketChoice[]> {
+  if (!supabaseConfigured()) return [];
+  const { data, error } = await (
+    await client()
+  )
+    .from('tickets')
+    .select('id, ticket_no, title')
+    .order('ticket_no', { ascending: false })
+    .limit(200);
+  if (error) return [];
+  return ((data ?? []) as { id: string; ticket_no: number; title: string }[]).map((t) => ({
+    id: t.id,
+    no: t.ticket_no,
+    title: t.title,
+  }));
+}
+
 export async function loadMonthReport(from: string, to: string): Promise<MonthReport> {
   const none: MonthReport = { allowed: false, rows: [], running: 0, problem: null };
   if (!supabaseConfigured()) return none;

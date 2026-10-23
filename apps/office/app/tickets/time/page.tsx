@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { currentTimeFormat } from '../../_lib/timeFormat';
-import { loadMonthReport } from '../data';
+import { loadMonthReport, loadTicketChoices } from '../data';
 import { TimeReportScreen } from './TimeReportScreen';
 import { monthRange, parseMonth } from '../view-model';
 
@@ -19,7 +19,11 @@ export default async function Page({
 }) {
   const month = parseMonth((await searchParams)['month']);
   const { from, to } = monthRange(month);
-  const [report] = await Promise.all([loadMonthReport(from, to), currentTimeFormat()]);
+  const [report, choices] = await Promise.all([
+    loadMonthReport(from, to),
+    loadTicketChoices(),
+    currentTimeFormat(),
+  ]);
   if (!report.allowed && !report.problem) notFound();
-  return <TimeReportScreen month={month} report={report} />;
+  return <TimeReportScreen month={month} report={report} choices={choices} />;
 }
