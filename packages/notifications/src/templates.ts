@@ -961,10 +961,11 @@ export const TEMPLATES = {
     code: 'CR2',
     channel: 'push',
     title: 'For your shift today',
-    // The client's own words, written on the requirement row by the office.
+    // The client's own words (the requirement row) then the default uniform
+    // message (settings.default_shift_message), as shift_kit_message() joins them.
     body: '{message}',
     trigger:
-      'The morning of a confirmed shift on a (client, role) whose requirement carries a kit message, until the worker confirms they have read it (client_kit_reminder_tick). Not in §8: ADR-0110',
+      'The morning of a confirmed shift with a morning message — the client\'s kit message for the role and/or the default (ADR-0203) — until the worker confirms they have read it (client_kit_reminder_tick). Not in §8: ADR-0110',
     timing:
       '07:00 UK on the day, or three hours before the start if earlier, never before the UK day begins; once per booking and start',
     deepLink: '/shifts/{bookingId}',
