@@ -64,7 +64,7 @@ describe('§9.5 status pills', () => {
     expect(statusTone(row({ status: 'on_shift' }))).toBe('green');
   });
 
-  it('treats Not confirmed today as a variant of Due, not an alert', () => {
+  it('treats Day-of confirm pending as a variant of Due, not an alert', () => {
     // §3.5: the worker can still check in normally; it is visibility only.
     expect(statusTone(row({ status: 'not_confirmed_today' }))).toBe('amber');
     expect(statusTone(row({ status: 'due' }))).toBe('amber');
