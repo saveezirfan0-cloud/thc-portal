@@ -40,7 +40,14 @@ const APPS = ['apps/office/app', 'apps/staff/app', 'apps/client/app'];
  */
 // /api/csp-report: the browser POSTs Content-Security-Policy violation reports
 // there (ADR-0164); nobody visits it.
-const NOT_SCREENS = [/^\/auth\//, /^\/client\/session$/, /^\/api\/csp-report$/];
+// /api/internal/rescan-document: the Back Office's "Retry AI scan" calls it
+// server to server with a bearer secret (ADR-0198); nobody visits it.
+const NOT_SCREENS = [
+  /^\/auth\//,
+  /^\/client\/session$/,
+  /^\/api\/csp-report$/,
+  /^\/api\/internal\/rescan-document$/,
+];
 
 /** Every `page.tsx` and `route.ts` under a directory, as a Next.js route. */
 function routesOf(appDir) {
