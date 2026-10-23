@@ -39,7 +39,8 @@ select matches((select kit_message from client_role_requirements
                  where client_id = 'c0c0c0c0-0000-4000-8000-0000000009a1'), 'bottle opener',
   'the kit message names the bottle opener');
 select is((select count(*)::int from client_role_requirements r join clients c on c.id = r.client_id
-            where c.name not ilike 'United Grand Lodge%' and r.kit_message ilike '%bottle opener%'), 0,
+            where c.name not ilike 'United Grand Lodge%'
+              and r.kit_message = 'Don''t forget to bring a bottle opener to your shift at Freemasons'' Hall.'), 0,
   'no other client is touched');
 select * from finish();
 rollback;
