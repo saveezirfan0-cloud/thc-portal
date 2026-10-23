@@ -1,5 +1,5 @@
 -- =====================================================================
--- 936 · Default morning message for every shift · 20261026150000 · ADR-0205
+-- 936 · Default morning message for every shift · 20261026160000 · ADR-0206
 --   A. shift_kit_message: the default alone; the client's own kit message
 --      then the default; the default switched off; neither → null.
 --   B. A worker's booking at a client with no requirement still carries the
