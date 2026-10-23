@@ -3,10 +3,10 @@
 --
 --   · who can read them (any Back Office login, a viewer too; nobody else)
 --     and that no API role can write a table directly;
---   · create_ticket(): numbered TK-<n>, validated, rate-limited, open to a
---     viewer, and queues TK1 to settings.ticket_recipients — never to an
+--   · create_ticket(): numbered TK-<n>, validated, rate-limited, and queues TK1 to settings.ticket_recipients — never to an
 --     address the caller names;
---   · add_ticket_comment() open to a viewer; update_ticket() is not;
+--   · a viewer reads tickets and changes nothing: report, comment and
+--     update are all refused read_only (ADR-0060);
 --   · every status / severity change is a line on the thread, resolved_at
 --     follows Resolved / Closed and clears on a reopen;
 --   · a worker and a client reach none of it.
@@ -89,19 +89,19 @@ select is((select payload ->> 'ref' from notification_outbox
   (select r ->> 'ref' from made), 'and names the ticket');
 
 -- ---------------------------------------------------------------------
--- A viewer reports and comments, but changes nothing
+-- A viewer reads, but changes nothing (ADR-0060)
 -- ---------------------------------------------------------------------
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
 
-select lives_ok($$ select create_ticket('request', null, 'I cannot see the Reports menu') $$,
-  'a viewer can report');
-select lives_ok(format($$ select add_ticket_comment(%L, 'Same for me.') $$, (select r ->> 'id' from made)),
-  'and comment');
+select throws_ok($$ select create_ticket('request', null, 'I cannot see the Reports menu') $$,
+  '42501', 'read_only', 'a viewer cannot report');
+select throws_ok(format($$ select add_ticket_comment(%L, 'Same for me.') $$, (select r ->> 'id' from made)),
+  '42501', 'read_only', 'or comment');
 select throws_ok(format($$ select update_ticket(%L, 'closed') $$, (select r ->> 'id' from made)),
-  '42501', 'read_only', 'but not change a status');
-select is((select count(*)::int from tickets where reporter_name in ('Mona Manager', 'Vera Viewer')), 2,
-  'a viewer reads every ticket');
+  '42501', 'read_only', 'or change a status');
+select is((select count(*)::int from tickets where reporter_name = 'Mona Manager'), 1,
+  'but reads every ticket');
 
 -- ---------------------------------------------------------------------
 -- A manager follows up

@@ -47,13 +47,7 @@ select enum_has_labels('public', 'office_role', array['owner', 'manager', 'sched
 --   profiles           — update_my_profile(), the viewer's own name;
 --   office_saved_views — a viewer's own filter chips on /events: own-row
 --                        policies only, a preference, not office data
---                        (20261001202000, ADR-0059);
---   tickets, ticket_comments — a viewer reports "I can't see X" and comments
---                        on a report: no business record changes. The tables
---                        grant no write to any API role; the only writes are
---                        create_ticket() and add_ticket_comment(), open to a
---                        viewer on purpose, and update_ticket(), which asks
---                        office_can('write') (20261024120000, ADR-0199).
+--                        (20261001202000, ADR-0059).
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -61,7 +55,7 @@ select is_empty(
         and not exists (select 1 from pg_depend d
                          where d.classid = 'pg_class'::regclass
                            and d.objid = c.oid and d.deptype = 'e')
-        and c.relname not in ('profiles', 'office_saved_views', 'tickets', 'ticket_comments')  -- ALLOW-LIST (ADR-0060, ADR-0199)
+        and c.relname not in ('profiles', 'office_saved_views')  -- ALLOW-LIST (ADR-0060)
         and not exists (
               select 1 from pg_trigger t
                where t.tgrelid = c.oid
@@ -72,12 +66,11 @@ select is_empty(
                  and (t.tgtype & 2) = 2          -- before
                  and (t.tgtype & 56) = 56        -- delete, update, truncate
                  and ((t.tgtype & 4) = 4 or c.relname = 'audit_log')) $$,  -- insert
-  'ADR-0060: every public table carries the office_read_only statement trigger (allow-list: profiles, office_saved_views, tickets, ticket_comments)');
+  'ADR-0060: every public table carries the office_read_only statement trigger (allow-list: profiles, office_saved_views)');
 
 select is_empty(
   $$ select tgrelid::regclass::text from pg_trigger
-      where tgrelid in ('public.profiles'::regclass, 'public.office_saved_views'::regclass,
-                        'public.tickets'::regclass, 'public.ticket_comments'::regclass)
+      where tgrelid in ('public.profiles'::regclass, 'public.office_saved_views'::regclass)
         and tgname = 'office_read_only' $$,
   'the allow-list is not stale: its tables really have no guard');
 

@@ -17,15 +17,16 @@
 --     Both: RLS on, one admin_read policy, NO write grant to any API
 --     role — every write is one of the three definer functions below
 --     (the willo_deliveries / rtw_checks shape, 001 assertions 1 and 3).
---     Deliberately NO office_read_only trigger: a Viewer may read the
---     Back Office but is exactly the person who reports "I can't see X";
---     reporting and commenting change no business record. Changing a
---     ticket's status or severity is still `write` (office_can).
--- 3 · create_ticket()      — any Back Office login. Saves the ticket and
+--     Both carry the office_read_only statement trigger (ADR-0060): a
+--     Viewer reads tickets and changes nothing, so reporting and
+--     commenting are refused for a Viewer too (`read_only`) — the guard
+--     keys on the session's user and would refuse the outbox insert inside
+--     these functions anyway, and no function may be a way round it.
+-- 3 · create_ticket()      — a Back Office login that may write. Saves the ticket and
 --                            queues TK1 (variant `new`) to the addresses
 --                            in settings.ticket_recipients. At most 20 a
 --                            hour per login.
--- 4 · add_ticket_comment() — any Back Office login. Queues TK1 (variant
+-- 4 · add_ticket_comment() — a Back Office login that may write. Queues TK1 (variant
 --                            `comment`).
 -- 5 · update_ticket()      — `write` only. Status and severity; each
 --                            change is a line in the thread, and an
@@ -110,6 +111,17 @@ create policy admin_read on public.ticket_comments
 revoke all on public.tickets, public.ticket_comments from public, anon, authenticated;
 grant select on public.tickets, public.ticket_comments to authenticated;
 grant all on public.tickets, public.ticket_comments to service_role;
+
+-- ADR-0060: a Viewer changes nothing, through the API or a definer function.
+drop trigger if exists office_read_only on public.tickets;
+create trigger office_read_only before insert or update or delete or truncate
+  on public.tickets
+  for each statement execute function public.office_read_only_guard();
+
+drop trigger if exists office_read_only on public.ticket_comments;
+create trigger office_read_only before insert or update or delete or truncate
+  on public.ticket_comments
+  for each statement execute function public.office_read_only_guard();
 
 -- ---------------------------------------------------------------------
 -- Where the emails go
@@ -227,7 +239,7 @@ begin
 end $$;
 
 comment on function public.create_ticket(text, text, text, text, text, text) is
-  'ADR-0199: log a ticket (kind, optional severity, summary 3–200, details ≤ 5000, the page it was logged on, an optional recording link). Any Back Office login, a Viewer too; at most 20 an hour per login. Saves the ticket and queues TK1 (variant new, key TK1:ticket:<id>) to settings.ticket_recipients. Returns {id, number, ref}.';
+  'ADR-0199: log a ticket (kind, optional severity, summary 3–200, details ≤ 5000, the page it was logged on, an optional recording link). Back Office logins only, a Viewer refused (read_only, ADR-0060); at most 20 an hour per login. Saves the ticket and queues TK1 (variant new, key TK1:ticket:<id>) to settings.ticket_recipients. Returns {id, number, ref}.';
 
 revoke all on function public.create_ticket(text, text, text, text, text, text) from public, anon;
 grant execute on function public.create_ticket(text, text, text, text, text, text) to authenticated;
@@ -293,7 +305,7 @@ begin
 end $$;
 
 comment on function public.add_ticket_comment(uuid, text) is
-  'ADR-0199: add a comment to a ticket. Any Back Office login, a Viewer too. Bumps updated_at and queues TK1 (variant comment, key TK1:comment:<comment id>).';
+  'ADR-0199: add a comment to a ticket. Back Office logins only, a Viewer refused (read_only). Bumps updated_at and queues TK1 (variant comment, key TK1:comment:<comment id>).';
 
 revoke all on function public.add_ticket_comment(uuid, text) from public, anon;
 grant execute on function public.add_ticket_comment(uuid, text) to authenticated;

@@ -9,10 +9,10 @@ import type { TicketSeverity, TicketStatus } from './view-model';
 import { lengthHint } from '../_lib/length';
 
 /**
- * The follow-up controls on a ticket (ADR-0199): status and severity (an
- * owner, manager or scheduler — a Viewer's database refuses, and says so),
- * and the thread's comment box, open to every Back Office login. A comment
- * is emailed; so is a note sent with a status change.
+ * The follow-up controls on a ticket (ADR-0199): status and severity, and
+ * the thread's comment box. A Viewer sees them, as every Back Office screen
+ * draws its controls (ADR-0060), and the database answers `read_only`. A
+ * comment is emailed; so is a note sent with a status change.
  */
 export function TicketControls({
   id,
@@ -23,7 +23,7 @@ export function TicketControls({
   id: string;
   status: TicketStatus;
   severity: TicketSeverity | null;
-  /** False for a known Viewer: the selects are shown but disabled. */
+  /** False for a known Viewer: the selects are disabled. */
   canWrite: boolean;
 }) {
   const router = useRouter();

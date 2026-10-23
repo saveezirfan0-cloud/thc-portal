@@ -11,8 +11,8 @@ import type { ActionResult } from './types';
 /**
  * Writes for the Report button and /tickets (ADR-0199), through the three
  * RPCs in 20261024120000_tickets.sql. They are security definer and check
- * the caller themselves: any Back Office login may report and comment (a
- * Viewer too); changing a status or severity needs `write`. Every rule —
+ * the caller themselves: a Back Office login reports and comments, a Viewer
+ * is refused `read_only` (ADR-0060), and so is a status or severity change. Every rule —
  * the caps, the kinds, 20 reports an hour, who may change what — is in the
  * database, so a call that skips this file meets the same refusals.
  */
