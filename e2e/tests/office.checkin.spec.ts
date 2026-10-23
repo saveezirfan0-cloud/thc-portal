@@ -213,7 +213,10 @@ test('Get back on the event board registers the no-show as arrived, Late (§3.3)
         if (refusal) return `refused: ${refusal}`;
         return (await badge.count()) === 0 ? 'got back' : 'still No show';
       },
-      { timeout: 10_000 },
+      // The badge clears on revalidatePath's re-render of the whole board, a
+      // heavy server render that took longer than 10 s on a loaded CI runner
+      // (PR 343: "still No show" twice, no refusal shown).
+      { timeout: 30_000 },
     )
     .toBe('got back');
   await expect(row.getByRole('button', { name: 'Get back' })).toHaveCount(0);
