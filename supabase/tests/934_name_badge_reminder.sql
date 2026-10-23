@@ -61,7 +61,7 @@ update shift_requirements set starts_at = starts_at + interval '1 hour', ends_at
 select is((select client_kit_reminder_tick('2026-12-10 07:10+00')), '{"cr2": 1}'::jsonb,
   'a moved start is a new key');
 select is((select payload ->> 'message' from notification_outbox
-            where template = 'CR2' and recipient_staff_id = :'p_luca' order by created_at desc limit 1),
+            where template = 'CR2' and recipient_staff_id = :'p_luca' order by id desc limit 1),
   E'Bring a corkscrew.\n\nDon''t forget to bring your name badge today, if you have been given one.',
   'the kit message and the badge line go in one push');
 
