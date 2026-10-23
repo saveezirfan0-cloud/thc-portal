@@ -98,6 +98,8 @@ import {
   rtwDateValue,
 } from '../compliance/rtw';
 import { verifyHomeOfficeCheck } from '../compliance/actions';
+import { RescanButton } from '../compliance/RescanButton';
+import { canRescan } from '../compliance/messages';
 import {
   canAttachHomeOfficeResult,
   canAttachReport,
@@ -1444,6 +1446,9 @@ function DocumentLine({
                   value={expiry}
                   onChange={setExpiry}
                 />
+              ) : null}
+              {doc.file_path && canRescan(doc.doc_type) ? (
+                <RescanButton docId={doc.id} disabled={handlers.busy} />
               ) : null}
               <Button
                 size="sm"

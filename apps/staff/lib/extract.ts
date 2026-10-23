@@ -83,22 +83,33 @@ async function flagUntilRead(admin: SupabaseClient, docId: string): Promise<void
   }
 }
 
+/**
+ * What a read came to, for the office's "Retry AI scan" to say in words:
+ * the confidence, whether an expiry was read, and the reason codes (an error
+ * code or the list of issues) — never the document or the answer.
+ */
+export interface ExtractionSummary {
+  confidence: number;
+  expiryFound: boolean;
+  reasons: string[];
+}
+
 export async function extractDocument(
   admin: SupabaseClient,
   docId: string,
   docType: DocType,
   path: string,
   mimeType?: string,
-): Promise<void> {
+): Promise<ExtractionSummary | undefined> {
   const extractor = documentExtractor();
-  if (!extractor) return;
+  if (!extractor) return undefined;
   try {
     const { data: file, error: downloadError } = await admin.storage
       .from('documents')
       .download(path);
     if (!file) {
       logFailure('download', docId, downloadError);
-      return;
+      return undefined;
     }
     const result = await extractor.extract({
       docType,
@@ -125,9 +136,23 @@ export async function extractDocument(
       });
       if (countryError) logFailure('passport_country', docId, countryError);
     }
+    if (error) return undefined;
+    return {
+      confidence: result.confidence,
+      expiryFound: result.expiryDate !== null,
+      reasons: reasonCodes(result.raw),
+    };
   } catch (error) {
     logFailure('extract', docId, error);
+    return undefined;
   }
+}
+
+/** The extractor's own codes from `raw` (`error`, or the `issues` list). */
+function reasonCodes(raw: Record<string, unknown>): string[] {
+  if (typeof raw['error'] === 'string') return [raw['error']];
+  const issues = raw['issues'];
+  return Array.isArray(issues) ? issues.filter((i): i is string => typeof i === 'string') : [];
 }
 
 /**

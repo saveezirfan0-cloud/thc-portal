@@ -17,6 +17,7 @@ import {
   contentSecurityPolicy,
   createNonce,
 } from '@thc/db/csp';
+import { RESCAN_PATH } from './lib/rescan-path';
 import { createSessionCheckCache, sessionKey } from './app/login/session-check';
 
 /**
@@ -140,6 +141,12 @@ async function gate(request: NextRequest): Promise<NextResponse> {
   // Violation reports come with no session (from /login, /apply too) and a
   // browser never follows a redirect for one. Logged only (ADR-0164).
   if (request.nextUrl.pathname === CSP_REPORT_PATH && request.method === 'POST') {
+    return response;
+  }
+
+  // The Back Office's "Retry AI scan" carries no session: the route checks
+  // its own bearer secret (lib/rescan.ts). POST only.
+  if (request.nextUrl.pathname === RESCAN_PATH && request.method === 'POST') {
     return response;
   }
 
