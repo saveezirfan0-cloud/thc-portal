@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 934 · Bring your name badge (ADR-0204)
---       — 20261026110000_name_badge_reminder.sql
+--       — 20261026130000_name_badge_reminder.sql
 --
 -- A client with name_badges on gets CR2 on the morning of every confirmed
 -- shift, with or without a kit message; a client without gets nothing.
