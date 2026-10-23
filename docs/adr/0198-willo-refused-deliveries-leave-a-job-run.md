@@ -1,4 +1,4 @@
-# ADR-0197 · A Willo delivery that is verified but not applied leaves a job run
+# ADR-0198 · A Willo delivery that is verified but not applied leaves a job run
 
 Status: accepted · 23.10.2026 · **Amends** ADR-0021 (one `job_runs` row per verified delivery)
 
