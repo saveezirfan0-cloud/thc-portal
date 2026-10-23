@@ -34,12 +34,23 @@ const TICKET: Ticket = {
   link_url: 'https://www.loom.com/share/abc',
   reporter_id: 'u1',
   reporter_name: 'Katie Gadsby',
+  assignee_id: null,
+  assignee_name: null,
+  resolution: null,
   created_at: '2026-10-22T19:24:00Z',
   updated_at: '2026-10-22T19:24:00Z',
   resolved_at: null,
 };
 
-const LIST: TicketsPageData = { tickets: [TICKET], total: 1, open: 1, closed: 3, problem: null };
+const LIST: TicketsPageData = {
+  tickets: [TICKET],
+  scopes: {},
+  tracker: false,
+  total: 1,
+  open: 1,
+  closed: 3,
+  problem: null,
+};
 
 describe('<TicketsScreen> — /tickets', () => {
   it('lists a ticket by its TK- number with its type, status and reporter', () => {
@@ -58,6 +69,24 @@ describe('<TicketsScreen> — /tickets', () => {
     );
     expect(html).toContain('No open tickets');
     expect(html).toContain('Closed');
+  });
+
+  it('shows the scope label and its filter to the login that tracks, and to nobody else', () => {
+    const tracked = renderToStaticMarkup(
+      <TicketsScreen
+        data={{ ...LIST, tracker: true, scopes: { [TICKET.id]: 'against_scope' } }}
+        query={parseQuery({})}
+      />,
+    );
+    expect(tracked).toContain('Against scope');
+    expect(tracked).toContain('Any scope label');
+    expect(tracked).toContain('Monthly time report');
+    const other = renderToStaticMarkup(
+      <TicketsScreen data={LIST} query={parseQuery({ scope: 'addition' })} />,
+    );
+    expect(other).not.toContain('Any scope label');
+    expect(other).not.toContain('Monthly time report');
+    expect(other).not.toContain('Against scope');
   });
 
   it('says a filter matched nothing, and offers Clear', () => {
@@ -91,12 +120,14 @@ describe('<TicketScreen> — /tickets/:id', () => {
         id: 1,
         ticket_id: TICKET.id,
         kind: 'change',
+        activity: 'note',
         body: 'Status: New → In progress',
         author_id: 'u2',
         author_name: 'Gisela M',
         created_at: '2026-10-22T20:00:00Z',
       },
     ],
+    assignees: [{ id: 'u2', full_name: 'Gisela M.' }],
     problem: null,
   };
 
@@ -110,17 +141,87 @@ describe('<TicketScreen> — /tickets/:id', () => {
     expect(html).toContain('rel="noopener noreferrer"');
   });
 
+  it('lays the ticket out as triage, report, context and updates', () => {
+    const html = renderToStaticMarkup(<TicketScreen data={data} canWrite />);
+    for (const heading of ['Triage', 'Report', 'Context', 'Updates']) {
+      expect(html, heading).toContain(`>${heading}</h3>`);
+    }
+    expect(html).toContain('Page it happened on');
+    expect(html).toContain('/events');
+    for (const type of ['Note', 'Email', 'Call', 'Meeting', 'Task']) {
+      expect(html, type).toContain(`>${type}</button>`);
+    }
+    // Owner picker, from the office logins.
+    expect(html).toContain('Gisela M.');
+    expect(html).toContain('— Unassigned —');
+  });
+
+  it('draws nothing of the owner’s scope label and time for anyone else', () => {
+    const html = renderToStaticMarkup(<TicketScreen data={data} canWrite />);
+    expect(html).not.toContain('Scope and time');
+    expect(html).not.toContain('Against the original scope');
+    expect(html).not.toContain('Start timer');
+    expect(html).not.toContain('Billable');
+  });
+
+  it('draws the scope label and the time for the login that tracks', () => {
+    const html = renderToStaticMarkup(
+      <TicketScreen
+        data={data}
+        canWrite
+        tracking={{
+          allowed: true,
+          scope: { ticket_id: TICKET.id, label: 'addition', note: null },
+          entries: [
+            {
+              id: 1,
+              ticket_id: TICKET.id,
+              worked_by: 'claude',
+              worked_on: '2026-10-23',
+              started_at: null,
+              ended_at: null,
+              minutes: 75,
+              billable: true,
+              note: 'after the email',
+              logged_by: 'u2',
+            },
+          ],
+          running: null,
+          problem: null,
+        }}
+      />,
+    );
+    expect(html).toContain('Scope and time');
+    expect(html).toContain('Internal — only you can see this');
+    expect(html).toContain('Addition');
+    expect(html).toContain('Start timer');
+    expect(html).toContain('1h 15m');
+    expect(html).toContain('Claude');
+    expect(html).toContain('after the email');
+  });
+
+  it('offers Delete this report to an owner only', () => {
+    expect(renderToStaticMarkup(<TicketScreen data={data} canWrite isOwner />)).toContain(
+      'Delete this report',
+    );
+    expect(renderToStaticMarkup(<TicketScreen data={data} canWrite />)).not.toContain(
+      'Delete this report',
+    );
+  });
+
   it('disables status and severity for a login that cannot write', () => {
     const html = renderToStaticMarkup(<TicketScreen data={data} canWrite={false} />);
     expect(html).toMatch(/<select id="tk-status"[^>]*disabled/);
     expect(html).toMatch(/<select id="tk-severity"[^>]*disabled/);
     // Commenting stays open to every login.
-    expect(html).toMatch(/<textarea id="tk-note"(?![^>]*disabled)/);
+    expect(html).toMatch(/<select id="tk-kind"[^>]*disabled/);
+    expect(html).toMatch(/<select id="tk-owner"[^>]*disabled/);
+    expect(html).not.toContain('Save changes');
   });
 
   it('says so when the ticket cannot be found', () => {
     const html = renderToStaticMarkup(
-      <TicketScreen data={{ ticket: null, comments: [], problem: null }} canWrite />,
+      <TicketScreen data={{ ticket: null, comments: [], assignees: [], problem: null }} canWrite />,
     );
     expect(html).toContain('That ticket was not found.');
   });

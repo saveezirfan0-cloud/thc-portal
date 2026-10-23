@@ -187,7 +187,7 @@ describe('email rows', () => {
     );
   });
 
-  it('sends a ticket (TK1) to the addresses on the row, one subject per variant (ADR-0199)', () => {
+  it('sends a ticket (TK1) to the addresses on the row, one subject per variant (ADR-0202)', () => {
     const details = {
       ref: 'TK-7',
       title: 'Kanban card vanishes',

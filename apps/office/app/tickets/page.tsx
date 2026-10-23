@@ -8,7 +8,7 @@ export const metadata = { title: 'Tickets · THC Back Office' };
 export const dynamic = 'force-dynamic';
 
 /**
- * /tickets — what the team reported from the Report button (ADR-0199).
+ * /tickets — what the team reported from the Report button (ADR-0202).
  * Filters live in the address, as on /inbox and /activity.
  */
 export default async function Page({

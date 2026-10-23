@@ -9,6 +9,9 @@ import {
   KIND_SHORT,
   KIND_TONE,
   PAGE_SIZE,
+  SCOPE_LABELS,
+  SCOPE_SHORT,
+  SCOPE_TONE,
   SEVERITIES,
   SEVERITY_SHORT,
   SEVERITY_TONE,
@@ -23,7 +26,7 @@ import './tickets.css';
 
 /**
  * /tickets — everything the team has reported from the Report button
- * (ADR-0199): newest first, Open / Closed / All, filtered by type, severity
+ * (ADR-0202): newest first, Open / Closed / All, filtered by type, severity
  * and status, searchable by number ("TK-12"), words or reporter. The
  * filters are a plain GET form, so the address holds them and the page
  * needs no script. Stamps are audit stamps: UK time.
@@ -43,7 +46,9 @@ export function TicketsScreen({
     { id: 'closed', label: 'Closed', count: data.closed },
     { id: 'all', label: 'All', count: data.open + data.closed },
   ] as const;
-  const filtered = Boolean(query.q || query.kind || query.severity || query.status);
+  const filtered = Boolean(
+    query.q || query.kind || query.severity || query.status || (data.tracker && query.scope),
+  );
   const pages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
 
   return (
@@ -56,6 +61,12 @@ export function TicketsScreen({
         </>
       }
     >
+      {data.tracker ? (
+        <p className="tk-meta">
+          <Link href="/tickets/time">Monthly time report →</Link> (only you can see scope labels and
+          time)
+        </p>
+      ) : null}
       <div className="tk-tabs" role="tablist" aria-label="Ticket state">
         {tabs.map((tab) => (
           <Link
@@ -114,6 +125,22 @@ export function TicketsScreen({
             </option>
           ))}
         </select>
+        {data.tracker ? (
+          <select
+            className="input"
+            name="scope"
+            defaultValue={query.scope ?? ''}
+            aria-label="Scope label"
+          >
+            <option value="">Any scope label</option>
+            <option value="none">Not labelled yet</option>
+            {SCOPE_LABELS.map((l) => (
+              <option key={l} value={l}>
+                {SCOPE_SHORT[l]}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <button className="btn primary" type="submit">
           Apply
         </button>
@@ -149,6 +176,7 @@ export function TicketsScreen({
                     {t.details ? <span className="tk-snippet">{t.details}</span> : null}
                     <span className="tk-meta">
                       {t.reporter_name} · {stamp(t.created_at)}
+                      {t.assignee_name ? <> · owner {t.assignee_name}</> : null}
                       {t.page_path ? <> · {t.page_path}</> : null}
                     </span>
                   </span>
@@ -157,6 +185,11 @@ export function TicketsScreen({
                       <Pill tone={SEVERITY_TONE[t.severity]}>{SEVERITY_SHORT[t.severity]}</Pill>
                     ) : null}
                     <Pill tone={STATUS_TONE[t.status]}>{STATUS_LABEL[t.status]}</Pill>
+                    {data.scopes[t.id] ? (
+                      <Pill tone={SCOPE_TONE[data.scopes[t.id]!]}>
+                        {SCOPE_SHORT[data.scopes[t.id]!]}
+                      </Pill>
+                    ) : null}
                   </span>
                 </Link>
               </li>

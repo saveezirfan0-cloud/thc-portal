@@ -1,5 +1,5 @@
 /*
- * /tickets (ADR-0199). Tokens only — no colour or radius is hard-coded
+ * /tickets (ADR-0202). Tokens only — no colour or radius is hard-coded
  * (CLAUDE.md). Rows stack into one block; the filters are a plain form.
  */
 .tk-tabs {
@@ -17,8 +17,12 @@
   gap: var(--sp-8);
   margin-bottom: var(--sp-16);
 }
+.tk-filters .input {
+  width: auto;
+  flex: 0 1 190px;
+}
 .tk-filters input[type='search'] {
-  flex: 1 1 240px;
+  flex: 1 1 260px;
 }
 .tk-list {
   list-style: none;
@@ -132,4 +136,147 @@
   .tk-selects {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---- the ticket panel: triage, context, updates (ADR-0202) ---------- */
+.tk-eyebrow,
+.tk-label {
+  color: var(--muted);
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-12) var(--sp-16);
+}
+.tk-who {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.tk-path {
+  overflow-wrap: anywhere;
+}
+.tk-resolution {
+  margin-top: var(--sp-12);
+}
+.tk-types,
+.tk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-12);
+}
+.tk-activity {
+  display: inline-block;
+  margin-right: var(--sp-6);
+  padding: 0 var(--sp-8);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  font-size: 0.85em;
+}
+.tk-delete {
+  display: grid;
+  gap: var(--sp-8);
+  justify-items: start;
+}
+.dictate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+
+/* ---- the owner's own scope label and time --------------------------- */
+.tk-tracking {
+  display: grid;
+  gap: var(--sp-16);
+}
+.tk-row-inline,
+.tk-timer,
+.tk-log {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  align-items: center;
+}
+.tk-row-inline .input,
+.tk-timer .input {
+  flex: 1 1 200px;
+}
+.tk-log .input {
+  flex: 1 1 120px;
+}
+.tk-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.tk-timer.on {
+  border-left: 3px solid var(--purple);
+  padding-left: var(--sp-12);
+}
+.tk-check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.tk-time {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tk-time th,
+.tk-time td {
+  text-align: left;
+  padding: var(--sp-6) var(--sp-8);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.tk-row-actions {
+  white-space: nowrap;
+}
+
+/* ---- the top bar's running timer ------------------------------------ */
+.tk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-4) var(--sp-12);
+  border: 1px solid var(--purple);
+  border-radius: var(--r-pill);
+  color: inherit;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .tk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- the month's time report ----------------------------------------- */
+.tk-monthbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-16);
+}
+.tk-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-16);
+  margin-bottom: var(--sp-16);
+}
+.tk-big {
+  font-size: 2em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }

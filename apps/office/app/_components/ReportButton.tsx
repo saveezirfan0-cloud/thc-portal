@@ -13,11 +13,13 @@ import {
   validateDraft,
 } from '../tickets/view-model';
 import { lengthHint } from '../_lib/length';
+import { appendDictation } from '../_lib/dictation';
+import { DictateButton } from './DictateButton';
 
 const BLANK = { kind: 'bug', severity: '', title: '', details: '', link: '' };
 
 /**
- * The top bar's "Report" button (ADR-0199): anyone in the Back Office says
+ * The top bar's "Report" button (ADR-0202): anyone in the Back Office says
  * what is broken, what they need or what has changed (a Viewer is refused
  * `read_only` by the database, ADR-0060, as everywhere). It
  * becomes a numbered ticket (TK-12), is emailed to the owner, and is
@@ -129,9 +131,18 @@ export function ReportButton() {
           </select>
         </div>
         <div className="field">
-          <label className="label" htmlFor={`${ids}-title`}>
-            One-line summary *
-          </label>
+          <div className="label-row">
+            <label className="label" htmlFor={`${ids}-title`}>
+              One-line summary *
+            </label>
+            <DictateButton
+              label="Dictate summary"
+              disabled={pending}
+              onText={(spoken) =>
+                setDraft((d) => ({ ...d, title: appendDictation(d.title, spoken, TITLE_MAX) }))
+              }
+            />
+          </div>
           <input
             id={`${ids}-title`}
             className="input"
@@ -144,9 +155,21 @@ export function ReportButton() {
           />
         </div>
         <div className="field">
-          <label className="label" htmlFor={`${ids}-details`}>
-            Details — what did you do, what did you expect, what happened?
-          </label>
+          <div className="label-row">
+            <label className="label" htmlFor={`${ids}-details`}>
+              Details — what did you do, what did you expect, what happened?
+            </label>
+            <DictateButton
+              label="Dictate details"
+              disabled={pending}
+              onText={(spoken) =>
+                setDraft((d) => ({
+                  ...d,
+                  details: appendDictation(d.details, spoken, DETAILS_MAX),
+                }))
+              }
+            />
+          </div>
           <textarea
             id={`${ids}-details`}
             className="input"

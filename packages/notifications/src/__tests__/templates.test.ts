@@ -95,7 +95,7 @@ const CLIENT_PORTAL_EMAIL_CODES = ['CP1', 'CP2', 'CP3'];
 /** The declaration review addition (ADR-0180): the office asks for more detail. */
 const DECLARATION_PUSH_CODES = ['DR1'];
 
-/** Tickets (ADR-0199): the office mailbox told of a ticket or an update to one. */
+/** Tickets (ADR-0202): the office mailbox told of a ticket or an update to one. */
 const TICKET_EMAIL_CODES = ['TK1'];
 
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
@@ -197,7 +197,7 @@ describe('notification register (§8)', () => {
     expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
     // ADR-0185: a worker confirmed on a security-cleared event is told to bring ID.
     expect([...SECURITY_CLEARANCE_CODES]).toEqual(SECURITY_PUSH_CODES);
-    // ADR-0199: tickets.
+    // ADR-0202: tickets.
     expect([...TICKET_CODES]).toEqual(TICKET_EMAIL_CODES);
     const union = [
       ...SCOPE_CODES,
@@ -1543,9 +1543,9 @@ describe('Client Portal additions — CP1–CP3 (ADR-0135)', () => {
   });
 });
 
-describe('Tickets — TK1 (ADR-0199)', () => {
+describe('Tickets — TK1 (ADR-0202)', () => {
   it('says "Not in §8", names the ADR, and sends from admin@', () => {
-    expect(TEMPLATES.TK1.trigger).toMatch(/Not in §8.*ADR-0199/);
+    expect(TEMPLATES.TK1.trigger).toMatch(/Not in §8.*ADR-0202/);
     expect(TEMPLATES.TK1.sender).toBe('admin');
   });
 
@@ -1554,9 +1554,10 @@ describe('Tickets — TK1 (ADR-0199)', () => {
   });
 
   it('has a new and a comment half, each with its own subject', () => {
-    expect(Object.keys(TEMPLATES.TK1.variants)).toEqual(['new', 'comment']);
+    expect(Object.keys(TEMPLATES.TK1.variants)).toEqual(['new', 'comment', 'resolved']);
     expect(title('TK1', 'new')).toBe('{ref} · {kind}: {title}');
     expect(title('TK1', 'comment')).toBe('Update on {ref}: {title}');
+    expect(title('TK1', 'resolved')).toBe('{ref} is {status}: {title}');
   });
 
   it('asks only for the values create_ticket() and the comment functions write', () => {
@@ -1572,6 +1573,7 @@ describe('Tickets — TK1 (ADR-0199)', () => {
       ['details', 'kind', 'link', 'page', 'ref', 'reporter', 'severity', 'title'].sort(),
     );
     expect(asked('comment')).toEqual(['comment', 'ref', 'reporter', 'status', 'title'].sort());
+    expect(asked('resolved')).toEqual(['ref', 'reporter', 'resolution', 'status', 'title'].sort());
   });
 
   it('renders both halves whole, with no placeholder left', () => {
@@ -1596,5 +1598,16 @@ describe('Tickets — TK1 (ADR-0199)', () => {
     });
     expect(update).toContain('now In progress');
     expect(update).not.toMatch(/\{\w+\}/);
+    const resolved = render(body('TK1', 'resolved'), {
+      reporter: 'Katie Gadsby',
+      ref: 'TK-12',
+      title: 'Kanban card vanishes',
+      status: 'Resolved',
+      resolution: 'Fixed in the next release.',
+    });
+    expect(resolved).toMatch(/^Hello Katie Gadsby,/);
+    expect(resolved).toContain('is now Resolved');
+    expect(resolved).toContain('Fixed in the next release.');
+    expect(resolved).not.toMatch(/\{\w+\}/);
   });
 });

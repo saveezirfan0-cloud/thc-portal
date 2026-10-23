@@ -71,7 +71,7 @@ export const EMAIL_PRESENTATION = {
   // ADR-0135 §3: to the customer's timesheet recipients.
   CP2: { eyebrow: 'Your line-up', buttons: { link: 'See who is coming' } },
   CP3: { eyebrow: 'Line-up update', buttons: { link: 'See the current line-up' } },
-  // ADR-0199: a ticket logged in the Back Office, or an update to one.
+  // ADR-0202: a ticket logged in the Back Office, or an update to one.
   TK1: { eyebrow: 'Back Office ticket' },
 } as const satisfies Partial<Record<TemplateCode, EmailPresentation>>;
 
