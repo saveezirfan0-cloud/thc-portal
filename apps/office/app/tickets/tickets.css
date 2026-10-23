@@ -108,7 +108,7 @@
   padding-left: var(--sp-12);
 }
 .tk-comment {
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--purple);
   padding-left: var(--sp-12);
 }
 .tk-selects {
