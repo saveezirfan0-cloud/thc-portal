@@ -37,7 +37,7 @@ Web/Sidebar `.sidebar` → `<Sidebar>` · Web/Topbar `.topbar` → `<Topbar>` ·
 ## Status pill vocabulary (use exactly these tones)
 - Event: Upcoming `cyan` · Ongoing `green` · Completed neutral · Cancelled neutral (greyed row).
 - Booking: Invited neutral · Confirmed `green` · Needs confirmation `amber` · Time changed `amber` + Awaiting neutral · No show `coral` · Applied `purple`.
-- Monitor: On shift `green` · Off-site `amber` · Checked out neutral (or `coral` if > 15 min late) · No check-out `coral` · Due `amber` · Not confirmed today `amber` · Not checked in — 30 min alert `coral`.
+- Monitor: On shift `green` · Off-site `amber` · Checked out neutral (or `coral` if > 15 min late) · No check-out `coral` · Due `amber` · Day-of confirm pending `amber` · Not checked in — 30 min alert `coral`.
 - Documents: Missing neutral · In review `amber` · Verified `green` · Rejected/Re-upload `coral` · Expiring `amber` · Expired `coral` · Superseded neutral.
 - Rating colour: < 3.0 `coral` · 3.0–3.9 `amber` · ≥ 4.0 `green`.
 
