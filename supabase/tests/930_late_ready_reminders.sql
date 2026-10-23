@@ -16,7 +16,8 @@
 --   * release_late_unready_bookings() releases at the hour a worker reached
 --     only by a reminder, and not one reached by nothing, and tells them
 --     with N6b (late).
--- February, so UK time is UTC and the instants read plainly.
+-- February, so UK time is UTC and the instants read plainly (the fixtures'
+-- own shifts are moved to June; this file's shift is in February).
 -- =====================================================================
 begin;
 select plan(28);
@@ -116,8 +117,8 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, day_
   (:'b_first', :'tmrw', '93a00000-0000-4000-8000-000000000001', 'confirmed', 'auto',
    '2027-02-11 15:00+00', null);
 
-select is((late_ready_tick('2027-02-11 15:50+00')), '{"lateN6": 0, "lateReminders": 1}'::jsonb,
-  'a first warning at +50 minutes goes as a reminder, not as "you have 1 hour"');
+select is((late_ready_tick('2027-02-11 15:50+00')), '{"lateN6": 1, "lateReminders": 0}'::jsonb,
+  'a first warning at +50 minutes is still a first warning (counted so), but worded as a reminder, not as "you have 1 hour"');
 select is((select array[payload->>'variant', payload->>'minutes'] from notification_outbox
             where key = late_ready_step_key(:'b_first', timestamptz '2027-02-12 17:00+00', timestamptz '2027-02-11 15:00+00', 3)),
   array['late-reminder', '10 minutes'], 'saying 10 minutes are left, from now');

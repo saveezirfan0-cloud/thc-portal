@@ -121,18 +121,19 @@ begin
     select d.*,
            not d.told as is_first,
            -- an hour cut short by the start cannot say "1 hour"
-           d.due_at = d.confirmed_at + interval '1 hour' as full_hour
+           d.due_at = d.confirmed_at + interval '1 hour' as full_hour,
+           -- Keyed by the quarter-hour the message belongs to, first warning
+           -- or not: the first quarter-hour is the base key, the next three
+           -- are steps 1–3. A first warning that comes late at step 2 takes
+           -- step 2's key, so the next tick does not send step 2's reminder
+           -- straight after.
+           case when d.step = 0 then late_ready_key(d.booking_id, d.starts_at, d.confirmed_at)
+                else late_ready_step_key(d.booking_id, d.starts_at, d.confirmed_at, d.step) end as msg_key
       from due d
      where not d.told or d.step >= 1
   ), queued as (
     insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
-    -- Keyed by the quarter-hour the message belongs to, first warning or
-    -- not: the first quarter-hour is the base key, the next three are
-    -- steps 1–3. A first warning that comes late at step 2 takes step 2's
-    -- key, so the next tick does not send step 2's reminder straight after.
-    select case when step = 0 then late_ready_key(booking_id, starts_at, confirmed_at)
-                else late_ready_step_key(booking_id, starts_at, confirmed_at, step) end,
-           'push', 'N6', staff_id,
+    select msg_key, 'push', 'N6', staff_id,
            jsonb_build_object(
              -- "You have 1 hour" only while it is true: a full hour, still in
              -- its first quarter. A first warning that came late says how
@@ -155,12 +156,16 @@ begin
                                  )) / 60))::int as m) left_to_go))
       from picked
     on conflict (key) do nothing
-    returning (payload ->> 'variant') as variant
+    returning key
   )
-  select count(*) filter (where variant = 'late')::int,
-         count(*) filter (where variant = 'late-reminder')::int
+  -- "First" counts the workers warned for the first time, whatever the
+  -- wording: a first warning that came late is worded as a reminder but is
+  -- still the first push of the hour (929 pins this for a shortened hour).
+  select count(*) filter (where p.is_first)::int,
+         count(*) filter (where not p.is_first)::int
     into v_first, v_remind
-    from queued;
+    from queued q
+    join picked p on p.msg_key = q.key;
 
   return jsonb_build_object('lateN6', v_first, 'lateReminders', v_remind);
 end;

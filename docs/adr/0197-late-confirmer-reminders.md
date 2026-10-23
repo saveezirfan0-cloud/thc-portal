@@ -21,5 +21,5 @@ The rule (`late_ready_applies`), the hour (`late_ready_due_at`, capped at the st
 ## Consequences
 
 - A worker confirmed at 15:00 gets five pushes if they never press it: 15:00 (an hour, until 16:00), 15:15, 15:30, 15:45, then the removal at about 16:00–16:05.
-- pgTAP `930` (the timeline, the late first warning, pressing stops it, the release by a reminder alone, nothing after the hour); `929` still holds unchanged. Vitest `n4-home-office.test.ts` pins the three messages.
+- pgTAP `930` (the timeline, the late first warning, pressing stops it, the release by a reminder alone, nothing after the hour); `929` still holds unchanged (`lateN6` counts workers warned for the first time, even where the first warning is worded as a reminder). Vitest `n4-home-office.test.ts` pins the three messages.
 - Awaiting THC: the 15-minute interval and the hour are constants in `late_ready_tick()` / `late_ready_due_at()`, not settings.
