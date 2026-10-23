@@ -1,5 +1,5 @@
 -- =====================================================================
--- 932 · Tickets (ADR-0202) — 20261024120000_tickets.sql
+-- 932 · Tickets (ADR-0202) — 20261025110000_tickets.sql
 --
 --   · who can read them (any Back Office login, a viewer too; nobody else)
 --     and that no API role can write a table directly;

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- the generated Database
    type is regenerated from the live project (`pnpm --filter @thc/db gen:types`)
    and does not know `tickets` / `ticket_comments` until it is run after
-   20261024120000, so these reads go through an untyped client and are
+   20261025110000, so these reads go through an untyped client and are
    given their row types here. Same narrowing as _components/officeUser.ts. */
 
 import { cookies } from 'next/headers';
