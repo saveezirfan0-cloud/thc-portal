@@ -1001,6 +1001,31 @@ export const TEMPLATES = {
     deepLink: '/shifts/{bookingId}',
   },
 
+  // ────────────────────────────────────────────────────────────────────────
+  // MORNING CHECK-IN / CHECK-OUT REMINDER (ADR-0205, THC 23.10.2026) — staff
+  // are still getting used to checking in and out on the Staff App, so on
+  // the morning of a shift they are reminded to do both, or their pay may
+  // be delayed. On top of N9's two pushes 30 minutes before the start and
+  // the end, not instead of them. `CK` code, as `CR` and `SC` are, so it
+  // cannot collide with an N- or E-number THC assigns to §8 later. Key
+  // `CK1:staff:<id>:<UK date>`: one per worker per UK day, however many
+  // shifts they have that day, naming the first.
+  // ────────────────────────────────────────────────────────────────────────
+  CK1: {
+    code: 'CK1',
+    channel: 'push',
+    title: 'Check in and out today',
+    body: "You're working {event} today ({window}). Remember to check in on the app when you arrive and check out when you finish — it's how your hours are recorded, and missing either can delay your pay.",
+    trigger:
+      'The morning of a confirmed shift the worker has not yet checked in to (check_in_out_morning_tick). Not in §8: ADR-0205',
+    timing:
+      '07:00 UK on the day, or three hours before the start if earlier, never before the UK day begins (kit_reminder_due_at, as CR2); once per worker per UK day',
+    deepLink: '/shifts/{bookingId}',
+    // Its own tag: CR2 lands on the same shift at the same minute, and the
+    // deep link as the tag would let one push replace the other.
+    tag: 'CK1:{bookingId}',
+  },
+
   OM1: {
     code: 'OM1',
     channel: 'push',
@@ -1368,6 +1393,13 @@ export const CLIENT_REQUIREMENT_CODES = [
  * licence. Not §8's.
  */
 export const SECURITY_CLEARANCE_CODES = ['SC1'] as const satisfies readonly TemplateCode[];
+
+/**
+ * The morning check-in / check-out reminder (ADR-0205): CK1, on the morning
+ * of a shift, to check in on arrival and out at the end so pay is not
+ * delayed. Not §8's; N9 still sends its two pushes at −30 min.
+ */
+export const CHECK_REMINDER_CODES = ['CK1'] as const satisfies readonly TemplateCode[];
 
 /**
  * Office messages: a push whose body the manager writes — OM1 to an event's

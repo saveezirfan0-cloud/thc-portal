@@ -113,6 +113,8 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   CR3: normal,
   // ADR-0185: bring ID to a security-cleared event — about a shift days or hours away.
   SC1: urgent,
+  // ADR-0205: check in and out today — due at 07:00 for a shift that day, as CR2.
+  CK1: urgent,
   // The office's messages from the event board: last-minute by nature.
   OM1: urgent,
   OM2: urgent,
