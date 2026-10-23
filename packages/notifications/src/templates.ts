@@ -965,7 +965,7 @@ export const TEMPLATES = {
     // message (settings.default_shift_message), as shift_kit_message() joins them.
     body: '{message}',
     trigger:
-      'The morning of a confirmed shift with a morning message — the client\'s kit message for the role and/or the default (ADR-0203) — until the worker confirms they have read it (client_kit_reminder_tick). Not in §8: ADR-0110',
+      'The morning of a confirmed shift with a morning message — the client\'s kit message for the role and/or the default uniform reminder (ADR-0205) — until the worker confirms they have read it, and of any confirmed shift for a client with name badges on (bring your name badge, ADR-0204) (client_kit_reminder_tick). Not in §8: ADR-0110',
     timing:
       '07:00 UK on the day, or three hours before the start if earlier, never before the UK day begins; once per booking and start',
     deepLink: '/shifts/{bookingId}',

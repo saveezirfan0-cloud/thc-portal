@@ -1,4 +1,4 @@
--- ADR-0203 · A default morning reminder for every shift (uniform standards).
+-- ADR-0205 · A default morning reminder for every shift (uniform standards).
 -- Product owner, 23.10.2026. Rides ADR-0110's kit message (CR2: 07:00 UK on the
 -- day or start − 3 h, once per booking and start, until the worker confirms).
 --
@@ -27,7 +27,7 @@ as $$
              where s.key = 'default_shift_message'))), '')
 $$;
 comment on function public.shift_kit_message(uuid, uuid) is
-  'ADR-0203: what a worker is told on the morning of a shift for this client and role — the client''s kit message (ADR-0110) then settings.default_shift_message, either may be absent. Null when neither is set.';
+  'ADR-0205: what a worker is told on the morning of a shift for this client and role — the client''s kit message (ADR-0110) then settings.default_shift_message, either may be absent. Null when neither is set.';
 revoke execute on function public.shift_kit_message(uuid, uuid) from public, anon, authenticated;
 grant  execute on function public.shift_kit_message(uuid, uuid) to service_role;
 
@@ -83,7 +83,7 @@ as $$
    order by s.starts_at
 $$;
 comment on function public.staff_shift_requirements() is
-  'ADR-0110, ADR-0203: for each of the caller''s live bookings with a requirement — the quiz and where they stand on it, and the morning message (the client''s kit message and the default, shift_kit_message) with when it is due and whether it was acknowledged. No charge rate, no other worker.';
+  'ADR-0110, ADR-0205: for each of the caller''s live bookings with a requirement — the quiz and where they stand on it, and the morning message (the client''s kit message and the default, shift_kit_message) with when it is due and whether it was acknowledged. No charge rate, no other worker.';
 
 create or replace function public.acknowledge_shift_kit(p_booking uuid)
 returns jsonb
@@ -123,8 +123,14 @@ begin
   return jsonb_build_object('ok', true, 'acknowledgedAt', v_at);
 end $$;
 comment on function public.acknowledge_shift_kit(uuid) is
-  'ADR-0110, ADR-0203: the worker confirms they have read the morning message (shift_kit_message) for one of their confirmed bookings. Idempotent; refuses another worker''s booking, an unbooked one (not_booked) and one with no message (nothing_to_acknowledge).';
+  'ADR-0110, ADR-0205: the worker confirms they have read the morning message (shift_kit_message) for one of their confirmed bookings. Idempotent; refuses another worker''s booking, an unbooked one (not_booked) and one with no message (nothing_to_acknowledge).';
 
+-- CR2's tick, restated on top of 20261026130000 (ADR-0204, bring your name
+-- badge): the worker's message is shift_kit_message() — the client's kit
+-- message and the default — and, for a client with name_badges on, the badge
+-- line after it, in one push. The kit/default part stops once acknowledged;
+-- the badge line has nothing to acknowledge (ADR-0204), and CR2's key
+-- (booking + start) keeps it to one push per shift either way.
 create or replace function public.client_kit_reminder_tick(p_now timestamptz default now())
 returns jsonb
 language plpgsql
@@ -133,23 +139,29 @@ set search_path = public, extensions
 as $$
 declare
   v_cr2 int := 0;
+  c_badge constant text :=
+    'Don''t forget to bring your name badge today, if you have been given one.';
 begin
   with due as (
     select b.id as booking_id, b.staff_id, s.starts_at, s.ends_at, e.title as event_title,
-           ro.name as role_name, m.msg as kit_message, c.name as client_name
+           ro.name as role_name, c.name as client_name,
+           concat_ws(E'\n\n',
+             case when m.msg is not null
+                       and not exists (select 1 from booking_kit_acknowledgements k where k.booking_id = b.id)
+                  then m.msg end,
+             case when c.name_badges then c_badge end) as message
       from bookings b
       join shift_requirements s on s.id = b.shift_id
       join events e  on e.id = s.event_id
       join clients c on c.id = e.client_id
       join roles ro  on ro.id = s.role_id
       cross join lateral (select shift_kit_message(e.client_id, s.role_id) as msg) m
-     where b.status = 'confirmed'
+     where (m.msg is not null or c.name_badges)
+       and b.status = 'confirmed'
        and b.cancelled_at is null
        and e.cancelled_at is null
        and p_now >= kit_reminder_due_at(s.starts_at)
        and p_now <  s.starts_at
-       and m.msg is not null
-       and not exists (select 1 from booking_kit_acknowledgements k where k.booking_id = b.id)
   ), queued as (
     insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
     select booking_reminder_key('CR2', booking_id, starts_at), 'push', 'CR2', staff_id,
@@ -157,10 +169,11 @@ begin
                               'event',     event_title,
                               'client',    client_name,
                               'role',      role_name,
-                              'message',   kit_message,
+                              'message',   message,
                               'window',    to_char(starts_at at time zone 'Europe/London', 'HH24:MI')
                                            || '–' || to_char(ends_at at time zone 'Europe/London', 'HH24:MI'))
       from due
+     where message <> ''
     on conflict (key) do nothing
     returning 1
   ) select count(*)::int into v_cr2 from queued;
@@ -168,4 +181,7 @@ begin
   return jsonb_build_object('cr2', v_cr2);
 end $$;
 comment on function public.client_kit_reminder_tick(timestamptz) is
-  'ADR-0110, ADR-0203: queues CR2 for every confirmed booking whose shift_kit_message is set (the client''s kit message and/or the default), from kit_reminder_due_at() until the start, unless acknowledged. Keyed on booking + start so a moved shift is reminded again and a re-run never double-sends. Called every minute by the booking-tick Edge Function.';
+  'ADR-0110, ADR-0204, ADR-0205: queues CR2 for every confirmed booking from kit_reminder_due_at() until the start — shift_kit_message() (the client''s kit message and the default uniform reminder, until acknowledged) and, for a client with name_badges on, the bring-your-name-badge line, in one push. Keyed on booking + start (booking_reminder_key) so a moved shift is reminded again and a re-run never double-sends. Called every minute by the booking-tick Edge Function.';
+
+revoke execute on function public.client_kit_reminder_tick(timestamptz) from public, anon, authenticated;
+grant  execute on function public.client_kit_reminder_tick(timestamptz) to service_role;

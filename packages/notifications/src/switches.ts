@@ -302,7 +302,7 @@ export const NOTIFICATION_SWITCH_GROUPS: readonly NotificationSwitchGroup[] = [
       {
         code: 'CR2',
         label: 'What to bring today',
-        when: 'The morning of a shift on a role a client has a kit message for',
+        when: 'The morning of a shift on a role a client has a kit message for, or for a client with name badges',
         warning:
           'Workers are not reminded what to bring; the message still shows on the shift until they confirm it.',
       },

@@ -2158,6 +2158,7 @@ export type Database = {
           lineup_confirmed_emails: boolean;
           name: string;
           name_badges: boolean;
+          exclude_from_invoicing: boolean;
           pays_breaks: boolean;
           pays_buffer: boolean;
           phone: string;
@@ -2174,6 +2175,7 @@ export type Database = {
           lineup_confirmed_emails?: boolean;
           name: string;
           name_badges?: boolean;
+          exclude_from_invoicing?: boolean;
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           phone: string;
@@ -2189,6 +2191,7 @@ export type Database = {
           lineup_confirmed_emails?: boolean;
           name?: string;
           name_badges?: boolean;
+          exclude_from_invoicing?: boolean;
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           phone?: string;
@@ -13753,6 +13756,10 @@ export type Database = {
       };
       set_client_lineup_emails: {
         Args: { p_client: string; p_kind: string; p_on: boolean };
+        Returns: undefined;
+      };
+      set_client_exclude_from_invoicing: {
+        Args: { p_client: string; p_on: boolean };
         Returns: undefined;
       };
       set_client_name_badges: {

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 933 · UGLE bottle-opener kit message · 20261026100000 · ADR-0110
+-- 935 · UGLE bottle-opener kit message · 20261026140000 · ADR-0110
 --   Re-running the data migration puts the kit message on every rate-card
 --   role of a United Grand Lodge client, leaves other clients alone, and
 --   does not double rows.

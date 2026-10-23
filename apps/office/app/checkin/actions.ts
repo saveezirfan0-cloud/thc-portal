@@ -141,11 +141,17 @@ export async function nudgeCheckInOut(bookingId: string): Promise<NudgeResult> {
     return {
       error:
         NUDGE_REASONS[error.message] ??
+        (NUDGE_UNAVAILABLE.test(error.message) ? NUDGE_UNAVAILABLE_MESSAGE : undefined) ??
         explainDbError(error, { codes: NUDGE_REASONS, log: '[checkin]' }),
     };
   const result = data as { template?: string } | null;
   return { ok: true, template: result?.template ?? 'N9' };
 }
+
+/** PostgREST's answer when the function is not on the database (not yet deployed, or the schema cache is stale). */
+const NUDGE_UNAVAILABLE = /could not find the function|schema cache|PGRST202/i;
+const NUDGE_UNAVAILABLE_MESSAGE =
+  'Reminders are not available right now, so nothing was sent. Ring the worker instead, and tell a developer.';
 
 const NUDGE_REASONS: Record<string, string> = {
   check_in_not_open: 'Check-in opens 30 minutes before the shift starts. Try again then.',
