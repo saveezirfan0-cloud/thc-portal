@@ -1,4 +1,4 @@
-# ADR-0197 · A late confirmer is reminded every 15 minutes, told when the hour runs out, and told when they are withdrawn
+# ADR-0198 · A late confirmer is reminded every 15 minutes, told when the hour runs out, and told when they are withdrawn
 
 **Status:** Accepted (instruction of the product owner, 23.10.2026) · amends ADR-0196 and `20261024110000` · a deliberate change to §3.5, **raise with THC** (it rides on ADR-0196's).
 

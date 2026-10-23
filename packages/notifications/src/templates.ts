@@ -239,7 +239,7 @@ export const TEMPLATES = {
         title: "You have 1 hour to press I'm ready",
         body: "Press I'm ready by {dueBy} (UK time), 1 hour after you confirmed — or you'll be removed from {event}",
       },
-      // ADR-0197: the reminder at 15, 30 and 45 minutes, and a first warning
+      // ADR-0198: the reminder at 15, 30 and 45 minutes, and a first warning
       // that came late. `minutes` carries its unit ("45 minutes").
       'late-reminder': {
         title: "{minutes} left to press I'm ready",

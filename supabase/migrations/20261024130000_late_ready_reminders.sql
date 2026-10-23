@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261024130000 · a late confirmer is reminded every 15 minutes
---                            to press "I'm ready" (§3.5; ADR-0197, amends
+--                            to press "I'm ready" (§3.5; ADR-0198, amends
 --                            ADR-0196 and 20261024110000)
 --
 -- 20261024110000 gave a worker who confirms after the noon deadline one hour
@@ -51,7 +51,7 @@ as $$
 $$;
 
 comment on function public.late_ready_step_key(uuid, timestamptz, timestamptz, int) is
-  'The notification_outbox key of the step-th (1–3) late "I''m ready" reminder of one confirmation: late_ready_key() plus the step (ADR-0197).';
+  'The notification_outbox key of the step-th (1–3) late "I''m ready" reminder of one confirmation: late_ready_key() plus the step (ADR-0198).';
 
 -- Has this confirmation been sent anything — the first warning or a reminder?
 create or replace function public.late_ready_told(
@@ -75,7 +75,7 @@ as $$
 $$;
 
 comment on function public.late_ready_told(uuid, timestamptz, timestamptz) is
-  'ADR-0197: was this late confirmation sent the first warning or any reminder? What release_late_unready_bookings() needs before it removes anyone (ADR-0034 §4).';
+  'ADR-0198: was this late confirmation sent the first warning or any reminder? What release_late_unready_bookings() needs before it removes anyone (ADR-0034 §4).';
 
 revoke execute on function public.late_ready_step_key(uuid, timestamptz, timestamptz, int) from public, anon;
 revoke execute on function public.late_ready_told(uuid, timestamptz, timestamptz)          from public, anon;
@@ -172,7 +172,7 @@ end;
 $$;
 
 comment on function public.late_ready_tick(timestamptz) is
-  'N6 (variants late, late-reminder): tells a worker who confirmed after the noon deadline that they have an hour to press "I''m ready", when it runs out, and reminds them at 15, 30 and 45 minutes (§3.5, ADR-0196, ADR-0197). One push per booking per tick; idempotent by outbox key. Called every minute by the booking-tick Edge Function.';
+  'N6 (variants late, late-reminder): tells a worker who confirmed after the noon deadline that they have an hour to press "I''m ready", when it runs out, and reminds them at 15, 30 and 45 minutes (§3.5, ADR-0196, ADR-0198). One push per booking per tick; idempotent by outbox key. Called every minute by the booking-tick Edge Function.';
 
 revoke execute on function public.late_ready_tick(timestamptz) from public, anon, authenticated;
 grant  execute on function public.late_ready_tick(timestamptz) to service_role;
@@ -198,7 +198,7 @@ begin
        and p_now >= late_ready_due_at(b.confirmed_at, sr.starts_at)
        and p_now <  sr.starts_at
        -- And was told, about this confirmation: the first warning or any
-       -- reminder (ADR-0197).
+       -- reminder (ADR-0198).
        and late_ready_told(b.id, sr.starts_at, b.confirmed_at)
     for update of b
   loop
@@ -215,7 +215,7 @@ begin
 end $$;
 
 comment on function public.release_late_unready_bookings(timestamptz) is
-  'ADR-0196, ADR-0197: releases a confirmed booking whose worker confirmed after the noon deadline, was sent the late warning or a reminder and did not press "I''m ready" within the hour; queues N6b (variant late). cancel_cause ''ready_cutoff'', as the 12:05 release. Idempotent; called by every auto-staffing cutoff run, which re-fills after it.';
+  'ADR-0196, ADR-0198: releases a confirmed booking whose worker confirmed after the noon deadline, was sent the late warning or a reminder and did not press "I''m ready" within the hour; queues N6b (variant late). cancel_cause ''ready_cutoff'', as the 12:05 release. Idempotent; called by every auto-staffing cutoff run, which re-fills after it.';
 
 revoke execute on function public.release_late_unready_bookings(timestamptz) from public, anon, authenticated;
 grant  execute on function public.release_late_unready_bookings(timestamptz) to service_role;
