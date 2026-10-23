@@ -388,7 +388,9 @@ describe('what Verify does — shared by /compliance and the staff profile', () 
     // ROW is a student's term letter: its Verify asks for the course level
     // beside it (D32, 20260930130100), so the plain click is a passport's.
     expect(verifyStep(ROW)).toBe('confirm');
-    expect(verifyStep({ ...ROW, item_type: 'passport', rtw_branch: 'uk_irish' })).toBe('verify');
+    expect(verifyStep({ ...ROW, item_type: 'passport', rtw_branch: 'uk_irish' })).toBe(
+      'confirm_expiry',
+    );
     expect(verifyStep({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' })).toBe(
       'verify',
     );

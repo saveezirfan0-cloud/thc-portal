@@ -8,7 +8,7 @@ import { rtwLockedUntil } from '../_lib/rtwCheck';
 import type { RtwCheckRow, RtwLockedUntil } from '../_lib/rtwCheck';
 import { parsePeriod } from '../onboarding/view-model';
 import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
-import { rtwDateRule } from './rtw';
+import { identityExpiryField, rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
 
 const UK = 'Europe/London';
@@ -480,17 +480,22 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
  *     or an rtw_date row, whose date alone is confirmed (20260927160000) —
  *     with the course level or the visa's hours limit beside it where the
  *     route has one (D32, D36);
+ *   - `confirm_expiry`: a passport or national ID card, verified with its
+ *     expiry confirmed or typed in — optional, never a right-to-work date;
  *   - `confirm`: a document with no date but something to check beside it —
  *     NI evidence against the NI number, shown in full (D43), or a
  *     student's term letter with the course level (D32);
  *   - `ni_match`: the ni_check row's "Matches", recorded on the click;
  *   - `verify`: everything else, on the click.
  */
-export type VerifyStep = 'approve' | 'confirm_date' | 'confirm' | 'ni_match' | 'verify';
+export type VerifyStep =
+  'approve' | 'confirm_date' | 'confirm_expiry' | 'confirm' | 'ni_match' | 'verify';
 
 export function verifyStep(row: QueueRow): VerifyStep {
   if (row.kind === 'ni_check') return 'ni_match';
   if (row.item_type === 'university_completion_letter') return 'approve';
+  // A passport or ID card: its expiry is confirmed or typed, but optional.
+  if (row.kind === 'document' && identityExpiryField(row.item_type)) return 'confirm_expiry';
   if (
     (row.kind === 'document' || row.kind === 'rtw_date') &&
     rtwDateRule(row.item_type, row.rtw_branch)

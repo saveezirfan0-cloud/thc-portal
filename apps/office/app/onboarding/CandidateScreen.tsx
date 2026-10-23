@@ -91,6 +91,8 @@ import {
   HOME_OFFICE_APPROVED_LABEL,
   HOME_OFFICE_UNTIL_HINT,
   homeOfficeVerifyProblem,
+  identityExpiryField,
+  identityExpiryProblem,
   rtwDateProblem,
   rtwDateRule,
   rtwDateValue,
@@ -1383,7 +1385,12 @@ function DocumentLine({
   // candidate typed at step 1 (or the AI read) is pre-filled to confirm.
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
   const [expiry, setExpiry] = useState(doc.expiry_date ?? '');
-  const expiryProblem = rtwDateProblem(rule, expiry, false);
+  // A passport or ID card: the expiry is optional — typed here when the AI
+  // missed it, left blank to verify without one.
+  const identityField = identityExpiryField(doc.doc_type);
+  const expiryProblem = identityField
+    ? identityExpiryProblem(expiry)
+    : rtwDateProblem(rule, expiry, false);
   // ADR-0183: as in the Verify dialog — none at all ticked, at most a year
   // each, and not a letter whose dates have already run out.
   const periodsBlocked = periods
@@ -1428,6 +1435,15 @@ function DocumentLine({
                   value={expiry}
                   onChange={setExpiry}
                 />
+              ) : identityField ? (
+                <UkDateField
+                  className="doc-expiry"
+                  label={`${identityField.label} (optional) — confirm against the document`}
+                  labelHidden
+                  hint={identityField.hint}
+                  value={expiry}
+                  onChange={setExpiry}
+                />
               ) : null}
               <Button
                 size="sm"
@@ -1437,7 +1453,7 @@ function DocumentLine({
                 onClick={() =>
                   handlers.onVerify(doc, {
                     periods: periods ?? null,
-                    expiry: rule ? expiry : null,
+                    expiry: rule || identityField ? expiry : null,
                     ...(periods?.length === 0 && noHolidays ? { noHolidays: true } : {}),
                   })
                 }

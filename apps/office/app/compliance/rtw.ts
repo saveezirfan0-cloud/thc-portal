@@ -66,6 +66,29 @@ export function rtwDateRule(docType: string, branch: string | null): RtwDateRule
   return null;
 }
 
+/**
+ * A passport or national ID card has an expiry the AI reads, but no
+ * right-to-work date hangs on it, so the database never requires one. When
+ * the read missed it (0% confidence, an unreadable photo) the reviewer types
+ * it off the document on Verify — optional, and left blank it is simply not
+ * tracked.
+ */
+export function identityExpiryField(docType: string): { label: string; hint: string } | null {
+  if (docType !== 'passport' && docType !== 'national_id') return null;
+  return {
+    label: docType === 'passport' ? 'Passport expiry' : 'ID card expiry',
+    hint: 'Optional. Enter it off the document if the AI did not read it — it drives the expiry reminders and the automatic block on the day it expires.',
+  };
+}
+
+/** Why an optional identity expiry cannot be sent, or null (blank is fine). */
+export function identityExpiryProblem(date: string): string | null {
+  if (date === '') return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Enter the expiry as a full date.';
+  if (date < '2000-01-01' || date > '2100-12-31') return 'Check the expiry — the year looks wrong.';
+  return null;
+}
+
 /** Why Verify cannot go ahead yet, in words for the reviewer, or null. */
 export function rtwDateProblem(
   rule: RtwDateRule | null,
