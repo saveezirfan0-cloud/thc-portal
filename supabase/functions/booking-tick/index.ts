@@ -11,12 +11,12 @@
  * kit message for, until the worker confirms it. Its own function, so the
  * §7 timers are not restated to add it; its counts ride in the same row.
  *
- * And `late_ready_tick()` (20261024120000, ADR-0196): the "I'm ready" pushes
- * at 15, 30 and 45 minutes for a worker who accepted after the noon deadline.
- * Their release at the hour is `release_unready_bookings()`, run by the
- * auto-staffing cutoff mode, which re-fills the seat in the same run.
+ * And `late_ready_tick()` (20261024110000, ADR-0196): the warning to a worker
+ * who confirmed after the noon deadline that they have an hour from
+ * confirming to press "I'm ready". Also its own function; its count rides in
+ * the same row. The release it leads to is the auto-staffing cutoff run's.
  *
- * All the SQL functions are idempotent — outbox keys for the notifications,
+ * Every SQL function here is idempotent — outbox keys for the notifications,
  * not-exists guards for the violations — which is what makes a job that
  * runs sixty times an hour safe to re-run after a failure.
  */

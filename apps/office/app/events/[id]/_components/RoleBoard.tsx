@@ -310,8 +310,7 @@ function confirmedLine(booking: BoardBooking, roleName: string, format?: TimeFor
     parts.push(`confirmed ${formatDateTimeIn(new Date(booking.confirmedAt), UK_ZONE, format)}`);
   }
   // The day-before "I'm ready" is the one hard deadline (§3.5), so whether it
-  // has been pressed is what the manager most needs to see here — with the
-  // day, since a confirmation made after the 12:00 deadline is exempt from it.
+  // has been pressed is what the manager most needs to see here.
   parts.push(
     booking.dayBeforeConfirmedAt
       ? `I'm ready ✓ ${formatDateTimeIn(new Date(booking.dayBeforeConfirmedAt), UK_ZONE, format)}`

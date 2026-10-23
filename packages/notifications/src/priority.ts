@@ -55,9 +55,6 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   N6: urgent,
   N6b: urgent,
   N7: urgent,
-  // ADR-0196: the one-hour "I'm ready" for a worker who accepted after noon.
-  LR1: urgent,
-  LR2: urgent,
   N8: normal,
   N9: urgent,
   N9b: urgent,

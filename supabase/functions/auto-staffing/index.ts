@@ -4,10 +4,9 @@
  *   ?mode=hourly      every hour at :17 — additive invitations for every
  *                     unfilled section whose shift has not started.
  *   ?mode=cutoff      the 12:05 UK deadline — drop confirmed workers who
- *                     never pressed "I'm ready", then re-fill. Every 5
- *                     minutes, all day: it also drops a worker who accepted
- *                     after that noon and has not pressed it within an
- *                     hour (ADR-0196).
+ *                     never pressed "I'm ready", then re-fill. Every tick
+ *                     also drops a worker who confirmed after that noon and
+ *                     did not press it within the hour (ADR-0196).
  *   ?mode=escalation  every 10 minutes — sections already under way and
  *                     still short, ignoring the headcount + buffer cap,
  *                     inviting only within settings.escalation_radius_miles
@@ -88,17 +87,26 @@ Deno.serve((request) =>
 
     // The 12:05 cutoff is registered as an every-5-minute entry because
     // pg_cron is UTC and the deadline is UK wall-clock (§3.5). The run in
-    // the 12:05 UK window releases and re-fills. Every other run is a retry
-    // of it, so a failed 12:05 run is made good five minutes later instead of
-    // never (20260929100000, ADR-0034): it calls release_unready_bookings(),
-    // which is idempotent and never reaches a shift starting today under the
-    // noon rule, and goes on to re-fill only if it released somebody.
+    // the 12:05 UK window releases and re-fills. Every later run until UK
+    // midnight is a retry of it, so a failed 12:05 run is made good five
+    // minutes later instead of never (20260929100000, ADR-0034): it calls
+    // release_unready_bookings(), which is idempotent and never reaches a
+    // shift starting today, and goes on to re-fill only if it released
+    // somebody. Before 12:05 nothing runs.
     //
-    // It runs at every hour, not just 12:05–midnight, because the same call
-    // releases a worker who accepted after the noon deadline and has not
-    // pressed "I'm ready" within an hour (ADR-0196) — and that hour can end
-    // at any time, including after midnight.
+    // Beside it (20261024110000, ADR-0196): a worker who confirmed AFTER the
+    // noon deadline has an hour from confirming, so that release is due at
+    // any minute of the day, not at 12:05. It runs on every cutoff tick,
+    // before the clock check below, and a tick that released somebody falls
+    // through to the re-fill even where the 12:05 release has nothing to do.
+    let lateReleased = 0;
+    // True when this tick is inside the 12:05 UK release window.
+    let inWindow = true;
     if (mode === 'cutoff') {
+      const { data: late, error: lateError } = await db.rpc('release_late_unready_bookings');
+      if (lateError) throw new Error(`release_late_unready_bookings: ${lateError.message}`);
+      lateReleased = Number(late ?? 0);
+
       const ukFrom1205 = async (window: string) => {
         const { data, error } = await db.rpc('is_uk_time', {
           p_now: new Date().toISOString(),
@@ -109,11 +117,16 @@ Deno.serve((request) =>
         return data === true;
       };
       if (!(await ukFrom1205('5 minutes'))) {
-        const { data: retried, error } = await db.rpc('release_unready_bookings');
-        if (error) throw new Error(`release_unready_bookings: ${error.message}`);
-        if (!retried) return { mode, retry: true, released: 0 };
-        // Released by the retry, so the section has a gap: fall through to
-        // the re-fill. The release below is idempotent and finds nothing.
+        if (!(await ukFrom1205('11 hours 55 minutes'))) {
+          if (!lateReleased) return { mode, skipped: 'before the 12:05 UK cutoff' };
+          inWindow = false;
+        } else {
+          const { data: retried, error } = await db.rpc('release_unready_bookings');
+          if (error) throw new Error(`release_unready_bookings: ${error.message}`);
+          if (!retried && !lateReleased) return { mode, retry: true, released: 0 };
+          // Released by the retry, so the section has a gap: fall through to
+          // the re-fill. The release below is idempotent and finds nothing.
+        }
       }
     }
 
@@ -143,9 +156,16 @@ Deno.serve((request) =>
     };
 
     if (mode === 'cutoff') {
-      const { data: released, error } = await db.rpc('release_unready_bookings');
-      if (error) throw new Error(`release_unready_bookings: ${error.message}`);
-      counts.released = released ?? 0;
+      // Outside the 12:05 window only the late release ran (above); the
+      // 12:05 release is not run early or after midnight.
+      let released = 0;
+      if (inWindow) {
+        const { data, error } = await db.rpc('release_unready_bookings');
+        if (error) throw new Error(`release_unready_bookings: ${error.message}`);
+        released = Number(data ?? 0);
+      }
+      counts.released = released + lateReleased;
+      counts.lateReleased = lateReleased;
     }
 
     // §6's weights are editable in settings; the shipped default applies

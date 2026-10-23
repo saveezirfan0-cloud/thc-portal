@@ -10,9 +10,9 @@ import {
   formatDistance,
   formatTimeIn,
   lateReadyApplies,
-  lateReadyDeadline,
   openSlots,
-  readyWindowClosed,
+  readyDeadlinePassed,
+  readyDueAt,
   sectionHours,
 } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
@@ -402,15 +402,16 @@ function ShiftCardView({
 
       {card === 'needs_ready' ? (
         <>
-          {/* ADR-0196: accepted after the noon deadline the day before, so the
-              hour runs from accepting, not to 12:00. */}
-          {booking.confirmedAt && lateReadyApplies(booking.confirmedAt, booking.startsAt) ? (
+          {lateReadyApplies(booking.confirmedAt, booking.startsAt) ? (
+            // ADR-0196: confirmed after the noon deadline — the hour from
+            // confirming, written in the worker's own clock.
             <Alert tone="amber">
               Press “I’m ready” by{' '}
               <b>
-                {formatTimeIn(lateReadyDeadline(booking.confirmedAt), UK_ZONE, format)} (UK time)
+                {formatTimeIn(readyDueAt(booking.confirmedAt, booking.startsAt), UK_ZONE, format)}{' '}
+                (UK time)
               </b>{' '}
-              — an hour after you accepted — or you’ll be removed from this shift.
+              — an hour after you confirmed — or you’ll be removed from this shift.
             </Alert>
           ) : (
             <Alert tone="amber">
@@ -418,19 +419,19 @@ function ShiftCardView({
               from this shift.
             </Alert>
           )}
-          {/* Stage 2, `markReady` — the one action "I'm ready" has. Once its
-              window has closed the database answers `deadline_passed`
-              (ADR-0034 §3, ADR-0196), so the button says so rather than
-              offering a press that can only fail. The moment is
-              `readyWindowClosed()` from the domain. */}
+          {/* Stage 2, `markReady` — the one action "I'm ready" has. Past
+              the deadline the database answers `deadline_passed`
+              (ADR-0034 §3), so the button says so rather than offering a
+              press that can only fail. The moment is `readyDeadlinePassed()`
+              from the domain: 12:00, or a late confirmer's hour. */}
           <ActionButton
             label="I’m ready for tomorrow"
             tone="primary"
             block
-            disabled={readyWindowClosed(booking.confirmedAt, booking.startsAt, now)}
+            disabled={readyDeadlinePassed(booking.startsAt, now, booking.confirmedAt)}
             disabledLabel={
-              booking.confirmedAt && lateReadyApplies(booking.confirmedAt, booking.startsAt)
-                ? 'The hour to confirm has passed'
+              lateReadyApplies(booking.confirmedAt, booking.startsAt)
+                ? 'Your hour to confirm has passed'
                 : `The ${READY_DEADLINE_UK} deadline has passed`
             }
             action={markReady.bind(null, booking.bookingId)}

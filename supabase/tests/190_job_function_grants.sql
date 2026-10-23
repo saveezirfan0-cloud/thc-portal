@@ -29,7 +29,7 @@ select is_empty(
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
         and p.proname in (
-          'booking_tick', 'late_ready_tick', 'job_run_start', 'job_run_finish',
+          'booking_tick', 'job_run_start', 'job_run_finish',
           'claim_outbox_batch', 'complete_outbox_send',
           'release_unready_bookings', 'invite_worker',
           'auto_assign_due_shifts', 'auto_assign_candidates',
@@ -94,7 +94,7 @@ select is_empty(
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
         and p.proname in (
-          'booking_tick', 'late_ready_tick', 'job_run_start', 'job_run_finish',
+          'booking_tick', 'job_run_start', 'job_run_finish',
           'claim_outbox_batch', 'complete_outbox_send',
           'release_unready_bookings', 'invite_worker', 'install_job_schedules',
           -- The compliance, lifecycle and directory write paths. Every one
@@ -344,7 +344,7 @@ select is_empty(
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
         and p.proname in (
-          'booking_tick', 'late_ready_tick', 'job_run_start', 'job_run_finish',
+          'booking_tick', 'job_run_start', 'job_run_finish',
           'claim_outbox_batch', 'complete_outbox_send',
           'release_unready_bookings', 'queue_booking_push', 'install_job_schedules'
         )

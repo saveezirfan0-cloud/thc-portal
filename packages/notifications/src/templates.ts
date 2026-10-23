@@ -231,6 +231,15 @@ export const TEMPLATES = {
     // screen (wireframes: staff-app shifts vs shift-detail), so the push
     // opens where the worker can act on it.
     deepLink: '/shifts',
+    // ADR-0196: a worker who confirmed after the noon deadline has the hour
+    // from confirming instead. Sent by late_ready_tick() with variant "late";
+    // every other N6 reads §8's body.
+    variants: {
+      late: {
+        title: "Press I'm ready within the hour",
+        body: "Press I'm ready by {dueBy} — or you'll be removed from your shift tomorrow",
+      },
+    },
   },
   N6b: {
     code: 'N6b',
@@ -240,6 +249,12 @@ export const TEMPLATES = {
     trigger: 'Automatically dropped for missing the day-before deadline',
     timing: 'at the moment of the automatic 12:05 cutoff (confirmed 01.09.2026)',
     deepLink: '/shifts',
+    // ADR-0196: the release of a late confirmer, an hour after confirming.
+    variants: {
+      late: {
+        body: "You have been removed from your shift tomorrow as we did not receive your 'I'm ready' within an hour of your confirmation",
+      },
+    },
   },
   N7: {
     code: 'N7',
@@ -249,39 +264,6 @@ export const TEMPLATES = {
     trigger: 'On-the-day',
     timing: 'on the day of the shift',
     // As N6: "Confirm today" is on the /shifts card.
-    deepLink: '/shifts',
-  },
-
-  // ────────────────────────────────────────────────────────────────────────
-  // LATE "I'M READY" (ADR-0196, product owner 22.10.2026) — a worker who
-  // accepts AFTER the 12:00 day-before deadline is not left alone: they are
-  // asked to press "I'm ready" 15 minutes after accepting, reminded every 15
-  // minutes, and released an hour after accepting if they have not. `LR`
-  // codes, as `CR` and `SC` are, so neither can collide with an N- or
-  // E-number THC assigns to §8 later. Keys: LR1 `late_ready_key()` —
-  // `LR1:booking:<id>:<confirmed epoch>:<step 1–3>`; LR2
-  // `LR2:booking:<id>:<confirmed epoch>`.
-  // ────────────────────────────────────────────────────────────────────────
-  LR1: {
-    code: 'LR1',
-    channel: 'push',
-    title: 'Press “I’m ready”',
-    body: 'Press “I’m ready” for {event} · {dateTime} within {minutes} minutes — or you’ll be removed from it',
-    trigger:
-      'A booking confirmed after the 12:00 day-before deadline, for a shift on a later UK day, still without “I’m ready” 15, 30 and 45 minutes after it was confirmed (late_ready_tick). Not in §8: ADR-0196',
-    timing:
-      '15, 30 and 45 minutes after the worker accepts; once per step per confirmation; stops the moment they press it',
-    // As N6: the button lives on the /shifts card.
-    deepLink: '/shifts',
-  },
-  LR2: {
-    code: 'LR2',
-    channel: 'push',
-    title: 'Removed from your shift',
-    body: 'You have been removed from {event} · {dateTime} as we did not receive your “I’m ready” within an hour of you confirming it',
-    trigger:
-      'Automatically dropped for not pressing “I’m ready” within an hour of accepting after the 12:00 day-before deadline (release_unready_bookings). Not in §8: ADR-0196',
-    timing: 'an hour after the worker accepts (the auto-staffing cutoff run, every 5 minutes)',
     deepLink: '/shifts',
   },
 
@@ -1327,13 +1309,6 @@ export const CLIENT_REQUIREMENT_CODES = [
  * licence. Not §8's.
  */
 export const SECURITY_CLEARANCE_CODES = ['SC1'] as const satisfies readonly TemplateCode[];
-
-/**
- * The one-hour "I'm ready" for a worker who accepts after the 12:00
- * day-before deadline (ADR-0196): LR1 reminds them at 15, 30 and 45 minutes,
- * LR2 tells them they have been removed at the hour. Not §8's.
- */
-export const LATE_READY_CODES = ['LR1', 'LR2'] as const satisfies readonly TemplateCode[];
 
 /**
  * Office messages: a push whose body the manager writes — OM1 to an event's

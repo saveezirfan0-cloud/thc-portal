@@ -12,7 +12,6 @@ import {
   REQUIREMENT_CODES,
   SCOPE_CODES,
   SECURITY_CLEARANCE_CODES,
-  LATE_READY_CODES,
   TEMPLATES,
   body,
   outboxKey,
@@ -85,9 +84,6 @@ const CLIENT_REQUIREMENT_EMAIL_CODES = ['CR3'];
 /** Security-cleared events (ADR-0185): a worker is told to bring ID when confirmed. */
 const SECURITY_PUSH_CODES = ['SC1'];
 
-/** The one-hour "I'm ready" for a worker who accepts after the noon deadline (ADR-0196). */
-const LATE_READY_PUSH_CODES = ['LR1', 'LR2'];
-
 /**
  * Client Portal additions (ADR-0135): the office told of a "Request again"
  * (CP1); the customer told their line-up is full (CP2) or changed after the
@@ -124,7 +120,6 @@ describe('notification register (§8)', () => {
         ...CLIENT_REQUIREMENT_PUSH_CODES,
         ...CLIENT_REQUIREMENT_EMAIL_CODES,
         ...SECURITY_PUSH_CODES,
-        ...LATE_READY_PUSH_CODES,
         ...CLIENT_PORTAL_EMAIL_CODES,
         ...DECLARATION_PUSH_CODES,
       ].sort(),
@@ -159,8 +154,6 @@ describe('notification register (§8)', () => {
     for (const code of CLIENT_REQUIREMENT_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
     for (const code of SECURITY_PUSH_CODES)
-      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
-    for (const code of LATE_READY_PUSH_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
     for (const code of CLIENT_PORTAL_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
@@ -197,7 +190,6 @@ describe('notification register (§8)', () => {
     expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
     // ADR-0185: a worker confirmed on a security-cleared event is told to bring ID.
     expect([...SECURITY_CLEARANCE_CODES]).toEqual(SECURITY_PUSH_CODES);
-    expect([...LATE_READY_CODES]).toEqual(LATE_READY_PUSH_CODES);
     const union = [
       ...SCOPE_CODES,
       ...REQUIREMENT_CODES,
@@ -210,7 +202,6 @@ describe('notification register (§8)', () => {
       ...CLIENT_PORTAL_CODES,
       ...DECLARATION_CODES,
       ...SECURITY_CLEARANCE_CODES,
-      ...LATE_READY_CODES,
     ];
     // Disjoint: no code is counted in two lists.
     expect(new Set(union).size).toBe(union.length);
@@ -461,7 +452,6 @@ describe('§8 copy is verbatim', () => {
       ...CLIENT_PORTAL_CODES,
       ...DECLARATION_CODES,
       ...SECURITY_CLEARANCE_CODES,
-      ...LATE_READY_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),
@@ -763,48 +753,6 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     // The "I'm ready" / "Confirm today" buttons live on the /shifts card,
     // so the push opens there, not on the shift detail screen.
     expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
-  });
-});
-
-/**
- * LR1 / LR2 (ADR-0196) are queued by late_ready_tick() and
- * release_unready_bookings() (20261024120000). The payloads below are the
- * ones those write; both open the /shifts card, where "I'm ready" lives.
- */
-describe('LR1 / LR2 render from the payload the late "I\'m ready" functions write', () => {
-  const payload = {
-    bookingId: 'b1',
-    shiftId: 's1',
-    eventId: 'e1',
-    event: 'Lift and Shift',
-    dateTime: 'Fri 23 Oct 17:00–21:00',
-    minutes: '45',
-  };
-
-  it('LR1 says how long is left, and how to get there', () => {
-    const lr1 = template('LR1');
-    expect(render(body('LR1'), payload)).toBe(
-      'Press “I’m ready” for Lift and Shift · Fri 23 Oct 17:00–21:00 within 45 minutes — or you’ll be removed from it',
-    );
-    expect(render(lr1.title, payload)).not.toMatch(/[{}]/);
-    expect(render(lr1.deepLink ?? '', payload)).toBe('/shifts');
-    expect(lr1.channel).toBe('push');
-  });
-
-  it('LR2 names the shift it took them off, not "tomorrow", because the hour can end after midnight', () => {
-    const text = render(body('LR2'), payload);
-    expect(text).toBe(
-      'You have been removed from Lift and Shift · Fri 23 Oct 17:00–21:00 as we did not receive your “I’m ready” within an hour of you confirming it',
-    );
-    expect(text).not.toMatch(/tomorrow|[{}]/);
-    expect(render(template('LR2').deepLink ?? '', payload)).toBe('/shifts');
-  });
-
-  it('are not the 12:00 messages: N6 and N6b keep the register wording', () => {
-    expect(body('N6')).toMatch(/12:00/);
-    expect(body('N6b')).toMatch(/12:00/);
-    expect(body('LR1')).not.toMatch(/12:00/);
-    expect(body('LR2')).not.toMatch(/12:00/);
   });
 });
 

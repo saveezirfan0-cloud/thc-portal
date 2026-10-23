@@ -373,16 +373,3 @@ is unset on `notify-drain` (docs/12), because their button would have no link.
 | Code | Trigger | What it says | Why |
 | --- | --- | --- | --- |
 | DR1 | The office presses **Ask for more details** on a pending Yes criminal declaration (`compliance_request_declaration_details`, key `DR1:declaration:<id>`) | title "More detail needed", body `We need a bit more detail about your declaration — {message}`, button **Update declaration**, landing on `/onboarding` for a candidate and `/documents/declare` for a worker (`declaration_update_link()`) | §8 has no send for a request: before ADR-0180 the only way to ask was Reject (N8). `{message}` is what the office wrote for the worker — never the declared details and never the internal review note. It can show on a lock screen, which the office's dialog says. **Confirm the wording.** Not sent for an update the worker makes; a compliant worker's update sends E9, as any declaration from the app does |
-
-
-## Late "I'm ready" (ADR-0196)
-
-The product owner's instruction of 22.10.2026: a worker who accepts after the
-12:00 day-before deadline is asked to press "I'm ready" 15 minutes after
-accepting, reminded every 15 minutes, and released an hour after accepting.
-`LATE_READY_CODES`; each `trigger` says "Not in §8". Both urgent.
-
-| Code | Channel · to | Title | Body | When · key |
-| --- | --- | --- | --- | --- |
-| LR1 | push · worker → `/shifts` | `Press “I’m ready”` | `Press “I’m ready” for {event} · {dateTime} within {minutes} minutes — or you’ll be removed from it` | +15, +30, +45 minutes after accepting (`late_ready_tick`, every minute with booking-tick); `{minutes}` is 45, 30, 15 · `late_ready_key()` = `LR1:booking:<id>:<confirmed epoch>:<step>` |
-| LR2 | push · worker → `/shifts` | `Removed from your shift` | `You have been removed from {event} · {dateTime} as we did not receive your “I’m ready” within an hour of you confirming it` | the release an hour after accepting (`release_unready_bookings`, the auto-staffing cutoff run, every 5 minutes) · `LR2:booking:<id>:<confirmed epoch>` |
