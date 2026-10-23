@@ -294,6 +294,27 @@ async function applyDelivery(
     event: event.eventKey,
   };
   if (!plan) {
+    // The webhook follows every Willo interview (ADR-0202), so most keys
+    // reaching here belong to people who never applied to us. An email no
+    // staff row holds is answered and written nowhere; an email we do hold
+    // is a person the office may be waiting on, so it is refused and
+    // audited below, as before.
+    if (event.email) {
+      const { data: stranger, error: strangerError } = await db.rpc('willo_stranger', {
+        p_email: event.email,
+      });
+      if (strangerError) {
+        console.error('[willo-webhook] stranger check failed', {
+          ...log,
+          error: strangerError.message,
+        });
+        return json(500, { error: 'stranger check failed' });
+      }
+      if (stranger === true) {
+        console.log('[willo-webhook] stranger — nobody of ours', log);
+        return json(200, { outcome: 'stranger' });
+      }
+    }
     // Created in Willo by hand, or removed (§1.7) since. Nothing to move.
     console.warn('[willo-webhook] unknown Willo candidate', log);
     return refuse(db, event.willoCandidateId, event.eventKey, 'unknown_willo_candidate');

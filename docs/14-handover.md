@@ -1,5 +1,7 @@
 # 14 · Where the build actually is, and what to do next
 
+> **Newest first: [`23-launch-week-notes-2026-10-23.md`](23-launch-week-notes-2026-10-23.md)** — launch-week decisions, the Willo → Documents diagnosis (ADR-0202) and the feedback-inbox plan. Everything below is older.
+
 > **Superseded in part by [`15-audit-2026-09-24.md`](15-audit-2026-09-24.md).** An
 > independent audit on 24.09 found code gaps this page reports as closed — among them a
 > worker shift screen with no shift data under RLS, no Potential pool / manual invite /
