@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 933 · A client left out of invoicing (ADR-0203)
---       — 20261026100000_client_excluded_from_invoicing.sql
+--       — 20261026120000_client_excluded_from_invoicing.sql
 -- =====================================================================
 begin;
 select plan(8);

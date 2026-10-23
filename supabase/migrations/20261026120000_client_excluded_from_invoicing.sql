@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261026100000 · a client can be left out of invoicing
+-- Migration 20261026120000 · a client can be left out of invoicing
 --                            (ADR-0203)
 --
 -- THC (23.10.2026): "Can Leonardo Hotel St Paul's M+E be excluded from the

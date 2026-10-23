@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261026110000 · bring your name badge (ADR-0204)
+-- Migration 20261026130000 · bring your name badge (ADR-0204)
 --
 -- THC (23.10.2026): for all Leonardo Hotel St Paul's M&E shifts, remind
 -- staff in the morning not to forget their name badge if they have been
