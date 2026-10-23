@@ -113,6 +113,26 @@ async function refuse(
   return json(200, { outcome: 'refused', code });
 }
 
+/**
+ * A delivery that carried the right token but was not applied — unreadable
+ * (400) or older than the replay window (200) — leaves a job_runs row like
+ * every applied one (`status`, `code`, `outcome`), so a Willo event that
+ * never moved a card can be told from one Willo never sent. Only after the
+ * token check: an unverified call writes nothing. Bookkeeping that fails is
+ * logged and never changes the answer.
+ */
+async function recordedRefusal(status: number, code: string, outcome?: string): Promise<Response> {
+  const body: Record<string, unknown> = outcome ? { outcome, code } : { error: code, code };
+  try {
+    return await recordRun(serviceClient(), 'willo-webhook', async () => json(status, body));
+  } catch (cause) {
+    console.error('[willo-webhook] could not record the refusal', {
+      error: cause instanceof Error ? cause.message : String(cause),
+    });
+    return json(status, body);
+  }
+}
+
 async function webhook(request: Request): Promise<Response> {
   // Capped as it is read, Content-Length or not: a chunked delivery declares
   // no length, and request.text() would buffer whatever it was sent.
@@ -153,7 +173,7 @@ async function webhook(request: Request): Promise<Response> {
       eventHint,
       shape,
     });
-    return json(400, { error: parsed.reason });
+    return recordedRefusal(400, parsed.reason);
   }
   console.log('[willo-webhook] delivery', { eventHint, shape });
   const event = parsed.event;
@@ -168,7 +188,7 @@ async function webhook(request: Request): Promise<Response> {
       event: event.eventKey,
       occurredAt: event.occurredAt,
     });
-    return json(200, { outcome: 'stale' });
+    return recordedRefusal(200, 'stale', 'stale');
   }
   // The key the database applies it once under: the raw body's SHA-256.
   const deliveryKey = await willoDeliveryKey(raw);
