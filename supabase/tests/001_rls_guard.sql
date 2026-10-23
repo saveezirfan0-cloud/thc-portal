@@ -66,7 +66,7 @@
 -- admin_finance_read only, written by the service role's invoice job (909).
 -- 20261024120000 (ADR-0199) added tickets and ticket_comments to assertions 1
 -- and 3: admin_read only, written by create_ticket(), add_ticket_comment()
--- and update_ticket() (930).
+-- and update_ticket() (931).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
