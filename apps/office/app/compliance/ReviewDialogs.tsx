@@ -36,6 +36,8 @@ import {
 import {
   HOME_OFFICE_APPROVED_LABEL,
   homeOfficeVerifyProblem,
+  identityExpiryField,
+  identityExpiryProblem,
   rtwDateProblem,
   rtwDateRule,
   rtwDateValue,
@@ -82,6 +84,7 @@ export function useReviewDialogs({
   const [approving, setApproving] = useState<QueueRow | null>(null);
   const [confirming, setConfirming] = useState<QueueRow | null>(null);
   const [checking, setChecking] = useState<QueueRow | null>(null);
+  const [dating, setDating] = useState<QueueRow | null>(null);
 
   const verify = (row: QueueRow) => {
     const step = verifyStep(row);
@@ -99,6 +102,10 @@ export function useReviewDialogs({
     }
     if (step === 'confirm_date') {
       setConfirming(row);
+      return;
+    }
+    if (step === 'confirm_expiry') {
+      setDating(row);
       return;
     }
     run(row.item_id, () =>
@@ -153,6 +160,21 @@ export function useReviewDialogs({
         />
       ) : null}
 
+      {dating ? (
+        <IdentityExpiryModal
+          row={dating}
+          busy={busy(dating.item_id)}
+          onClose={() => setDating(null)}
+          onVerify={(expiry) =>
+            run(
+              dating.item_id,
+              () => verifyWith(dating, expiry ? { expiry } : {}, {}),
+              () => setDating(null),
+            )
+          }
+        />
+      ) : null}
+
       {checking ? (
         <ConfirmVerifyModal
           row={checking}
@@ -186,6 +208,55 @@ export function useReviewDialogs({
   );
 
   return { verify, reject: setRejecting, dialogs };
+}
+
+/**
+ * Verify a passport or ID card: its expiry, pre-filled from the AI's read,
+ * confirmed or typed off the document. Optional — blank verifies it with no
+ * expiry on file.
+ */
+function IdentityExpiryModal({
+  row,
+  busy,
+  onClose,
+  onVerify,
+}: {
+  row: QueueRow;
+  busy: boolean;
+  onClose: () => void;
+  onVerify: (expiry: string) => void;
+}) {
+  const field = identityExpiryField(row.item_type)!;
+  const [date, setDate] = useState(row.expiry_date ?? '');
+  const problem = identityExpiryProblem(date);
+  return (
+    <Modal
+      open
+      title={`Verify ${row.item_label}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="green"
+            solid
+            disabled={busy || problem !== null}
+            onClick={() => onVerify(date)}
+          >
+            Verify
+          </Button>
+        </>
+      }
+    >
+      <UkDateField label={field.label} value={date} onChange={setDate} hint={field.hint} />
+      {row.expiry_date ? null : (
+        <Note>The AI did not read an expiry from this document. Check it and enter the date.</Note>
+      )}
+      {problem && date !== '' ? <div className="coral sm">{problem}</div> : null}
+    </Modal>
+  );
 }
 
 /** What the reviewer confirmed beside the document (conditions.ts). */

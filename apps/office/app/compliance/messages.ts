@@ -173,3 +173,49 @@ function ukDate(iso: string | undefined): string {
   const [y, m, d] = iso.split('-');
   return `${d}.${m}.${y}`;
 }
+
+/** Documents whose AI read pre-fills an expiry the office can retry. */
+const RESCANNABLE = new Set(['passport', 'national_id', 'visa_document', 'status_document']);
+
+export function canRescan(docType: string): boolean {
+  return RESCANNABLE.has(docType);
+}
+
+/** What the Staff App's reader reports back (apps/staff/lib/extract.ts). */
+export interface ScanSummary {
+  confidence: number;
+  expiryFound: boolean;
+  reasons: string[];
+}
+
+const SCAN_REASONS: Record<string, string> = {
+  not_this_document_type: 'it does not look like the right kind of document',
+  not_legible: 'the page is blurred, cut off or hard to read',
+  no_expiry_date: 'no expiry date could be read',
+  bad_expiry_date: 'the expiry date it read was not a valid date',
+  timeout: 'the AI took too long to answer',
+  connection_error: 'the AI could not be reached',
+  unparseable_answer: 'the AI gave an answer that could not be used',
+  'unsupported_input:image_too_large': 'the photo is over 5 MB',
+};
+
+/** One sentence for the reviewer: what the retry found, and if not, why. */
+export function scanOutcomeMessage(summary: ScanSummary): string {
+  const pct = Math.round(summary.confidence * 100);
+  if (summary.expiryFound && summary.reasons.length === 0) {
+    return `AI scan done (${pct}%): expiry read. Check it against the document before you verify.`;
+  }
+  const why = summary.reasons
+    .map(
+      (r) =>
+        SCAN_REASONS[r] ??
+        (r.startsWith('unsupported_input')
+          ? 'the file type cannot be read by the AI'
+          : r.startsWith('api_error')
+            ? 'the AI service returned an error'
+            : null),
+    )
+    .filter((r): r is string => r !== null);
+  const reason = why.length ? why.join('; ') : 'the read was not confident enough';
+  return `AI scan done (${pct}%), but ${reason}. Enter the date by hand on Verify.`;
+}

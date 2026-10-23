@@ -234,10 +234,13 @@ describe('which rows carry Verify / Reject', () => {
 });
 
 describe('every click lands in /compliance’s own actions', () => {
-  it('Verify on a passport verifies it at once', async () => {
+  it('Verify on a passport asks for an optional expiry, and verifies without one', async () => {
     render({ documents: [doc({})], reviewQueue: [queued({})] });
     await click(buttons('Verify')[0]);
-    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d1');
+    expect(actions.verifyDocument).not.toHaveBeenCalled();
+    expect(dialog().textContent).toContain('Passport expiry');
+    await click(buttons('Verify', dialog())[0]);
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d1', {});
   });
 
   it('Verify on a visa asks for its expiry first, then sends it', async () => {

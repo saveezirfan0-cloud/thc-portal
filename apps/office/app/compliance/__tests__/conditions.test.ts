@@ -166,7 +166,8 @@ describe('what Verify opens, on /compliance and the profile alike', () => {
       ),
     ).toBe('confirm');
     expect(verifyStep(row({ item_type: 'ni_evidence' }))).toBe('confirm');
-    expect(verifyStep(row({ item_type: 'passport' }))).toBe('verify');
+    expect(verifyStep(row({ item_type: 'passport' }))).toBe('confirm_expiry');
+    expect(verifyStep(row({ item_type: 'birth_certificate' }))).toBe('verify');
   });
 
   it('opens the holiday periods on every term letter, whatever the route (ADR-0178)', () => {
