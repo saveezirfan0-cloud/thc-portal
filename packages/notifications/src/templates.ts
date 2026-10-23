@@ -158,11 +158,11 @@ const DECLARATION_TEMPLATES = {
  */
 export const DECLARATION_CODES = ['DR1'] as const satisfies readonly TemplateCode[];
 
-/** Tickets (ADR-0198): TK1, to the addresses in settings.ticket_recipients. Not §8's. */
+/** Tickets (ADR-0199): TK1, to the addresses in settings.ticket_recipients. Not §8's. */
 export const TICKET_CODES = ['TK1'] as const satisfies readonly TemplateCode[];
 
 /**
- * TICKETS (ADR-0198). `TK` code. TK1 goes to whoever is named in
+ * TICKETS (ADR-0199). `TK` code. TK1 goes to whoever is named in
  * `settings.ticket_recipients` (seeded with the product owner's address):
  * the address is on the outbox row, written by create_ticket() /
  * add_ticket_comment() / update_ticket() from that setting, never from the
@@ -189,7 +189,7 @@ const TICKET_TEMPLATES = {
       },
     },
     trigger:
-      'A Back Office login logs a ticket (create_ticket, variant new), or adds a comment or a note to one (add_ticket_comment / update_ticket, variant comment). Not in §8: an addition to scope v1.6, ADR-0198',
+      'A Back Office login logs a ticket (create_ticket, variant new), or adds a comment or a note to one (add_ticket_comment / update_ticket, variant comment). Not in §8: an addition to scope v1.6, ADR-0199',
     timing:
       'immediately, once per ticket and once per comment; at most 20 new tickets an hour per login; to the addresses in settings.ticket_recipients',
   },

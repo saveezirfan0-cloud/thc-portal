@@ -53,7 +53,7 @@ select enum_has_labels('public', 'office_role', array['owner', 'manager', 'sched
 --                        grant no write to any API role; the only writes are
 --                        create_ticket() and add_ticket_comment(), open to a
 --                        viewer on purpose, and update_ticket(), which asks
---                        office_can('write') (20261024120000, ADR-0198).
+--                        office_can('write') (20261024120000, ADR-0199).
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -61,7 +61,7 @@ select is_empty(
         and not exists (select 1 from pg_depend d
                          where d.classid = 'pg_class'::regclass
                            and d.objid = c.oid and d.deptype = 'e')
-        and c.relname not in ('profiles', 'office_saved_views', 'tickets', 'ticket_comments')  -- ALLOW-LIST (ADR-0060, ADR-0198)
+        and c.relname not in ('profiles', 'office_saved_views', 'tickets', 'ticket_comments')  -- ALLOW-LIST (ADR-0060, ADR-0199)
         and not exists (
               select 1 from pg_trigger t
                where t.tgrelid = c.oid

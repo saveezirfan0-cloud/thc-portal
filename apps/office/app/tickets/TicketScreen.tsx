@@ -16,7 +16,7 @@ import {
 } from './view-model';
 import './tickets.css';
 
-/** One ticket (ADR-0198): what was reported, the thread, and the follow-up controls. */
+/** One ticket (ADR-0199): what was reported, the thread, and the follow-up controls. */
 export function TicketScreen({
   data,
   canWrite,

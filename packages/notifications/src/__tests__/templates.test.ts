@@ -95,7 +95,7 @@ const CLIENT_PORTAL_EMAIL_CODES = ['CP1', 'CP2', 'CP3'];
 /** The declaration review addition (ADR-0180): the office asks for more detail. */
 const DECLARATION_PUSH_CODES = ['DR1'];
 
-/** Tickets (ADR-0198): the office mailbox told of a ticket or an update to one. */
+/** Tickets (ADR-0199): the office mailbox told of a ticket or an update to one. */
 const TICKET_EMAIL_CODES = ['TK1'];
 
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
@@ -197,7 +197,7 @@ describe('notification register (§8)', () => {
     expect([...DECLARATION_CODES]).toEqual(DECLARATION_PUSH_CODES);
     // ADR-0185: a worker confirmed on a security-cleared event is told to bring ID.
     expect([...SECURITY_CLEARANCE_CODES]).toEqual(SECURITY_PUSH_CODES);
-    // ADR-0198: tickets.
+    // ADR-0199: tickets.
     expect([...TICKET_CODES]).toEqual(TICKET_EMAIL_CODES);
     const union = [
       ...SCOPE_CODES,
@@ -1543,9 +1543,9 @@ describe('Client Portal additions — CP1–CP3 (ADR-0135)', () => {
   });
 });
 
-describe('Tickets — TK1 (ADR-0198)', () => {
+describe('Tickets — TK1 (ADR-0199)', () => {
   it('says "Not in §8", names the ADR, and sends from admin@', () => {
-    expect(TEMPLATES.TK1.trigger).toMatch(/Not in §8.*ADR-0198/);
+    expect(TEMPLATES.TK1.trigger).toMatch(/Not in §8.*ADR-0199/);
     expect(TEMPLATES.TK1.sender).toBe('admin');
   });
 

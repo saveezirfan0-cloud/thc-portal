@@ -8,7 +8,7 @@ import { TicketScreen } from '../TicketScreen';
 export const metadata = { title: 'Ticket · THC Back Office' };
 export const dynamic = 'force-dynamic';
 
-/** /tickets/:id — one ticket, its thread, and the follow-up controls (ADR-0198). */
+/** /tickets/:id — one ticket, its thread, and the follow-up controls (ADR-0199). */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [data, user, format] = await Promise.all([

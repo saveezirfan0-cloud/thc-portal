@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261024120000 · Tickets: the team logs issues, requests and
---                            updates from the Back Office (ADR-0198)
+--                            updates from the Back Office (ADR-0199)
 --
 -- The test run needs somewhere for the office to say "this is broken",
 -- "can we have this" or "here is an update", that does not depend on
@@ -68,7 +68,7 @@ create table if not exists public.tickets (
 );
 
 comment on table public.tickets is
-  'ADR-0198: a report logged from the Back Office (issue, request, idea, update, question), numbered TK-<ticket_no>. Written only by create_ticket() and update_ticket(); admin_read.';
+  'ADR-0199: a report logged from the Back Office (issue, request, idea, update, question), numbered TK-<ticket_no>. Written only by create_ticket() and update_ticket(); admin_read.';
 
 create index if not exists tickets_status_created_idx on public.tickets (status, created_at desc);
 create index if not exists tickets_created_idx on public.tickets (created_at desc);
@@ -88,7 +88,7 @@ create table if not exists public.ticket_comments (
 );
 
 comment on table public.ticket_comments is
-  'ADR-0198: the thread on a ticket — comments, and the status / severity changes as kind = change. Written only by add_ticket_comment() and update_ticket(); admin_read.';
+  'ADR-0199: the thread on a ticket — comments, and the status / severity changes as kind = change. Written only by add_ticket_comment() and update_ticket(); admin_read.';
 
 create index if not exists ticket_comments_ticket_idx on public.ticket_comments (ticket_id, created_at);
 create index if not exists ticket_comments_author_id_idx on public.ticket_comments (author_id);
@@ -135,7 +135,7 @@ as $$
 $$;
 
 comment on function public.ticket_recipient_emails() is
-  'ADR-0198: the addresses a ticket email goes to, from settings.ticket_recipients. Internal; not granted to any API role.';
+  'ADR-0199: the addresses a ticket email goes to, from settings.ticket_recipients. Internal; not granted to any API role.';
 
 revoke all on function public.ticket_recipient_emails() from public, anon, authenticated;
 grant execute on function public.ticket_recipient_emails() to service_role;
@@ -227,7 +227,7 @@ begin
 end $$;
 
 comment on function public.create_ticket(text, text, text, text, text, text) is
-  'ADR-0198: log a ticket (kind, optional severity, summary 3–200, details ≤ 5000, the page it was logged on, an optional recording link). Any Back Office login, a Viewer too; at most 20 an hour per login. Saves the ticket and queues TK1 (variant new, key TK1:ticket:<id>) to settings.ticket_recipients. Returns {id, number, ref}.';
+  'ADR-0199: log a ticket (kind, optional severity, summary 3–200, details ≤ 5000, the page it was logged on, an optional recording link). Any Back Office login, a Viewer too; at most 20 an hour per login. Saves the ticket and queues TK1 (variant new, key TK1:ticket:<id>) to settings.ticket_recipients. Returns {id, number, ref}.';
 
 revoke all on function public.create_ticket(text, text, text, text, text, text) from public, anon;
 grant execute on function public.create_ticket(text, text, text, text, text, text) to authenticated;
@@ -293,7 +293,7 @@ begin
 end $$;
 
 comment on function public.add_ticket_comment(uuid, text) is
-  'ADR-0198: add a comment to a ticket. Any Back Office login, a Viewer too. Bumps updated_at and queues TK1 (variant comment, key TK1:comment:<comment id>).';
+  'ADR-0199: add a comment to a ticket. Any Back Office login, a Viewer too. Bumps updated_at and queues TK1 (variant comment, key TK1:comment:<comment id>).';
 
 revoke all on function public.add_ticket_comment(uuid, text) from public, anon;
 grant execute on function public.add_ticket_comment(uuid, text) to authenticated;
@@ -399,7 +399,7 @@ begin
 end $$;
 
 comment on function public.update_ticket(uuid, text, text, text) is
-  'ADR-0198: change a ticket''s status and / or severity, with an optional note. Office logins that may write (not a Viewer). Each change is a kind = change line on the thread; resolved_at is set on Resolved / Closed and cleared on a reopen; a note is a comment and is emailed (TK1 variant comment).';
+  'ADR-0199: change a ticket''s status and / or severity, with an optional note. Office logins that may write (not a Viewer). Each change is a kind = change line on the thread; resolved_at is set on Resolved / Closed and cleared on a reopen; a note is a comment and is emailed (TK1 variant comment).';
 
 revoke all on function public.update_ticket(uuid, text, text, text) from public, anon;
 grant execute on function public.update_ticket(uuid, text, text, text) to authenticated;
@@ -490,7 +490,7 @@ language sql immutable set search_path = public, extensions as $$
 $$;
 
 comment on function public.notification_priorities() is
-  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176), DR1 20261022170100 (ADR-0180), SC1 20261023100000 (ADR-0185), TK1 20261024120000 (ADR-0198).';
+  'ADR-0158: the send class of every register code and document email — 0 urgent, 1 normal, 2 bulk. Mirrors SEND_PRIORITY in packages/notifications/src/priority.ts (priorityValuesSql() renders these rows; __tests__/priority.test.ts holds the two equal). INV1 added 20261022100000 (ADR-0176), DR1 20261022170100 (ADR-0180), SC1 20261023100000 (ADR-0185), TK1 20261024120000 (ADR-0199).';
 
 revoke execute on function public.notification_priorities() from public, anon, authenticated;
 grant execute on function public.notification_priorities() to service_role;

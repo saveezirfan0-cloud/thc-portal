@@ -9,7 +9,7 @@ import { COMMENT_MAX, isSeverity, isStatus, validateDraft, type TicketDraft } fr
 import type { ActionResult } from './types';
 
 /**
- * Writes for the Report button and /tickets (ADR-0198), through the three
+ * Writes for the Report button and /tickets (ADR-0199), through the three
  * RPCs in 20261024120000_tickets.sql. They are security definer and check
  * the caller themselves: any Back Office login may report and comment (a
  * Viewer too); changing a status or severity needs `write`. Every rule —

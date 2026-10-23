@@ -126,7 +126,7 @@ export const SEND_PRIORITY: { readonly [C in OutboxCode]: SendPriority } = {
   CP1: normal,
   CP2: normal,
   CP3: normal,
-  // Tickets (ADR-0198): the owner's report inbox.
+  // Tickets (ADR-0199): the owner's report inbox.
   TK1: normal,
   // Document emails (documents.ts).
   BG08: normal,

@@ -9,7 +9,7 @@ import type { TicketSeverity, TicketStatus } from './view-model';
 import { lengthHint } from '../_lib/length';
 
 /**
- * The follow-up controls on a ticket (ADR-0198): status and severity (an
+ * The follow-up controls on a ticket (ADR-0199): status and severity (an
  * owner, manager or scheduler — a Viewer's database refuses, and says so),
  * and the thread's comment box, open to every Back Office login. A comment
  * is emailed; so is a note sent with a status change.

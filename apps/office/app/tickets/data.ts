@@ -13,7 +13,7 @@ import type { TicketQuery } from './view-model';
 import type { Ticket, TicketComment } from './types';
 
 /**
- * Reads for /tickets (ADR-0198), straight from `tickets` and
+ * Reads for /tickets (ADR-0199), straight from `tickets` and
  * `ticket_comments`: one admin_read policy each, so any Back Office login
  * (a Viewer too) reads every ticket and nobody else reads any. Writes are
  * the RPCs in actions.ts.

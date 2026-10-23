@@ -1,4 +1,4 @@
-# ADR-0198 · Tickets: the team logs issues, requests and updates from the Back Office
+# ADR-0199 · Tickets: the team logs issues, requests and updates from the Back Office
 
 **Status:** Accepted (request of the product owner, 23.10.2026) · an addition to scope v1.6; not in §8 or §9.
 

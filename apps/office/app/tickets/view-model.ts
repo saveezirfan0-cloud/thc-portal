@@ -1,5 +1,5 @@
 /**
- * Tickets (ADR-0198) — the words, the tones and the address of the list.
+ * Tickets (ADR-0199) — the words, the tones and the address of the list.
  * Pure, so `__tests__/view-model.test.ts` pins it without a browser or a
  * database. The database holds the same sets (tickets_kind_check and
  * friends, create_ticket / update_ticket).

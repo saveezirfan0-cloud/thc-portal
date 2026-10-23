@@ -1,5 +1,5 @@
 /*
- * /tickets (ADR-0198). Tokens only — no colour or radius is hard-coded
+ * /tickets (ADR-0199). Tokens only — no colour or radius is hard-coded
  * (CLAUDE.md). Rows stack into one block; the filters are a plain form.
  */
 .tk-tabs {
