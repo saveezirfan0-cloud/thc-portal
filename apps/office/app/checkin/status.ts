@@ -112,7 +112,7 @@ const NUDGE_OPENS_MIN = 30;
  * ask for: the first is done, the second's button is locked and the office
  * resolves it in the violation log.
  *
- * `nudge_check_in_out()` (20261023130000) decides the same from the same
+ * `nudge_check_in_out()` (20261023180241) decides the same from the same
  * status and refuses otherwise; this only keeps the button off rows that
  * would be refused. Pure on `now` so the board can pass a mount-guarded one.
  */
