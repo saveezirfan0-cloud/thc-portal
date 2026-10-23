@@ -62,12 +62,12 @@ const ITEMS: readonly NavItem[] = [
   { href: '/roles', label: 'Roles' },
   { href: '/reports', label: 'Reports' },
   { href: '/feedback', label: 'Feedback' },
+  { href: '/tickets', label: 'Tickets', short: 'Tickets' },
   { href: '/venues', label: 'Venues' },
   { href: '/settings', label: 'Settings', dividerBefore: true },
   { href: '/users', label: 'Users & access', short: 'Users' },
   { href: '/activity', label: 'Activity log', short: 'Activity' },
   { href: '/inbox', label: 'Inbox', short: 'Inbox' },
-  { href: '/tickets', label: 'Tickets', short: 'Tickets' },
   { href: '/account', label: 'My profile', short: 'Profile' },
 ];
 

@@ -20,6 +20,7 @@ import { ukInputLabel } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import { BufferSuggestionBlock } from './BufferSuggestionBlock';
 import { NotificationsTab } from './NotificationsTab';
+import { TicketsTab } from './TicketsTab';
 import { OfficeCopyBlock } from './OfficeCopyBlock';
 import { Block, Feedback, SaveAction, SaveSlot, useMarkDirty, useSave } from './blocks';
 // blocks.tsx is their home; this re-export keeps settings blocks that import them from here compiling.
@@ -88,9 +89,12 @@ import './settings.css';
 export function SettingsScreen({
   data,
   tab: initialTab,
+  tracker = false,
 }: {
   data: SettingsData;
   tab: SettingsTab;
+  /** ADR-0202: this login keeps ticket time and billing (`ticket_tracker_allowed()`). */
+  tracker?: boolean;
 }) {
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const choose = (next: SettingsTab) => {
@@ -150,10 +154,13 @@ export function SettingsScreen({
             count: data.notificationsOff.length > 0 ? data.notificationsOff.length : undefined,
             alert: true,
           },
+          { value: 'tickets', label: 'Tickets' },
         ]}
       />
 
       {tab === 'notifications' ? <NotificationsTab off={data.notificationsOff} /> : null}
+
+      {tab === 'tickets' ? <TicketsTab tracker={tracker} /> : null}
 
       <SaveSlot.Provider value={{ slot, mark }}>
         <div className="settings-grid" hidden={tab !== 'general'}>

@@ -4,7 +4,7 @@ import { databaseUnreachable, lit, sql } from './_support/db';
 import { openAs, openAsAdmin } from './_support/session';
 
 /**
- * Tickets (ADR-0202) — the Report button, /tickets, the owner's own scope
+ * Tickets (ADR-0202) — the Ticket button, /tickets, the owner's own scope
  * label and time, and what nobody else can see.
  *
  * Markup and words: apps/office/app/_components/ReportButton.tsx,
@@ -14,7 +14,7 @@ import { openAs, openAsAdmin } from './_support/session';
  * Two logins, because the whole point is that they see different pages: a
  * manager made for this file reports and follows up, and the seeded owner
  * (Gisela M.) is the one login `ticket_tracker_allowed()` lets see the scope
- * label and the time while `settings.ticket_tracking_emails` is empty. The
+ * label and the time, once the setting `ticket_tracking_emails` names the login (an empty list means nobody). The
  * title carries a unique tag so a retry or a parallel run never meets the
  * previous one's ticket, and everything is removed afterwards, best effort.
  *
@@ -43,6 +43,7 @@ const FAKE_SPEECH = `
 test.describe.configure({ mode: 'serial' });
 
 let reporterEmail: string | null = null;
+let trackingBefore = '[]';
 const tag = unique();
 const TITLE = `E2E export button ${tag}`;
 
@@ -55,12 +56,19 @@ test.beforeAll(() => {
     password: PASSWORD,
   });
   reporterEmail = login.email;
+  trackingBefore = sql(`select value::text from settings where key = 'ticket_tracking_emails'`);
+  sql(
+    `update settings set value = '["gisela@thehospitalitycompany.example"]'::jsonb where key = 'ticket_tracking_emails'`,
+  );
   sql(`update profiles set office_role = 'manager' where id = ${lit(login.userId)}`);
 });
 
 test.afterAll(() => {
   if (databaseUnreachable()) return;
   try {
+    sql(
+      `update settings set value = ${lit(trackingBefore)}::jsonb where key = 'ticket_tracking_emails'`,
+    );
     sql(`
       delete from notification_outbox where template = 'TK1' and payload ->> 'title' = ${lit(TITLE)};
       delete from tickets where title = ${lit(TITLE)};
@@ -93,8 +101,8 @@ test('a colleague reports by voice and by typing; it is emailed to the owner', a
   const dialog = page.getByRole('dialog');
   // The top bar is server-rendered before it is interactive: press until it opens.
   await expect(async () => {
-    await page.getByRole('button', { name: 'Report', exact: true }).click();
-    await expect(dialog.getByText('Report something')).toBeVisible({ timeout: 1500 });
+    await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+    await expect(dialog.getByText('New ticket')).toBeVisible({ timeout: 1500 });
   }).toPass({ timeout: 15000 });
   await dialog.getByLabel('What kind of report?').selectOption('request');
   await dialog.getByLabel('How bad is it?').selectOption('medium');
@@ -157,6 +165,14 @@ test('the owner labels it, times it, logs time by hand and resolves it', async (
   await page.getByLabel('Add an update').fill('Spoke to them, they need a CSV now');
   await page.getByRole('button', { name: 'Add call' }).click();
   await expect(page.getByText('Spoke to them, they need a CSV now')).toBeVisible();
+  // The reporter is emailed at their own address about it.
+  await expect
+    .poll(() =>
+      sql(
+        `select recipient_emails[1] from notification_outbox where template = 'TK1' and payload ->> 'title' = ${lit(TITLE)} and payload ->> 'variant' = 'reply' limit 1`,
+      ),
+    )
+    .toBe(reporterEmail?.toLowerCase());
 
   // The scope label is set after the ticket exists, and is only the owner's.
   await page.getByLabel('Against the original scope').selectOption('addition');
@@ -188,6 +204,12 @@ test('the owner labels it, times it, logs time by hand and resolves it', async (
       `select string_agg(worked_by || ':' || minutes || ':' || billable, ',' order by id) from ticket_time where ticket_id = ${lit(ticketId())}`,
     ),
   ).toBe('claude:1:true,owner:15:true');
+
+  // Settings → Tickets is the way in from Settings, time report included for a tracker.
+  await page.goto('/settings?tab=tickets');
+  await expect(page.getByRole('link', { name: 'Open the ticket list' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the time report' })).toBeVisible();
+  await page.goto(`/tickets/${ticketId()}`);
 
   // A time that is not a time is refused in words, and nothing is saved.
   await page.getByLabel('Time spent').fill('soon');

@@ -12,7 +12,7 @@
 --   · a worker and a client reach none of it.
 -- =====================================================================
 begin;
-select plan(85);
+select plan(92);
 \ir _shared/fixtures.psql
 
 \set viewer  '93000000-0000-4000-8000-000000000001'
@@ -138,14 +138,47 @@ select is(ticket_tracker_allowed(), false, 'a manager is not a tracker');
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
 select is(ticket_tracker_allowed(), false, 'nor a viewer');
 
+reset role;
+select is((select value from settings where key = 'ticket_tracking_emails'),
+  '["sam@thehospitalitycompany.co.uk","saveezirfan@gmail.com"]'::jsonb,
+  'the migration names Sam and Saveez as the logins that keep the time');
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
-select is(ticket_tracker_allowed(), true, 'an owner is');
+update settings set value = '[]'::jsonb where key = 'ticket_tracking_emails';
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is(ticket_tracker_allowed(), false, 'with nobody named, even an owner is not a tracker');
+reset role;
+update settings set value = '["gisela@rls.test"]'::jsonb where key = 'ticket_tracking_emails';
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is(ticket_tracker_allowed(), true, 'an owner on the list is');
 
 select lives_ok(format($$ select set_ticket_scope(%L, 'addition', 'Not in the original scope') $$, (select id from tk)),
   'the owner labels a ticket after it is raised');
 select is((select label from ticket_scope where ticket_id = (select id from tk)), 'addition', 'and the label is stored');
 select throws_ok(format($$ select set_ticket_scope(%L, 'huge') $$, (select id from tk)),
   '22023', null, 'a label off the list is refused');
+
+-- The reporter is told when somebody else comments, never about their own.
+select lives_ok(format($$ select add_ticket_comment(%L, 'Which page was it on?') $$, (select id from tk)),
+  'the owner replies on the manager''s ticket');
+reset role;
+select is((select recipient_emails from notification_outbox
+            where template = 'TK1' and payload ->> 'variant' = 'reply' and payload ->> 'comment' = 'Which page was it on?'),
+  array['manager.930@rls.test'], 'and the reporter is emailed at their own sign-in address');
+select is((select payload ->> 'author' from notification_outbox
+            where template = 'TK1' and payload ->> 'variant' = 'reply' and payload ->> 'comment' = 'Which page was it on?'),
+  'Gisela M.', 'naming who wrote it');
+select is((select count(*)::int from notification_outbox
+            where template = 'TK1' and payload ->> 'variant' = 'reply'
+              and payload ->> 'ref' = (select r ->> 'ref' from made) and payload ->> 'comment' = 'On it.'), 0,
+  'the reporter is not emailed about their own note');
+select is((select count(*)::int from notification_outbox
+            where template = 'TK1' and payload ->> 'variant' = 'reply'
+              and payload ->> 'ref' = (select r ->> 'ref' from made)), 1,
+  'nor about the status and severity lines: one reply email so far');
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 
 -- A manager sees and does none of it.
 select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);

@@ -1554,9 +1554,10 @@ describe('Tickets — TK1 (ADR-0202)', () => {
   });
 
   it('has a new and a comment half, each with its own subject', () => {
-    expect(Object.keys(TEMPLATES.TK1.variants)).toEqual(['new', 'comment', 'resolved']);
+    expect(Object.keys(TEMPLATES.TK1.variants)).toEqual(['new', 'comment', 'reply', 'resolved']);
     expect(title('TK1', 'new')).toBe('{ref} · {kind}: {title}');
     expect(title('TK1', 'comment')).toBe('Update on {ref}: {title}');
+    expect(title('TK1', 'reply')).toBe('New reply on {ref}: {title}');
     expect(title('TK1', 'resolved')).toBe('{ref} is {status}: {title}');
   });
 
@@ -1573,6 +1574,9 @@ describe('Tickets — TK1 (ADR-0202)', () => {
       ['details', 'kind', 'link', 'page', 'ref', 'reporter', 'severity', 'title'].sort(),
     );
     expect(asked('comment')).toEqual(['comment', 'ref', 'reporter', 'status', 'title'].sort());
+    expect(asked('reply')).toEqual(
+      ['author', 'comment', 'ref', 'reporter', 'status', 'title'].sort(),
+    );
     expect(asked('resolved')).toEqual(['ref', 'reporter', 'resolution', 'status', 'title'].sort());
   });
 
