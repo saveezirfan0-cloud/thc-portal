@@ -170,6 +170,8 @@ export interface ClientCardData {
   client: Client | null;
   /** `clients.name_badges` (ADR-0081): badges go with every Allocation Timesheet. */
   nameBadges: boolean;
+  /** ADR-0203: THC invoices this client outside the platform. */
+  excludeFromInvoicing: boolean;
   /** ADR-0135 §3: CP2 / CP3 to this client's timesheet recipients (both on by default). */
   lineupEmails: { confirmed: boolean; changed: boolean };
   /** ADR-0176: the Invoicing panel. */

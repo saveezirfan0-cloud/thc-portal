@@ -10,6 +10,7 @@ import { ArchiveClient } from './ArchiveClient';
 import { ClientEvents } from './ClientEvents';
 import { Invoicing } from './Invoicing';
 import { LineupEmails } from './LineupEmails';
+import { ExcludeFromInvoicing } from './ExcludeFromInvoicing';
 import { NameBadges } from './NameBadges';
 import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
@@ -117,6 +118,12 @@ export function ClientCard({
               </span>
               <span className="k">Name badges</span>
               <NameBadges clientId={client.id} on={data.nameBadges} canWrite={canWrite} />
+              <span className="k">Invoicing</span>
+              <ExcludeFromInvoicing
+                clientId={client.id}
+                excluded={data.excludeFromInvoicing}
+                canWrite={canWrite}
+              />
               <span className="k">Line-up emails</span>
               <LineupEmails
                 clientId={client.id}
