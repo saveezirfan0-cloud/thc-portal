@@ -22,6 +22,12 @@ const MESSAGES: [RegExp, string][] = [
     /^already_expired: (\d{4}-\d{2}-\d{2})/,
     'This document has already expired ($1) and cannot be accepted — reject it and ask for a current one.',
   ],
+  // set_passport_expiry (20261025100000, ADR-0201).
+  [
+    /^passport_expiry_implausible: (\d{4}-\d{2}-\d{2})/,
+    'A passport does not run that long ($1). Check the year on the document.',
+  ],
+  [/^not_a_passport/, 'Only a passport’s expiry can be set here.'],
   // compliance_verify_document on a term letter whose every holiday range
   // is past (20260928110300): "an already-expired letter is not accepted".
   [

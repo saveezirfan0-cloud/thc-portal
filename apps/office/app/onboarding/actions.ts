@@ -10,6 +10,8 @@ import { periodToRange } from './view-model';
 import { termDatesPayloadProblem } from '../compliance/termDates';
 import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
+import { passportExpiryMissing } from '../compliance/passportExpiry';
+import { PASSPORT_EXPIRY_REQUIRED } from '../compliance/rtw';
 import { explainDbError } from '../_lib/dbError';
 import { staffUrlIsOffice } from '../_lib/staffUrl';
 import { BULK_CONCURRENCY, mapPool } from '../_lib/pool';
@@ -410,6 +412,10 @@ export async function verifyDocument(
   if (periods) {
     const problem = termDatesPayloadProblem(periods, input.noHolidays);
     if (problem) return { ok: false, message: problem };
+  }
+  // ADR-0201: a passport is never verified without an expiry in place.
+  if (await passportExpiryMissing(docId, input.expiry)) {
+    return { ok: false, message: PASSPORT_EXPIRY_REQUIRED };
   }
   const args: RpcArguments = { p_doc: docId };
   if (input.expiry) args['p_expiry'] = input.expiry;

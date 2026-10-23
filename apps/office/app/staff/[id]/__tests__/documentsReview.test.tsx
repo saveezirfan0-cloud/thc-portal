@@ -234,13 +234,20 @@ describe('which rows carry Verify / Reject', () => {
 });
 
 describe('every click lands in /compliance’s own actions', () => {
-  it('Verify on a passport asks for an optional expiry, and verifies without one', async () => {
-    render({ documents: [doc({})], reviewQueue: [queued({})] });
+  it('Verify on a passport needs an expiry: none is refused, the AI’s is confirmed', async () => {
+    render({ documents: [doc({})], reviewQueue: [queued({ expiry_date: null })] });
     await click(buttons('Verify')[0]);
-    expect(actions.verifyDocument).not.toHaveBeenCalled();
     expect(dialog().textContent).toContain('Passport expiry');
+    expect(dialog().textContent).toContain('cannot be verified without one');
+    expect(buttons('Verify', dialog())[0]!.disabled).toBe(true);
+    expect(actions.verifyDocument).not.toHaveBeenCalled();
+  });
+
+  it('Verify on a passport sends the expiry the AI read, once confirmed', async () => {
+    render({ documents: [doc({})], reviewQueue: [queued({ expiry_date: '2031-04-09' })] });
+    await click(buttons('Verify')[0]);
     await click(buttons('Verify', dialog())[0]);
-    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d1', {});
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d1', { expiry: '2031-04-09' });
   });
 
   it('Verify on a visa asks for its expiry first, then sends it', async () => {
