@@ -1,4 +1,4 @@
-# ADR-0197 · Retry AI scan, and a passport / ID expiry the office can type
+# ADR-0198 · Retry AI scan, and a passport / ID expiry the office can type
 
 **Status:** Accepted (instruction of the product owner, 23.10.2026) · builds on ADR-0033 (document extraction with Claude) · scope §2.6, §4.2, §4.3
 
