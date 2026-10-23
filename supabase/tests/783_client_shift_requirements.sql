@@ -28,7 +28,7 @@ begin;
 select plan(72);
 \ir _shared/fixtures.psql
 
--- ADR-0205's default morning message would ride every booking below; its own
+-- ADR-0206's default morning message would ride every booking below; its own
 -- file (936) covers it, so it is blank here and these counts stay the client's.
 update settings set value = '""'::jsonb where key = 'default_shift_message';
 

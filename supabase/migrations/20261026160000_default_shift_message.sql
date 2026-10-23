@@ -1,4 +1,4 @@
--- ADR-0205 · A default morning reminder for every shift (uniform standards).
+-- ADR-0206 · A default morning reminder for every shift (uniform standards).
 -- Product owner, 23.10.2026. Rides ADR-0110's kit message (CR2: 07:00 UK on the
 -- day or start − 3 h, once per booking and start, until the worker confirms).
 --
@@ -27,7 +27,7 @@ as $$
              where s.key = 'default_shift_message'))), '')
 $$;
 comment on function public.shift_kit_message(uuid, uuid) is
-  'ADR-0205: what a worker is told on the morning of a shift for this client and role — the client''s kit message (ADR-0110) then settings.default_shift_message, either may be absent. Null when neither is set.';
+  'ADR-0206: what a worker is told on the morning of a shift for this client and role — the client''s kit message (ADR-0110) then settings.default_shift_message, either may be absent. Null when neither is set.';
 revoke execute on function public.shift_kit_message(uuid, uuid) from public, anon, authenticated;
 grant  execute on function public.shift_kit_message(uuid, uuid) to service_role;
 
@@ -83,7 +83,7 @@ as $$
    order by s.starts_at
 $$;
 comment on function public.staff_shift_requirements() is
-  'ADR-0110, ADR-0205: for each of the caller''s live bookings with a requirement — the quiz and where they stand on it, and the morning message (the client''s kit message and the default, shift_kit_message) with when it is due and whether it was acknowledged. No charge rate, no other worker.';
+  'ADR-0110, ADR-0206: for each of the caller''s live bookings with a requirement — the quiz and where they stand on it, and the morning message (the client''s kit message and the default, shift_kit_message) with when it is due and whether it was acknowledged. No charge rate, no other worker.';
 
 create or replace function public.acknowledge_shift_kit(p_booking uuid)
 returns jsonb
@@ -123,7 +123,7 @@ begin
   return jsonb_build_object('ok', true, 'acknowledgedAt', v_at);
 end $$;
 comment on function public.acknowledge_shift_kit(uuid) is
-  'ADR-0110, ADR-0205: the worker confirms they have read the morning message (shift_kit_message) for one of their confirmed bookings. Idempotent; refuses another worker''s booking, an unbooked one (not_booked) and one with no message (nothing_to_acknowledge).';
+  'ADR-0110, ADR-0206: the worker confirms they have read the morning message (shift_kit_message) for one of their confirmed bookings. Idempotent; refuses another worker''s booking, an unbooked one (not_booked) and one with no message (nothing_to_acknowledge).';
 
 -- CR2's tick, restated on top of 20261026130000 (ADR-0204, bring your name
 -- badge): the worker's message is shift_kit_message() — the client's kit
@@ -181,7 +181,7 @@ begin
   return jsonb_build_object('cr2', v_cr2);
 end $$;
 comment on function public.client_kit_reminder_tick(timestamptz) is
-  'ADR-0110, ADR-0204, ADR-0205: queues CR2 for every confirmed booking from kit_reminder_due_at() until the start — shift_kit_message() (the client''s kit message and the default uniform reminder, until acknowledged) and, for a client with name_badges on, the bring-your-name-badge line, in one push. Keyed on booking + start (booking_reminder_key) so a moved shift is reminded again and a re-run never double-sends. Called every minute by the booking-tick Edge Function.';
+  'ADR-0110, ADR-0204, ADR-0206: queues CR2 for every confirmed booking from kit_reminder_due_at() until the start — shift_kit_message() (the client''s kit message and the default uniform reminder, until acknowledged) and, for a client with name_badges on, the bring-your-name-badge line, in one push. Keyed on booking + start (booking_reminder_key) so a moved shift is reminded again and a re-run never double-sends. Called every minute by the booking-tick Edge Function.';
 
 revoke execute on function public.client_kit_reminder_tick(timestamptz) from public, anon, authenticated;
 grant  execute on function public.client_kit_reminder_tick(timestamptz) to service_role;
