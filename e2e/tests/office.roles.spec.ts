@@ -207,8 +207,13 @@ test('a new role is created, listed with its three rates, then deleted (§9.8)',
     await expect(confirm).toContainText('safe to delete');
     await confirm.getByRole('button', { name: 'Delete role' }).click();
     await expect(confirm).toBeHidden();
-    await expect(roleRow(page, name)).toHaveCount(0);
+    // The dialog closes only once delete_role succeeded, so the database is
+    // the record; the list is then read fresh rather than waiting on
+    // revalidatePath's re-render, which on a loaded runner outran 5 s.
     expect(sql(`select count(*) from roles where name = ${lit(name)}`)).toBe('0');
+    await page.reload();
+    await expect(roleRow(page, 'Waiting Staff')).toHaveCount(1);
+    await expect(roleRow(page, name)).toHaveCount(0);
   } finally {
     // Best effort: a failure half way must not leave a role behind, and a
     // cleanup that throws must not hide the result that matters.
