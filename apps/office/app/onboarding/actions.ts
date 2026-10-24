@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
+import { recoveryRedirect } from '@thc/db';
+import { recoveryRequestAllowed } from '@thc/db/auth-throttle';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from '../staff/data';
 import { periodToRange } from './view-model';
@@ -79,8 +81,10 @@ const MESSAGES: Record<string, string> = {
     'There is no activation link to resend yet — the candidate receives it when they are accepted.',
   not_resendable: 'A rejected or inactive person is not sent an activation link.',
   already_activated:
-    'This person has already activated their account. If they have forgotten their password, they can reset it from the Staff App sign-in page.',
+    'This person has already activated their account. If they have forgotten their password, use Send password reset, or they can reset it from the Staff App sign-in page.',
   unknown_staff: 'This person no longer exists — refresh the page.',
+  // Send password reset (ADR-0207)
+  not_activated: 'This person has not set a password yet — use Resend activation link instead.',
   // Mark interview complete without Willo (ADR-0077)
   not_permitted: 'Only an owner or a manager can do this.',
   // Allow 3 more attempts (ADR-0168)
@@ -93,6 +97,10 @@ function explain(message: string): string {
   if (code === 'resend_too_soon') {
     const at = message.split(':').slice(1).join(':').trim();
     return `A new link was sent less than 10 minutes ago. You can send another${at ? ` after ${at} (UK time)` : ' shortly'}.`;
+  }
+  if (code === 'reset_too_soon') {
+    const at = message.split(':').slice(1).join(':').trim();
+    return `A password reset email was sent less than 10 minutes ago. You can send another${at ? ` after ${at} (UK time)` : ' shortly'}.`;
   }
   if (code === 'not_quiz_rejected') {
     return 'More attempts can only be given to a candidate the Health & Safety quiz rejected — refresh the page.';
@@ -254,6 +262,80 @@ export async function resendActivationLink(staffId: string): Promise<ActionResul
     { staffId, staffOrigin: origin },
   );
   if (!outcome.ok) return { ok: false, message: explain(outcome.error) };
+  for (const path of [...paths(staffId), `/staff/${staffId}`]) revalidatePath(path);
+  return { ok: true };
+}
+
+interface PasswordResetRpc {
+  rpc(
+    fn: 'onboarding_password_reset_request',
+    args: { p_staff: string },
+  ): PromiseLike<{
+    data: { email?: string; retryAfter?: string } | null;
+    error: { message: string } | null;
+  }>;
+}
+
+/**
+ * Send password reset (ADR-0207, ticket TK-4). Once someone has set a
+ * password, Resend activation link is refused (`already_activated`) and an
+ * old or reused activation link reads "expired". This sends them the Staff
+ * App's own password-reset email — the one /forgot sends — so the office
+ * can get them back in without asking them to find Forgot password.
+ *
+ * The database decides first (`onboarding_password_reset_request`: office
+ * logins that may write, activated people only, once per 10 minutes,
+ * audited) and answers with the LOGIN address; the address is never taken
+ * from the screen. The send is GoTrue's /recover, under the same
+ * 3-an-hour 'recover' counter as /forgot. The service-role client is used
+ * only because it keeps no session: nothing lands in the manager's cookies.
+ */
+export async function sendPasswordReset(staffId: string): Promise<ActionResult> {
+  const origin = staffOrigin();
+  if (!origin) return { ok: false, message: MESSAGES.activation_link_required! };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const gate = await asWriter();
+  if (gate) return { ok: false, message: gate };
+
+  // Before the database is asked, so a missing key audits nothing.
+  let auth: ReturnType<typeof createAdminClient>['auth'];
+  try {
+    auth = createAdminClient().auth;
+  } catch {
+    return { ok: false, message: MESSAGES.account_service_key! };
+  }
+
+  const supabase = createClient(await cookies()) as unknown as PasswordResetRpc;
+  const { data, error } = await supabase.rpc('onboarding_password_reset_request', {
+    p_staff: staffId,
+  });
+  if (error) return { ok: false, message: explain(error.message) };
+  const email = data?.email;
+  if (!email) return { ok: false, message: MESSAGES.unknown_staff! };
+  // This request has used the 10-minute window whatever happens next.
+  const retry = data?.retryAfter ? ` after ${data.retryAfter} (UK time)` : ' in 10 minutes';
+
+  if (!(await recoveryRequestAllowed(email))) {
+    return {
+      ok: false,
+      message: `Three password reset emails have already gone to this address in the last hour, so none was sent. Try again later — the earliest is${retry}.`,
+    };
+  }
+
+  const { error: sendError } = await auth.resetPasswordForEmail(email, {
+    redirectTo: recoveryRedirect(origin),
+  });
+  if (sendError) {
+    console.error('[onboarding] password reset failed', {
+      staffId,
+      status: sendError.status,
+      message: sendError.message,
+    });
+    return {
+      ok: false,
+      message: `The password reset email could not be sent. You can try again${retry}.`,
+    };
+  }
   for (const path of [...paths(staffId), `/staff/${staffId}`]) revalidatePath(path);
   return { ok: true };
 }
