@@ -121,7 +121,7 @@ export default async function Page({
           <InvoiceFilters view={view} clients={data.clients} />
         </Panel>
 
-        <TileGrid columns={4}>
+        <TileGrid columns={4} compact>
           <KpiTile label="Invoices" value={totals.count} description="matching the filters" />
           <KpiTile
             label="Total"

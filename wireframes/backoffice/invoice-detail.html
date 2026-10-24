@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Invoice detail — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.money, .tbl th.money { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .sum { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 16px; }
+  @media (max-width: 760px) { .sum { grid-template-columns: minmax(0, 1fr); } }
+  .money-box { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); }
+  .money-box .line { display: flex; justify-content: space-between; gap: 12px; }
+  .money-box .due { padding-top: 8px; border-top: 1px solid var(--line); font-size: 20px; font-weight: 700; }
+  .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .timeline li { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .timeline .when { width: 9.5rem; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .editor { min-height: 9rem; padding: 10px 12px; border: 1px solid var(--control-line); border-radius: var(--r-field); background: var(--bg); font-size: 13px; }
+  .editor p { margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Invoice detail</span><span class="pill cyan">/invoices/:invoiceId</span><span class="pill">ADR-0210</span><span class="pill">audit §2.5</span>
+  <span class="spacer"></span>
+  <a href="client-timesheet-invoicing.html">Next: Client · Timesheet invoicing →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a class="active" href="invoices.html"><span class="ico">£</span>Invoices</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Invoice #4003</h1>
+      <span class="crumbs"><a href="invoices.html">← Back to Invoices</a> · Jurys Inn &amp; Leonardo Hotels UK &amp; Ire St Paul's M &amp; E</span>
+      <span class="spacer"></span>
+      <span class="tz">All times UK (Europe/London)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="inv"><button data-state="generated">Generated · timesheet</button><button data-state="email">Email Invoice modal</button><button data-state="void">Void Invoice modal</button><button data-state="failed">Failed · re-draw</button><button data-state="events">Events invoice</button></div>
+
+      <!-- ================= GENERATED (timesheet) ================= -->
+      <section data-state-of="inv" data-state="generated" class="stack">
+        <div class="toolbar">
+          <span class="pill cyan lg">Generated</span><span class="muted">Created 28/10/2026 11:34 UK</span>
+          <div class="right"><button class="btn">Download PDF</button><button class="btn">Download Excel</button><button class="btn green">Email Invoice</button><button class="btn danger">Void Invoice</button></div>
+        </div>
+        <div class="panel"><div class="panel-h"><h3>Summary</h3></div><div class="panel-b sum">
+          <div class="kv">
+            <span class="k">Client</span><span><a href="client-card.html">Jurys Inn &amp; Leonardo Hotels UK &amp; Ire St Paul's M &amp; E</a></span>
+            <span class="k">Contact</span><span>Ajit Singh</span>
+            <span class="k">Contact email</span><span class="mono">ajit_singh@leonardohotels.com</span>
+            <span class="k">Venue</span><span>St Paul's</span>
+            <span class="k">Event</span><span>15/10/2026 – 17/10/2026</span>
+            <span class="k">PO</span><span class="mono">52453465</span>
+            <span class="k">Type</span><span><span class="pill purple">Timesheet</span> <span class="pill">Aggregated</span></span>
+            <span class="k">Invoice date</span><span>28/10/2026 <span class="muted">· due 27/11/2026 (30 days)</span></span>
+            <span class="k">Xero</span><span><span class="pill coral">Xero mismatch</span> <a class="mono xs" href="#">a1b2c3d4-…</a> <span class="muted xs">Xero status DRAFT</span> <button class="btn sm">Try again</button><br><span class="coral sm">Xero total £4,236.35 differs from ours £4,236.34. Check it in Xero.</span></span>
+          </div>
+          <div class="money-box"><div class="line"><span class="muted">Subtotal</span><span>£3,530.28</span></div><div class="line"><span class="muted">VAT (20%)</span><span>£706.06</span></div><div class="line due"><span>Amount due</span><span>£4,236.34</span></div><div class="muted xs">186.00 payable hours</div></div>
+        </div></div>
+        <div class="panel"><div class="panel-h"><h3>Line items (28)</h3><span class="muted sm">the date header is the client's (W/C Date for Taster); aggregated shows No. of staff, named shows the person</span></div><div class="panel-b tight" style="overflow:auto"><table class="tbl"><thead><tr><th>Date</th><th>Role</th><th class="money">No. of staff</th><th class="money">Hours</th><th class="money">Rate</th><th class="money">Total</th></tr></thead><tbody>
+          <tr><td>15/10/2026</td><td>Waiting</td><td class="money">1</td><td class="money">9.50</td><td class="money">£18.98</td><td class="money">£180.31</td></tr>
+          <tr><td>15/10/2026</td><td>Waiting</td><td class="money">1</td><td class="money">6.25</td><td class="money">£18.98</td><td class="money">£118.63</td></tr>
+          <tr><td>17/10/2026</td><td>Cloakroom Support Staff</td><td class="money">1</td><td class="money">5.00</td><td class="money">£18.98</td><td class="money">£94.90</td></tr>
+          <tr><td>17/10/2026</td><td>Train fare (expense)</td><td class="money"></td><td class="money">2.00 ×</td><td class="money">£12.50</td><td class="money">£25.00</td></tr>
+          <tr style="background:var(--panel-2)"><td colspan="5"><b>Subtotal</b></td><td class="money"><b>£3,530.28</b></td></tr>
+        </tbody></table></div></div>
+        <div class="panel"><div class="panel-h"><h3>Linked shifts</h3></div><div class="panel-b"><div class="stack tight"><span>28 rows from the uploaded timesheet.</span><span>From job: <a href="invoice-process.html">View Processing Job</a></span></div></div></div>
+        <div class="grid c2">
+          <div class="panel"><div class="panel-h"><h3>Timeline</h3></div><div class="panel-b"><ul class="timeline"><li><span class="when">28/10/2026 11:34 UK</span><span><b>Generated</b> · number 4003 taken</span></li><li><span class="when">28/10/2026 12:02 UK</span><span><b>Sent</b></span></li></ul></div></div>
+          <div class="panel"><div class="panel-h"><h3>Send history</h3></div><div class="panel-b tight"><table class="tbl"><thead><tr><th>When (UK)</th><th>By</th><th>To</th></tr></thead><tbody><tr><td>28/10/2026 12:02</td><td>Gisela M.</td><td>ajit_singh@leonardohotels.com<div class="muted xs">Cc london_ap@leonardohotels.com</div><div class="muted xs">Jurys Inn &amp; Leonardo Hotels UK &amp; Ire St Paul's M &amp; E - Inv 4003 - w/c 12/10/26 - (15th, 17th October) - 52453465</div></td></tr></tbody></table></div></div>
+        </div>
+        <div class="note"><b>Danger zone.</b> Voiding keeps the invoice and its number, which is never reused; the timesheet rows go back to review. A correction is a void and a new invoice, or a credit note raised in Xero. There is no Re-generate: an issued invoice is never rewritten (ADR-0210 §5).</div>
+      </section>
+
+      <!-- ================= EMAIL MODAL ================= -->
+      <section data-state-of="inv" data-state="email" class="stack hide">
+        <div class="modal-inline" style="min-height:900px">
+          <div class="stack dim"><div class="toolbar"><span class="pill cyan lg">Generated</span></div><div class="panel"><div class="panel-b" style="height:360px"></div></div></div>
+          <div class="modal-back"><div class="modal wide">
+            <div class="mh"><h3>Email invoice #4003</h3></div>
+            <div class="mb">
+              <div class="field"><span class="label">From</span><span class="sm">Gisela M. &lt;gisela@thehospitalitycompany.co.uk&gt; <span class="muted">· sent from timesheets@thehospitalitycompany.co.uk; replies go to gisela@…</span></span></div>
+              <div class="field"><span class="label">To</span><input class="input" value="ajit_singh@leonardohotels.com"><span class="hint">Starts as the client's invoice emails.</span></div>
+              <div class="field"><span class="label">Cc</span><input class="input" value="london_ap@leonardohotels.com, ap_queries@leonardohotels.com"></div>
+              <div class="field"><span class="label">Bcc</span><input class="input" placeholder="bcc@example.com"><span class="hint">Remembered for you in this browser.</span></div>
+              <div class="field"><span class="label">Subject</span><input class="input" value="Jurys Inn &amp; Leonardo Hotels UK &amp; Ire St Paul's M &amp; E - Inv 4003 - w/c 12/10/26 - (15th, 17th October) - 52453465"></div>
+              <div class="field"><span class="label">Message</span><div class="row"><button class="btn sm"><b>B</b></button><button class="btn sm"><i>I</i></button><button class="btn sm"><u>U</u></button><button class="btn sm">Link</button></div>
+                <div class="editor"><p>Hi Ajit,</p><p>I hope you are well.</p><p>Please find the staffing invoice attached:</p><p><b>Jurys Inn &amp; Leonardo Hotels UK &amp; Ire St Paul's M &amp; E - Inv 4003 - w/c 12/10/26 - (15th, 17th October) - 52453465</b></p><p>The staff timesheets are attached for your reference.</p><p>I would be grateful if you can please confirm that this invoice is processed and ready for payment.</p><p>Many thanks.</p><p>Best wishes,</p></div></div>
+              <div class="field"><span class="label">Signature</span><div class="editor" style="min-height:4rem">Gisela Duncan · Head Of Finance · gisela@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk</div><div class="row"><button class="btn sm">Save template</button><span class="muted xs">Your signature is saved as the default for every invoice, in this browser.</span></div></div>
+              <div class="field"><span class="label">Attachments</span>
+                <label class="check"><input type="checkbox" checked> Jurys Inn Leonardo Hotels UK Ire St Pauls M E - Inv 4003 - w-c 15-10-2026 - 52453465.pdf</label>
+                <label class="check"><input type="checkbox" checked> … - 52453465.xlsx</label>
+                <label class="check"><input type="checkbox" checked> Leonardo St Paul's Time w-c 12-10-26 M+E (15th + 17th Oct).pdf <span class="muted">(1856 KB)</span></label>
+                <span class="annot">attaching a file from the computer is out of scope</span></div>
+            </div>
+            <div class="mf"><button class="btn ghost">Cancel</button><button class="btn green">Send</button></div>
+          </div></div>
+        </div>
+        <div class="note"><b>Rich text is limited</b> to bold, italic, underline and links; pasted text is plain. The same cut is made again by the server and by the sender. Send → <span class="mono">queue_timesheet_invoice_email</span>: an INV2 outbox row, a send-history row, Generated → Sent on the first send.</div>
+      </section>
+
+      <!-- ================= VOID MODAL ================= -->
+      <section data-state-of="inv" data-state="void" class="stack hide">
+        <div class="modal-inline" style="min-height:480px">
+          <div class="stack dim"><div class="toolbar"><span class="pill green lg">Sent</span></div><div class="panel"><div class="panel-b" style="height:240px"></div></div></div>
+          <div class="modal-back"><div class="modal">
+            <div class="mh"><h3>Void invoice #4003</h3></div>
+            <div class="mb">
+              <p class="sm">The invoice is marked void and keeps its number: <b>the number is never reused</b>, so the series shows a void, not a gap. Its timesheet rows go back to review, ready to be invoiced again on a new number.</p>
+              <div class="alert amber sm">This invoice is already in Xero. Voiding it here does not void it there: void it in Xero too.</div>
+              <div class="field"><span class="label">Reason (required)</span><textarea class="input" rows="3" style="height:auto">Wrong PO number on the timesheet</textarea><span class="hint">Kept on the invoice and in the activity log.</span></div>
+            </div>
+            <div class="mf"><button class="btn ghost">Keep invoice</button><button class="btn danger solid">Void invoice</button></div>
+          </div></div>
+        </div>
+      </section>
+
+      <!-- ================= FAILED ================= -->
+      <section data-state-of="inv" data-state="failed" class="stack hide">
+        <div class="toolbar"><span class="pill coral lg">Failed</span><span class="muted">Created 28/10/2026 11:34 UK</span><div class="right"><button class="btn primary">Re-draw</button></div></div>
+        <div class="alert coral sm"><b>The PDF could not be drawn.</b> The PDF renderer did not answer. Re-draw it: the number and the lines are final already.</div>
+        <div class="note">A <span class="pill coral">Failed</span> or <span class="pill amber">Drawing</span> timesheet invoice has its number and lines already; Re-draw only draws the file (<span class="mono">drawTimesheetInvoice</span>). Download, Email and Void appear once it is Generated. Send history and Xero stay empty until then.</div>
+      </section>
+
+      <!-- ================= EVENTS ================= -->
+      <section data-state-of="inv" data-state="events" class="stack hide">
+        <div class="toolbar"><span class="pill green lg">Sent</span><span class="muted">Created 27/10/2026 10:00 UK</span><div class="right"><button class="btn">Download PDF</button><button class="btn danger">Void Invoice</button></div></div>
+        <div class="panel"><div class="panel-h"><h3>Summary</h3></div><div class="panel-b sum">
+          <div class="kv"><span class="k">Client</span><span><a href="client-card.html">Mandarin Oriental</a></span><span class="k">Venue</span><span>Mandarin Oriental, Hyde Park</span><span class="k">Event</span><span>19/10/2026</span><span class="k">PO</span><span class="mono">714981</span><span class="k">Type</span><span><span class="pill">Events</span> <span class="pill">Sign-in log</span></span><span class="k">Xero</span><span><span class="pill green">In Xero</span> <a class="mono xs" href="#">e5f6…</a></span></div>
+          <div class="money-box"><div class="line"><span class="muted">Subtotal</span><span>£1,581.20</span></div><div class="line"><span class="muted">VAT (20%)</span><span>£316.24</span></div><div class="line due"><span>Amount due</span><span>£1,897.44</span></div></div>
+        </div><div class="panel-b"><button class="btn sm">Send again</button> <span class="muted sm">to the invoice emails on the client card now — an event invoice is emailed by the system with the sign-in log (INV1); there is no compose modal</span></div></div>
+        <div class="panel"><div class="panel-h"><h3>Linked shifts</h3></div><div class="panel-b"><a href="reports.html">Product Launch — Bar</a> <span class="muted">· 19/10/2026 · Mandarin Oriental</span></div></div>
+      </section>
+
+      <div class="wf-note note"><b>Behaviour notes.</b> Finance roles; a viewer sees everything and none of Email / Void / Re-draw / Try again (ADR-0060). Void needs a reason; if the invoice is already in Xero the dialog says to void it there too (the platform never edits Xero after the push). Xero "Try again" is offered for failed and mismatch only (<span class="mono">xero_retry</span>). Staff pay and margin are not shown anywhere on these screens (ADR-0210 §7).</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

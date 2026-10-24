@@ -168,7 +168,7 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
 
         <Panel title="Summary">
           <div className="inv-summary">
-            <div className="kv">
+            <div className="inv-kv">
               <span className="k">Client</span>
               <span>
                 <Link href={`/clients/${invoice.clientId}`}>
@@ -397,7 +397,8 @@ function XeroLine({ invoice, canWrite }: { invoice: InvoiceDetail; canWrite: boo
           Xero.
         </span>
       ) : null}
-      {x.lastError && x.status !== 'synced' ? (
+      {x.lastError &&
+      (x.status === 'failed' || (x.status === 'mismatch' && x.xeroTotal === null)) ? (
         <span className="muted sm">{x.lastError}</span>
       ) : null}
       {x.syncedAt ? (

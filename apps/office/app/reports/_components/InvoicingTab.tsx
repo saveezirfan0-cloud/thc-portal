@@ -71,6 +71,10 @@ export function InvoicingTab({
         </Link>
         <RangeForm view={view} />
         <div className="right">
+          {/* ADR-0210: the issued invoices of both sources, with their Xero state. */}
+          <Link className="btn sm" href="/invoices">
+            All generated invoices
+          </Link>
           <a className="btn sm primary" href={exportHref(view)}>
             Export ready CSV
           </a>

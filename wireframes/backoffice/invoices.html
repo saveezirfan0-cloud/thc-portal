@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Invoices — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.money, .tbl th.money { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .daterange { display: inline-flex; align-items: center; gap: 6px; }
+  .daterange .input { height: 34px; width: 140px; font-size: 12.5px; }
+  .daterange { display: inline-flex; align-items: center; gap: 6px; }
+  .daterange .input { height: 34px; width: 140px; font-size: 12.5px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--panel-2); color: var(--muted); font-size: 12.5px; }
+  .fchip.on { border-color: var(--cyan-line); background: var(--cyan-dim); color: var(--cyan-ink); }
+  .grp { border: 1px solid var(--line); border-radius: var(--r-tile); background: var(--panel); }
+  .grp + .grp { margin-top: 8px; }
+  .grp > .gh { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px; cursor: pointer; }
+  .grp .what { font-weight: 600; min-width: 15rem; }
+  .grp .fig { display: flex; flex-direction: column; font-family: var(--font-mono); font-size: 13px; }
+  .grp .fig small { font-size: 10.5px; color: var(--muted); text-transform: uppercase; }
+  .menu { position: relative; display: inline-block; }
+  .menu .items { position: absolute; right: 0; top: calc(100% + 4px); min-width: 190px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r-tile); background: var(--panel); }
+  .menu .items a { display: block; padding: 8px 10px; color: var(--text); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Invoices</span><span class="pill cyan">/invoices</span><span class="pill">ADR-0210</span><span class="pill">audit §2.4 · §8</span>
+  <span class="spacer"></span>
+  <a href="invoice-detail.html">Next: Invoice detail →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a class="active" href="invoices.html"><span class="ico">£</span>Invoices</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Invoices</h1>
+      <span class="crumbs">one number series from 4000 · every invoice goes to Xero · <a href="reports.html">Ready to invoice (events)</a></span>
+      <span class="spacer"></span>
+      <span class="tz">All times UK (Europe/London)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="inv"><button data-state="all">Tab 1 · All Invoices</button><button data-state="weekly">Tab 2 · Weekly Summary</button><button data-state="monthly">Tab 3 · Monthly Summary</button></div>
+
+      <section data-state-of="inv" data-state="all" class="stack">
+        <div class="toolbar">
+          <h3 style="margin:0">All generated invoices</h3>
+          <span class="muted">4 invoices | £9,258.73 total</span>
+          <div class="right">
+            <a class="btn sm primary" href="invoice-process.html">+ Process timesheet</a>
+            <span class="menu"><button class="btn sm">Export ▾</button><span class="items"><a href="#">Export as CSV</a></span></span>
+          </div>
+        </div>
+        <div class="tabs"><button class="active">All Invoices</button><button>Weekly Summary</button><button>Monthly Summary</button></div>
+        <div class="panel"><div class="panel-b stack">
+          <div class="toolbar">
+            <select class="input" style="height:34px;width:220px"><option>All clients</option></select>
+            <div class="daterange"><input class="input mono" value="" placeholder="dd/mm/yyyy"><span class="muted">→</span><input class="input mono" value="" placeholder="dd/mm/yyyy"></div>
+            <input class="input" style="height:34px;width:240px" placeholder="Search # / client / PO…">
+            <button class="btn sm primary">Apply</button><button class="btn sm ghost">Clear All</button>
+          </div>
+          <div class="toolbar"><button class="btn sm">This Week</button><button class="btn sm">Last Week</button><button class="btn sm">This Month</button><button class="btn sm">Last Month</button><button class="btn sm">Quarter</button><button class="btn sm primary">All</button></div>
+          <div class="chips">
+            <span class="fchip on">Draft / Generated</span><span class="fchip on">Sent</span><span class="fchip">Void</span>
+            <select class="input" style="height:34px;width:150px"><option>Source: all</option><option>Source: Events</option><option>Source: Timesheet</option></select>
+            <select class="input" style="height:34px;width:150px"><option>Xero: all</option><option>Xero: Pending</option><option>Xero: Synced</option><option>Xero: Mismatch</option><option>Xero: Failed</option></select>
+            <span class="annot">no Paid chip: this system has no paid state — payment and credit notes live in Xero</span>
+          </div>
+        </div></div>
+        <div class="grid c4">
+          <div class="kpi"><span class="label">Invoices</span><span class="v">4</span><span class="d">matching the filters</span></div>
+          <div class="kpi accent"><span class="label">Total</span><span class="v">£9,258.73</span><span class="d">amount due, VAT included</span></div>
+          <div class="kpi"><span class="label">Hours</span><span class="v">380.75</span><span class="d">payable hours invoiced</span></div>
+          <div class="kpi"><span class="label">Average</span><span class="v">£2,314.68</span><span class="d">per invoice</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-b tight" style="overflow:auto">
+            <table class="tbl" style="min-width:78rem">
+              <thead><tr><th># ▾</th><th>Date</th><th>Client</th><th>Venue</th><th>PO</th><th>Source</th><th>Format</th><th class="money">Hours</th><th class="money">Subtotal</th><th class="money">VAT</th><th class="money">Amount due</th><th>Status</th><th>Last sent</th><th>Xero</th><th>Files</th></tr></thead>
+              <tbody>
+              <tr><td class="mono"><a href="invoice-detail.html">#4004</a></td><td>28/10/2026</td><td><a href="client-card.html">Taster UK SBX (Liverpool)</a></td><td>—</td><td class="mono">SBX-Liverpool-W43-2026</td><td><span class="pill purple">Timesheet</span></td><td><span class="pill cyan">Named</span></td><td class="money">84.50</td><td class="money">£1,501.57</td><td class="money">£300.31</td><td class="money"><b>£1,801.88</b></td><td><span class="pill cyan">Generated</span></td><td>—</td><td><span class="pill amber">Xero pending</span></td><td><a href="#">PDF</a> <a href="#">Excel</a></td></tr>
+              <tr><td class="mono"><a href="invoice-detail.html">#4003</a></td><td>28/10/2026</td><td><a href="client-card.html">Leonardo St Paul's M &amp; E</a></td><td>St Paul's</td><td class="mono">52453465</td><td><span class="pill purple">Timesheet</span></td><td><span class="pill ">Aggregated</span></td><td class="money">186.00</td><td class="money">£3,530.28</td><td class="money">£706.06</td><td class="money"><b>£4,236.34</b></td><td><span class="pill green">Sent</span></td><td>28/10/2026</td><td><span class="pill green">In Xero</span></td><td><a href="#">PDF</a> <a href="#">Excel</a></td></tr>
+              <tr><td class="mono"><a href="invoice-detail.html">#4002</a></td><td>27/10/2026</td><td><a href="client-card.html">Mandarin Oriental</a></td><td>Mandarin Oriental, Hyde Park</td><td class="mono">714981</td><td><span class="pill ">Events</span></td><td><span class="pill ">Sign-in log</span></td><td class="money">62.25</td><td class="money">£1,581.20</td><td class="money">£316.24</td><td class="money"><b>£1,897.44</b></td><td><span class="pill green">Sent</span></td><td>27/10/2026</td><td><span class="pill coral">Xero mismatch</span></td><td><a href="#">PDF</a> </td></tr>
+              <tr><td class="mono"><a href="invoice-detail.html">#4001</a></td><td>27/10/2026</td><td><a href="client-card.html">Leonardo Hotel St Pauls</a></td><td>Leonardo Royal</td><td class="mono">4471-A</td><td><span class="pill ">Events</span></td><td><span class="pill ">Sign-in log</span></td><td class="money">48.00</td><td class="money">£1,102.56</td><td class="money">£220.51</td><td class="money"><b>£1,323.07</b></td><td><span class="pill green">Sent</span></td><td>27/10/2026</td><td><span class="pill coral">Xero failed</span></td><td><a href="#">PDF</a> </td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–4 of 4</span><div class="right"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 1</span><button class="btn sm ghost" disabled>Next ›</button></div></div>
+        </div>
+        <div class="grid c2">
+          <div class="note"><b>One list, one number series.</b> Sign-in-log invoices (<span class="pill">Events</span>, ADR-0176) and timesheet invoices (<span class="pill purple">Timesheet</span>, ADR-0210) take their number from the same counter, from 4000. A void keeps its number; Void is off by default. <a href="reports.html">Ready to invoice (events) lives on Reports → Invoicing.</a></div>
+          <div class="note"><b>Xero</b> shows where the invoice stands in Xero: <span class="pill amber">pending</span> queued · <span class="pill green">In Xero</span> pushed as a Draft, totals equal · <span class="pill coral">mismatch</span> Xero's total differs by even a penny · <span class="pill coral">failed</span> retried by the job, then by the office from the invoice.</div>
+        </div>
+      </section>
+
+      <section data-state-of="inv" data-state="weekly" class="stack hide">
+        <div class="tabs"><button>All Invoices</button><button class="active">Weekly Summary</button><button>Monthly Summary</button></div>
+        <div class="annot">same filters as All Invoices; weeks are ISO weeks of the INVOICE date</div>
+        <div>
+          <details class="grp" open><summary class="gh"><span class="what">Week 44: 26 Oct – 1 Nov 2026</span><span class="fig">4<small>invoices</small></span><span class="fig">380.75<small>hours</small></span><span class="fig">£9,258.73<small>total</small></span><span class="fig">£2,314.68<small>average</small></span></summary>
+            <div style="border-top:1px solid var(--line)"><table class="tbl"><thead><tr><th>#</th><th>Date</th><th>Client</th><th>PO</th><th class="money">Hours</th><th class="money">Amount due</th><th>Status</th></tr></thead><tbody>
+              <tr><td class="mono"><a href="invoice-detail.html">#4004</a></td><td>28/10/2026</td><td>Taster UK SBX (Liverpool)</td><td class="mono">SBX-Liverpool-W43-2026</td><td class="money">84.50</td><td class="money">£1,801.88</td><td><span class="pill cyan">Generated</span></td></tr>
+              <tr><td class="mono"><a href="invoice-detail.html">#4003</a></td><td>28/10/2026</td><td>Leonardo St Paul's M &amp; E</td><td class="mono">52453465</td><td class="money">186.00</td><td class="money">£4,236.34</td><td><span class="pill green">Sent</span></td></tr>
+            </tbody></table></div>
+          </details>
+          <details class="grp"><summary class="gh"><span class="what">Week 43: 19 Oct – 25 Oct 2026</span><span class="fig">16<small>invoices</small></span><span class="fig">1,471.84<small>hours</small></span><span class="fig">£33,682.26<small>total</small></span><span class="fig">£2,105.14<small>average</small></span></summary></details>
+        </div>
+      </section>
+
+      <section data-state-of="inv" data-state="monthly" class="stack hide">
+        <div class="tabs"><button>All Invoices</button><button>Weekly Summary</button><button class="active">Monthly Summary</button></div>
+        <div>
+          <details class="grp"><summary class="gh"><span class="what">October 2026</span><span class="fig">42<small>invoices</small></span><span class="fig">3,901.20<small>hours</small></span><span class="fig">£81,539.65<small>total</small></span><span class="fig">£1,941.42<small>average</small></span></summary></details>
+          <details class="grp"><summary class="gh"><span class="what">September 2026</span><span class="fig">51<small>invoices</small></span><span class="fig">4,310.00<small>hours</small></span><span class="fig">£90,112.40<small>total</small></span><span class="fig">£1,766.91<small>average</small></span></summary></details>
+        </div>
+      </section>
+
+      <div class="wf-note note"><b>Behaviour notes.</b> Finance roles only (ADR-0056): a scheduler gets "Not available for your role"; a viewer sees everything and writes nothing (ADR-0060) — no "+ Process timesheet". Every filter lives in the URL (<span class="mono">?tab=&amp;client=&amp;from=&amp;to=&amp;range=&amp;q=&amp;status=&amp;source=&amp;xero=&amp;sort=&amp;dir=&amp;page=</span>). Dates are typed dd/mm/yyyy. KPIs and summaries add the database's own figures in whole pence. Export ▾ → CSV of the filtered list (Back Office CSV convention: BOM, CRLF); Excel is per invoice.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

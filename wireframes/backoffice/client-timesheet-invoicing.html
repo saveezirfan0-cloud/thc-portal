@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Client · Timesheet invoicing — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.money, .tbl th.money { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .blk { display: flex; align-items: center; gap: 8px; }
+  .blk .n { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: var(--r-pill); background: var(--cyan-dim); color: var(--cyan-ink); font-family: var(--font-mono); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Client · Timesheet invoicing</span><span class="pill cyan">/clients/:id</span><span class="pill">ADR-0210</span><span class="pill">audit §2.7</span>
+  <span class="spacer"></span>
+  <a href="invoice-process.html">Next: Process timesheet →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a class="active" href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a  href="invoices.html"><span class="ico">£</span>Invoices</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Client</h1>
+      <span class="crumbs">Taster UK SBX (Liverpool) · block 8 of the client card</span>
+      <span class="spacer"></span>
+      <span class="tz">All times UK (Europe/London)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="ts"><button data-state="view">Block 8 · view</button><button data-state="edit">Block 8 · editing</button></div>
+      <div class="crumbs sm"><a href="clients.html">Clients</a> › <a href="client-card.html">Taster UK SBX (Liverpool)</a> — the panel sits after block 7 Invoicing and before History</div>
+
+      <section data-state-of="ts" data-state="view" class="stack">
+        <div class="panel">
+          <div class="panel-h"><div class="blk"><span class="n">8</span><h3>Timesheet invoicing</h3></div><div class="right"><button class="btn sm">Edit</button><span class="muted xs">invoices from an uploaded timesheet, pushed to Xero</span></div></div>
+          <div class="panel-b kv">
+            <span class="k">Invoiced from</span><span>Timesheet — invoiced from an uploaded timesheet<br><span class="muted xs">Its hours arrive as a timesheet (Invoices → Process timesheet). It is also left out of event invoicing (the “Invoicing” switch in General info), so the daily job never takes a number for it.</span></span>
+            <span class="k">Format</span><span>Named staff — one line per person</span>
+            <span class="k">Display name</span><span>Taster UK SBX (Liverpool)</span>
+            <span class="k">Venue</span><span>Liverpool ONE</span>
+            <span class="k">Venue address</span><span>1 Chavasse Park<br>Liverpool</span>
+            <span class="k">Date column header</span><span>W/C Date</span>
+            <span class="k">Email subject</span><span>Event dates left out of the subject</span>
+            <span class="k">Default role</span><span>Service Staff</span>
+            <span class="k">Excluded staff</span><span class="row wrap"><span class="chip">Jane Doe</span></span>
+            <span class="k">PO number</span><span>Required on every invoice</span>
+            <span class="k">Payment terms</span><span>30 days</span>
+            <span class="k">Xero contact</span><span class="mono">Matched by name on the first invoice pushed</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Timesheet rate card</h3><span class="muted sm">role or alias on the timesheet → charge rate per hour</span><div class="right"><button class="btn sm primary">+ Add role</button></div></div>
+          <div class="panel-b tight"><table class="tbl"><thead><tr><th>Role</th><th>Aliases</th><th class="money">Charge £/h</th><th></th></tr></thead><tbody>
+            <tr><td><b>Service Staff</b></td><td><span class="muted">—</span></td><td class="money">£17.77</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Remove</button></td></tr>
+            <tr><td><b>Shift Leader</b></td><td><span class="chip">Shift Lead</span></td><td class="money">£19.52</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Remove</button></td></tr>
+          </tbody></table></div>
+        </div>
+      </section>
+
+      <section data-state-of="ts" data-state="edit" class="stack hide">
+        <div class="panel">
+          <div class="panel-h"><div class="blk"><span class="n">8</span><h3>Timesheet invoicing</h3></div></div>
+          <div class="panel-b stack">
+            <div class="field"><span class="label">Invoiced from</span><div class="seg"><button>Events</button><button class="on">Timesheet</button></div>
+              <span class="hint">Events: invoiced automatically from the sign-in log (ADR-0176). Timesheet: its hours arrive as an uploaded timesheet.</span>
+              <div class="alert amber sm">Saving also sets this client to <b>left out of invoicing</b> (ADR-0203): its events stop being invoiced by the daily job. Invoices the system has already issued stay as they are.</div>
+              <div class="alert amber sm">Moving back to Events does <b>not</b> put the client back into event invoicing. Turn off “Left out of invoicing” in General info if its events should be invoiced again. <span class="annot">shown only when moving a timesheet client back</span></div>
+            </div>
+            <div class="field"><span class="label">Format</span><select class="input"><option>Named staff — one line per person</option><option>Role aggregated — the same lines without names</option></select></div>
+            <div class="field"><span class="label">Display name</span><input class="input" value="Taster UK SBX (Liverpool)"><span class="hint">Printed under “Invoice to” and in the email subject. Blank uses the client name.</span></div>
+            <div class="f2"><div class="field"><span class="label">Venue</span><input class="input" value="Liverpool ONE"></div><div class="field"><span class="label">Venue address</span><textarea class="input" rows="3" style="height:auto">1 Chavasse Park
+Liverpool</textarea></div></div>
+            <div class="field"><span class="label">Date column header</span><input class="input" value="W/C Date" placeholder="Date"><span class="hint">Blank prints “Date”. Use “W/C Date” for a weekly invoice, as Taster does.</span></div>
+            <label class="check"><input type="checkbox" checked> Omit the event dates from the email subject <span class="muted">(drops “(15th, 17th October)”)</span></label>
+            <div class="field"><span class="label">Default role</span><input class="input" value="Service Staff"><span class="hint">For a timesheet with no role column. It must match a role (or alias) on the rate card.</span></div>
+            <div class="field"><span class="label">Excluded staff</span><div class="row wrap"><span class="chip">Jane Doe <span class="x">×</span></span></div><div class="row"><input class="input" placeholder="Type a name and press Enter"><button class="btn">Add</button></div><span class="hint">Non-THC staff on the sheet. Rows with these names are rejected automatically at review.</span></div>
+            <label class="check"><input type="checkbox" checked> A PO number is required on every invoice</label>
+            <div class="field"><span class="label">Payment terms (days)</span><input class="input" value="30" placeholder="Default" style="max-width:10rem"><span class="hint">Blank uses the platform's default terms. The due date is printed on the invoice.</span></div>
+            <div class="kv"><span class="k">Xero contact</span><span class="muted">Set by the first push (read-only)</span></div>
+            <div class="row"><button class="btn primary">Save</button><button class="btn">Cancel</button></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Timesheet rate card</h3></div>
+          <div class="panel-b stack">
+            <b>Add a role</b>
+            <div class="field"><span class="label">Role</span><input class="input" value="Kitchen Porter"><span class="hint">As the client's timesheet names it.</span></div>
+            <div class="field"><span class="label">Aliases</span><input class="input" value="KP"><span class="hint">Other wordings that mean the same role, separated by commas.</span></div>
+            <div class="field"><span class="label">Charge per hour</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="17.77"></div></div>
+            <div class="row"><button class="btn primary">Add role</button><button class="btn">Cancel</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="wf-note note"><b>Behaviour notes.</b> Finance only (ADR-0061): a scheduler's card draws no panel. A viewer sees the values as text with no Edit / Add / Remove (ADR-0060). Save → <span class="mono">set_client_timesheet_invoicing()</span> (audited, and a timesheet client is also left out of event invoicing in the same statement); the rate card writes <span class="mono">timesheet_rates</span> directly (one row per role per client; case and spacing ignored; a client charged one rate for every role needs no alias per wording). Staff pay is not here (ADR-0210 §7). The old tool's “Display” sub-line, VAT rate and Notes are not carried over: VAT is the company setting.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
