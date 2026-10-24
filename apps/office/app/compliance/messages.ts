@@ -17,6 +17,12 @@ const MESSAGES: [RegExp, string][] = [
   [/^not_pending: rejected/, 'This has already been rejected. The worker re-uploads.'],
   [/^not_pending: superseded/, 'This belongs to a previous period and is read-only.'],
   [/^not_pending/, 'This is no longer waiting for review.'],
+  // ADR-0213: "Not needed — graduated" on a term letter.
+  [
+    /^no_graduation/,
+    'They have not told us of a course completion date that has passed, so this letter is still needed. Verify or reject it as usual.',
+  ],
+  [/^not_a_term_letter/, 'Only a University Term Dates Letter can be set aside as not needed.'],
   [/^not_reviewable/, 'This person is Rejected or Removed; their documents no longer need review.'],
   [
     /^already_expired: (\d{4}-\d{2}-\d{2})/,
