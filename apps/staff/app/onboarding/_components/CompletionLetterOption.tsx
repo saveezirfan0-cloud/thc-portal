@@ -13,7 +13,14 @@ export const ONBOARDING_COMPLETION_HREF = '/onboarding/completion-letter';
  * the Term Dates Letter (ADR-0112) — `requirementRows()` lets it answer that
  * row — and the office approves it like any document.
  */
-export function CompletionLetterOption({ doc }: { doc: UploadedDoc | null }) {
+export function CompletionLetterOption({
+  doc,
+  replacesTermLetter = false,
+}: {
+  doc: UploadedDoc | null;
+  /** ADR-0215: a Term Dates Letter is already uploaded — this one would take its place. */
+  replacesTermLetter?: boolean;
+}) {
   const status = doc?.status ?? null;
   const meta =
     status === 'pending'
@@ -22,7 +29,9 @@ export function CompletionLetterOption({ doc }: { doc: UploadedDoc | null }) {
         ? 'Approved — your limit rises to 48 h/week from your course completion date.'
         : status === 'rejected'
           ? `Not accepted · “${doc?.rejectionReason ?? 'see the office'}”`
-          : 'Finished your course already? Upload this instead of a Term Dates Letter — you don’t need both — and the office can lift your weekly limit to 48 hours.';
+          : replacesTermLetter
+            ? 'Only if you’ve already finished your course: uploading this replaces your Term Dates Letter — you don’t need both. Still studying? Leave this — your Term Dates Letter is all you need.'
+            : 'Finished your course already? Upload this instead of a Term Dates Letter — you don’t need both — and the office can lift your weekly limit to 48 hours. Still studying? Leave this.';
   const upload = status === null || status === 'rejected' || status === 'superseded';
 
   return (

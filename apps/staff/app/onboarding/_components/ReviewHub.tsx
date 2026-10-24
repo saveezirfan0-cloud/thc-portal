@@ -10,7 +10,7 @@ import {
   rtwCheckWorkerState,
 } from '@thc/domain';
 import type { DocRequirement, RtwCheckStatus } from '@thc/domain';
-import { GRADUATE_REUPLOAD, docIcon } from '../state';
+import { GRADUATE_REUPLOAD, docIcon, termLetterOnFile } from '../state';
 import type { DocStatus, RequirementRow, UploadedDoc } from '../state';
 import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
@@ -309,7 +309,12 @@ export function ReviewHub({
             </div>
           </div>
         ) : null}
-        {completionLetter !== undefined ? <CompletionLetterOption doc={completionLetter} /> : null}
+        {completionLetter !== undefined ? (
+          <CompletionLetterOption
+            doc={completionLetter}
+            replacesTermLetter={termLetterOnFile(rows)}
+          />
+        ) : null}
       </div>
 
       <div className="mcard muted">

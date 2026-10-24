@@ -309,6 +309,20 @@ export function completionLetterDoc(s: OnboardingState): UploadedDoc | null | un
   return letters[0] ?? null;
 }
 
+/**
+ * ADR-0215: a Term Dates Letter of the student's own is on file and not
+ * rejected, so a Completion Letter uploaded now would take its place.
+ */
+export function termLetterOnFile(rows: readonly RequirementRow[]): boolean {
+  return rows.some(
+    (r) =>
+      r.requirement.key === TERM_LETTER &&
+      !r.viaCompletionLetter &&
+      !!r.doc &&
+      r.doc.status !== 'rejected',
+  );
+}
+
 /** Every requirement has a file on it — Submit can be pressed (§10.3). */
 export function allUploaded(rows: readonly RequirementRow[]): boolean {
   return rows.length > 0 && rows.every((r) => r.doc && r.doc.status !== 'rejected');
