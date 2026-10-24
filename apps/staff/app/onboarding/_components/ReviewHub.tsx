@@ -10,7 +10,7 @@ import {
   rtwCheckWorkerState,
 } from '@thc/domain';
 import type { DocRequirement, RtwCheckStatus } from '@thc/domain';
-import { docIcon } from '../state';
+import { GRADUATE_REUPLOAD, docIcon } from '../state';
 import type { DocStatus, RequirementRow, UploadedDoc } from '../state';
 import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
@@ -152,6 +152,29 @@ export function ReviewHub({
 
       <div className="mlist wiz-list">
         {rows.map(({ requirement, doc, viaCompletionLetter }) => {
+          // ADR-0211: the graduate's Completion Letter was not accepted. The fix
+          // is a new one (its own row below), not a term letter they don't
+          // have; the upload here is only for a student still in term.
+          if (viaCompletionLetter && doc?.status === 'rejected') {
+            return (
+              <div className="docrow" key={requirement.key}>
+                <span className="ico">—</span>
+                <div>
+                  <div className="t">{requirement.label}</div>
+                  <div className="m">{GRADUATE_REUPLOAD}</div>
+                </div>
+                <div className="right">
+                  <button
+                    type="button"
+                    className="linkbtn xs"
+                    onClick={() => setSheet(requirement)}
+                  >
+                    Upload instead
+                  </button>
+                </div>
+              </div>
+            );
+          }
           // The graduate's completion letter answers this row and has its own
           // row below (ADR-0112); a Term Dates Letter line would only confuse.
           if (viaCompletionLetter) return null;

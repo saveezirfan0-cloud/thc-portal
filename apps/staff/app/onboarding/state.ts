@@ -238,12 +238,25 @@ export interface RequirementRow {
 const TERM_LETTER = 'university_term_dates_letter';
 
 /**
+ * The Term Dates Letter row once the graduate's Completion Letter was not
+ * accepted (ADR-0211): step 4 and the review hub say the same.
+ */
+export const GRADUATE_REUPLOAD =
+  'Not needed if you’ve graduated — upload a new Completion Letter below. Haven’t graduated yet? Upload your Term Dates Letter instead.';
+
+/**
  * One row per document the branch asks for, with whatever answers it now.
  *
  * A student who has graduated needs no Term Dates Letter (ADR-0112): an
  * Official University Completion Letter that has not been rejected answers
  * that row when there is no term letter of the same standing. A term letter
  * that is not rejected still wins — it is the literal requirement.
+ *
+ * A rejected Completion Letter with no term letter beside it keeps the
+ * graduate's route (ADR-0211): the row stays `viaCompletionLetter`, with the
+ * rejected letter as its doc, so the screens point at re-uploading it rather
+ * than asking a graduate for a term letter they don't have. Submit still
+ * waits (`allUploaded` — the doc is rejected), as the database does.
  */
 export function requirementRows(s: OnboardingState): RequirementRow[] {
   if (!s.rtwBranch) return [];
@@ -254,7 +267,11 @@ export function requirementRows(s: OnboardingState): RequirementRow[] {
     const row: RequirementRow = { requirement, doc: candidates[0] ?? null };
     if (requirement.key === TERM_LETTER && (!row.doc || row.doc.status === 'rejected')) {
       const standIn = completionLetterDoc(s);
-      if (standIn && standIn.status !== 'rejected' && standIn.status !== 'superseded') {
+      if (
+        standIn &&
+        standIn.status !== 'superseded' &&
+        (standIn.status !== 'rejected' || !row.doc)
+      ) {
         return { requirement, doc: standIn, viaCompletionLetter: true };
       }
     }
