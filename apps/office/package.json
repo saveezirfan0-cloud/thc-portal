@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@react-pdf/renderer": "^4.3.0",
     "@sparticuz/chromium": "^153.0.0",
     "@supabase/ssr": "^0.12.7",
@@ -20,6 +21,7 @@
     "@thc/notifications": "workspace:*",
     "@thc/pdf": "workspace:*",
     "@thc/ui": "workspace:*",
+    "exceljs": "^4.4.0",
     "next": "^15.5.28",
     "playwright-core": "^1.63.0",
     "react": "^19.3.1",
