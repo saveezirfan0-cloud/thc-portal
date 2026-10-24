@@ -32,32 +32,32 @@ export async function DashboardBody() {
           // Accent, as the wireframe draws it: §9.1's "headline number of
           // the business", not a warning.
           tone="accent"
+          href="/events?view=list"
           value={kpis?.openPositions ?? '—'}
           description="Sold but not staffed — all events, any date"
         />
         <KpiTile
           label="On shift now"
           tone="ok"
+          href="/checkin"
           value={kpis?.onShiftNow ?? '—'}
           description="Checked in and on site this minute"
         />
         <KpiTile
           label="Staff available"
+          href="/staff?tab=compliant"
           value={kpis?.staffAvailable ?? '—'}
           description="Compliant workers, not booked or blocked"
         />
         <KpiTile
           label="Compliance blocks"
           tone="danger"
+          // The whole tile opens the radar (§9.1's "view radar →"), as a
+          // query not the wireframe's #fragment: the page is rendered on
+          // the server, which never sees a fragment.
+          href="/compliance?tab=radar"
           value={kpis?.complianceBlocks ?? '—'}
-          // The wireframe hangs "view radar →" here and §9.1 wants it.
-          // A query, not the wireframe's #fragment: the page is rendered
-          // on the server, which never sees a fragment.
-          description={
-            <>
-              Blocked over documents <Link href="/compliance?tab=radar">view radar →</Link>
-            </>
-          }
+          description="Blocked over documents · view radar →"
         />
       </TileGrid>
 

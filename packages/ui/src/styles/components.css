@@ -572,6 +572,19 @@
 .kpi.sm .v {
   font-size: var(--fs-30);
 }
+/* A tile that opens the list behind its number. */
+a.kpi.link {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+a.kpi.link:hover {
+  border-color: var(--cyan-ink);
+}
+a.kpi.link:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: 2px;
+}
 /* A KPI drawn inside a panel carries no card chrome of its own. */
 .kpi.flat {
   background: transparent;

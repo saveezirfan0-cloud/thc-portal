@@ -42,9 +42,20 @@ vi.mock('../short-staffed-data', () => ({
 const { DashboardBody } = await import('../DashboardBody');
 
 describe('dashboard links (§9.1)', () => {
-  it('links the compliance tile to the Radar tab and the finance panel to Reports', async () => {
+  it('links each KPI tile to the list behind it and the finance panel to Reports', async () => {
     const html = renderToStaticMarkup(await DashboardBody());
-    expect(html).toMatch(/<a href="\/compliance\?tab=radar"[^>]*>view radar →<\/a>/);
+    const tiles = [
+      ['/events?view=list', 'Open positions'],
+      ['/checkin', 'On shift now'],
+      ['/staff?tab=compliant', 'Staff available'],
+      ['/compliance?tab=radar', 'Compliance blocks'],
+    ] as const;
+    for (const [href, label] of tiles) {
+      expect(html).toContain(`<a class="kpi`);
+      expect(html).toMatch(
+        new RegExp(`href="${href.replace('?', '\\?')}"[^>]*><span class="k">${label}`),
+      );
+    }
     expect(html).toMatch(/<a[^>]*href="\/reports"[^>]*>Full report →<\/a>/);
   });
 });
@@ -52,7 +63,7 @@ describe('dashboard links (§9.1)', () => {
 describe('dashboard tiles and copy (§9.1, dashboard.html)', () => {
   it('draws Open positions as the accent tile with the wireframe sublines', async () => {
     const html = renderToStaticMarkup(await DashboardBody());
-    expect(html).toMatch(/class="kpi accent"[\s\S]*?Open positions/);
+    expect(html).toMatch(/class="kpi accent[\s\S]*?Open positions/);
     expect(html).toContain('Sold but not staffed — all events, any date');
     expect(html).toContain('Checked in and on site this minute');
     expect(html).toContain('Compliant workers, not booked or blocked');

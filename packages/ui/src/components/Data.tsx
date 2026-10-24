@@ -39,6 +39,8 @@ export interface KpiTileProps {
   flat?: boolean;
   /** Smaller value, for the financial snapshot tiles. */
   small?: boolean;
+  /** Makes the whole tile a link to the screen that lists what it counts. */
+  href?: string;
 }
 
 /**
@@ -53,13 +55,28 @@ export function KpiTile({
   tone = 'default',
   flat,
   small,
+  href,
 }: KpiTileProps) {
-  return (
-    <div className={clsx('kpi', tone !== 'default' && tone, flat && 'flat', small && 'sm')}>
+  const className = clsx(
+    'kpi',
+    tone !== 'default' && tone,
+    flat && 'flat',
+    small && 'sm',
+    href && 'link',
+  );
+  const body = (
+    <>
       <span className="k">{label}</span>
       <span className="v">{value}</span>
       {description ? <span className="d">{description}</span> : null}
-    </div>
+    </>
+  );
+  return href ? (
+    <a className={className} href={href}>
+      {body}
+    </a>
+  ) : (
+    <div className={className}>{body}</div>
   );
 }
 
