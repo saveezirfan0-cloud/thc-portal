@@ -6,7 +6,7 @@ import { Alert, Button, Input, Pill, Radio, RadioGroup, Textarea } from '@thc/ui
 import { formatFileSize, formatShareCode, termLetterExpired } from '@thc/domain';
 import type { DocRequirement } from '@thc/domain';
 import { submitDocuments } from '../actions';
-import { GRADUATE_REUPLOAD, allUploaded, docIcon } from '../state';
+import { GRADUATE_REUPLOAD, allUploaded, docIcon, termLetterOnFile } from '../state';
 import type { RequirementRow, UploadedDoc } from '../state';
 import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
@@ -186,7 +186,12 @@ export function DocumentsStep({
             </div>
           </div>
         ) : null}
-        {completionLetter !== undefined ? <CompletionLetterOption doc={completionLetter} /> : null}
+        {completionLetter !== undefined ? (
+          <CompletionLetterOption
+            doc={completionLetter}
+            replacesTermLetter={termLetterOnFile(rows)}
+          />
+        ) : null}
       </div>
 
       <div className="mcard">

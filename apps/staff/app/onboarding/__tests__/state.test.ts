@@ -6,6 +6,7 @@ import {
   docLabel,
   mapOnboardingState,
   requirementRows,
+  termLetterOnFile,
   shareCodeDoc,
   wizardFacts,
 } from '../state';
@@ -192,6 +193,13 @@ describe('onboarding_state() → the wizard', () => {
       const rows = rowsFor([raw.documents[0], termLetter('pending'), completion('pending')]);
       expect(rows[1]!.viaCompletionLetter).toBeUndefined();
       expect(rows[1]!.doc?.docType).toBe('university_term_dates_letter');
+    });
+
+    it('ADR-0215: knows when a Completion Letter would replace a Term Dates Letter on file', () => {
+      expect(termLetterOnFile(rowsFor([raw.documents[0], termLetter('pending')]))).toBe(true);
+      expect(termLetterOnFile(rowsFor([raw.documents[0], termLetter('rejected')]))).toBe(false);
+      expect(termLetterOnFile(rowsFor([raw.documents[0], completion('pending')]))).toBe(false);
+      expect(termLetterOnFile(rowsFor([raw.documents[0]]))).toBe(false);
     });
 
     it('no other branch is touched', () => {
