@@ -96,7 +96,6 @@ export function SourcePane({
         />
       ) : null}
       {file.kind === 'image' && file.url ? (
-        // eslint-disable-next-line @next/next/no-img-element -- a private, signed, short-lived URL
         <img className="pr-image" src={file.url} alt={`Source document ${file.fileName}`} />
       ) : null}
       {file.kind === 'sheet' ? (
@@ -121,7 +120,12 @@ export function SourcePane({
                 ))}
               </div>
             ) : null}
-            <div className="pr-sheet" tabIndex={0} role="region" aria-label={`Worksheet ${current.name}`}>
+            <div
+              className="pr-sheet"
+              tabIndex={0}
+              role="region"
+              aria-label={`Worksheet ${current.name}`}
+            >
               <table className="mini">
                 <tbody>
                   {current.rows.map((cells, r) => (
@@ -139,7 +143,9 @@ export function SourcePane({
                 </tbody>
               </table>
               {current.truncated ? (
-                <p className="xs muted">Showing the first rows and columns only — download the file for the rest.</p>
+                <p className="xs muted">
+                  Showing the first rows and columns only — download the file for the rest.
+                </p>
               ) : null}
             </div>
           </>

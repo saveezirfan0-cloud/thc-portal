@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Process timesheet — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.money, .tbl th.money { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); gap: 12px; align-items: start; }
+  @media (max-width: 1180px) { .split { grid-template-columns: minmax(0, 1fr); } }
+  .src { border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--r-field); padding: 10px; }
+  .src .sheet { overflow: auto; max-height: 360px; border: 1px solid var(--line); background: var(--panel); }
+  .src table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .src th, .src td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .src th { font-size: 11px; color: var(--muted); }
+  .src tr.hit td, .src tr.hit th { background: var(--amber-dim); }
+  .src .scan { height: 360px; border: 1px dashed var(--control-line); display: grid; place-items: center; color: var(--muted); font-size: 12.5px; text-align: center; padding: 12px; }
+  .cell { height: 32px; width: 100%; min-width: 4rem; padding: 0 8px; font-size: 13px; }
+  .cell.num { text-align: right; font-family: var(--font-mono); }
+  .cell.err { border-color: var(--coral-line); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: var(--r-pill); background: var(--muted); }
+  .dot.approved { background: var(--green); } .dot.rejected { background: var(--coral); } .dot.flagged { background: var(--amber); }
+  tr.rejected td:not(:first-child):not(:last-child) { opacity: .55; }
+  tr.rejected input { text-decoration: line-through; }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .rowerr td { background: var(--coral-dim); padding-top: 0; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--panel-2); }
+  .ggrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 12px; }
+  .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: 10px; margin-top: 14px; }
+  .sum dt { font-size: 11px; color: var(--muted); } .sum dd { margin: 0; font-family: var(--font-mono); font-size: 15px; }
+  .copt { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border: 1px solid var(--control-line); border-radius: var(--r-field); background: var(--panel); }
+  .copt.on { border-color: var(--cyan-line); background: var(--cyan-dim); }
+  .drop { display: grid; justify-items: center; gap: 6px; padding: 28px 16px; border: 2px dashed var(--control-line); border-radius: var(--r-card); background: var(--panel-2); text-align: center; }
+  .spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--cyan); border-radius: var(--r-pill); }
+  .invhead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Process timesheet</span><span class="pill cyan">/invoices/process</span><span class="pill">ADR-0210</span><span class="pill">/invoices/process/[jobId]</span>
+  <span class="spacer"></span>
+  <a href="reports.html">Reports →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a class="active" href="invoice-process.html"><span class="ico">£</span>Invoices</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Process timesheet</h1>
+      <span class="crumbs">Upload and process client timesheets through the 4-step workflow</span>
+      <span class="spacer"></span>
+      <span class="tz">All times UK (Europe/London)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="pr">
+        <button data-state="upload">1 · Upload + jobs</button>
+        <button data-state="extracting">Extracting</button>
+        <button data-state="error">Error + retry</button>
+        <button data-state="review">2 · Review (weekly export)</button>
+        <button data-state="scan">2 · Review (scan, issues)</button>
+        <button data-state="confirm">3 · Confirm</button>
+        <button data-state="generate">4 · Generate</button>
+        <button data-state="viewer">Viewer (read-only)</button>
+      </div>
+
+      <!-- ================= 1 · UPLOAD ================= -->
+      <section data-state-of="pr" data-state="upload" class="stack">
+        <ol class="stepper"><li class="st now"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+
+        <div class="panel">
+          <div class="panel-h"><h3>Upload timesheet</h3></div>
+          <div class="panel-b stack" style="max-width:46rem">
+            <p class="sm muted">Select a client and upload one or more timesheet files to begin processing.</p>
+            <div class="field">
+              <span class="label">Client</span>
+              <div class="search"><input class="input" placeholder="Search clients…"></div>
+              <div class="stack" style="gap:6px">
+                <label class="copt on"><input type="radio" name="c" checked><span>Leonardo Hotel St Paul's (M&amp;E)</span><span class="xs muted">Role aggregated · PO required</span></label>
+                <label class="copt"><input type="radio" name="c"><span>Taster Liverpool</span><span class="xs muted">Named staff · PO required</span></label>
+                <label class="copt"><input type="radio" name="c"><span>Taster London</span><span class="xs muted">Named staff · PO required</span></label>
+                <label class="copt"><input type="radio" name="c"><span>All Taster</span><span class="xs muted">Named staff</span></label>
+              </div>
+              <span class="hint">Only clients set to timesheet invoicing on their client card are listed.</span>
+            </div>
+            <div class="field">
+              <span class="label">Timesheet files</span>
+              <div class="drop"><b>Drag files here</b><span class="sm muted">or</span><button class="btn sm">Choose files</button><span class="xs muted">Excel (.xlsx, .xls, .csv), PDF, or image (JPG, PNG) — max 25 MB each, up to 10 files.</span></div>
+              <ul class="stack" style="list-style:none;padding:0;margin:8px 0 0;gap:4px">
+                <li class="row"><span class="grow">Leonardo St Paul's Time w-c 12-10-26 M+E (12th to 14th Oct).pdf</span><span class="xs muted">2.4 MB</span><button class="btn sm ghost">✕</button></li>
+                <li class="xs muted">1 of 10 files · 2.4 MB</li>
+              </ul>
+            </div>
+            <div class="field"><label class="label">Notes (optional)</label><textarea class="input" rows="2"></textarea></div>
+            <div><button class="btn primary">Upload &amp; process</button></div>
+            <span class="annot">files go straight to the private bucket on signed URLs; type and size are checked here and again on the server (≤ 25 MB, ≤ 10 files)</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><h3>Needs review (2)</h3></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Client</th><th>Files</th><th>Status</th><th>Uploaded (UK time)</th><th>Rows</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><b>Taster Liverpool</b></td><td>WC 12.10.26 Liverpool.xlsx</td><td><span class="pill amber">Needs review</span> <span class="pill amber">23 days old</span></td><td class="mono">01/10/2026 11:00</td><td class="mono">9 · 0 approved</td><td><a class="btn sm" href="#">Review</a> <button class="btn sm ghost">Discard</button></td></tr>
+                <tr><td><b>Leonardo Hotel St Paul's (M&amp;E)</b></td><td>Leonardo St Paul's Time w-c 12-10-26 … + 1 more</td><td><span class="pill amber">Needs review</span></td><td class="mono">20/10/2026 09:14</td><td class="mono">31 · 24 approved</td><td><a class="btn sm" href="#">Review</a> <button class="btn sm ghost" title="24 approved rows">Discard</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Recent jobs</h3></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Client</th><th>Files</th><th>Status</th><th>Uploaded (UK time)</th><th>Rows</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><b>All Taster</b></td><td>Alltaster WC 12.10.26 Spud Force.xlsx</td><td><span class="pill green">Complete</span></td><td class="mono">19/10/2026 08:40</td><td class="mono">13</td><td><a class="btn sm" href="#">Open</a></td></tr>
+                <tr><td><b>Taster London</b></td><td>WC 12.10.26 Oxford Circus.xlsx</td><td><span class="pill cyan">Ready to generate</span></td><td class="mono">19/10/2026 08:12</td><td class="mono">22</td><td><a class="btn sm" href="#">Generate</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note"><b>Needs review</b> is every job still in review, oldest first, with its age — the old tool left 21 of them for months (audit §10.12). <b>Discard</b> closes a job (reviewing → complete) only when no approved or invoiced rows would be lost; the files are kept and no number is taken.</div>
+      </section>
+
+      <!-- ================= EXTRACTING ================= -->
+      <section data-state-of="pr" data-state="extracting" class="stack hide">
+        <ol class="stepper"><li class="st done"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st now"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+        <div class="row" style="gap:10px"><b>Taster Liverpool</b><span class="pill cyan">Reading files</span><span class="xs muted">WC 12.10.26 Liverpool.xlsx</span></div>
+        <div class="panel">
+          <div class="panel-h"><h3>Reading your files</h3></div>
+          <div class="panel-b">
+            <div class="row" style="gap:16px;align-items:flex-start" role="status"><span class="spin"></span><div><p class="strong">Reading the timesheet — this can take a minute or two.</p><p class="sm muted">Taster Liverpool · WC 12.10.26 Liverpool.xlsx. This page updates by itself; you can leave it and come back from Process timesheet.</p></div></div>
+          </div>
+        </div>
+        <div class="note">The page re-reads itself every few seconds and stops when the job reaches <b>reviewing</b> or <b>error</b>. <span class="annot">/invoices/process/[jobId] always resumes at the right step</span></div>
+      </section>
+
+      <!-- ================= ERROR ================= -->
+      <section data-state-of="pr" data-state="error" class="stack hide">
+        <ol class="stepper"><li class="st done"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st now"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+        <div class="row" style="gap:10px"><b>Leonardo Hotel St Paul's (M&amp;E)</b><span class="pill coral">Could not read</span></div>
+        <div class="panel">
+          <div class="panel-h"><h3>The files could not be read</h3></div>
+          <div class="panel-b stack">
+            <div class="alert coral">No timesheet rows could be found in the files. Check it is the right file, or upload a clearer copy.</div>
+            <p class="sm muted">Retry reads the same files again. If it fails again, upload a clearer copy — a straight-on photo or the original spreadsheet reads best.</p>
+            <div class="row" style="gap:8px"><button class="btn primary">Retry</button><a class="btn" href="#">Upload again</a></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2 · REVIEW (weekly export) ================= -->
+      <section data-state-of="pr" data-state="review" class="stack hide">
+        <ol class="stepper"><li class="st done"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st now"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+        <div class="row wrap" style="justify-content:space-between;gap:12px">
+          <div><h2 style="font-size:19px;margin:0">Taster Liverpool</h2><p class="sm muted" style="margin:4px 0 0">9 rows · 8 approved · 0 flagged</p></div>
+          <div class="row" style="gap:8px"><button class="btn sm">Hide source</button><button class="btn sm">Change client</button><button class="btn sm primary">Approve all clean (1)</button></div>
+        </div>
+        <div class="seg sm"><button class="on">All <span class="n">9</span></button><button>Extracted <span class="n">1</span></button><button>Flagged <span class="n">0</span></button><button>Approved <span class="n">8</span></button><button>Rejected <span class="n">0</span></button></div>
+        <div class="note amber">This timesheet has summary hours only — no per-shift start or end times. Rows show the weekly hours as given; add start and end times where you have them.</div>
+
+        <div class="split">
+          <div class="panel">
+            <div class="panel-h"><h3>Source document</h3></div>
+            <div class="panel-b">
+              <div class="src stack" style="gap:8px">
+                <div class="row" style="justify-content:space-between"><div><b>WC 12.10.26 Liverpool.xlsx</b><div class="xs muted">48 KB</div></div><a class="btn sm" href="#">Download</a></div>
+                <div class="row" style="gap:4px"><button class="chip cyan">All Employees</button><button class="chip">Fae Gallagher</button><button class="chip">Christopher Meadows</button></div>
+                <div class="sheet"><table>
+                  <tbody>
+                    <tr><th>1</th><th>First name</th><th>Last name</th><th>Total work hours</th><th>Total paid hours</th><th>Worked days</th></tr>
+                    <tr class="hit"><th>2</th><td>Fae</td><td>Gallagher (1042)</td><td>21:30</td><td>21:30</td><td>4</td></tr>
+                    <tr><th>3</th><td>Christopher</td><td>Meadows (1043)</td><td>18:45</td><td>18:45</td><td>3</td></tr>
+                    <tr><th>4</th><td>Daisy</td><td>Marsden (1051)</td><td>20:00</td><td>20:00</td><td>4</td></tr>
+                  </tbody></table></div>
+                <span class="annot">choosing a row jumps here to the file, the sheet and the line it was read from</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-b tight" style="overflow:auto">
+              <table class="tbl" style="min-width:62rem">
+                <thead><tr><th>Status</th><th>Name</th><th>Staff ID</th><th>Event date</th><th>Role</th><th>Start</th><th>End</th><th>Break (min)</th><th>Hours</th><th>Rate</th><th class="money">Total</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><span class="dot approved"></span></td><td><input class="input cell" value="Fae Gallagher"><div class="tags"><span class="pill purple">Shift leader</span></div></td><td><input class="input cell mono" value="1042"></td><td><input class="input cell mono" value="12/10/2026"></td><td><input class="input cell" value="Shift Leader"></td><td><input class="input cell mono" placeholder="HH:MM"></td><td><input class="input cell mono" placeholder="HH:MM"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="21.50"></td><td><input class="input cell num" value="19.52"></td><td class="money">£419.68</td><td><button class="btn sm icon green">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr><td><span class="dot approved"></span></td><td><input class="input cell" value="Christopher Meadows"></td><td><input class="input cell mono" value="1043"></td><td><input class="input cell mono" value="12/10/2026"></td><td><input class="input cell" value="Service Staff"></td><td><input class="input cell mono" placeholder="HH:MM"></td><td><input class="input cell mono" placeholder="HH:MM"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="18.75"></td><td><input class="input cell num" value="17.77"></td><td class="money">£333.19</td><td><button class="btn sm icon green">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr><td><span class="dot"></span></td><td><input class="input cell" value="Daisy Marsden"></td><td><input class="input cell mono" value="1051"></td><td><input class="input cell mono" value="12/10/2026"></td><td><input class="input cell" value="Service Staff"></td><td><input class="input cell mono" placeholder="HH:MM"></td><td><input class="input cell mono" placeholder="HH:MM"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="20.00"></td><td><input class="input cell num" value="17.77"></td><td class="money">£355.40</td><td><button class="btn sm icon">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr class="rejected"><td><span class="dot rejected"></span></td><td><input class="input cell" value="Ingrid"></td><td><input class="input cell mono" value=""></td><td><input class="input cell mono" value="12/10/2026"></td><td><input class="input cell" value="Service Staff"></td><td><input class="input cell mono"></td><td><input class="input cell mono"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="12.00"></td><td><input class="input cell num" value="17.77"></td><td class="money">£213.24</td><td><button class="btn sm icon">✓</button> <button class="btn sm icon danger">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr><td><span class="dot approved"></span></td><td><input class="input cell" value="Train fare (Liverpool)"><div class="tags"><span class="pill purple">Expense</span></div></td><td class="muted">—</td><td><input class="input cell mono" value="14/10/2026"></td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td><input class="input cell num" value="2"><span class="sub xs muted">qty</span></td><td><input class="input cell num" value="7.50"></td><td class="money">£15.00</td><td><button class="btn sm icon green">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="panel-b row" style="gap:8px;border-top:1px solid var(--line)"><button class="btn sm">+ Add staff row</button><button class="btn sm">+ Add expense line</button></div>
+            <div class="foot"><p style="margin:0">Approved: <b>8 rows</b> · Hours: <b>169.08</b> · Total: <b>£3,004.55</b> <span class="xs muted">ex VAT</span></p><button class="btn primary">Continue with 8 approved rows</button></div>
+          </div>
+        </div>
+        <div class="note"><b>Nothing is priced on screen.</b> Each edit is written to the row and the database sends back its own hours, rate, total and issues. Hours are typed only for weekly rows with no times. Excluded staff (client card) arrive already <b>Rejected</b>. A changed role clears the rate so the client's rate card prices it again.</div>
+      </section>
+
+      <!-- ================= 2 · REVIEW (scan, issues) ================= -->
+      <section data-state-of="pr" data-state="scan" class="stack hide">
+        <ol class="stepper"><li class="st done"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st now"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+        <div class="row wrap" style="justify-content:space-between;gap:12px">
+          <div><h2 style="font-size:19px;margin:0">Leonardo Hotel St Paul's (M&amp;E)</h2><p class="sm muted" style="margin:4px 0 0">31 rows · 24 approved · 4 flagged</p></div>
+          <div class="row" style="gap:8px"><button class="btn sm">Hide source</button><button class="btn sm">Change client</button><button class="btn sm primary">Approve all clean (3)</button></div>
+        </div>
+        <div class="split">
+          <div class="panel">
+            <div class="panel-h"><h3>Source document</h3></div>
+            <div class="panel-b"><div class="src stack" style="gap:8px"><div class="row" style="justify-content:space-between"><div><b>Leonardo St Paul's Time w-c 12-10-26 M+E (12th to 14th Oct).pdf</b><div class="xs muted">2.4 MB</div></div><a class="btn sm" href="#">Download</a></div><div class="scan">Scanned timesheet (PDF) shown inline from a short-lived signed URL — jumps to the page the row was read from</div></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-b tight" style="overflow:auto">
+              <table class="tbl" style="min-width:62rem">
+                <thead><tr><th>Status</th><th>Name</th><th>Staff ID</th><th>Event date</th><th>Role</th><th>Start (UK time)</th><th>End (UK time)</th><th>Break (min)</th><th>Staff</th><th>Hours</th><th>Rate</th><th class="money">Total</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><span class="dot approved"></span></td><td><input class="input cell" value="Amara K."></td><td><input class="input cell mono" value="873"></td><td><input class="input cell mono" value="12/10/2026"></td><td><input class="input cell" value="Waiting"></td><td><input class="input cell mono" value="17:00"></td><td><input class="input cell mono" value="23:30"></td><td><input class="input cell num" value="30"></td><td><input class="input cell num" value="1"></td><td class="mono">6.00</td><td><input class="input cell num" value="18.98"></td><td class="money">£113.88</td><td><button class="btn sm icon green">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr><td><span class="dot flagged"></span></td><td><input class="input cell" value="Tom R"><div class="tags"><span class="pill amber">Check reading 40%</span></div></td><td><input class="input cell mono" value="412"></td><td><input class="input cell mono" value="12/10/2026"></td><td><input class="input cell" value="Wine Waiting Staff M&E"></td><td><input class="input cell mono" value="17:00"></td><td><input class="input cell mono" value="23:00"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="1"></td><td class="mono">6.00</td><td><input class="input cell num" value="18.98"></td><td class="money">£113.88</td><td><button class="btn sm icon green">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr><td><span class="dot flagged"></span></td><td><input class="input cell" value="Luca M."><div class="tags"><span class="pill coral" title="Add a start and end time, or the hours.">No hours</span></div></td><td><input class="input cell mono" value="701"></td><td><input class="input cell mono" value="13/10/2026"></td><td><input class="input cell" value="Waiting"></td><td><input class="input cell mono err" value=""></td><td><input class="input cell mono" value="22:30"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="1"></td><td class="mono" style="color:var(--coral-ink)">—</td><td><input class="input cell num" value="18.98"></td><td class="money">—</td><td><button class="btn sm icon" disabled title="Cannot approve: no hours">✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr><td><span class="dot flagged"></span></td><td><input class="input cell" value="Priya S."><div class="tags"><span class="pill coral">No rate for this role</span><span class="pill coral">No date</span></div></td><td><input class="input cell mono" value="655"></td><td><input class="input cell mono err" placeholder="dd/mm/yyyy"></td><td><input class="input cell err" value="Sommelier"></td><td><input class="input cell mono" value="18:00"></td><td><input class="input cell mono" value="23:00"></td><td><input class="input cell num" value="0"></td><td><input class="input cell num" value="1"></td><td class="mono">5.00</td><td><input class="input cell num err" placeholder="No rate"></td><td class="money">—</td><td><button class="btn sm icon" disabled>✓</button> <button class="btn sm icon">✕</button> <button class="btn sm icon ghost">🗑</button></td></tr>
+                  <tr class="rowerr"><td colspan="13"><span class="error">Cannot approve this row: no rate for this role, no date. Fix the highlighted cells first.</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="panel-b row" style="gap:8px;border-top:1px solid var(--line)"><button class="btn sm">+ Add staff row</button><button class="btn sm">+ Add expense line</button></div>
+            <div class="foot"><p style="margin:0">Approved: <b>24 rows</b> · Hours: <b>138.50</b> · Total: <b>£2,628.73</b> <span class="xs muted">ex VAT</span></p><button class="btn primary">Continue with 24 approved rows</button></div>
+          </div>
+        </div>
+        <div class="note"><b>Issue chips</b> come from the database (<span class="mono">issues</span>: no_hours · no_rate · no_name · no_date · no_quantity · no_description) and say why a row cannot be approved; the database refuses it anyway (<span class="mono">shift_incomplete</span>) and the reason shows under the row. <b>Staff</b> shows for role-aggregated clients.</div>
+      </section>
+
+      <!-- ================= 3 · CONFIRM ================= -->
+      <section data-state-of="pr" data-state="confirm" class="stack hide">
+        <ol class="stepper"><li class="st done"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st done"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st now"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+        <div class="row wrap" style="justify-content:space-between;gap:12px">
+          <div><h2 style="font-size:19px;margin:0">Leonardo Hotel St Paul's (M&amp;E)</h2><p class="sm muted" style="margin:4px 0 0">24 approved rows to split into invoices. This client requires a PO number on every invoice.</p></div>
+          <div class="row" style="gap:8px"><button class="btn sm">One invoice</button><button class="btn sm">Split by week</button><button class="btn sm">Split by PO (add an invoice)</button></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><h3>Invoice 1</h3></div>
+          <div class="panel-b">
+            <div class="ggrid">
+              <div class="field"><label class="label">PO number *</label><input class="input" value="52257014"></div>
+              <div class="field"><label class="label">Invoice date</label><input class="input mono" value="26/10/2026"></div>
+              <div class="field"><label class="label">Event date from</label><input class="input mono" value="12/10/2026"></div>
+              <div class="field"><label class="label">Event date to</label><input class="input mono" value="14/10/2026"></div>
+              <div class="field"><label class="label">Format</label><select class="input"><option>Role aggregated</option><option>Named staff</option></select></div>
+            </div>
+            <div class="note amber" style="margin-top:12px"><b>PO 52257014</b> was already invoiced for Leonardo Hotel St Paul's (M&amp;E): invoice #4001 (19/10/2026). Check this is not a repeat before you confirm.</div>
+            <dl class="sum"><div><dt>Rows</dt><dd>14</dd></div><div><dt>Hours</dt><dd>82.50</dd></div><div><dt>Subtotal</dt><dd>£1,565.85</dd></div><div><dt>VAT 20%</dt><dd>£313.17</dd></div><div><dt>Total</dt><dd><b>£1,879.02</b></dd></div></dl>
+            <details style="margin-top:12px"><summary class="sm">14 rows · 12/10/2026 – 14/10/2026</summary>
+              <div class="row" style="gap:10px;align-items:flex-end;margin:10px 0"><div class="field"><label class="label">Split after this date</label><input class="input mono" value="13/10/2026"></div><button class="btn sm">Split by date range</button></div>
+            </details>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Invoice 2</h3></div>
+          <div class="panel-b">
+            <div class="ggrid">
+              <div class="field"><label class="label">PO number *</label><input class="input err" value=""><span class="error">Required for this client.</span></div>
+              <div class="field"><label class="label">Invoice date</label><input class="input mono" value="26/10/2026"></div>
+              <div class="field"><label class="label">Event date from</label><input class="input mono" value="15/10/2026"></div>
+              <div class="field"><label class="label">Event date to</label><input class="input mono" value="17/10/2026"></div>
+              <div class="field"><label class="label">Format</label><select class="input"><option>Role aggregated</option></select></div>
+            </div>
+            <dl class="sum"><div><dt>Rows</dt><dd>10</dd></div><div><dt>Hours</dt><dd>56.00</dd></div><div><dt>Subtotal</dt><dd>£1,062.88</dd></div><div><dt>VAT 20%</dt><dd>£212.58</dd></div><div><dt>Total</dt><dd><b>£1,275.46</b></dd></div></dl>
+          </div>
+        </div>
+        <div class="foot" style="border:1px solid var(--line);border-radius:var(--r-card)"><p style="margin:0">2 invoices · Subtotal <b>£2,628.73</b> · VAT <b>£525.75</b> · Total <b>£3,154.48</b></p><div class="row" style="gap:8px"><a class="btn" href="#">Back to review</a><button class="btn primary">Confirm 2 invoices</button></div></div>
+        <div class="note"><b>One invoice by default.</b> Split by Monday–Sunday week, after a date, or add an invoice and move rows into it (one per PO). Every approved row must be in exactly one invoice. Totals add up the printed lines (each rounded to the penny) with VAT on the subtotal — shown for checking; the invoice itself is priced by the database when it is issued (ADR-0210 §4). <span class="annot">calls timesheet_job_confirm(job, [{poNumber, invoiceDate, eventDateStart, eventDateEnd, format, shiftIds[]}])</span></div>
+      </section>
+
+      <!-- ================= 4 · GENERATE ================= -->
+      <section data-state-of="pr" data-state="generate" class="stack hide">
+        <ol class="stepper"><li class="st done"><span class="k">Step 1</span><span class="t">Upload</span></li><li class="st done"><span class="k">Step 2</span><span class="t">Review</span></li><li class="st done"><span class="k">Step 3</span><span class="t">Confirm</span></li><li class="st now"><span class="k">Step 4</span><span class="t">Generate</span></li></ol>
+        <div class="panel">
+          <div class="panel-h"><h3>Ready to generate</h3></div>
+          <div class="panel-b stack">
+            <p class="sm">1 invoice will be numbered and drawn. Each takes the next invoice number, so this cannot be undone — an invoice can only be voided afterwards.</p>
+            <div class="row" style="gap:8px"><button class="btn">Back to review</button><button class="btn primary">Generate 1 invoice</button></div>
+          </div>
+        </div>
+        <div class="alert green"><b>1 invoice is generated.</b> Total value £1,879.02 including VAT.</div>
+        <div class="panel">
+          <div class="panel-b">
+            <div class="invhead">
+              <div><h3 style="font-size:16px;margin:0 0 6px">Invoice #4000</h3><div class="row" style="gap:6px"><span class="pill green">Generated</span><span class="pill">Role aggregated</span></div><p class="sm muted" style="margin:6px 0 0">Leonardo Hotel St Paul's (M&amp;E) · PO 52257014 · 26/10/2026</p></div>
+              <div style="text-align:right"><div class="mono strong" style="font-size:19px">£1,879.02</div><div class="xs muted">£1,565.85 + VAT £313.17</div></div>
+            </div>
+            <div class="row wrap" style="gap:8px"><button class="btn sm">Preview</button><a class="btn sm" href="#">Download PDF</a><a class="btn sm" href="#">Download Excel</a><a class="btn sm primary" href="#">Email invoice</a><a class="btn sm ghost" href="#">Open invoice</a></div>
+            <span class="annot">Preview embeds /api/invoices/[id] · Email invoice opens /invoices/[id]?email=1</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-b">
+            <div class="invhead">
+              <div><h3 style="font-size:16px;margin:0 0 6px">Invoice #4001</h3><div class="row" style="gap:6px"><span class="pill coral">PDF failed</span><span class="pill">Role aggregated</span></div><p class="sm muted" style="margin:6px 0 0">Leonardo Hotel St Paul's (M&amp;E) · PO 52378239 · 26/10/2026</p></div>
+              <div style="text-align:right"><div class="mono strong" style="font-size:19px">£1,275.46</div><div class="xs muted">£1,062.88 + VAT £212.58</div></div>
+            </div>
+            <div class="alert coral" style="margin-bottom:10px">The PDF for this invoice could not be drawn: the renderer timed out. The number #4001 is kept — nothing is lost.</div>
+            <div class="row wrap" style="gap:8px"><button class="btn sm primary">Re-draw</button><a class="btn sm ghost" href="#">Open invoice</a></div>
+          </div>
+        </div>
+        <div class="row wrap" style="gap:8px"><a class="btn" href="#">← Back to Invoices</a><a class="btn primary" href="#">Process another timesheet</a></div>
+        <div class="note"><b>Safe to press twice or refresh.</b> Only confirmed invoices with no number yet are issued (found through the job's invoices); a second click that loses the race changes nothing. A PDF that fails to draw keeps its number — Re-draw tries again.</div>
+      </section>
+
+      <!-- ================= VIEWER ================= -->
+      <section data-state-of="pr" data-state="viewer" class="stack hide">
+        <div class="alert purple"><b>Read-only access.</b> You can open every screen your role shows, reports included, but you cannot change anything — a save, send or delete will be refused. Ask an owner if something needs changing.</div>
+        <div class="panel">
+          <div class="panel-h"><h3>Upload timesheet</h3></div>
+          <div class="panel-b stack"><div class="drop" style="opacity:.6"><b>Drag files here</b><button class="btn sm" disabled>Choose files</button></div><div class="row" style="gap:10px"><button class="btn primary" disabled>Upload &amp; process</button><span class="xs muted">Your login is read-only, so uploading is switched off.</span></div></div>
+        </div>
+        <div class="note">A viewer sees the jobs, the rows and the invoices, with every control disabled. A scheduler (no finance) sees "Not available for your role".</div>
+      </section>
+
+      <div class="wf-note note"><b>Behaviour notes.</b> ADR-0210 · audit §2.2/§5. Back Office tokens, finance-only (owner · manager write; viewer reads). Times typed on the viewer's clock (TimeField, "(UK time)") — never <span class="mono">&lt;input type="time"&gt;</span>; dates dd/mm/yyyy. States: loading skeleton · empty ("No client is set up for timesheet invoicing yet") · error · extracting (self-refreshing) · error with Retry · generate with Re-draw. Mobile: the table scrolls sideways inside its card; the source pane stacks above the rows.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

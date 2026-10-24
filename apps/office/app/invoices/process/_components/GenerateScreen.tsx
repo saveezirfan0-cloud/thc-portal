@@ -101,8 +101,8 @@ export function GenerateScreen({
       {status === 'confirmed' && pending > 0 ? (
         <Panel title="Ready to generate">
           <p className="sm">
-            {plural(pending, 'invoice')} will be numbered and drawn. Each takes the next invoice number, so this
-            cannot be undone — an invoice can only be voided afterwards.
+            {plural(pending, 'invoice')} will be numbered and drawn. Each takes the next invoice
+            number, so this cannot be undone — an invoice can only be voided afterwards.
           </p>
           <div className="row pr-actions">
             {invoices.length === 0 ? (
@@ -122,7 +122,9 @@ export function GenerateScreen({
       {status === 'complete' && noInvoices ? (
         <Panel>
           <p className="strong">This job was closed without any invoice.</p>
-          <p className="sm muted">It was discarded from the review list, or every invoice made from it has been voided.</p>
+          <p className="sm muted">
+            It was discarded from the review list, or every invoice made from it has been voided.
+          </p>
         </Panel>
       ) : null}
 
@@ -164,8 +166,8 @@ export function GenerateScreen({
 
             {problem || canRedraw ? (
               <Alert tone="coral">
-                The PDF for this invoice could not be drawn{problem ? `: ${problem}` : '.'} The number #{inv.number} is
-                kept — nothing is lost.
+                The PDF for this invoice could not be drawn{problem ? `: ${problem}` : '.'} The
+                number #{inv.number} is kept — nothing is lost.
               </Alert>
             ) : null}
             {inv.status === 'drawing' && !inv.stale ? (
@@ -177,7 +179,11 @@ export function GenerateScreen({
             <div className="row pr-actions">
               {ready ? (
                 <>
-                  <Button size="sm" aria-expanded={preview === inv.id} onClick={() => setPreview(preview === inv.id ? null : inv.id)}>
+                  <Button
+                    size="sm"
+                    aria-expanded={preview === inv.id}
+                    onClick={() => setPreview(preview === inv.id ? null : inv.id)}
+                  >
                     {preview === inv.id ? 'Hide preview' : 'Preview'}
                   </Button>
                   <a className="btn sm" href={`/api/invoices/${inv.id}`} download>
@@ -192,7 +198,12 @@ export function GenerateScreen({
                 </>
               ) : null}
               {canRedraw ? (
-                <Button size="sm" tone="primary" disabled={!canAct || redrawing === inv.id} onClick={() => redraw(inv.id)}>
+                <Button
+                  size="sm"
+                  tone="primary"
+                  disabled={!canAct || redrawing === inv.id}
+                  onClick={() => redraw(inv.id)}
+                >
                   {redrawing === inv.id ? 'Drawing…' : 'Re-draw'}
                 </Button>
               ) : null}
@@ -202,7 +213,11 @@ export function GenerateScreen({
             </div>
 
             {preview === inv.id ? (
-              <iframe className="pr-frame pr-preview" title={`Invoice ${inv.number} preview`} src={`/api/invoices/${inv.id}`} />
+              <iframe
+                className="pr-frame pr-preview"
+                title={`Invoice ${inv.number} preview`}
+                src={`/api/invoices/${inv.id}`}
+              />
             ) : null}
           </Panel>
         );

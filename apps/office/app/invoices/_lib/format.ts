@@ -76,7 +76,20 @@ export function ukStamp(instant: string | null | undefined): string {
 }
 
 /** "17 Oct" — a short day for the week headings. */
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 export const MONTHS_LONG = [
   'January',
   'February',

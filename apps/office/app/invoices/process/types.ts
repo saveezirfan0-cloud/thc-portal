@@ -8,7 +8,8 @@
  * (`timesheet_shift_compute()`).
  */
 
-export type JobStatus = 'uploaded' | 'extracting' | 'reviewing' | 'confirmed' | 'complete' | 'error';
+export type JobStatus =
+  'uploaded' | 'extracting' | 'reviewing' | 'confirmed' | 'complete' | 'error';
 export type ShiftStatus = 'extracted' | 'flagged' | 'approved' | 'rejected';
 export type ShiftKind = 'shift' | 'custom';
 export type InvoiceFormat = 'named' | 'aggregated';

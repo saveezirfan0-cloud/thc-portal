@@ -60,7 +60,8 @@ export interface RawInvoiceListRow {
     | { status: XeroStatus; xero_invoice_id: string | null }
     | { status: XeroStatus; xero_invoice_id: string | null }[]
     | null;
-  invoice_event_links?: { events: { venue_name: string | null } | { venue_name: string | null }[] | null }[] | null;
+  invoice_event_links?:
+    { events: { venue_name: string | null } | { venue_name: string | null }[] | null }[] | null;
 }
 
 export interface InvoiceLineRow {

@@ -32,7 +32,9 @@ import type { InvoiceView } from './view-model';
  */
 
 export function supabaseConfigured(): boolean {
-  return Boolean(process.env['NEXT_PUBLIC_SUPABASE_URL'] && process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
+  return Boolean(
+    process.env['NEXT_PUBLIC_SUPABASE_URL'] && process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'],
+  );
 }
 
 export const NOT_CONFIGURED =
@@ -182,11 +184,14 @@ export async function loadInvoiceDetail(id: string): Promise<InvoiceDetailData> 
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  const error = client.error ?? lines.error ?? xero.error ?? sends.error ?? links.error ?? files.error;
+  const error =
+    client.error ?? lines.error ?? xero.error ?? sends.error ?? links.error ?? files.error;
   if (error) return { invoice: null, problem: readProblem(error) };
 
   // The sender's name: best effort — a profile the caller cannot read is just "Office".
-  const senderIds = [...new Set(((sends.data ?? []) as any[]).map((s) => s.sent_by).filter(Boolean))];
+  const senderIds = [
+    ...new Set(((sends.data ?? []) as any[]).map((s) => s.sent_by).filter(Boolean)),
+  ];
   const names = new Map<string, string>();
   if (senderIds.length > 0) {
     const profiles = await db.from('profiles').select('id, full_name').in('id', senderIds);
@@ -238,8 +243,16 @@ export async function loadInvoiceDetail(id: string): Promise<InvoiceDetailData> 
   const events: LinkedEvent[] = ((links.data ?? []) as any[])
     .map((l) => (Array.isArray(l.events) ? l.events[0] : l.events))
     .filter(Boolean)
-    .map((e: any) => ({ id: e.id, title: e.title, date: e.event_date, venue: e.venue_name ?? null }))
-    .sort((a: LinkedEvent, b: LinkedEvent) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+    .map((e: any) => ({
+      id: e.id,
+      title: e.title,
+      date: e.event_date,
+      venue: e.venue_name ?? null,
+    }))
+    .sort(
+      (a: LinkedEvent, b: LinkedEvent) =>
+        a.date.localeCompare(b.date) || a.title.localeCompare(b.title),
+    );
   const x = xero.data as Record<string, any> | null;
   const xeroRow: XeroSyncRow | null = x
     ? {
@@ -247,7 +260,8 @@ export async function loadInvoiceDetail(id: string): Promise<InvoiceDetailData> 
         attempts: x['attempts'] ?? 0,
         xeroInvoiceId: x['xero_invoice_id'] ?? null,
         xeroStatus: x['xero_status'] ?? null,
-        xeroTotal: x['xero_total'] === null || x['xero_total'] === undefined ? null : num(x['xero_total']),
+        xeroTotal:
+          x['xero_total'] === null || x['xero_total'] === undefined ? null : num(x['xero_total']),
         lastError: x['last_error'] ?? null,
         syncedAt: x['synced_at'] ?? null,
       }

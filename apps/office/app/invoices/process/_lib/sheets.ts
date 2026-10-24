@@ -16,7 +16,13 @@ export const PREVIEW_MAX_SHEETS = 12;
 export function cellText(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 16).replace('T', ' ').replace(/ 00:00$/, '');
+    return Number.isNaN(value.getTime())
+      ? ''
+      : value
+          .toISOString()
+          .slice(0, 16)
+          .replace('T', ' ')
+          .replace(/ 00:00$/, '');
   }
   if (typeof value === 'object') {
     const v = value as Record<string, unknown>;
@@ -31,13 +37,14 @@ export function cellText(value: unknown): string {
   return String(value);
 }
 
-export type SheetRead =
-  | { ok: true; sheets: SheetPreview[] }
-  | { ok: false; note: string };
+export type SheetRead = { ok: true; sheets: SheetPreview[] } | { ok: false; note: string };
 
 export async function readSheets(buffer: Buffer, extension: string): Promise<SheetRead> {
   if (extension === 'xls') {
-    return { ok: false, note: 'A table preview is not available for old .xls files — download the file to compare.' };
+    return {
+      ok: false,
+      note: 'A table preview is not available for old .xls files — download the file to compare.',
+    };
   }
   if (buffer.byteLength > PREVIEW_MAX_BYTES) {
     return { ok: false, note: 'This file is too large to preview here — download it to compare.' };

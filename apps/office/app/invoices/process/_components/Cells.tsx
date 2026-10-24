@@ -126,7 +126,11 @@ export function DateCell({
   className,
   invalid,
   onBad,
-}: Common & { value: string | null; onCommit: Commit<string | null>; onBad?: (message: string) => void }) {
+}: Common & {
+  value: string | null;
+  onCommit: Commit<string | null>;
+  onBad?: (message: string) => void;
+}) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? ukDateText(value ?? '');
   async function leave() {
@@ -137,7 +141,8 @@ export function DateCell({
       onBad?.(reading.error);
       return;
     }
-    if ('value' in reading && (reading.value || null) !== value) await onCommit(reading.value || null);
+    if ('value' in reading && (reading.value || null) !== value)
+      await onCommit(reading.value || null);
   }
   return (
     <input

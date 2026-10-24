@@ -9,13 +9,7 @@
  * up the printed lines (ADR-0210 §4: round per line, VAT on the subtotal).
  */
 import { isIsoDate } from './validators';
-import type {
-  ConfirmedGroup,
-  InvoiceFormat,
-  JobStatus,
-  ShiftRow,
-  ShiftStatus,
-} from './types';
+import type { ConfirmedGroup, InvoiceFormat, JobStatus, ShiftRow, ShiftStatus } from './types';
 
 // ---------------------------------------------------------------------
 // The stepper
@@ -228,9 +222,7 @@ export interface ShiftPatch {
 
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export type PatchResult =
-  | { ok: true; set: Record<string, unknown> }
-  | { ok: false; error: string };
+export type PatchResult = { ok: true; set: Record<string, unknown> } | { ok: false; error: string };
 
 /**
  * Turns a patch into the columns to write. A changed role clears the rate
@@ -400,7 +392,10 @@ function newKey(): string {
 }
 
 export function dateRange(rows: readonly ShiftRow[]): { start: string; end: string } {
-  const dates = rows.map((r) => r.workDate).filter((d): d is string => d !== null).sort();
+  const dates = rows
+    .map((r) => r.workDate)
+    .filter((d): d is string => d !== null)
+    .sort();
   return { start: dates[0] ?? '', end: dates[dates.length - 1] ?? '' };
 }
 
@@ -467,7 +462,10 @@ export function splitGroupAfter(
   const move = rows.filter((r) => r.workDate && r.workDate > after);
   if (keep.length === 0 || move.length === 0) return [...groups];
   const head: DraftGroup = { ...group, ...rangeOf(keep, group), shiftIds: keep.map((r) => r.id) };
-  const tail = draft(move, { invoiceDate: group.invoiceDate, format: group.format ?? defaults.format });
+  const tail = draft(move, {
+    invoiceDate: group.invoiceDate,
+    format: group.format ?? defaults.format,
+  });
   return [...groups.slice(0, index), head, tail, ...groups.slice(index + 1)];
 }
 
@@ -480,7 +478,10 @@ function rangeOf(rows: readonly ShiftRow[], group: DraftGroup) {
 }
 
 /** "Split by PO": another, empty invoice to move rows into. */
-export function addEmptyGroup(groups: readonly DraftGroup[], defaults: GroupDefaults): DraftGroup[] {
+export function addEmptyGroup(
+  groups: readonly DraftGroup[],
+  defaults: GroupDefaults,
+): DraftGroup[] {
   return [...groups, draft([], defaults)];
 }
 
@@ -510,14 +511,16 @@ export function removeGroup(groups: readonly DraftGroup[], key: string): DraftGr
 }
 
 export function toConfirmed(groups: readonly DraftGroup[]): ConfirmedGroup[] {
-  return groups.map(({ poNumber, invoiceDate, eventDateStart, eventDateEnd, format, shiftIds }) => ({
-    poNumber: poNumber.trim(),
-    invoiceDate,
-    eventDateStart,
-    eventDateEnd,
-    format,
-    shiftIds,
-  }));
+  return groups.map(
+    ({ poNumber, invoiceDate, eventDateStart, eventDateEnd, format, shiftIds }) => ({
+      poNumber: poNumber.trim(),
+      invoiceDate,
+      eventDateStart,
+      eventDateEnd,
+      format,
+      shiftIds,
+    }),
+  );
 }
 
 export interface GroupSummary {
@@ -536,10 +539,7 @@ export interface GroupSummary {
  * `invoiceTotals` is the same arithmetic; this is display only — the
  * invoice is priced by issue_timesheet_invoice().)
  */
-export function summariseGroup(
-  rows: readonly ShiftRow[],
-  vatRatePercent: number,
-): GroupSummary {
+export function summariseGroup(rows: readonly ShiftRow[], vatRatePercent: number): GroupSummary {
   let pence = 0;
   let hours = 0;
   for (const row of rows) {
@@ -589,3 +589,20 @@ export function ageDays(iso: string, now: number = Date.now()): number {
 }
 
 export const STALE_AFTER_DAYS = 7;
+
+/** The codes `runExtraction()` leaves in `timesheet_jobs.error`, in words. */
+const EXTRACTION_ERRORS: Readonly<Record<string, string>> = {
+  no_files: 'The job has no files to read. Upload the timesheet again.',
+  no_rows_found:
+    'No timesheet rows could be found in the files. Check it is the right file, or upload a clearer copy.',
+  job_not_extractable: 'The files are already being read.',
+  unexpected_error: 'The files could not be read. Retry, or upload a clearer copy.',
+};
+
+export function extractionErrorText(error: string | null): string {
+  if (!error) return 'The timesheet could not be read.';
+  return (
+    EXTRACTION_ERRORS[error] ??
+    (/^[a-z0-9_]+$/.test(error) ? EXTRACTION_ERRORS['unexpected_error']! : error)
+  );
+}

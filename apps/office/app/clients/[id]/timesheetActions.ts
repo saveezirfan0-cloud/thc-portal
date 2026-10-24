@@ -37,10 +37,16 @@ interface Db {
   from(table: 'timesheet_rates'): {
     insert(row: Record<string, unknown>): { select(columns: string): Reply };
     update(row: Record<string, unknown>): {
-      eq(column: string, value: string): { eq(column: string, value: string): { select(columns: string): Reply } };
+      eq(
+        column: string,
+        value: string,
+      ): { eq(column: string, value: string): { select(columns: string): Reply } };
     };
     delete(): {
-      eq(column: string, value: string): { eq(column: string, value: string): { select(columns: string): Reply } };
+      eq(
+        column: string,
+        value: string,
+      ): { eq(column: string, value: string): { select(columns: string): Reply } };
     };
   };
 }
@@ -60,7 +66,8 @@ export async function saveTimesheetInvoicing(
   clientId: string,
   input: TimesheetSettingsInput,
 ): Promise<ActionResult> {
-  if (!UUID.test(clientId)) return { ok: false, message: 'That client no longer exists. Refresh the page.' };
+  if (!UUID.test(clientId))
+    return { ok: false, message: 'That client no longer exists. Refresh the page.' };
   const clean: TimesheetSettingsInput = {
     ...input,
     displayName: String(input.displayName ?? '').trim(),
@@ -109,7 +116,8 @@ function rateRow(input: RateInput) {
 }
 
 export async function addTimesheetRate(clientId: string, input: RateInput): Promise<ActionResult> {
-  if (!UUID.test(clientId)) return { ok: false, message: 'That client no longer exists. Refresh the page.' };
+  if (!UUID.test(clientId))
+    return { ok: false, message: 'That client no longer exists. Refresh the page.' };
   const invalid = rateProblem(input);
   if (invalid) return { ok: false, message: invalid };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };

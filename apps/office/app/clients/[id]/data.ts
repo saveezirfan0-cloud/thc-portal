@@ -150,7 +150,10 @@ interface TimesheetDb {
         column: string,
         value: string,
       ): {
-        maybeSingle(): PromiseLike<{ data: TimesheetClientRow | null; error: { message: string } | null }>;
+        maybeSingle(): PromiseLike<{
+          data: TimesheetClientRow | null;
+          error: { message: string } | null;
+        }>;
       };
     };
   };
@@ -161,7 +164,14 @@ interface TimesheetDb {
         value: string,
       ): {
         order(column: string): PromiseLike<{
-          data: { id: string; role_name: string; aliases: string[] | null; charge_rate: number | string }[] | null;
+          data:
+            | {
+                id: string;
+                role_name: string;
+                aliases: string[] | null;
+                charge_rate: number | string;
+              }[]
+            | null;
           error: { message: string } | null;
         }>;
       };

@@ -39,7 +39,9 @@ export function normaliseList(values: readonly string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const value of values) {
-    const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+    const text = String(value ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const key = text.toLowerCase();
     if (text && !seen.has(key)) {
       seen.add(key);
@@ -80,13 +82,18 @@ export interface TimesheetSettingsInput {
 
 /** Why these settings cannot be saved, or null when they can. */
 export function settingsProblem(input: TimesheetSettingsInput): string | null {
-  if (input.mode !== 'events' && input.mode !== 'timesheet') return 'Choose how this client is invoiced.';
+  if (input.mode !== 'events' && input.mode !== 'timesheet')
+    return 'Choose how this client is invoiced.';
   if (input.format !== 'named' && input.format !== 'aggregated') return 'Choose an invoice format.';
-  if (input.displayName.length > NAME_MAX) return `The display name is at most ${NAME_MAX} characters.`;
+  if (input.displayName.length > NAME_MAX)
+    return `The display name is at most ${NAME_MAX} characters.`;
   if (input.venue.length > NAME_MAX) return `The venue is at most ${NAME_MAX} characters.`;
-  if (input.venueAddress.length > ADDRESS_MAX) return `The venue address is at most ${ADDRESS_MAX} characters.`;
-  if (input.dateLabel.length > LABEL_MAX) return `The date column header is at most ${LABEL_MAX} characters.`;
-  if (input.defaultRole.length > ROLE_MAX) return `The default role is at most ${ROLE_MAX} characters.`;
+  if (input.venueAddress.length > ADDRESS_MAX)
+    return `The venue address is at most ${ADDRESS_MAX} characters.`;
+  if (input.dateLabel.length > LABEL_MAX)
+    return `The date column header is at most ${LABEL_MAX} characters.`;
+  if (input.defaultRole.length > ROLE_MAX)
+    return `The default role is at most ${ROLE_MAX} characters.`;
   if (normaliseList(input.excludedStaff).length > MAX_EXCLUDED_STAFF) {
     return `At most ${MAX_EXCLUDED_STAFF} excluded names.`;
   }
@@ -125,7 +132,9 @@ export interface RateInput {
 
 /** "18.98", "£18.98" → 18.98; anything else → null. */
 export function parseRate(text: string): number | null {
-  const value = String(text ?? '').replace(/^£/, '').trim();
+  const value = String(text ?? '')
+    .replace(/^£/, '')
+    .trim();
   if (!/^\d{1,6}(\.\d{1,2})?$/.test(value)) return null;
   return Number(value);
 }
@@ -134,14 +143,16 @@ export function rateProblem(input: RateInput): string | null {
   const role = input.roleName.trim();
   if (role === '') return 'Name the role as it appears on the timesheet.';
   if (role.length > ROLE_MAX) return `The role name is at most ${ROLE_MAX} characters.`;
-  if (!Number.isFinite(input.chargeRate) || input.chargeRate < 0) return 'The charge rate cannot be negative.';
+  if (!Number.isFinite(input.chargeRate) || input.chargeRate < 0)
+    return 'The charge rate cannot be negative.';
   if (input.chargeRate > RATE_MAX) return 'That charge rate is too large.';
   if (Math.round(input.chargeRate * 100) / 100 !== input.chargeRate) {
     return 'The charge rate is in pounds and pence, e.g. 18.98.';
   }
   const aliases = normaliseList(input.aliases);
   if (aliases.length > MAX_ALIASES) return `At most ${MAX_ALIASES} aliases for one role.`;
-  if (aliases.some((alias) => alias.length > ROLE_MAX)) return `An alias is at most ${ROLE_MAX} characters.`;
+  if (aliases.some((alias) => alias.length > ROLE_MAX))
+    return `An alias is at most ${ROLE_MAX} characters.`;
   return null;
 }
 

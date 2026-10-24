@@ -98,8 +98,14 @@ export function ConfirmScreen({
         vatRate,
       ),
     );
-    const sum = (f: (s: (typeof all)[number]) => number) => Math.round(all.reduce((a, s) => a + f(s) * 100, 0)) / 100;
-    return { all, subtotal: sum((s) => s.subtotal), vat: sum((s) => s.vat), total: sum((s) => s.total) };
+    const sum = (f: (s: (typeof all)[number]) => number) =>
+      Math.round(all.reduce((a, s) => a + f(s) * 100, 0)) / 100;
+    return {
+      all,
+      subtotal: sum((s) => s.subtotal),
+      vat: sum((s) => s.vat),
+      total: sum((s) => s.total),
+    };
   }, [groups, byId, vatRate]);
 
   async function confirm() {
@@ -140,10 +146,18 @@ export function ConfirmScreen({
           </p>
         </div>
         <div className="row pr-actions">
-          <Button size="sm" disabled={!canAct || busy} onClick={() => setGroups(singleGroup(rows, defaults))}>
+          <Button
+            size="sm"
+            disabled={!canAct || busy}
+            onClick={() => setGroups(singleGroup(rows, defaults))}
+          >
             One invoice
           </Button>
-          <Button size="sm" disabled={!canAct || busy} onClick={() => setGroups(splitByWeek(rows, defaults))}>
+          <Button
+            size="sm"
+            disabled={!canAct || busy}
+            onClick={() => setGroups(splitByWeek(rows, defaults))}
+          >
             Split by week
           </Button>
           <Button
@@ -158,11 +172,15 @@ export function ConfirmScreen({
       </div>
 
       {groups.map((group, index) => {
-        const groupRows = group.shiftIds.map((id) => byId.get(id)).filter((r): r is ShiftRow => !!r);
+        const groupRows = group.shiftIds
+          .map((id) => byId.get(id))
+          .filter((r): r is ShiftRow => !!r);
         const summary = totals.all[index]!;
         const po = group.poNumber.trim().toUpperCase();
         const dup = po ? duplicates.filter((d) => d.poNumber.trim().toUpperCase() === po) : [];
-        const sameSet = po ? groups.filter((g) => g !== group && g.poNumber.trim().toUpperCase() === po).length : 0;
+        const sameSet = po
+          ? groups.filter((g) => g !== group && g.poNumber.trim().toUpperCase() === po).length
+          : 0;
         const mine = problems.filter((p) => p.group === index);
         const range = dateRange(groupRows);
         const splitDate = splitAt[group.key] ?? '';
@@ -172,7 +190,12 @@ export function ConfirmScreen({
             title={`Invoice ${index + 1}`}
             actions={
               groups.length > 1 && group.shiftIds.length === 0 ? (
-                <Button size="sm" tone="ghost" disabled={!canAct || busy} onClick={() => setGroups((g) => removeGroup(g, group.key))}>
+                <Button
+                  size="sm"
+                  tone="ghost"
+                  disabled={!canAct || busy}
+                  onClick={() => setGroups((g) => removeGroup(g, group.key))}
+                >
                   Remove
                 </Button>
               ) : null
@@ -184,7 +207,11 @@ export function ConfirmScreen({
                 value={group.poNumber}
                 disabled={!canAct || busy}
                 maxLength={100}
-                error={showProblems && mine.some((p) => p.message.includes('PO number')) ? 'Required for this client.' : undefined}
+                error={
+                  showProblems && mine.some((p) => p.message.includes('PO number'))
+                    ? 'Required for this client.'
+                    : undefined
+                }
                 onChange={(e) => update(group.key, { poNumber: e.currentTarget.value })}
               />
               <UkDateField
@@ -209,7 +236,9 @@ export function ConfirmScreen({
                 label="Format"
                 value={group.format}
                 disabled={!canAct || busy}
-                onChange={(e) => update(group.key, { format: e.currentTarget.value as InvoiceFormat })}
+                onChange={(e) =>
+                  update(group.key, { format: e.currentTarget.value as InvoiceFormat })
+                }
               >
                 <option value="named">Named staff</option>
                 <option value="aggregated">Role aggregated</option>
@@ -265,7 +294,8 @@ export function ConfirmScreen({
 
             <details className="pr-rows-detail">
               <summary>
-                {plural(groupRows.length, 'row')} · {range.start ? `${ukDate(range.start)} – ${ukDate(range.end)}` : 'no dates'}
+                {plural(groupRows.length, 'row')} ·{' '}
+                {range.start ? `${ukDate(range.start)} – ${ukDate(range.end)}` : 'no dates'}
               </summary>
               <div className="pr-move-wrap">
                 <div className="row pr-split-row">
@@ -302,8 +332,14 @@ export function ConfirmScreen({
                       <tr key={r.id}>
                         <td className="mono">{ukDate(r.workDate)}</td>
                         <td>{r.kind === 'custom' ? r.description : r.staffName}</td>
-                        <td>{r.kind === 'custom' ? 'Expense' : (r.roleName ?? client.defaultRole ?? '')}</td>
-                        <td className="mono">{r.kind === 'custom' ? (r.quantity ?? '—') : hoursLabel(r.hours)}</td>
+                        <td>
+                          {r.kind === 'custom'
+                            ? 'Expense'
+                            : (r.roleName ?? client.defaultRole ?? '')}
+                        </td>
+                        <td className="mono">
+                          {r.kind === 'custom' ? (r.quantity ?? '—') : hoursLabel(r.hours)}
+                        </td>
                         <td className="mono">{gbp(r.amount)}</td>
                         {groups.length > 1 ? (
                           <td>
@@ -312,7 +348,9 @@ export function ConfirmScreen({
                               aria-label={`Move ${r.kind === 'custom' ? r.description : r.staffName} to invoice`}
                               value={group.key}
                               disabled={!canAct || busy}
-                              onChange={(e) => setGroups((g) => moveRow(g, r.id, e.currentTarget.value, byId))}
+                              onChange={(e) =>
+                                setGroups((g) => moveRow(g, r.id, e.currentTarget.value, byId))
+                              }
                             >
                               {groups.map((g, i) => (
                                 <option key={g.key} value={g.key}>
@@ -333,14 +371,19 @@ export function ConfirmScreen({
       })}
 
       {showProblems && problems.some((p) => p.group === null) ? (
-        <Alert tone="coral">{problems.filter((p) => p.group === null).map((p) => p.message).join(' ')}</Alert>
+        <Alert tone="coral">
+          {problems
+            .filter((p) => p.group === null)
+            .map((p) => p.message)
+            .join(' ')}
+        </Alert>
       ) : null}
       {error ? <Alert tone="coral">{error}</Alert> : null}
 
       <div className="pr-footer pr-footer-card">
         <p className="pr-total">
-          {plural(groups.length, 'invoice')} · Subtotal <b>{gbp(totals.subtotal)}</b> · VAT <b>{gbp(totals.vat)}</b> · Total{' '}
-          <b>{gbp(totals.total)}</b>
+          {plural(groups.length, 'invoice')} · Subtotal <b>{gbp(totals.subtotal)}</b> · VAT{' '}
+          <b>{gbp(totals.vat)}</b> · Total <b>{gbp(totals.total)}</b>
         </p>
         <div className="row pr-actions">
           <Link className="btn" href={`/invoices/process/${jobId}`}>

@@ -70,6 +70,7 @@ describe('navigation per role', () => {
     '/clients',
     '/roles',
     '/reports',
+    '/invoices',
     '/feedback',
     '/venues',
     '/settings',
@@ -89,13 +90,14 @@ describe('navigation per role', () => {
     expect(shown).not.toContain('/settings');
     expect(shown).not.toContain('/users');
     expect(shown).toContain('/reports');
+    expect(shown).toContain('/invoices');
     expect(shown).toContain('/roles');
     expect(shown).toContain('/activity');
   });
 
   it('a scheduler also loses Reports and Roles & rates, and keeps the operational screens', () => {
     const shown = hrefs('scheduler');
-    for (const hidden of ['/settings', '/users', '/reports', '/roles']) {
+    for (const hidden of ['/settings', '/users', '/reports', '/invoices', '/roles']) {
       expect(shown).not.toContain(hidden);
     }
     for (const kept of ['/dashboard', '/events', '/staff', '/clients', '/venues', '/feedback']) {

@@ -70,7 +70,8 @@ function Editor({
 
   const openLink = () => {
     const selection = window.getSelection();
-    saved.current = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+    saved.current =
+      selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
     setLinkOpen(true);
   };
 
@@ -93,16 +94,36 @@ function Editor({
   return (
     <div className="stack tight">
       <div className="inv-toolbar" role="toolbar" aria-label={`${label} formatting`}>
-        <Button size="sm" aria-label="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => run('bold')}>
+        <Button
+          size="sm"
+          aria-label="Bold"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => run('bold')}
+        >
           <b>B</b>
         </Button>
-        <Button size="sm" aria-label="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => run('italic')}>
+        <Button
+          size="sm"
+          aria-label="Italic"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => run('italic')}
+        >
           <i>I</i>
         </Button>
-        <Button size="sm" aria-label="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => run('underline')}>
+        <Button
+          size="sm"
+          aria-label="Underline"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => run('underline')}
+        >
           <u>U</u>
         </Button>
-        <Button size="sm" aria-label="Link" onMouseDown={(e) => e.preventDefault()} onClick={openLink}>
+        <Button
+          size="sm"
+          aria-label="Link"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={openLink}
+        >
           Link
         </Button>
       </div>
@@ -216,7 +237,9 @@ export function EmailModal({
   const saveTemplate = () => {
     try {
       window.localStorage.setItem(signatureKey(init.userId), signature);
-      setNote('Signature saved as your default for every invoice. The greeting and the invoice line fill in by themselves.');
+      setNote(
+        'Signature saved as your default for every invoice. The greeting and the invoice line fill in by themselves.',
+      );
     } catch {
       setNote('This browser would not keep it (private mode?).');
     }
@@ -283,8 +306,18 @@ export function EmailModal({
             </span>
           </span>
         </div>
-        <Input label="To" value={to} onChange={(e) => setTo(e.target.value)} hint="Separate addresses with commas. Starts as the client's invoice emails." />
-        <Input label="Cc" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="cc@example.com" />
+        <Input
+          label="To"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          hint="Separate addresses with commas. Starts as the client's invoice emails."
+        />
+        <Input
+          label="Cc"
+          value={cc}
+          onChange={(e) => setCc(e.target.value)}
+          placeholder="cc@example.com"
+        />
         <Input
           label="Bcc"
           value={bcc}
@@ -292,7 +325,12 @@ export function EmailModal({
           placeholder="bcc@example.com"
           hint="Remembered for you in this browser."
         />
-        <Input label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={300} />
+        <Input
+          label="Subject"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          maxLength={300}
+        />
 
         <div className="stack tight">
           <span className="label">Message</span>
@@ -300,7 +338,12 @@ export function EmailModal({
         </div>
         <div className="stack tight">
           <span className="label">Signature</span>
-          <Editor html={initialSignature} onChange={setSignature} label="Signature" className="sig" />
+          <Editor
+            html={initialSignature}
+            onChange={setSignature}
+            label="Signature"
+            className="sig"
+          />
           <div className="row">
             <Button size="sm" onClick={saveTemplate}>
               Save template
@@ -331,7 +374,9 @@ export function EmailModal({
                 }
               >
                 {attachment.label}{' '}
-                {attachment.size !== null ? <span className="muted">({fileSize(attachment.size)})</span> : null}
+                {attachment.size !== null ? (
+                  <span className="muted">({fileSize(attachment.size)})</span>
+                ) : null}
               </Checkbox>
             ))
           )}

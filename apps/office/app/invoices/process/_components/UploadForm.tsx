@@ -84,7 +84,10 @@ export function UploadForm({ clients, canAct }: { clients: TimesheetClient[]; ca
         uploaded.push({ fileId: slot.fileId, name: file.name, size: file.size, type: file.type });
       }
     } catch {
-      await abandonUpload(plan.jobId, plan.uploads.map((u) => u.path));
+      await abandonUpload(
+        plan.jobId,
+        plan.uploads.map((u) => u.path),
+      );
       setBusy(null);
       setErrors(['The upload did not finish. Check your connection and try again.']);
       return;
@@ -109,7 +112,9 @@ export function UploadForm({ clients, canAct }: { clients: TimesheetClient[]; ca
           void submit();
         }}
       >
-        <p className="sm muted">Select a client and upload one or more timesheet files to begin processing.</p>
+        <p className="sm muted">
+          Select a client and upload one or more timesheet files to begin processing.
+        </p>
 
         <fieldset className="pr-client" disabled={!canAct || busy !== null}>
           <legend className="label">Client</legend>
@@ -141,7 +146,9 @@ export function UploadForm({ clients, canAct }: { clients: TimesheetClient[]; ca
               ))
             )}
           </div>
-          <span className="hint">Only clients set to timesheet invoicing on their client card are listed.</span>
+          <span className="hint">
+            Only clients set to timesheet invoicing on their client card are listed.
+          </span>
         </fieldset>
 
         <div className="field">
@@ -237,10 +244,16 @@ export function UploadForm({ clients, canAct }: { clients: TimesheetClient[]; ca
         ) : null}
 
         <div className="row pr-actions">
-          <Button type="submit" tone="primary" disabled={!canAct || busy !== null || !chosen || files.length === 0}>
+          <Button
+            type="submit"
+            tone="primary"
+            disabled={!canAct || busy !== null || !chosen || files.length === 0}
+          >
             {busy ? 'Working…' : 'Upload & process'}
           </Button>
-          {!canAct ? <span className="xs muted">Your login is read-only, so uploading is switched off.</span> : null}
+          {!canAct ? (
+            <span className="xs muted">Your login is read-only, so uploading is switched off.</span>
+          ) : null}
         </div>
       </form>
     </Panel>

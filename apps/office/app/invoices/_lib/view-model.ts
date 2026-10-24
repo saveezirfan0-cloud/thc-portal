@@ -50,7 +50,10 @@ export function isoWeek(iso: string): { year: number; week: number } {
   const thursday = addDays(weekStart(iso), 3);
   const year = Number(thursday.slice(0, 4));
   const jan1 = `${year}-01-01`;
-  const week = Math.floor((Date.parse(`${thursday}T00:00:00Z`) - Date.parse(`${jan1}T00:00:00Z`)) / 86_400_000 / 7) + 1;
+  const week =
+    Math.floor(
+      (Date.parse(`${thursday}T00:00:00Z`) - Date.parse(`${jan1}T00:00:00Z`)) / 86_400_000 / 7,
+    ) + 1;
   return { year, week };
 }
 
@@ -68,7 +71,8 @@ function monthEnd(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export type InvoiceTab = 'all' | 'weekly' | 'monthly';
-export type QuickRange = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'quarter' | 'all';
+export type QuickRange =
+  'this-week' | 'last-week' | 'this-month' | 'last-month' | 'quarter' | 'all';
 export type StatusGroup = 'draft' | 'sent' | 'void';
 export type XeroFilter = '' | 'pending' | 'synced' | 'mismatch' | 'failed';
 export type SortKey = 'number' | 'date' | 'client' | 'total';
@@ -115,7 +119,10 @@ export const QUICK_RANGES: readonly { value: QuickRange; label: string }[] = [
 ];
 
 /** The dates a quick range stands for, in UK dates; `All` is open on both ends. */
-export function quickRange(range: QuickRange, today: string): { from: string | null; to: string | null } {
+export function quickRange(
+  range: QuickRange,
+  today: string,
+): { from: string | null; to: string | null } {
   switch (range) {
     case 'this-week': {
       const from = weekStart(today);
@@ -170,7 +177,9 @@ export function parseInvoiceView(params: Params, today: string): InvoiceView {
   // form (`f`) with no box ticked means nothing is ticked too.
   const rawStatus = params['status'];
   const statusParts =
-    rawStatus === undefined ? null : (Array.isArray(rawStatus) ? rawStatus : [rawStatus]).flatMap((p) => p.split(','));
+    rawStatus === undefined
+      ? null
+      : (Array.isArray(rawStatus) ? rawStatus : [rawStatus]).flatMap((p) => p.split(','));
   const statuses: StatusGroup[] =
     statusParts === null
       ? params['f'] !== undefined
@@ -375,11 +384,7 @@ export function toListRow(raw: RawInvoiceListRow): InvoiceListRow {
 
 /** "# / client / PO" search: every word must be in one of the three. */
 export function matchesSearch(row: InvoiceListRow, q: string): boolean {
-  const words = q
-    .toLowerCase()
-    .replace(/^#/, '')
-    .split(/\s+/)
-    .filter(Boolean);
+  const words = q.toLowerCase().replace(/^#/, '').split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
   const hay = `${row.number} ${row.clientName} ${row.poNumber ?? ''}`.toLowerCase();
   return words.every((word) => hay.includes(word.replace(/^#/, '')));
@@ -417,7 +422,11 @@ export function sortRows(rows: readonly InvoiceListRow[], view: InvoiceView): In
   });
 }
 
-export function paginate<T>(rows: readonly T[], page: number, size = PAGE_SIZE): {
+export function paginate<T>(
+  rows: readonly T[],
+  page: number,
+  size = PAGE_SIZE,
+): {
   rows: T[];
   page: number;
   pages: number;

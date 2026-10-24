@@ -53,4 +53,3 @@ export function invoicesCsv(rows: readonly InvoiceListRow[]): string {
 export function csvFileName(today: string): string {
   return `THC invoices ${today}.csv`;
 }
-

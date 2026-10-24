@@ -9,6 +9,7 @@ import { ClientModal } from '../ClientModal';
 import { ArchiveClient } from './ArchiveClient';
 import { ClientEvents } from './ClientEvents';
 import { Invoicing } from './Invoicing';
+import { TimesheetInvoicing } from './TimesheetInvoicing';
 import { LineupEmails } from './LineupEmails';
 import { ExcludeFromInvoicing } from './ExcludeFromInvoicing';
 import { NameBadges } from './NameBadges';
@@ -210,13 +211,25 @@ export function ClientCard({
           canWrite={canWrite && ratesVisible}
         />
 
+        {/* ADR-0210: invoiced from an uploaded timesheet, and the rate card for it.
+            Money, so finance only: a scheduler's card draws no panel. */}
+        {ratesVisible && data.timesheetInvoicing ? (
+          <TimesheetInvoicing
+            clientId={client.id}
+            settings={data.timesheetInvoicing}
+            rates={data.timesheetRates ?? []}
+            excludedFromEvents={data.excludeFromInvoicing}
+            canWrite={canWrite}
+          />
+        ) : null}
+
         {/* The audit trail (ADR-0055), after the scope's four blocks. */}
         <RecordHistory
           entity="client"
           id={client.id}
           title={
             <>
-              <span className="blk-n">8</span> History
+              <span className="blk-n">9</span> History
             </>
           }
         />

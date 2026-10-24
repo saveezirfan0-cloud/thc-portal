@@ -51,7 +51,14 @@ export interface ReviewScreenProps {
   canAct: boolean;
 }
 
-export function ReviewScreen({ jobId, client: initialClient, clients, initialRows, sources, canAct }: ReviewScreenProps) {
+export function ReviewScreen({
+  jobId,
+  client: initialClient,
+  clients,
+  initialRows,
+  sources,
+  canAct,
+}: ReviewScreenProps) {
   const router = useRouter();
   const [rows, setRows] = useState<ShiftRow[]>(() => sortRows(initialRows));
   const [client, setClient] = useState(initialClient);
@@ -59,14 +66,20 @@ export function ReviewScreen({ jobId, client: initialClient, clients, initialRow
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(true);
-  const [focus, setFocus] = useState<{ fileId: string | null; source: ShiftRow['source']; nonce: number } | null>(null);
+  const [focus, setFocus] = useState<{
+    fileId: string | null;
+    source: ShiftRow['source'];
+    nonce: number;
+  } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [clientModal, setClientModal] = useState(false);
 
   const counts = useMemo(() => countRows(rows), [rows]);
   const shown = useMemo(() => filterRows(rows, filter), [rows, filter]);
   const weekly = hasWeeklyRows(rows);
-  const showCount = rows.some((r) => r.kind === 'shift' && r.staffCount > 1) || client?.invoiceFormat === 'aggregated';
+  const showCount =
+    rows.some((r) => r.kind === 'shift' && r.staffCount > 1) ||
+    client?.invoiceFormat === 'aggregated';
   const disabled = !canAct;
 
   const setError = useCallback((id: string, message: string | null) => {
@@ -175,7 +188,11 @@ export function ReviewScreen({ jobId, client: initialClient, clients, initialRow
           <Button size="sm" onClick={() => setShowSource((v) => !v)} aria-pressed={showSource}>
             {showSource ? 'Hide source' : 'Show source'}
           </Button>
-          <Button size="sm" disabled={disabled || busy !== null} onClick={() => setClientModal(true)}>
+          <Button
+            size="sm"
+            disabled={disabled || busy !== null}
+            onClick={() => setClientModal(true)}
+          >
             Change client
           </Button>
           <Button
@@ -221,8 +238,12 @@ export function ReviewScreen({ jobId, client: initialClient, clients, initialRow
         <section className="panel pr-rows-panel" aria-label="Rows">
           {rows.length === 0 ? (
             <div className="panel-b">
-              <p className="strong">Nothing was read from the file{sources.length > 1 ? 's' : ''}.</p>
-              <p className="sm muted">Add the rows by hand below, or go back and upload a clearer copy.</p>
+              <p className="strong">
+                Nothing was read from the file{sources.length > 1 ? 's' : ''}.
+              </p>
+              <p className="sm muted">
+                Add the rows by hand below, or go back and upload a clearer copy.
+              </p>
             </div>
           ) : null}
           {rows.length > 0 && shown.length === 0 ? (
@@ -235,7 +256,9 @@ export function ReviewScreen({ jobId, client: initialClient, clients, initialRow
               <table className="tbl pr-table">
                 <thead>
                   <tr>
-                    <th scope="col" className="pr-col-status">Status</th>
+                    <th scope="col" className="pr-col-status">
+                      Status
+                    </th>
                     <th scope="col">Name</th>
                     <th scope="col">Staff ID</th>
                     <th scope="col">Event date</th>
@@ -246,8 +269,12 @@ export function ReviewScreen({ jobId, client: initialClient, clients, initialRow
                     {showCount ? <th scope="col">Staff</th> : null}
                     <th scope="col">Hours</th>
                     <th scope="col">Rate</th>
-                    <th scope="col" className="money">Total</th>
-                    <th scope="col"><span className="sr-only">Actions</span></th>
+                    <th scope="col" className="money">
+                      Total
+                    </th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,8 +312,9 @@ export function ReviewScreen({ jobId, client: initialClient, clients, initialRow
 
           <div className="pr-footer">
             <p className="pr-total" aria-live="polite">
-              Approved: <b>{plural(counts.approved, 'row')}</b> · Hours: <b>{hoursLabel(counts.approvedHours)}</b> · Total:{' '}
-              <b>{gbp(counts.approvedTotal)}</b> <span className="xs muted">ex VAT</span>
+              Approved: <b>{plural(counts.approved, 'row')}</b> · Hours:{' '}
+              <b>{hoursLabel(counts.approvedHours)}</b> · Total: <b>{gbp(counts.approvedTotal)}</b>{' '}
+              <span className="xs muted">ex VAT</span>
             </p>
             <Button
               tone="primary"
@@ -410,7 +438,10 @@ function RowView({
                 </Pill>
               ))}
               {lowConfidence ? (
-                <Pill tone="amber" title="The reading of this row was not confident — check it against the source">
+                <Pill
+                  tone="amber"
+                  title="The reading of this row was not confident — check it against the source"
+                >
                   Check reading {Math.round((row.confidence ?? 0) * 100)}%
                 </Pill>
               ) : null}
@@ -487,7 +518,9 @@ function RowView({
               value={row.breakMin}
               disabled={locked}
               onCommit={(v) =>
-                v === null || Number.isNaN(v) ? onBad('A break is a whole number of minutes.') : onEdit({ breakMin: v })
+                v === null || Number.isNaN(v)
+                  ? onBad('A break is a whole number of minutes.')
+                  : onEdit({ breakMin: v })
               }
             />
           )}
@@ -503,7 +536,9 @@ function RowView({
                 value={row.staffCount}
                 disabled={locked}
                 onCommit={(v) =>
-                  v === null || Number.isNaN(v) ? onBad('Enter the number of staff.') : onEdit({ staffCount: v })
+                  v === null || Number.isNaN(v)
+                    ? onBad('Enter the number of staff.')
+                    : onEdit({ staffCount: v })
                 }
               />
             )}
@@ -516,7 +551,9 @@ function RowView({
               value={row.quantity}
               invalid={has('no_quantity')}
               disabled={locked}
-              onCommit={(v) => (Number.isNaN(v) ? onBad('Enter a quantity.') : onEdit({ quantity: v }))}
+              onCommit={(v) =>
+                Number.isNaN(v) ? onBad('Enter a quantity.') : onEdit({ quantity: v })
+              }
             />
           ) : hoursEditable(row) && weekly ? (
             <NumberCell
@@ -524,10 +561,14 @@ function RowView({
               value={row.hours}
               invalid={has('no_hours')}
               disabled={locked}
-              onCommit={(v) => (Number.isNaN(v) ? onBad('Enter the hours as a number.') : onEdit({ hours: v }))}
+              onCommit={(v) =>
+                Number.isNaN(v) ? onBad('Enter the hours as a number.') : onEdit({ hours: v })
+              }
             />
           ) : (
-            <span className={`mono pr-calc${has('no_hours') ? ' bad' : ''}`}>{hoursLabel(row.hours)}</span>
+            <span className={`mono pr-calc${has('no_hours') ? ' bad' : ''}`}>
+              {hoursLabel(row.hours)}
+            </span>
           )}
         </td>
         <td>
@@ -537,7 +578,9 @@ function RowView({
             invalid={has('no_rate')}
             disabled={locked}
             placeholder="No rate"
-            onCommit={(v) => (Number.isNaN(v) ? onBad('Enter the rate as a number.') : onEdit({ rate: v }))}
+            onCommit={(v) =>
+              Number.isNaN(v) ? onBad('Enter the rate as a number.') : onEdit({ rate: v })
+            }
           />
         </td>
         <td className="money mono">{gbp(row.amount)}</td>
@@ -649,8 +692,8 @@ function ChangeClientModal({
     >
       <div className="stack">
         <p className="sm">
-          The rows are priced again from the new client’s rate card: any rate you typed on a staff row is cleared.
-          Expense lines keep their price.
+          The rows are priced again from the new client’s rate card: any rate you typed on a staff
+          row is cleared. Expense lines keep their price.
         </p>
         <Select label="Client" value={pick} onChange={(e) => setPick(e.currentTarget.value)}>
           {clients.map((c) => (

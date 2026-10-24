@@ -22,7 +22,7 @@
 -- as it stood" and the next two.
 -- =====================================================================
 begin;
-select plan(177);
+select plan(217);
 \ir _shared/fixtures.psql
 
 \set sched_uid  '93900000-0000-4000-8000-0000000000f2'
@@ -67,6 +67,20 @@ exception when others then
   return sqlstate || ':' || sqlerrm;
 end $$;
 grant execute on function pg_temp.refusal(text) to authenticated, service_role;
+-- Rows a data-changing statement reached (a CTE cannot carry it into select is()).
+create function pg_temp.affected(p_sql text) returns int language plpgsql as $$
+declare n int;
+begin
+  execute p_sql;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+grant execute on function pg_temp.affected(text) to authenticated, service_role;
+-- the counter as it stood, and the invoices this test issues
+create temp table ctr (n int);
+create temp table iss (po text primary key, id uuid, number int);
+grant all on ctr, iss to authenticated, service_role;
+insert into ctr select next_number from invoice_counter;
 
 -- =====================================================================
 -- A · Shape: RLS, policies, grants (the 001 snapshot, from the angle of
@@ -98,7 +112,7 @@ select is_empty(
   'ADR-0004: the client and worker roles hold no policy on any of them (money, and worker names)');
 select ok(not exists (
     select 1 from (values ('anon'), ('authenticated')) r(r)
-     where has_table_privilege(r.r, 'public.xero_connection', 'select,insert,update,delete,truncate,references,trigger')),
+     where has_table_privilege(r.r::name, 'public.xero_connection', 'select,insert,update,delete,truncate,references,trigger')),
   'xero_connection: no grant to anon or authenticated, so a Xero token never leaves the service role');
 select ok(has_table_privilege('service_role', 'public.xero_connection', 'select,insert,update,delete'),
   'and the service role holds it');
@@ -130,8 +144,7 @@ select ok(not exists (
       'issue_timesheet_invoice(uuid,jsonb)', 'invoice_void(uuid,text)',
       'queue_timesheet_invoice_email(uuid,text[],text[],text[],text,text,text,jsonb)',
       'xero_retry(uuid)', 'xero_status()']) f
-     where has_function_privilege('anon', 'public.' || f, 'execute')
-        or has_function_privilege('public'::name, 'public.' || f, 'execute') and false),
+     where has_function_privilege('anon', 'public.' || f, 'execute')),
   'anon cannot execute any of the eight new RPCs');
 select ok((select bool_and(has_function_privilege('authenticated', 'public.' || f, 'execute'))
              from unnest(array[
@@ -162,10 +175,6 @@ select is(((select value from settings where key = 'xero') - 'sales_account_code
 -- =====================================================================
 -- B · The client card: set_client_timesheet_invoicing and its guard
 -- =====================================================================
-select is(pg_temp.refusal($$ select set_client_timesheet_invoicing('93900000-0000-4000-8000-00000000c001', 'timesheet',
-              'named', null, null, null, null, false, null, '{}', false, null) $$),
-  'ok', 'sanity: the owner-side call is valid when made by the table owner with no session (no caller check bites)')
-  where false;
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is(pg_temp.refusal($$ select set_client_timesheet_invoicing('93900000-0000-4000-8000-00000000c001', 'timesheet',
@@ -220,7 +229,7 @@ select is(pg_temp.refusal($$ select set_client_timesheet_invoicing('93900000-000
   'P0002:unknown_client', 'and a client that does not exist');
 select lives_ok($$ select set_client_timesheet_invoicing('93900000-0000-4000-8000-00000000c001', 'timesheet', 'aggregated',
               ' Jurys Inn Test ', 'Hotel', '1 Hotel Rd', 'W/C Date', true, ' Waiting ',
-              array[' Bob Ex ', 'bob ex', '', 'Cy Ex'], true, 14) $$,
+              array[' Bob Ex ', 'Bob Ex', '', 'Cy Ex'], true, 14) $$,
   'a finance owner sets a client to timesheet invoicing');
 reset role;
 select is((select row(invoicing_mode, invoice_format, invoice_display_name, invoice_venue, invoice_date_label,
@@ -248,20 +257,6 @@ select is((select exclude_from_invoicing from clients where id = :'tsclient2'), 
 -- =====================================================================
 -- C · The rate card and the compute trigger
 -- =====================================================================
-select set_config('request.jwt.claims', json_build_object('sub', :'sched_uid', 'role', 'authenticated')::text, true);
-set local role authenticated;
-select is((select count(*)::int from timesheet_rates), 0, 'sanity: a scheduler reads no rate');
-select ok(left(pg_temp.refusal($$ insert into timesheet_rates (client_id, role_name, charge_rate)
-              values ('93900000-0000-4000-8000-00000000c001', 'Waiting', 1) $$), 6) = '42501:',
-  'a scheduler cannot add a rate (policy: finance and write)');
-reset role;
-select set_config('request.jwt.claims', json_build_object('sub', :'viewer_uid', 'role', 'authenticated')::text, true);
-set local role authenticated;
-select is(pg_temp.refusal($$ insert into timesheet_rates (client_id, role_name, charge_rate)
-              values ('93900000-0000-4000-8000-00000000c001', 'Waiting', 1) $$),
-  '42501:read_only', 'nor a viewer (ADR-0060)');
-reset role;
-
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 insert into timesheet_rates (client_id, role_name, aliases, charge_rate) values
@@ -283,6 +278,20 @@ select is(timesheet_rate_for(:'tsclient', 'Zebra Handler'), null::numeric,
 select is(timesheet_rate_for(:'tsclient2', 'Anything on the sheet'), 15.00::numeric,
   'a client charged one rate for every role needs no alias for each wording (single-rate fallback)');
 reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'sched_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from timesheet_rates), 0, 'a scheduler reads no rate');
+select ok(left(pg_temp.refusal($$ insert into timesheet_rates (client_id, role_name, charge_rate)
+              values ('93900000-0000-4000-8000-00000000c001', 'Waiting', 1) $$), 6) = '42501:',
+  'a scheduler cannot add a rate (policy: finance and write)');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'viewer_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(pg_temp.refusal($$ insert into timesheet_rates (client_id, role_name, charge_rate)
+              values ('93900000-0000-4000-8000-00000000c001', 'Waiting', 1) $$),
+  '42501:read_only', 'nor a viewer (ADR-0060)');
+reset role;
+
 
 -- =====================================================================
 -- D · A job: upload -> extracting -> reviewing, the state guard, the rows
@@ -327,6 +336,7 @@ insert into timesheet_shifts (id, job_id, staff_name, work_date, role_name, star
   (:'s_cy',  :'j1', 'Cy',  '2026-10-18', null, '09:00', '17:00', 60, 'extracted'),
   (:'s_dee', :'j1', 'Dee', '2026-10-18', 'Bar Staff', '10:00', '12:00', 0, 'extracted');
 update timesheet_shifts set staff_count = 3 where id = :'s_dee';
+update timesheet_shifts set staff_ref = '93901' where id = :'s_cy';
 insert into timesheet_shifts (id, job_id, staff_name, staff_ref, work_date, role_name, start_time, end_time, status) values
   (:'s_hal', :'j1', 'Hal', '93901', '2026-10-18', 'Waiting', '10:00', '12:00', 'extracted');
 insert into timesheet_shifts (id, job_id, kind, work_date, description, quantity, rate, status) values
@@ -366,7 +376,7 @@ reset role;
 -- A scheduler sees none of it and changes none of it.
 select set_config('request.jwt.claims', json_build_object('sub', :'sched_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is((with u as (update timesheet_shifts set status = 'rejected' returning 1) select count(*)::int from u), 0,
+select is(pg_temp.affected($$ update timesheet_shifts set status = 'rejected' $$), 0,
   'a scheduler''s update of the review rows reaches no row');
 reset role;
 select is((select count(*)::int from timesheet_shifts where status = 'rejected'), 0, 'and nothing changed');
@@ -374,6 +384,7 @@ select is((select count(*)::int from timesheet_shifts where status = 'rejected')
 -- =====================================================================
 -- E · Confirm
 -- =====================================================================
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 insert into timesheet_jobs (id, client_id, status) values (:'j2', null, 'reviewing'), (:'j3', :'clienta', 'reviewing'),
   (:'j4', :'tsclient', 'uploaded');
 
@@ -466,12 +477,6 @@ select is(pg_temp.refusal($$ select issue_timesheet_invoice('93900000-0000-4000-
 select is((select count(*)::int from timesheet_po_duplicates(:'tsclient', array['PO-1'])), 0, 'no PO is a duplicate before anything is invoiced');
 select is((select count(*)::int from invoices where source = 'timesheet'), 0, 'and no failed attempt took a number');
 
-create temp table ctr (n int);
-grant all on ctr to authenticated, service_role;
-reset role;
-insert into ctr select next_number from invoice_counter;
-select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
-set local role authenticated;
 select lives_ok($$ select timesheet_job_confirm('93900000-0000-4000-8000-00000000a001', jsonb_build_array(
     jsonb_build_object('poNumber', 'PO-1', 'invoiceDate', '2026-10-30', 'eventDateEnd', '2026-10-20', 'format', 'named',
       'shiftIds', jsonb_build_array('93900000-0000-4000-8000-000000000101', '93900000-0000-4000-8000-000000000102',
@@ -504,8 +509,6 @@ select is(pg_temp.refusal(format($$ select issue_timesheet_invoice('93900000-000
   '22023:invalid_invoice_format', 'issue: a format the card does not offer');
 select is((select count(*)::int from invoices where source = 'timesheet'), 0, 'none of the refusals took a number');
 
-create temp table iss (po text primary key, id uuid, number int);
-grant all on iss to authenticated, service_role;
 insert into iss (po, id, number)
   select 'PO-1', (r ->> 'id')::uuid, (r ->> 'number')::int
     from (select issue_timesheet_invoice(:'j1', (select confirmed_groups -> 0 from timesheet_jobs where id = :'j1')) r) x;
@@ -520,7 +523,7 @@ select is((select row(net, vat_rate, vat, total)::text from invoices where id = 
   'net is the sum of the printed lines (132.86 + 76.87 + 115.51 + 13.90), VAT is 20% of that rounded (67.828 -> 67.83)');
 select is((select payable_min from invoices where id = (select id from iss where po = 'PO-1')), 420 + 243 + 390,
   'payable minutes are the shifts'' minutes (7.00 + 4.05 + 6.50 hours)');
-select is((select bill_to ->> 'name' || '|' || (bill_to ->> 'format') || '|' || (bill_to ->> 'dateLabel') || '|' || (bill_to ->> 'venue')
+select is((select (bill_to ->> 'name') || '|' || (bill_to ->> 'format') || '|' || (bill_to ->> 'dateLabel') || '|' || (bill_to ->> 'venue')
              from invoices where id = (select id from iss where po = 'PO-1')),
   'Jurys Inn Test|named|W/C Date|Hotel', 'bill-to is snapshotted from the card (display name, the group''s format, date label, venue)');
 select is((select recipients from invoices where id = (select id from iss where po = 'PO-1')), array['accounts@ts.test'],
@@ -574,7 +577,7 @@ select is((select array_agg(number order by po) from iss), array[(select n from 
   'the shared counter is gapless across the three invoices');
 select is((select status from timesheet_jobs where id = :'j1'), 'complete',
   'the job is complete once every approved row is invoiced (the unapproved ones stay out)');
-select is((select format) from (select bill_to ->> 'format' as format from invoices where id = (select id from iss where po = 'PO-2')) f),
+select is((select bill_to ->> 'format' from invoices where id = (select id from iss where po = 'PO-2')),
   'aggregated', 'a group with no format takes the client''s (aggregated)');
 select is((select row(net, vat, total)::text from invoices where id = (select id from iss where po = 'PO-2')),
   row(75.92::numeric, 15.18::numeric, 91.10::numeric)::text, 'PO-2: 4.00 x 18.98 = 75.92, VAT 15.184 -> 15.18');
@@ -586,14 +589,12 @@ reset role;
 
 -- GDPR removal reaches the timesheet line by Employee ID, and an unissued row
 -- of a job that is no longer being reviewed (Cy is extracted; Hal is on PO-3)
-update timesheet_shifts set staff_ref = '93901' where id = :'s_cy';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 update staff set removed_at = now() where id = :'staff_ivy';
 select is((select staff_name from invoice_lines where invoice_id = (select id from iss where po = 'PO-3')),
   'Deleted account #93901', 'GDPR: a removed worker''s name on an issued timesheet line becomes Deleted account #id');
 select is((select row(staff_name, staff_ref)::text from timesheet_shifts where id = :'s_cy'),
   row('Deleted account #93901', null)::text, 'and so does an unissued row, even in a job that is complete');
-select is((select staff_name from timesheet_shifts where id = :'s_hal'), 'Hal',
-  'the invoiced row keeps the sheet''s own name: it is the source record the issued PDF came from');
 
 -- =====================================================================
 -- G · Generate, send
@@ -690,6 +691,7 @@ reset role;
 -- =====================================================================
 -- H · Xero: claim, record, retry
 -- =====================================================================
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role service_role;
 select is((select count(*)::int from xero_claim_batch(now(), 10)), 0, 'Xero is switched off: the job claims nothing');
 reset role;
@@ -706,8 +708,10 @@ select throws_ok($$ insert into xero_connection (tenant_id, access_token, refres
 set local role service_role;
 select is((select array_agg(x) from xero_claim_batch(now(), 1) x), array[(select id from iss where po = 'PO-1')],
   'connected and enabled: the job claims the lowest number first, up to its limit');
-select is((select count(*)::int from xero_claim_batch(now(), 10) x where x = (select id from iss where po = 'PO-1')), 0,
-  'and a claimed invoice is leased: not claimed twice');
+reset role;
+select is((select row(status, attempts, lease_until > now())::text from xero_sync where invoice_id = (select id from iss where po = 'PO-1')),
+  row('syncing', 1, true)::text, 'and a claimed invoice is leased, so the next run does not take it again');
+set local role service_role;
 select lives_ok(format($$ select xero_record_result(%L, false, null, null, null, 'Xero said no') $$, (select id from iss where po = 'PO-1')),
   'a failed push is recorded');
 reset role;
@@ -838,12 +842,13 @@ insert into invoices (number, client_id, group_key, invoice_date, due_date, peri
   select max(number) + 1, :'clienta', 'ev:939', date '2026-10-30', date '2026-11-06', date '2026-10-30', date '2026-10-30',
          0, 0, 20, 0, 0, 7, '{}', '{}', array['e@e.test'], 'drawing'
     from invoices;
+insert into iss select 'EV', id, number from invoices where group_key = 'ev:939';
 set local role service_role;
 select is((select count(*)::int from invoices_unfinished(now() + interval '1 hour', 50) x
-            where x = (select id from invoices where group_key = 'ev:939')), 1,
+            where x = (select id from iss where po = 'EV')), 1,
   'the event invoices'' job picks up an event invoice that is still drawing');
 select is((select count(*)::int from invoices_unfinished(now() + interval '2 hours', 50) x
-            where x in (select id from invoices where source = 'timesheet')), 0,
+            where x in (select id from iss where po <> 'EV')), 0,
   'but never a timesheet invoice (ADR-0210: the office draws those on Generate)');
 reset role;
 

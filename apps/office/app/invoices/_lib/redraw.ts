@@ -16,8 +16,12 @@ export async function redrawTimesheetInvoice(
     if (result && typeof result === 'object') {
       const r = result as { ok?: unknown; message?: unknown; error?: unknown };
       if (r.ok === false) {
-        const text = typeof r.message === 'string' ? r.message : typeof r.error === 'string' ? r.error : '';
-        return { ok: false, message: text || 'The invoice could not be drawn. Try again in a minute.' };
+        const text =
+          typeof r.message === 'string' ? r.message : typeof r.error === 'string' ? r.error : '';
+        return {
+          ok: false,
+          message: text || 'The invoice could not be drawn. Try again in a minute.',
+        };
       }
     }
     return { ok: true };

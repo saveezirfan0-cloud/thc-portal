@@ -61,6 +61,7 @@ const ITEMS: readonly NavItem[] = [
   { href: '/clients', label: 'Clients' },
   { href: '/roles', label: 'Roles' },
   { href: '/reports', label: 'Reports' },
+  { href: '/invoices', label: 'Invoices' },
   { href: '/feedback', label: 'Feedback' },
   { href: '/venues', label: 'Venues' },
   { href: '/settings', label: 'Settings', dividerBefore: true },

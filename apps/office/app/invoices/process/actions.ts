@@ -36,8 +36,7 @@ import type { ConfirmedGroup, PoDuplicate, ShiftRow, ShiftStatus, TimesheetClien
 type Failure = { error: string };
 
 const NO_PROJECT = 'This environment has no Supabase project.';
-const NOT_FINANCE =
-  'Timesheet invoicing is for owners and managers. Ask an owner if you need it.';
+const NOT_FINANCE = 'Timesheet invoicing is for owners and managers. Ask an owner if you need it.';
 
 /** Words for the codes `20261027100000_timesheet_invoicing.sql` raises. */
 const CODES: Readonly<Record<string, string>> = {
@@ -46,19 +45,25 @@ const CODES: Readonly<Record<string, string>> = {
   job_not_confirmed: 'This job is not waiting to be generated. Refresh the page.',
   job_not_found: 'That job no longer exists.',
   job_has_no_client: 'Choose a client for this job first.',
-  client_not_timesheet: 'This client is not set up for timesheet invoicing (client card, Invoicing).',
+  client_not_timesheet:
+    'This client is not set up for timesheet invoicing (client card, Invoicing).',
   po_required: 'This client needs a PO number on every invoice.',
   no_invoice_groups: 'There is nothing to invoice: approve at least one row.',
   empty_invoice_group: 'An invoice has no rows. Move rows into it or remove it.',
   shift_in_two_groups: 'A row is in two invoices. Each row belongs to one.',
   shift_not_approved: 'A row in this invoice is no longer approved. Refresh the page and check.',
   group_not_confirmed: 'That invoice was not part of the confirmed set. Go back and confirm again.',
-  illegal_timesheet_job_transition: 'The job cannot move to that step from where it is. Refresh the page.',
+  illegal_timesheet_job_transition:
+    'The job cannot move to that step from where it is. Refresh the page.',
   invalid_invoice_format: 'Choose Named staff or Role aggregated.',
   not_permitted: 'Your office role does not allow this. Ask an owner.',
 };
 
-function explain(error: { code?: string | null; message: string; details?: string | null }): string {
+function explain(error: {
+  code?: string | null;
+  message: string;
+  details?: string | null;
+}): string {
   return explainDbError(error, { codes: CODES, log: '[invoices/process]' });
 }
 
@@ -249,7 +254,10 @@ export async function finishUpload(input: {
 }
 
 /** The browser could not finish: clear what it left in the bucket (never a real job's files). */
-export async function abandonUpload(jobId: string, paths: string[]): Promise<{ ok: true } | Failure> {
+export async function abandonUpload(
+  jobId: string,
+  paths: string[],
+): Promise<{ ok: true } | Failure> {
   const denied = await guard();
   if (denied) return denied;
   const db = await officeDb();
@@ -257,7 +265,11 @@ export async function abandonUpload(jobId: string, paths: string[]): Promise<{ o
   if (exists.data) return { ok: true };
   const prefix = `timesheet-jobs/${jobId}/`;
   const mine = paths.filter((p) => p.startsWith(prefix) && !p.includes('..'));
-  if (mine.length > 0) await storageAdmin().storage.from(BUCKET).remove(mine).catch(() => undefined);
+  if (mine.length > 0)
+    await storageAdmin()
+      .storage.from(BUCKET)
+      .remove(mine)
+      .catch(() => undefined);
   return { ok: true };
 }
 
@@ -281,7 +293,8 @@ export async function retryExtraction(jobId: string): Promise<{ ok: true } | Fai
 // 2 · Review
 // ---------------------------------------------------------------------
 
-export type RowResult = { ok: true; row: ShiftRow; notice?: string } | (Failure & { row?: ShiftRow });
+export type RowResult =
+  { ok: true; row: ShiftRow; notice?: string } | (Failure & { row?: ShiftRow });
 
 async function readShift(db: any, jobId: string, shiftId: string) {
   const res = await db
@@ -294,7 +307,11 @@ async function readShift(db: any, jobId: string, shiftId: string) {
 }
 
 /** Edit one cell(s). The trigger recomputes hours, rate, amount and issues; the row is read back. */
-export async function updateShift(jobId: string, shiftId: string, patch: ShiftPatch): Promise<RowResult> {
+export async function updateShift(
+  jobId: string,
+  shiftId: string,
+  patch: ShiftPatch,
+): Promise<RowResult> {
   const denied = await guard();
   if (denied) return denied;
   const db = await officeDb();
@@ -307,7 +324,13 @@ export async function updateShift(jobId: string, shiftId: string, patch: ShiftPa
   if (!built.ok) return { error: built.error, row: before };
 
   const write = (set: Record<string, unknown>) =>
-    db.from('timesheet_shifts').update(set).eq('id', shiftId).eq('job_id', jobId).select(SHIFT_COLUMNS).maybeSingle();
+    db
+      .from('timesheet_shifts')
+      .update(set)
+      .eq('id', shiftId)
+      .eq('job_id', jobId)
+      .select(SHIFT_COLUMNS)
+      .maybeSingle();
 
   let res = await write(built.set);
   let notice: string | undefined;
@@ -318,7 +341,9 @@ export async function updateShift(jobId: string, shiftId: string, patch: ShiftPa
   }
   if (res.error) {
     return {
-      error: isIncomplete(res.error) ? incompleteMessage(res.error.details, 'That leaves the row incomplete') : explain(res.error),
+      error: isIncomplete(res.error)
+        ? incompleteMessage(res.error.details, 'That leaves the row incomplete')
+        : explain(res.error),
       row: before,
     };
   }
@@ -350,9 +375,13 @@ export async function setShiftStatus(
     .maybeSingle();
   if (res.error) {
     if (isIncomplete(res.error)) {
-      const why = res.error.details ? incompleteMessage(res.error.details, 'Cannot approve this row') : null;
+      const why = res.error.details
+        ? incompleteMessage(res.error.details, 'Cannot approve this row')
+        : null;
       return {
-        error: why ?? `Cannot approve this row: ${blockers(before).join(', ').toLowerCase() || 'it is incomplete'}.`,
+        error:
+          why ??
+          `Cannot approve this row: ${blockers(before).join(', ').toLowerCase() || 'it is incomplete'}.`,
         row: before,
       };
     }
@@ -378,7 +407,11 @@ export async function approveAllClean(
       .eq('job_id', jobId)
       .in('id', ids.slice(i, i + 100));
     if (res.error) {
-      return { error: isIncomplete(res.error) ? incompleteMessage(res.error.details, 'A row is incomplete') : explain(res.error) };
+      return {
+        error: isIncomplete(res.error)
+          ? incompleteMessage(res.error.details, 'A row is incomplete')
+          : explain(res.error),
+      };
     }
   }
   const after = await loadShiftRows(db, jobId);
@@ -470,7 +503,10 @@ export async function changeClient(
   for (const row of (approved.data ?? []) as { id: string }[]) {
     let res = await db.from('timesheet_shifts').update({ rate: null }).eq('id', row.id);
     if (res.error && isIncomplete(res.error)) {
-      res = await db.from('timesheet_shifts').update({ rate: null, status: 'extracted' }).eq('id', row.id);
+      res = await db
+        .from('timesheet_shifts')
+        .update({ rate: null, status: 'extracted' })
+        .eq('id', row.id);
       if (!res.error) demoted += 1;
     }
     if (res.error) return { error: explain(res.error) };
@@ -501,7 +537,9 @@ export async function discardJob(jobId: string): Promise<{ ok: true } | Failure>
   const approved = read.rows.filter((r) => r.status === 'approved').length;
   const invoiced = read.rows.filter((r) => r.invoiceId).length;
   if (invoiced > 0) {
-    return { error: `${invoiced} row${invoiced === 1 ? ' is' : 's are'} already on an invoice, so this job cannot be discarded.` };
+    return {
+      error: `${invoiced} row${invoiced === 1 ? ' is' : 's are'} already on an invoice, so this job cannot be discarded.`,
+    };
   }
   if (approved > 0) {
     return {
@@ -553,7 +591,11 @@ export async function confirmJob(
   const denied = await guard();
   if (denied) return denied;
   const db = await officeDb();
-  const job = await db.from('timesheet_jobs').select('id,status,client_id').eq('id', jobId).maybeSingle();
+  const job = await db
+    .from('timesheet_jobs')
+    .select('id,status,client_id')
+    .eq('id', jobId)
+    .maybeSingle();
   if (job.error) return { error: explain(job.error) };
   if (!job.data) return { error: CODES['job_not_found']! };
   if (!job.data.client_id) return { error: CODES['job_has_no_client']! };
@@ -591,7 +633,9 @@ export async function backToReview(jobId: string): Promise<{ ok: true } | Failur
     .limit(1);
   if (inv.error) return { error: explain(inv.error) };
   if ((inv.data ?? []).length > 0) {
-    return { error: 'An invoice has already been issued from this job, so it cannot go back to review.' };
+    return {
+      error: 'An invoice has already been issued from this job, so it cannot go back to review.',
+    };
   }
   const res = await db
     .from('timesheet_jobs')
@@ -601,7 +645,8 @@ export async function backToReview(jobId: string): Promise<{ ok: true } | Failur
     .select('id')
     .maybeSingle();
   if (res.error) return { error: explain(res.error) };
-  if (!res.data) return { error: 'This job is not waiting to be generated any more. Refresh the page.' };
+  if (!res.data)
+    return { error: 'This job is not waiting to be generated any more. Refresh the page.' };
   refresh(jobId);
   return { ok: true };
 }
@@ -642,7 +687,9 @@ export async function generateInvoices(jobId: string): Promise<GenerateResult | 
   if (job.data.status !== 'confirmed' && job.data.status !== 'complete') {
     return { error: CODES['job_not_confirmed']! };
   }
-  const groups = (Array.isArray(job.data.confirmed_groups) ? job.data.confirmed_groups : []) as ConfirmedGroup[];
+  const groups = (
+    Array.isArray(job.data.confirmed_groups) ? job.data.confirmed_groups : []
+  ) as ConfirmedGroup[];
   if (groups.length === 0) return { error: 'No invoices were confirmed for this job.' };
 
   const issuedMap = async (): Promise<Map<string, string>> => {

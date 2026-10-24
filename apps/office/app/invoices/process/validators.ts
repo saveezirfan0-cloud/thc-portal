@@ -9,7 +9,8 @@ export const MAX_FILES = 10;
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 export const ACCEPTED_EXTENSIONS = ['xlsx', 'xls', 'csv', 'pdf', 'jpg', 'jpeg', 'png'] as const;
 export const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.map((e) => `.${e}`).join(',');
-export const FILE_HELP = 'Excel (.xlsx, .xls, .csv), PDF, or image (JPG, PNG) — max 25 MB each, up to 10 files.';
+export const FILE_HELP =
+  'Excel (.xlsx, .xls, .csv), PDF, or image (JPG, PNG) — max 25 MB each, up to 10 files.';
 
 const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -126,7 +127,10 @@ export function validateGroups(
       problems.push({ group: i, message: `${label} has no rows. Move rows into it or remove it.` });
     }
     if (rules.poRequired && g.poNumber.trim() === '') {
-      problems.push({ group: i, message: `${label} needs a PO number — this client requires one.` });
+      problems.push({
+        group: i,
+        message: `${label} needs a PO number — this client requires one.`,
+      });
     }
     if (!isIsoDate(g.invoiceDate)) {
       problems.push({ group: i, message: `${label}: enter the invoice date as dd/mm/yyyy.` });
@@ -166,7 +170,10 @@ export function asFormat(value: unknown, fallback: InvoiceFormat): InvoiceFormat
 }
 
 /** Normalises whatever the client sent into the shape the RPC takes. */
-export function parseGroups(input: unknown, fallbackFormat: InvoiceFormat): ConfirmedGroup[] | null {
+export function parseGroups(
+  input: unknown,
+  fallbackFormat: InvoiceFormat,
+): ConfirmedGroup[] | null {
   if (!Array.isArray(input)) return null;
   const out: ConfirmedGroup[] = [];
   for (const raw of input) {

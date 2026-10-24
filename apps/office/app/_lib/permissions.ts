@@ -87,6 +87,7 @@ export const READ_ONLY_BANNER = {
 /** Which permission a Back Office section needs, by its route root. */
 export const ROUTE_PERMISSION: Readonly<Record<string, OfficePermission>> = {
   '/reports': 'finance',
+  '/invoices': 'finance',
   '/roles': 'finance',
   '/settings': 'settings',
   '/users': 'users',

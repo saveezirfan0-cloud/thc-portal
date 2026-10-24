@@ -47,7 +47,11 @@ export function DiscardButton({
         tone="ghost"
         disabled={disabled}
         aria-label={`Discard ${label}`}
-        title={blocked ? `${approved} approved row${approved === 1 ? '' : 's'} — open the job to invoice or reject them first` : 'Discard this job'}
+        title={
+          blocked
+            ? `${approved} approved row${approved === 1 ? '' : 's'} — open the job to invoice or reject them first`
+            : 'Discard this job'
+        }
         onClick={() => setOpen(true)}
       >
         Discard
@@ -71,16 +75,18 @@ export function DiscardButton({
         >
           <div className="stack">
             <p className="sm">
-              <b>{label}</b> leaves the Needs review list. Nothing is invoiced and no invoice number is taken. The
-              uploaded files are kept.
+              <b>{label}</b> leaves the Needs review list. Nothing is invoiced and no invoice number
+              is taken. The uploaded files are kept.
             </p>
             {blocked ? (
               <Alert tone="amber">
-                {approved} approved row{approved === 1 ? '' : 's'} would be lost, so this job cannot be discarded.
-                Open it and invoice the approved rows, or reject them first.
+                {approved} approved row{approved === 1 ? '' : 's'} would be lost, so this job cannot
+                be discarded. Open it and invoice the approved rows, or reject them first.
               </Alert>
             ) : (
-              <p className="sm muted">Only a job with no approved or invoiced rows can be discarded.</p>
+              <p className="sm muted">
+                Only a job with no approved or invoiced rows can be discarded.
+              </p>
             )}
             {error ? <Alert tone="coral">{error}</Alert> : null}
           </div>

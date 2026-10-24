@@ -28,17 +28,20 @@ export function ProcessingView({
         <span className="pr-spinner" aria-hidden="true" />
         <div>
           <p className="strong">
-            {status === 'uploaded' ? 'Starting…' : 'Reading the timesheet — this can take a minute or two.'}
+            {status === 'uploaded'
+              ? 'Starting…'
+              : 'Reading the timesheet — this can take a minute or two.'}
           </p>
           <p className="sm muted">
-            {clientName} · {fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`}. This page updates
-            by itself; you can leave it and come back from Process timesheet.
+            {clientName} · {fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`}.
+            This page updates by itself; you can leave it and come back from Process timesheet.
           </p>
         </div>
       </div>
       {stalled ? (
         <p className="sm coral" role="alert">
-          This is taking much longer than usual. If it is still here in a few minutes, tell a developer.
+          This is taking much longer than usual. If it is still here in a few minutes, tell a
+          developer.
         </p>
       ) : null}
     </Panel>

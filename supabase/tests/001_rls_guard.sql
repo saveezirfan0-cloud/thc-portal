@@ -68,10 +68,17 @@
 -- and 3: admin_read only, written by create_ticket(), add_ticket_comment()
 -- and update_ticket() (932); ticket_scope and ticket_time are admin_owner_read
 -- (ticket_tracker_allowed()), written by the six tracking functions.
+-- 20261027100000 (ADR-0210) added seven tables to assertion 1: timesheet_rates,
+-- timesheet_jobs, timesheet_files, timesheet_shifts, invoice_sends and
+-- xero_sync (assertion 3: admin_finance_read, plus admin_finance_write on
+-- rates / files / review rows and insert + update on jobs — pinned by exact
+-- set in 3b) and xero_connection, the one table in public with RLS on, NO
+-- policy and no grant to an API role on purpose (assertion 7 exempts it by
+-- name; 7b pins that it stays that way). 939 holds the rest.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(16);
+select plan(18);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -113,8 +120,10 @@ select bag_eq(
             ('willo_deliveries'),
             ('event_invoice_signoffs'),
             ('invoice_counter'),('invoices'),('invoice_event_links'),('invoice_lines'),
-            ('tickets'),('ticket_comments'),('ticket_scope'),('ticket_time') $$,
-  'RLS is enabled on all 71 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100) and willo_deliveries (ADR-0164, 20261020130200) and event_invoice_signoffs (ADR-0172, 20261021150000) and the four invoice tables (ADR-0176, 20261022100000) and tickets + ticket_comments + ticket_scope + ticket_time (ADR-0202, 20261025110000)'
+            ('tickets'),('ticket_comments'),('ticket_scope'),('ticket_time'),
+            ('timesheet_rates'),('timesheet_jobs'),('timesheet_files'),('timesheet_shifts'),
+            ('invoice_sends'),('xero_connection'),('xero_sync') $$,
+  'RLS is enabled on all 78 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) payroll_codes (ADR-0076, 20261002104000) and new_starter_reported (ADR-0091, 20261005140400) and invite_roster (ADR-0107, 20261008130000) and the six client shift requirement tables (ADR-0110, 20261008180000) and client_quiz_draws (ADR-0111, 20261009180000) and client_worker_requests (ADR-0135, 20261014170100) and willo_deliveries (ADR-0164, 20261020130200) and event_invoice_signoffs (ADR-0172, 20261021150000) and the four invoice tables (ADR-0176, 20261022100000) and tickets + ticket_comments + ticket_scope + ticket_time (ADR-0202, 20261025110000) and the seven timesheet-invoicing tables (ADR-0210, 20261027100000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -207,8 +216,30 @@ select bag_eq(
             ('willo_deliveries'),
             ('event_invoice_signoffs'),
             ('invoice_counter'),('invoices'),('invoice_event_links'),('invoice_lines'),
-            ('tickets'),('ticket_comments'),('ticket_scope'),('ticket_time') $$,
-  'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
+            ('tickets'),('ticket_comments'),('ticket_scope'),('ticket_time'),
+            ('timesheet_rates'),('timesheet_jobs'),('timesheet_files'),('timesheet_shifts'),
+            ('invoice_sends'),('xero_sync') $$,
+  'admin holds a policy on every RLS table except profiles (the one remaining known gap) and xero_connection (ADR-0210: service role only, no policy by design)'
+);
+
+-- 3b. The ADR-0210 tables, by exact policy set. Finance reads all six; rates,
+--     files and review rows are finance-and-write (FOR ALL); a job is
+--     inserted and updated, never deleted; the send history and the Xero
+--     state are written only by definer functions and the service role.
+--     xero_connection holds OAuth tokens and has no policy at all. polcmd:
+--     r select, a insert, w update, * all.
+select bag_eq(
+  $$ select c.relname::text || '.' || p.polname::text || ':' || p.polcmd::text
+       from pg_policy p join pg_class c on c.oid = p.polrelid
+      where c.relname in ('timesheet_rates', 'timesheet_jobs', 'timesheet_files', 'timesheet_shifts',
+                          'invoice_sends', 'xero_connection', 'xero_sync') $$,
+  $$ values ('timesheet_rates.admin_finance_read:r'::text), ('timesheet_rates.admin_finance_write:*'),
+            ('timesheet_files.admin_finance_read:r'), ('timesheet_files.admin_finance_write:*'),
+            ('timesheet_shifts.admin_finance_read:r'), ('timesheet_shifts.admin_finance_write:*'),
+            ('timesheet_jobs.admin_finance_read:r'), ('timesheet_jobs.admin_finance_write:a'),
+            ('timesheet_jobs.admin_finance_update:w'),
+            ('invoice_sends.admin_finance_read:r'), ('xero_sync.admin_finance_read:r') $$,
+  'ADR-0210: the timesheet-invoicing tables carry exactly these policies, all admin_finance_*; the client and worker roles hold none, and xero_connection holds none at all'
 );
 
 -- ---------------------------------------------------------------------
@@ -370,8 +401,21 @@ select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+        and c.relname <> 'xero_connection'  -- ADR-0210: deny-all on purpose, pinned by 7b
         and not exists (select 1 from pg_policy p where p.polrelid = c.oid) $$,
-  'every RLS table in public carries at least one policy; no table is deny-all by omission'
+  'every RLS table in public carries at least one policy, except xero_connection (7b); no table is deny-all by omission'
+);
+-- 7b. ... with ONE deliberate exception, pinned from the other side: the Xero
+--     connection (OAuth tokens, ADR-0210) is deny-all for every API role. A
+--     policy or a grant appearing on it is a token readable through PostgREST.
+select is_empty(
+  $$ select 'policy ' || p.polname::text from pg_policy p where p.polrelid = 'public.xero_connection'::regclass
+     union all
+     select r.r || ' holds ' || pr.pr
+       from (values ('anon'), ('authenticated')) r(r)
+       cross join (values ('select'), ('insert'), ('update'), ('delete'), ('truncate'), ('references'), ('trigger')) pr(pr)
+      where has_table_privilege(r.r::name, 'public.xero_connection', pr.pr) $$,
+  'ADR-0210: xero_connection (OAuth tokens) has no policy and no privilege for anon or authenticated: only the service role reaches it'
 );
 
 -- ---------------------------------------------------------------------

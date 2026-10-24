@@ -1,9 +1,9 @@
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
 import { todayInUk } from '../../reports/view-model';
-import { invoicesCsv } from '../_lib/csv';
+import { csvFileName, invoicesCsv } from '../_lib/csv';
 import { loadInvoiceList } from '../_lib/data';
-import { csvFileName, filterRows, parseInvoiceView, sortRows } from '../_lib/view-model';
+import { filterRows, parseInvoiceView, sortRows } from '../_lib/view-model';
 
 /**
  * "Export as CSV" on /invoices (ADR-0210): the invoices the filters keep, one

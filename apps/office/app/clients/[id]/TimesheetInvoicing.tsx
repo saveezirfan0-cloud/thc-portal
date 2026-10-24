@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Button, Checkbox, Chip, Input, Panel, SegToggle, Select, Textarea, toast } from '@thc/ui';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Chip,
+  Input,
+  Panel,
+  SegToggle,
+  Select,
+  Textarea,
+  toast,
+} from '@thc/ui';
 import { saveTimesheetInvoicing } from './timesheetActions';
 import {
   FORMAT_LABEL,
@@ -122,7 +133,9 @@ function SettingsView({
       <span className="stack tight">
         <span>{settings.defaultRole ?? none}</span>
         {settings.defaultRole && !defaultRoleOnCard(settings.defaultRole, rates) ? (
-          <span className="rp-amber xs">Not on the rate card below: a sheet with no role column gets no rate.</span>
+          <span className="rp-amber xs">
+            Not on the rate card below: a sheet with no role column gets no rate.
+          </span>
         ) : null}
       </span>
       <span className="k">Excluded staff</span>
@@ -167,8 +180,8 @@ function ModeNote({ mode }: { mode: InvoicingMode }) {
     </span>
   ) : (
     <span className="muted xs">
-      Its events are invoiced automatically from the sign-in log (ADR-0176), unless it is left out of
-      invoicing in General info.
+      Its events are invoiced automatically from the sign-in log (ADR-0176), unless it is left out
+      of invoicing in General info.
     </span>
   );
 }
@@ -197,7 +210,9 @@ function SettingsForm({
   const [staff, setStaff] = useState<string[]>(settings.excludedStaff);
   const [staffDraft, setStaffDraft] = useState('');
   const [poRequired, setPoRequired] = useState(settings.poRequired);
-  const [terms, setTerms] = useState(settings.paymentTermsDays === null ? '' : String(settings.paymentTermsDays));
+  const [terms, setTerms] = useState(
+    settings.paymentTermsDays === null ? '' : String(settings.paymentTermsDays),
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
 
@@ -215,7 +230,9 @@ function SettingsForm({
       return;
     }
     // A half-typed name is kept, not lost to Save.
-    const excludedStaff = normaliseList(staffDraft.trim() ? [...staff, ...staffDraft.split(/[,;\n]/)] : staff);
+    const excludedStaff = normaliseList(
+      staffDraft.trim() ? [...staff, ...staffDraft.split(/[,;\n]/)] : staff,
+    );
     const input = {
       mode,
       format,
@@ -261,7 +278,8 @@ function SettingsForm({
         {mode === 'timesheet' && settings.mode !== 'timesheet' ? (
           <Alert tone="amber">
             Saving also sets this client to <b>left out of invoicing</b> (ADR-0203): its events stop
-            being invoiced by the daily job. Invoices the system has already issued stay as they are.
+            being invoiced by the daily job. Invoices the system has already issued stay as they
+            are.
           </Alert>
         ) : null}
         {mode === 'events' && settings.mode === 'timesheet' && excludedFromEvents ? (
@@ -378,7 +396,9 @@ function SettingsForm({
 
       <div className="kv">
         <span className="k">Xero contact</span>
-        <span className="mono">{settings.xeroContactId ?? <span className="muted">Set by the first push</span>}</span>
+        <span className="mono">
+          {settings.xeroContactId ?? <span className="muted">Set by the first push</span>}
+        </span>
       </div>
 
       {error ? <Alert tone="coral">{error}</Alert> : null}

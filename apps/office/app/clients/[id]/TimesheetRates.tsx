@@ -8,7 +8,11 @@ import { cleanAliases, parseRate, rateProblem, splitList } from './timesheetInvo
 import type { TimesheetRateRow } from './types';
 
 const gbp = (n: number) =>
-  new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 2 }).format(n);
+  new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+  }).format(n);
 
 interface Draft {
   id: string | null;
@@ -85,8 +89,8 @@ export function TimesheetRates({
       title: `Remove ${row.role_name}?`,
       body: (
         <>
-          Invoices already issued keep the rate they were issued at. A timesheet row for this role (or its
-          aliases) gets no rate until it is added again.
+          Invoices already issued keep the rate they were issued at. A timesheet row for this role
+          (or its aliases) gets no rate until it is added again.
         </>
       ),
       confirm: 'Remove role',
@@ -153,7 +157,12 @@ export function TimesheetRates({
                         <Button size="sm" onClick={() => edit(row)} disabled={saving}>
                           Edit
                         </Button>{' '}
-                        <Button size="sm" tone="danger" onClick={() => remove(row)} disabled={saving}>
+                        <Button
+                          size="sm"
+                          tone="danger"
+                          onClick={() => remove(row)}
+                          disabled={saving}
+                        >
                           Remove
                         </Button>
                       </td>
@@ -184,17 +193,20 @@ export function TimesheetRates({
             placeholder="KP, Kitchen Porter (St Paul's)"
             hint="Other wordings that mean the same role, separated by commas."
           />
-          <InputRow>
-            <Addon leading>£</Addon>
-            <Input
-              label="Charge per hour"
-              inputMode="decimal"
-              value={draft.charge}
-              onChange={(event) => setDraft({ ...draft, charge: event.target.value })}
-              placeholder="18.98"
-              mono
-            />
-          </InputRow>
+          <div className="stack tight">
+            <span className="label">Charge per hour</span>
+            <InputRow>
+              <Addon leading>£</Addon>
+              <Input
+                aria-label="Charge per hour"
+                inputMode="decimal"
+                value={draft.charge}
+                onChange={(event) => setDraft({ ...draft, charge: event.target.value })}
+                placeholder="18.98"
+                className="mono"
+              />
+            </InputRow>
+          </div>
           {error ? <Alert tone="coral">{error}</Alert> : null}
           <div className="row">
             <Button tone="primary" onClick={save} disabled={saving}>

@@ -5,9 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Panel, useVisibleInterval } from '@thc/ui';
 import { retryExtraction } from '../actions';
+import { extractionErrorText } from '../view-model';
 
 /** The job could not be read. Shows why, and reads the files again on request. */
-export function ErrorView({ jobId, error, canAct }: { jobId: string; error: string | null; canAct: boolean }) {
+export function ErrorView({
+  jobId,
+  error,
+  canAct,
+}: {
+  jobId: string;
+  error: string | null;
+  canAct: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -33,10 +42,10 @@ export function ErrorView({ jobId, error, canAct }: { jobId: string; error: stri
   return (
     <Panel title="The files could not be read">
       <div className="stack">
-        <Alert tone="coral">{error ?? 'The timesheet could not be read.'}</Alert>
+        <Alert tone="coral">{extractionErrorText(error)}</Alert>
         <p className="sm muted">
-          Retry reads the same files again. If it fails again, upload a clearer copy — a straight-on photo or the
-          original spreadsheet reads best.
+          Retry reads the same files again. If it fails again, upload a clearer copy — a straight-on
+          photo or the original spreadsheet reads best.
         </p>
         {message ? <Alert tone="coral">{message}</Alert> : null}
         <div className="row pr-actions">

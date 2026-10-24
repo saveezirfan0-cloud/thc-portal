@@ -49,9 +49,24 @@ Implemented in `supabase/migrations/0001_init.sql`. This page explains the choic
 | `cancel_event(id, reason)` | Marks cancelled, cancels bookings, withdraws invites/applications, queues N12 to all three groups, stops auto-assign. |
 | `withdraw_booking`, `self_cancel_booking`, `request_p45`, `declare_conviction`, `gdpr_remove`, `reset_to_candidate`, `block_staff`, `unblock_staff`, `recheck_compliance` | Each implements exactly the list of consequences in its scope section and writes `audit_log`. |
 
+## Timesheet invoicing and Xero (ADR-0210, `20261027100000` + `20261027120000`)
+A second source of rows in the same `invoices` / `invoice_lines` tables (`invoices.source` = `events` | `timesheet`), numbered from the one `invoice_counter`.
+| Table / object | Purpose |
+|---|---|
+| `clients.invoicing_mode` (+ `invoice_format`, `invoice_display_name`, `invoice_venue`, `invoice_venue_address`, `invoice_date_label`, `omit_event_dates_in_subject`, `timesheet_default_role`, `timesheet_excluded_staff`, `po_required`, `payment_terms_days`, `xero_contact_id`) | The card's timesheet-invoicing settings, set by `set_client_timesheet_invoicing()` (finance, audited); a `timesheet` client is also `exclude_from_invoicing` (ADR-0203). `clients_invoice_details_guard` keeps them finance-only. |
+| `timesheet_rates` | Role name / aliases → charge rate per client (`timesheet_rate_for()`: name, alias, else the single rate). |
+| `timesheet_jobs` / `timesheet_files` / `timesheet_shifts` | One upload → extracted rows → review. `timesheet_shift_compute()` sets `hours` (to the minute), `rate`, `amount` (rounded per line), `issues`; a row with issues cannot be `approved`; an invoiced row is locked. Job states: `timesheet_job_transitions()`. |
+| `invoices` (+ `source`, `timesheet_job_id`, `voided_at`, `void_reason`, `sent_at`) | Status `drawing → generated → queued`, `failed`, `void` (`invoice_status_transitions()`); a void keeps its number. `invoices_unfinished()` takes `source = 'events'` only. |
+| `invoice_lines` (+ `hours`, `staff_count`, `quantity`, `timesheet_shift_id`; event / booking / times now nullable) | A timesheet line has a date and an amount, no event or booking. |
+| `invoice_sends` | Who sent which timesheet invoice to whom; the email is the `INV2` outbox row `INV2:<number>:<n>`. |
+| `xero_connection` | The connected organisation and its tokens. RLS on, **no policy, no grant to anon / authenticated**: service role only. |
+| `xero_sync` | One row per invoice that reaches `generated` / `queued`: `pending → syncing → synced \| mismatch \| failed`, `skipped` below `settings.xero.from_number` or voided before it was pushed. |
+Functions: `timesheet_po_duplicates`, `timesheet_job_confirm`, `issue_timesheet_invoice` (shared counter, gapless; VAT = round(sum of rounded lines × rate, 2)), `invoice_mark_generated` (service role), `invoice_void`, `queue_timesheet_invoice_email`, `xero_claim_batch` / `xero_record_result` (service role), `xero_retry`, `xero_status`. Mirrored in `packages/domain` (`state.ts`, `timesheetInvoice.ts`); pgTAP `939`.
+
 ## RLS summary
 - `admin`: all rows, all tables.
 - `staff`: own `staff` row, own bookings/docs/declarations/check logs/breaks/feedback-about-them (rating only), open shifts for their roles via `radar_v` (respects Wave 1/Wave 2 visibility and do-not-return), the `roles.pay_rate` of their own roles only.
 - `client`: `client_events_v`, `client_lineup_v`, `client_role_sections_v`, insert into `feedback`. No table exposes `charge_rate`, `pay_rate` or margin to a client. `client_events_v` is `security_invoker` and rides the `events` policy; the other two run with owner rights and carry the tenancy rule (`client_portal_visible()`) in their own body, because the tables beneath them are money-bearing and hold no client policy at all (ADR-0004, `0005_client_lineup.sql`).
 - The seven docs/19 additions (`20260930200100`): one `admin_read` policy each and **nothing** for staff, client or anon — the worker reads and writes through definer RPCs (ADR-0031), the office writes through audited definer RPCs, and no `client_*` view reads them (pgTAP `700`). GDPR removal reaches them through the `staff_removed_purge_additions` trigger on `staff.removed_at` (pgTAP `702`).
+- The seven ADR-0210 tables: `admin_finance_read` on six (money: a scheduler, client and worker read none), plus `admin_finance_write` on rates, files and review rows and insert + update on jobs; `invoice_sends` and `xero_sync` are written by definer functions and the service role only; `xero_connection` has no policy at all (`001` pins it).
 - Service role: Edge Functions and Next.js server actions only.

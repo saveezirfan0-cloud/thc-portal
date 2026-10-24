@@ -8,7 +8,9 @@ import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 
 export function supabaseConfigured(): boolean {
-  return Boolean(process.env['NEXT_PUBLIC_SUPABASE_URL'] && process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
+  return Boolean(
+    process.env['NEXT_PUBLIC_SUPABASE_URL'] && process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'],
+  );
 }
 
 /** The signed-in person's client: RLS decides (finance owners / managers write). */

@@ -104,8 +104,14 @@ export async function redrawInvoice(invoiceId: string): Promise<InvoiceActionRes
   const { invoice, problem } = await loadInvoiceDetail(invoiceId);
   if (problem) return { ok: false, message: problem };
   if (!invoice) return { ok: false, message: WORDING.codes.invoice_not_found };
-  if (invoice.source !== 'timesheet' || (invoice.status !== 'drawing' && invoice.status !== 'failed')) {
-    return { ok: false, message: 'Only a timesheet invoice that is drawing or failed can be re-drawn.' };
+  if (
+    invoice.source !== 'timesheet' ||
+    (invoice.status !== 'drawing' && invoice.status !== 'failed')
+  ) {
+    return {
+      ok: false,
+      message: 'Only a timesheet invoice that is drawing or failed can be re-drawn.',
+    };
   }
 
   const drawn = await redrawTimesheetInvoice(invoiceId);
@@ -136,10 +142,13 @@ export async function sendInvoiceEmail(
   input: SendInvoiceInput,
 ): Promise<InvoiceActionResult> {
   if (!UUID.test(invoiceId)) return { ok: false, message: WORDING.codes.invoice_not_found };
+  const clean = (list: readonly string[] | undefined) => [
+    ...new Set((list ?? []).map((a) => String(a).trim().toLowerCase()).filter(Boolean)),
+  ];
   const draft = {
-    to: (input.to ?? []).map((a) => String(a).trim().toLowerCase()).filter(Boolean),
-    cc: (input.cc ?? []).map((a) => String(a).trim().toLowerCase()).filter(Boolean),
-    bcc: (input.bcc ?? []).map((a) => String(a).trim().toLowerCase()).filter(Boolean),
+    to: clean(input.to),
+    cc: clean(input.cc),
+    bcc: clean(input.bcc),
     subject: String(input.subject ?? ''),
     bodyHtml: sanitiseEmailHtml(String(input.bodyHtml ?? '')),
   };
@@ -153,7 +162,10 @@ export async function sendInvoiceEmail(
 
   const allowed = new Map<string, AttachmentRef>();
   if (invoice.pdfPath) {
-    allowed.set(invoice.pdfPath, { path: invoice.pdfPath, name: invoice.fileName ?? `Invoice ${invoice.number}.pdf` });
+    allowed.set(invoice.pdfPath, {
+      path: invoice.pdfPath,
+      name: invoice.fileName ?? `Invoice ${invoice.number}.pdf`,
+    });
   }
   if (invoice.excel) allowed.set(invoice.excel.path, invoice.excel);
   for (const source of invoice.sources) allowed.set(source.path, source);

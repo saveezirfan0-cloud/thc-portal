@@ -27,12 +27,7 @@ export function InvoiceFilters({ view, clients }: { view: InvoiceView; clients: 
       <input type="hidden" name="f" value="1" />
       {view.tab !== 'all' ? <input type="hidden" name="tab" value={view.tab} /> : null}
       <div className="row">
-        <Select
-          name="client"
-          aria-label="Client"
-          className="inv-client"
-          defaultValue={view.client}
-        >
+        <Select name="client" aria-label="Client" className="inv-client" defaultValue={view.client}>
           <option value="">All clients</option>
           {clients.map((client) => (
             <option key={client.id} value={client.id}>
@@ -41,7 +36,12 @@ export function InvoiceFilters({ view, clients }: { view: InvoiceView; clients: 
           ))}
         </Select>
         <div className="daterange">
-          <UkDateField label="From (UK date)" labelHidden name="from" defaultValue={view.from ?? ''} />
+          <UkDateField
+            label="From (UK date)"
+            labelHidden
+            name="from"
+            defaultValue={view.from ?? ''}
+          />
           <span className="muted">→</span>
           <UkDateField label="To (UK date)" labelHidden name="to" defaultValue={view.to ?? ''} />
         </div>

@@ -72,7 +72,10 @@ export function JobsList({
                     <td>
                       <Pill tone={JOB_STATUS_TONE[job.status]}>{JOB_STATUS_LABEL[job.status]}</Pill>
                       {stale ? (
-                        <Pill tone="amber" title="Waiting for review for over a week — finish it or discard it">
+                        <Pill
+                          tone="amber"
+                          title="Waiting for review for over a week — finish it or discard it"
+                        >
                           {days} days old
                         </Pill>
                       ) : null}

@@ -2163,6 +2163,18 @@ export type Database = {
           pays_buffer: boolean;
           phone: string;
           staff_contact_point: string;
+          invoicing_mode: string;
+          invoice_format: string;
+          invoice_display_name: string | null;
+          invoice_venue: string | null;
+          invoice_venue_address: string | null;
+          invoice_date_label: string | null;
+          omit_event_dates_in_subject: boolean;
+          timesheet_default_role: string | null;
+          timesheet_excluded_staff: string[];
+          po_required: boolean;
+          payment_terms_days: number | null;
+          xero_contact_id: string | null;
         };
         ComputedFields: never;
         Insert: {
@@ -2180,6 +2192,18 @@ export type Database = {
           pays_buffer?: boolean;
           phone: string;
           staff_contact_point: string;
+          invoicing_mode?: string;
+          invoice_format?: string;
+          invoice_display_name?: string | null;
+          invoice_venue?: string | null;
+          invoice_venue_address?: string | null;
+          invoice_date_label?: string | null;
+          omit_event_dates_in_subject?: boolean;
+          timesheet_default_role?: string | null;
+          timesheet_excluded_staff?: string[];
+          po_required?: boolean;
+          payment_terms_days?: number | null;
+          xero_contact_id?: string | null;
         };
         Update: {
           contact_emails?: string[];
@@ -2196,6 +2220,18 @@ export type Database = {
           pays_buffer?: boolean;
           phone?: string;
           staff_contact_point?: string;
+          invoicing_mode?: string;
+          invoice_format?: string;
+          invoice_display_name?: string | null;
+          invoice_venue?: string | null;
+          invoice_venue_address?: string | null;
+          invoice_date_label?: string | null;
+          omit_event_dates_in_subject?: boolean;
+          timesheet_default_role?: string | null;
+          timesheet_excluded_staff?: string[];
+          po_required?: boolean;
+          payment_terms_days?: number | null;
+          xero_contact_id?: string | null;
         };
         Relationships: [
           {
@@ -3360,6 +3396,43 @@ export type Database = {
           loaded_at?: string;
           loaded_by?: string | null;
           payroll_id?: string | null;
+        };
+        Relationships: [];
+      };
+      invoice_sends: {
+        Row: {
+          bcc_emails: string[];
+          cc_emails: string[];
+          created_at: string;
+          id: number;
+          invoice_id: string;
+          outbox_key: string;
+          sent_by: string | null;
+          subject: string;
+          to_emails: string[];
+        };
+        ComputedFields: never;
+        Insert: {
+          bcc_emails?: string[];
+          cc_emails?: string[];
+          created_at?: string;
+          id?: never;
+          invoice_id: string;
+          outbox_key: string;
+          sent_by?: string | null;
+          subject: string;
+          to_emails: string[];
+        };
+        Update: {
+          bcc_emails?: string[];
+          cc_emails?: string[];
+          created_at?: string;
+          id?: never;
+          invoice_id?: string;
+          outbox_key?: string;
+          sent_by?: string | null;
+          subject?: string;
+          to_emails?: string[];
         };
         Relationships: [];
       };
@@ -6707,6 +6780,232 @@ export type Database = {
           },
         ];
       };
+      timesheet_files: {
+        Row: {
+          created_at: string;
+          file_name: string;
+          id: string;
+          job_id: string;
+          mime_type: string;
+          size_bytes: number;
+          storage_path: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          file_name: string;
+          id?: string;
+          job_id: string;
+          mime_type: string;
+          size_bytes: number;
+          storage_path: string;
+        };
+        Update: {
+          created_at?: string;
+          file_name?: string;
+          id?: string;
+          job_id?: string;
+          mime_type?: string;
+          size_bytes?: number;
+          storage_path?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'timesheet_files_job_id_fkey';
+            columns: ['job_id'];
+            isOneToOne: false;
+            referencedRelation: 'timesheet_jobs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      timesheet_jobs: {
+        Row: {
+          client_id: string | null;
+          confirmed_groups: Json | null;
+          created_at: string;
+          created_by: string | null;
+          error: string | null;
+          id: string;
+          notes: string | null;
+          status: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          client_id?: string | null;
+          confirmed_groups?: Json | null;
+          created_at?: string;
+          created_by?: string | null;
+          error?: string | null;
+          id?: string;
+          notes?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string | null;
+          confirmed_groups?: Json | null;
+          created_at?: string;
+          created_by?: string | null;
+          error?: string | null;
+          id?: string;
+          notes?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'timesheet_jobs_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      timesheet_rates: {
+        Row: {
+          aliases: string[];
+          charge_rate: number;
+          client_id: string;
+          created_at: string;
+          id: string;
+          role_name: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          aliases?: string[];
+          charge_rate: number;
+          client_id: string;
+          created_at?: string;
+          id?: string;
+          role_name: string;
+        };
+        Update: {
+          aliases?: string[];
+          charge_rate?: number;
+          client_id?: string;
+          created_at?: string;
+          id?: string;
+          role_name?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'timesheet_rates_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      timesheet_shifts: {
+        Row: {
+          amount: number | null;
+          break_min: number;
+          confidence: number | null;
+          created_at: string;
+          description: string | null;
+          end_time: string | null;
+          file_id: string | null;
+          hours: number | null;
+          id: string;
+          invoice_id: string | null;
+          issues: string[];
+          job_id: string;
+          kind: string;
+          original: Json | null;
+          quantity: number | null;
+          rate: number | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          role_name: string | null;
+          sort: number;
+          source: Json | null;
+          staff_count: number;
+          staff_name: string;
+          staff_ref: string | null;
+          start_time: string | null;
+          status: string;
+          work_date: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount?: number | null;
+          break_min?: number;
+          confidence?: number | null;
+          created_at?: string;
+          description?: string | null;
+          end_time?: string | null;
+          file_id?: string | null;
+          hours?: number | null;
+          id?: string;
+          invoice_id?: string | null;
+          issues?: string[];
+          job_id: string;
+          kind?: string;
+          original?: Json | null;
+          quantity?: number | null;
+          rate?: number | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          role_name?: string | null;
+          sort?: number;
+          source?: Json | null;
+          staff_count?: number;
+          staff_name?: string;
+          staff_ref?: string | null;
+          start_time?: string | null;
+          status?: string;
+          work_date?: string | null;
+        };
+        Update: {
+          amount?: number | null;
+          break_min?: number;
+          confidence?: number | null;
+          created_at?: string;
+          description?: string | null;
+          end_time?: string | null;
+          file_id?: string | null;
+          hours?: number | null;
+          id?: string;
+          invoice_id?: string | null;
+          issues?: string[];
+          job_id?: string;
+          kind?: string;
+          original?: Json | null;
+          quantity?: number | null;
+          rate?: number | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          role_name?: string | null;
+          sort?: number;
+          source?: Json | null;
+          staff_count?: number;
+          staff_name?: string;
+          staff_ref?: string | null;
+          start_time?: string | null;
+          status?: string;
+          work_date?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'timesheet_shifts_job_id_fkey';
+            columns: ['job_id'];
+            isOneToOne: false;
+            referencedRelation: 'timesheet_jobs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'timesheet_shifts_file_id_fkey';
+            columns: ['file_id'];
+            isOneToOne: false;
+            referencedRelation: 'timesheet_files';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       venue_types: {
         Row: {
           default_radius_m: number;
@@ -7063,6 +7362,86 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      xero_connection: {
+        Row: {
+          access_token: string;
+          connected_at: string;
+          connected_by: string | null;
+          expires_at: string;
+          id: boolean;
+          refresh_token: string;
+          scopes: string | null;
+          tenant_id: string;
+          tenant_name: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          access_token: string;
+          connected_at?: string;
+          connected_by?: string | null;
+          expires_at: string;
+          id?: boolean;
+          refresh_token: string;
+          scopes?: string | null;
+          tenant_id: string;
+          tenant_name?: string | null;
+        };
+        Update: {
+          access_token?: string;
+          connected_at?: string;
+          connected_by?: string | null;
+          expires_at?: string;
+          id?: boolean;
+          refresh_token?: string;
+          scopes?: string | null;
+          tenant_id?: string;
+          tenant_name?: string | null;
+        };
+        Relationships: [];
+      };
+      xero_sync: {
+        Row: {
+          attempts: number;
+          created_at: string;
+          invoice_id: string;
+          last_error: string | null;
+          lease_until: string | null;
+          status: string;
+          synced_at: string | null;
+          updated_at: string;
+          xero_invoice_id: string | null;
+          xero_status: string | null;
+          xero_total: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          attempts?: number;
+          created_at?: string;
+          invoice_id: string;
+          last_error?: string | null;
+          lease_until?: string | null;
+          status?: string;
+          synced_at?: string | null;
+          updated_at?: string;
+          xero_invoice_id?: string | null;
+          xero_status?: string | null;
+          xero_total?: number | null;
+        };
+        Update: {
+          attempts?: number;
+          created_at?: string;
+          invoice_id?: string;
+          last_error?: string | null;
+          lease_until?: string | null;
+          status?: string;
+          synced_at?: string | null;
+          updated_at?: string;
+          xero_invoice_id?: string | null;
+          xero_status?: string | null;
+          xero_total?: number | null;
+        };
+        Relationships: [];
       };
     };
     Views: {
@@ -12474,6 +12853,9 @@ export type Database = {
         };
         Returns: Json;
       };
+      invoice_document_data: { Args: { p_invoice: string }; Returns: Json };
+      invoice_mark_generated: { Args: { p_invoice: string }; Returns: undefined };
+      invoice_void: { Args: { p_invoice: string; p_reason: string }; Returns: undefined };
       is_edge_base_url: { Args: { p_url: string }; Returns: boolean };
       is_office_base_url: { Args: { p_url: string }; Returns: boolean };
       is_push_endpoint: { Args: { p_endpoint: string }; Returns: boolean };
@@ -12487,6 +12869,7 @@ export type Database = {
         Args: { p_first: string; p_last: string; p_staff: string };
         Returns: number;
       };
+      issue_timesheet_invoice: { Args: { p_group: Json; p_job: string }; Returns: Json };
       job_run_counts_idle: { Args: { p_counts: Json }; Returns: boolean };
       job_run_finish: {
         Args: { p_counts?: Json; p_error?: string; p_id: number; p_ok: boolean };
@@ -13423,6 +13806,19 @@ export type Database = {
         Args: { p_at: string; p_booking: string };
         Returns: undefined;
       };
+      queue_timesheet_invoice_email: {
+        Args: {
+          p_attachments: Json;
+          p_bcc: string[];
+          p_body_html: string;
+          p_cc: string[];
+          p_invoice: string;
+          p_reply_to: string;
+          p_subject: string;
+          p_to: string[];
+        };
+        Returns: Json;
+      };
       radar_wave1_exhausted: { Args: { p_shift: string }; Returns: boolean };
       ready_cutoff_applies: {
         Args: { p_confirmed_at: string; p_starts_at: string };
@@ -13765,6 +14161,23 @@ export type Database = {
       };
       set_client_name_badges: {
         Args: { p_client: string; p_on: boolean };
+        Returns: undefined;
+      };
+      set_client_timesheet_invoicing: {
+        Args: {
+          p_client: string;
+          p_date_label: string;
+          p_default_role: string;
+          p_display_name: string;
+          p_excluded_staff: string[];
+          p_format: string;
+          p_mode: string;
+          p_omit_dates: boolean;
+          p_po_required: boolean;
+          p_terms_days: number;
+          p_venue: string;
+          p_venue_address: string;
+        };
         Returns: undefined;
       };
       set_do_not_return: {
@@ -14808,6 +15221,17 @@ export type Database = {
         Returns: boolean;
       };
       term_letter_last_day: { Args: { p_ranges: unknown[] }; Returns: string };
+      timesheet_job_confirm: { Args: { p_groups: Json; p_job: string }; Returns: undefined };
+      timesheet_po_duplicates: {
+        Args: { p_client: string; p_pos: string[] };
+        Returns: {
+          invoice_date: string;
+          invoice_number: number;
+          po_number: string;
+          status: string;
+        }[];
+      };
+      timesheet_rate_for: { Args: { p_client: string; p_role: string }; Returns: number };
       turned_away_minutes: {
         Args: { p_attempt_at: string; p_starts_at: string };
         Returns: number;
@@ -15099,6 +15523,20 @@ export type Database = {
         Returns: Json;
       };
       wtr_optout_subject: { Args: { p_staff: string }; Returns: string };
+      xero_claim_batch: { Args: { p_limit?: number; p_now?: string }; Returns: string[] };
+      xero_record_result: {
+        Args: {
+          p_error: string;
+          p_invoice: string;
+          p_ok: boolean;
+          p_xero_invoice_id: string;
+          p_xero_status: string;
+          p_xero_total: number;
+        };
+        Returns: undefined;
+      };
+      xero_retry: { Args: { p_invoice: string }; Returns: undefined };
+      xero_status: { Args: Record<PropertyKey, never>; Returns: Json };
     };
     Enums: {
       app_role: 'admin' | 'client' | 'staff';

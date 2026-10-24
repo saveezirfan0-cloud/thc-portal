@@ -27,7 +27,8 @@ export function toClient(r: any): TimesheetClient {
   };
 }
 
-const clock = (v: unknown): string | null => (typeof v === 'string' && v.length >= 5 ? v.slice(0, 5) : null);
+const clock = (v: unknown): string | null =>
+  typeof v === 'string' && v.length >= 5 ? v.slice(0, 5) : null;
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 export function toShift(r: any): ShiftRow {
@@ -88,7 +89,9 @@ export function toJobSummary(r: any): JobSummary {
     notes: r.notes ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-    fileNames: Array.isArray(r.timesheet_files) ? r.timesheet_files.map((f: any) => f.file_name) : [],
+    fileNames: Array.isArray(r.timesheet_files)
+      ? r.timesheet_files.map((f: any) => f.file_name)
+      : [],
     rowCount: count(r.rows),
     approvedCount: count(r.approved),
   };
@@ -156,14 +159,17 @@ export async function loadShiftRows(
   return { rows, error: null };
 }
 
-export async function loadJob(jobId: string): Promise<{ detail: JobDetail | null; problem: string | null }> {
+export async function loadJob(
+  jobId: string,
+): Promise<{ detail: JobDetail | null; problem: string | null }> {
   const db = await officeDb();
   const jobRes = await db
     .from('timesheet_jobs')
     .select('id,client_id,status,notes,error,confirmed_groups,created_at')
     .eq('id', jobId)
     .maybeSingle();
-  if (jobRes.error) return { detail: null, problem: readProblem(jobRes.error, 'The job could not be read') };
+  if (jobRes.error)
+    return { detail: null, problem: readProblem(jobRes.error, 'The job could not be read') };
   if (!jobRes.data) return { detail: null, problem: null };
   const job = jobRes.data;
 
@@ -213,7 +219,10 @@ export async function loadJob(jobId: string): Promise<{ detail: JobDetail | null
       files,
       shifts,
     },
-    problem: readProblem(clientRes.error ?? filesRes.error ?? shiftError, 'The job could not be read'),
+    problem: readProblem(
+      clientRes.error ?? filesRes.error ?? shiftError,
+      'The job could not be read',
+    ),
   };
 }
 
@@ -297,7 +306,9 @@ export async function loadJobInvoices(
   const db = await officeDb();
   const res = await db
     .from('invoices')
-    .select('id,number,status,source,po_number,total,net,vat,invoice_date,bill_to,last_error,created_at')
+    .select(
+      'id,number,status,source,po_number,total,net,vat,invoice_date,bill_to,last_error,created_at',
+    )
     .eq('timesheet_job_id', jobId)
     .order('number');
   return {
@@ -314,7 +325,10 @@ export async function loadVatRate(): Promise<number> {
 }
 
 /** Every client set up for timesheet invoicing (the picker, Change client). */
-export async function loadTimesheetClients(): Promise<{ clients: TimesheetClient[]; problem: string | null }> {
+export async function loadTimesheetClients(): Promise<{
+  clients: TimesheetClient[];
+  problem: string | null;
+}> {
   const db = await officeDb();
   const res = await db
     .from('clients')

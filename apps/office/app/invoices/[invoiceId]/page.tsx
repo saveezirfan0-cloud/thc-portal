@@ -91,7 +91,13 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
             ]
           : []),
         ...(invoice.excel
-          ? [{ path: invoice.excel.path, label: invoice.excel.name, size: invoice.excel.size ?? null }]
+          ? [
+              {
+                path: invoice.excel.path,
+                label: invoice.excel.name,
+                size: invoice.excel.size ?? null,
+              },
+            ]
           : []),
         ...invoice.sources.map((source) => ({
           path: source.path,
@@ -108,7 +114,8 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
       title={`Invoice #${invoice.number}`}
       crumbs={
         <>
-          <Link href="/invoices">← Back to Invoices</Link> · {invoice.billTo.name || invoice.clientName}
+          <Link href="/invoices">← Back to Invoices</Link> ·{' '}
+          {invoice.billTo.name || invoice.clientName}
         </>
       }
       timezone={<ViewerZone />}
@@ -135,7 +142,8 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
 
         {invoice.status === 'void' ? (
           <Alert tone="coral">
-            <b>Void.</b> This invoice was voided {invoice.voidedAt ? `on ${ukStamp(invoice.voidedAt)} UK` : ''}
+            <b>Void.</b> This invoice was voided{' '}
+            {invoice.voidedAt ? `on ${ukStamp(invoice.voidedAt)} UK` : ''}
             {invoice.voidReason ? <>: &ldquo;{invoice.voidReason}&rdquo;</> : null}. Its number is
             retired and never reused.
             {xeroNote ? <> {xeroNote}</> : null}
@@ -163,7 +171,9 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
             <div className="kv">
               <span className="k">Client</span>
               <span>
-                <Link href={`/clients/${invoice.clientId}`}>{invoice.billTo.name || invoice.clientName}</Link>
+                <Link href={`/clients/${invoice.clientId}`}>
+                  {invoice.billTo.name || invoice.clientName}
+                </Link>
               </span>
               <span className="k">Contact</span>
               <span>{invoice.billTo.contact || <span className="muted">—</span>}</span>
@@ -186,13 +196,19 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
                   {SOURCE_LABEL[invoice.source]}
                 </Pill>
                 <Pill tone={invoice.billTo.format === 'named' ? 'cyan' : 'neutral'}>
-                  {FORMAT_LABEL[invoice.source === 'events' ? 'log' : (invoice.billTo.format ?? 'named')]}
+                  {
+                    FORMAT_LABEL[
+                      invoice.source === 'events' ? 'log' : (invoice.billTo.format ?? 'named')
+                    ]
+                  }
                 </Pill>
               </span>
               <span className="k">Invoice date</span>
               <span>
                 {ukDate(invoice.invoiceDate)}{' '}
-                <span className="muted">· due {ukDate(invoice.dueDate)} ({invoice.termsDays} days)</span>
+                <span className="muted">
+                  · due {ukDate(invoice.dueDate)} ({invoice.termsDays} days)
+                </span>
               </span>
               <span className="k">Xero</span>
               <XeroLine invoice={invoice} canWrite={canWrite} />
@@ -210,12 +226,16 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
                 <span>Amount due</span>
                 <span>{pounds(invoice.total)}</span>
               </div>
-              <div className="muted xs">{hours(hoursFromMin(invoice.payableMin))} payable hours</div>
+              <div className="muted xs">
+                {hours(hoursFromMin(invoice.payableMin))} payable hours
+              </div>
             </div>
           </div>
           {invoice.source === 'events' && canWrite && invoice.events[0] ? (
             <div className="rp-status" style={{ justifyContent: 'flex-start', marginTop: 12 }}>
-              {invoice.status === 'queued' || invoice.status === 'failed' || invoice.status === 'drawing' ? (
+              {invoice.status === 'queued' ||
+              invoice.status === 'failed' ||
+              invoice.status === 'drawing' ? (
                 <ResendInvoice
                   invoiceId={invoice.id}
                   eventId={invoice.events[0].id}
@@ -236,7 +256,8 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
           {invoice.source === 'timesheet' ? (
             <div className="stack tight">
               <span>
-                {invoice.lines.length} {invoice.lines.length === 1 ? 'row' : 'rows'} from the uploaded timesheet.
+                {invoice.lines.length} {invoice.lines.length === 1 ? 'row' : 'rows'} from the
+                uploaded timesheet.
               </span>
               {invoice.timesheetJobId ? (
                 <span>
@@ -271,8 +292,12 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
                 </span>
               </li>
               <li>
-                <span className="when">{invoice.sentAt ? `${ukStamp(invoice.sentAt)} UK` : '—'}</span>
-                <span>{invoice.sentAt ? <b>Sent</b> : <span className="muted">Not sent yet</span>}</span>
+                <span className="when">
+                  {invoice.sentAt ? `${ukStamp(invoice.sentAt)} UK` : '—'}
+                </span>
+                <span>
+                  {invoice.sentAt ? <b>Sent</b> : <span className="muted">Not sent yet</span>}
+                </span>
               </li>
               {invoice.voidedAt ? (
                 <li>
@@ -313,8 +338,12 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
                           <td>{send.by ?? 'Office'}</td>
                           <td>
                             {send.to.join(', ')}
-                            {send.cc.length > 0 ? <div className="muted xs">Cc {send.cc.join(', ')}</div> : null}
-                            {send.bcc.length > 0 ? <div className="muted xs">Bcc {send.bcc.join(', ')}</div> : null}
+                            {send.cc.length > 0 ? (
+                              <div className="muted xs">Cc {send.cc.join(', ')}</div>
+                            ) : null}
+                            {send.bcc.length > 0 ? (
+                              <div className="muted xs">Bcc {send.bcc.join(', ')}</div>
+                            ) : null}
                             <div className="muted xs">{send.subject}</div>
                           </td>
                         </tr>
@@ -341,7 +370,10 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
 
 function XeroLine({ invoice, canWrite }: { invoice: InvoiceDetail; canWrite: boolean }) {
   const x = invoice.xero;
-  if (!x) return <span className="muted">Not queued for Xero (queued once the invoice is generated)</span>;
+  if (!x)
+    return (
+      <span className="muted">Not queued for Xero (queued once the invoice is generated)</span>
+    );
   return (
     <span className="stack tight">
       <span className="row wrap">
@@ -361,11 +393,16 @@ function XeroLine({ invoice, canWrite }: { invoice: InvoiceDetail; canWrite: boo
       </span>
       {x.status === 'mismatch' && x.xeroTotal !== null ? (
         <span className="rp-coral sm">
-          Xero total {pounds(x.xeroTotal)} differs from ours {pounds(invoice.total)}. Check it in Xero.
+          Xero total {pounds(x.xeroTotal)} differs from ours {pounds(invoice.total)}. Check it in
+          Xero.
         </span>
       ) : null}
-      {x.lastError && x.status !== 'synced' ? <span className="muted sm">{x.lastError}</span> : null}
-      {x.syncedAt ? <span className="muted xs">Pushed as a Draft {ukStamp(x.syncedAt)} UK</span> : null}
+      {x.lastError && x.status !== 'synced' ? (
+        <span className="muted sm">{x.lastError}</span>
+      ) : null}
+      {x.syncedAt ? (
+        <span className="muted xs">Pushed as a Draft {ukStamp(x.syncedAt)} UK</span>
+      ) : null}
     </span>
   );
 }
@@ -418,13 +455,19 @@ function LineItems({ invoice }: { invoice: InvoiceDetail }) {
                 <td>{line.roleName}</td>
                 {timesheet && !aggregated ? (
                   <td>
-                    {line.kind === 'custom' ? <span className="muted">Expense</span> : line.staffName}{' '}
+                    {line.kind === 'custom' ? (
+                      <span className="muted">Expense</span>
+                    ) : (
+                      line.staffName
+                    )}{' '}
                     {line.employeeId !== null ? (
                       <span className="muted mono">{employeeIdLabel(line.employeeId)}</span>
                     ) : null}
                   </td>
                 ) : null}
-                {aggregated ? <td className="money">{line.kind === 'custom' ? '' : (line.staffCount ?? 1)}</td> : null}
+                {aggregated ? (
+                  <td className="money">{line.kind === 'custom' ? '' : (line.staffCount ?? 1)}</td>
+                ) : null}
                 {timesheet ? null : (
                   <td>
                     {line.startsAt && line.endsAt ? (
@@ -438,7 +481,9 @@ function LineItems({ invoice }: { invoice: InvoiceDetail }) {
                   <td className="money">{line.breakMin > 0 ? `${line.breakMin} min` : '—'}</td>
                 )}
                 <td className="money">
-                  {line.kind === 'custom' ? `${hours(line.quantity ?? 0)} ×` : hours(lineHours(line))}
+                  {line.kind === 'custom'
+                    ? `${hours(line.quantity ?? 0)} ×`
+                    : hours(lineHours(line))}
                 </td>
                 <td className="money">{pounds(line.rate)}</td>
                 <td className="money">{pounds(line.amount)}</td>

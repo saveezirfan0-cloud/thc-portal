@@ -80,7 +80,8 @@ export function safeEditorHtml(html: string): string {
         into.append(doc.createTextNode(child.textContent ?? ''));
       } else if (child.nodeType === 1) {
         const el = child as HTMLElement;
-        if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE'].includes(el.tagName)) return;
+        if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE'].includes(el.tagName))
+          return;
         if (!EDITOR_TAGS.has(el.tagName)) {
           clean(el, into);
           return;

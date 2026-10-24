@@ -23,11 +23,22 @@ const SORTABLE: Record<SortKey, string> = {
   total: 'Amount due',
 };
 
-function Head({ view, column, className }: { view: InvoiceView; column: SortKey; className?: string }) {
+function Head({
+  view,
+  column,
+  className,
+}: {
+  view: InvoiceView;
+  column: SortKey;
+  className?: string;
+}) {
   const on = view.sort === column;
   const nextDir = on && view.dir === 'desc' ? 'asc' : 'desc';
   return (
-    <th className={className} aria-sort={on ? (view.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+    <th
+      className={className}
+      aria-sort={on ? (view.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
       <Link
         className={`sort${on ? ' on' : ''}${on && view.dir === 'asc' ? ' asc' : ''}`}
         href={listHref(view, { sort: column, dir: nextDir, page: 1 })}
@@ -122,11 +133,17 @@ export function InvoiceTable({ rows, view }: { rows: InvoiceListRow[]; view: Inv
                     <span className="muted">—</span>
                   ) : (
                     <span className="inv-icons">
-                      <a href={pdfHref(row.id)} aria-label={`Download PDF for invoice ${row.number}`}>
+                      <a
+                        href={pdfHref(row.id)}
+                        aria-label={`Download PDF for invoice ${row.number}`}
+                      >
                         PDF
                       </a>
                       {row.source === 'timesheet' ? (
-                        <a href={excelHref(row.id)} aria-label={`Download Excel for invoice ${row.number}`}>
+                        <a
+                          href={excelHref(row.id)}
+                          aria-label={`Download Excel for invoice ${row.number}`}
+                        >
                           Excel
                         </a>
                       ) : null}

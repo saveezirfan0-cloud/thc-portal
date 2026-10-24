@@ -170,7 +170,7 @@ describe('the Back Office menu per office role', () => {
 
   it('shows an owner every section', () => {
     const markup = render('owner');
-    for (const href of ['/reports', '/roles', '/settings', '/users']) {
+    for (const href of ['/reports', '/invoices', '/roles', '/settings', '/users']) {
       expect(markup).toContain(`href="${href}"`);
     }
   });
@@ -185,7 +185,7 @@ describe('the Back Office menu per office role', () => {
 
   it('also drops Reports and Roles & rates for a scheduler', () => {
     const markup = render('scheduler');
-    for (const href of ['/reports', '/roles', '/settings', '/users']) {
+    for (const href of ['/reports', '/invoices', '/roles', '/settings', '/users']) {
       expect(markup).not.toContain(`href="${href}"`);
     }
     for (const href of ['/events', '/staff', '/clients', '/venues', '/activity', '/account']) {
