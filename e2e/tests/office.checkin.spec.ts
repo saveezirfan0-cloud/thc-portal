@@ -103,7 +103,7 @@ test('the monitor lists today’s event with each worker’s live status (§9.5)
   await expect(checkIn(curlew)).toHaveText(/^\d{2}:\d{2}/);
   await expect(checkIn(curlew).locator('.sub')).toContainText('on site');
   await expect(checkIn(dunlin)).toHaveText('—');
-  // Check-out has its own column (ADR-0207): nothing while on shift, and
+  // Check-out has its own column (ADR-0209): nothing while on shift, and
   // nothing on a No check-out — RULE-02 never defaults a finish.
   await expect(checkOut(curlew)).toHaveText('—');
   await expect(checkOut(avocet)).toHaveText('—');

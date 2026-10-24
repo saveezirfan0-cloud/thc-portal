@@ -19,7 +19,7 @@ export const STATUS_LABEL: Record<MonitorStatus, string> = {
  * no zone suffix (§1.8) — the one scheduled time §1.8 deliberately shows in
  * local time only; the pill is too narrow for a label, and the Window column
  * beside it already carries UK and local (audit D30). "Checked out" carries
- * no time: the stamp has its own Check-out column (ADR-0207).
+ * no time: the stamp has its own Check-out column (ADR-0209).
  */
 export function statusLabel(
   row: Pick<MonitorRow, 'status' | 'startsAt'>,
@@ -65,7 +65,7 @@ export function pastEndText(minutes: number): string {
 }
 
 /**
- * The Check-out column (ADR-0207): the recorded finish, shown only once the
+ * The Check-out column (ADR-0209): the recorded finish, shown only once the
  * row is Checked out — a No check-out has no finish until the office enters
  * one (RULE-02), and an on-shift row has none yet. Viewer-local, like the
  * check-in stamp (§1.8).

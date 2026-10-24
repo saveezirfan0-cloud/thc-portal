@@ -87,7 +87,7 @@ describe('the Due pill (§1.8, D30)', () => {
     expect(statusLabel(ROW, athens)).toBe('Due 17:00');
   });
 
-  it('a checked-out pill carries no time: the stamp has its own column (ADR-0207)', () => {
+  it('a checked-out pill carries no time: the stamp has its own column (ADR-0209)', () => {
     expect(statusLabel({ ...ROW, status: 'checked_out' }, () => 'X')).toBe('Checked out');
   });
 

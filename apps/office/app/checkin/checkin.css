@@ -67,7 +67,7 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
-/* Check-in and Check-out are the readings THC watches most (ADR-0207): the
+/* Check-in and Check-out are the readings THC watches most (ADR-0209): the
    pair sits on a faint cyan ground under cyan headings, and the time itself
    is the cell's headline, a size up and bold, so it reads across the room. */
 .monitor-tbl th.stamp-h {

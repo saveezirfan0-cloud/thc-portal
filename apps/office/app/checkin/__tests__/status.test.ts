@@ -156,7 +156,7 @@ describe("the check-in stamp's second line (checkin.html)", () => {
   });
 });
 
-describe('the Check-out column (ADR-0207)', () => {
+describe('the Check-out column (ADR-0209)', () => {
   const end = '2026-10-14T22:30:00Z';
   const out = (checkOutAt: string | null, status: MonitorStatus = 'checked_out') =>
     departureLine({ status, checkOutAt, endsAt: end });

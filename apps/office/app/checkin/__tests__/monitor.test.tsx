@@ -106,7 +106,7 @@ describe('/checkin (§9.5)', () => {
     expect(html).toContain('>LM<');
   });
 
-  it('shows Check-in and Check-out as their own columns, the times as headlines (ADR-0207)', () => {
+  it('shows Check-in and Check-out as their own columns, the times as headlines (ADR-0209)', () => {
     const html = renderToStaticMarkup(<MonitorScreen rows={[ROW]} violations={[]} />);
     expect(html).toContain('<th class="stamp-h">Check-in</th><th class="stamp-h">Check-out</th>');
     // 11:21 UTC = 12:21 UK on the first paint.
@@ -173,7 +173,7 @@ describe('/checkin (§9.5)', () => {
       expect(html).not.toMatch(/scheduled end/i);
     });
 
-    it('puts the finish in its own Check-out column, the pill carrying no time (ADR-0207)', () => {
+    it('puts the finish in its own Check-out column, the pill carrying no time (ADR-0209)', () => {
       const html = renderToStaticMarkup(<MonitorScreen rows={[LATE]} violations={[]} />);
       expect(html).toMatch(/<span class="pill coral"[^>]*>Checked out<\/span>/);
       expect(html).toContain(

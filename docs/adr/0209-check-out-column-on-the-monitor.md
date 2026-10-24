@@ -1,4 +1,4 @@
-# ADR-0207 · A Check-out column on the live monitor
+# ADR-0209 · A Check-out column on the live monitor
 
 **Status:** Accepted (request of THC, 24.10.2026) · `/checkin` · scope §9.5 (adds a column to its table)
 

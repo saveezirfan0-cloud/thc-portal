@@ -32,7 +32,7 @@ import { useViewerZone } from './useViewerZone';
  *            show different hours.
  *   Check-in an ACTUAL stamp, so it shows the viewer's zone only — the
  *            manager wants to know what their own clock said.
- *   Check-out the same, once the row is Checked out (ADR-0207): the two
+ *   Check-out the same, once the row is Checked out (ADR-0209): the two
  *            readings THC watches most, so each is its own column with the
  *            time as the cell's headline, not a word on the Status pill.
  *   Due      the pill carries the scheduled start in the VIEWER's zone with
