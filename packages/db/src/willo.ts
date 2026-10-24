@@ -424,7 +424,25 @@ const STAGE_PATHS = [
   'new_stage.name',
   'new_stage',
 ];
-const TIME_PATHS = ['occurred_at', 'created_at', 'timestamp', 'data.created_at', 'data.updated_at'];
+/**
+ * Where the event's own time is, most specific first. A real Willo delivery
+ * is the PARTICIPANT (16.10.2026 shape): its `created_at` is when the
+ * interview was sent, which can be weeks before the stage change, so it is
+ * the last resort. `status_changed_at` is the change itself and
+ * `updated_at` the participant's latest activity. Read the other way round,
+ * an acceptance more than a week after the invitation was refused as a
+ * stale replay (TK-10, 24.10.2026).
+ */
+const TIME_PATHS = [
+  'occurred_at',
+  'status_changed_at',
+  'data.status_changed_at',
+  'timestamp',
+  'updated_at',
+  'data.updated_at',
+  'created_at',
+  'data.created_at',
+];
 const DELIVERY_PATHS = ['id', 'event_id', 'delivery_id', 'uuid'];
 const EMAIL_PATHS = [
   'email',
@@ -661,12 +679,16 @@ export function willoMaxEventAgeHours(env: EnvReader): number {
 }
 
 /**
- * A delivery whose own time (occurred_at / created_at / timestamp in the
- * body) is older than the window. A delivery that names no time, or one the
+ * A delivery whose own time (TIME_PATHS: occurred_at / status_changed_at /
+ * timestamp / updated_at / created_at in the body) is older than the window. A delivery that names no time, or one the
  * receiver cannot read, is not stale: there is nothing to judge, and the
  * database's key still stops an exact replay.
  */
-export function isStaleEvent(occurredAt: string | null, nowMs: number, maxAgeHours: number): boolean {
+export function isStaleEvent(
+  occurredAt: string | null,
+  nowMs: number,
+  maxAgeHours: number,
+): boolean {
   if (!occurredAt) return false;
   const ms = Date.parse(occurredAt);
   if (!Number.isFinite(ms)) return false;

@@ -7,6 +7,7 @@ import {
   eventTime,
   isPermanentRefusal,
   parseTimestamp,
+  isStaleEvent,
   parseWilloEvent,
   readInviteAnswer,
   signatureCandidates,
@@ -383,6 +384,50 @@ describe('the payload → a settings.willo_stage_map key', () => {
         email: 'jo.self@example.test',
         details: {},
       },
+    });
+  });
+
+  // TK-10 (24.10.2026): a candidate invited on 12.10 and accepted on 24.10
+  // was refused as a stale replay, because the participant's created_at (the
+  // invitation) was read as the event's time.
+  it('dates a participant-shaped delivery by its status change, not by when the interview was sent', () => {
+    const body = JSON.stringify({
+      key: OURS,
+      email: 'gab@example.test',
+      status: 'Accepted',
+      status_changed_at: '2026-10-24T14:22:10.123456Z',
+      created_at: '2026-10-12T13:04:36.992311Z',
+      updated_at: '2026-10-24T14:22:10.223456Z',
+      interview: { key: INTERVIEW, title: 'Front of House' },
+    });
+    const out = parseWilloEvent(body, { eventHint: 'stage_change' });
+    expect(out).toMatchObject({
+      ok: true,
+      event: { eventKey: 'accepted', occurredAt: '2026-10-24T14:22:10.123Z' },
+    });
+    const now = Date.parse('2026-10-24T14:22:16Z');
+    expect(out.ok && isStaleEvent(out.event.occurredAt, now, 168)).toBe(false);
+  });
+
+  it('falls back to updated_at, and to created_at only when nothing newer is named', () => {
+    const updatedOnly = JSON.stringify({
+      key: OURS,
+      status: 'Accepted',
+      created_at: '2026-10-12T13:04:36Z',
+      updated_at: '2026-10-24T14:00:00Z',
+    });
+    expect(parseWilloEvent(updatedOnly, { eventHint: 'stage_change' })).toMatchObject({
+      ok: true,
+      event: { occurredAt: '2026-10-24T14:00:00.000Z' },
+    });
+    const createdOnly = JSON.stringify({
+      key: OURS,
+      status: 'Accepted',
+      created_at: '2026-10-12T13:04:36Z',
+    });
+    expect(parseWilloEvent(createdOnly, { eventHint: 'stage_change' })).toMatchObject({
+      ok: true,
+      event: { occurredAt: '2026-10-12T13:04:36.000Z' },
     });
   });
 
