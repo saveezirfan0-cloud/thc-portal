@@ -280,8 +280,17 @@ export function ProfileScreen({
               <span>
                 Joined <b>{formatUkDate(profile.joined_at)}</b>
               </span>
-              {profile.email ? <span>{profile.email}</span> : null}
-              {profile.phone ? <span>{profile.phone}</span> : null}
+              {/* TK-20: labelled, like every other value in this row. */}
+              {profile.email ? (
+                <span>
+                  Email <b>{profile.email}</b>
+                </span>
+              ) : null}
+              {profile.phone ? (
+                <span>
+                  Mobile <b>{profile.phone}</b>
+                </span>
+              ) : null}
             </div>
             <div className="roles-edit">
               <span className="label">Roles</span>

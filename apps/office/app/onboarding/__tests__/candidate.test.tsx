@@ -303,6 +303,12 @@ describe('the candidate profile, Documents phase', () => {
     );
   });
 
+  it('labels the email and mobile under the name, like every other value (TK-20)', () => {
+    const html = render(data());
+    expect(html).toContain('Email <b>hana.k@example.com</b>');
+    expect(html).toContain('Mobile <b>+44 7700 900456</b>');
+  });
+
   it('renders no builder annotations', () => {
     const html = render(data());
     expect(html).not.toContain('class="annot');
