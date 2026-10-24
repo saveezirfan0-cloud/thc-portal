@@ -361,6 +361,14 @@ describe('4/11 Documents', () => {
     expect(footer(html)).toEqual({ label: 'Submit documents', disabled: true });
   });
 
+  // TK-14: passport uploads with glare were being rejected.
+  it('tells the candidate to turn the flash off for the passport photo page', () => {
+    const passport = requirementRows(state).find((row) =>
+      row.requirement.accepts.includes('passport'),
+    );
+    expect(passport?.requirement.hint).toContain('turn the flash off so there’s no glare');
+  });
+
   it('tells the candidate up front the term letter must be in date', () => {
     const html = renderToStaticMarkup(
       <DocumentsStep

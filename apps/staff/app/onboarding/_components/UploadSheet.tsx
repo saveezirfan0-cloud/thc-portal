@@ -125,6 +125,14 @@ export function UploadSheet({
       <div className="xs muted">
         PDF, JPG, PNG or HEIC · up to 10 MB · all pages of a multi-page letter, please.
       </div>
+      {/* TK-14 (THC, 24.10.2026): a photo with glare or a reflection on it is rejected. */}
+      {docType === 'passport' || docType === 'national_id' ? (
+        <Alert tone="cyan">
+          <b>Turn the flash off.</b> Lay your {docType === 'passport' ? 'passport' : 'ID card'} flat
+          in good light and make sure the whole photo page is sharp and readable. A photo with glare
+          or a reflection on it can’t be accepted and will be rejected.
+        </Alert>
+      ) : null}
       {docType === 'university_term_dates_letter' ? (
         <Alert tone="cyan">
           <b>Your letter must be in date.</b> The term dates printed on it must not have already
