@@ -421,7 +421,7 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
   outside_radius: {
     label: 'Outside the escalation radius',
     detail:
-      'the shift has started: the same-day escalation invites only within the radius of the venue set in Settings',
+      'the shift has started: the same-day escalation invites only within the radius of the venue set in Settings — you can still invite by hand',
     tone: 'neutral',
   },
 };
@@ -563,9 +563,26 @@ export function unavailableLabel(
   return `Marked unavailable · ${sorted.map((w) => ukWindowLabel(w, format)).join('; ')}`;
 }
 
-/** The confirm in front of Invite anyway, in the spirit of RULE-17's override. */
-export function inviteAnywayPrompt(name: string): string {
+/**
+ * The confirm in front of Invite anyway, in the spirit of RULE-17's override:
+ * the calendar (ADR-0043) or, once the shift has started, the escalation
+ * radius (ADR-0208) — both hold back the machine, never the office.
+ */
+export function inviteAnywayPrompt(name: string, reason: string = CALENDAR_GATE): string {
+  if (reason === 'outside_radius') {
+    return `${name} lives outside the same-day escalation radius of the venue, so auto-assign will not invite them now the shift has started. Invite anyway?`;
+  }
   return `${name} marked themselves unavailable for this time. Invite anyway?`;
+}
+
+/** No booking on this section, or one the office may reopen (D33). */
+function officeMayInviteAgain(
+  row: CandidateRow,
+  endedByStaff: ReadonlyMap<string, EndedBooking>,
+): boolean {
+  if (row.booking_status === null) return true;
+  const end = endedByStaff.get(row.staff_id);
+  return end !== undefined && officeMayReopen(end);
 }
 
 export interface EndedBooking {
@@ -626,7 +643,10 @@ export function buildUnavailable(
       reason: handedOver ? 'handed_over' : row.gate,
       ...copy,
       appliedAt: endedByStaff.get(row.staff_id)?.appliedAt ?? null,
-      inviteAnyway: false,
+      // ADR-0208: the radius is the escalation job's limit, not the
+      // office's — `office_invite_worker` judges a manual invite without it
+      // (§3.4: "the manager can always invite them by hand at any point").
+      inviteAnyway: row.gate === 'outside_radius' && officeMayInviteAgain(row, endedByStaff),
     });
   }
 

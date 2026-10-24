@@ -119,7 +119,8 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 > **Planned** are the five Staff App additions; their wireframes are stubs to be
 > refined by the owning bot. Changes to existing screens that have no row of their own:
 > `/events/:id` — "Marked unavailable · {UK window}" with **Invite anyway** in the
-> Unavailable section, Confirmed-row chips "Asked for cover:
+> Unavailable section (and, once the shift has started, on "Outside the escalation radius",
+> ADR-0208), Confirmed-row chips "Asked for cover:
 > {note}" / "Open to pool · until {UK}" with **Open to pool** / **Decline**, and "Handed over: {from} → {to}"
 > (`scheduling`); `/apply?ref=` hidden referral field and the consent line, `/privacy`
 > one sentence, `/onboarding/:id` "Referred by {name} ({employeeId})" and the kanban

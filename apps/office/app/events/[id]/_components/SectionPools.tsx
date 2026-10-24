@@ -122,14 +122,16 @@ export async function SectionPools({
               <div className="right">
                 <Pill tone={person.tone}>{person.label}</Pill>
                 {person.detail ? <span className="muted xs">{person.detail}</span> : null}
-                {/* ADR-0043: the calendar holds back the machine, not the
-                    office — behind a confirm, the ordinary manual invite. */}
+                {/* ADR-0043, ADR-0208: the calendar and the escalation radius
+                    hold back the machine, not the office — behind a confirm,
+                    the ordinary manual invite. */}
                 {person.inviteAnyway && canInvite && showPools ? (
                   <InviteAnyway
                     eventId={eventId}
                     shiftId={section.id}
                     staffId={person.staffId}
                     name={person.name}
+                    reason={person.reason}
                   />
                 ) : null}
               </div>
