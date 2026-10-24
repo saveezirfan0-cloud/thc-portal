@@ -109,8 +109,9 @@ export interface QueueFilter {
 }
 
 /**
- * Oldest first: "the menu counter is this number", and the one that has
- * waited longest is the one to do next (§4.1).
+ * Newest first (ADR-0210, TK-12/TK-13: THC, 24.10.2026, "the newest cases
+ * should be at the top and the oldest cases at the bottom"), departing from
+ * §4.1's oldest-first. The menu counter is still this number.
  */
 export function filterQueue(rows: readonly QueueRow[], filter: QueueFilter): QueueRow[] {
   const needle = filter.query.trim().toLowerCase();
@@ -126,7 +127,7 @@ export function filterQueue(rows: readonly QueueRow[], filter: QueueFilter): Que
     )
     .filter((row) => (types.length ? types.includes(row.item_type) : true))
     .sort(
-      (a, b) => a.submitted_at.localeCompare(b.submitted_at) || a.item_id.localeCompare(b.item_id),
+      (a, b) => b.submitted_at.localeCompare(a.submitted_at) || a.item_id.localeCompare(b.item_id),
     );
 }
 

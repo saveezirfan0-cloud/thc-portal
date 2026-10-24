@@ -36,6 +36,7 @@ import {
 } from './queue';
 import { canRescan } from './messages';
 import { RescanButton } from './RescanButton';
+import { ViewDocumentButton } from './ViewDocumentButton';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import { useReviewDialogs } from './ReviewDialogs';
@@ -61,7 +62,8 @@ type ColumnId = (typeof COLUMNS)[number]['id'];
 /**
  * Tab 1 · Needs review (§4.1).
  *
- * One row per item waiting on the office, oldest first. Verify and Reject on
+ * One row per item waiting on the office, newest first (ADR-0210). View,
+ * Verify and Reject on
  * every row; there is deliberately no "send reminder" anywhere on this screen
  * — the ladder runs itself (§4.2).
  *
@@ -162,7 +164,7 @@ export function ReviewTab({
           ))}
         </Select>
         <div className="right">
-          <span className="muted sm">Oldest first · the menu counter is this number</span>
+          <span className="muted sm">Newest first · the menu counter is this number</span>
           <ColumnChooser columns={columns} label="Needs review" />
         </div>
       </div>
@@ -257,6 +259,12 @@ function QueueLine({
   const actions = actionsFor(row);
   const decisions = (
     <>
+      {/* ADR-0210 (TK-12): read the file here, then decide on this row. */}
+      {row.kind === 'document' && row.file_path ? (
+        <>
+          <ViewDocumentButton docId={row.item_id} disabled={busy} />{' '}
+        </>
+      ) : null}
       {row.kind === 'document' && row.file_path && canRescan(row.item_type) ? (
         <>
           <RescanButton docId={row.item_id} disabled={busy} />{' '}
