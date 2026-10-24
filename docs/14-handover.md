@@ -562,6 +562,19 @@ Each of these cost a merge conflict or a red build:
   `20260923090000` and both fixed `age_18`; pgTAP `360` and ADR `0012` were
   taken twice. Fetch `main` and run `node scripts/check-file-numbering.mjs`
   before opening the PR, not after.
+- **A migration applied to the live project by hand stops every deploy.**
+  The Supabase connector's `apply_migration` records the migration under a
+  fresh timestamp of its own. If the file then reaches `main` under a
+  different number (or is renumbered afterwards), `supabase db push` refuses
+  with "Remote migration versions not found in local migrations directory" and
+  NOTHING later is applied, while the apps deploy anyway and read columns that
+  do not exist yet. On 23.10 three such versions (`20261023130000`,
+  `20261023180412`, `20261023180431`) stopped every deploy after #343, and the
+  Back Office client page failed on `clients.exclude_from_invoicing`. Fixed on
+  24.10 by putting each live version back in `supabase/migrations/` with the
+  body the live project ran. Ship migrations through `main`; if one ever has
+  to go in by hand, commit it under the version live recorded
+  (`list_migrations`) before anything else merges.
 - **Parallel builders duplicate helpers even when their files are disjoint.**
   On 23.09 six builders ran at once; merging found two `DocType`s, two share-code
   rules and two sets of verify functions. Before adding a type or a validator to
