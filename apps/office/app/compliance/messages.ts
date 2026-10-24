@@ -187,6 +187,11 @@ export function canRescan(docType: string): boolean {
   return RESCANNABLE.has(docType);
 }
 
+/** ADR-0212 (TK-18): a photo (JPG or PNG) the office may turn the right way up. */
+export function canRotate(mimeType: string | null): boolean {
+  return mimeType === 'image/jpeg' || mimeType === 'image/png';
+}
+
 /** What the Staff App's reader reports back (apps/staff/lib/extract.ts). */
 export interface ScanSummary {
   confidence: number;

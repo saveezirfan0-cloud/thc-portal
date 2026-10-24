@@ -49,6 +49,7 @@ function answer(fields: Record<string, unknown>) {
     issuingState: null,
     confidence: 0.95,
     notes: '',
+    uprightTurn: 0,
     ...fields,
   };
 }
@@ -233,6 +234,30 @@ describe('each document type maps 1:1 onto ExtractionResult', () => {
       });
       expect(result.raw).toMatchObject({ model: DEFAULT_ANTHROPIC_MODEL, docType, issues: [] });
     }
+  });
+
+  it('how far the photo must turn to read the right way up (ADR-0212), only of this document', async () => {
+    for (const turn of [0, 90, 180, 270]) {
+      const { client } = fakeClient(
+        message(answer({ expiryDate: '2031-03-12', uprightTurn: turn })),
+      );
+      expect(
+        (await createAnthropicExtractor({ client }).extract(input('passport'))).uprightTurn,
+      ).toBe(turn);
+    }
+    for (const odd of [null, 45, '90', -90]) {
+      const { client } = fakeClient(
+        message(answer({ expiryDate: '2031-03-12', uprightTurn: odd })),
+      );
+      expect(
+        (await createAnthropicExtractor({ client }).extract(input('passport'))).uprightTurn,
+      ).toBeNull();
+    }
+    const { client } = fakeClient(message(answer({ matchesDocType: false, uprightTurn: 90 })));
+    expect(
+      (await createAnthropicExtractor({ client }).extract(input('passport'))).uprightTurn,
+    ).toBeNull();
+    expect(ANSWER_SCHEMA.required).toContain('uprightTurn');
   });
 
   it('passport → its issuing country, by name, from the MRZ code (ADR-0159)', async () => {

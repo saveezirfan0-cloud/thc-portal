@@ -2,6 +2,9 @@ import { after } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DocType } from '@thc/domain';
 import { documentExtractor, toDaterangeLiteral } from '../app/onboarding/extractor';
+import type { DocumentExtractor, ExtractionResult } from '../app/onboarding/extractor';
+import { bakeOrientation, turnClockwise, turnable, uprightPath } from './upright';
+import type { QuarterTurn } from './upright';
 
 /**
  * §2.6 — the AI reads EVERY uploaded document: the wizard's step 4, a
@@ -111,12 +114,20 @@ export async function extractDocument(
       logFailure('download', docId, downloadError);
       return undefined;
     }
-    const result = await extractor.extract({
+    const mime = mimeType || file.type || 'application/octet-stream';
+    let bytes = await file.arrayBuffer();
+    // ADR-0212: a photo is read the way a browser shows it.
+    const photo = turnable(docType, mime);
+    if (photo) bytes = await bakeOrientation(bytes).catch(() => bytes);
+    let result = await extractor.extract({
       docType,
       path,
-      mimeType: mimeType || file.type || 'application/octet-stream',
-      bytes: await file.arrayBuffer(),
+      mimeType: photo ? detectedPhotoMime(bytes, mime) : mime,
+      bytes,
     });
+    if (photo && result.uprightTurn) {
+      result = await turnUpright(admin, extractor, docId, docType, path, bytes, result);
+    }
     const { error } = await admin.rpc('record_document_extraction', {
       p_doc: docId,
       p_expiry: result.expiryDate,
@@ -146,6 +157,64 @@ export async function extractDocument(
     logFailure('extract', docId, error);
     return undefined;
   }
+}
+
+/**
+ * ADR-0212 (TK-18): the reader says the photo is sideways or upside down.
+ * Turn a copy, read the copy, and only when that read says it now reads the
+ * right way up store it in place of the original (`turn_document_upright`,
+ * which refuses once the office has decided, or if the file has changed).
+ * The read of the upright copy is the one recorded. Anything short of that
+ * keeps the original and the first read; the office can still Rotate.
+ */
+async function turnUpright(
+  admin: SupabaseClient,
+  extractor: DocumentExtractor,
+  docId: string,
+  docType: DocType,
+  path: string,
+  bytes: ArrayBuffer,
+  first: ExtractionResult,
+): Promise<ExtractionResult> {
+  const degrees = first.uprightTurn as QuarterTurn;
+  try {
+    const turned = await turnClockwise(bytes, degrees);
+    const check = await extractor.extract({ docType, path, mimeType: 'image/jpeg', bytes: turned });
+    if (check.uprightTurn !== 0) {
+      logFailure('upright_unconfirmed', docId, { code: `turn_${degrees}` });
+      return first;
+    }
+    const to = uprightPath(path);
+    const { error: uploadError } = await admin.storage
+      .from('documents')
+      .upload(to, new Blob([turned], { type: 'image/jpeg' }), { contentType: 'image/jpeg' });
+    if (uploadError) {
+      logFailure('upright_upload', docId, uploadError);
+      return first;
+    }
+    const { error } = await admin.rpc('turn_document_upright', {
+      p_doc: docId,
+      p_from: path,
+      p_to: to,
+      p_size: turned.byteLength,
+      p_turned: degrees,
+    });
+    if (error) {
+      logFailure('upright_record', docId, error);
+      await admin.storage.from('documents').remove([to]);
+      return first;
+    }
+    return { ...check, raw: { ...check.raw, turnedUpright: degrees } };
+  } catch (error) {
+    logFailure('upright', docId, error);
+    return first;
+  }
+}
+
+/** A baked photo is a JPEG whatever it was uploaded as; an untouched one keeps its type. */
+function detectedPhotoMime(bytes: ArrayBuffer, mime: string): string {
+  const head = new Uint8Array(bytes, 0, Math.min(3, bytes.byteLength));
+  return head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff ? 'image/jpeg' : mime;
 }
 
 /** The extractor's own codes from `raw` (`error`, or the `issues` list). */
