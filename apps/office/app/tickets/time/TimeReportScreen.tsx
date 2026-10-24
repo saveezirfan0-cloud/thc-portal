@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { ReportButton } from '../../_components/ReportButton';
 import type { MonthReport, TicketChoice } from '../data';
 import { QuickLogTime } from './QuickLogTime';
 import {
@@ -49,6 +50,7 @@ export function TimeReportScreen({
         <Link className="btn sm" href={`/tickets/time?month=${next}`}>
           {monthLabel(next)} →
         </Link>
+        <ReportButton label="New ticket" />
         {report.rows.length > 0 ? (
           <a className="btn sm primary" href={`/tickets/time/export?month=${month}`}>
             Download CSV

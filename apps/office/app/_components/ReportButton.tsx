@@ -26,7 +26,14 @@ const BLANK = { kind: 'bug', severity: '', title: '', details: '', link: '' };
  * becomes a numbered ticket (TK-12), is emailed to the owner, and is
  * followed up on /tickets. The page the person was on is sent with it.
  */
-export function ReportButton() {
+export function ReportButton({
+  label = 'Ticket',
+  tone,
+}: {
+  /** The button's words: "Ticket" in the top bar, "New ticket" where a list is shown. */
+  label?: string;
+  tone?: 'primary';
+} = {}) {
   const ids = useId();
   // Read when the dialog opens: the page the report is about, not a router hook.
   const [page, setPage] = useState('');
@@ -69,12 +76,13 @@ export function ReportButton() {
     <>
       <Button
         size="sm"
+        {...(tone ? { tone } : {})}
         onClick={() => {
           setPage(window.location.pathname);
           setOpen(true);
         }}
       >
-        Ticket
+        {label}
       </Button>
       <Modal
         open={open}

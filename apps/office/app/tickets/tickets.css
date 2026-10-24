@@ -280,3 +280,11 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+.tk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}

@@ -3,6 +3,7 @@ import { formatDateTimeIn, UK_ZONE } from '@thc/domain';
 import type { TimeFormat } from '@thc/domain';
 import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { ReportButton } from '../_components/ReportButton';
 import type { TicketsPageData } from './data';
 import {
   KINDS,
@@ -61,12 +62,15 @@ export function TicketsScreen({
         </>
       }
     >
-      {data.tracker ? (
-        <p className="tk-meta">
-          <Link href="/tickets/time">Monthly time report →</Link> (only you can see scope labels and
-          time)
-        </p>
-      ) : null}
+      <div className="tk-actions">
+        <ReportButton label="New ticket" tone="primary" />
+        {data.tracker ? (
+          <span className="tk-meta">
+            <Link href="/tickets/time">Monthly time report →</Link> (only you can see scope labels
+            and time)
+          </span>
+        ) : null}
+      </div>
       <div className="tk-tabs" role="tablist" aria-label="Ticket state">
         {tabs.map((tab) => (
           <Link
@@ -159,7 +163,7 @@ export function TicketsScreen({
             ? 'No tickets match those filters.'
             : query.tab === 'closed'
               ? 'Nothing has been closed yet.'
-              : 'No open tickets. Use Report, top right, to log one.'}
+              : 'No open tickets. Use New ticket, above, to log one.'}
         </EmptyState>
       ) : null}
 
