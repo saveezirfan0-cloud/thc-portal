@@ -5,23 +5,20 @@ import { Alert, EmptyState, Panel, Pill } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import type { TicketsPageData } from './data';
 import {
-  KINDS,
   KIND_SHORT,
   KIND_TONE,
   PAGE_SIZE,
-  SCOPE_LABELS,
   SCOPE_SHORT,
   SCOPE_TONE,
-  SEVERITIES,
   SEVERITY_SHORT,
   SEVERITY_TONE,
-  STATUSES,
   STATUS_LABEL,
   STATUS_TONE,
   ticketRef,
   ticketsHref,
 } from './view-model';
 import type { TicketQuery } from './view-model';
+import { TicketFilters } from './TicketFilters';
 import './tickets.css';
 
 /**
@@ -81,75 +78,7 @@ export function TicketsScreen({
         ))}
       </div>
 
-      <form className="tk-filters" method="get" action="/tickets">
-        {query.tab !== 'open' ? <input type="hidden" name="tab" value={query.tab} /> : null}
-        <input
-          className="input"
-          type="search"
-          name="q"
-          defaultValue={query.q}
-          placeholder="Search by number, words or reporter"
-          aria-label="Search tickets"
-        />
-        <select className="input" name="kind" defaultValue={query.kind ?? ''} aria-label="Type">
-          <option value="">All types</option>
-          {KINDS.map((k) => (
-            <option key={k} value={k}>
-              {KIND_SHORT[k]}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input"
-          name="severity"
-          defaultValue={query.severity ?? ''}
-          aria-label="Severity"
-        >
-          <option value="">All severities</option>
-          {SEVERITIES.map((s) => (
-            <option key={s} value={s}>
-              {SEVERITY_SHORT[s]}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input"
-          name="status"
-          defaultValue={query.status ?? ''}
-          aria-label="Status"
-        >
-          <option value="">Any status</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        {data.tracker ? (
-          <select
-            className="input"
-            name="scope"
-            defaultValue={query.scope ?? ''}
-            aria-label="Scope label"
-          >
-            <option value="">Any scope label</option>
-            <option value="none">Not labelled yet</option>
-            {SCOPE_LABELS.map((l) => (
-              <option key={l} value={l}>
-                {SCOPE_SHORT[l]}
-              </option>
-            ))}
-          </select>
-        ) : null}
-        <button className="btn primary" type="submit">
-          Apply
-        </button>
-        {filtered ? (
-          <Link className="btn" href={ticketsHref({ tab: query.tab })}>
-            Clear
-          </Link>
-        ) : null}
-      </form>
+      <TicketFilters query={query} tracker={data.tracker} filtered={filtered} />
 
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
 

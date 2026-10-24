@@ -243,9 +243,16 @@ test('the list shows the label and filters by it; the month report adds up the b
   await expect(row.getByText('Addition')).toBeVisible();
   await expect(row.getByText('Resolved')).toBeVisible();
 
-  // Filtering for another label does not find it.
-  await page.goto('/tickets?tab=closed&scope=fix');
+  // The filters are live: choosing another label finds nothing, with no Apply button.
+  await expect(page.getByRole('button', { name: 'Apply' })).toHaveCount(0);
+  await page.getByLabel('Scope label').selectOption('fix');
+  await expect(page).toHaveURL(/scope=fix/);
   await expect(page.getByRole('listitem').filter({ hasText: TITLE })).toHaveCount(0);
+  // And so is the search, a moment after the last key.
+  await page.getByLabel('Scope label').selectOption('');
+  await page.getByLabel('Search tickets').fill(`TK-${ticketNo()}`);
+  await expect(page).toHaveURL(new RegExp(`q=TK-${ticketNo()}`));
+  await expect(page.getByRole('listitem').filter({ hasText: TITLE })).toBeVisible();
 
   await page.goto('/tickets/time');
   await expect(page.getByRole('heading', { name: 'Time report' })).toBeVisible();
