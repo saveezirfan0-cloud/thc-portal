@@ -1,6 +1,6 @@
 -- =====================================================================
--- 939 · Claude's ticket classification and time (ADR-0202) —
---       20261027110000_claude_ticket_tracking.sql
+-- 940 · Claude's ticket classification and time (ADR-0202) —
+--       20261027120000_claude_ticket_tracking.sql
 --
 --   · neither function is callable by an API role, only by the service role;
 --   · a label is set by ticket number, from the list only, with a short note;
