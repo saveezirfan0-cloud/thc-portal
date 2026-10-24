@@ -283,7 +283,7 @@ function QueueLine({
       {/* ADR-0212 (TK-18): a photo the wrong way round is turned, not rejected. */}
       {row.kind === 'document' && row.file_path && canRotate(row.mime_type) ? (
         <>
-          <RotateDocumentButton docId={row.item_id} disabled={busy} />{' '}
+          <RotateDocumentButton docId={row.item_id} mimeType={row.mime_type} disabled={busy} />{' '}
         </>
       ) : null}
       {row.kind === 'document' && row.file_path && canRescan(row.item_type) ? (
