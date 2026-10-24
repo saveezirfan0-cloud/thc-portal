@@ -755,6 +755,9 @@ describe('fitReportToOnePage', () => {
     expect(css).toMatch(/html, body \{ background: #fff/);
     // Whatever wraps <main> is released too, whatever its class.
     expect(tidy).toMatch(/querySelector\('main'\)[\s\S]*max-width', 'none'/);
+    // TK-15: and the grid column the result sits in inside <main> takes the
+    // whole width, so the report is not a strip down one side of the sheet.
+    expect(css).toMatch(/\[class\*="govuk-grid-column"\] \{ width: 100% !important; float: none/);
   });
 
   it("tidies through the CSSOM, never a <style> tag gov.uk's CSP refuses", async () => {

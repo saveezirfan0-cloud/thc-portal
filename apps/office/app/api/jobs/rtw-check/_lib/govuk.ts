@@ -513,6 +513,10 @@ const REPORT_WIDEN = '.govuk-width-container, .govuk-main-wrapper';
 const REPORT_CSS =
   `${REPORT_HIDE} { display: none !important; } ` +
   `${REPORT_WIDEN} { max-width: none !important; } ` +
+  // TK-15: the result sits in GOV.UK's two-thirds grid column inside <main>,
+  // which left the right third of the sheet empty — "pushed to one side".
+  // Every grid column takes the full width on the report.
+  '[class*="govuk-grid-column"] { width: 100% !important; float: none !important; } ' +
   // GOV.UK's grey page ground otherwise frames the result and fills
   // whatever of the sheet it does not cover.
   'html, body { background: #fff !important; }';
