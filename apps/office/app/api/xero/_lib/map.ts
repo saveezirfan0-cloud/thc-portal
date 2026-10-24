@@ -152,8 +152,6 @@ export function mapInvoice(
     }
   }
 
-  const email = doc.billTo.emails?.find((e) => e && e.trim());
-  void email; // the contact (not the invoice) carries the address
   return {
     Type: 'ACCREC',
     Contact: { ContactID: contactId },
