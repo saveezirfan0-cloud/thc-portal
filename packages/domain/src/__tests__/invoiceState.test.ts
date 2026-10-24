@@ -24,7 +24,7 @@ function latestPairs(fn: string): string[] {
     .sort();
   for (const file of files.reverse()) {
     const sql = readFileSync(new URL(file, MIGRATIONS), 'utf8');
-    const at = sql.lastIndexOf(`function public.${fn}()`);
+    const at = sql.lastIndexOf(`create or replace function public.${fn}()`);
     if (at < 0) continue;
     const body = sql.slice(at);
     const values = body.slice(body.indexOf('(values'), body.indexOf(') v(from_status'));

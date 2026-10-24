@@ -60,7 +60,7 @@ export async function readXlsx(bytes: Uint8Array): Promise<Grid[]> {
 
 /** RFC 4180-ish: quotes, doubled quotes, CRLF; sniffs `,` `;` or tab. */
 export function parseCsv(text: string): unknown[][] {
-  const body = text.replace(/^﻿/, '');
+  const body = text.replace(/^\uFEFF/, '');
   const firstLine = body.split(/\r?\n/, 1)[0] ?? '';
   const delim = [',', ';', '\t'].reduce(
     (best, d) => (firstLine.split(d).length > firstLine.split(best).length ? d : best),
@@ -117,7 +117,12 @@ export async function readSpreadsheet(
 ): Promise<Grid[]> {
   if (kind === 'xls') throw new Error('unsupported_xls');
   if (kind === 'csv') {
-    return [{ name: fileName.replace(/\.[^.]+$/, '') || 'Sheet1', rows: parseCsv(Buffer.from(bytes).toString('utf8')) }];
+    return [
+      {
+        name: fileName.replace(/\.[^.]+$/, '') || 'Sheet1',
+        rows: parseCsv(Buffer.from(bytes).toString('utf8')),
+      },
+    ];
   }
   return readXlsx(bytes);
 }

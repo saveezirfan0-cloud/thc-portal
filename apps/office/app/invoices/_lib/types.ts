@@ -10,7 +10,6 @@
 export type InvoiceSource = 'events' | 'timesheet';
 export type InvoiceStatus = 'drawing' | 'failed' | 'generated' | 'queued' | 'void';
 export type XeroStatus = 'pending' | 'syncing' | 'synced' | 'mismatch' | 'failed' | 'skipped';
-export type ClientActionResult = { ok: true } | { ok: false; message: string };
 
 /** One row of the list: the columns the table, the KPIs and the summaries need. */
 export interface InvoiceListRow {

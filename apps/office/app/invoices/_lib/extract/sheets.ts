@@ -31,7 +31,9 @@ export interface TasterOptions {
 
 /** "WC 12.10.26 Oxford Circus.xlsx" / "w-c 12-10-26" -> 2026-10-12. */
 export function weekFromFileName(fileName: string): string | null {
-  const m = /\b(?:w\/?c|wc|w-c|w\.c\.?)\s*[-_ ]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i.exec(fileName);
+  const m = /\b(?:w\/?c|wc|w-c|w\.c\.?)\s*[-_ ]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i.exec(
+    fileName,
+  );
   return m ? parseUkDate(m[1]) : null;
 }
 
@@ -170,14 +172,61 @@ export interface GenericOptions {
 const A = {
   first: ['first name', 'firstname', 'forename'],
   last: ['last name', 'lastname', 'surname'],
-  name: ['name', 'staff name', 'employee', 'employee name', 'worker', 'full name', 'staff member', 'staff'],
-  ref: ['staff id', 'id', 'employee id', 'emp id', 'ref', 'staff ref', 'payroll no', 'payroll number', 'employee number'],
+  name: [
+    'name',
+    'staff name',
+    'employee',
+    'employee name',
+    'worker',
+    'full name',
+    'staff member',
+    'staff',
+  ],
+  ref: [
+    'staff id',
+    'id',
+    'employee id',
+    'emp id',
+    'ref',
+    'staff ref',
+    'payroll no',
+    'payroll number',
+    'employee number',
+  ],
   date: ['date', 'work date', 'shift date', 'day', 'w c date', 'wc date', 'w c', 'start date'],
   role: ['role', 'position', 'job', 'job title', 'job role', 'department'],
   start: ['start', 'start time', 'time in', 'in', 'clock in', 'from', 'shift start', 'begin'],
-  end: ['end', 'end time', 'finish', 'finish time', 'time out', 'out', 'clock out', 'to', 'shift end'],
-  brk: ['break', 'breaks', 'break min', 'break mins', 'break minutes', 'unpaid break', 'unpaid breaks', 'break duration'],
-  hours: ['hours', 'total hours', 'paid hours', 'total paid hours', 'total work hours', 'hrs', 'duration', 'total'],
+  end: [
+    'end',
+    'end time',
+    'finish',
+    'finish time',
+    'time out',
+    'out',
+    'clock out',
+    'to',
+    'shift end',
+  ],
+  brk: [
+    'break',
+    'breaks',
+    'break min',
+    'break mins',
+    'break minutes',
+    'unpaid break',
+    'unpaid breaks',
+    'break duration',
+  ],
+  hours: [
+    'hours',
+    'total hours',
+    'paid hours',
+    'total paid hours',
+    'total work hours',
+    'hrs',
+    'duration',
+    'total',
+  ],
 } as const;
 
 /**
@@ -189,9 +238,7 @@ const A = {
 export function parseGenericSheet(grid: Grid, options: GenericOptions = {}): SheetParseResult {
   const header = findHeader(grid.rows, (c) => {
     const hasName =
-      pick(c, A.name) !== null ||
-      pick(c, A.first) !== null ||
-      options.fallbackName !== undefined;
+      pick(c, A.name) !== null || pick(c, A.first) !== null || options.fallbackName !== undefined;
     const hasWhen =
       (pick(c, A.date) !== null || options.weekCommencing) &&
       (pick(c, A.start) !== null || pick(c, A.hours) !== null);
@@ -230,7 +277,7 @@ export function parseGenericSheet(grid: Grid, options: GenericOptions = {}): She
     const hoursRaw = get(ci.hours);
     if (
       [dateRaw, startRaw, endRaw, hoursRaw].every((v) => cellText(v) === '') ||
-      (ci.name !== null || ci.first !== null) && rawName === ''
+      ((ci.name !== null || ci.first !== null) && rawName === '')
     ) {
       continue;
     }
@@ -276,5 +323,30 @@ export function parseGenericSheet(grid: Grid, options: GenericOptions = {}): She
       problems,
     });
   }
-  return { rows, sheets: rows.length ? [grid.name] : [], problems: rows.length ? [] : ['no_rows_found'] };
+  return {
+    rows,
+    sheets: rows.length ? [grid.name] : [],
+    problems: rows.length ? [] : ['no_rows_found'],
+  };
+}
+
+/**
+ * Which reader for a workbook: the Taster export when it has an "All
+ * Employees" sheet, else the generic per-shift reader on every sheet, else
+ * the Taster per-person fallback.
+ */
+export function parseWorkbook(grids: Grid[], fileName: string): SheetParseResult {
+  const weekCommencing = weekFromFileName(fileName);
+  if (grids.some((g) => g.name.trim().toLowerCase() === SUMMARY_SHEET)) {
+    return parseTasterWorkbook(grids, { weekCommencing });
+  }
+  const rows: ParsedRow[] = [];
+  const sheets: string[] = [];
+  for (const g of grids) {
+    const res = parseGenericSheet(g, { weekCommencing });
+    rows.push(...res.rows);
+    sheets.push(...res.sheets);
+  }
+  if (rows.length) return { rows, sheets, problems: [] };
+  return parseTasterWorkbook(grids, { weekCommencing });
 }

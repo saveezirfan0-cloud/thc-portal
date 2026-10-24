@@ -25,9 +25,7 @@ export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-const MONTHS = [
-  'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
-];
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 function isoOrNull(y: number, mo: number, d: number): string | null {
   if (y < 1990 || y > 2100) return null;
@@ -45,7 +43,9 @@ function isoOrNull(y: number, mo: number, d: number): string | null {
  */
 export function parseUkDate(value: unknown): string | null {
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : isoOrNull(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate());
+    return Number.isNaN(value.getTime())
+      ? null
+      : isoOrNull(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate());
   }
   if (typeof value === 'number') {
     if (value < 20000 || value > 80000) return null;
@@ -60,7 +60,10 @@ export function parseUkDate(value: unknown): string | null {
     const y = m[3]!.length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
     return isoOrNull(y, Number(m[2]), Number(m[1]));
   }
-  m = /^(?:[a-z]{3,9}\.?,?\s+)?(\d{1,2})(?:st|nd|rd|th)?[\s\-/]+([a-z]{3,9})\.?,?[\s\-/]+(\d{2}|\d{4})$/i.exec(text);
+  m =
+    /^(?:[a-z]{3,9}\.?,?\s+)?(\d{1,2})(?:st|nd|rd|th)?[\s\-/]+([a-z]{3,9})\.?,?[\s\-/]+(\d{2}|\d{4})$/i.exec(
+      text,
+    );
   if (m) {
     const mo = MONTHS.indexOf(m[2]!.slice(0, 3).toLowerCase()) + 1;
     if (!mo) return null;
@@ -121,5 +124,8 @@ export function cellText(value: unknown): string {
 }
 
 export function normHeader(value: unknown): string {
-  return cellText(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return cellText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
