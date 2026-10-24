@@ -14,6 +14,7 @@ import { RadarMap } from '../../RadarMap';
 import { TAKE_BUTTON, TAKE_NOTE, UP_FOR_GRABS, ukDateTime } from '../../../shifts/offers';
 import { findOpenOffer } from '../../../shifts/offers-data';
 import { YourTimeAt } from '../../../shifts/YourTimeAt';
+import { PAY_SCHEDULE } from '../../../profile/payments/pay-date';
 import '../../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -101,7 +102,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
         <div className="kv">
           <span className="k">Rate</span>
-          <span className="v">£{offer.payRate.toFixed(2)} per hour · base rate</span>
+          <span className="v">
+            £{offer.payRate.toFixed(2)} per hour · base rate
+            <br />
+            <span className="xs muted">{PAY_SCHEDULE}</span>
+          </span>
         </div>
         <div className="kv">
           <span className="k">Open until</span>

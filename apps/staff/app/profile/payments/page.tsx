@@ -27,7 +27,8 @@ export const metadata = { title: 'Payment information · THC Staff' };
  * and a link into Bank & payroll lands there.
  *
  * Payslips are not in this app: they come from the payroll provider's
- * MyEPayWindow portal, so both tabs say where to find them.
+ * MyEPayWindow portal, so both tabs say where to find them. Both tabs also
+ * say when pay arrives — every Friday, one week in arrears (RULE-06).
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
@@ -76,6 +77,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
           Bank &amp; payroll
         </Link>
       </div>
+
+      <Note>
+        <b>When you’re paid.</b> Shifts are paid every Friday, one week in arrears — each Mon–Sun
+        week you work is paid by bank transfer on the Friday after it.
+      </Note>
 
       <Note>
         <b>Looking for your payslips?</b> View them by logging into your MyEPayWindow Portal. The

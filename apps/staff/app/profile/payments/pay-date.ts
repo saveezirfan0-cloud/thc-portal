@@ -23,6 +23,14 @@ import { UK_ZONE, formatDateIn } from '@thc/domain';
  * below pin both to the same examples.
  */
 
+/**
+ * The same rule in the worker's words, under the Rate on every shift a
+ * worker is offered or booked on (invite, Radar, shift detail) and at the
+ * top of Payment information — so it is not only said once at onboarding
+ * and again after the first check-out.
+ */
+export const PAY_SCHEDULE = 'Paid every Friday, one week in arrears';
+
 const UK_PARTS = new Intl.DateTimeFormat('en-GB', {
   timeZone: UK_ZONE,
   year: 'numeric',

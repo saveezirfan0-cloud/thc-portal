@@ -19,6 +19,7 @@ import { findOpenShift, loadBookings, openInvites, shiftsBadge } from '../../dat
 import { RadarMap } from '../RadarMap';
 import { WeekMeter } from '../WeekMeter';
 import { dayLabel } from '../model';
+import { PAY_SCHEDULE } from '../../profile/payments/pay-date';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -102,7 +103,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
         <div className="kv">
           <span className="k">Rate</span>
-          <span className="v">£{shift.payRate.toFixed(2)} per hour · base rate</span>
+          <span className="v">
+            £{shift.payRate.toFixed(2)} per hour · base rate
+            <br />
+            <span className="xs muted">{PAY_SCHEDULE}</span>
+          </span>
         </div>
         <div className="kv">
           {/* Seats, not the invitation target: the buffer is an

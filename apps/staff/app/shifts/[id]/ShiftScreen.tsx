@@ -38,6 +38,7 @@ import {
 import type { ShiftPhase } from './phase';
 import { checkInCountdown, directionsUrl, phoneFromContact } from './links';
 import { pressCheckOut } from './press';
+import { PAY_SCHEDULE } from '../../profile/payments/pay-date';
 import { ShiftMap } from './ShiftMap';
 import { StaticShiftScreen } from './StaticShiftScreen';
 import { TurnedAwayScreen } from './TurnedAwayScreen';
@@ -478,6 +479,14 @@ export function ShiftScreen({
               <span className="v">{shift.notes}</span>
             </div>
           ) : null}
+          <div className="kv">
+            <span className="k">Rate</span>
+            <span className="v">
+              £{shift.payRate.toFixed(2)} per hour · base rate
+              <br />
+              <span className="xs muted">{PAY_SCHEDULE}</span>
+            </span>
+          </div>
         </div>
         {/* Getting there and keeping it in the diary. Not on a closed
             shift — by then neither is any use. */}

@@ -215,6 +215,16 @@ describe('§3.5 the shift screen says where "I\'m ready" is', () => {
   });
 });
 
+describe('RULE-06 the shift screen says when it is paid', () => {
+  it('puts the base rate and "every Friday, one week in arrears" on the shift', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail());
+    const html = await render();
+    expect(html).toContain('£15.00 per hour · base rate');
+    expect(html).toContain('Paid every Friday, one week in arrears');
+  });
+});
+
 describe('ADR-0185 a security-cleared event asks the worker to bring ID', () => {
   it('says so at the top of a confirmed shift on a cleared event', async () => {
     profile.mockResolvedValue(worker());
