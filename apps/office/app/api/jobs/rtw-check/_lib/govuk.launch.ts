@@ -32,6 +32,9 @@ export function chromiumLauncher(env: EnvReader): GovukLauncher {
     const context = await browser.newContext({
       locale: 'en-GB',
       timezoneId: 'Europe/London',
+      // gov.uk's CSP is written for its own pages, not for a print tidy run
+      // from outside; the tidy (`fitReportToOnePage`) does not rely on this.
+      bypassCSP: true,
     });
     const wrapped: GovukBrowser = {
       newPage: async () =>
