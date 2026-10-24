@@ -144,7 +144,8 @@ const PASSPORT: DocRequirement = {
   key: 'passport',
   label: 'Passport — photo page',
   accepts: ['passport'],
-  hint: 'Photo or scan of the page with your photo on it',
+  // TK-14 (THC, 24.10.2026): an upload with glare on it is rejected.
+  hint: 'Photo or scan of the page with your photo on it — turn the flash off so there’s no glare',
 };
 
 /**
@@ -206,7 +207,7 @@ export function requiredDocuments(
           key: 'identity',
           label: 'Passport or national ID card',
           accepts: ['passport', 'national_id'],
-          hint: 'The photo page of your passport, or both sides of your ID card',
+          hint: 'The photo page of your passport, or both sides of your ID card — turn the flash off so there’s no glare',
         },
       ];
     case 'work_visa':
