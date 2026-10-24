@@ -42,11 +42,13 @@ export function readXeroSettings(raw: unknown): XeroSettings {
   const d = DEFAULT_XERO_SETTINGS;
   const from = Number(row['from_number']);
   const status = row['invoice_status'];
-  const account = typeof row['sales_account_code'] === 'string' ? row['sales_account_code'].trim() : '';
+  const account =
+    typeof row['sales_account_code'] === 'string' ? row['sales_account_code'].trim() : '';
   const tax = typeof row['tax_type'] === 'string' ? row['tax_type'].trim() : '';
   return {
     enabled: row['enabled'] === true,
-    from_number: Number.isInteger(from) && from >= 1 && from <= FROM_NUMBER_MAX ? from : d.from_number,
+    from_number:
+      Number.isInteger(from) && from >= 1 && from <= FROM_NUMBER_MAX ? from : d.from_number,
     invoice_status: (XERO_INVOICE_STATUSES as readonly unknown[]).includes(status)
       ? (status as XeroInvoiceStatus)
       : d.invoice_status,

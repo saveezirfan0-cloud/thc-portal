@@ -1,10 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  XERO_API_URL,
-  XERO_CONNECTIONS_URL,
-  XERO_REVOKE_URL,
-  XERO_TOKEN_URL,
-} from './config';
+import { XERO_API_URL, XERO_CONNECTIONS_URL, XERO_REVOKE_URL, XERO_TOKEN_URL } from './config';
 import type { XeroEnv } from './config';
 
 /**
@@ -194,12 +189,19 @@ export class XeroClient {
     } catch {
       throw new XeroError('network', 'Could not reach Xero.');
     }
-    if (!res.ok) throw new XeroError('auth', `Xero would not list the organisations (HTTP ${res.status}).`, res.status);
+    if (!res.ok)
+      throw new XeroError(
+        'auth',
+        `Xero would not list the organisations (HTTP ${res.status}).`,
+        res.status,
+      );
     const rows = (await readJson(res)) as
-      | { tenantId?: string; tenantName?: string; tenantType?: string }[]
-      | null;
+      { tenantId?: string; tenantName?: string; tenantType?: string }[] | null;
     return (Array.isArray(rows) ? rows : [])
-      .filter((r) => typeof r.tenantId === 'string' && (r.tenantType ?? 'ORGANISATION') === 'ORGANISATION')
+      .filter(
+        (r) =>
+          typeof r.tenantId === 'string' && (r.tenantType ?? 'ORGANISATION') === 'ORGANISATION',
+      )
       .map((r) => ({ tenantId: r.tenantId as string, tenantName: r.tenantName ?? '' }));
   }
 
@@ -208,7 +210,10 @@ export class XeroClient {
     try {
       await this.fetchFn(XERO_REVOKE_URL, {
         method: 'POST',
-        headers: { Authorization: this.basic(), 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          Authorization: this.basic(),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
         body: new URLSearchParams({ token: refreshToken }).toString(),
       });
     } catch {
@@ -281,7 +286,10 @@ export class XeroClient {
       if (!saved) {
         const again = await store.load();
         if (again && this.fresh(again)) return again;
-        throw new XeroError('auth', 'Xero refreshed the sign-in but it could not be stored; reconnect Xero.');
+        throw new XeroError(
+          'auth',
+          'Xero refreshed the sign-in but it could not be stored; reconnect Xero.',
+        );
       }
       return { ...current, ...next };
     } finally {
@@ -316,14 +324,14 @@ export class XeroClient {
         Accept: 'application/json',
         ...init.headers,
       };
-      let body: string | Uint8Array | undefined;
+      let body: BodyInit | undefined;
       if (init.json !== undefined) {
         headers['Content-Type'] = 'application/json';
         body = JSON.stringify(init.json);
       } else if (init.body) {
         headers['Content-Type'] = init.contentType ?? 'application/octet-stream';
         headers['Content-Length'] = String(init.body.byteLength);
-        body = init.body;
+        body = init.body as unknown as BodyInit;
       }
 
       let res: Response;
@@ -336,7 +344,8 @@ export class XeroClient {
       }
 
       if (res.status === 401) {
-        if (refreshedOn401) throw new XeroError('auth', 'Xero refused the sign-in; reconnect Xero.', 401);
+        if (refreshedOn401)
+          throw new XeroError('auth', 'Xero refused the sign-in; reconnect Xero.', 401);
         refreshedOn401 = true;
         rejected = conn.accessToken;
         continue;
@@ -345,7 +354,12 @@ export class XeroClient {
         const header = Number(res.headers.get('retry-after'));
         const waitSec = Number.isFinite(header) && header > 0 ? header : 2 ** attempt * 5;
         const problem = res.headers.get('x-rate-limit-problem') ?? 'minute';
-        lastKind = new XeroError('rate_limit', `Xero rate limit (${problem}); retry in ${Math.ceil(waitSec)} s.`, 429, waitSec);
+        lastKind = new XeroError(
+          'rate_limit',
+          `Xero rate limit (${problem}); retry in ${Math.ceil(waitSec)} s.`,
+          429,
+          waitSec,
+        );
         if (waitSec * 1000 > this.maxWaitMs) throw lastKind;
         await this.sleep(waitSec * 1000);
         continue;
@@ -357,11 +371,19 @@ export class XeroClient {
       }
       const parsed = await readJson(res);
       if (res.status === 403) {
-        throw new XeroError('forbidden', 'Xero refused: this connection lacks permission (check the scopes and reconnect).', 403);
+        throw new XeroError(
+          'forbidden',
+          'Xero refused: this connection lacks permission (check the scopes and reconnect).',
+          403,
+        );
       }
       if (res.status === 404) throw new XeroError('not_found', 'Not found in Xero.', 404);
       if (res.status >= 400) {
-        throw new XeroError('validation', xeroMessage(parsed) || `Xero refused the request (HTTP ${res.status}).`, res.status);
+        throw new XeroError(
+          'validation',
+          xeroMessage(parsed) || `Xero refused the request (HTTP ${res.status}).`,
+          res.status,
+        );
       }
       return { status: res.status, body: parsed };
     }
@@ -375,9 +397,9 @@ export class XeroClient {
       query: { searchTerm: name, pageSize: '100' },
     });
     const wanted = name.trim().toLowerCase();
-    const hit = ((body as { Contacts?: { ContactID: string; Name?: string }[] })?.Contacts ?? []).find(
-      (c) => (c.Name ?? '').trim().toLowerCase() === wanted,
-    );
+    const hit = (
+      (body as { Contacts?: { ContactID: string; Name?: string }[] })?.Contacts ?? []
+    ).find((c) => (c.Name ?? '').trim().toLowerCase() === wanted);
     return hit?.ContactID ?? null;
   }
 
@@ -409,7 +431,10 @@ export class XeroClient {
   }
 
   /** PUT creates only: it can never overwrite an existing invoice. */
-  async createInvoice(payload: XeroInvoicePayload, idempotencyKey: string): Promise<XeroInvoiceResult> {
+  async createInvoice(
+    payload: XeroInvoicePayload,
+    idempotencyKey: string,
+  ): Promise<XeroInvoiceResult> {
     const { body } = await this.request('PUT', '/Invoices', {
       json: { Invoices: [payload] },
       headers: { 'Idempotency-Key': idempotencyKey },
@@ -420,7 +445,10 @@ export class XeroClient {
   }
 
   async attachmentNames(invoiceId: string): Promise<string[]> {
-    const { body } = await this.request('GET', `/Invoices/${encodeURIComponent(invoiceId)}/Attachments`);
+    const { body } = await this.request(
+      'GET',
+      `/Invoices/${encodeURIComponent(invoiceId)}/Attachments`,
+    );
     return ((body as { Attachments?: { FileName?: string }[] })?.Attachments ?? [])
       .map((a) => a.FileName ?? '')
       .filter(Boolean);
@@ -457,7 +485,12 @@ export function xeroMessage(body: unknown): string {
     Title?: string;
     Elements?: { ValidationErrors?: { Message?: string }[] }[];
   };
-  const texts = (b.Elements ?? []).flatMap((e) => (e.ValidationErrors ?? []).map((v) => v.Message ?? ''));
+  const texts = (b.Elements ?? []).flatMap((e) =>
+    (e.ValidationErrors ?? []).map((v) => v.Message ?? ''),
+  );
   const unique = [...new Set(texts.filter(Boolean))];
-  return (unique.length > 0 ? unique.join(' ') : (b.Detail ?? b.Message ?? b.Title ?? '')).slice(0, 250);
+  return (unique.length > 0 ? unique.join(' ') : (b.Detail ?? b.Message ?? b.Title ?? '')).slice(
+    0,
+    250,
+  );
 }

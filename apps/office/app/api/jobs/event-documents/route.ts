@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@thc/db/admin';
 import { generateDocument } from '../../documents/_lib/generate';
 import type { DocumentRpc } from '../../documents/_lib/generate';
+import { runXeroSync } from '../../xero/_lib/store';
+import type { AdminDb } from '../../xero/_lib/store';
 import { checkJobSecret } from '../_lib/auth';
 import { runInvoices } from './_lib/invoices';
 import { runAutosend } from './_lib/run';
@@ -32,6 +34,9 @@ import { parseAutosendConfig } from './_lib/schedule';
  * one per PO at 10:00 UK the morning after its last event, with its
  * sign-in and sign-out log attached (_lib/invoices.ts). Riding this
  * job means no new pg_cron row has to be installed for it.
+ *
+ * ADR-0211: and the same run pushes new invoices to Xero (xero/_lib/store.ts
+ * runXeroSync) — off without the XERO_* env vars or settings.xero.enabled.
  *
  * Every run is a job_runs row with its counts, like every other §7 job.
  */
@@ -169,7 +174,16 @@ export async function POST(request: Request) {
       log: (line) => console.warn(line),
     });
 
-    const all = { ...counts, invoices };
+    // ADR-0211: the same run pushes the new invoices to Xero. A Xero failure
+    // is its own count and never fails the documents or the invoices above.
+    const xero = await runXeroSync(admin as unknown as AdminDb, {
+      deadline: started + BUDGET_MS,
+    }).catch((cause: unknown) => {
+      console.warn(`xero-sync: ${cause instanceof Error ? cause.message.slice(0, 120) : 'failed'}`);
+      return { ran: false as const, reason: 'error' };
+    });
+
+    const all = { ...counts, invoices, xero };
     await db.rpc('job_run_finish', { p_id: runId, p_ok: true, p_counts: all });
     return json(200, { job: 'event-documents', ok: true, counts: all });
   } catch (cause) {

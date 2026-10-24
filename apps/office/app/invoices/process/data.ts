@@ -134,6 +134,28 @@ export async function loadHome(): Promise<HomeData> {
 const PAGE = 1000;
 const ROW_CEILING = 5000;
 
+/** Every row of a job, page by page (PostgREST answers at most 1000). */
+export async function loadShiftRows(
+  db: any,
+  jobId: string,
+): Promise<{ rows: ShiftRow[]; error: { message: string } | null }> {
+  const rows: ShiftRow[] = [];
+  for (let from = 0; from < ROW_CEILING; from += PAGE) {
+    const page = await db
+      .from('timesheet_shifts')
+      .select(SHIFT_COLUMNS)
+      .eq('job_id', jobId)
+      .order('sort')
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (page.error) return { rows, error: page.error };
+    const data = (page.data ?? []) as any[];
+    rows.push(...data.map(toShift));
+    if (data.length < PAGE) break;
+  }
+  return { rows, error: null };
+}
+
 export async function loadJob(jobId: string): Promise<{ detail: JobDetail | null; problem: string | null }> {
   const db = await officeDb();
   const jobRes = await db
@@ -157,26 +179,13 @@ export async function loadJob(jobId: string): Promise<{ detail: JobDetail | null
       .order('id'),
   ]);
 
-  const shifts: ShiftRow[] = [];
+  let shifts: ShiftRow[] = [];
   let shiftError: { message: string } | null = null;
   // Only a job past extraction has rows worth reading.
   if (job.status !== 'uploaded') {
-    for (let from = 0; from < ROW_CEILING; from += PAGE) {
-      const page = await db
-        .from('timesheet_shifts')
-        .select(SHIFT_COLUMNS)
-        .eq('job_id', jobId)
-        .order('sort')
-        .order('id')
-        .range(from, from + PAGE - 1);
-      if (page.error) {
-        shiftError = page.error;
-        break;
-      }
-      const data = (page.data ?? []) as any[];
-      shifts.push(...data.map(toShift));
-      if (data.length < PAGE) break;
-    }
+    const read = await loadShiftRows(db, jobId);
+    shifts = read.rows;
+    shiftError = read.error;
   }
 
   const files: FileRow[] = ((filesRes.data ?? []) as any[]).map((f) => ({
@@ -302,4 +311,19 @@ export async function loadVatRate(): Promise<number> {
   const res = await db.from('settings').select('value').eq('key', 'invoicing').maybeSingle();
   const rate = Number(res.data?.value?.vat_rate);
   return Number.isFinite(rate) && rate >= 0 ? rate : 20;
+}
+
+/** Every client set up for timesheet invoicing (the picker, Change client). */
+export async function loadTimesheetClients(): Promise<{ clients: TimesheetClient[]; problem: string | null }> {
+  const db = await officeDb();
+  const res = await db
+    .from('clients')
+    .select(CLIENT_COLUMNS)
+    .eq('invoicing_mode', 'timesheet')
+    .is('archived_at', null)
+    .order('name');
+  return {
+    clients: ((res.data ?? []) as any[]).map(toClient),
+    problem: readProblem(res.error, 'Clients could not be read'),
+  };
 }

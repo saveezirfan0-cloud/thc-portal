@@ -19,7 +19,11 @@ export const XERO_API_URL = 'https://api.xero.com/api.xro/2.0';
  * offline_access for the refresh token. XERO_SCOPES overrides this for an app
  * created before the change that still holds the broad scopes.
  */
-export const DEFAULT_XERO_SCOPES = 'offline_access accounting.invoices accounting.contacts accounting.attachments';
+export const DEFAULT_XERO_SCOPES =
+  'offline_access accounting.invoices accounting.contacts accounting.attachments';
+
+/** The single-use OAuth `state`, held in an httpOnly cookie for the length of the consent. */
+export const STATE_COOKIE = 'thc_xero_state';
 
 export interface XeroEnv {
   clientId: string;

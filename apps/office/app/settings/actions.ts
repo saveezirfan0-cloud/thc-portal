@@ -7,6 +7,8 @@ import { isSwitchableCode } from '@thc/notifications';
 import { READ_ONLY_MESSAGE } from '../_lib/sessionRole';
 import { settingsDb } from './db';
 import { supabaseConfigured } from './data';
+import { mergeXero, validateXero } from '../api/xero/_lib/settings';
+import type { XeroSettings } from '../api/xero/_lib/settings';
 import {
   mergeInvoicing,
   validateClientPortalPhone,
@@ -293,6 +295,31 @@ export async function saveInvoicing(settings: InvoicingSettings): Promise<Action
   if (error) return saveRefusal('invoicing', error);
 
   return put('invoicing', mergeInvoicing(data?.value, settings));
+}
+
+/**
+ * ADR-0211: settings.xero — the switch, the first invoice number pushed, the
+ * status Xero gets, the sales account and tax type, and whether the PDF is
+ * attached. Laid over the stored row so a key this screen does not edit
+ * survives. Connecting to Xero is not here: it is /api/xero/connect.
+ */
+export async function saveXero(settings: XeroSettings): Promise<ActionResult> {
+  if (!settings || typeof settings !== 'object') {
+    return { ok: false, message: 'Nothing to save.' };
+  }
+  const invalid = validateXero(settings);
+  if (invalid) return { ok: false, message: invalid };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+
+  const supabase = settingsDb(await cookies());
+  const { data, error } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'xero')
+    .maybeSingle();
+  if (error) return saveRefusal('xero', error);
+
+  return put('xero', mergeXero(data?.value, settings));
 }
 
 /**

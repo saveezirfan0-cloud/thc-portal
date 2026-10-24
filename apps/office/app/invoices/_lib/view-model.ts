@@ -165,12 +165,18 @@ export function parseInvoiceView(params: Params, today: string): InvoiceView {
   }
   if (from && to && from > to) [from, to] = [to, from];
 
-  // `status` is a comma list; absent means the defaults, `none` means nothing is ticked.
-  const statusParam = first(params['status']);
+  // `status` is a comma list (our links) or repeated checkboxes (the filter form);
+  // absent means the defaults, `none` means nothing is ticked, and a submitted
+  // form (`f`) with no box ticked means nothing is ticked too.
+  const rawStatus = params['status'];
+  const statusParts =
+    rawStatus === undefined ? null : (Array.isArray(rawStatus) ? rawStatus : [rawStatus]).flatMap((p) => p.split(','));
   const statuses: StatusGroup[] =
-    statusParam === undefined
-      ? [...DEFAULT_STATUSES]
-      : STATUS_GROUPS.filter((g) => statusParam.split(',').includes(g));
+    statusParts === null
+      ? params['f'] !== undefined
+        ? []
+        : [...DEFAULT_STATUSES]
+      : STATUS_GROUPS.filter((g) => statusParts.includes(g));
 
   const source = first(params['source']);
   const xero = first(params['xero']) as XeroFilter | undefined;

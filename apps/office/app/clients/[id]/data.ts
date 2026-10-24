@@ -7,6 +7,8 @@ import { withPhotoUrls } from '../../_lib/photos';
 import type { Client } from '../types';
 import type {
   ClientCardData,
+  TimesheetInvoicingSettings,
+  TimesheetRateRow,
   ClientEventRow,
   QualifiedStaffRow,
   QuizResultRow,
@@ -126,6 +128,104 @@ async function rateCardWithoutRates(
   return { data: rows, error: null };
 }
 
+interface TimesheetClientRow {
+  invoicing_mode: string | null;
+  invoice_format: string | null;
+  invoice_display_name: string | null;
+  invoice_venue: string | null;
+  invoice_venue_address: string | null;
+  invoice_date_label: string | null;
+  omit_event_dates_in_subject: boolean | null;
+  timesheet_default_role: string | null;
+  timesheet_excluded_staff: string[] | null;
+  po_required: boolean | null;
+  payment_terms_days: number | null;
+  xero_contact_id: string | null;
+}
+
+interface TimesheetDb {
+  from(table: 'clients'): {
+    select(columns: string): {
+      eq(
+        column: string,
+        value: string,
+      ): {
+        maybeSingle(): PromiseLike<{ data: TimesheetClientRow | null; error: { message: string } | null }>;
+      };
+    };
+  };
+  from(table: 'timesheet_rates'): {
+    select(columns: string): {
+      eq(
+        column: string,
+        value: string,
+      ): {
+        order(column: string): PromiseLike<{
+          data: { id: string; role_name: string; aliases: string[] | null; charge_rate: number | string }[] | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  };
+}
+
+/** The card's timesheet-invoice columns (20261027100000). */
+async function readTimesheetSettings(
+  supabase: unknown,
+  id: string,
+): Promise<{ data: TimesheetInvoicingSettings | null; error: { message: string } | null }> {
+  const reply = await (supabase as TimesheetDb)
+    .from('clients')
+    .select(
+      'invoicing_mode, invoice_format, invoice_display_name, invoice_venue, invoice_venue_address, ' +
+        'invoice_date_label, omit_event_dates_in_subject, timesheet_default_role, ' +
+        'timesheet_excluded_staff, po_required, payment_terms_days, xero_contact_id',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (reply.error) return { data: null, error: reply.error };
+  const row = reply.data;
+  if (!row) return { data: null, error: null };
+  return {
+    error: null,
+    data: {
+      mode: row.invoicing_mode === 'timesheet' ? 'timesheet' : 'events',
+      format: row.invoice_format === 'aggregated' ? 'aggregated' : 'named',
+      displayName: row.invoice_display_name,
+      venue: row.invoice_venue,
+      venueAddress: row.invoice_venue_address,
+      dateLabel: row.invoice_date_label,
+      omitEventDates: row.omit_event_dates_in_subject === true,
+      defaultRole: row.timesheet_default_role,
+      excludedStaff: row.timesheet_excluded_staff ?? [],
+      poRequired: row.po_required === true,
+      paymentTermsDays: row.payment_terms_days,
+      xeroContactId: row.xero_contact_id,
+    },
+  };
+}
+
+async function readTimesheetRates(
+  supabase: unknown,
+  id: string,
+): Promise<{ data: TimesheetRateRow[] | null; error: { message: string } | null }> {
+  const reply = await (supabase as TimesheetDb)
+    .from('timesheet_rates')
+    .select('id, role_name, aliases, charge_rate')
+    .eq('client_id', id)
+    .order('role_name');
+  if (reply.error) return { data: null, error: reply.error };
+  return {
+    error: null,
+    data: (reply.data ?? []).map((row) => ({
+      id: row.id,
+      role_name: row.role_name,
+      aliases: row.aliases ?? [],
+      charge_rate: Number(row.charge_rate),
+    })),
+  };
+}
+
 export async function loadClientCard(
   id: string,
   { ratesVisible = true }: { ratesVisible?: boolean } = {},
@@ -147,6 +247,8 @@ export async function loadClientCard(
     requirements,
     quizResults,
     workerRequests,
+    timesheet,
+    timesheetRates,
   ] = await Promise.all([
     supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
     // ADR-0081: one switch, read from the table rather than restating the view.
@@ -236,6 +338,10 @@ export async function loadClientCard(
       .order('handled_at', { ascending: false, nullsFirst: true })
       .order('created_at', { ascending: false })
       .limit(50),
+    // ADR-0210: the Timesheet invoicing panel and its rate card. Money, so
+    // finance only (ratesVisible): a scheduler's card draws no panel.
+    ratesVisible ? readTimesheetSettings(supabase, id) : Promise.resolve(null),
+    ratesVisible ? readTimesheetRates(supabase, id) : Promise.resolve(null),
   ]);
 
   const error =
@@ -249,7 +355,9 @@ export async function loadClientCard(
     payRates.error ??
     requirements.error ??
     quizResults.error ??
-    workerRequests.error;
+    workerRequests.error ??
+    timesheet?.error ??
+    timesheetRates?.error;
   if (error) return { ...EMPTY, problem: readProblem(error) };
 
   const payOf = new Map(
@@ -278,6 +386,8 @@ export async function loadClientCard(
       invoiceCcEmails: badges.data?.invoice_cc_emails ?? [],
       billingAddress: badges.data?.billing_address ?? null,
     },
+    ...(timesheet?.data ? { timesheetInvoicing: timesheet.data } : {}),
+    ...(timesheetRates?.data ? { timesheetRates: timesheetRates.data } : {}),
     rateCard: rateCard.data ?? [],
     dressCodeLibrary: dressCodeLibrary(
       (library.data ?? []).map((card: { dress_codes: string[] | null }) => card.dress_codes),

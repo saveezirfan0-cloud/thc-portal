@@ -3,6 +3,7 @@ import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
 import { loadTrackerFlag } from '../tickets/data';
 import { loadSettings } from './data';
+import { loadXeroTab } from './xeroData';
 import { SettingsScreen } from './SettingsScreen';
 import { parseSettingsTab } from './types';
 
@@ -31,6 +32,16 @@ export default async function Page({
       <NotAvailable activeHref="/settings" title="System settings" role={role} needs="settings" />
     );
   }
-  const tab = parseSettingsTab((await searchParams)['tab']);
-  return <SettingsScreen data={await loadSettings()} tab={tab} tracker={await loadTrackerFlag()} />;
+  const params = await searchParams;
+  const tab = parseSettingsTab(params['tab']);
+  const flash = typeof params['xero'] === 'string' ? params['xero'] : null;
+  return (
+    <SettingsScreen
+      data={await loadSettings()}
+      tab={tab}
+      tracker={await loadTrackerFlag()}
+      xero={await loadXeroTab()}
+      xeroFlash={flash}
+    />
+  );
 }

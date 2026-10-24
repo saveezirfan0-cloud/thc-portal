@@ -150,6 +150,7 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
 | `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ optional `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`) | **Not needed** (ADR-0041: no provider; gov.uk is the only route). Only if THC ever sets `settings.rtw_check.primary = 'provider'` — or, **for a demo database only**, `RTW_PROVIDER_URL=sandbox:` with `RTW_SANDBOX_ALLOW=<that project's ref>` (no key needed; the ref must match `NEXT_PUBLIC_SUPABASE_URL` or the sandbox is refused) puts the sandbox provider behind it: fixed demo share codes, SANDBOX on every report (ADR-0063, `supabase/demo/rtw-check-sandbox-on.sql`) | Demonstrating the check (ADR-0063) |
 | `RTW_JOB_SECRET` | Generated, not obtained: `openssl rand -base64 48`. **Vercel, Back Office only**, and the same value in the Supabase vault as `rtw_job_secret` | Same |
+| `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI` (+ optional `XERO_SCOPES`) | https://developer.xero.com/app/manage — create a **Web app** (authorisation code flow) in THC's Xero developer account; copy the Client ID and generate a Client secret. The redirect URI is the Back Office origin + `/api/xero/callback`, e.g. `https://office.thehospitalitycompany.co.uk/api/xero/callback`, and must be added **identically** in the Xero app. **Vercel, Back Office only, server-side — never `NEXT_PUBLIC_`, never Supabase.** Without all three, Settings → Xero says it is not set up, Connect is disabled and the job does nothing. See "Pushing invoices to Xero" below | Switching on the Xero push (ADR-0210, ADR-0211) |
 | `DOCUMENT_RESCAN_SECRET` | Generated, not obtained: `openssl rand -base64 48` (at least 32 characters). **Vercel, the same value on the Back Office AND the Staff App projects.** The Back Office's "Retry AI scan" sends it as `Authorization: Bearer …` to the Staff App's `/api/internal/rescan-document` (ADR-0199). Needs `NEXT_PUBLIC_STAFF_URL` on the Back Office too | Without it the button says the re-scan is not set up; nothing else is affected |
 | `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`, and `RTW_CHROMIUM_EXECUTABLE_PATH` for local development only) | Not obtained. `true` turns on the gov.uk check, which is the **only** route (ADR-0041). **Vercel, Back Office only** | Switching on the gov.uk check (ADR-0025, ADR-0041) |
 
@@ -336,6 +337,41 @@ is skipped with a notice. Times and switches: `settings.document_autosend`.
 `counts.verdicts` with the reason for every event that did not go (`not_yet`,
 `held_no_checkout`, `manual_sent`, `no_contact_emails`, `gave_up` after eight failed attempts, …). One event's automatic sends
 are rows in `event_document_autosends`.
+
+### Pushing invoices to Xero (ADR-0210, ADR-0211)
+
+Every invoice that reaches `generated` or `queued` is queued in `xero_sync` and pushed to Xero as
+an `ACCREC` invoice (Draft by default) with its PDF attached. Nothing is sent until **all** of:
+the three `XERO_*` variables are on the Back Office project, an owner has pressed **Connect** on
+Settings → Xero, and **On** is saved there (`settings.xero.enabled`).
+
+1. At https://developer.xero.com/app/manage create the app: *Integration type* **Web app**,
+   company URL = the Back Office origin, redirect URI as above. Scopes are requested by the
+   Back Office, not set in the app: `offline_access accounting.invoices accounting.contacts
+   accounting.attachments` (Xero's granular scopes, required for apps created from 2 March 2026;
+   the broad `accounting.transactions` is retired for every app in September 2027). An app created
+   before the change that still holds the broad scopes can set `XERO_SCOPES="offline_access
+   accounting.transactions accounting.contacts accounting.attachments"` instead.
+2. Add the three variables to the `thc-portal-office` Vercel project (Production and Preview if
+   previews should be able to connect; a Preview URL needs its own redirect URI in the Xero app,
+   so connect on Production only) and redeploy.
+3. Settings → Xero → **Connect to Xero**, sign in to Xero as a user with access to the
+   organisation, choose it and allow access. The organisation's name appears on the tab. A user
+   with several organisations: the first returned is used.
+4. Set the sales account code and tax type to THC's chart (defaults `200` and `OUTPUT2`), the
+   status (Draft), and switch **On**. Press **Sync now** or wait for the next 15-minute run.
+
+The push rides the existing `event-documents` job (every 15 minutes, `RTW_JOB_SECRET`): no new
+secret and no new pg_cron row. **Checking it works:** `select started_at, ok, counts -> 'xero' from
+job_runs where job = 'event-documents' order by started_at desc limit 5;` — `counts.xero` has
+`claimed`, `synced`, `mismatch`, `failed`, `adopted`, or `ran: false` with the reason
+(`not_configured`, `disabled`, `not_connected`). One invoice's story is its `xero_sync` row; the
+Xero tab lists failed and mismatched ones with **Try again**.
+
+Tokens live in `xero_connection` (service role only). The refresh token is valid for 60 days and
+rotates on every use; the job refreshes an idle connection weekly so it does not lapse. If it ever
+does, press Connect again — nothing already in Xero is affected. Disconnect revokes the token and
+deletes the row.
 
 ---
 

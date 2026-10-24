@@ -63,6 +63,43 @@ export function emailProblem(draft: EmailDraft): string | null {
   return null;
 }
 
+const EDITOR_TAGS = new Set(['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'A', 'UL', 'OL', 'LI']);
+
+/**
+ * What the editors may start with (browser only): the allowed tags and a
+ * safe `href`, everything else flattened to its text. The server cuts the
+ * body to the same list before it is sent (`sanitiseEmailHtml`); this keeps
+ * a remembered signature from putting markup into the page itself.
+ */
+export function safeEditorHtml(html: string): string {
+  if (typeof DOMParser === 'undefined') return '';
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+  const clean = (node: Node, into: HTMLElement) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === 3) {
+        into.append(doc.createTextNode(child.textContent ?? ''));
+      } else if (child.nodeType === 1) {
+        const el = child as HTMLElement;
+        if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE'].includes(el.tagName)) return;
+        if (!EDITOR_TAGS.has(el.tagName)) {
+          clean(el, into);
+          return;
+        }
+        const copy = doc.createElement(el.tagName.toLowerCase());
+        if (el.tagName === 'A') {
+          const href = el.getAttribute('href') ?? '';
+          if (/^(https?:\/\/|mailto:)\S+$/i.test(href)) copy.setAttribute('href', href);
+        }
+        clean(el, copy);
+        into.append(copy);
+      }
+    });
+  };
+  const out = doc.createElement('div');
+  clean(doc.body, out);
+  return out.innerHTML;
+}
+
 /** localStorage keys: the Bcc and the signature are remembered per signed-in user. */
 export const bccKey = (userId: string) => `thc.invoice.bcc:${userId}`;
 export const signatureKey = (userId: string) => `thc.invoice.signature:${userId}`;

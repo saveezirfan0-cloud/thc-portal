@@ -83,7 +83,10 @@ export async function pushBatch(deps: PushDeps): Promise<PushCounts> {
     } catch (cause) {
       const error = cause instanceof XeroError ? cause : null;
       const message = error ? error.message : 'Unexpected error while sending to Xero.';
-      if (error && (error.kind === 'rate_limit' || error.kind === 'auth' || error.kind === 'not_connected')) {
+      if (
+        error &&
+        (error.kind === 'rate_limit' || error.kind === 'auth' || error.kind === 'not_connected')
+      ) {
         counts.stopped = error.kind === 'rate_limit' ? 'rate_limit' : 'auth';
       }
       // Kind and a short text only: never a token, an address or a line.
@@ -148,9 +151,10 @@ async function pushOne(
     const have = adopted ? await client.attachmentNames(xero.InvoiceID) : [];
     if (!have.includes(name)) {
       const pdf = await deps.pdf(src.storagePath);
-      if (!pdf) throw new XeroError('validation', 'The invoice PDF could not be read from storage.');
+      if (!pdf)
+        throw new XeroError('validation', 'The invoice PDF could not be read from storage.');
       if (pdf.byteLength > MAX_PDF_BYTES) {
-        throw new XeroError('validation', 'The invoice PDF is over Xero\'s 10 MB attachment limit.');
+        throw new XeroError('validation', "The invoice PDF is over Xero's 10 MB attachment limit.");
       }
       await client.attachPdf(xero.InvoiceID, name, pdf);
     }
@@ -159,7 +163,10 @@ async function pushOne(
   // 4 · The result; the database compares Xero's total with ours.
   const total = typeof xero.Total === 'number' ? xero.Total : null;
   await deps.record(invoiceId, true, xero.InvoiceID, xero.Status ?? null, total, null);
-  return { adopted, mismatch: total === null || Math.round(total * 100) !== Math.round(Number(src.doc.total) * 100) };
+  return {
+    adopted,
+    mismatch: total === null || Math.round(total * 100) !== Math.round(Number(src.doc.total) * 100),
+  };
 }
 
 async function ensureContact(deps: PushDeps, src: InvoiceSource): Promise<string> {
@@ -167,7 +174,8 @@ async function ensureContact(deps: PushDeps, src: InvoiceSource): Promise<string
   const name = src.doc.billTo.name.trim();
   if (!name) throw new XeroError('validation', 'The invoice has no client name to match in Xero.');
   const email = src.doc.billTo.emails?.find((e) => e && e.trim())?.trim() ?? null;
-  const found = (await deps.client.findContact(name)) ?? (await deps.client.createContact(name, email));
+  const found =
+    (await deps.client.findContact(name)) ?? (await deps.client.createContact(name, email));
   await deps.saveContact(src.clientId, found);
   return found;
 }
@@ -175,6 +183,9 @@ async function ensureContact(deps: PushDeps, src: InvoiceSource): Promise<string
 function attachmentName(src: InvoiceSource): string {
   const raw = (src.fileName ?? '').trim() || `Invoice ${src.doc.number}.pdf`;
   // No path separators or control characters in a name that goes into a URL.
-  const safe = raw.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').slice(0, 150);
+  const safe = [...raw]
+    .map((ch) => (ch.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(ch) ? '-' : ch))
+    .join('')
+    .slice(0, 150);
   return /\.pdf$/i.test(safe) ? safe : `${safe}.pdf`;
 }

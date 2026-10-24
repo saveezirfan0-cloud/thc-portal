@@ -127,7 +127,10 @@ export function mapInvoice(
           LineAmount: money(amountC),
         }
       : {
-          Description: `${description} (${trimNumber(quantity)} × £${rate.toFixed(2)})`.slice(0, 4000),
+          Description: `${description} (${trimNumber(quantity)} × £${rate.toFixed(2)})`.slice(
+            0,
+            4000,
+          ),
           Quantity: 1,
           UnitAmount: money(amountC),
           AccountCode: settings.sales_account_code,

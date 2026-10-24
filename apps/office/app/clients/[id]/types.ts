@@ -166,6 +166,36 @@ export interface InvoiceDetails {
   billingAddress: string | null;
 }
 
+/**
+ * ADR-0210: the Timesheet invoicing panel — `clients.invoicing_mode` and the
+ * card's timesheet-invoice settings, set by `set_client_timesheet_invoicing()`.
+ * `xeroContactId` is read-only here: the Xero job writes it on the first push.
+ */
+export interface TimesheetInvoicingSettings {
+  mode: 'events' | 'timesheet';
+  format: 'named' | 'aggregated';
+  displayName: string | null;
+  venue: string | null;
+  venueAddress: string | null;
+  /** The date column's header on the invoice; null prints "Date". */
+  dateLabel: string | null;
+  omitEventDates: boolean;
+  defaultRole: string | null;
+  excludedStaff: string[];
+  poRequired: boolean;
+  /** Null = `settings.invoicing.payment_terms_days`. */
+  paymentTermsDays: number | null;
+  xeroContactId: string | null;
+}
+
+/** One row of the timesheet rate card (`timesheet_rates`): role or alias -> £/h. */
+export interface TimesheetRateRow {
+  id: string;
+  role_name: string;
+  aliases: string[];
+  charge_rate: number;
+}
+
 export interface ClientCardData {
   client: Client | null;
   /** `clients.name_badges` (ADR-0081): badges go with every Allocation Timesheet. */
@@ -176,6 +206,9 @@ export interface ClientCardData {
   lineupEmails: { confirmed: boolean; changed: boolean };
   /** ADR-0176: the Invoicing panel. */
   invoicing: InvoiceDetails;
+  /** ADR-0210: the Timesheet invoicing panel and its rate card (finance only; absent otherwise). */
+  timesheetInvoicing?: TimesheetInvoicingSettings;
+  timesheetRates?: TimesheetRateRow[];
   rateCard: RateCardRow[];
   /** Every dress code stored on any client's rate card, most-used first. */
   dressCodeLibrary: string[];

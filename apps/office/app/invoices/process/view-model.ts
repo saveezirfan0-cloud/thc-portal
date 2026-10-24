@@ -581,3 +581,11 @@ export function invoiceTotalValue(invoices: readonly { total: number; status: st
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
+
+/** Whole days since a timestamp, for the stale-jobs marker (audit §10.12). */
+export function ageDays(iso: string, now: number = Date.now()): number {
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / 86_400_000)) : 0;
+}
+
+export const STALE_AFTER_DAYS = 7;

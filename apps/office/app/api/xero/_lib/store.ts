@@ -79,7 +79,13 @@ const KEEP_ALIVE_MS = 7 * 24 * 3600 * 1000;
  */
 export async function runXeroSync(
   db: AdminDb,
-  opts: { now?: Date; deadline: number; env?: XeroEnv | null; fetch?: typeof fetch; log?: (l: string) => void },
+  opts: {
+    now?: Date;
+    deadline: number;
+    env?: XeroEnv | null;
+    fetch?: typeof fetch;
+    log?: (l: string) => void;
+  },
 ): Promise<XeroRunResult> {
   const env = opts.env === undefined ? xeroEnv() : opts.env;
   if (!env) return { ran: false, reason: 'not_configured' };
@@ -119,7 +125,10 @@ export async function runXeroSync(
     },
     load: (invoiceId) => loadInvoice(db, invoiceId),
     saveContact: async (clientId, contactId) => {
-      const { error } = await db.from('clients').update({ xero_contact_id: contactId }).eq('id', clientId);
+      const { error } = await db
+        .from('clients')
+        .update({ xero_contact_id: contactId })
+        .eq('id', clientId);
       if (error) throw new Error('clients.xero_contact_id could not be saved');
     },
     pdf: async (path) => {
@@ -151,7 +160,11 @@ async function loadInvoice(db: AdminDb, invoiceId: string): Promise<InvoiceSourc
     .eq('id', invoiceId)
     .single();
   if (inv.error) throw new Error('invoice could not be read');
-  const sync = await db.from('xero_sync').select('xero_invoice_id').eq('invoice_id', invoiceId).maybeSingle();
+  const sync = await db
+    .from('xero_sync')
+    .select('xero_invoice_id')
+    .eq('invoice_id', invoiceId)
+    .maybeSingle();
   const row = inv.data as unknown as {
     client_id: string;
     storage_path: string | null;

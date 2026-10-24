@@ -1,0 +1,318 @@
+/*
+ * /invoices and /invoices/:invoiceId — page-local layout for
+ * `wireframes/backoffice/invoices.html` and `invoice-detail.html` (ADR-0210).
+ *
+ * Layout only, tokens only (CLAUDE.md). Shared table, toolbar, date-range and
+ * pager classes come from `../reports/reports.css`, imported beside this file.
+ */
+
+.inv-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-12);
+  flex-wrap: wrap;
+}
+.inv-head h2 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--fs-18);
+}
+.inv-head .right {
+  margin-left: auto;
+  display: flex;
+  gap: var(--sp-8);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Filters: one wrapping row of fields, then the chips. */
+.inv-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.inv-filters .row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+.inv-filters .select,
+.inv-filters .input {
+  height: var(--filter-h);
+  font-size: var(--fs-12);
+}
+.inv-filters .inv-search {
+  width: 240px;
+}
+.inv-filters .inv-client {
+  width: 220px;
+}
+
+/* A status chip is a checkbox with the pill look; ticked it takes the primary tint. */
+.inv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  height: var(--filter-h);
+  padding: 0 var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: var(--fs-12);
+  cursor: pointer;
+}
+.inv-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.inv-chip:has(input:checked) {
+  border-color: var(--cyan-line);
+  background: var(--cyan-dim);
+  color: var(--cyan-ink);
+}
+.inv-chip:has(input:focus-visible) {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.inv-ranges {
+  display: flex;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+}
+
+/* Export ▾ — a details element, so it needs no script. */
+.inv-menu {
+  position: relative;
+}
+.inv-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.inv-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.inv-menu .items {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--sp-4));
+  z-index: 5;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.inv-menu .items a {
+  padding: var(--sp-8) var(--sp-10);
+  border-radius: var(--r-tile);
+  color: var(--text);
+  font-size: var(--fs-13);
+}
+.inv-menu .items a:hover {
+  background: var(--panel-2);
+}
+.inv-menu .items .off {
+  padding: var(--sp-8) var(--sp-10);
+  color: var(--muted);
+  font-size: var(--fs-12);
+}
+
+/* The table */
+.tbl th a.sort {
+  color: inherit;
+  text-decoration: none;
+}
+.tbl th a.sort.on::after {
+  content: ' ▾';
+}
+.tbl th a.sort.on.asc::after {
+  content: ' ▴';
+}
+.inv-icons {
+  display: inline-flex;
+  gap: var(--sp-8);
+  white-space: nowrap;
+}
+.inv-xero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  align-items: flex-start;
+}
+
+/* Weekly / monthly summaries */
+.inv-group {
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--panel);
+}
+.inv-group + .inv-group {
+  margin-top: var(--sp-8);
+}
+.inv-group > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-16);
+  flex-wrap: wrap;
+  padding: var(--sp-12) var(--sp-16);
+  cursor: pointer;
+  list-style: none;
+}
+.inv-group > summary::-webkit-details-marker {
+  display: none;
+}
+.inv-group > summary::before {
+  content: '▸';
+  color: var(--muted);
+}
+.inv-group[open] > summary::before {
+  content: '▾';
+}
+.inv-group .what {
+  font-weight: 600;
+  min-width: 15rem;
+}
+.inv-group .fig {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-13);
+}
+.inv-group .fig small {
+  font-family: var(--font-label);
+  font-size: var(--fs-11);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.inv-group .body {
+  border-top: 1px solid var(--line);
+  overflow: auto;
+}
+
+/* Detail */
+.inv-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 18rem);
+  gap: var(--sp-16);
+}
+.inv-money {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+.inv-money .line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-12);
+}
+.inv-money .due {
+  padding-top: var(--sp-8);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-20);
+  font-weight: 700;
+}
+.inv-actions {
+  display: flex;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.inv-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.inv-timeline li {
+  display: flex;
+  gap: var(--sp-12);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.inv-timeline .when {
+  width: 9.5rem;
+  font-family: var(--font-num);
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+.inv-danger {
+  border: 1px solid var(--coral-line);
+  background: var(--coral-dim);
+  border-radius: var(--r-tile);
+  padding: var(--sp-14);
+}
+
+/* The email modal */
+.inv-mail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+.inv-mail .kvrow {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--sp-8);
+  align-items: center;
+}
+.inv-mail .kvrow > .label {
+  margin: 0;
+}
+.inv-editor {
+  min-height: 12rem;
+  max-height: 20rem;
+  overflow: auto;
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--control-line);
+  border-radius: var(--r-control);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--fs-13);
+}
+.inv-editor.sig {
+  min-height: 4rem;
+}
+.inv-editor:focus {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+.inv-editor p {
+  margin: 0 0 var(--sp-8);
+}
+.inv-toolbar {
+  display: flex;
+  gap: var(--sp-4);
+}
+.inv-attach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+@media (max-width: 760px) {
+  .inv-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inv-filters .inv-search,
+  .inv-filters .inv-client {
+    width: 100%;
+  }
+  .inv-mail .kvrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inv-group .what {
+    min-width: 0;
+    width: 100%;
+  }
+}

@@ -21,6 +21,8 @@ import { OfficeShell } from '../_components/OfficeShell';
 import { BufferSuggestionBlock } from './BufferSuggestionBlock';
 import { NotificationsTab } from './NotificationsTab';
 import { TicketsTab } from './TicketsTab';
+import { XeroTab } from './XeroTab';
+import type { XeroTabData } from './xeroData';
 import { OfficeCopyBlock } from './OfficeCopyBlock';
 import { Block, Feedback, SaveAction, SaveSlot, useMarkDirty, useSave } from './blocks';
 // blocks.tsx is their home; this re-export keeps settings blocks that import them from here compiling.
@@ -90,11 +92,17 @@ export function SettingsScreen({
   data,
   tab: initialTab,
   tracker = false,
+  xero,
+  xeroFlash = null,
 }: {
   data: SettingsData;
   tab: SettingsTab;
   /** ADR-0202: this login keeps ticket time and billing (`ticket_tracker_allowed()`). */
   tracker?: boolean;
+  /** ADR-0211: the Xero tab's data, read on the server (never a token). */
+  xero?: XeroTabData;
+  /** `?xero=` — the result of the connect round trip. */
+  xeroFlash?: string | null;
 }) {
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const choose = (next: SettingsTab) => {
@@ -155,6 +163,7 @@ export function SettingsScreen({
             alert: true,
           },
           { value: 'tickets', label: 'Tickets' },
+          { value: 'xero', label: 'Xero' },
         ]}
       />
 
@@ -163,6 +172,11 @@ export function SettingsScreen({
       {tab === 'tickets' ? <TicketsTab tracker={tracker} /> : null}
 
       <SaveSlot.Provider value={{ slot, mark }}>
+        {xero ? (
+          <div hidden={tab !== 'xero'}>
+            <XeroTab data={xero} flash={xeroFlash} />
+          </div>
+        ) : null}
         <div className="settings-grid" hidden={tab !== 'general'}>
           <WeightsBlock weights={data.weights} />
           <AutoAssignBlock
