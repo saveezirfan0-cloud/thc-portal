@@ -99,6 +99,20 @@ function firstCapture(patterns: readonly RegExp[], text: string): string | null 
 const any = (patterns: readonly RegExp[], text: string) => patterns.some((p) => p.test(text));
 
 /**
+ * An ISO date `months` later, on the same day of the month or the month's
+ * last day when it has fewer (31 August + 6 → 28/29 February).
+ */
+export function addMonths(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(d, last));
+  return target.toISOString().slice(0, 10);
+}
+
+/**
  * The end date as printed, or null (none found) — or 'ambiguous' when two
  * different dates qualify. Never a guess (ADR-0018): a wrong future date
  * would otherwise reach Verify.
@@ -307,11 +321,18 @@ export function parseGovukResult(text: string, checkedAt: string): RtwCheckResul
     if (only === 'ambiguous') return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
     rawUntil = only;
   }
-  const until = rawUntil ? parseUkDate(rawUntil) : null;
+  let until = rawUntil ? parseUkDate(rawUntil) : null;
   if (rawUntil && !until) return rtwCheckError('govuk', 'govuk_unreadable_date', checkedAt);
+  let untilBasis: 'check_validity' | null = null;
   // ADR-0018: "no time limit" only when gov.uk says so, never from a blank.
   if (!until && !any(GOVUK_RESULT.noTimeLimit, t)) {
-    return rtwCheckError('govuk', 'govuk_no_expiry', checkedAt);
+    // TK-11: no end date for the permission, only the check's own validity.
+    const months = Number(firstCapture([GOVUK_RESULT.checkValidFor], t));
+    if (!Number.isInteger(months) || months < 1 || months > 24) {
+      return rtwCheckError('govuk', 'govuk_no_expiry', checkedAt);
+    }
+    until = addMonths(ukToday(new Date(checkedAt)), months);
+    untilBasis = 'check_validity';
   }
 
   const conditions = govukConditions(t);
@@ -320,6 +341,7 @@ export function parseGovukResult(text: string, checkedAt: string): RtwCheckResul
     outcome: 'right_to_work',
     fullName,
     rightToWorkUntil: until,
+    ...(untilBasis ? { untilBasis } : {}),
     conditions,
     termTimeLimitHours: termTimeLimitFrom(conditions),
   };

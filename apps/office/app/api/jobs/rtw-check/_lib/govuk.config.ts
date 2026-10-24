@@ -149,6 +149,15 @@ export const GOVUK_RESULT = {
    */
   futureDateNotContext:
     /share\s*code|\bcode\b|birth|\bborn\b|\bage\b|nationality|checked\s+on|generated|printed|\breview\s+(?:by|on)\b/i,
+  /**
+   * Live wording since 12.10.2026 (TK-11): a result page that prints no end
+   * date for the permission at all, only how long THIS CHECK lasts — "This
+   * check is valid for 6 months from today’s date. You must check their
+   * right to work again in 6 months." The months are captured; the end date
+   * becomes the day the check must be done again, and the office confirms it
+   * (`untilBasis: 'check_validity'`, never a silent verify).
+   */
+  checkValidFor: /\bthis check is valid for (\d{1,2}) months?\b/i,
   /** Lines never read for the end date: they are about the share code, not the permission. */
   untilNotLine: /share\s*code/i,
   /** Settled status / indefinite leave: no end date, stated, never inferred. */
