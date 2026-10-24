@@ -81,7 +81,7 @@ const MESSAGES: Record<string, string> = {
     'There is no activation link to resend yet — the candidate receives it when they are accepted.',
   not_resendable: 'A rejected or inactive person is not sent an activation link.',
   already_activated:
-    'This person has already activated their account. If they have forgotten their password, they can reset it from the Staff App sign-in page.',
+    'This person has already activated their account. If they have forgotten their password, use Send password reset, or they can reset it from the Staff App sign-in page.',
   unknown_staff: 'This person no longer exists — refresh the page.',
   // Send password reset (ADR-0207)
   not_activated: 'This person has not set a password yet — use Resend activation link instead.',
@@ -270,7 +270,10 @@ interface PasswordResetRpc {
   rpc(
     fn: 'onboarding_password_reset_request',
     args: { p_staff: string },
-  ): PromiseLike<{ data: { email?: string } | null; error: { message: string } | null }>;
+  ): PromiseLike<{
+    data: { email?: string; retryAfter?: string } | null;
+    error: { message: string } | null;
+  }>;
 }
 
 /**
@@ -309,12 +312,13 @@ export async function sendPasswordReset(staffId: string): Promise<ActionResult> 
   if (error) return { ok: false, message: explain(error.message) };
   const email = data?.email;
   if (!email) return { ok: false, message: MESSAGES.unknown_staff! };
+  // This request has used the 10-minute window whatever happens next.
+  const retry = data?.retryAfter ? ` after ${data.retryAfter} (UK time)` : ' in 10 minutes';
 
   if (!(await recoveryRequestAllowed(email))) {
     return {
       ok: false,
-      message:
-        'Three password reset emails have already gone to this address in the last hour. Try again later.',
+      message: `Three password reset emails have already gone to this address in the last hour, so none was sent. Try again later — the earliest is${retry}.`,
     };
   }
 
@@ -329,7 +333,7 @@ export async function sendPasswordReset(staffId: string): Promise<ActionResult> 
     });
     return {
       ok: false,
-      message: 'The password reset email could not be sent. Try again in a minute.',
+      message: `The password reset email could not be sent. You can try again${retry}.`,
     };
   }
   for (const path of [...paths(staffId), `/staff/${staffId}`]) revalidatePath(path);

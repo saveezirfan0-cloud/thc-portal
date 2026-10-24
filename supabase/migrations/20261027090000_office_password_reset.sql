@@ -22,7 +22,11 @@
 --   * Once per 10 minutes per person (reset_too_soon: HH:MI, UK time).
 --   * Audited as onboarding_password_reset against the manager, BEFORE the
 --     email is asked for, so the 10-minute window holds even when two
---     presses race. The address comes from auth.users, never the caller.
+--     presses race: the audit line records the REQUEST. If the send then
+--     fails, the window is still used, and the answer's retryAfter (UK
+--     HH:MI) lets the screen say when to try again rather than promise a
+--     retry the database would refuse. The address comes from auth.users,
+--     never the caller.
 --
 -- The email itself is sent by the Back Office server action through
 -- GoTrue (/recover), throttled again there by the 'recover' counter
@@ -78,11 +82,16 @@ begin
   insert into audit_log (actor, action, entity, entity_id, data)
   values (auth.uid(), 'onboarding_password_reset', 'staff', p_staff, '{}'::jsonb);
 
-  return jsonb_build_object('staffId', s.id::text, 'email', lower(v_email));
+  -- When the window opens again, for the screen's words if the send then
+  -- fails: this request has used it either way.
+  return jsonb_build_object(
+    'staffId', s.id::text,
+    'email', lower(v_email),
+    'retryAfter', to_char((now() + interval '10 minutes') at time zone 'Europe/London', 'HH24:MI'));
 end $$;
 
 comment on function public.onboarding_password_reset_request(uuid) is
-  'ADR-0207: the Back Office asks for a password-reset email for a worker or candidate who has already activated their account (set a password). Office logins that may write; refuses unknown_staff, not_accepted, not_resendable, not_activated (use Resend activation link) and reset_too_soon (once per 10 minutes per person). Audited as onboarding_password_reset; returns the login address the server action sends the recovery email to.';
+  'ADR-0207: the Back Office asks for a password-reset email for a worker or candidate who has already activated their account (set a password). Office logins that may write; refuses unknown_staff, not_accepted, not_resendable, not_activated (use Resend activation link) and reset_too_soon (once per 10 minutes per person). Audited as onboarding_password_reset; returns the login address the server action sends the recovery email to, and retryAfter (UK HH:MI) for when the next request is allowed.';
 
 revoke all on function public.onboarding_password_reset_request(uuid) from public, anon;
 grant execute on function public.onboarding_password_reset_request(uuid) to authenticated;
