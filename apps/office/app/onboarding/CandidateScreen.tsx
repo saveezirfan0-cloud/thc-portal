@@ -774,8 +774,9 @@ function Facts({
   }
   if (phase <= 2) {
     facts.push(
+      // TK-20: every value under the name carries its label, as the rest do.
       <span key="email">
-        <b>{row.email}</b>
+        Email <b>{row.email}</b>
       </span>,
     );
   }
@@ -784,7 +785,7 @@ function Facts({
   if (phase <= 3) {
     facts.push(
       <span key="phone">
-        <b>{row.phone}</b>
+        Mobile <b>{row.phone}</b>
       </span>,
     );
   }
