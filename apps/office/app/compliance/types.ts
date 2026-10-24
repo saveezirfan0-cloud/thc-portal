@@ -134,6 +134,12 @@ export interface QueueRow {
    * previous letter, which verifying this one replaces.
    */
   staff_term_dates?: string[] | null;
+  /**
+   * ADR-0213: NOT a column of the queue view — on a term letter row, the
+   * course completion date (today or earlier) the worker has told us of on a
+   * Completion Letter. Set: "Not needed — graduated" is offered.
+   */
+  graduation_claimed?: string | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';

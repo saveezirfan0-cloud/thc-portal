@@ -37,6 +37,7 @@ import {
 import { canRescan, canRotate } from './messages';
 import { RescanButton } from './RescanButton';
 import { RotateDocumentButton } from './RotateDocumentButton';
+import { TermLetterNotNeededButton } from './TermLetterNotNeededButton';
 import { ViewDocumentButton } from './ViewDocumentButton';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
@@ -264,6 +265,19 @@ function QueueLine({
       {row.kind === 'document' && row.file_path ? (
         <>
           <ViewDocumentButton docId={row.item_id} disabled={busy} />{' '}
+        </>
+      ) : null}
+      {/* ADR-0213 (TK-19): a graduate's term letter is set aside, not rejected. */}
+      {row.kind === 'document' &&
+      row.item_type === 'university_term_dates_letter' &&
+      row.graduation_claimed ? (
+        <>
+          <TermLetterNotNeededButton
+            docId={row.item_id}
+            name={row.display_name}
+            completed={row.graduation_claimed}
+            disabled={busy}
+          />{' '}
         </>
       ) : null}
       {/* ADR-0212 (TK-18): a photo the wrong way round is turned, not rejected. */}

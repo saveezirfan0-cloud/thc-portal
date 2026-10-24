@@ -81,3 +81,19 @@ export async function withdrawCompletionApproval(
       : `Approval withdrawn${count}. There is no current term letter on file: ask the worker to upload one.`,
   };
 }
+
+/**
+ * "Not needed — graduated" on a pending or rejected Term Dates Letter
+ * (ADR-0213, TK-19): someone who has told us their course is over needs no
+ * term letter, so it leaves Needs review as superseded — with no message to
+ * the worker, unlike Reject, whose N8 would ask them for the wrong document.
+ */
+export async function setAsideTermLetter(docId: string): Promise<ActionResult> {
+  const result = await call('compliance_set_aside_term_letter', { p_doc: docId });
+  if ('ok' in result) return result;
+  return {
+    ok: true,
+    message:
+      'Set aside as not needed. Nothing was sent to the worker — their app asks for a Completion Letter instead.',
+  };
+}

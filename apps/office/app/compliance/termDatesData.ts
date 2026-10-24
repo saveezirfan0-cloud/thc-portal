@@ -74,3 +74,80 @@ export function withStaffTermDates(
       : row,
   );
 }
+
+/**
+ * ADR-0213 (TK-19): for each worker with a term letter on Needs review, the
+ * latest course completion date they have told us of — on any Completion
+ * Letter, as read by the office or as they claimed it — when it is today or
+ * earlier (UK). Such a term letter may be set aside as "Not needed —
+ * graduated"; `compliance_set_aside_term_letter()` checks the same again.
+ * Best-effort, like the term dates: a failed read offers no button.
+ */
+export async function loadGraduationClaims(
+  client: unknown,
+  staffIds: readonly string[],
+  today: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const ids = [...new Set(staffIds.filter(Boolean))];
+  if (ids.length === 0) return map;
+  try {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+    const answers = await Promise.all(
+      chunks.map((chunk) =>
+        (client as GraduationClient)
+          .from('compliance_docs')
+          .select('staff_id, completion_date, completion_date_claimed')
+          .eq('doc_type', 'university_completion_letter')
+          .in('staff_id', chunk),
+      ),
+    );
+    for (const answer of answers) {
+      if (answer.error) continue;
+      for (const row of (answer.data as CompletionClaimRow[] | null) ?? []) {
+        const done = row.completion_date ?? row.completion_date_claimed;
+        if (!done || done > today) continue;
+        const known = map.get(row.staff_id);
+        if (!known || done > known) map.set(row.staff_id, done);
+      }
+    }
+  } catch {
+    return map;
+  }
+  return map;
+}
+
+interface GraduationClient {
+  from(table: string): {
+    select(columns: string): {
+      eq(
+        column: string,
+        value: string,
+      ): {
+        in(
+          column: string,
+          values: readonly string[],
+        ): PromiseLike<{ data: unknown; error: unknown }>;
+      };
+    };
+  };
+}
+
+interface CompletionClaimRow {
+  staff_id: string;
+  completion_date: string | null;
+  completion_date_claimed: string | null;
+}
+
+/** The queue rows with `graduation_claimed` merged in on each term letter. */
+export function withGraduationClaims(
+  rows: readonly QueueRow[],
+  claims: ReadonlyMap<string, string>,
+): QueueRow[] {
+  return rows.map((row) =>
+    row.kind === 'document' && row.item_type === 'university_term_dates_letter'
+      ? { ...row, graduation_claimed: claims.get(row.staff_id) ?? null }
+      : row,
+  );
+}

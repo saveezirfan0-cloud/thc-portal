@@ -10,7 +10,14 @@ import { EMPTY_MONITOR } from './checks';
 import { loadCheckMonitor } from './checksData';
 import { withLatestCheck } from './queue';
 import { loadDeclarationFollowUps } from './declarationData';
-import { loadStaffTermDates, termLetterStaffIds, withStaffTermDates } from './termDatesData';
+import { ukToday } from '@thc/domain';
+import {
+  loadGraduationClaims,
+  loadStaffTermDates,
+  termLetterStaffIds,
+  withGraduationClaims,
+  withStaffTermDates,
+} from './termDatesData';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 import { readProblem } from '../_lib/dbError';
 
@@ -100,7 +107,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
   // rtw_checks_latest_v, not on the queue view — one read for every share
   // code on the queue, merged by document id.
   const rows = queue.data ?? [];
-  const [checks, claims, followUps, termDates] = await Promise.all([
+  const [checks, claims, followUps, termDates, graduations] = await Promise.all([
     loadRtwChecksForDocuments(
       supabase,
       rows
@@ -124,16 +131,21 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     ),
     // ADR-0183: the holiday dates a pending term letter would replace.
     loadStaffTermDates(supabase, termLetterStaffIds(rows)),
+    // ADR-0213: who has told us they have graduated — "Not needed — graduated".
+    loadGraduationClaims(supabase, termLetterStaffIds(rows), ukToday()),
   ]);
 
   return {
-    queue: withStaffTermDates(
-      rows.map((row) => ({
-        ...withLatestCheck(row, checks.get(row.item_id)),
-        dob_claim: claims.get(row.item_id) ?? null,
-        ...followUps.get(row.item_id),
-      })),
-      termDates,
+    queue: withGraduationClaims(
+      withStaffTermDates(
+        rows.map((row) => ({
+          ...withLatestCheck(row, checks.get(row.item_id)),
+          dob_claim: claims.get(row.item_id) ?? null,
+          ...followUps.get(row.item_id),
+        })),
+        termDates,
+      ),
+      graduations,
     ),
     radar: radar.data ?? [],
     warnings: warnings.data ?? [],
