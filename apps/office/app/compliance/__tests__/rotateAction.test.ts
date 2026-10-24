@@ -65,7 +65,7 @@ describe('rotateDocument', () => {
     const result = await rotateDocument('d1');
     expect(result).toEqual({
       ok: true,
-      message: 'Turned a quarter clockwise. Press View to check it.',
+      message: 'Saved the right way round.',
     });
 
     const [to, body, options] = storage.upload.mock.calls[0] as [string, Buffer, object];
@@ -112,6 +112,50 @@ describe('rotateDocument', () => {
       'turn_document_upright',
       expect.objectContaining({ p_from: pdfPath, p_to: to, p_turned: 90 }),
     );
+  });
+
+  it('turns the net angle chosen in the preview, in one save (TK-30)', async () => {
+    expect((await rotateDocument('d1', 180)).ok).toBe(true);
+    let [, body] = storage.upload.mock.calls[0] as [string, Buffer];
+    expect(await sharp(body).metadata()).toMatchObject({ width: 20, height: 40 });
+    expect(rpc).toHaveBeenLastCalledWith(
+      'turn_document_upright',
+      expect.objectContaining({ p_turned: 180 }),
+    );
+
+    expect((await rotateDocument('d1', 270)).ok).toBe(true);
+    [, body] = storage.upload.mock.calls[1] as [string, Buffer];
+    expect(await sharp(body).metadata()).toMatchObject({ width: 40, height: 20 });
+    expect(rpc).toHaveBeenLastCalledWith(
+      'turn_document_upright',
+      expect.objectContaining({ p_turned: 270 }),
+    );
+  });
+
+  it('a PDF page already turned keeps adding up, past a full circle (TK-30)', async () => {
+    const source = await PDFDocument.create();
+    source.addPage([600, 400]).setRotation(degrees(90));
+    storage.download.mockResolvedValue({
+      data: new Blob([new Uint8Array(await source.save())]),
+      error: null,
+    });
+    doc.current = {
+      file_path: PATH.replace('.jpg', '.pdf'),
+      mime_type: 'application/pdf',
+      review_status: 'pending',
+    };
+    expect((await rotateDocument('d1', 270)).ok).toBe(true);
+    const [, body] = storage.upload.mock.calls[0] as [string, Buffer];
+    const turned = await PDFDocument.load(body);
+    expect(turned.getPages().map((page) => page.getRotation().angle)).toEqual([0]);
+  });
+
+  it('refuses any angle but a quarter, half or three-quarter turn, before touching the file', async () => {
+    for (const bad of [0, 45, 360, -90]) {
+      expect((await rotateDocument('d1', bad as 90)).ok).toBe(false);
+    }
+    expect(storage.download).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('never touches a HEIC or a decided document, and a viewer changes nothing', async () => {

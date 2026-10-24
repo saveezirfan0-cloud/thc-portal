@@ -13,9 +13,10 @@ import type { ActionResult } from './types';
 
 /**
  * "Rotate" on a Needs review row (ADR-0212, TK-18): a photo that came in
- * sideways or upside down is turned a quarter clockwise per press and kept
- * that way, so the office verifies it instead of rejecting it and asking
- * for it again. The AI read already turns most of them on upload; this is
+ * sideways or upside down is turned and kept that way, so the office
+ * verifies it instead of rejecting it and asking for it again. Since TK-30
+ * the reviewer turns it in a preview window first and saves the net turn
+ * (90, 180 or 270 clockwise) once. The AI read already turns most of them on upload; this is
  * for the rest.
  *
  * The row is read through the manager's session; the turned copy is
@@ -32,15 +33,21 @@ const REFUSALS: Record<string, string> = {
   read_only: READ_ONLY_MESSAGE,
 };
 
+/** Clockwise, as chosen in the preview window (TK-30). */
+type QuarterTurn = 90 | 180 | 270;
+
 /** `turn_document_upright()` (20261027110000), not yet in the generated types. */
 interface TurnRpc {
   rpc(
     fn: 'turn_document_upright',
-    args: { p_doc: string; p_from: string; p_to: string; p_size: number; p_turned: 90 | 180 | 270 },
+    args: { p_doc: string; p_from: string; p_to: string; p_size: number; p_turned: QuarterTurn },
   ): PromiseLike<{ error: { message?: string } | null }>;
 }
 
-export async function rotateDocument(docId: string): Promise<ActionResult> {
+export async function rotateDocument(docId: string, turn: QuarterTurn = 90): Promise<ActionResult> {
+  if (turn !== 90 && turn !== 180 && turn !== 270) {
+    return { ok: false, message: 'Turn by a quarter, a half or three quarters.' };
+  }
   if (!supabaseConfigured())
     return { ok: false, message: 'This environment has no Supabase project.' };
   const supabase = createClient(await cookies());
@@ -69,7 +76,7 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
   let turned: Buffer;
   try {
     const bytes = Buffer.from(await file.arrayBuffer());
-    turned = pdf ? await turnPdfClockwise(bytes) : await turnPhotoClockwise(bytes);
+    turned = pdf ? await turnPdfClockwise(bytes, turn) : await turnPhotoClockwise(bytes, turn);
   } catch {
     return {
       ok: false,
@@ -88,7 +95,7 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
     p_from: from,
     p_to: to,
     p_size: turned.byteLength,
-    p_turned: 90,
+    p_turned: turn,
   });
   if (error) {
     await admin.storage.from('documents').remove([to]);
@@ -102,22 +109,22 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
   revalidatePath('/compliance');
   revalidatePath('/staff', 'layout');
   revalidatePath('/onboarding', 'layout');
-  return { ok: true, message: 'Turned a quarter clockwise. Press View to check it.' };
+  return { ok: true, message: 'Saved the right way round.' };
 }
 
-/** A photo turned a quarter clockwise, its camera orientation applied first, as a JPEG. */
-async function turnPhotoClockwise(bytes: Buffer): Promise<Buffer> {
-  return sharp(bytes).autoOrient().rotate(90).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+/** A photo turned clockwise, its camera orientation applied first, as a JPEG. */
+async function turnPhotoClockwise(bytes: Buffer, turn: QuarterTurn): Promise<Buffer> {
+  return sharp(bytes).autoOrient().rotate(turn).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
 }
 
 /**
- * ADR-0214 (TK-24): every page of a PDF turned a quarter clockwise — its
+ * ADR-0214 (TK-24): every page of a PDF turned clockwise — its
  * /Rotate, so nothing on the page is re-compressed or re-drawn.
  */
-async function turnPdfClockwise(bytes: Buffer): Promise<Buffer> {
+async function turnPdfClockwise(bytes: Buffer, turn: QuarterTurn): Promise<Buffer> {
   const doc = await PDFDocument.load(bytes);
   for (const page of doc.getPages()) {
-    page.setRotation(degrees((page.getRotation().angle + 90) % 360));
+    page.setRotation(degrees((page.getRotation().angle + turn) % 360));
   }
   return Buffer.from(await doc.save());
 }

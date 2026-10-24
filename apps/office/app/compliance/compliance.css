@@ -75,3 +75,39 @@
     margin-top: var(--sp-8);
   }
 }
+
+/* TK-30: the Rotate window. The picture turns in place inside a square frame,
+   fitted to the frame's shorter side so it stays whole whichever way it faces.
+   Not under .compliance: the Modal renders outside the screen's container. */
+.rotate-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-12);
+}
+.rotate-frame {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: min(62vh, 640px);
+  overflow: hidden;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-frame);
+}
+.rotate-frame .rotate-view {
+  max-width: 100%;
+  max-height: 100%;
+  transition: transform 0.2s ease;
+  border: 0;
+}
+.rotate-frame .rotate-view.sideways {
+  max-width: min(62vh, 640px);
+  max-height: 100%;
+}
+.rotate-frame iframe.rotate-view {
+  width: min(62vh, 640px);
+  height: min(62vh, 640px);
+  background: var(--panel);
+}
