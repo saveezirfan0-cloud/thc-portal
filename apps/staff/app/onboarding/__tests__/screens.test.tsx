@@ -515,6 +515,53 @@ describe('4/11 Documents', () => {
     expect(html).not.toContain('href="/onboarding/completion-letter"');
   });
 
+  it('a graduate whose Completion Letter was not accepted is pointed at a new one, not a Term Dates Letter (ADR-0211, TK-17)', () => {
+    const rejected = mapOnboardingState({
+      ...rawState,
+      documents: [
+        ...rawState.documents.filter((d) => d.docType !== 'university_term_dates_letter'),
+        {
+          id: 'c1',
+          docType: 'university_completion_letter',
+          status: 'rejected',
+          rejectionReason: 'We require an Official University Completion Letter, not a certificate',
+          fileName: 'certificate.pdf',
+          uploadedAt: '2026-09-19T10:00:00Z',
+        },
+      ],
+    })!;
+    const hub = renderToStaticMarkup(
+      <ReviewHub
+        rows={requirementRows(rejected)}
+        shareDoc={null}
+        dob={null}
+        declaration={null}
+        completionLetter={completionLetterDoc(rejected)}
+      />,
+    );
+    expect(hub).toContain('One document needs your attention.');
+    expect(hub).toContain('Not needed if you’ve graduated — upload a new Completion Letter below.');
+    expect(hub).toContain('>Upload instead<');
+    // The term letter row is no longer a "Missing" with a primary Re-upload.
+    expect(hub).not.toContain('>Missing<');
+    expect(hub).toContain('Not accepted · “We require an Official University Completion Letter');
+
+    const step = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(rejected)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+        completionLetter={completionLetterDoc(rejected)}
+      />,
+    );
+    expect(step).toContain(
+      'Not needed if you’ve graduated — upload a new Completion Letter below.',
+    );
+    expect(step).toContain('>Upload instead<');
+    expect(step).not.toContain('Missing ·');
+  });
+
   it('after Submit: In review, the No declaration verified, onboarding paused at 4 of 11', () => {
     const html = renderToStaticMarkup(
       <ReviewHub

@@ -168,9 +168,17 @@ describe('onboarding_state() → the wizard', () => {
       }
     });
 
-    it('a rejected Completion Letter answers nothing', () => {
+    it('a rejected Completion Letter keeps the graduate on its route, but answers nothing (ADR-0211)', () => {
       const rows = rowsFor([raw.documents[0], completion('rejected')]);
+      expect(rows[1]!.viaCompletionLetter).toBe(true);
+      expect(rows[1]!.doc?.status).toBe('rejected');
+      expect(allUploaded(rows)).toBe(false);
+    });
+
+    it('a rejected Completion Letter beside a rejected Term Dates Letter: the term letter row is the term letter', () => {
+      const rows = rowsFor([raw.documents[0], termLetter('rejected'), completion('rejected')]);
       expect(rows[1]!.viaCompletionLetter).toBeUndefined();
+      expect(rows[1]!.doc?.docType).toBe('university_term_dates_letter');
       expect(allUploaded(rows)).toBe(false);
     });
 

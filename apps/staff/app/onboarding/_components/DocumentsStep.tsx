@@ -6,7 +6,7 @@ import { Alert, Button, Input, Pill, Radio, RadioGroup, Textarea } from '@thc/ui
 import { formatFileSize, formatShareCode, termLetterExpired } from '@thc/domain';
 import type { DocRequirement } from '@thc/domain';
 import { submitDocuments } from '../actions';
-import { allUploaded, docIcon } from '../state';
+import { GRADUATE_REUPLOAD, allUploaded, docIcon } from '../state';
 import type { RequirementRow, UploadedDoc } from '../state';
 import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
@@ -93,21 +93,29 @@ export function DocumentsStep({
             doc?.docType === 'university_term_dates_letter' &&
             doc.status !== 'rejected' &&
             termLetterExpired(today, doc.termDates);
+          // ADR-0211: the graduate's Completion Letter was not accepted — the
+          // fix is a new one below, not a term letter they don't have.
+          const standInRejected = viaCompletionLetter && doc?.status === 'rejected';
           return (
-            <div className={`docrow ${doc ? 'pending' : ''}`} key={requirement.key}>
+            <div
+              className={`docrow ${doc && !standInRejected ? 'pending' : ''}`}
+              key={requirement.key}
+            >
               <span className="ico">{viaCompletionLetter ? '—' : docIcon(doc)}</span>
               <div>
                 <div className="t">{requirement.label}</div>
                 <div className="m">
-                  {viaCompletionLetter
-                    ? doc?.status === 'verified'
-                      ? 'Not needed — your Completion Letter below covers it'
-                      : 'Covered by your Completion Letter below once the office approves it'
-                    : doc
-                      ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
-                          .filter(Boolean)
-                          .join(' · ')
-                      : `Missing · ${requirement.hint ?? ''}`}
+                  {standInRejected
+                    ? GRADUATE_REUPLOAD
+                    : viaCompletionLetter
+                      ? doc?.status === 'verified'
+                        ? 'Not needed — your Completion Letter below covers it'
+                        : 'Covered by your Completion Letter below once the office approves it'
+                      : doc
+                        ? [doc.fileName, doc.fileSize ? formatFileSize(doc.fileSize) : null]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : `Missing · ${requirement.hint ?? ''}`}
                   {outOfDate ? (
                     <div className="coral">
                       This letter is out of date — the term dates on it have already passed. Please
@@ -117,7 +125,15 @@ export function DocumentsStep({
                 </div>
               </div>
               <div className="right">
-                {viaCompletionLetter ? (
+                {standInRejected ? (
+                  <button
+                    type="button"
+                    className="linkbtn xs"
+                    onClick={() => setSheet(requirement)}
+                  >
+                    Upload instead
+                  </button>
+                ) : viaCompletionLetter ? (
                   <Pill>{doc?.status === 'verified' ? 'Not needed' : 'Once approved'}</Pill>
                 ) : doc ? (
                   <>
