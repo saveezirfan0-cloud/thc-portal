@@ -77,7 +77,7 @@ select throws_ok($$ select turn_document_upright('93900000-0000-4000-8000-000000
 select throws_ok($$ select turn_document_upright('93900000-0000-4000-8000-0000000000d2',
   '93900000-0000-4000-8000-000000000001/passport/aaaa1111-0000-4000-8000-000000000002.pdf',
   '93900000-0000-4000-8000-000000000001/passport/bbbb2222-0000-4000-8000-000000000002.jpg', 900, 90) $$,
-  'P0001', 'not_a_photo', 'a PDF is never turned');
+  'P0001', 'bad_path', 'a PDF stays a PDF: never swapped for a .jpg (ADR-0214)');
 select throws_ok($$ select turn_document_upright('93900000-0000-4000-8000-0000000000d1',
   '93900000-0000-4000-8000-000000000001/passport/aaaa1111-0000-4000-8000-000000000001.jpg',
   '44444444-4444-4444-4444-444444444444/passport/bbbb2222-0000-4000-8000-000000000001.jpg', 900, 90) $$,

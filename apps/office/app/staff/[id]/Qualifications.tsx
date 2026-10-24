@@ -328,8 +328,11 @@ export function Qualifications({
             Role(s)
           </span>
           {held.length === 0 ? (
-            <span className="muted sm">
-              This worker holds no role yet — add one on the Overview.
+            // TK-26: name the place roles are added — the Roles line at the
+            // top of this profile — and that it comes first.
+            <span className="amber sm">
+              This worker has no roles yet, so there is nothing to qualify them for. Add their
+              role(s) first — in <b>Roles</b> at the top of this profile — then come back here.
             </span>
           ) : (
             <div className="stack">

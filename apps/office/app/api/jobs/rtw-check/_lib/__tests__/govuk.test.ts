@@ -769,9 +769,9 @@ describe('fitReportToOnePage', () => {
   });
 
   it('still fits the sheet when the tidy is refused', async () => {
-    const out = await fitReportToOnePage(reportPage(2000, false, true));
-    expect(out.scale).toBeGreaterThan(0.1);
-    expect(out.scale! * 2000).toBeLessThanOrEqual(PRINTABLE.height);
+    const out = await fitReportToOnePage(reportPage(1100, false, true));
+    expect(out.scale).toBeGreaterThanOrEqual(0.9);
+    expect(out.scale! * 1100).toBeLessThanOrEqual(PRINTABLE.height);
   });
 
   it('leaves a page that already fits at full size, measured at the sheet width', async () => {
@@ -782,22 +782,31 @@ describe('fitReportToOnePage', () => {
     expect(widths).toEqual([PRINTABLE.width]);
   });
 
-  it('scales a taller page down so it fits one A4 sheet, never below 0.1', async () => {
-    const tall = await fitReportToOnePage(reportPage(2000));
-    expect(tall.scale).toBeGreaterThan(0.1);
-    expect(tall.scale! * 2000).toBeLessThanOrEqual(PRINTABLE.height);
+  it('scales a slightly taller page down just enough to fit one A4 sheet', async () => {
+    const tall = await fitReportToOnePage(reportPage(1100));
+    expect(tall.scale).toBeGreaterThanOrEqual(0.9);
+    expect(tall.scale).toBeLessThan(1);
+    expect(tall.scale! * 1100).toBeLessThanOrEqual(PRINTABLE.height);
     // As large as fits: one step up would not.
-    expect((tall.scale! + 0.01) * 2000).toBeGreaterThan(PRINTABLE.height * 0.97);
-    expect((await fitReportToOnePage(reportPage(1_000_000))).scale).toBe(0.1);
+    expect((tall.scale! + 0.01) * 1100).toBeGreaterThan(PRINTABLE.height * 0.97);
+  });
+
+  it('TK-21: never shrinks below 0.9 — a long result prints at full size over more pages', async () => {
+    widths.length = 0;
+    const long = await fitReportToOnePage(reportPage(2000));
+    expect(long.scale).toBeUndefined();
+    // Measured once at full size and once at the floor, then put back.
+    expect(widths.at(-1)).toBe(PRINTABLE.width);
+    expect((await fitReportToOnePage(reportPage(1_000_000))).scale).toBeUndefined();
   });
 
   it('measures the height at the width Chrome prints that scale at, not at the sheet width', async () => {
-    // Text that re-wraps: twice as wide, half as tall. 2 800 px at the sheet
-    // width; the old single measurement shrank it to 0.36.
-    const rewraps = (width: number) => Math.round((2800 * PRINTABLE.width) / width);
+    // Text that re-wraps: twice as wide, half as tall. Too tall for the sheet
+    // at full width, but it fits once laid out a little wider.
+    const rewraps = (width: number) => Math.round((1150 * PRINTABLE.width) / width);
     widths.length = 0;
     const out = await fitReportToOnePage(reportPage(rewraps));
-    expect(out.scale).toBeGreaterThan(0.5);
+    expect(out.scale).toBeGreaterThanOrEqual(0.9);
     // Chrome lays a page printed at scale s out printable / s wide…
     const printedAt = Math.round(PRINTABLE.width / out.scale!);
     expect(widths).toContain(printedAt);
