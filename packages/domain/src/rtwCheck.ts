@@ -56,6 +56,13 @@ export interface RtwCheckResult {
   fullName: string | null;
   /** ISO date (YYYY-MM-DD). Null on a pass means NO TIME LIMIT (settled status / ILR). */
   rightToWorkUntil: string | null;
+  /**
+   * TK-11: `check_validity` when gov.uk printed no end date for the
+   * permission, only how long the check is valid ("valid for 6 months from
+   * today's date"), and `rightToWorkUntil` is the day the check must be done
+   * again. Such a result always goes to the office, never a verify.
+   */
+  untilBasis?: 'check_validity' | null;
   /** The work conditions as gov.uk words them, one line each. */
   conditions: string[];
   /** e.g. 20 when the record says "20 hours per week in term time"; null when there is no such limit. */
@@ -551,6 +558,15 @@ export function decideRtwCheck(
         `gov.uk limits term time to ${termLimit} hours a week; the profile's course level gives ${expected}. Check the course level before verifying.`,
       );
     }
+  }
+
+  // TK-11: the date is gov.uk's re-check date, not one the permission ends
+  // on. The office confirms it, whatever else the page says.
+  if (result.untilBasis === 'check_validity' && until !== null) {
+    const [y, m, d] = until.split('-');
+    return review(
+      `gov.uk confirms the right to work but prints no end date for it — only that this check is valid for a limited time. The date filled in, ${d}.${m}.${y}, is when the check must be done again. Read the report, compare the gov.uk photo with the worker’s selfie, then Verify (or enter the visa’s own end date if you have it and it is earlier).`,
+    );
   }
 
   const unknown = unrecognisedConditions(result.conditions);

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { decideRtwCheck } from '@thc/domain';
 import {
+  addMonths,
   createGovukChecker,
   driveGovuk,
   fitReportToOnePage,
@@ -236,6 +237,54 @@ describe('parseGovukResult', () => {
         { attempt: 1, maxAttempts: 5, today: '2026-10-06' },
       ),
     ).toEqual({ action: 'verify', rightToWorkUntil: null, noTimeLimit: true });
+  });
+
+  // TK-11 (24.10.2026): gov.uk's live page for many visas prints no end date,
+  // only "This check is valid for 6 months from today’s date". The date
+  // becomes the re-check date, and the office always confirms it.
+  it('reads "this check is valid for 6 months" as the re-check date, for the office to confirm', () => {
+    const r = parseGovukResult(page('govuk-pass-check-valid-six-months.txt'), AT);
+    expect(r).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-03-25',
+      untilBasis: 'check_validity',
+      termTimeLimitHours: 20,
+    });
+    const decision = decideRtwCheck(
+      { ...r, fullName: 'Amara Kofi' },
+      {
+        firstName: 'Amara',
+        lastName: 'Kofi',
+        rtwBranch: 'international_student',
+        belowDegreeLevel: false,
+      },
+      { attempt: 1, maxAttempts: 5, today: '2026-09-25' },
+    );
+    expect(decision.action).toBe('needs_review');
+    expect(decision).toMatchObject({
+      officeReason: expect.stringContaining('25.03.2027, is when the check must be done again'),
+    });
+  });
+
+  it('a printed end date still wins over the check validity, and "no time limit" still means none', () => {
+    const both = parseGovukResult(
+      'Name\nMarta Villanueva\nThey have the right to work in the UK.\nThis check is valid for 6 months from today’s date.\nThey can work in the UK until 12 August 2027.\n',
+      AT,
+    );
+    expect(both).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: '2027-08-12' });
+    expect(both).not.toHaveProperty('untilBasis');
+    const settled = parseGovukResult(
+      'Name\nOlu Ade\nThey have the right to work in the UK.\nThis check is valid for 6 months from today’s date.\nThere is no limit on how long they can stay in the UK.\n',
+      AT,
+    );
+    expect(settled).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: null });
+  });
+
+  it('adds calendar months, keeping to the last day of a shorter month', () => {
+    expect(addMonths('2026-10-24', 6)).toBe('2027-04-24');
+    expect(addMonths('2026-08-31', 6)).toBe('2027-02-28');
+    expect(addMonths('2027-08-31', 6)).toBe('2028-02-29');
+    expect(addMonths('2026-12-15', 1)).toBe('2027-01-15');
   });
 
   it('pre-settled status is never read as no time limit (QA 25.09)', () => {
