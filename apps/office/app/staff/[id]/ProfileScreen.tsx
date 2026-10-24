@@ -56,8 +56,8 @@ import {
   resetToCandidate,
   unblockWorker,
 } from './actions';
-import { resendActivationLink } from '../../onboarding/actions';
-import { canResendActivation } from '../../onboarding/view-model';
+import { resendActivationLink, sendPasswordReset } from '../../onboarding/actions';
+import { canResendActivation, canSendPasswordReset } from '../../onboarding/view-model';
 import type { ProfileData, ProfileRow } from './types';
 import './profile.css';
 
@@ -161,6 +161,7 @@ export function ProfileScreen({
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [resent, setResent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const actionable = isActionable(profile.status);
   const whyId = useId();
@@ -364,6 +365,24 @@ export function ProfileScreen({
                   }
                 >
                   {resent ? 'Activation link sent ✓' : 'Resend activation link'}
+                </Button>
+              </div>
+            ) : null}
+            {data.activated === true && canSendPasswordReset(profile.status, true) ? (
+              <div className="row">
+                <Button
+                  size="sm"
+                  tone="outline"
+                  disabled={pending || resetSent}
+                  title="Their account is already set up. Emails them a link to choose a new password, for a lost password or an old activation link that says it has expired. Once every 10 minutes."
+                  onClick={() =>
+                    run(
+                      () => sendPasswordReset(profile.id),
+                      () => setResetSent(true),
+                    )
+                  }
+                >
+                  {resetSent ? 'Password reset sent ✓' : 'Send password reset'}
                 </Button>
               </div>
             ) : null}

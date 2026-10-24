@@ -54,6 +54,7 @@ import {
   rejectDocument,
   removeQualifiedRole,
   resendActivationLink,
+  sendPasswordReset,
   revokeClientQualification,
   verifyDeclaration,
   verifyDocument,
@@ -68,6 +69,7 @@ import {
   RTW_REQUIRED,
   aiBadge,
   canResendActivation,
+  canSendPasswordReset,
   candidateActions,
   candidateCap,
   columnFor,
@@ -212,6 +214,7 @@ export function CandidateScreen({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const [resent, setResent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [marking, setMarking] = useState(false);
   const [markReason, setMarkReason] = useState('');
   const [granting, setGranting] = useState(false);
@@ -367,6 +370,21 @@ export function CandidateScreen({
                 }
               >
                 {resent ? 'Activation link sent ✓' : 'Resend activation link'}
+              </Button>
+            ) : null}
+            {canSendPasswordReset(row.status, row.activated) ? (
+              <Button
+                tone="outline"
+                disabled={busy || resetSent}
+                title="Their account is already set up. Emails them a link to choose a new password, for a lost password or an old activation link that says it has expired. Once every 10 minutes."
+                onClick={() =>
+                  run(
+                    () => sendPasswordReset(row.id),
+                    () => setResetSent(true),
+                  )
+                }
+              >
+                {resetSent ? 'Password reset sent ✓' : 'Send password reset'}
               </Button>
             ) : null}
             {quizRejected && canGrantQuizAttempts ? (

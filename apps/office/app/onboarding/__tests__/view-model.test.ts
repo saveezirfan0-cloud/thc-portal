@@ -11,6 +11,7 @@ import {
   boardCounts,
   needsAttention,
   canResendActivation,
+  canSendPasswordReset,
   candidateActions,
   candidateCap,
   cardLines,
@@ -196,6 +197,28 @@ describe('every transition the board offers is legal (§2.12)', () => {
       'removed',
     ] as const) {
       expect(canResendActivation(status, false)).toBe(false);
+    }
+  });
+
+  it('Send password reset is offered only to someone accepted who HAS activated (ADR-0207)', () => {
+    expect(canSendPasswordReset('documents', true)).toBe(true);
+    expect(canSendPasswordReset('compliant', true)).toBe(true);
+    expect(canSendPasswordReset('blocked', true)).toBe(true);
+    expect(canSendPasswordReset('documents', false)).toBe(false);
+    for (const status of [
+      'interview_requested',
+      'interview_completed',
+      'rejected',
+      'inactive',
+      'removed',
+    ] as const) {
+      expect(canSendPasswordReset(status, true)).toBe(false);
+    }
+    // Never both buttons at once: one or the other for an accepted person.
+    for (const activated of [true, false]) {
+      expect(
+        canSendPasswordReset('quiz', activated) && canResendActivation('quiz', activated),
+      ).toBe(false);
     }
   });
 

@@ -171,6 +171,15 @@ export function canResendActivation(status: StaffStatus, activated: boolean): bo
 }
 
 /**
+ * Offer "Send password reset" (ADR-0207)? The other half of the same set:
+ * someone accepted who HAS activated, so a resent activation link would be
+ * refused and their way back in is a password reset.
+ */
+export function canSendPasswordReset(status: StaffStatus, activated: boolean): boolean {
+  return activated && RESENDABLE.has(status);
+}
+
+/**
  * The returning-applicant card (§2.12): "the manager either presses Reset
  * to candidate on it or rejects the application". Reset is drawn only
  * where the machine has the edge — blocked, rejected or inactive — so a
