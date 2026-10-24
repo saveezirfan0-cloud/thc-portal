@@ -178,7 +178,8 @@ Rules:
 - matchesDocType: true only if the document is the kind described in the instruction.
 - legible: false if the relevant part is cut off, blurred, obscured or otherwise not readable with certainty.
 - confidence: a number from 0 to 1 for how certain you are that every value you returned is exactly what the document states. Use below 0.5 whenever anything is ambiguous.
-- notes: at most one short sentence for the reviewer about anything doubtful; no names, numbers or other personal details. Empty string if nothing to add.`;
+- notes: at most one short sentence for the reviewer about anything doubtful; no names, numbers or other personal details. Empty string if nothing to add.
+- uprightTurn: how many degrees the image must be turned clockwise for the document to read the right way up — its main printed text horizontal and read left to right, not upside down. Judge by the printed text, not by the shape of the image. 0 if it already reads the right way up; otherwise 90, 180 or 270. null if you cannot tell.`;
 
 const DOC_INSTRUCTIONS: Record<DocType, string> = {
   passport:
@@ -228,6 +229,7 @@ export const ANSWER_SCHEMA = {
     'issuingState',
     'confidence',
     'notes',
+    'uprightTurn',
   ],
   properties: {
     matchesDocType: { type: 'boolean' },
@@ -261,6 +263,9 @@ export const ANSWER_SCHEMA = {
     issuingState: { anyOf: [{ type: 'string' }, { type: 'null' }] },
     confidence: { type: 'number' },
     notes: { type: 'string' },
+    // ADR-0212: how far a photo must turn clockwise to read the right way up
+    // (0, 90, 180 or 270 — the prompt says so; anything else reads as null).
+    uprightTurn: { anyOf: [{ type: 'integer' }, { type: 'null' }] },
   },
 } as const;
 
@@ -401,12 +406,21 @@ export function normaliseAnswer(
       ? passportCountryFromCode(answer['issuingState'])
       : null;
 
+  // ADR-0212: only of a page the model says IS this document; never part of
+  // the confidence, which is about the dates.
+  const turn = answer['uprightTurn'];
+  const uprightTurn =
+    answer['matchesDocType'] === true && (turn === 0 || turn === 90 || turn === 180 || turn === 270)
+      ? turn
+      : null;
+
   return {
     expiryDate,
     holidays,
     completionDate,
     awardingInstitution,
     passportCountry,
+    uprightTurn,
     confidence,
     raw: {
       model: meta.model,

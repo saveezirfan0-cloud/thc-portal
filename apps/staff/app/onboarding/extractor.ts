@@ -60,6 +60,12 @@ export interface ExtractionResult {
    * `record_passport_country()`, which only ever fills a blank.
    */
   passportCountry?: string | null;
+  /**
+   * ADR-0212: how far the photo must turn clockwise to read the right way
+   * up — 0 when it already does, null when unknown (a failed read, another
+   * document, or the model could not tell). lib/extract.ts acts on it.
+   */
+  uprightTurn?: 0 | 90 | 180 | 270 | null;
   /** 0–1. Below the threshold in settings, the office sees "needs manual review". */
   confidence: number;
   /** The provider's raw answer, kept on the row for the reviewer (ai_extracted). */

@@ -34,8 +34,9 @@ import {
   verifyHint,
   whoLine,
 } from './queue';
-import { canRescan } from './messages';
+import { canRescan, canRotate } from './messages';
 import { RescanButton } from './RescanButton';
+import { RotateDocumentButton } from './RotateDocumentButton';
 import { ViewDocumentButton } from './ViewDocumentButton';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobClaimNote } from '../_components/DobClaimNote';
@@ -263,6 +264,12 @@ function QueueLine({
       {row.kind === 'document' && row.file_path ? (
         <>
           <ViewDocumentButton docId={row.item_id} disabled={busy} />{' '}
+        </>
+      ) : null}
+      {/* ADR-0212 (TK-18): a photo the wrong way round is turned, not rejected. */}
+      {row.kind === 'document' && row.file_path && canRotate(row.mime_type) ? (
+        <>
+          <RotateDocumentButton docId={row.item_id} disabled={busy} />{' '}
         </>
       ) : null}
       {row.kind === 'document' && row.file_path && canRescan(row.item_type) ? (
