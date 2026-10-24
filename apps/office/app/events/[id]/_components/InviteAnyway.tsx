@@ -6,7 +6,8 @@ import { inviteWorker } from '../actions';
 import { inviteAnywayPrompt } from '../board-model';
 
 /**
- * "Invite anyway" on an Unavailable row — ADR-0043, docs/19 §1.
+ * "Invite anyway" on an Unavailable row — ADR-0043, docs/19 §1; since
+ * ADR-0208 also on "Outside the escalation radius" once the shift has started.
  *
  * The worker marked this role section's window unavailable, so auto-assign
  * skips them. The manager may still invite by hand, in the spirit of
@@ -23,11 +24,14 @@ export function InviteAnyway({
   shiftId,
   staffId,
   name,
+  reason,
 }: {
   eventId: string;
   shiftId: string;
   staffId: string;
   name: string;
+  /** Why the machine skips them: the calendar, or the escalation radius (ADR-0208). */
+  reason?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export function InviteAnyway({
           </>
         }
       >
-        <p>{inviteAnywayPrompt(name)}</p>
+        <p>{inviteAnywayPrompt(name, reason)}</p>
       </Modal>
     </>
   );

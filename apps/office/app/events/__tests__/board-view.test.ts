@@ -11,6 +11,7 @@ import {
   attendancePills,
   buildPool,
   buildUnavailable,
+  inviteAnywayPrompt,
   officeMayReopen,
   roleBlockOpen,
   sectionInEscalation,
@@ -130,6 +131,44 @@ describe('the escalation pool once a section has started (§3.4)', () => {
     const [ada] = buildUnavailable([row('ada', { gate: 'outside_radius' })], [], people, new Set());
     expect(ada!.label).toBe(GATE_COPY['outside_radius']!.label);
     expect(ada!.detail).not.toMatch(/§/);
+  });
+
+  // ADR-0208 (TK-6, TK-7): the radius holds back the escalation job, not the
+  // office — a manual invite is judged without it (pgTAP 591).
+  it('offers Invite anyway on an outside-radius row, with the reason in the confirm', () => {
+    const [ada] = buildUnavailable([row('ada', { gate: 'outside_radius' })], [], people, new Set());
+    expect(ada!.inviteAnyway).toBe(true);
+    expect(inviteAnywayPrompt('Ada X.', 'outside_radius')).toMatch(
+      /outside the same-day escalation radius/,
+    );
+    expect(inviteAnywayPrompt('Ada X.')).toMatch(/marked themselves unavailable/);
+  });
+
+  it('a worker who declined earlier can be asked again from outside the radius; one with history cannot', () => {
+    const list = buildUnavailable(
+      [
+        row('ada', { gate: 'outside_radius', booking_status: 'closed' }),
+        row('ben', { gate: 'outside_radius', booking_status: 'closed' }),
+      ],
+      [ended('ada', 'closed', 'declined'), ended('ben', 'closed', 'declined', true)],
+      people,
+      new Set(),
+    );
+    expect(list.map((e) => [e.staffId, e.inviteAnyway])).toEqual([
+      ['ada', true],
+      ['ben', false],
+    ]);
+  });
+
+  it('no other hard gate gets Invite anyway', () => {
+    const gates = ['blocked', 'booked_elsewhere', 'hours_limit', 'rtw_expired', 'do_not_return'];
+    const list = buildUnavailable(
+      gates.map((gate, i) => row(['ada', 'ben', 'cai', 'dee', 'eve'][i]!, { gate })),
+      [],
+      people,
+      new Set(),
+    );
+    expect(list.every((e) => !e.inviteAnyway)).toBe(true);
   });
 
   // ADR-0079: on a gender-only section the other gender is no row at all
