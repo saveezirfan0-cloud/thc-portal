@@ -42,7 +42,7 @@ create temporary view vbase as select timestamptz '2026-11-14 13:00:00+00' as ba
 create function pg_temp.mins(p_base timestamptz, p_json jsonb, p_key text) returns timestamptz
 language sql immutable as $$
   select case when p_json->p_key is null or jsonb_typeof(p_json->p_key) = 'null' then null
-              else p_base + (p_json->>p_key)::int * interval '1 minute' end
+              else p_base + (p_json->>p_key)::numeric * interval '1 minute' end
 $$;
 
 -- check_in_decision returns the vector shape as it stands.
