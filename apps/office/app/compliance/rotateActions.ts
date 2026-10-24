@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import sharp from 'sharp';
+import { PDFDocument, degrees } from 'pdf-lib';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { READ_ONLY_MESSAGE, officeMayWrite, sessionIsAdmin } from '../_lib/sessionRole';
@@ -27,7 +28,7 @@ import type { ActionResult } from './types';
 const REFUSALS: Record<string, string> = {
   not_pending: 'This document has already been decided, so it can no longer be turned.',
   file_changed: 'A newer file was uploaded meanwhile. Refresh and look again.',
-  not_a_photo: 'Only a photo (JPG or PNG) can be turned.',
+  not_a_photo: 'Only a photo (JPG or PNG) or a PDF can be turned.',
   read_only: READ_ONLY_MESSAGE,
 };
 
@@ -55,7 +56,8 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
     .maybeSingle<{ file_path: string | null; mime_type: string | null; review_status: string }>();
   if (!doc?.file_path) return { ok: false, message: 'There is no file on this document.' };
   if (doc.review_status !== 'pending') return { ok: false, message: REFUSALS['not_pending']! };
-  if (doc.mime_type !== 'image/jpeg' && doc.mime_type !== 'image/png') {
+  const pdf = doc.mime_type === 'application/pdf';
+  if (!pdf && doc.mime_type !== 'image/jpeg' && doc.mime_type !== 'image/png') {
     return { ok: false, message: REFUSALS['not_a_photo']! };
   }
 
@@ -66,11 +68,8 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
 
   let turned: Buffer;
   try {
-    turned = await sharp(Buffer.from(await file.arrayBuffer()))
-      .autoOrient()
-      .rotate(90)
-      .jpeg({ quality: 90, mozjpeg: true })
-      .toBuffer();
+    const bytes = Buffer.from(await file.arrayBuffer());
+    turned = pdf ? await turnPdfClockwise(bytes) : await turnPhotoClockwise(bytes);
   } catch {
     return {
       ok: false,
@@ -78,10 +77,10 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
     };
   }
 
-  const to = `${from.slice(0, from.lastIndexOf('/'))}/${randomUUID()}.jpg`;
+  const to = `${from.slice(0, from.lastIndexOf('/'))}/${randomUUID()}.${pdf ? 'pdf' : 'jpg'}`;
   const { error: uploadError } = await admin.storage
     .from('documents')
-    .upload(to, turned, { contentType: 'image/jpeg' });
+    .upload(to, turned, { contentType: pdf ? 'application/pdf' : 'image/jpeg' });
   if (uploadError) return { ok: false, message: 'The turned photo could not be saved. Try again.' };
 
   const { error } = await (supabase as unknown as TurnRpc).rpc('turn_document_upright', {
@@ -104,4 +103,21 @@ export async function rotateDocument(docId: string): Promise<ActionResult> {
   revalidatePath('/staff', 'layout');
   revalidatePath('/onboarding', 'layout');
   return { ok: true, message: 'Turned a quarter clockwise. Press View to check it.' };
+}
+
+/** A photo turned a quarter clockwise, its camera orientation applied first, as a JPEG. */
+async function turnPhotoClockwise(bytes: Buffer): Promise<Buffer> {
+  return sharp(bytes).autoOrient().rotate(90).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+}
+
+/**
+ * ADR-0214 (TK-24): every page of a PDF turned a quarter clockwise — its
+ * /Rotate, so nothing on the page is re-compressed or re-drawn.
+ */
+async function turnPdfClockwise(bytes: Buffer): Promise<Buffer> {
+  const doc = await PDFDocument.load(bytes);
+  for (const page of doc.getPages()) {
+    page.setRotation(degrees((page.getRotation().angle + 90) % 360));
+  }
+  return Buffer.from(await doc.save());
 }

@@ -517,6 +517,8 @@ const REPORT_CSS =
   // which left the right third of the sheet empty — "pushed to one side".
   // Every grid column takes the full width on the report.
   '[class*="govuk-grid-column"] { width: 100% !important; float: none !important; } ' +
+  // TK-21: a report over two pages never splits the photo or a row of the result.
+  'img, h1, h2, .govuk-summary-list__row, .govuk-panel { break-inside: avoid; } ' +
   // GOV.UK's grey page ground otherwise frames the result and fills
   // whatever of the sheet it does not cover.
   'html, body { background: #fff !important; }';
@@ -543,15 +545,22 @@ const TIDY_REPORT = `(() => {
   return true;
 })()`;
 
+/**
+ * The smallest a report is shrunk to stay on one sheet (TK-21). Below it the
+ * text reads as squashed, so a longer result prints at full size instead.
+ */
+const MIN_SCALE_PERCENT = 90;
+
 /** CSS px the viewport is measured at: low, so the page's own height is what is read, not the window's. */
 const MEASURE_HEIGHT = 100;
 
 class Unmeasurable extends Error {}
 
 /**
- * Tidy the result page for printing and return the PDF options that put all
- * of it on one A4 sheet: the page furniture is hidden and the rest is scaled
- * down only as far as it needs to be (never up).
+ * Tidy the result page for printing and return the PDF options: the page
+ * furniture is hidden, and a result a little too long for one A4 sheet is
+ * scaled down just enough to fit it — never below MIN_SCALE_PERCENT and never
+ * up. A longer one prints at full size over more than one page (TK-21).
  *
  * Chrome prints a page scaled by `s` by laying it out `printable width / s`
  * px wide — wider than the sheet, so the text wraps less and the page is
@@ -596,10 +605,17 @@ export async function fitReportToOnePage(page: GovukPage): Promise<{
       return (measured * percent) / 100 <= room;
     };
     if (await fits(100)) return { margin };
-    // Whole percentages between Chrome's floor (0.1) and 1: `low` fits or is
-    // the floor, `high` does not fit. A wider layout is never taller, so the
-    // fit only improves as the scale falls.
-    let low = 10;
+    // TK-21: shrunk to fit one sheet at any cost, a long result came out in
+    // small, squashed-looking text. It may shrink a little to stay on one
+    // sheet; past that it prints at full size over as many pages as it needs.
+    if (!(await fits(MIN_SCALE_PERCENT))) {
+      await setViewportSize.call(page, { width: printable, height: A4_PX.height });
+      return { margin };
+    }
+    // Whole percentages between MIN_SCALE_PERCENT and 1: `low` fits, `high`
+    // does not. A wider layout is never taller, so the fit only improves as
+    // the scale falls.
+    let low = MIN_SCALE_PERCENT;
     let high = 100;
     while (high - low > 1) {
       const mid = Math.floor((low + high) / 2);

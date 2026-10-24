@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { PDFDocument, degrees } from 'pdf-lib';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -90,9 +91,34 @@ describe('rotateDocument', () => {
     expect(storage.remove).toHaveBeenCalledWith([to]);
   });
 
-  it('never touches a PDF or a decided document, and a viewer changes nothing', async () => {
-    doc.current = { file_path: PATH, mime_type: 'application/pdf', review_status: 'pending' };
-    expect((await rotateDocument('d1')).message).toBe('Only a photo (JPG or PNG) can be turned.');
+  it('turns every page of a PDF a quarter clockwise, and it stays a PDF (ADR-0214, TK-24)', async () => {
+    const source = await PDFDocument.create();
+    source.addPage([600, 400]);
+    source.addPage([600, 400]).setRotation(degrees(270));
+    storage.download.mockResolvedValue({
+      data: new Blob([new Uint8Array(await source.save())]),
+      error: null,
+    });
+    const pdfPath = PATH.replace('.jpg', '.pdf');
+    doc.current = { file_path: pdfPath, mime_type: 'application/pdf', review_status: 'pending' };
+
+    expect((await rotateDocument('d1')).ok).toBe(true);
+    const [to, body, options] = storage.upload.mock.calls[0] as [string, Buffer, object];
+    expect(to).toMatch(/^93900000-0000-4000-8000-000000000001\/passport\/[0-9a-f-]{36}\.pdf$/);
+    expect(options).toEqual({ contentType: 'application/pdf' });
+    const turned = await PDFDocument.load(body);
+    expect(turned.getPages().map((page) => page.getRotation().angle)).toEqual([90, 0]);
+    expect(rpc).toHaveBeenCalledWith(
+      'turn_document_upright',
+      expect.objectContaining({ p_from: pdfPath, p_to: to, p_turned: 90 }),
+    );
+  });
+
+  it('never touches a HEIC or a decided document, and a viewer changes nothing', async () => {
+    doc.current = { file_path: PATH, mime_type: 'image/heic', review_status: 'pending' };
+    expect((await rotateDocument('d1')).message).toBe(
+      'Only a photo (JPG or PNG) or a PDF can be turned.',
+    );
     doc.current = { file_path: PATH, mime_type: 'image/jpeg', review_status: 'verified' };
     expect((await rotateDocument('d1')).ok).toBe(false);
     role.write = false;
