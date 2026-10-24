@@ -28,7 +28,8 @@
       "                   unreachable if the lock fires first.",
       "  4 locked         start+30 with no check-in = automatic No-show, button locks",
       "                   (exempt: a booking confirmed after the shift had started)",
-      "  5 checked in, Late if the press is after the scheduled start",
+      "  5 checked in, Late if the press is a whole minute or more after the scheduled",
+      "    start (inside the start minute is on time, TK-16)",
       "turnAwayPayMin is RULE-15 money and is null for every decision but turned_away."
     ],
     "defaults": {
@@ -90,6 +91,32 @@
           "minutesLate": 0,
           "turnAwayPayMin": null,
           "messageKey": "checked_in"
+        }
+      },
+      {
+        "name": "seconds into the start minute is still on time, never Late with 0 minutes (TK-16)",
+        "input": { "atMinFromStart": 0.5 },
+        "expect": {
+          "decision": "checked_in",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": false,
+          "minutesLate": 0,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in"
+        }
+      },
+      {
+        "name": "a whole minute after the start is Late, 1 minute",
+        "input": { "atMinFromStart": 1 },
+        "expect": {
+          "decision": "checked_in_late",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": true,
+          "minutesLate": 1,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in_late"
         }
       },
       {

@@ -192,9 +192,13 @@ export function turnedAwayMinutes(shift: ShiftWindow, attemptAt: Date): number {
 export function checkInDecision(input: CheckInInput): CheckInResult {
   const { shift, at, insideGeofence, confirmedAt, slotsFilled, headcount, strictBuffer } = input;
 
+  // Late is a whole minute after the start (TK-16): a press inside the start
+  // minute — 15:00:00.8 for a 15:00 shift — is on time, as the vectors' "on
+  // the stroke of the start" and the monitor's "on time" already say. Never
+  // "Late, 0 minutes".
   const minutesFromStart = minutesBetween(shift.startsAt, at);
-  const late = minutesFromStart > 0;
-  const minutesLate = late ? Math.floor(minutesFromStart) : 0;
+  const minutesLate = Math.max(0, Math.floor(minutesFromStart));
+  const late = minutesLate >= 1;
 
   const base = { late, minutesLate, turnAwayPayMin: null } as const;
 
