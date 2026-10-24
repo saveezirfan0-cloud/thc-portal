@@ -84,14 +84,14 @@ const RTW_DATE: QueueRow = {
 };
 
 describe('Needs review (§4.1)', () => {
-  it('lists oldest first — the one that has waited longest is next', () => {
+  it('lists newest first (ADR-0210, TK-13)', () => {
     const rows = [
       { ...ROW, item_id: 'b', submitted_at: '2026-09-17T10:00:00Z' },
       { ...ROW, item_id: 'a', submitted_at: '2026-09-13T10:00:00Z' },
     ];
     expect(
       filterQueue(rows, { query: '', who: 'all', document: 'any' }).map((r) => r.item_id),
-    ).toEqual(['a', 'b']);
+    ).toEqual(['b', 'a']);
   });
 
   it('filters candidates from staff, and by document', () => {
@@ -197,7 +197,7 @@ describe('Needs review (§4.1)', () => {
     const rows = [ROW, RTW_DATE];
     const all = filterQueue(rows, { query: '', who: 'all', document: 'any' });
     expect(all).toHaveLength(2);
-    expect(all[0]!.item_id).toBe('r1'); // oldest first: it has waited since 20 Aug
+    expect(all[1]!.item_id).toBe('r1'); // newest first (ADR-0210): it has waited since 20 Aug
     expect(
       filterQueue(rows, { query: '', who: 'all', document: 'rtw' }).map((r) => r.item_id),
     ).toEqual(['r1']);
