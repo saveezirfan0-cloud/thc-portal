@@ -15,19 +15,16 @@ export const STATUS_LABEL: Record<MonitorStatus, string> = {
 };
 
 /**
- * The words on the Status pill. Two of them carry a time, and both are the
- * VIEWER's clock with no zone suffix (§1.8): "Checked out 22:48" is an actual
- * stamp, and "Due 17:00" is the one scheduled time §1.8 deliberately shows in
- * local time only — the pill is too narrow for a label, and the Window column
- * beside it already carries UK and local (audit D30).
+ * The words on the Status pill. "Due 17:00" carries the VIEWER's clock with
+ * no zone suffix (§1.8) — the one scheduled time §1.8 deliberately shows in
+ * local time only; the pill is too narrow for a label, and the Window column
+ * beside it already carries UK and local (audit D30). "Checked out" carries
+ * no time: the stamp has its own Check-out column (ADR-0207).
  */
 export function statusLabel(
-  row: Pick<MonitorRow, 'status' | 'checkOutAt' | 'startsAt'>,
+  row: Pick<MonitorRow, 'status' | 'startsAt'>,
   local: (iso: string) => string,
 ): string {
-  if (row.status === 'checked_out' && row.checkOutAt) {
-    return `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`;
-  }
   if (row.status === 'due') return `${STATUS_LABEL.due} ${local(row.startsAt)}`;
   return STATUS_LABEL[row.status];
 }
@@ -55,11 +52,44 @@ export function minutesPastEnd(endsAt: string, checkOutAt: string): number {
   return Math.round((new Date(checkOutAt).getTime() - new Date(endsAt).getTime()) / 60_000);
 }
 
-/** "1 h 15 min past the end", "45 min past the end". */
-export function pastEndText(minutes: number): string {
+/** "1 h 15 min", "45 min". */
+function durationText(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return `${[h ? `${h} h` : '', m ? `${m} min` : ''].filter(Boolean).join(' ') || '0 min'} past the end`;
+  return [h ? `${h} h` : '', m ? `${m} min` : ''].filter(Boolean).join(' ') || '0 min';
+}
+
+/** "1 h 15 min past the end", "45 min past the end". */
+export function pastEndText(minutes: number): string {
+  return `${durationText(minutes)} past the end`;
+}
+
+/**
+ * The Check-out column (ADR-0207): the recorded finish, shown only once the
+ * row is Checked out — a No check-out has no finish until the office enters
+ * one (RULE-02), and an on-shift row has none yet. Viewer-local, like the
+ * check-in stamp (§1.8).
+ */
+export function checkOutStamp(row: Pick<MonitorRow, 'status' | 'checkOutAt'>): string | null {
+  return row.status === 'checked_out' ? row.checkOutAt : null;
+}
+
+/**
+ * The check-out stamp's second line, measured against the ROLE SECTION's
+ * end (RULE-18) in whole minutes: "on time", "20 min before the end",
+ * "35 min past the end". Facts only — whether an early finish is a Left
+ * early is the violation log's call, and a late one's flag sits under the
+ * Status pill (ADR-0184). Null when there is no stamp to describe.
+ */
+export function departureLine(
+  row: Pick<MonitorRow, 'status' | 'checkOutAt' | 'endsAt'>,
+): string | null {
+  const stamp = checkOutStamp(row);
+  if (!stamp) return null;
+  const minutes = minutesPastEnd(row.endsAt, stamp);
+  if (minutes > 0) return pastEndText(minutes);
+  if (minutes < 0) return `${durationText(-minutes)} before the end`;
+  return 'on time';
 }
 
 /**

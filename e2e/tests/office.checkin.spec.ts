@@ -98,9 +98,15 @@ test('the monitor lists today’s event with each worker’s live status (§9.5)
   // Check-in is an actual stamp — the viewer's clock, no suffix; the
   // Window is scheduled — UK, labelled (§1.8).
   // Under it, checkin.html's second line: on site, and how late (ADR-0140).
-  await expect(row(curlew).locator('td.stamp')).toHaveText(/^\d{2}:\d{2}/);
-  await expect(row(curlew).locator('td.stamp .sub')).toContainText('on site');
-  await expect(row(dunlin).locator('td.stamp')).toHaveText('—');
+  const checkIn = (w: Worker | null) => row(w).locator('td[data-label="Check-in"]');
+  const checkOut = (w: Worker | null) => row(w).locator('td[data-label="Check-out"]');
+  await expect(checkIn(curlew)).toHaveText(/^\d{2}:\d{2}/);
+  await expect(checkIn(curlew).locator('.sub')).toContainText('on site');
+  await expect(checkIn(dunlin)).toHaveText('—');
+  // Check-out has its own column (ADR-0207): nothing while on shift, and
+  // nothing on a No check-out — RULE-02 never defaults a finish.
+  await expect(checkOut(curlew)).toHaveText('—');
+  await expect(checkOut(avocet)).toHaveText('—');
   await expect(row(curlew)).toContainText('UK time');
 
   // The strip above: one short, flagged (§9.5 "−1 worker").

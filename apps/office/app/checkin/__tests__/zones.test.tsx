@@ -87,10 +87,26 @@ describe('the Due pill (§1.8, D30)', () => {
     expect(statusLabel(ROW, athens)).toBe('Due 17:00');
   });
 
-  it('a checked-out row carries the recorded stamp the same way', () => {
-    expect(
-      statusLabel({ ...ROW, status: 'checked_out', checkOutAt: '2026-06-14T20:05:00Z' }, () => 'X'),
-    ).toBe('Checked out X');
+  it('a checked-out pill carries no time: the stamp has its own column (ADR-0207)', () => {
+    expect(statusLabel({ ...ROW, status: 'checked_out' }, () => 'X')).toBe('Checked out');
+  });
+
+  it('the Check-out column is the recorded stamp, UK on the first paint like the check-in', () => {
+    const html = renderToStaticMarkup(
+      <MonitorTable
+        rows={[
+          {
+            ...ROW,
+            status: 'checked_out',
+            checkInAt: '2026-06-14T14:00:00Z',
+            checkOutAt: '2026-06-14T20:05:00Z',
+          },
+        ]}
+      />,
+    );
+    // 20:05 UTC = 21:05 UK; 23:05 would be Athens.
+    expect(html).toContain('<span class="t">21:05</span>');
+    expect(html).not.toContain('23:05');
   });
 });
 

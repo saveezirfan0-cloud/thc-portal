@@ -6,6 +6,8 @@ import {
   LATE_CHECK_OUT_LABEL,
   NUDGE_LABEL,
   arrivalLine,
+  checkOutStamp,
+  departureLine,
   lateCheckOutToVerify,
   nudgeKind,
   statusLabel,
@@ -30,6 +32,9 @@ import { useViewerZone } from './useViewerZone';
  *            show different hours.
  *   Check-in an ACTUAL stamp, so it shows the viewer's zone only — the
  *            manager wants to know what their own clock said.
+ *   Check-out the same, once the row is Checked out (ADR-0207): the two
+ *            readings THC watches most, so each is its own column with the
+ *            time as the cell's headline, not a word on the Status pill.
  *   Due      the pill carries the scheduled start in the VIEWER's zone with
  *            no suffix — deliberately, §1.8: "must not be 'fixed' back to UK
  *            time"; the Window column beside it carries both (audit D30).
@@ -95,7 +100,8 @@ export function MonitorTable({
             <th className="col-l">Staff</th>
             <th>Event</th>
             <th className="col-m">Window</th>
-            <th>Check-in</th>
+            <th className="stamp-h">Check-in</th>
+            <th className="stamp-h">Check-out</th>
             <th>Breaks</th>
             <th>Status</th>
           </tr>
@@ -103,6 +109,7 @@ export function MonitorTable({
         <tbody>
           {rows.map((row) => {
             const nudge = onNudge && now ? nudgeKind(row, now) : null;
+            const checkOutAt = checkOutStamp(row);
             return (
               <tr key={row.bookingId}>
                 <td className="cell-title">
@@ -131,7 +138,11 @@ export function MonitorTable({
                   </span>
                 </td>
                 <td data-label="Check-in" className="stamp">
-                  {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
+                  {row.checkInAt ? (
+                    <span className="t">{local(row.checkInAt)}</span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
                   {row.checkInAt && row.locationSuspect ? (
                     <Pill
                       tone="amber"
@@ -143,6 +154,16 @@ export function MonitorTable({
                   ) : null}
                   {/* checkin.html's second line: on site, and how late. */}
                   {row.checkInAt ? <span className="sub">{arrivalLine(row)}</span> : null}
+                </td>
+                <td data-label="Check-out" className="stamp">
+                  {checkOutAt ? (
+                    <>
+                      <span className="t">{local(checkOutAt)}</span>
+                      <span className="sub">{departureLine(row)}</span>
+                    </>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
                 </td>
                 <td data-label="Breaks" className="mono sm">
                   {breaksCell(row, local)}

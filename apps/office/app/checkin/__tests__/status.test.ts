@@ -4,6 +4,8 @@ import {
   VIOLATION_LABEL,
   arrivalLine,
   breaksCell,
+  checkOutStamp,
+  departureLine,
   missingWorkers,
   needsActualFinish,
   needsAttention,
@@ -151,6 +153,27 @@ describe("the check-in stamp's second line (checkin.html)", () => {
 
   it('is nothing without a check-in', () => {
     expect(at(null)).toBeNull();
+  });
+});
+
+describe('the Check-out column (ADR-0207)', () => {
+  const end = '2026-10-14T22:30:00Z';
+  const out = (checkOutAt: string | null, status: MonitorStatus = 'checked_out') =>
+    departureLine({ status, checkOutAt, endsAt: end });
+
+  it("says how the finish sat against the role section's end", () => {
+    expect(out('2026-10-14T22:30:00Z')).toBe('on time');
+    expect(out('2026-10-14T22:10:00Z')).toBe('20 min before the end');
+    expect(out('2026-10-14T23:05:00Z')).toBe('35 min past the end');
+    expect(out('2026-10-14T20:15:00Z')).toBe('2 h 15 min before the end');
+  });
+
+  it('shows a stamp only once the row is Checked out', () => {
+    expect(checkOutStamp({ status: 'checked_out', checkOutAt: end })).toBe(end);
+    // A No check-out has no finish until the office enters one (RULE-02).
+    expect(checkOutStamp({ status: 'no_check_out', checkOutAt: end })).toBeNull();
+    expect(checkOutStamp({ status: 'on_shift', checkOutAt: null })).toBeNull();
+    expect(out(end, 'no_check_out')).toBeNull();
   });
 });
 
