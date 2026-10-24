@@ -106,6 +106,29 @@ describe('/checkin (§9.5)', () => {
     expect(html).toContain('>LM<');
   });
 
+  it('shows Check-in and Check-out as their own columns, the times as headlines (ADR-0209)', () => {
+    const html = renderToStaticMarkup(<MonitorScreen rows={[ROW]} violations={[]} />);
+    expect(html).toContain('<th class="stamp-h">Check-in</th><th class="stamp-h">Check-out</th>');
+    // 11:21 UTC = 12:21 UK on the first paint.
+    expect(html).toContain('<td data-label="Check-in" class="stamp"><span class="t">12:21</span>');
+    // On shift: no finish yet.
+    expect(html).toContain(
+      '<td data-label="Check-out" class="stamp"><span class="muted">—</span></td>',
+    );
+  });
+
+  it('shows no finish on a No check-out, whatever the log row holds (RULE-02)', () => {
+    const html = renderToStaticMarkup(
+      <MonitorScreen
+        rows={[{ ...ROW, status: 'no_check_out', checkOutAt: '2026-09-24T11:21:00Z' }]}
+        violations={[]}
+      />,
+    );
+    expect(html).toContain(
+      '<td data-label="Check-out" class="stamp"><span class="muted">—</span></td>',
+    );
+  });
+
   it('marks an arrival whose location is suspect, beside its check-in time', () => {
     const html = renderToStaticMarkup(
       <MonitorScreen rows={[{ ...ROW, locationSuspect: true }]} violations={[]} />,
@@ -150,6 +173,14 @@ describe('/checkin (§9.5)', () => {
       expect(html).not.toMatch(/scheduled end/i);
     });
 
+    it('puts the finish in its own Check-out column, the pill carrying no time (ADR-0209)', () => {
+      const html = renderToStaticMarkup(<MonitorScreen rows={[LATE]} violations={[]} />);
+      expect(html).toMatch(/<span class="pill coral"[^>]*>Checked out<\/span>/);
+      expect(html).toContain(
+        '<td data-label="Check-out" class="stamp"><span class="t">21:15</span><span class="sub">1 h 15 min past the end</span></td>',
+      );
+    });
+
     it('warns on the board when the overrun takes the worker past their weekly limit', () => {
       const html = renderToStaticMarkup(
         <MonitorScreen rows={[{ ...LATE, weekHours: 49, weekCapHours: 48 }]} violations={[]} />,
@@ -170,7 +201,7 @@ describe('/checkin (§9.5)', () => {
           violations={[]}
         />,
       );
-      expect(html).toContain('<span class="pill">Checked out 21:15</span>');
+      expect(html).toContain('<span class="pill">Checked out</span>');
       expect(html).toContain('Signed out late · verified by Sam S.');
       expect(html).not.toContain('>Verify<');
     });
@@ -234,7 +265,7 @@ describe('/checkin (§9.5)', () => {
 
     it('shows an actual check-in stamp in the viewer’s zone only', () => {
       const html = mounted(<MonitorScreen rows={[ROW]} violations={[]} />);
-      expect(html).toContain('class="stamp">14:21<');
+      expect(html).toContain('class="stamp"><span class="t">14:21<');
     });
 
     it('in the detail window: Detected / Checked in / Checked out are "your time", the audit stamps UK', () => {

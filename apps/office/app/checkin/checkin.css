@@ -67,6 +67,23 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
+/* Check-in and Check-out are the readings THC watches most (ADR-0209): the
+   pair sits on a faint cyan ground under cyan headings, and the time itself
+   is the cell's headline, a size up and bold, so it reads across the room. */
+.monitor-tbl th.stamp-h {
+  color: var(--cyan-ink);
+}
+.monitor-tbl td.stamp {
+  background: var(--cyan-dim-soft);
+}
+.monitor-tbl .stamp .t {
+  font-family: var(--font-num);
+  font-size: var(--fs-19);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
+}
 /* A refused reminder (ADR-0188), said beside the row it was for. */
 .monitor-tbl .nudge-err {
   color: var(--coral-ink);
@@ -100,6 +117,13 @@
   }
   .evstrip > * {
     scroll-snap-align: start;
+  }
+  /* In the card a stamp cell is one labelled line; the tint becomes a band
+     with room around the bigger time. */
+  .monitor-tbl.card-rows td.stamp {
+    padding-block: var(--sp-6);
+    padding-right: var(--sp-10);
+    border-radius: var(--r-tile);
   }
 }
 
