@@ -71,10 +71,7 @@ export interface InvoiceTotals {
 }
 
 /** Subtotal, VAT and total from the printed lines. `vatRate` is a percentage (20). */
-export function invoiceTotals(
-  lines: readonly { amount: number }[],
-  vatRate = 20,
-): InvoiceTotals {
+export function invoiceTotals(lines: readonly { amount: number }[], vatRate = 20): InvoiceTotals {
   const netPence = lines.reduce((sum, l) => sum + toHundredths(l.amount), 0);
   const ratePct100 = Math.round(vatRate * 100);
   const vatPence = Math.floor((netPence * ratePct100 + 5000) / 10000);

@@ -78,7 +78,12 @@ describe('invoiceTotals (sum of the printed lines; VAT on the subtotal)', () => 
     // The old tool kept 3085.6082 unrounded and printed 3,085.61 against lines adding to 3,085.62.
     const lines = [lineAmount(6.5, 17.77), lineAmount(6.5, 17.77), lineAmount(4.25, 19.52)];
     const printed = lines.reduce((a, b) => Math.round((a + b) * 100) / 100, 0);
-    expect(invoiceTotals(lines.map((amount) => ({ amount })), 20).net).toBe(printed);
+    expect(
+      invoiceTotals(
+        lines.map((amount) => ({ amount })),
+        20,
+      ).net,
+    ).toBe(printed);
   });
   it('rounds VAT half up and handles a fractional rate', () => {
     expect(invoiceTotals([{ amount: 0.025 * 100 }], 20).vat).toBe(0.5);

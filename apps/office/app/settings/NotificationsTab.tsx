@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Note, Panel, Pill, Switch } from '@thc/ui';
-import { NOTIFICATION_SWITCH_GROUPS } from '@thc/notifications';
+import { ALWAYS_ON_EMAILS, NOTIFICATION_SWITCH_GROUPS } from '@thc/notifications';
 import type { NotificationSwitch } from '@thc/notifications';
 import { saveNotificationSwitch } from './actions';
 
@@ -53,6 +53,20 @@ export function NotificationsTab({ off }: { off: readonly string[] }) {
             </Panel>
           );
         })}
+        <Panel title="Always sent" actions={<Pill tone="green">No switch</Pill>}>
+          <div className="notif-list">
+            {ALWAYS_ON_EMAILS.map((item) => (
+              <div key={item.code} className="notif-row">
+                <div className="notif-text">
+                  <div className="notif-label">
+                    {item.label} <span className="mono muted notif-code">{item.code}</span>
+                  </div>
+                  <div className="sm muted">{item.when}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
     </div>
   );

@@ -603,12 +603,19 @@ export const TIMESHEET_JOB_TRANSITIONS: Readonly<
   complete: ['reviewing'],
 };
 
-export function canTransitionTimesheetJob(from: TimesheetJobStatus, to: TimesheetJobStatus): boolean {
+export function canTransitionTimesheetJob(
+  from: TimesheetJobStatus,
+  to: TimesheetJobStatus,
+): boolean {
   return from === to || TIMESHEET_JOB_TRANSITIONS[from].includes(to);
 }
 
-export function assertTimesheetJobTransition(from: TimesheetJobStatus, to: TimesheetJobStatus): void {
-  if (!canTransitionTimesheetJob(from, to)) throw new IllegalTransitionError('timesheet_job', from, to);
+export function assertTimesheetJobTransition(
+  from: TimesheetJobStatus,
+  to: TimesheetJobStatus,
+): void {
+  if (!canTransitionTimesheetJob(from, to))
+    throw new IllegalTransitionError('timesheet_job', from, to);
 }
 
 /**
