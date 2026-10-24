@@ -19,7 +19,30 @@
 import type { DocumentEmailCode } from './documents.ts';
 import type { TemplateCode } from './templates.ts';
 
-export type SwitchableCode = Exclude<TemplateCode, 'E1'> | DocumentEmailCode;
+/**
+ * Sent by the office on the press, so there is nothing to switch off: INV2
+ * (ADR-0210) is not turned off by INV1's switch, which stops the AUTOMATIC
+ * invoice. The register page lists these read-only.
+ */
+export const ALWAYS_ON_CODES = ['INV2'] as const;
+export type AlwaysOnCode = (typeof ALWAYS_ON_CODES)[number];
+
+export type SwitchableCode = Exclude<TemplateCode, 'E1'> | Exclude<DocumentEmailCode, AlwaysOnCode>;
+
+export interface AlwaysOnEmail {
+  code: AlwaysOnCode;
+  label: string;
+  when: string;
+}
+
+/** The emails the Notifications tab shows with no switch (read-only). */
+export const ALWAYS_ON_EMAILS: readonly AlwaysOnEmail[] = [
+  {
+    code: 'INV2',
+    label: 'Timesheet invoice (sent by the office)',
+    when: 'The office presses Email invoice on a timesheet invoice — always sent, not affected by the Invoice switch',
+  },
+];
 
 export interface NotificationSwitch {
   code: SwitchableCode;

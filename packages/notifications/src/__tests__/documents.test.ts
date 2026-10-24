@@ -265,8 +265,15 @@ describe('§11.4 allocation sheet email', () => {
 });
 
 describe('the drain can tell the two registers apart', () => {
-  it('knows the five document emails and nothing from §8', () => {
-    expect(Object.keys(DOCUMENT_EMAILS).sort()).toEqual(['BG08', 'D1', 'D2', 'INV1', 'NS1']);
+  it('knows the six document emails and nothing from §8', () => {
+    expect(Object.keys(DOCUMENT_EMAILS).sort()).toEqual([
+      'BG08',
+      'D1',
+      'D2',
+      'INV1',
+      'INV2',
+      'NS1',
+    ]);
     expect(isDocumentEmail('D1')).toBe(true);
     expect(isDocumentEmail('E5')).toBe(false);
   });

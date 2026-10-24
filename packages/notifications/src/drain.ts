@@ -331,7 +331,7 @@ async function sendEmail(
       subject: message.subject,
       text: message.body,
       html: message.html,
-      replyTo: sender.replyTo,
+      replyTo: document?.replyTo ?? sender.replyTo,
       ...(document?.bcc && document.bcc.length > 0 ? { bcc: document.bcc } : {}),
       ...(attachments.length > 0 ? { attachments } : {}),
     },

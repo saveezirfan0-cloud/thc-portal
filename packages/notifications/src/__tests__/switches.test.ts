@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DOCUMENT_EMAILS } from '../documents';
 import {
+  ALWAYS_ON_CODES,
+  ALWAYS_ON_EMAILS,
   NOTIFICATION_SWITCHES,
   NOTIFICATION_SWITCH_GROUPS,
   SWITCHED_OFF_ERROR,
@@ -14,9 +16,16 @@ describe('notification switches (ADR-0083)', () => {
   it('has a switch for every code the drain can send, and nothing else', () => {
     const sendable = [
       ...Object.keys(TEMPLATES).filter((code) => code !== 'E1'),
-      ...Object.keys(DOCUMENT_EMAILS),
+      ...Object.keys(DOCUMENT_EMAILS).filter((code) => !ALWAYS_ON_CODES.includes(code as 'INV2')),
     ].sort();
     expect(NOTIFICATION_SWITCHES.map((s) => s.code).sort()).toEqual(sendable);
+  });
+
+  it('lists INV2 read-only, with no switch: the office sending it is not stopped by INV1', () => {
+    expect(ALWAYS_ON_EMAILS.map((e) => e.code)).toEqual([...ALWAYS_ON_CODES]);
+    expect(isSwitchableCode('INV2')).toBe(false);
+    expect(isSwitchableCode('INV1')).toBe(true);
+    expect(switchedOff({ INV2: false })).toEqual([]);
   });
 
   it('lists each code once', () => {

@@ -25,14 +25,21 @@ export interface InvoiceLineData {
   staffName: string;
   employeeId: number | null;
   role: string;
-  startsAt: string;
-  endsAt: string;
+  /** Null on a weekly timesheet row and on an expense line (ADR-0210). */
+  startsAt: string | null;
+  endsAt: string | null;
   breakMin: number;
   payableMin: number;
   rate: number | string;
   amount: number | string;
-  /** worked · cancelled_on_day · overrun (ADR-0184). */
+  /** worked · cancelled_on_day · overrun (ADR-0184) · timesheet · custom (ADR-0210). */
   kind: string;
+  /** Timesheet lines (ADR-0210): hours per person, to the minute (4h03 = 4.05). */
+  hours?: number | string | null;
+  /** Timesheet lines: how many people the line charges (amount = hours x rate x count). */
+  staffCount?: number | null;
+  /** A `custom` (expense) line: quantity x unit price (`rate`). */
+  quantity?: number | string | null;
   /** The sign-in / sign-out log's facts, as issued (20261022110000). */
   eventId?: string;
   /** The booking the line charges; an overrun line shares its shift's (ADR-0184). */
@@ -48,6 +55,8 @@ export interface InvoiceLineData {
 export interface InvoiceDocumentData {
   id: string;
   number: number;
+  /** ADR-0210. Absent or 'events' = the sign-in log invoice (ADR-0176). */
+  source?: 'events' | 'timesheet';
   invoiceDate: string;
   dueDate: string;
   periodFrom: string;
@@ -64,6 +73,11 @@ export interface InvoiceDocumentData {
     contact?: string | null;
     emails?: string[] | null;
     address?: string | null;
+    /** Timesheet invoices (ADR-0210): the layout and the DATE column's header. */
+    format?: 'named' | 'aggregated';
+    dateLabel?: string | null;
+    venue?: string | null;
+    venueAddress?: string | null;
   };
   seller: {
     company?: {
@@ -180,8 +194,8 @@ export function invoiceRows(lines: readonly InvoiceLineData[]): string[][] {
     invoiceDate(l.date),
     l.staffName,
     invoiceRole(l),
-    invoiceTime(l.startsAt),
-    invoiceTime(l.endsAt),
+    invoiceTime(l.startsAt as string),
+    invoiceTime(l.endsAt as string),
     invoiceBreak(l.breakMin),
     invoiceHours(l.payableMin),
     invoiceMoney(l.rate),

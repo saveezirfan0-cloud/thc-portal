@@ -109,6 +109,10 @@ const s = StyleSheet.create({
   pageNo: { position: 'absolute', bottom: 18, right: 28, fontSize: 7, color: MUTED },
 });
 
+/** Shared with the timesheet invoice, which wears the same clothes (ADR-0210). */
+export const invoiceStyles = s;
+export const INVOICE_INK = INK;
+
 function Cells({
   cells,
   style,

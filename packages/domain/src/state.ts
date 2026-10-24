@@ -189,6 +189,7 @@ export class IllegalTransitionError extends Error {
       | 'change_request'
       | 'shift_offer'
       | 'invoice'
+      | 'timesheet_job'
       | 'declaration_review'
       | 'document_review',
     readonly from: string,
@@ -528,28 +529,34 @@ export function canChangeShiftOfferMode(
 }
 
 /**
- * An issued invoice (ADR-0176). The database is authoritative:
+ * An issued invoice (ADR-0176, ADR-0210). The database is authoritative:
  * `invoice_status_transitions()` lists the same pairs and the
  * `invoices_state_guard` trigger refuses any other status change.
  *
- *   drawing → queued   the PDF and timesheets are stored, INV1 is in the outbox
- *   drawing → failed   a run failed; the job retries it
- *   failed  → drawing  re-leased by `invoices_unfinished()`
- *   failed  → queued   a run that finished after its lease ran out
+ *   drawing   → queued     events invoice: files stored, INV1 in the outbox
+ *   drawing   → generated  timesheet invoice: PDF stored, not yet sent
+ *   drawing   → failed     a run failed; the job (events) or the office retries it
+ *   failed    → drawing    re-leased by `invoices_unfinished()`
+ *   failed    → queued | generated   a run that finished after its lease ran out
+ *   generated → queued     the office sent it (INV2)
+ *   generated | queued → void   the number is retired, never reused
  *
- * `queued` is final: the number, the money and the bill-to never change,
- * and "Send again" is a new outbox row, not a new state.
+ * `generated`, `queued` and `void` are final for the number, the money and
+ * the bill-to; "Send again" is a new outbox row, not a new state. `void` is
+ * terminal. A correction is a void and a new invoice.
  */
-export const INVOICE_STATUSES = ['drawing', 'failed', 'queued'] as const;
+export const INVOICE_STATUSES = ['drawing', 'failed', 'queued', 'generated', 'void'] as const;
 
 export type IssuedInvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 export const INVOICE_TRANSITIONS: Readonly<
   Record<IssuedInvoiceStatus, readonly IssuedInvoiceStatus[]>
 > = {
-  drawing: ['queued', 'failed'],
-  failed: ['drawing', 'queued'],
-  queued: [],
+  drawing: ['queued', 'generated', 'failed'],
+  failed: ['drawing', 'queued', 'generated'],
+  generated: ['queued', 'void'],
+  queued: ['void'],
+  void: [],
 };
 
 export function canTransitionInvoice(from: IssuedInvoiceStatus, to: IssuedInvoiceStatus): boolean {
@@ -558,6 +565,50 @@ export function canTransitionInvoice(from: IssuedInvoiceStatus, to: IssuedInvoic
 
 export function assertInvoiceTransition(from: IssuedInvoiceStatus, to: IssuedInvoiceStatus): void {
   if (!canTransitionInvoice(from, to)) throw new IllegalTransitionError('invoice', from, to);
+}
+
+/**
+ * An uploaded timesheet job (ADR-0210). The database is authoritative:
+ * `timesheet_job_transitions()` lists the same pairs and the
+ * `timesheet_jobs_state_guard` trigger refuses any other status change.
+ *
+ *   uploaded   → extracting | error
+ *   extracting → reviewing | error
+ *   error      → extracting      retry
+ *   reviewing  → confirmed       Confirm (timesheet_job_confirm)
+ *   reviewing  → complete        every approved row invoiced, or discarded
+ *   confirmed  → reviewing       back to review before any invoice is issued
+ *   confirmed  → complete        the last group issued (issue_timesheet_invoice)
+ *   complete   → reviewing       an invoice was voided: its rows are free again
+ */
+export const TIMESHEET_JOB_STATUSES = [
+  'uploaded',
+  'extracting',
+  'reviewing',
+  'confirmed',
+  'complete',
+  'error',
+] as const;
+
+export type TimesheetJobStatus = (typeof TIMESHEET_JOB_STATUSES)[number];
+
+export const TIMESHEET_JOB_TRANSITIONS: Readonly<
+  Record<TimesheetJobStatus, readonly TimesheetJobStatus[]>
+> = {
+  uploaded: ['extracting', 'error'],
+  extracting: ['reviewing', 'error'],
+  error: ['extracting'],
+  reviewing: ['confirmed', 'complete'],
+  confirmed: ['reviewing', 'complete'],
+  complete: ['reviewing'],
+};
+
+export function canTransitionTimesheetJob(from: TimesheetJobStatus, to: TimesheetJobStatus): boolean {
+  return from === to || TIMESHEET_JOB_TRANSITIONS[from].includes(to);
+}
+
+export function assertTimesheetJobTransition(from: TimesheetJobStatus, to: TimesheetJobStatus): void {
+  if (!canTransitionTimesheetJob(from, to)) throw new IllegalTransitionError('timesheet_job', from, to);
 }
 
 /**

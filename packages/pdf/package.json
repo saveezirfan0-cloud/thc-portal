@@ -15,7 +15,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^4.3.0"
+    "@react-pdf/renderer": "^4.3.0",
+    "exceljs": "^4.4.0"
   },
   "peerDependencies": {
     "react": "^19.0.0"

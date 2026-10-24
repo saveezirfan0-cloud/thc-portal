@@ -27,8 +27,14 @@
  *         event on a PO, with the sign-in and sign-out log of its shifts
  *         attached. From timesheets@, to the client card's accounts emails
  *         (or its contact emails), which the outbox row carries.
+ *   INV2  a timesheet invoice the OFFICE composed and sent (ADR-0210): its
+ *         To, Cc, Bcc, Reply-To, subject and rich-text body are the row's,
+ *         word for word (the body cut to a small HTML allowlist), and every
+ *         file in `payload.attachments` — the invoice PDF, the Excel, the
+ *         original timesheets — is fetched from the `timesheets` bucket and
+ *         attached. From timesheets@ like INV1. On demand, never scheduled.
  *
- * Every one is sent as text AND as THC Light HTML (ADR-0073). The text is
+ * Every one (INV2 apart: it is the office's own text) is sent as text AND as THC Light HTML (ADR-0073). The text is
  * `body`; the HTML is built from the same values by `documentHtml()` below,
  * with its sentences in `html` beside the text so the two are read together
  * (email-html.test.ts checks that every sentence of the HTML's own copy is
@@ -47,12 +53,13 @@
  */
 
 import type { EmailBlock, EmailFact } from './email-html.ts';
-import { preheaderFrom, renderEmailHtml, templateToBlocks } from './email-html.ts';
+import { escapeHtml, preheaderFrom, renderEmailHtml, templateToBlocks } from './email-html.ts';
 import type { EmailMessage, OutboxRow, RenderOptions } from './outbox.ts';
 import { UnsendableRow } from './outbox.ts';
 import { DEFAULT_SENDER_ADDRESSES, signedBy } from './senders.ts';
 import { parseBcc } from './office-copy.ts';
 import { TEMPLATES, render } from './templates.ts';
+import { emailHtmlToText, sanitiseEmailHtml } from './timesheet-invoice.ts';
 
 export type DocumentBucket = 'reports' | 'timesheets';
 
@@ -183,6 +190,19 @@ export const DOCUMENT_EMAILS = {
     timing:
       '10:00 Europe/London the morning after the last event on the PO, once every check-out is settled and any violation signed off',
   },
+  INV2: {
+    code: 'INV2',
+    channel: 'email',
+    sender: 'timesheets',
+    bucket: 'timesheets',
+    // The office's own words: documentMessageFor() takes the subject and the
+    // body from the row and does not fill these.
+    title: '{subject}',
+    body: '{bodyText}',
+    html: { eyebrow: 'Invoice', attachmentNote: 'Attached' },
+    trigger: 'ADR-0210 — "Email invoice" on a timesheet invoice in the Back Office',
+    timing: 'on the press (the office sends, and may re-send, as often as it likes)',
+  },
 } as const satisfies Record<string, DocumentEmailTemplate>;
 
 export type DocumentEmailCode = keyof typeof DOCUMENT_EMAILS;
@@ -216,6 +236,8 @@ export interface EmailWithAttachments extends EmailMessage {
    * addresses), from the row's `payload.cc`. Absent when there are none.
    */
   cc?: readonly string[];
+  /** INV2 only: the office's Reply-To from the row, over the sender's own. */
+  replyTo?: string;
 }
 
 /** `payload.cc`: a JSON array of addresses (the database's own text form). */
@@ -249,7 +271,12 @@ function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
   }
   const bucket = DOCUMENT_EMAILS[code].bucket;
   return list.map((entry, index) => {
-    const a = entry as Partial<Attachment>;
+    // INV2's queue function writes {path, name}; the others {bucket, path, filename}.
+    const raw = (entry ?? {}) as Partial<Attachment> & { name?: unknown };
+    const a: Partial<Attachment> =
+      code === 'INV2'
+        ? { bucket, path: raw.path, filename: (raw.filename ?? raw.name) as string | undefined }
+        : raw;
     if (a.bucket !== bucket) {
       throw new UnsendableRow(`${code}: attachment ${index} is not in the ${bucket} bucket`);
     }
@@ -473,6 +500,75 @@ function documentHtml(
   });
 }
 
+/** `payload.replyTo` on an INV2 row: one address, or empty for the sender's own. */
+function parseReplyTo(raw: unknown): string | null {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const address = String(raw).trim();
+  if (!/^[^\s@<>",]+@[^\s@<>",]+\.[^\s@<>",]{2,}$/.test(address)) {
+    throw new UnsendableRow('INV2: replyTo is not an email address');
+  }
+  return address;
+}
+
+/**
+ * INV2: the office-composed invoice email (ADR-0210). Subject and body are
+ * the row's, verbatim; the body is cut to the HTML allowlist; there is no
+ * THC card around it, because it is a message from a person at THC.
+ */
+function composedInvoiceMessage(row: OutboxRow, options: RenderOptions): EmailWithAttachments {
+  const entry = DOCUMENT_EMAILS.INV2;
+  if (row.channel !== 'email') {
+    throw new UnsendableRow(`INV2 is an email but the row is ${row.channel}`);
+  }
+  const payload = (row.payload ?? {}) as Record<string, unknown>;
+  const inList = (raw: unknown, what: string): string[] => {
+    if (raw === undefined || raw === null || raw === '') return [];
+    if (typeof raw === 'string') {
+      try {
+        return inList(JSON.parse(raw), what);
+      } catch {
+        throw new UnsendableRow(`INV2: ${what} is not JSON`);
+      }
+    }
+    if (!Array.isArray(raw) || raw.some((a) => typeof a !== 'string' || !a.includes('@'))) {
+      throw new UnsendableRow(`INV2: ${what} is not a list of addresses`);
+    }
+    return (raw as string[]).map((a) => a.trim());
+  };
+  const to = row.recipient_emails ? row.recipient_emails.map((a) => a.trim()) : [];
+  if (to.length === 0) throw new UnsendableRow('INV2 is an email with no recipient');
+  const seen = new Set(to.map((a) => a.toLowerCase()));
+  const dedupe = (list: string[]) =>
+    list.filter((a) => {
+      const k = a.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  const cc = dedupe(inList(payload.cc, 'cc'));
+  const bcc = dedupe(inList(payload.bcc, 'bcc'));
+  const subject = typeof payload.subject === 'string' ? payload.subject.trim() : '';
+  if (subject === '') throw new UnsendableRow('INV2 has no subject');
+  const sanitised = sanitiseEmailHtml(typeof payload.bodyHtml === 'string' ? payload.bodyHtml : '');
+  const text = emailHtmlToText(sanitised);
+  if (text === '') throw new UnsendableRow('INV2 has no message body');
+  const attachments = parseAttachments(payload.attachments, 'INV2');
+  const replyTo =
+    parseReplyTo(payload.replyTo) ?? options.replyTo ?? DEFAULT_SENDER_ADDRESSES[entry.sender];
+  return {
+    kind: 'email',
+    sender: entry.sender,
+    to,
+    subject,
+    body: text,
+    html: `<!DOCTYPE html><html lang="en-GB"><head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">${sanitised}</body></html>`,
+    ...(bcc.length > 0 ? { bcc } : {}),
+    attachments,
+    ...(cc.length > 0 ? { cc } : {}),
+    replyTo,
+  };
+}
+
 export function documentMessageFor(
   row: OutboxRow,
   options: RenderOptions = {},
@@ -481,6 +577,7 @@ export function documentMessageFor(
     throw new UnsendableRow(`${row.template} is not a document email`);
   }
   const code = row.template;
+  if (code === 'INV2') return composedInvoiceMessage(row, options);
   const entry: DocumentEmailTemplate = DOCUMENT_EMAILS[code];
   if (row.channel !== 'email') {
     throw new UnsendableRow(`${code} is an email but the row is ${row.channel}`);
